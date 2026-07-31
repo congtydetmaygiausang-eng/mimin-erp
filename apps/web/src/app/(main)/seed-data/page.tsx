@@ -54,6 +54,19 @@ export default function SeedDataPage() {
     addLog("✅ Đã xóa tất cả localStorage");
   };
 
+  const prepareRealDataEntry = () => {
+    if (!confirm("🧹 Anh có muốn XÓA SẠCH Lệnh cắt & Sản lượng mẫu để BẮT ĐẦU NHẬP LIỆU THỰC TẾ?\n\n✅ SẼ GIỮ NGUYÊN 100%: Kho Vải, Bo Phụ liệu, Danh sách Nhân sự & Đối tác Gia công.")) return;
+    localStorage.removeItem(STORAGE_KEYS.PHIEU);
+    localStorage.removeItem(STORAGE_KEYS.LSX_TONG);
+    localStorage.removeItem(STORAGE_KEYS.CONG_NO);
+    localStorage.removeItem("mimin_hoan_thien_v1");
+    localStorage.removeItem("mimin_qc_v1");
+    localStorage.removeItem("mimin_doi_soat_v1");
+    localStorage.removeItem("KHO_THANH_PHAM");
+    setLogs([]);
+    addLog("✅ ĐÃ CHUẨN BỊ SẴN SÀNG: Đã dọn sạch dữ liệu sản xuất mẫu! Đã giữ nguyên Kho vải, Bo phụ liệu, Nhân sự & Xưởng gia công.");
+  };
+
   const runSeed = () => {
     setLogs([]);
     addLog("🚀 Bắt đầu seed data...");
@@ -174,10 +187,16 @@ export default function SeedDataPage() {
         {/* Action buttons */}
         <div className="card p-4 flex flex-col md:flex-row gap-3 items-center">
           <button
-            onClick={runSeed}
-            className="flex-1 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:shadow-lg"
+            onClick={prepareRealDataEntry}
+            className="flex-1 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:shadow-lg shadow-teal-500/20"
           >
-            <Sparkles className="w-5 h-5" /> Seed ngay (1 click)
+            <Sparkles className="w-5 h-5" /> 🧹 Dọn dẹp để BẮT ĐẦU NHẬP LIỆU THỰC TẾ (Giữ Kho & Nhân sự)
+          </button>
+          <button
+            onClick={runSeed}
+            className="px-4 py-3 bg-indigo-100 text-indigo-700 rounded-xl font-medium flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" /> Seed data mẫu
           </button>
           <button
             onClick={clearAll}
