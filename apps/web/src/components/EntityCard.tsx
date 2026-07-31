@@ -21,6 +21,7 @@ type BadgeItem = {
 export function EntityCard({
   name,
   subtitle,
+  avatarUrl,
   avatarSize = "lg",
   badges = [],
   stats = [],
@@ -40,6 +41,7 @@ export function EntityCard({
 }: {
   name: string;
   subtitle?: ReactNode;
+  avatarUrl?: string;
   avatarSize?: "md" | "lg" | "xl" | "2xl";
   badges?: BadgeItem[];
   stats?: StatItem[];
@@ -68,7 +70,7 @@ export function EntityCard({
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
-        <Avatar name={name} size={avatarSize} />
+        <Avatar name={name} src={avatarUrl} size={avatarSize} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold truncate text-sm">{name}</h3>

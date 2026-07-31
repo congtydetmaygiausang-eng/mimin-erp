@@ -42,12 +42,14 @@ function getColor(seed: string): [string, string] {
 
 export function Avatar({
   name,
+  src,
   size = "md",
   className = "",
   showStatus = false,
   isOnline = false,
 }: {
   name: string;
+  src?: string;
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   className?: string;
   showStatus?: boolean;
@@ -76,14 +78,20 @@ export function Avatar({
 
   return (
     <div className={`relative shrink-0 ${className}`}>
-      <div
-        className={`${sizeClass} rounded-full flex items-center justify-center font-bold text-white shadow-md ring-2 ring-white/30`}
-        style={{
-          background: `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`,
-        }}
-      >
-        {initials}
-      </div>
+      {src ? (
+        <div className={`${sizeClass} rounded-full overflow-hidden shadow-md ring-2 ring-white/30 bg-slate-100 dark:bg-slate-800`}>
+          <img src={src} alt={name} className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div
+          className={`${sizeClass} rounded-full flex items-center justify-center font-bold text-white shadow-md ring-2 ring-white/30`}
+          style={{
+            background: `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`,
+          }}
+        >
+          {initials}
+        </div>
+      )}
       {showStatus && (
         <span
           className={`absolute bottom-0 right-0 ${statusSize} rounded-full border-2 border-white ${
