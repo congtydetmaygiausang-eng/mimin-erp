@@ -181,25 +181,31 @@ export default function NhanSuPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Users className="w-7 h-7 text-brand-500" />
-            Nhân sự
-          </h1>
-          <p className="opacity-70 mt-1 text-sm">
-            {tongNV} nhân viên · Tổng quỹ lương cứng <b className="text-emerald-600">{formatVNDShort(tongLuongCung)}/tháng</b>
-          </p>
+      {/* Hero Header Banner */}
+      <div className="relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(160deg, #006d8f 0%, #0a9ebd 20%, #3dba7a 55%, #2d6a4f 80%, #1b3a2e 100%)" }}>
+        {/* Blur glow orbs */}
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #7fffd4 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
+        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #00bcd4 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-white drop-shadow">
+              <Users className="w-7 h-7 text-white/90" />
+              Nhân sự
+            </h1>
+            <p className="text-white/80 mt-1 text-sm font-medium">
+              {tongNV} nhân viên · Tổng quỹ lương cứng <b className="text-white">{formatVNDShort(tongLuongCung)}/tháng</b>
+            </p>
+          </div>
+          {perm.canCreate("nhan-su") ? (
+          <button onClick={() => setShowForm({ mode: "add" })} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition shadow-lg">
+            <Plus className="w-4 h-4" /> Thêm NV
+          </button>
+          ) : (
+          <div className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-white/70 flex items-center gap-1 border border-white/20" title="Bạn không có quyền thêm nhân viên">
+            <Lock className="w-3.5 h-3.5" /> Chỉ Admin
+          </div>
+          )}
         </div>
-        {perm.canCreate("nhan-su") ? (
-        <button onClick={() => setShowForm({ mode: "add" })} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Thêm NV
-        </button>
-        ) : (
-        <div className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center gap-1" title="Bạn không có quyền thêm nhân viên">
-          <Lock className="w-3.5 h-3.5" /> Chỉ Admin
-        </div>
-        )}
       </div>
 
       {/* KPIs */}
