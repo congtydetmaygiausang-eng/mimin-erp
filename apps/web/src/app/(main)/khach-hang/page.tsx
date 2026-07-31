@@ -27,6 +27,7 @@ import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 type KH = typeof KHACH_HANG_DATA[number] & {
   rating: number;
   ghiChu?: string;
+  avatar?: string;
 };
 
 const KH_KHOI_DAU: KH[] = KHACH_HANG_DATA.map((k) => ({ ...k, rating: k.rating || 4 }));

@@ -42,6 +42,7 @@ type NCC = {
   maSoThue?: string;
   ghiChu?: string;
   rating?: number;
+  avatar?: string;
 };
 
 // Khởi tạo NCC data + thêm rating + MST

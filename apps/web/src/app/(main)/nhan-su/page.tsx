@@ -37,6 +37,7 @@ type NhanSuExt = NhanSu & {
   ngayVao?: string;
   luongCung?: number;
   taiKhoan?: string;
+  avatar?: string;
 };
 
 // ============ MAP NV LARK THẬT → NhanSuExt ============
