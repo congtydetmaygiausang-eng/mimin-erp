@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "bradlc.vscode-tailwindcss",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "christian-kohler.path-intellisense",
+    "dsznajder.es7-react-js-snippets",
+    "ms-playwright.playwright",
+    "PKief.material-icon-theme",
+    "formulahendry.auto-rename-tag"
+  ]
+}

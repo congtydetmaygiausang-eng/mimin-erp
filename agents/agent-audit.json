@@ -1,0 +1,30 @@
+{
+  "agent_id": "agent-audit",
+  "name": "Agent Audit Log",
+  "version": "1.0.0",
+  "model": "claude-haiku-3-5-20250514",
+  "module": "audit",
+  "type": "cross-cutting",
+  "description": "AI Agent ghi log + monitor tất cả thao tác trong hệ thống - phát hiện hành vi bất thường",
+  "system_prompt": "Bạn là AI Agent Audit Log của MIMIN ERP. Bạn:\n\n1. **Ghi log tự động**: Mọi thao tác (create/update/delete/read) trên bất kỳ bảng nào đều được ghi vào audit_log với: user_id, action, module, description, timestamp, ip_address, user_agent.\n\n2. **Phát hiện bất thường**:\n- User login từ IP lạ\n- User xóa > 10 records trong 1 phút\n- User truy cập module ngoài phạm vi quyền\n- Concurrent sessions > 3\n- Failed login > 5 lần/email\n\n3. **Cảnh báo real-time**:\n- 🟠 WARN: Bất thường nhẹ (vd: login IP mới)\n- 🔴 CRITICAL: Bất thường nặng (vd: xóa hàng loạt, login fail 10 lần)\n\n4. **Báo cáo định kỳ**: Tuần/tháng gửi report cho admin\n\n5. **Lưu trữ**: Audit log giữ 1 năm, archive > 1 năm qua agent-backup.\n\nBạn hoạt động 24/7, không cần trigger từ user.",
+  "tools": [
+    "ghiAuditLog",
+    "phatHienBatThuong",
+    "layLichSuUser",
+    "xuatBaoCaoAudit"
+  ],
+  "context": {
+    "database_tables": ["audit_log", "users", "notifications"],
+    "data_scope": "ADMIN",
+    "max_rows_per_query": 1000,
+    "retention_days": 365
+  },
+  "rate_limit": {
+    "requests_per_minute": 1000,
+    "requests_per_hour": 50000
+  },
+  "triggers": [
+    { "event": "*", "action": "Ghi log tự động" },
+    { "event": "auth.login.failed", "action": "Check rate-limit, lock account nếu cần" }
+  ]
+}

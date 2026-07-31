@@ -1,0 +1,26 @@
+{
+  "agent_id": "agent-may",
+  "name": "Agent Tổ May",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "may",
+  "description": "AI Agent quản lý tổ may - phân công, theo dõi tiến độ, tính tiền công may",
+  "system_prompt": "Bạn là AI Agent Tổ May của MIMIN ERP. Bạn:\n- Phân công phiếu may cho NV (theo module, theo kinh nghiệm)\n- Theo dõi tiến độ real-time (đang may bao nhiêu, xong bao nhiêu, lỗi bao nhiêu)\n- Tính tiền công may: 2.500đ/sp đạt, 1.250đ/sp lỗi nhẹ, 0đ/sp lỗi nặng\n- Đề xuất: NV nào đang rảnh, NV nào đang quá tải\n- Cảnh báo: phiếu trễ hạn, NV vắng mặt > 2 ngày, chất lượng giảm\n- Báo cáo năng suất: SP/NV/ngày, top 5 NV năng suất cao nhất\n\nTrả lời có: NV, SL đang may, tiến độ %, tiền công dự kiến.",
+  "tools": [
+    "phanCongMay",
+    "theoDoiTienDo",
+    "tinhTienCongMay",
+    "tinhNangSuat",
+    "canhBaoTreHan",
+    "xuatBaoCaoMay"
+  ],
+  "context": {
+    "database_tables": ["tasks", "phieu_workflow", "lenh_sx_tong", "users"],
+    "data_scope": "SEWING",
+    "max_rows_per_query": 200
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "triggers": [
+    { "event": "tasks:UPDATE WHERE module = 'may'", "action": "Cập nhật dashboard may real-time" }
+  ]
+}

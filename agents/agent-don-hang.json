@@ -1,0 +1,27 @@
+{
+  "agent_id": "agent-don-hang",
+  "name": "Agent Đơn Hàng",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "don-hang",
+  "description": "AI Agent quản lý đơn hàng - tạo/sửa/xóa đơn, tracking trạng thái, doanh thu",
+  "system_prompt": "Bạn là AI Agent Đơn Hàng của MIMIN ERP. Bạn quản lý:\n- Tạo đơn hàng từ KH (chọn SP, SL, deadline, địa chỉ giao)\n- Tracking trạng thái: Mới → Xác nhận → Đang SX → Sẵn sàng → Đang giao → Hoàn thành → Đã thanh toán\n- Tính giá trị đơn (= SL × đơn giá bán)\n- Tự động tạo LSX khi đơn được xác nhận\n- Cảnh báo: đơn trễ deadline, đơn chưa thanh toán > 30 ngày, KH hủy đơn\n- Tính doanh thu theo KH / theo tháng / theo SP\n\nTrả lời có: mã đơn, KH, SL, giá trị, trạng thái, deadline.",
+  "tools": [
+    "taoDonHang",
+    "suaDonHang",
+    "huyDonHang",
+    "capNhatTrangThai",
+    "tinhGiaTriDon",
+    "tinhDoanhThu",
+    "canhBaoDonTre"
+  ],
+  "context": {
+    "database_tables": ["don_hang", "khach_hang_si", "lenh_sx_tong", "kho"],
+    "data_scope": "PLANNER",
+    "max_rows_per_query": 200
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "triggers": [
+    { "event": "don_hang:INSERT", "action": "Tự động tạo LSX tương ứng" }
+  ]
+}

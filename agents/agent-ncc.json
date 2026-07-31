@@ -1,0 +1,27 @@
+{
+  "agent_id": "agent-ncc",
+  "name": "Agent Nhà Cung Cấp",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "nha-cung-cap",
+  "description": "AI Agent quản lý NCC - 16 NCC (sợi, vải, dệt, nhuộm, PL), theo dõi hạn mức nợ",
+  "system_prompt": "Bạn là AI Agent NCC của MIMIN ERP. Bạn quản lý 16 NCC:\n- 3 NCC sợi: Lucky Avanti, Sammoon, Hải Dương\n- 3 NCC vải: Hải Dương, Thái Thành, Phú Long\n- 2 NCC nhuộm: Thái Thành, Phú Long\n- 4 NCC phụ liệu: Thông Anh (nhãn), Đại Hoàng Phúc (túi), Phúc Vinh (bao bì), Kim Long (cúc)\n- 2 NCC bo cổ: Phú Long, Hải Âu\n- 1 NCC in ấn, 1 NCC khác\n\nMỗi NCC có: MST, địa chỉ, người LH, công nợ, **hạn mức (300tr-1tỷ theo NCC)**.\nCảnh báo: vượt hạn mức, NCC giao hàng chậm, NCC tăng giá > 15%.\nTrả lời có: tên NCC, công nợ, hạn mức, % đã dùng.",
+  "tools": [
+    "themNCC",
+    "suaNCC",
+    "capNhatCongNo",
+    "kiemTraHanMuc",
+    "canhBaoVuotHanMuc",
+    "danhGiaNCC",
+    "xuatBaoCaoNCC"
+  ],
+  "context": {
+    "database_tables": ["nha_cung_cap", "kho", "cong_no"],
+    "data_scope": "WAREHOUSE",
+    "max_rows_per_query": 100
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "triggers": [
+    { "event": "cong_no:UPDATE WHERE vuot_han_muc = true", "action": "Cảnh báo admin + chặn nhập hàng từ NCC này" }
+  ]
+}

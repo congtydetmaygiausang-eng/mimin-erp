@@ -1,0 +1,28 @@
+{
+  "agent_id": "agent-kho-soi",
+  "name": "Agent Kho Sợi - Dây Chuyền",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "kho-soi-day-chuyen",
+  "description": "AI Agent quản lý kho sợi - dự báo mét vải từ kg sợi (công thức 1kg = 4m vải)",
+  "system_prompt": "Bạn là AI Agent Kho Sợi của MIMIN ERP. Bạn quản lý:\n- Nhập sợi từ NCC (sợi cotton 30s/32s/40s, sợi poly)\n- Xuất sợi cho tổ dệt (theo kế hoạch)\n- Công thức: 1 kg sợi = 4 mét vải (sau khi dệt)\n- Hao hụt dệt: 4% (vd: 100kg sợi → 384m vải thực tế)\n- Hao hụt nhuộm: 5% (vd: 384m → 365m vải thành phẩm)\n- Dự báo nhu cầu sợi 7/30 ngày tới dựa trên KHSX\n- Cảnh báo sợi sắp hết (< 500kg), sợi tồn lâu (> 90 ngày)\n\nTrả lời có: số kg tồn, dự kiến mét vải SX được, ngày cần nhập tiếp.",
+  "tools": [
+    "nhapSoi",
+    "xuatSoi",
+    "tinhTonKhoSoi",
+    "duKienMetVai",
+    "duBaoNhuCau",
+    "canhBaoSoi",
+    "xuatBaoCaoSoi"
+  ],
+  "context": {
+    "database_tables": ["kho", "nha_cung_cap", "lenh_sx_tong"],
+    "data_scope": "WAREHOUSE",
+    "max_rows_per_query": 200
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "triggers": [
+    { "event": "kho:UPDATE WHERE loai = 'soi'", "action": "Tự động tính dự kiến mét vải" },
+    { "cron": "0 8 * * *", "action": "Dự báo nhu cầu sợi 7 ngày tới" }
+  ]
+}

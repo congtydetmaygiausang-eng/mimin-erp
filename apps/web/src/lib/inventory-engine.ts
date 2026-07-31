@@ -1,0 +1,292 @@
+// Inventory Engine - Tính màn (định mức vải) + Trừ tồn kho tự động
+// Phase 1: Hoàn tất logic cốt lõi
+
+import type { PhieuWorkflow } from "./workflow-data";
+import { KHO_VAI, type KhoVai } from "./data/real-data";
+import { logAudit } from "./audit-log";
+
+// ============ ĐỊNH MỨC VẢI (m/cái) theo sản phẩm + size ============
+export const DINH_MUC_VAI: Record<string, Record<string, number>> = {
+  "Áo thun cotton": { S: 0.95, M: 1.05, L: 1.15, XL: 1.25, XXL: 1.35, "2XL": 1.35, "3XL": 1.45 },
+  "Áo trụ": { S: 1.05, M: 1.15, L: 1.25, XL: 1.35, XXL: 1.45, "2XL": 1.45, "3XL": 1.55 },
+  "Áo polo": { S: 1.15, M: 1.25, L: 1.35, XL: 1.45, XXL: 1.55, "2XL": 1.55 },
+  "Áo sơ mi nữ": { S: 1.25, M: 1.35, L: 1.45, XL: 1.55 },
+  "Áo sơ mi nam": { S: 1.35, M: 1.45, L: 1.55, XL: 1.65, XXL: 1.75 },
+  "Quần": { S: 0.95, M: 1.05, L: 1.15, XL: 1.25, XXL: 1.35, "2XL": 1.35, "3XL": 1.45 },
+  "Quần thể thao": { S: 1.0, M: 1.1, L: 1.2, XL: 1.3, XXL: 1.4, "2XL": 1.4 },
+  "Quần kaki": { S: 1.0, M: 1.1, L: 1.2, XL: 1.3 },
+  "Bộ trụ trơn": { S: 2.0, M: 2.2, L: 2.4, XL: 2.6, XXL: 2.8, "2XL": 2.8, "3XL": 3.0 },
+  "Bộ thể thao nam": { S: 2.1, M: 2.3, L: 2.5, XL: 2.7, XXL: 2.9, "2XL": 2.9 },
+  "Bộ thể thao": { S: 2.0, M: 2.2, L: 2.4, XL: 2.6 },
+  "Bộ trắng": { S: 2.0, M: 2.2, L: 2.4, XL: 2.6, XXL: 2.8, "2XL": 2.8 },
+};
+
+export const HAO_HUT_MAC_DINH: Record<string, number> = {
+  "Vải thun": 5,
+  "Vải polo": 7,
+  "Vải sơ mi": 8,
+  "Vải quần": 6,
+  "Vải bộ": 7,
+  "Vải kaki": 5,
+  "default": 5,
+};
+
+export interface TinhManResult {
+  soMetCan: number;
+  soMetGoc: number;
+  soMetHaoHut: number;
+  tyLeHaoHut: number;
+  chiTiet: { size: string; sl: number; dinhMuc: number; tong: number }[];
+  warning?: string;
+}
+
+export function tinhMan(
+  phanLoai: string | undefined,
+  sizeSL: Record<string, number>,
+  loaiVai: string = "default",
+  haoHutCustom?: number
+): TinhManResult {
+  const dinhMuc = phanLoai ? DINH_MUC_VAI[phanLoai] : undefined;
+  if (!dinhMuc) {
+    return {
+      soMetCan: 0, soMetGoc: 0, soMetHaoHut: 0, tyLeHaoHut: 0,
+      chiTiet: [], warning: `Chưa có định mức cho "${phanLoai}"`,
+    };
+  }
+
+  const tyLeHaoHut = haoHutCustom ?? HAO_HUT_MAC_DINH[loaiVai] ?? HAO_HUT_MAC_DINH["default"];
+  let soMetGoc = 0;
+  const chiTiet: { size: string; sl: number; dinhMuc: number; tong: number }[] = [];
+  let warning: string | undefined;
+
+  for (const [size, sl] of Object.entries(sizeSL)) {
+    const dinhMucSize = dinhMuc[size];
+    if (dinhMucSize === undefined) {
+      warning = (warning || "") + `Size ${size} không có định mức. `;
+      continue;
+    }
+    const tong = sl * dinhMucSize;
+    soMetGoc += tong;
+    chiTiet.push({ size, sl, dinhMuc: dinhMucSize, tong });
+  }
+
+  const soMetHaoHut = soMetGoc * (tyLeHaoHut / 100);
+  const soMetCan = soMetGoc + soMetHaoHut;
+
+  return {
+    soMetCan: round(soMetCan, 2),
+    soMetGoc: round(soMetGoc, 2),
+    soMetHaoHut: round(soMetHaoHut, 2),
+    tyLeHaoHut,
+    chiTiet,
+    warning,
+  };
+}
+
+export function parseSize(slGiao: number, sizeStr: string | undefined): Record<string, number> {
+  const sizes = (sizeStr || "M").split(/[,/]/).map((s) => s.trim()).filter(Boolean);
+  if (sizes.length === 0) return { M: slGiao };
+  const slMoiSize = Math.floor(slGiao / sizes.length);
+  const du = slGiao - slMoiSize * sizes.length;
+  const result: Record<string, number> = {};
+  sizes.forEach((s, i) => {
+    result[s] = slMoiSize + (i < du ? 1 : 0);
+  });
+  return result;
+}
+
+export function goiYVai(phanLoai: string | undefined, mau: string | undefined): KhoVai | undefined {
+  const mapping: Record<string, string> = {
+    "Trắng ngà": "V-TRANG003",
+    "Trắng": "V-TRANG003",
+    "Đen": "V-DENNANO",
+    "Xanh navy": "V-XANHDENCM",
+    "Xám": "V-XAMCHI035",
+    "Be": "V-COUA044",
+    "Kem": "V-KEM3",
+    "Hồng pastel": "V-MAU11",
+    "Đỏ": "V-DO112",
+  };
+  const firstVT = KHO_VAI[0] || null;
+  const maVT = (mau ? mapping[mau] : undefined) || (firstVT ? firstVT.maVT : "");
+  return KHO_VAI.find((v: KhoVai) => v.maVT === maVT);
+}
+
+export interface TruTonKhoResult {
+  ok: boolean;
+  maVT?: string;
+  tenVT?: string;
+  soMetTru?: number;
+  tonKhoTruoc?: number;
+  tonKhoSau?: number;
+  warning?: string;
+  message: string;
+}
+
+const TON_KHO_KEY = "mimin_kho_vai_inventory";
+
+function getInventory(): Record<string, KhoVai> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(TON_KHO_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  const init: Record<string, KhoVai> = {};
+  KHO_VAI.forEach((v) => {
+    init[v.maVT] = { ...v, tonKho: 500 };
+  });
+  localStorage.setItem(TON_KHO_KEY, JSON.stringify(init));
+  return init;
+}
+
+function saveInventory(inv: Record<string, KhoVai>) {
+  localStorage.setItem(TON_KHO_KEY, JSON.stringify(inv));
+}
+
+export function getAllInventory(): KhoVai[] {
+  return Object.values(getInventory());
+}
+
+export function getInventoryByMaVT(maVT: string): KhoVai | undefined {
+  return getInventory()[maVT];
+}
+
+export function truTonKho(phieu: PhieuWorkflow, user: any): TruTonKhoResult[] {
+  const inv = getInventory();
+  const results: TruTonKhoResult[] = [];
+
+  const vai = goiYVai(phieu.phanLoai || "", phieu.mau || "");
+  if (!vai || !vai.maVT) {
+    results.push({
+      ok: false,
+      message: `Không tìm thấy vải cho màu "${phieu.mau || "N/A"}" của "${phieu.phanLoai}"`,
+    });
+    return results;
+  }
+  const maVT: string = vai.maVT;
+
+  const sizeSL = parseSize(phieu.soLuongGiao, phieu.size);
+  const tinh = tinhMan(phieu.phanLoai, sizeSL, "default");
+
+  if (tinh.soMetCan === 0) {
+    results.push({ ok: false, message: tinh.warning || "Không tính được màn" });
+    return results;
+  }
+
+  const kgPerMet = 0.25;
+  const kgCan = round(tinh.soMetCan * kgPerMet, 2);
+
+  const v = inv[maVT];
+  if (!v) {
+    results.push({ ok: false, message: `Vải ${maVT} không có trong kho` });
+    return results;
+  }
+
+  const tonKhoTruoc = v.tonKho;
+  if (tonKhoTruoc < kgCan) {
+    results.push({
+      ok: false,
+      maVT, tenVT: vai.tenVT,
+      soMetTru: kgCan, tonKhoTruoc,
+      message: `⚠️ Không đủ vải ${vai.tenVT}: tồn ${tonKhoTruoc}kg, cần ${kgCan}kg (thiếu ${(kgCan - tonKhoTruoc).toFixed(2)}kg)`,
+    });
+    return results;
+  }
+
+  const tonKhoSau = round(tonKhoTruoc - kgCan, 2);
+  inv[maVT] = { ...v, tonKho: tonKhoSau };
+  saveInventory(inv);
+
+  results.push({
+    ok: true,
+    maVT, tenVT: vai.tenVT,
+    soMetTru: kgCan, tonKhoTruoc, tonKhoSau,
+    message: `✅ Trừ kho ${vai.tenVT}: -${kgCan}kg (${tonKhoTruoc}kg → ${tonKhoSau}kg)`,
+  });
+
+  logAudit({
+    user, action: "update", module: "kho-vai",
+    description: `Trừ kho vải ${vai.tenVT}: -${kgCan}kg cho phiếu ${phieu.id}`,
+    resourceId: phieu.id, resourceName: phieu.id, success: true,
+  });
+
+  return results;
+}
+
+export function nhapKho(
+  maVT: string,
+  soLuong: number,
+  user: any,
+  ghiChu: string = ""
+): TruTonKhoResult {
+  const inv = getInventory();
+  const v = inv[maVT];
+  if (!v) {
+    return { ok: false, message: `Vải ${maVT} không có trong kho` };
+  }
+  const tonKhoTruoc = v.tonKho;
+  const tonKhoSau = round(tonKhoTruoc + soLuong, 2);
+  inv[maVT] = { ...v, tonKho: tonKhoSau };
+  saveInventory(inv);
+
+  logAudit({
+    user, action: "create", module: "kho-vai",
+    description: `Nhập kho ${v.tenVT}: +${soLuong}kg (${tonKhoTruoc}kg → ${tonKhoSau}kg). ${ghiChu}`,
+    resourceId: maVT, success: true,
+  });
+
+  return {
+    ok: true, maVT, tenVT: v.tenVT,
+    soMetTru: soLuong, tonKhoTruoc, tonKhoSau,
+    message: `✅ Nhập kho ${v.tenVT}: +${soLuong}kg`,
+  };
+}
+
+export function resetInventory() {
+  localStorage.removeItem(TON_KHO_KEY);
+}
+
+function round(n: number, digits: number = 2): number {
+  const f = Math.pow(10, digits);
+  return Math.round(n * f) / f;
+}
+
+export interface BaoCaoVai {
+  phieuId: string;
+  lenhSX: string;
+  maSP: string;
+  phanLoai?: string;
+  mau?: string;
+  vai: string;
+  soMetCan: number;
+  soMetDat: number;
+  soMetTon: number;
+  donGiaVai: number;
+  tienVai: number;
+  ngayCat?: string;
+}
+
+export function baoCaoVaiTheoLSX(phieus: PhieuWorkflow[], lenhSX: string): BaoCaoVai[] {
+  const cats = phieus.filter((p) => p.lenhSX === lenhSX && p.id.startsWith("CAT_"));
+  return cats.map((p) => {
+    const vai = goiYVai(p.phanLoai, p.mau);
+    const sizeSL = parseSize(p.soLuongGiao, p.size);
+    const tinh = tinhMan(p.phanLoai, sizeSL);
+    const soMetDat = tinh.soMetCan * (p.soLuongDat / Math.max(1, p.soLuongGiao));
+    const donGiaVai = vai?.donGia || 0;
+    return {
+      phieuId: p.id,
+      lenhSX: p.lenhSX,
+      maSP: p.maSP,
+      phanLoai: p.phanLoai,
+      mau: p.mau,
+      vai: vai?.tenVT || "N/A",
+      soMetCan: tinh.soMetCan,
+      soMetDat: round(soMetDat, 2),
+      soMetTon: round(tinh.soMetCan - soMetDat, 2),
+      donGiaVai,
+      tienVai: round(soMetDat * donGiaVai, 0),
+      ngayCat: p.ngayHoanThanh,
+    };
+  });
+}

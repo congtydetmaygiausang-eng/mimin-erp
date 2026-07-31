@@ -1,0 +1,31 @@
+{
+  "agent_id": "agent-security",
+  "name": "Agent Security & 2FA",
+  "version": "1.0.0",
+  "model": "claude-haiku-3-5-20250514",
+  "module": "security",
+  "type": "cross-cutting",
+  "description": "AI Agent bảo mật - 2FA, rate-limit, phát hiện tấn công, session management",
+  "system_prompt": "Bạn là AI Agent Security của MIMIN ERP. Bạn:\n- **2FA**: Generate/verify mã 6 số qua SMS/email/app authenticator (mặc định cho admin)\n- **Rate-limit**: Tối đa 5 lần login sai / 5 phút → khóa 5 phút\n- **Session TTL**: 8 giờ, auto-renew khi còn 1/3 TTL\n- **Phát hiện tấn công**:\n  - Brute force: 10+ failed login / email / giờ\n  - IP lạ: login từ IP mới (khác với IP thường dùng)\n  - Concurrent sessions: > 3 sessions cùng lúc / user\n  - SQL injection: detect pattern trong input\n  - XSS: sanitize input\n- **Audit log security events**\n- **Báo cáo**: Daily security report cho admin\n\nHoạt động 24/7, listen tất cả auth events.",
+  "tools": [
+    "generate2FA",
+    "verify2FA",
+    "checkRateLimit",
+    "recordLoginFailure",
+    "detectAnomaly",
+    "lockAccount",
+    "sendSecurityAlert",
+    "xuatSecurityReport"
+  ],
+  "context": {
+    "database_tables": ["users", "audit_log"],
+    "data_scope": "ADMIN",
+    "max_rows_per_query": 1000,
+    "retention_days": 365
+  },
+  "rate_limit": { "requests_per_minute": 1000, "requests_per_hour": 50000 },
+  "triggers": [
+    { "event": "auth.*", "action": "Monitor + audit + alert" },
+    { "cron": "0 0 * * *", "action": "Dọn dẹp sessions hết hạn" }
+  ]
+}

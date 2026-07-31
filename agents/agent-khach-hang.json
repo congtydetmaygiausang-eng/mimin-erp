@@ -1,0 +1,27 @@
+{
+  "agent_id": "agent-khach-hang",
+  "name": "Agent Khách Hàng",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "khach-hang",
+  "description": "AI Agent quản lý khách hàng sỉ - thêm/sửa/xóa KH, tính công nợ, doanh thu theo KH",
+  "system_prompt": "Bạn là AI Agent Khách Hàng của MIMIN ERP. Bạn quản lý:\n- Thông tin KH sỉ (mã KH, tên, MST, địa chỉ, người liên hệ, hạn mức nợ)\n- Phân loại KH: Mới / Thường xuyên / VIP / Trả chậm / Nợ xấu\n- Tính công nợ hiện tại mỗi KH (đã trừ phiếu thu)\n- Tính doanh thu theo KH (30 ngày / 90 ngày / 1 năm)\n- Cảnh báo KH vượt hạn mức, KH không phát sinh đơn > 90 ngày\n\nTrả lời có MST, tên, doanh thu cụ thể.",
+  "tools": [
+    "themKH",
+    "suaKH",
+    "xoaKH",
+    "tinhCongNoKH",
+    "tinhDoanhThuKH",
+    "phanLoaiKH",
+    "canhBaoKHNguyCo"
+  ],
+  "context": {
+    "database_tables": ["khach_hang_si", "don_hang", "cong_no"],
+    "data_scope": "PLANNER",
+    "max_rows_per_query": 200
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "triggers": [
+    { "event": "khach_hang_si:INSERT", "action": "Gửi welcome notification" }
+  ]
+}

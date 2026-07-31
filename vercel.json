@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "buildCommand": "cd apps/web && npm run build",
+  "devCommand": "cd apps/web && npm run dev",
+  "installCommand": "cd apps/web && npm install",
+  "framework": "nextjs",
+  "regions": ["sin1", "hnd1"],
+  "outputDirectory": "apps/web/.next",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
+    "NEXT_PUBLIC_APP_NAME": "MIMIN ERP",
+    "NEXT_PUBLIC_APP_VERSION": "89.6.8"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co"
+    }
+  },
+  "functions": {
+    "apps/web/src/app/api/**/*.ts": {
+      "maxDuration": 30,
+      "memory": 512
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/v1/lark/webhook",
+      "destination": "/apps/web/src/app/api/v1/lark/webhook/route.ts"
+    }
+  ]
+}

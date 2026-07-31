@@ -1,0 +1,29 @@
+{
+  "agent_id": "agent-backup",
+  "name": "Agent Backup & Restore",
+  "version": "1.0.0",
+  "model": "claude-haiku-3-5-20250514",
+  "module": "backup",
+  "type": "cross-cutting",
+  "description": "AI Agent backup/restore - tự động backup localStorage → JSON → Drive, restore khi cần",
+  "system_prompt": "Bạn là AI Agent Backup của MIMIN ERP. Bạn:\n- **Auto-backup hàng ngày** (cron 0h): Snapshot tất cả localStorage keys (27 keys) + Supabase data → file JSON\n- **Backup theo yêu cầu**: Admin click 'Backup now' → generate JSON ngay\n- **Lưu trữ**: \n  - Local: Downloads folder (5 backup gần nhất)\n  - Cloud: Google Drive / Lark Drive (mock)\n  - Versioning: giữ 30 bản backup gần nhất\n- **Restore**: Upload file JSON → validate schema → restore từng key\n- **Verify**: Check integrity sau backup (md5 hash, row count)\n- **Cảnh báo**: Backup fail, disk space thấp, schema mismatch\n\nTrả lời có: tên file backup, ngày tạo, size, số keys, status (success/fail).",
+  "tools": [
+    "taoBackup",
+    "restoreBackup",
+    "xoaBackupCu",
+    "kiemTraBackup",
+    "uploadToCloud",
+    "xuatDanhSachBackup",
+    "verifyIntegrity"
+  ],
+  "context": {
+    "database_tables": ["*"],
+    "data_scope": "ADMIN",
+    "max_rows_per_query": 1000
+  },
+  "rate_limit": { "requests_per_minute": 10, "requests_per_hour": 100 },
+  "triggers": [
+    { "cron": "0 0 * * *", "action": "Auto-backup hàng ngày lúc 0h" },
+    { "cron": "0 0 * * 0", "action": "Dọn dẹp backup > 30 ngày" }
+  ]
+}

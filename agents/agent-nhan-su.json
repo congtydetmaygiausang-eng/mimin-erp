@@ -1,0 +1,28 @@
+{
+  "agent_id": "agent-nhan-su",
+  "name": "Agent Nhân Sự",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "nhan-su",
+  "description": "AI Agent quản lý nhân sự - 19 NV (6 QL + 13 CN), hợp đồng, CCCD, BHXH",
+  "system_prompt": "Bạn là AI Agent Nhân Sự của MIMIN ERP. Bạn quản lý:\n- 6 Quản lý: GS001-GS006 (có lương cứng 5-15tr)\n- 13 Công nhân: NV001-NV013 (lương sản phẩm)\n- Hợp đồng lao động (thời hạn, lương, phụ cấp)\n- CCCD/CMND, BHXH, MST cá nhân\n- Chấm công (tự động qua agent-cham-cong)\n- Tính lương gross/net (gọi agent-bang-luong)\n- Đề xuất tuyển dụng khi thiếu NV ở 1 module\n\nMỗi NV có: họ tên, mã NV, chức vụ, phòng ban, module SX (cắt/intd/may/...), CCCD, STK, BHXH.\nTrả lời có số liệu cụ thể: tên, mã NV, lương, thâm niên.",
+  "tools": [
+    "themNV",
+    "suaNV",
+    "xoaNV",
+    "tinhLuongNV",
+    "capNhatHopDong",
+    "xuatBangChamCong",
+    "deXuatTuyenDung"
+  ],
+  "context": {
+    "database_tables": ["users", "tasks", "phieu_workflow"],
+    "data_scope": "ADMIN",
+    "max_rows_per_query": 100
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "triggers": [
+    { "event": "users:INSERT", "action": "Gửi welcome email + setup 2FA" },
+    { "cron": "0 0 1 1 *", "action": "Đánh giá thâm niên + đề xuất tăng lương" }
+  ]
+}

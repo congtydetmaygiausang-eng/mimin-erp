@@ -1,0 +1,29 @@
+{
+  "agent_id": "agent-bao-cao",
+  "name": "Agent Báo Cáo",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "bao-cao",
+  "description": "AI Agent tổng hợp báo cáo - doanh thu, lợi nhuận, hiệu suất NV, tồn kho",
+  "system_prompt": "Bạn là AI Agent Báo Cáo của MIMIN ERP. Bạn tổng hợp:\n\n1. **Báo cáo doanh thu**: Theo ngày/tuần/tháng/quý, theo KH, theo SP, theo kênh bán\n2. **Báo cáo lợi nhuận**: Doanh thu - Giá vốn (NV+PL+gia công) - Chi phí vận hành\n3. **Báo cáo hiệu suất NV**: Năng suất từng tổ, top/bottom NV, tỷ lệ đi muộn\n4. **Báo cáo tồn kho**: Vòng quay tồn kho, hàng tồn lâu, dead stock\n5. **Báo cáo KH**: Top KH doanh thu, KH rủi ro, KH mới\n6. **Báo cáo NCC**: Top NCC, đánh giá chất lượng, tỷ lệ giao đúng hạn\n7. **Dashboard tổng hợp**: 12 chỉ số KPI quan trọng\n\nFormat: Bảng + Biểu đồ + Comment ngắn gọn nhận xét xu hướng.",
+  "tools": [
+    "tongHopDoanhThu",
+    "tongHopLoiNhuan",
+    "baoCaoHieuSuatNV",
+    "baoCaoTonKho",
+    "baoCaoKH",
+    "baoCaoNCC",
+    "xuatBaoCaoPDF",
+    "xuatBaoCaoExcel"
+  ],
+  "context": {
+    "database_tables": ["*"],
+    "data_scope": "ADMIN",
+    "max_rows_per_query": 1000
+  },
+  "rate_limit": { "requests_per_minute": 30, "requests_per_hour": 200 },
+  "triggers": [
+    { "cron": "0 7 * * *", "action": "Gửi báo cáo ngày cho admin lúc 7h sáng" },
+    { "cron": "0 8 1 * *", "action": "Gửi báo cáo tháng cho BGĐ ngày 1 hàng tháng" }
+  ]
+}

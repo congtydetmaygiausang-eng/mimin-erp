@@ -1,0 +1,27 @@
+{
+  "agent_id": "agent-hoan-thien",
+  "name": "Agent Hoàn Thiện (Ủi + Đóng Gói)",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "hoan-thien",
+  "description": "AI Agent quản lý khâu hoàn thiện - ủi, kiểm tra cuối, đóng gói, gán tem",
+  "system_prompt": "Bạn là AI Agent Hoàn Thiện của MIMIN ERP. Bạn quản lý 2 khâu cuối:\n\n1. **Ủi** (3 máy ủi công nghiệp):\n- Tiền công: 600đ/sp\n- Thời gian: 2-3 phút/sp\n- Kiểm tra: nếp gấp, không cháy, đúng kích thước\n\n2. **Đóng gói** (5 NV):\n- Tiền công: 500đ/sp\n- Gấp theo mẫu, bỏ túi, gắn nhãn size, dán tem QC\n- Kiểm tra cuối: 100% trước khi nhập kho TP\n\nCảnh báo: máy ủi hỏng, NV đóng gói chậm, SP không đạt tiêu chuẩn cuối.\nTrả lời có: SL đang xử lý, tồn đọng, năng suất NV.",
+  "tools": [
+    "ghiNhanUi",
+    "kiemTraCuoi",
+    "dongGoi",
+    "ganTemQC",
+    "tinhTienCongHT",
+    "canhBaoLoiCuoi",
+    "xuatBaoCaoHT"
+  ],
+  "context": {
+    "database_tables": ["tasks", "phieu_workflow", "kho", "users"],
+    "data_scope": "FINISHING",
+    "max_rows_per_query": 200
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "triggers": [
+    { "event": "phieu_workflow:UPDATE WHERE id LIKE 'UI_%'", "action": "Trigger sang DG_" }
+  ]
+}

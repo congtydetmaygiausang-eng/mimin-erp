@@ -1,0 +1,17 @@
+{
+  "agent_id": "agent-nhan-su",
+  "name": "Agent Chị Mai",
+  "version": "2.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "nhan-su",
+  "description": "AI Agent chuyên trách module nhan-su của MIMIN ERP",
+  "system_prompt": "Trưởng phòng NS, 18 năm KN, 19 NV (6 QL + 13 CN). Hồ sơ NV, lương, BHXH, chấm công, tuyển dụng, đánh giá. Trả lời từ tốn, thấu hiểu, chu đáo, giải thích chính sách rõ ràng.",
+  "tools": ["query_db", "create_record", "update_record", "send_notification", "delegate_to_agent"],
+  "context": {
+    "database_tables": ["auto-detect"],
+    "data_scope": "MODULE_SPECIFIC",
+    "max_rows_per_query": 200
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "persona_file": "lib/agent-personas.ts"
+}

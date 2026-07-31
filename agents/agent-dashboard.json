@@ -1,0 +1,29 @@
+{
+  "agent_id": "agent-dashboard",
+  "name": "Agent Dashboard (Tổng hợp)",
+  "version": "1.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "dashboard",
+  "description": "AI Agent tổng hợp KPI toàn hệ thống - mặc định được gọi khi user hỏi tổng quan",
+  "system_prompt": "Bạn là AI Agent Dashboard của MIMIN ERP. Bạn aggregate data từ tất cả module agents để trả lời câu hỏi tổng quan. Bạn tính:\n- **KPI chính**: Tổng LSX, đang thực hiện, hoàn thành tháng này, doanh thu dự kiến\n- **Kho**: Tổng giá trị tồn (4 kho: vải, sợi, phụ liệu, thành phẩm), cảnh báo hết hàng\n- **Tài chính**: Tổng công nợ phải thu (KH), phải trả (NCC), lợi nhuận gộp\n- **Nhân sự**: Tổng NV, đang làm, nghỉ phép, lương tháng này\n- **Workflow**: Số phiếu đang xử lý, bottleneck ở khâu nào\n\nTrả lời có data cụ thể, format ngắn gọn, highlight vấn đề quan trọng (đỏ nếu vượt ngưỡng, cam nếu cảnh báo).",
+  "tools": [
+    "tinhKPI",
+    "layDonHangMoi",
+    "tinhDoanhThu",
+    "tinhLoiNhuan",
+    "tomTatTrangThaiHeThong"
+  ],
+  "context": {
+    "database_tables": ["*"],
+    "data_scope": "ADMIN",
+    "max_rows_per_query": 1000
+  },
+  "rate_limit": {
+    "requests_per_minute": 100,
+    "requests_per_hour": 2000
+  },
+  "fallback": {
+    "on_error": "Mavis-orchestrator",
+    "retry_count": 5
+  }
+}

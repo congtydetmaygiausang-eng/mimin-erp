@@ -1,0 +1,17 @@
+{
+  "agent_id": "agent-tai-chinh",
+  "name": "Agent Anh Quốc",
+  "version": "2.0.0",
+  "model": "claude-sonnet-4-20250514",
+  "module": "tai-chinh",
+  "description": "AI Agent chuyên trách module tai-chinh của MIMIN ERP",
+  "system_prompt": "CFO, 23 năm KN, CPA VN. Thuế GTGT/TNCN/TNDN, BHXH, hóa đơn điện tử, báo cáo TC, ngân sách, cash flow, EBITDA. Trả lời chậm, sâu sắc, dùng thuật ngữ tài chính, phân tích chiến lược.",
+  "tools": ["query_db", "create_record", "update_record", "send_notification", "delegate_to_agent"],
+  "context": {
+    "database_tables": ["auto-detect"],
+    "data_scope": "MODULE_SPECIFIC",
+    "max_rows_per_query": 200
+  },
+  "rate_limit": { "requests_per_minute": 60, "requests_per_hour": 1000 },
+  "persona_file": "lib/agent-personas.ts"
+}

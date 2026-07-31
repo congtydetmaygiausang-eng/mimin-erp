@@ -1,0 +1,141 @@
+// Lark OAuth 2.0 Flow đầy đủ
+// https://open.larksuite.com/document/server-docs/api-call-guide/server-api-list
+
+import { getLarkConfig } from "./lark";
+
+const STATE_KEY = "lark_oauth_state";
+
+export interface OAuthConfig {
+  appId: string;
+  appSecret: string;
+  redirectUri: string;
+  scopes?: string[];
+}
+
+export function getOAuthConfig(): OAuthConfig {
+  const config = getLarkConfig()!;
+  return {
+    appId: config.appId,
+    appSecret: config.appSecret,
+    redirectUri: typeof window !== "undefined" ? `${window.location.origin}/lark-callback` : "",
+    scopes: ["bitable:app:readonly", "bitable:app", "sheets:spreadsheet", "auth:user.id:read"],
+  };
+}
+
+/**
+ * Bước 1: Chuyển hướng user sang Lark authorize endpoint
+ */
+export function startOAuthFlow(): { ok: boolean; error?: string } {
+  if (typeof window === "undefined") return { ok: false, error: "SSR" };
+  const cfg = getOAuthConfig();
+  if (!cfg || !cfg.appId) {
+    alert("Chưa cấu hình App ID. Vào /lark-settings/ để cấu hình.");
+    return { ok: false, error: "Chưa cấu hình Lark App ID" };
+  }
+  // Sinh state ngẫu nhiên chống CSRF
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessionStorage.setItem(STATE_KEY, state);
+  // Tạo URL authorize
+  const url = new URL("https://open.larksuite.com/open-apis/authen/v1/index");
+  url.searchParams.set("app_id", cfg.appId);
+  url.searchParams.set("redirect_uri", cfg.redirectUri);
+  url.searchParams.set("state", state);
+  url.searchParams.set("scope", (cfg.scopes || []).join(" "));
+  window.location.href = url.toString();
+  return { ok: true };
+}
+
+/**
+ * Bước 2: Lark callback sẽ gọi hàm này
+ */
+export async function handleOAuthCallback(code: string, state: string): Promise<{ ok: boolean; accessToken?: string; refreshToken?: string; expiresIn?: number; error?: string }> {
+  if (typeof window === "undefined") return { ok: false, error: "No window" };
+  // Verify state
+  const savedState = sessionStorage.getItem(STATE_KEY);
+  if (savedState !== state) return { ok: false, error: "Invalid state (CSRF detected)" };
+  sessionStorage.removeItem(STATE_KEY);
+
+  const cfg = getOAuthConfig()!; if (!cfg.appId) return { ok: false, error: "Chưa cấu hình Lark App ID" };
+  try {
+    // Exchange code for access_token
+    const resp = await fetch("https://open.larksuite.com/open-apis/authen/v2/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "authorization_code",
+        client_id: cfg.appId,
+        client_secret: cfg.appSecret,
+        code,
+        redirect_uri: cfg.redirectUri,
+      }),
+    });
+    const data = await resp.json();
+    if (data.error) return { ok: false, error: data.error_description || data.error };
+    if (data.access_token) {
+      // Lưu vào localStorage
+      const tokenData = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: Date.now() + (data.expires_in || 7200) * 1000,
+      };
+      localStorage.setItem("mimin_lark_user_token_v1", JSON.stringify(tokenData));
+      return { ok: true, ...tokenData, expiresIn: data.expires_in };
+    }
+    return { ok: false, error: "No access_token in response" };
+  } catch (err: any) {
+    return { ok: false, error: err.message || "Network error" };
+  }
+}
+
+/**
+ * Refresh token khi hết hạn
+ */
+export async function refreshOAuthToken(): Promise<{ ok: boolean; accessToken?: string; error?: string }> {
+  if (typeof window === "undefined") return { ok: false, error: "No window" };
+  const raw = localStorage.getItem("mimin_lark_user_token_v1");
+  if (!raw) return { ok: false, error: "No token to refresh" };
+  const { refreshToken } = JSON.parse(raw);
+  if (!refreshToken) return { ok: false, error: "No refresh token" };
+  const cfg = getOAuthConfig()!; if (!cfg.appId) return { ok: false, error: "Chưa cấu hình Lark App ID" };
+  try {
+    const resp = await fetch("https://open.larksuite.com/open-apis/authen/v2/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        client_id: cfg.appId,
+        client_secret: cfg.appSecret,
+        refresh_token: refreshToken,
+      }),
+    });
+    const data = await resp.json();
+    if (data.error) return { ok: false, error: data.error_description || data.error };
+    if (data.access_token) {
+      const tokenData = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || refreshToken,
+        expiresAt: Date.now() + (data.expires_in || 7200) * 1000,
+      };
+      localStorage.setItem("mimin_lark_user_token_v1", JSON.stringify(tokenData));
+      return { ok: true, accessToken: data.access_token };
+    }
+    return { ok: false, error: "No access_token" };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Lấy user access token hiện tại (auto refresh nếu sắp hết hạn)
+ */
+export async function getValidAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("mimin_lark_user_token_v1");
+  if (!raw) return null;
+  const token = JSON.parse(raw);
+  // Nếu còn > 5 phút thì dùng luôn
+  if (token.expiresAt > Date.now() + 5 * 60_000) return token.accessToken;
+  // Refresh
+  const r = await refreshOAuthToken();
+  return r.ok ? r.accessToken || null : null;
+}
