@@ -4,6 +4,12 @@ import type { PhieuKho, LoaiKho, LoaiPhieu, TrangThaiPhieuKho } from "./data/kho
 import { TRANG_THAI_PHIEU_KHO } from "./data/kho-mobile-store";
 import { KHO_VAI, KHO_VAT_TU } from "./data/real-data";
 
+// FIX BUG #4: tồn kho runtime - delta so với data gốc
+// Khi phiếu nhập "Hoàn thành" → delta[loaiKho][maVT] += soLuong
+// Khi phiếu xuất "Hoàn thành" → delta[loaiKho][maVT] -= soLuong
+// Helper này nhận tonKhoDelta từ store và áp dụng vào tồn gốc
+export type TonKhoDelta = Record<LoaiKho, Record<string, number>>;
+
 export type KhoKPI = {
   tongPhieu: number;
   tongNhap: number;        // SL nhập
@@ -80,24 +86,39 @@ export function getKhoKPI(data: PhieuKho[]): KhoKPI {
   return kpi;
 }
 
-/** Tổng tồn kho hiện tại (tính từ data thật KHO_VAI, KHO_VAT_TU) */
-export function getTonKhoHienTai(loaiKho: LoaiKho) {
-  if (loaiKho === "vai") {
-    return KHO_VAI.reduce((sum, v) => sum + (v.tonKho || 0), 0);
-  }
-  if (loaiKho === "phu-lieu") {
-    return KHO_VAT_TU.reduce((sum, v) => sum + (v.tonKho || 0), 0);
-  }
-  return 0; // thanh-pham cần data riêng
+/** Tổng tồn kho hiện tại (FIX BUG #4: gốc + delta từ phiếu đã hoàn thành) */
+export function getTonKhoHienTai(loaiKho: LoaiKho, tonKhoDelta?: TonKhoDelta) {
+  const base = (() => {
+    if (loaiKho === "vai") return KHO_VAI.reduce((sum, v) => sum + (v.tonKho || 0), 0);
+    if (loaiKho === "phu-lieu") return KHO_VAT_TU.reduce((sum, v) => sum + (v.tonKho || 0), 0);
+    return 0;
+  })();
+  if (!tonKhoDelta) return base;
+  const deltaMap = tonKhoDelta[loaiKho] || {};
+  const delta = Object.values(deltaMap).reduce((sum, v) => sum + v, 0);
+  return base + delta;
 }
 
-/** Lấy tồn thực tế cho từng mặt hàng */
-export function getTonTheoMatHang(loaiKho: LoaiKho) {
+/** Lấy tồn thực tế cho từng mặt hàng (FIX BUG #4: gốc + delta) */
+export function getTonTheoMatHang(loaiKho: LoaiKho, tonKhoDelta?: TonKhoDelta) {
+  const deltaMap = tonKhoDelta?.[loaiKho] || {};
   if (loaiKho === "vai") {
-    return KHO_VAI.map((v) => ({ ma: v.maVT, ten: v.tenVT, ton: v.tonKho || 0, donVi: v.dvt, gia: v.donGia || 0 }));
+    return KHO_VAI.map((v) => ({
+      ma: v.maVT,
+      ten: v.tenVT,
+      ton: (v.tonKho || 0) + (deltaMap[v.maVT] || 0),
+      donVi: v.dvt,
+      gia: v.donGia || 0,
+    }));
   }
   if (loaiKho === "phu-lieu") {
-    return KHO_VAT_TU.map((v) => ({ ma: v.maVT, ten: v.tenVT, ton: v.tonKho || 0, donVi: v.dvt, gia: v.donGia || 0 }));
+    return KHO_VAT_TU.map((v) => ({
+      ma: v.maVT,
+      ten: v.tenVT,
+      ton: (v.tonKho || 0) + (deltaMap[v.maVT] || 0),
+      donVi: v.dvt,
+      gia: v.donGia || 0,
+    }));
   }
   return [];
 }

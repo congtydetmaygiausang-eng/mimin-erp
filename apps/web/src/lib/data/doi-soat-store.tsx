@@ -55,7 +55,9 @@ export const TRANG_THAI_STYLE: Record<TrangThaiDoiSoat, { color: string; bg: str
   "Có khiếu nại": { color: "text-rose-700", bg: "bg-rose-500/15" },
 };
 
-export type DieuDoan = "Cắt" | "Thêu" | "In" | "May áo" | "May quần" | "Ủi/Đóng gói";
+export type DieuDoan =
+  | "Cắt" | "Thêu" | "In" | "May áo" | "May quần"
+  | "Khuy nút" | "Ủi" | "Đóng gói";
 
 export type LoiDoiSoat = {
   id: string;
@@ -101,12 +103,14 @@ const STORAGE_KEY = "mimin_doi_soat_v1";
 
 /** Convert taskId → bản ghi đối soát ban đầu (status: "Chưa đối soát") */
 function taskToDoiSoat(t: PhieuWorkflow): BanGhiDoiSoat {
+  // FIX BUG #5: Phân biệt rõ KN_/UI_/DG_ thay vì gộp chung thành "Ủi/Đóng gói"
+  //  (qc-store.tsx và hoan-thien-store.tsx đã map đúng từ trước, chỉ doi-soat bị sai)
   const congDoan = t.id.startsWith("CAT_") ? "Cắt"
     : t.id.startsWith("INTD_") ? "Thêu"
     : t.id.startsWith("MAY_") ? (t.phanLoai?.toLowerCase().includes("quần") ? "May quần" : "May áo")
-    : t.id.startsWith("KN_") ? "Ủi/Đóng gói"  // Khuy nút
-    : t.id.startsWith("UI_") ? "Ủi/Đóng gói"
-    : t.id.startsWith("DG_") ? "Ủi/Đóng gói"
+    : t.id.startsWith("KN_") ? "Khuy nút"
+    : t.id.startsWith("UI_") ? "Ủi"
+    : t.id.startsWith("DG_") ? "Đóng gói"
     : "Cắt";
   return {
     id: `DS-${t.id}`,
@@ -233,9 +237,19 @@ export function DoiSoatProvider({ children }: { children: ReactNode }) {
     setDoiSoat((prev) => prev.map((d) => {
       if (d.id !== id) return d;
       if (d.locked) return d;
+      // FIX BUG #6: phải thêm entry lichSu để giaiQuyetKhiieuNai lấy đúng trạng thái trước
+      // (trước đây thiếu → giaiQuyetKhiieuNai lấy nhầm trạng thái cũ hơn)
+      const lichSuMoi = [...(d.lichSu || []), {
+        ngay: new Date().toISOString(),
+        trangThaiCu: d.trangThai,
+        trangThaiMoi: "Có khiếu nại" as TrangThaiDoiSoat,
+        nguoiThucHien: user?.name || user?.id || "unknown",
+        ghiChu: `Khiếu nại: ${noiDung}`,
+      }];
       return {
         ...d,
         trangThai: "Có khiếu nại" as TrangThaiDoiSoat,
+        lichSu: lichSuMoi,
         khiieuNai: {
           id: `KN-${Date.now()}`,
           ngayKhiieuNai: new Date().toISOString().split("T")[0],

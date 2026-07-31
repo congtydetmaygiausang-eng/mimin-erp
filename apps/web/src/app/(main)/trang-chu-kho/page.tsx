@@ -16,21 +16,21 @@ import { MobileCard, EmptyState, formatVNDShort, DateDisplay } from "@/component
 
 export default function TrangChuKhoPage() {
   const { user } = useSession();
-  const { phieu } = useKhoMobile();
+  const { phieu, tonKhoDelta } = useKhoMobile();
   const kpi = getKhoKPI(phieu);
 
-  // Tổng tồn 3 kho
-  const tonVai = getTonKhoHienTai("vai");
-  const tonPL = getTonKhoHienTai("phu-lieu");
-  const tonTP = getTonKhoHienTai("thanh-pham");
+  // FIX BUG #4: truyền tonKhoDelta để tính tồn runtime (sau khi trừ/cộng phiếu hoàn thành)
+  const tonVai = getTonKhoHienTai("vai", tonKhoDelta);
+  const tonPL = getTonKhoHienTai("phu-lieu", tonKhoDelta);
+  const tonTP = getTonKhoHienTai("thanh-pham", tonKhoDelta);
 
   // Phiếu chờ duyệt (top 5)
   const choDuyet = phieu.filter((p) => p.trangThai === "Chờ duyệt").slice(0, 5);
 
   // Mặt hàng tồn thấp (< 100)
   const tonThap = [
-    ...getTonTheoMatHang("vai"),
-    ...getTonTheoMatHang("phu-lieu"),
+    ...getTonTheoMatHang("vai", tonKhoDelta),
+    ...getTonTheoMatHang("phu-lieu", tonKhoDelta),
   ].filter((v) => v.ton < 100).slice(0, 5);
 
   return (

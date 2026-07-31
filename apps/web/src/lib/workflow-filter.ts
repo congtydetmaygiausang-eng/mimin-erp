@@ -87,22 +87,32 @@ export function getWorkflowByKhau(
 
 /**
  * Tính KPI cho trang chủ người gia công
+ *
+ * Lưu ý: Hàm này nhận `phieus` (đã merge taskStates) thay vì tự gọi getWorkflowForUser
+ * để đảm bảo KPI phản ánh đúng trạng thái workflow đã thay đổi bởi gia-cong-store
+ * (FIX BUG #1 - trước đây KPI tính từ ALL_REAL_PHIEU gốc, list dưới merge với taskStates
+ *  → user nhận việc → kpi.moi không giảm nhưng list "Lệnh mới" giảm, số liệu không khớp)
+ *
+ * @param phieus Danh sách phiếu (thường là effectiveWorkflow đã merge taskStates)
+ * @param sanLuongUpdatesCuaUser Mảng SanLuongUpdate của user hiện tại (để tính SL hôm nay chính xác)
  */
 export type GiaCongKPI = {
   tongViec: number;          // Tổng số phiếu
   moi: number;               // Chờ giao / nhận việc
   dangLam: number;           // Đang làm
-  choKiem: number;           // Chờ kiểm (đã bàn giao)
-  canLamLai: number;         // Cần làm lại
+  choKiem: number;           // Chờ kiểm (đã bàn giao, chưa xác nhận)
+  canLamLai: number;         // Có lỗi và chưa hoàn thành
   hoanThanh: number;         // Hoàn thành
   // Stats
-  sanLuongHomNay: number;    // SL đạt hôm nay
+  sanLuongHomNay: number;    // SL đạt hôm nay (từ sanLuongUpdates)
   tienCongHomNay: number;     // Tiền công hôm nay (đã xác nhận)
   tienCongThangNay: number;  // Tiền công tháng này
 };
 
-export function getGiaCongKPI(user: AppUser | null | undefined): GiaCongKPI {
-  const phieus = getWorkflowForUser(user);
+export function getGiaCongKPI(
+  phieus: PhieuWorkflow[],
+  sanLuongUpdatesCuaUser?: Array<{ ngay: string; soLuongDat: number }>
+): GiaCongKPI {
   const today = new Date().toISOString().split("T")[0];
   const monthStart = today.slice(0, 7) + "-01";
 
@@ -123,21 +133,34 @@ export function getGiaCongKPI(user: AppUser | null | undefined): GiaCongKPI {
     if (p.trangThai === "Chờ giao" || p.trangThai === "Chờ gấp") kpi.moi++;
     else if (p.trangThai === "Đang làm" || p.trangThai === "Đang may") kpi.dangLam++;
     else if (p.trangThai === "Hoàn thành") kpi.hoanThanh++;
-    // Tính sản lượng hôm nay (từ ngayHoanThanh)
-    if (p.ngayHoanThanh === today) {
-      kpi.sanLuongHomNay += p.soLuongDat;
-    }
-    // Tiền công
+    // canLamLai: phiếu có lỗi và CHƯA hoàn thành (FIX BUG #7 logic mơ hồ)
+    if (p.trangThai !== "Hoàn thành" && p.soLuongLoi > 0) kpi.canLamLai++;
+    // choKiem: hoàn thành nhưng chưa có người xác nhận
+    if (p.trangThai === "Hoàn thành" && !p.nguoiXacNhan) kpi.choKiem++;
+    // Tiền công (FIX BUG #2: dùng soLuongDat * donGia thay vì thanhTien gốc
+    //  để đồng nhất với trang tien-cong và phản ánh SL mới khi user update)
     if (p.trangThai === "Hoàn thành") {
+      const tienCong = p.soLuongDat * p.donGia;
       const date = p.ngayHoanThanh || p.ngayGiao || "";
-      if (date === today) kpi.tienCongHomNay += p.thanhTien;
-      if (date >= monthStart) kpi.tienCongThangNay += p.thanhTien;
+      if (date === today) kpi.tienCongHomNay += tienCong;
+      if (date >= monthStart) kpi.tienCongThangNay += tienCong;
     }
   }
 
-  // canLamLai & choKiem: derive từ ghiChú (mẫu dữ liệu không có field riêng)
-  kpi.canLamLai = phieus.filter((p) => p.soLuongLoi > 0).length;
-  kpi.choKiem = phieus.filter((p) => p.trangThai === "Hoàn thành" && !p.nguoiXacNhan).length;
+  // SanLuong hom nay (FIX BUG #3: dùng sanLuongUpdates thay vì ngayHoanThanh gốc
+  //  vì user có thể báo cáo SL hôm nay nhưng phiếu chưa bàn giao nên ngayHoanThanh = "")
+  if (sanLuongUpdatesCuaUser && sanLuongUpdatesCuaUser.length > 0) {
+    kpi.sanLuongHomNay = sanLuongUpdatesCuaUser
+      .filter((u) => u.ngay === today)
+      .reduce((sum, u) => sum + u.soLuongDat, 0);
+  } else {
+    // Fallback: dùng ngayHoanThanh gốc nếu không có updates
+    for (const p of phieus) {
+      if (p.ngayHoanThanh === today) {
+        kpi.sanLuongHomNay += p.soLuongDat;
+      }
+    }
+  }
 
   return kpi;
 }
