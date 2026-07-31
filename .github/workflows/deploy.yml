@@ -1,4 +1,4 @@
-name: Deploy MIMIN ERP to Vercel
+name: MIMIN ERP CI Verification
 
 on:
   push:
@@ -7,39 +7,28 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/web/package-lock.json
 
       - name: Install dependencies
         working-directory: apps/web
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Type check
         working-directory: apps/web
         run: npx tsc --noEmit
 
-      - name: Build
+      - name: Production Build
         working-directory: apps/web
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: "https://nftlwdcsmlpeiazhuoho.supabase.co"
         run: npm run build
 
-      - name: Deploy to Vercel (Production)
-        if: github.ref == 'refs/heads/main'
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: apps/web

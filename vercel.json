@@ -4,7 +4,7 @@
   "devCommand": "cd apps/web && npm run dev",
   "installCommand": "cd apps/web && npm install",
   "framework": "nextjs",
-  "regions": ["sin1", "hnd1"],
+  "regions": ["sin1"],
   "outputDirectory": "apps/web/.next",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
@@ -14,12 +14,6 @@
   "build": {
     "env": {
       "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co"
-    }
-  },
-  "functions": {
-    "apps/web/src/app/api/**/*.ts": {
-      "maxDuration": 30,
-      "memory": 512
     }
   },
   "headers": [
