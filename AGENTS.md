@@ -237,3 +237,58 @@ Password: admin123
 **Project version**: v44 (2026-07-26)
 **Built by**: Mavis (Mavis Agent for POLOMIMIN)
 **User**: A Cường - polomimin.vn
+
+---
+
+## 🤖 MULTI-AI WORKFLOW (Mavis + Antigravity)
+
+> **2 AI cùng làm 1 dự án** - đã có quy tắc phối hợp
+
+### Nguyên tắc vàng
+1. **KHÔNG code cùng file cùng lúc** - mỗi AI làm module riêng
+2. **LUÔN đọc AGENTS.md + WORKFLOW-2AI.md trước khi code**
+3. **LUÔN tạo branch riêng** trước khi push
+4. **LUÔN tạo PR/merge request** để review
+5. **Một người merge, một người review** - không tự merge code của mình
+
+### Phân vùng trách nhiệm
+
+| Module | Primary AI | Branch |
+|---|---|---|
+| ERP core (Cắt, May, Kho, Kế toán) | **Mavis** (MiniMax) | `main` |
+| Module Sợi - Dệt - Nhuộm | **Antigravity** | `feature/soi-det-nhuom` |
+| Mobile PWA / PUSH | **Mavis** | `main` |
+| AI Agents integration | **Antigravity** | `feature/ai-agents` |
+| Landing page / Marketing | **Antigravity** | `feature/landing` |
+
+### Workflow code chung
+
+```
+1. Antigravity tạo branch: git checkout -b feature/ten-module
+2. Antigravity code, commit, push branch
+3. Antigravity báo Mavis review (qua chat hoặc note)
+4. Mavis review code: check trùng, check convention
+5. Nếu OK → Mavis merge vào main
+6. Nếu conflict → 2 AI thảo luận trước khi merge
+```
+
+### Quy tắc commit
+
+- **Format**: `[ai-name] module: mô tả ngắn`
+- **VD**: `[mavis] doi-soat: thêm 7 trạng thái workflow tiền công`
+- **KHÔNG push trực tiếp lên `main`** (phải qua branch + review)
+
+### Conflict resolution
+
+1. 2 AI báo cho anh Sang (user) biết conflict
+2. Anh Sang quyết AI nào sửa, hoặc merge manual
+3. KHÔNG tự ý sửa code của AI khác
+
+### Liên lạc giữa 2 AI
+
+- Qua user (anh Sang) - không tự nói chuyện
+- User sẽ tổng hợp yêu cầu + push code cho cả 2
+- Khi 1 AI xong → báo user → user chuyển cho AI kia review
+
+**Last updated**: 2026-08-01 (Mavis append multi-AI section)
+
