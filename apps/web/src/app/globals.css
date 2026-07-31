@@ -31,10 +31,17 @@
   }
 
   html {
-    font-size: 18px;
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+
+  /* Mobile: font to hơn 2px cho dễ đọc trên app */
+  @media (max-width: 767px) {
+    html {
+      font-size: 17px;
+    }
   }
 
   body {
@@ -68,7 +75,15 @@
   }
 
   .bg-module-nhan-su {
-    background: linear-gradient(160deg, #006d8f 0%, #0a9ebd 20%, #3dba7a 55%, #2d6a4f 80%, #1b3a2e 100%);
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 40%, #f0fdfa 100%);
+  }
+
+  .bg-module-nha-cung-cap {
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #f8fafc 100%);
+  }
+
+  .bg-module-doi-tac-gia-cong {
+    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 40%, #f8fafc 100%);
   }
 
   .bg-module-kho {
