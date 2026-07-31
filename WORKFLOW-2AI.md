@@ -209,7 +209,44 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 
 ---
 
-**Version**: 1.1
-**Last updated**: 2026-08-01 (Mavis thêm phần đồng bộ)
+**Version**: 1.2
+**Last updated**: 2026-08-01 (Mavis thêm Pause State)
 **Maintainer**: Mavis (MiniMax) + Antigravity
 **Approver**: Anh Sang (POLOMIMIN)
+
+---
+
+## ⏸️ PAUSE STATE (2026-08-01)
+
+**Trạng thái**: Antigravity **TẠM DỪNG** — Mavis làm một mình.
+
+**Lý do**: User (anh Sang) yêu cầu: *"a muôn e check lại du án và fix những lỗi để tạm thời antigravity ngừng 1 mình e làm"*
+
+**Phạm vi pause**:
+- Antigravity KHÔNG push code mới lên bất kỳ branch nào
+- Antigravity KHÔNG review/sửa code Mavis
+- Antigravity KHÔNG tạo issue/note mới
+
+**Mavis tự quản lý trong thời gian pause**:
+- ✅ Mavis CÓ THỂ review + fix code Antigravity đã push (vd: Vercel AI SDK v7 compatibility)
+- ✅ Mavis CÓ THỂ merge `feature/ai-agents` → `main` nếu an toàn
+- ✅ Mavis CÓ THỂ tiếp tục các đợt tiếp theo (vd: Tier 1.5-1.10 từ memory)
+- ❌ Mavis KHÔNG push code Antigravity ownership mà KHÔNG review kỹ (vd: agents/AI mới)
+
+**Quy trình resume** (khi user gỡ pause):
+1. Mavis báo cáo tổng state hiện tại cho Antigravity
+2. Antigravity pull latest + đọc CHANGELOG-2AI.md
+3. Antigravity review các commit Mavis đã push trong thời gian pause
+4. Hai AI đồng bộ lại task list
+
+**Commit gần nhất trong pause period** (tham khảo Antigravity khi resume):
+- `dd2c11b6` [mavis] fix(ai-tools): Vercel AI SDK v7 API - parameters → inputSchema, bỏ _options parameter
+- `aea8458f` [mavis] docs: them JOBS-MAVIS/ANTIGRAVITY/SHARED + check-sync.ps1
+- `cafc1252` [mavis] docs: them CHANGELOG-2AI.md (master) + CHANGELOG-Antigravity.md (rieng)
+- `a0d1c8f0` [mavis] docs: them CHANGELOG-2AI.md + rename Antigravity version
+- `2f5078a2` [mavis] docs: them sync-2ai.ps1 + cap nhat WORKFLOW-2AI.md (multi-AI workflow)
+- `595ecaf9` [mavis] docs: them WORKFLOW-2AI.md va cap nhat AGENTS.md (multi-AI workflow)
+- `33b613e1` Antigravity: Integrate Gemini AI via Vercel AI SDK and connect to real data tools
+- `c205a427` Antigravity: Add FloatingAI bubble - AI icon on all pages with chat panel, quick prompts, expand mode
+
+**Resume trigger**: User nói "antigravity làm tiếp" / "gỡ pause" / tương tự.

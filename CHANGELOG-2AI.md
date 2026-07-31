@@ -29,6 +29,9 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-01 01:55 | Mavis | ai-tools | Fix Vercel AI SDK v7 compat: parameters → inputSchema, bỏ _options param. Build 89 routes OK. (Antigravity pause - Mavis fix) | feature/ai-agents | 🟢 DONE |
+| 2026-08-01 01:50 | Mavis | workflow | Antigravity PAUSE: user yêu cầu Mavis làm 1 mình, Mavis tự review+fix code Antigravity | - | ⏸️ PAUSE |
+| 2026-08-01 01:45 | Mavis | ai-agents | Pull feature/ai-agents về local, review code Antigravity (3 lỗi TS: parameters, ToolExecutionOptions, useChat API) | feature/ai-agents | 🟢 DONE |
 | 2026-08-01 01:27 | Mavis | docs | Tạo WORKFLOW-2AI.md + cập nhật AGENTS.md | main | 🟢 DONE |
 | 2026-08-01 01:10 | Mavis | docs | Test deploy Vercel + hướng dẫn PWA | main | 🟢 DONE |
 | 2026-08-01 01:00 | Mavis | deploy | Build production + serve static | main | 🟢 DONE |
