@@ -48,24 +48,27 @@ export default function DoiTacGiaCongPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Users className="w-7 h-7 text-brand-500" />
-            Đối tác gia công Outside
-            <span className="text-sm font-normal text-slate-500">(35 đối tác thật từ CSV)</span>
-          </h1>
-          <p className="opacity-70 mt-1 text-sm">
-            {stats.tong} đối tác · <b className="text-emerald-600">{stats.dangHopTac} đang hợp tác</b> · {stats.ngungHopTac} ngừng
-          </p>
+      {/* Hero Header Banner */}
+      <div className="relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(160deg, #1a237e 0%, #283593 20%, #6a1b9a 55%, #880e4f 100%)" }}>
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #e040fb 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
+        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #7c4dff 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-5">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-white drop-shadow">
+              <Users className="w-7 h-7 text-white/90" />
+              Đối tác Gia công Outside
+            </h1>
+            <p className="text-white/80 mt-1 text-sm font-medium">
+              {stats.tong} đối tác · <b className="text-emerald-300">{stats.dangHopTac} đang hợp tác</b> · {stats.ngungHopTac} ngừng
+            </p>
+          </div>
+          <button
+            onClick={() => setShowForm({ mode: "add" })}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition shadow-lg"
+          >
+            <Plus className="w-4 h-4" /> Thêm đối tác mới
+          </button>
         </div>
-        <button
-          onClick={() => setShowForm({ mode: "add" })}
-          className="px-4 py-2.5 rounded-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20 flex items-center gap-2 transition"
-        >
-          <Plus className="w-5 h-5" /> Thêm đối tác mới
-        </button>
       </div>
 
       {/* KPIs */}
