@@ -1,5 +1,6 @@
 "use client";
 
+import { useChat } from "ai/react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -9,35 +10,29 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-interface Message {
-  id: string;
-  role: "user" | "ai";
-  content: string;
-  timestamp: Date;
-}
-
 const QUICK_PROMPTS = [
-  { icon: Package, label: "Tồn kho?", query: "Tồn kho vải hiện tại?" },
-  { icon: BarChart3, label: "Tiến độ SX?", query: "Tiến độ sản xuất hôm nay?" },
+  { icon: Package, label: "Tồn kho?", query: "Tồn kho hiện tại thế nào?" },
+  { icon: BarChart3, label: "Nhân sự?", query: "Công ty có những phòng ban nào?" },
   { icon: TrendingUp, label: "Công nợ?", query: "Công nợ quá hạn?" },
-  { icon: AlertTriangle, label: "Cảnh báo?", query: "Cảnh báo quan trọng?" },
-  { icon: FileText, label: "Báo cáo?", query: "Tổng hợp báo cáo hôm nay?" },
 ];
 
 export function FloatingAI() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "ai",
-      content: "👋 Xin chào! Em là **MIMIN AI** — trợ lý đa năng của hệ thống ERP.\n\nEm có thể giúp anh:\n• Kiểm tra tồn kho, công nợ\n• Tra cứu lệnh cắt, đơn hàng\n• Tính lương, chấm công\n• Lập báo cáo nhanh\n\nHỏi em bất cứ gì nhé! 🚀",
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [pulse, setPulse] = useState(true);
+  
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput, append } = useChat({
+    api: "/api/v1/orchestrator/query",
+    body: { user_id: "sang@mimin.vn" },
+    initialMessages: [
+      {
+        id: "1",
+        role: "assistant",
+        content: "👋 Xin chào! Em là **MIMIN AI** — trợ lý đa năng của hệ thống ERP.\n\nEm có thể đọc được toàn bộ dữ liệu thật của hệ thống. Anh cần xem tồn kho, công nợ hay danh sách nhân sự ạ? 🚀",
+      }
+    ]
+  });
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -57,48 +52,8 @@ export function FloatingAI() {
     }
   }, [open]);
 
-  const sendMessage = async (text?: string) => {
-    const content = (text || input).trim();
-    if (!content || isLoading) return;
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsLoading(true);
-
-    try {
-      const res = await fetch("/api/v1/orchestrator/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: "sang@mimin.vn", query: content }),
-      });
-
-      if (!res.ok) throw new Error("API error");
-      const data = await res.json();
-
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        content: data.response || "Đã xử lý xong.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    } catch {
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        content: `🔄 Đang kết nối tới hệ thống AI...\n\n**"${content}"** — Em ghi nhận yêu cầu này. Hệ thống Orchestrator đang khởi tạo, sếp thử lại sau vài giây nhé!`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    } finally {
-      setIsLoading(false);
-    }
+  const sendQuickPrompt = (query: string) => {
+    append({ role: "user", content: query });
   };
 
   return (
@@ -183,7 +138,7 @@ export function FloatingAI() {
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {msg.role === "ai" && (
+                  {msg.role === "assistant" && (
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
@@ -197,7 +152,7 @@ export function FloatingAI() {
                       i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
                     )}</div>
                     <div className={`text-[9px] mt-1 ${msg.role === "user" ? "text-white/50" : "text-slate-400"}`}>
-                      {msg.timestamp.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                      {msg.createdAt ? msg.createdAt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
                   {msg.role === "user" && (
@@ -229,7 +184,7 @@ export function FloatingAI() {
                     return (
                       <button
                         key={p.label}
-                        onClick={() => sendMessage(p.query)}
+                        onClick={() => sendQuickPrompt(p.query)}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition border border-violet-200/50"
                       >
                         <Icon className="w-3 h-3" />
@@ -244,14 +199,14 @@ export function FloatingAI() {
             {/* Input */}
             <div className="px-3 py-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <form
-                onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+                onSubmit={handleSubmit}
                 className="flex items-center gap-2"
               >
                 <input
                   ref={inputRef}
                   type="text"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={handleInputChange}
                   placeholder="Hỏi MIMIN AI bất cứ gì..."
                   className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                   disabled={isLoading}
