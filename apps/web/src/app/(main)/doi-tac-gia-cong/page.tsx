@@ -7,7 +7,7 @@ import { useState, useMemo } from "react";
 import {
   Users, Search, Phone, MapPin, Building2, CreditCard, FileText,
   CheckCircle2, XCircle, Briefcase, Filter, Scissors, Shirt,
-  Hash, Banknote, Shield, AlertTriangle, X
+  Hash, Banknote, Shield, AlertTriangle, X, Plus, Edit2, Trash2
 } from "lucide-react";
 import { DOI_TAC_GIA_CONG, thongKeDoiTac, type DoiTacGiaCong, type LoaiDoiTac } from "@/lib/doi-tac-gia-cong";
 import { usePermission } from "@/components/PermissionGuard";
