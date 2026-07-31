@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sidebar, MobileSidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { FloatingAI } from "@/components/FloatingAI";
 
 export function AppShell({ children, moduleClass = "bg-module-default" }: { children: React.ReactNode; moduleClass?: string }) {
   const { user, loading, signOut } = useSession();
@@ -37,6 +38,7 @@ export function AppShell({ children, moduleClass = "bg-module-default" }: { chil
           <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden animate-page-entry">{children}</main>
         </div>
       </div>
+      <FloatingAI />
     </div>
   );
 }
