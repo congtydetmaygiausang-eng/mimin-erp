@@ -1,6 +1,7 @@
 "use client";
 
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -13,24 +14,21 @@ import { toast } from "sonner";
 const QUICK_PROMPTS = [
   { icon: Package, label: "Tồn kho?", query: "Tồn kho hiện tại thế nào?" },
   { icon: BarChart3, label: "Nhân sự?", query: "Công ty có những phòng ban nào?" },
-  { icon: TrendingUp, label: "Công nợ?", query: "Công nợ quá hạn?" },
+  { icon: TrendingUp, label: "Công nợ?", query: "Công nợ hiện tại ra sao?" },
 ];
 
 export function FloatingAI() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [pulse, setPulse] = useState(true);
-  
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput, append } = useChat({
-    api: "/api/v1/orchestrator/query",
-    body: { user_id: "sang@mimin.vn" },
-    initialMessages: [
-      {
-        id: "1",
-        role: "assistant",
-        content: "👋 Xin chào! Em là **MIMIN AI** — trợ lý đa năng của hệ thống ERP.\n\nEm có thể đọc được toàn bộ dữ liệu thật của hệ thống. Anh cần xem tồn kho, công nợ hay danh sách nhân sự ạ? 🚀",
-      }
-    ]
+  const [input, setInput] = useState("");
+
+  // useChat v4 - transport-based, tự quản lý input
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/v1/orchestrator/query",
+      body: { user_id: "sang@mimin.vn" },
+    }),
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,6 +38,8 @@ export function FloatingAI() {
 
   // Don't show on AI assistant page (already has full chat)
   if (pathname === "/ai-assistant" || pathname === "/agents-chat") return null;
+
+  const isLoading = status === "submitted" || status === "streaming";
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -52,8 +52,21 @@ export function FloatingAI() {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (error) {
+      toast.error("AI bị lỗi: " + error.message);
+    }
+  }, [error]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage({ text: input });
+    setInput("");
+  };
+
   const sendQuickPrompt = (query: string) => {
-    append({ role: "user", content: query });
+    sendMessage({ text: query });
   };
 
   return (
@@ -136,32 +149,46 @@ export function FloatingAI() {
 
             {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {msg.role === "assistant" && (
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </div>
-                  )}
-                  <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-br-md"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-md"
-                  }`}>
-                    <div className="whitespace-pre-wrap">{msg.content.split("**").map((part, i) =>
-                      i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
-                    )}</div>
-                    <div className={`text-[9px] mt-1 ${msg.role === "user" ? "text-white/50" : "text-slate-400"}`}>
-                      {msg.createdAt ? msg.createdAt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                    </div>
+              {messages.length === 0 && (
+                <div className="flex gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
+                    <Sparkles className="w-3.5 h-3.5" />
                   </div>
-                  {msg.role === "user" && (
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
-                      <User className="w-3.5 h-3.5" />
-                    </div>
-                  )}
+                  <div className="max-w-[80%] px-3.5 py-2.5 rounded-2xl rounded-bl-md text-sm leading-relaxed bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                    <div className="whitespace-pre-wrap">👋 Xin chào! Em là **MIMIN AI** — trợ lý đa năng của hệ thống ERP.\n\nEm có thể đọc được toàn bộ dữ liệu thật của hệ thống. Anh cần xem tồn kho, công nợ hay danh sách nhân sự ạ? 🚀</div>
+                  </div>
                 </div>
-              ))}
+              )}
+              {messages.map((msg) => {
+                // UIMessage v4 có parts[] thay vì content
+                const textContent = msg.parts
+                  ?.filter((p: any) => p.type === "text")
+                  .map((p: any) => p.text)
+                  .join("\n") || "";
+                return (
+                  <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {msg.role === "assistant" && (
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                    <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-br-md"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-md"
+                    }`}>
+                      <div className="whitespace-pre-wrap">{textContent.split("**").map((part: string, i: number) =>
+                        i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
+                      )}</div>
+                    </div>
+                    {msg.role === "user" && (
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
+                        <User className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {isLoading && (
                 <div className="flex gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white flex-shrink-0">
@@ -176,7 +203,7 @@ export function FloatingAI() {
             </div>
 
             {/* Quick Prompts */}
-            {messages.length <= 1 && (
+            {messages.length === 0 && (
               <div className="px-4 pb-2">
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_PROMPTS.map((p) => {
@@ -206,7 +233,7 @@ export function FloatingAI() {
                   ref={inputRef}
                   type="text"
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={(e) => setInput(e.target.value)}
                   placeholder="Hỏi MIMIN AI bất cứ gì..."
                   className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
                   disabled={isLoading}
@@ -220,7 +247,7 @@ export function FloatingAI() {
                 </button>
               </form>
               <div className="text-center mt-1.5">
-                <span className="text-[9px] text-slate-400">MIMIN AI · Powered by Orchestrator Engine</span>
+                <span className="text-[9px] text-slate-400">MIMIN AI · Powered by Gemini 1.5 Pro</span>
               </div>
             </div>
           </div>
