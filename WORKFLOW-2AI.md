@@ -127,6 +127,7 @@ main                              <- Production (cẩn thận, chỉ merge OK)
 5. ✅ Update AGENTS.md khi có quy tắc mới
 6. ✅ Tạo branch riêng cho mỗi feature
 7. ✅ Build OK trước khi báo user
+8. ✅ Ghi log vào `CHANGELOG-2AI.md` sau mỗi thay đổi
 
 ## 🔍 Review checklist (khi review code AI khác)
 
@@ -139,6 +140,7 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 - [ ] Test trên browser
 - [ ] Có audit log cho action quan trọng
 - [ ] Có responsive mobile
+- [ ] Đã ghi log vào CHANGELOG-2AI.md
 
 ## 📞 Quy trình báo cáo
 
@@ -151,6 +153,7 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 - Test: OK
 - Branch: feature/x
 - Sẵn sàng review
+- Đã ghi CHANGELOG-2AI.md
 ```
 
 ### Khi gặp lỗi
@@ -160,6 +163,35 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 - File liên quan: path/to/file
 - Đề xuất: cần Mavis review hoặc cần Antigravity fix tiếp
 ```
+
+## 🔄 Quy trình đồng bộ (MỚI - 2026-08-01)
+
+### Trước khi code
+1. **Đọc `CHANGELOG-2AI.md`** - xem AI kia đang làm gì
+2. **Đọc `WORKFLOW-2AI.md`** - nhớ quy tắc
+3. **Chạy `sync-2ai.ps1`** - check branch status + pending changes
+4. **Tạo branch riêng** trước khi code
+5. **Pull latest main** trước khi code
+
+### Trong khi code
+1. **Comment rõ ràng** - `// @mavis` hoặc `// @antigravity` ở đầu file
+2. **KHÔNG đụng file của AI khác**
+3. **Build thường xuyên** - check lỗi
+4. **Commit nhỏ** - mỗi feature = 1 commit
+
+### Sau khi code xong
+1. **Build + test** kỹ
+2. **Ghi log vào `CHANGELOG-2AI.md`** - format chuẩn
+3. **Push branch** lên GitHub
+4. **Báo user** - review qua user
+5. **Đợi user merge** vào main
+6. **KHÔNG tự merge** code của mình
+
+### Conflict resolution
+1. **DỪNG LẠI** ngay khi phát hiện conflict
+2. **Báo user** - kèm mô tả conflict
+3. **Đợi user quyết** - KHÔNG tự resolve
+4. **Sau khi user quyết** - apply đúng hướng
 
 ## 🎯 Memory notes (cho cả 2 AI)
 
@@ -177,7 +209,7 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 
 ---
 
-**Version**: 1.0
-**Last updated**: 2026-08-01 (Mavis tạo)
+**Version**: 1.1
+**Last updated**: 2026-08-01 (Mavis thêm phần đồng bộ)
 **Maintainer**: Mavis (MiniMax) + Antigravity
 **Approver**: Anh Sang (POLOMIMIN)
