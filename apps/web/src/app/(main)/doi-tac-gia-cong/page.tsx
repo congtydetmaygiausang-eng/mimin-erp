@@ -30,6 +30,7 @@ export default function DoiTacGiaCongPage() {
   const [trangThaiFilter, setTrangThaiFilter] = useState<"ALL" | "dang_hop_tac" | "ngung_hop_tac">("ALL");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [selected, setSelected] = useState<DoiTacGiaCong | null>(null);
+  const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; dt?: DoiTacGiaCong } | null>(null);
   const perm = usePermission();
 
   const stats = thongKeDoiTac();
@@ -52,13 +53,19 @@ export default function DoiTacGiaCongPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
             <Users className="w-7 h-7 text-brand-500" />
-            Đối tác gia công
-            <span className="text-sm font-normal text-slate-500">(35 đối tác thật từ CSV chị Giàu)</span>
+            Đối tác gia công Outside
+            <span className="text-sm font-normal text-slate-500">(35 đối tác thật từ CSV)</span>
           </h1>
           <p className="opacity-70 mt-1 text-sm">
             {stats.tong} đối tác · <b className="text-emerald-600">{stats.dangHopTac} đang hợp tác</b> · {stats.ngungHopTac} ngừng
           </p>
         </div>
+        <button
+          onClick={() => setShowForm({ mode: "add" })}
+          className="px-4 py-2.5 rounded-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20 flex items-center gap-2 transition"
+        >
+          <Plus className="w-5 h-5" /> Thêm đối tác mới
+        </button>
       </div>
 
       {/* KPIs */}
@@ -241,6 +248,183 @@ export default function DoiTacGiaCongPage() {
 
       {/* Detail Modal */}
       {selected && <DoiTacDetail dt={selected} onClose={() => setSelected(null)} />}
+      {showForm && (
+        <DoiTacFormModal
+          mode={showForm.mode}
+          dt={showForm.dt}
+          onClose={() => setShowForm(null)}
+          onSave={(newDt) => {
+            toast.success(showForm.mode === "add" ? "Thêm đối tác gia công mới thành công" : "Cập nhật thành công");
+            setShowForm(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; dt?: DoiTacGiaCong; onClose: () => void; onSave: (d: any) => void }) {
+  const [form, setForm] = useState<any>(dt || {
+    ma: `GC-${Date.now().toString().slice(-4)}`,
+    tenDonVi: "",
+    nguoiLienHe: "",
+    chuyenMon: "In / Thêu / Dập",
+    sdt: "",
+    email: "",
+    diaChi: "",
+    soTaiKhoan: "",
+    nganHang: "",
+    maSoThue: "",
+    trangThai: "dang_hop_tac",
+    ghiChu: "",
+    avatar: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.tenDonVi || !form.sdt) return toast.error("Vui lòng nhập Tên xưởng và SĐT");
+    onSave(form);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in" onClick={onClose}>
+      <div className="w-[96%] max-w-2xl sm:max-w-3xl rounded-3xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">
+              {mode === "add" ? <Plus className="w-6 h-6" /> : <Edit2 className="w-6 h-6" />}
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                {mode === "add" ? "Thêm Đối Tác Gia Công mới" : `Chỉnh sửa: ${dt?.tenDonVi}`}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Xưởng Thêu, In, Giặt, May ngoài gia công cho MIMIN</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Avatar Upload Header */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
+            <div className="relative group cursor-pointer">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-violet-500/30 shadow-md overflow-hidden bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
+                {form.avatar ? (
+                  <img src={form.avatar} alt={form.tenDonVi} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{form.tenDonVi ? form.tenDonVi.charAt(0).toUpperCase() : "GC"}</span>
+                )}
+              </div>
+              <label className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer">
+                <span className="text-xs font-semibold">Tải Logo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setForm({ ...form, avatar: ev.target?.result as string });
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="text-center sm:text-left space-y-1">
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">Logo / Ảnh Xưởng Gia Công</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Tải logo biển hiệu xưởng thêu/in hoặc ảnh đại diện chủ xưởng</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã đối tác *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-violet-500" value={form.ma} onChange={(e) => setForm({ ...form, ma: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Tên Xưởng / Đơn vị gia công *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-violet-500" value={form.tenDonVi} onChange={(e) => setForm({ ...form, tenDonVi: e.target.value })} placeholder="VD: Xưởng Thêu Minh Tâm..." />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Người đại diện liên hệ</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500" value={form.nguoiLienHe} onChange={(e) => setForm({ ...form, nguoiLienHe: e.target.value })} placeholder="Họ tên chủ xưởng / quản lý..." />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Loại gia công *</label>
+              <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-violet-500" value={form.chuyenMon} onChange={(e) => setForm({ ...form, chuyenMon: e.target.value })}>
+                <option>In / Thêu / Dập</option>
+                <option>May quần</option>
+                <option>May áo tròn</option>
+                <option>May áo trụ</option>
+                <option>Giặt nhuộm / Khác</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">SĐT liên hệ *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-violet-500" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} placeholder="0901234567" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email</label>
+              <input type="email" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="xuonggiacong@example.com" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Địa chỉ xưởng gia công</label>
+            <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500" value={form.diaChi} onChange={(e) => setForm({ ...form, diaChi: e.target.value })} placeholder="Địa chỉ xưởng gia công..." />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Số tài khoản</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500 font-mono" value={form.soTaiKhoan} onChange={(e) => setForm({ ...form, soTaiKhoan: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngân hàng</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500" value={form.nganHang} onChange={(e) => setForm({ ...form, nganHang: e.target.value })} placeholder="MB, Vietcombank..." />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã số thuế</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500 font-mono" value={form.maSoThue} onChange={(e) => setForm({ ...form, maSoThue: e.target.value })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ghi chú điều khoản xưởng</label>
+            <textarea className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500 min-h-[70px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} placeholder="Ghi chú thêm về đơn giá thêu/in, thời gian giao trả hàng..." />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-1/3 py-3.5 rounded-2xl font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="w-full sm:w-2/3 py-3.5 rounded-2xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/25 transition flex items-center justify-center gap-2 text-base"
+            >
+              {mode === "add" ? <Plus className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />}
+              {mode === "add" ? "Thêm Đối Tác mới" : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

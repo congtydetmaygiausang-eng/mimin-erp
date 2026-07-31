@@ -446,62 +446,124 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            {mode === "add" ? <Plus className="w-5 h-5 text-brand-500" /> : <Edit2 className="w-5 h-5 text-sky-600" />}
-            {mode === "add" ? "Thêm nhân viên mới" : `Sửa: ${nv?.hoTen}`}
-          </h3>
-          <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Mã NV *</label>
-              <input required className="input w-full" value={form.maNV} onChange={(e) => setForm({ ...form, maNV: e.target.value })} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in" onClick={onClose}>
+      <div className="w-[96%] max-w-2xl sm:max-w-3xl rounded-3xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
+              {mode === "add" ? <Plus className="w-6 h-6" /> : <Edit2 className="w-6 h-6" />}
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Họ tên *</label>
-              <input required className="input w-full" value={form.hoTen} onChange={(e) => setForm({ ...form, hoTen: e.target.value })} />
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                {mode === "add" ? "Thêm nhân viên mới" : `Chỉnh sửa: ${nv?.hoTen}`}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Nhập đầy đủ thông tin hồ sơ nhân sự xưởng may</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Avatar Upload Header */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
+            <div className="relative group cursor-pointer">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-teal-500/30 shadow-md overflow-hidden bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold">
+                {form.avatar ? (
+                  <img src={form.avatar} alt={form.hoTen} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{form.hoTen ? form.hoTen.charAt(0).toUpperCase() : "NV"}</span>
+                )}
+              </div>
+              <label className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer">
+                <span className="text-xs font-semibold">Tải ảnh</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setForm({ ...form, avatar: ev.target?.result as string });
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="text-center sm:text-left space-y-1">
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">Ảnh đại diện nhân viên</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Tải ảnh chân dung công nhân hoặc chọn ảnh đại diện từ thiết bị</div>
+              <div className="flex flex-wrap gap-2 pt-1 justify-center sm:justify-start">
+                {["/avatars/female-1.png", "/avatars/male-1.png", "/avatars/female-2.png", "/avatars/male-2.png"].map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setForm({ ...form, avatar: url })}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-teal-500 text-slate-700 dark:text-slate-200 transition"
+                  >
+                    Mẫu {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Form Fields Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="text-xs font-medium block mb-1">Ngày sinh</label>
-              <input type="date" className="input w-full" value={form.ngaySinh} onChange={(e) => setForm({ ...form, ngaySinh: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã NV *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500" value={form.maNV} onChange={(e) => setForm({ ...form, maNV: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Giới tính</label>
-              <select className="input w-full" value={form.gioiTinh} onChange={(e) => setForm({ ...form, gioiTinh: e.target.value })}>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Họ tên *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500" value={form.hoTen} onChange={(e) => setForm({ ...form, hoTen: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày sinh</label>
+              <input type="date" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.ngaySinh} onChange={(e) => setForm({ ...form, ngaySinh: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Giới tính</label>
+              <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.gioiTinh} onChange={(e) => setForm({ ...form, gioiTinh: e.target.value })}>
                 <option>Nam</option>
                 <option>Nữ</option>
                 <option>Khác</option>
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">CCCD</label>
-              <input className="input w-full" value={form.cccd} onChange={(e) => setForm({ ...form, cccd: e.target.value })} placeholder="012345678901" />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">CCCD</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.cccd} onChange={(e) => setForm({ ...form, cccd: e.target.value })} placeholder="012345678901" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="text-xs font-medium block mb-1">SĐT *</label>
-              <input required className="input w-full" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">SĐT *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Email</label>
-              <input type="email" className="input w-full" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email</label>
+              <input type="email" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
           </div>
+
           <div>
-            <label className="text-xs font-medium block mb-1">Địa chỉ</label>
-            <input className="input w-full" value={form.diaChiTT || ""} onChange={(e) => setForm({ ...form, diaChiTT: e.target.value })} />
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Địa chỉ thường trú</label>
+            <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.diaChiTT || ""} onChange={(e) => setForm({ ...form, diaChiTT: e.target.value })} placeholder="Địa chỉ nơi ở hiện tại..." />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
-              <label className="text-xs font-medium block mb-1">Bộ phận *</label>
-              <select className="input w-full" value={form.boPhan} onChange={(e) => setForm({ ...form, boPhan: e.target.value })}>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Bộ phận *</label>
+              <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500" value={form.boPhan} onChange={(e) => setForm({ ...form, boPhan: e.target.value })}>
                 <option>Sản xuất</option>
                 <option>Kho vận</option>
                 <option>QC</option>
@@ -512,31 +574,46 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Chức vụ</label>
-              <input className="input w-full" value={form.chucVu} onChange={(e) => setForm({ ...form, chucVu: e.target.value })} placeholder="Công nhân / Tổ trưởng..." />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Chức vụ</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.chucVu} onChange={(e) => setForm({ ...form, chucVu: e.target.value })} placeholder="Công nhân / Tổ trưởng..." />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Ngày vào</label>
-              <input type="date" className="input w-full" value={form.ngayVao} onChange={(e) => setForm({ ...form, ngayVao: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày vào</label>
+              <input type="date" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.ngayVao} onChange={(e) => setForm({ ...form, ngayVao: e.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
-              <label className="text-xs font-medium block mb-1">Lương cứng (đ/tháng)</label>
-              <input type="number" min={0} className="input w-full" value={form.luongCung} onChange={(e) => setForm({ ...form, luongCung: Number(e.target.value) })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Lương cứng (đ/tháng)</label>
+              <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500" value={form.luongCung} onChange={(e) => setForm({ ...form, luongCung: Number(e.target.value) })} />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Tài khoản</label>
-              <input className="input w-full" value={form.taiKhoan} onChange={(e) => setForm({ ...form, taiKhoan: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Tài khoản</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.taiKhoan} onChange={(e) => setForm({ ...form, taiKhoan: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Đánh giá (1-5)</label>
-              <input type="number" min={1} max={5} step={0.5} className="input w-full" value={form.rating} onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Đánh giá (1-5)</label>
+              <input type="number" min={1} max={5} step={0.5} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.rating} onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })} />
             </div>
           </div>
-          <div className="flex gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-            <button type="submit" className="btn-primary flex-1">{mode === "add" ? "Thêm NV" : "Lưu thay đổi"}</button>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-1/3 py-3.5 rounded-2xl font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="w-full sm:w-2/3 py-3.5 rounded-2xl font-bold bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white shadow-lg shadow-teal-500/25 transition flex items-center justify-center gap-2 text-base"
+            >
+              {mode === "add" ? <Plus className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />}
+              {mode === "add" ? "Thêm nhân viên mới" : "Lưu thay đổi"}
+            </button>
           </div>
         </form>
       </div>

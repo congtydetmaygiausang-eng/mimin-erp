@@ -316,68 +316,134 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
     congNo: 0,
     rating: 4,
     ghiChu: "",
+    avatar: "",
   });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.ten || !form.sdt) return toast.error("Nhập tên + SĐT");
+    if (!form.ten || !form.sdt) return toast.error("Vui lòng nhập tên Khách hàng và SĐT");
     onSave(form);
   };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            {mode === "add" ? <Plus className="w-5 h-5 text-brand-500" /> : <Edit2 className="w-5 h-5 text-sky-600" />}
-            {mode === "add" ? "Thêm KH mới" : `Sửa: ${kh?.ten}`}
-          </h3>
-          <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in" onClick={onClose}>
+      <div className="w-[96%] max-w-2xl sm:max-w-3xl rounded-3xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+              {mode === "add" ? <Plus className="w-6 h-6" /> : <Edit2 className="w-6 h-6" />}
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                {mode === "add" ? "Thêm Khách Hàng Sỉ mới" : `Chỉnh sửa: ${kh?.ten}`}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Nhập thông tin đại lý sỉ, shop quần áo đối tác</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <X className="w-6 h-6" />
+          </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Mã KH *</label>
-              <input required className="input w-full" value={form.maKH} onChange={(e) => setForm({ ...form, maKH: e.target.value })} />
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Avatar Upload Header */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
+            <div className="relative group cursor-pointer">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-indigo-500/30 shadow-md overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                {form.avatar ? (
+                  <img src={form.avatar} alt={form.ten} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{form.ten ? form.ten.charAt(0).toUpperCase() : "KH"}</span>
+                )}
+              </div>
+              <label className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer">
+                <span className="text-xs font-semibold">Tải Logo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setForm({ ...form, avatar: ev.target?.result as string });
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
             </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Tên KH *</label>
-              <input required className="input w-full" value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} />
+
+            <div className="text-center sm:text-left space-y-1">
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">Logo / Ảnh Khách Hàng</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Tải biểu trưng shop sỉ hoặc ảnh đại diện chủ shop</div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="text-xs font-medium block mb-1">SĐT *</label>
-              <input required className="input w-full" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã KH *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.maKH} onChange={(e) => setForm({ ...form, maKH: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Email</label>
-              <input type="email" className="input w-full" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Tên Khách Hàng / Shop *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} placeholder="VD: Shop Mẹ Bé Xinh..." />
             </div>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">SĐT *</label>
+              <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} placeholder="0901234567" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email</label>
+              <input type="email" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="khachhang@example.com" />
+            </div>
+          </div>
+
           <div>
-            <label className="text-xs font-medium block mb-1">Địa chỉ</label>
-            <input className="input w-full" value={form.diaChi} onChange={(e) => setForm({ ...form, diaChi: e.target.value })} />
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Địa chỉ giao hàng / Cửa hàng</label>
+            <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500" value={form.diaChi} onChange={(e) => setForm({ ...form, diaChi: e.target.value })} placeholder="Số nhà, phố, quận/huyện, tỉnh/TP..." />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
-              <label className="text-xs font-medium block mb-1">MST</label>
-              <input className="input w-full" value={form.mst} onChange={(e) => setForm({ ...form, mst: e.target.value })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã số thuế</label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500" value={form.mst} onChange={(e) => setForm({ ...form, mst: e.target.value })} placeholder="0312456789" />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Đánh giá (1-5)</label>
-              <input type="number" min={1} max={5} step={0.5} className="input w-full" value={form.rating} onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Công nợ đầu kỳ (đ)</label>
+              <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.congNo} onChange={(e) => setForm({ ...form, congNo: Number(e.target.value) })} />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Công nợ (đ)</label>
-              <input type="number" min={0} className="input w-full" value={form.congNo} onChange={(e) => setForm({ ...form, congNo: Number(e.target.value) })} />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Đánh giá (1-5 sao)</label>
+              <input type="number" min={1} max={5} step={0.5} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500" value={form.rating} onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })} />
             </div>
           </div>
+
           <div>
-            <label className="text-xs font-medium block mb-1">Ghi chú</label>
-            <textarea className="input w-full min-h-[50px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} />
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ghi chú yêu cầu riêng</label>
+            <textarea className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 min-h-[70px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} placeholder="Ghi chú sở thích đóng gói, chặng xe giao hàng..." />
           </div>
-          <div className="flex gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-            <button type="submit" className="btn-primary flex-1">{mode === "add" ? "Thêm KH" : "Lưu"}</button>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-1/3 py-3.5 rounded-2xl font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="w-full sm:w-2/3 py-3.5 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 text-base"
+            >
+              {mode === "add" ? <Plus className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />}
+              {mode === "add" ? "Thêm Khách Hàng mới" : "Lưu thay đổi"}
+            </button>
           </div>
         </form>
       </div>
