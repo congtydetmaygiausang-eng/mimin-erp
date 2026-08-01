@@ -156,6 +156,16 @@ export const DOI_TAC: DoiTac[] = [
   { stt: 35, maDT: "GC-TRU-010", tenDonVi: "Xưởng may toản", nguoiLH: "Toản", sdt: "942044799", email: "", diaChi: "30 đường tk8, ấp tiền lân, bà ddiemr, hóc môn", boPhan: "Sản xuất", chucVu: "Công nhân", soTK: "", nganHang: "", mst: "313905409", loaiDT: "doi_tac_gia_cong", trangThai: "Ngưng", congDoan: "May áo trụ", ghiChu: "" },
 ];
 
+// ========== DANH SÁCH NHÀ CUNG CẤP VẢI / PHỤ LIỆU ==========
+export const NHA_CUNG_CAP = [
+  { maNCC: "NCC-001", tenDonVi: "Công ty Dệt kim Đông Xuân" },
+  { maNCC: "NCC-002", tenDonVi: "Nhà máy dệt Thái Tuấn" },
+  { maNCC: "NCC-003", tenDonVi: "Nhà cung cấp vải sợi Hưng Thịnh" },
+  { maNCC: "NCC-004", tenDonVi: "Công ty Phụ liệu may mặc YKK" },
+  { maNCC: "NCC-005", tenDonVi: "Chợ vải Soái Kình Lâm - Sạp A1" },
+  { maNCC: "NCC-006", tenDonVi: "Công ty CP Dệt May Đầu Tư Thương Mại Hoà Thọ" },
+];
+
 // ========== 3. LOOKUP DATA (Bộ phận + Chức vụ) ==========
 export const BO_PHAN: string[] = [
   "Ban Giám Đốc", "Kinh doanh", "Sản xuất", "Kế toán", "Nhân sự", "Kho vận", "Marketing", "Thiết kế", "IT",

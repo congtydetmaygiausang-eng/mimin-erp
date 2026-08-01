@@ -45,7 +45,8 @@ export default function TrangChuKhoPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
+    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
+      <div className="max-w-7xl mx-auto space-y-6 animate-fade-in relative z-10">
       {/* Header - Glassmorphism Premium */}
       <div className="relative overflow-hidden rounded-3xl p-6 shadow-2xl border border-white/20" style={{ background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)", backdropFilter: "blur(20px)" }}>
         <div className="absolute top-0 right-0 -mr-8 -mt-8 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl opacity-70 animate-pulse" />
@@ -170,6 +171,7 @@ export default function TrangChuKhoPage() {
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

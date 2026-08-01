@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Package, AlertCircle, CheckCircle2, TrendingDown, TrendingUp,
   Scissors, Calculator, FileText, RefreshCw, BarChart3, Plus, X
@@ -14,7 +14,7 @@ import {
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
-import { KHO_VAI, DOI_TAC, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
+import { KHO_VAI, NHA_CUNG_CAP, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 
 const TINH_MAN_PHAN_LOAI = [
@@ -34,6 +34,26 @@ export default function KhoVaiPage() {
   const [sizeStr, setSizeStr] = useState("M, L, XL, 2XL");
   const [baoCaoLenSX, setBaoCaoLenSX] = useState("LSX-2026-001");
   const [showNhap, setShowNhap] = useState<string | null>(null);
+  const [uploadingVT, setUploadingVT] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadingVT) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const url = ev.target?.result as string;
+        setInventory(prev => prev.map(v => v.maVT === uploadingVT ? { ...v, imageUrl: url } as any : v));
+        // Mock save to KHO_VAI
+        const idx = KHO_VAI.findIndex(x => x.maVT === uploadingVT);
+        if (idx !== -1) (KHO_VAI as any)[idx].imageUrl = url;
+        toast.success("Đã tải ảnh lên thành công!");
+      };
+      reader.readAsDataURL(file);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadingVT(null);
+  };
 
   useEffect(() => {
     setInventory(getAllInventory());
@@ -92,7 +112,8 @@ export default function KhoVaiPage() {
   const lenhSXVailable = Array.from(new Set(ALL_REAL_PHIEU.map((p) => p.lenhSX)));
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
+    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
+      <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
           <Package className="w-7 h-7 text-blue-500" /> Kho Vải & Tính Màn
@@ -134,6 +155,7 @@ export default function KhoVaiPage() {
       {/* Tab: Tồn kho */}
       {tab === "tonkho" && (
         <>
+          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
           <div className="card p-4 flex flex-wrap gap-2">
             <button onClick={handleTruAllCAT} className="btn-primary text-sm flex items-center gap-1.5">
               <Scissors className="w-4 h-4" /> Trừ kho cho 6 LSX Cắt
@@ -160,13 +182,29 @@ export default function KhoVaiPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {inventory.slice(0, 20).map((v) => (
+                {inventory.slice(0, 20).map((v, index) => (
                   <tr key={v.maVT} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="p-3 font-semibold text-slate-900 dark:text-white">
-                      {v.maVT.replace(/^V-/, "")}
+                      {`VAI-${(index + 1).toString().padStart(2, "0")}`}
                     </td>
                     <td className="p-3 font-medium text-slate-800 dark:text-slate-200">{v.tenVT}</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">{v.mauSac}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-8 h-8 rounded-md border border-slate-300/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group flex items-center justify-center bg-slate-100"
+                          style={{ backgroundColor: (v as any).imageUrl ? 'transparent' : getColorHex(v.mauSac) }}
+                          onClick={() => { setUploadingVT(v.maVT); fileInputRef.current?.click(); }}
+                          title="Bấm để tải ảnh lên"
+                        >
+                          {(v as any).imageUrl ? (
+                            <img src={(v as any).imageUrl} alt={v.mauSac} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] text-white/80 font-bold opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md">+Ảnh</span>
+                          )}
+                        </div>
+                        <span className="font-medium">{v.mauSac}</span>
+                      </div>
+                    </td>
                     <td className="p-3 text-right font-bold text-sky-600 dark:text-sky-400">{v.tonKho.toFixed(0)}</td>
                     <td className="p-3 text-right text-slate-600 dark:text-slate-400">{v.donGia.toLocaleString()}</td>
                     <td className="p-3 text-right font-medium">{(v.tonKho * v.donGia / 1_000_000).toFixed(2)}tr</td>
@@ -357,8 +395,30 @@ export default function KhoVaiPage() {
           onSuccess={() => refresh()}
         />
       )}
+      </div>
     </div>
   );
+}
+
+// ============ HELPER COLOR SWATCH ============
+function getColorHex(mau: string) {
+  if (!mau) return "#ccc";
+  const m = mau.toLowerCase();
+  if (m.includes("trắng")) return "#f1f2f6";
+  if (m.includes("đen")) return "#2f3542";
+  if (m.includes("xám chì")) return "#57606f";
+  if (m.includes("xám")) return "#a4b0be";
+  if (m.includes("rêu")) return "#4b6584"; // Hoặc rêu lá: #3e5128
+  if (m.includes("nâu")) return "#8b5a2b";
+  if (m.includes("xanh đen")) return "#0c2461";
+  if (m.includes("đỏ")) return "#ff4757";
+  if (m.includes("vàng")) return "#eccc68";
+  if (m.includes("xanh chuối")) return "#7bed9f";
+  if (m.includes("tím")) return "#9b59b6";
+  if (m.includes("hồng")) return "#ff9ff3";
+  if (m.includes("xanh dương") || m.includes("xanh bích")) return "#1e90ff";
+  if (m.includes("cam")) return "#ffa502";
+  return "#dfe4ea"; // default
 }
 
 // ============ MODAL NHẬP KHO VẢI (chuẩn hoá theo form Kho Phụ liệu) ============
@@ -374,7 +434,7 @@ function VaiNhapKho({
   onSuccess: () => void;
 }) {
   const vt = KHO_VAI.find((v) => v.maVT === maVT);
-  const nccList = DOI_TAC.filter((n) => n.trangThai === "Đang hợp tác");
+  const nccList = NHA_CUNG_CAP;
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,
@@ -506,7 +566,7 @@ function VaiNhapKho({
             >
               <option value="">-- Chọn NCC --</option>
               {nccList.map((n) => (
-                <option key={n.maDT} value={n.tenDonVi}>
+                <option key={n.maNCC} value={n.tenDonVi}>
                   {n.tenDonVi}
                 </option>
               ))}
