@@ -172,7 +172,15 @@ export default function KhoVaiPage() {
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-4">
-            {inventory.slice(0, 20).map((v, index) => (
+            {inventory.slice(0, 20).map((v, index) => {
+              const getTonKhoColor = (tonKho: number) => {
+                if (tonKho < 100) return "text-red-600 dark:text-red-500";
+                if (tonKho >= 300) return "text-emerald-600 dark:text-emerald-500";
+                if (tonKho >= 200) return "text-amber-500 dark:text-amber-400";
+                return "text-sky-600 dark:text-sky-400";
+              };
+              
+              return (
               <div key={v.maVT} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all relative overflow-hidden group">
                 
                 {/* Top row: ID and actions */}
@@ -237,13 +245,13 @@ export default function KhoVaiPage() {
                 <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50/80 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
                   <div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">Tồn kho (kg)</div>
-                    <div className="font-black text-sky-600 dark:text-sky-400 text-lg">{v.tonKho.toFixed(0)}</div>
+                    <div className={`font-black text-xl ${getTonKhoColor(v.tonKho)}`}>{v.tonKho.toFixed(0)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">Quy đổi</div>
-                    <div className="flex flex-col gap-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                      <span>≈ {(v.tonKho / 20).toFixed(1)} cây</span>
-                      <span>≈ {(v.tonKho * 2).toFixed(0)} m</span>
+                    <div className="flex flex-col gap-1 mt-0.5">
+                      <span className="text-sm font-black text-slate-700 dark:text-slate-200 bg-slate-200/60 dark:bg-slate-700/60 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-slate-700/50">≈ {(v.tonKho / 20).toFixed(1)} cây</span>
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 pl-1.5">≈ {(v.tonKho * 2).toFixed(0)} m</span>
                     </div>
                   </div>
                 </div>
@@ -290,7 +298,7 @@ export default function KhoVaiPage() {
                             setEditForm(v);
                             setEditingVT(v.maVT);
                           }} 
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs py-1.5 px-3 shadow-sm font-semibold rounded-lg"
+                          className="bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs py-1.5 px-3 shadow-sm font-bold rounded-lg"
                         >
                           Sửa
                         </button>
@@ -302,7 +310,8 @@ export default function KhoVaiPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="p-4 text-sm text-slate-500 font-medium text-center mt-2">
             Đang hiển thị 20/{inventory.length} loại vải
