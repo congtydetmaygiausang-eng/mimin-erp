@@ -2,6 +2,9 @@
   "name": "mimin-erp",
   "version": "89.6.9",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev": "cd apps/web && npm run dev",
     "build": "cd apps/web && npm run build",
