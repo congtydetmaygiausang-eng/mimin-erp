@@ -15,6 +15,8 @@ export interface NewOrderData {
   nguoiPhuTrach: string;
   ghiChu: string;
   donGiaMucTieu: number;
+  khoVai: string;
+  mauVai: string;
 }
 
 interface Props {
@@ -36,6 +38,8 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
     nguoiPhuTrach: "NV006",
     ghiChu: "",
     donGiaMucTieu: 0,
+    khoVai: "Kho Vải 1",
+    mauVai: "",
   });
 
   // ESC to close
@@ -57,7 +61,7 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
     setForm({
       maSP: "", tenSP: "", loaiSanPham: "Bộ", kieuMay: "Trơn", mau: "Trắng", size: "M",
       soLuong: 500, hanHoanThanh: new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
-      nguoiPhuTrach: "NV006", ghiChu: "", donGiaMucTieu: 0,
+      nguoiPhuTrach: "NV006", ghiChu: "", donGiaMucTieu: 0, khoVai: "Kho Vải 1", mauVai: ""
     });
   };
 
@@ -156,6 +160,33 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
             </div>
           </div>
 
+          {/* Dữ liệu Vải */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 block">Kho vải</label>
+              <select
+                value={form.khoVai}
+                onChange={(e) => setForm({ ...form, khoVai: e.target.value })}
+                className="w-full px-3 py-2 border-2 border-slate-200 dark:border-slate-600 dark:bg-slate-800 rounded-lg text-sm focus:border-brand-500 outline-none"
+              >
+                <option value="Kho Vải 1">Kho Vải 1 (Vải thun)</option>
+                <option value="Kho Vải 2">Kho Vải 2 (Vải dệt)</option>
+                <option value="Kho Vải 3">Kho Vải 3 (Vải mộc)</option>
+                <option value="Kho Vải 4">Kho Vải 4 (Phụ liệu)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 block">Màu vải</label>
+              <input
+                type="text"
+                value={form.mauVai}
+                onChange={(e) => setForm({ ...form, mauVai: e.target.value })}
+                placeholder="VD: Xanh đen, Trắng..."
+                className="w-full px-3 py-2 border-2 border-slate-200 dark:border-slate-600 dark:bg-slate-800 rounded-lg text-sm focus:border-brand-500 outline-none"
+              />
+            </div>
+          </div>
+
           {/* SL + Hạn */}
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -222,6 +253,7 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
             <div className="font-semibold text-slate-700 dark:text-slate-200">Tóm tắt:</div>
             <div>Mã: <b>{form.maSP || "—"}</b> - {form.tenSP || "—"}</div>
             <div>Loại: <b>{form.loaiSanPham}</b> - {form.kieuMay} - Màu {form.mau} - Size {form.size}</div>
+            <div>Vải: <b>{form.khoVai}</b> - Màu vải: <b>{form.mauVai || "—"}</b></div>
             <div>SL: <b>{form.soLuong.toLocaleString()}</b> {form.loaiSanPham === "Bộ" ? "bộ" : "áo"} - Hạn: <b>{form.hanHoanThanh}</b></div>
             {form.donGiaMucTieu > 0 && (
               <div className="text-emerald-600 font-semibold">Tổng DT dự kiến: {(form.donGiaMucTieu * form.soLuong).toLocaleString()}đ</div>

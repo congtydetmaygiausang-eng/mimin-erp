@@ -28,15 +28,10 @@ export const supabase: SupabaseClient | null = isSupabaseEnabled
 export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
 export const SUPABASE_PROJECT_REF = (supabaseUrl.match(/https:\/\/([^.]+)/) || [])[1] || "";
 
-export const DEMO_USERS = [
-  { email: "admin@mimin.vn", password: "admin123", role: "admin", name: "Nguyễn Văn An", title: "Quản trị viên" },
-  { email: "planner@mimin.vn", password: "planner123", role: "planner", name: "Trần Thị Bình", title: "Chuyên viên kế hoạch" },
-  { email: "warehouse@mimin.vn", password: "warehouse123", role: "warehouse", name: "Lê Văn Cường", title: "Quản lý kho" },
-  { email: "sewing@mimin.vn", password: "sewing123", role: "sewing", name: "Phạm Thị Dung", title: "Tổ trưởng may" },
-  { email: "qc@mimin.vn", password: "qc123", role: "qc", name: "Hoàng Minh Đức", title: "Kiểm tra chất lượng" },
-  { email: "finishing@mimin.vn", password: "finishing123", role: "finishing", name: "Đỗ Thị Hương", title: "Tổ trưởng hoàn thiện" },
-  { email: "accountant@mimin.vn", password: "accountant123", role: "accountant", name: "Bùi Văn Hùng", title: "Kế toán" },
-];
+// DEMO_USERS đã bị xoá ngày 2026-08-01 (theo yêu cầu anh Sang)
+// Chi giữ lại 19 tài khoản nội bộ thật (xem lib/users.ts)
+// Để tương thích, export mảng rỗng với type UserAccount
+export const DEMO_USERS: Array<{ email: string; name: string; role: string; title: string }> = [];
 
 // Helper: lưu setting Supabase config vào localStorage (cho user tự setup)
 export const SUPABASE_CONFIG_KEY = "mimin_supabase_config";

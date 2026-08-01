@@ -200,39 +200,15 @@ export default function PhanQuenCuaToiPage() {
       {/* View: Demo users */}
       {view === "users" && (
         <div className="space-y-2">
-          <h3 className="font-bold text-sm">👥 7 Demo Users (đăng nhập nhanh để test)</h3>
-          {DEMO_USERS.map((u) => (
-            <div key={u.email} className="card p-3 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-sm">{u.name}</div>
-                <div className="text-[10px] opacity-70">{u.email} · {u.password}</div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500 text-white mt-1 inline-block">
-                  {u.title}
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  // Set session localStorage
-                  const newUser = {
-                    id: u.email,
-                    email: u.email,
-                    name: u.name,
-                    role: u.role,
-                    title: u.title,
-                    source: "demo",
-                  };
-                  localStorage.setItem("mimin_erp_session", JSON.stringify(newUser));
-                  toast.success(`Đã chuyển sang ${u.name} (${u.role})`);
-                  setTimeout(() => window.location.reload(), 800);
-                }}
-                className="btn-primary text-xs bg-blue-500"
-              >
-                Đăng nhập
-              </button>
-            </div>
-          ))}
-          <div className="text-xs opacity-60 text-center mt-3 p-3">
-            💡 Click "Đăng nhập" để chuyển role test phân quyền khác nhau
+          <h3 className="font-bold text-sm">👥 Tài khoản nội bộ (19 users thật)</h3>
+          <div className="text-[10px] opacity-60">
+            Đã xoá 7 tài khoản test (2026-08-01). Hiện chỉ dùng 19 tài khoản nội bộ thật.
+            Xem chi tiết tại <code>/cai-dat</code> hoặc trang Login.
+          </div>
+          <div className="text-xs opacity-60 text-center mt-3 p-3 card">
+            💡 Tất cả tài khoản đều là nhân viên thật của MIMIN (sang, giau, thanh, huyen, vy, hau + 13 công nhân).
+            <br />
+            Mật khẩu mặc định: <code>&lt;username&gt;123</code> (vd: <code>sang123</code>, <code>giau123</code>)
           </div>
         </div>
       )}

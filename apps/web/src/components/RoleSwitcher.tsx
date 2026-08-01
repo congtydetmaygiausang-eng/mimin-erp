@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "@/components/session-provider";
-import { DEMO_USERS } from "@/lib/supabase/client";
+import { USERS } from "@/lib/users";
 import { ROLE_LABELS, ROLE_COLORS, type Role } from "@/lib/permissions";
 import { ChevronDown, UserCog, Check, Shield } from "lucide-react";
 
@@ -51,7 +51,7 @@ export function RoleSwitcher() {
             <div className="text-[10px] opacity-60 mt-0.5">Mỗi role thấy menu + quyền khác nhau</div>
           </div>
           <div className="max-h-96 overflow-y-auto">
-            {DEMO_USERS.map((u) => {
+            {USERS.map((u) => {
               const role = u.role as Role;
               const isActive = user?.email === u.email;
               return (

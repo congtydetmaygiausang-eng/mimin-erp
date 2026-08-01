@@ -164,13 +164,8 @@ export const USERS: UserAccount[] = [
     donGia: 750, donVi: "cái", sdt: "0989901234",
   },
   // ============ 7 MOCK LEGACY ============
-  { id: "admin", maNV: "MOCK-1", email: "admin@mimin.vn", password: "admin123", name: "Admin", role: "admin", chucVu: "Quản trị viên", phongBan: "it", nhom: "mock", laCongNhan: false, isMock: true },
-  { id: "planner", maNV: "MOCK-2", email: "planner@mimin.vn", password: "planner123", name: "Planner", role: "planner", chucVu: "Chuyên viên kế hoạch", phongBan: "ke-hoach", nhom: "mock", laCongNhan: false, isMock: true },
-  { id: "warehouse", maNV: "MOCK-3", email: "warehouse@mimin.vn", password: "warehouse123", name: "Warehouse", role: "warehouse", chucVu: "Quản lý kho", phongBan: "kho", nhom: "mock", laCongNhan: false, isMock: true },
-  { id: "sewing", maNV: "MOCK-4", email: "sewing@mimin.vn", password: "sewing123", name: "Sewing", role: "sewing", chucVu: "Tổ trưởng may", phongBan: "to-may", nhom: "mock", laCongNhan: false, isMock: true },
-  { id: "qc", maNV: "MOCK-5", email: "qc@mimin.vn", password: "qc123", name: "QC", role: "qc", chucVu: "Kiểm tra chất lượng", phongBan: "qc", nhom: "mock", laCongNhan: false, isMock: true },
-  { id: "finishing", maNV: "MOCK-6", email: "finishing@mimin.vn", password: "finishing123", name: "Finishing", role: "finishing", chucVu: "Tổ trưởng hoàn thiện", phongBan: "hoan-thien", nhom: "mock", laCongNhan: false, isMock: true },
-  { id: "accountant", maNV: "MOCK-7", email: "accountant@mimin.vn", password: "accountant123", name: "Accountant", role: "accountant", chucVu: "Kế toán", phongBan: "ke-toan", nhom: "mock", laCongNhan: false, isMock: true },
+  // 7 tài khoản test admin/planner/... đã bị xoá ngày 2026-08-01 theo yêu cầu anh Sang
+  // Chi giữ lại 19 tài khoản nội bộ thật
 ];
 
 // Công nhân (13 người) - lọc từ USERS

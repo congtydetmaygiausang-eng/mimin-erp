@@ -72,9 +72,10 @@ export default function LoginPage() {
     const res = await signIn(email, password);
     setLoading(false);
     if (res.ok) {
+      // DEMO_USERS đã bị xoá ngày 2026-08-01 - dùng fallback
       const demoUser = DEMO_USERS.find((u) => u.email === email);
       logAudit({
-        user: { id: email, email, name: demoUser?.name || email, role: demoUser?.role || "user", title: demoUser?.title || "", source: "demo" },
+        user: { id: email, email, name: demoUser?.name || email.split("@")[0] || email, role: demoUser?.role || "user", title: demoUser?.title || "", source: "demo" },
         action: "login",
         module: "auth",
         description: `Đăng nhập: ${email}`,

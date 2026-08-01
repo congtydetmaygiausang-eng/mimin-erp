@@ -2,7 +2,7 @@
 // Hỗ trợ CRUD + phân quyền theo Phòng ban + liên kết Nhân viên
 // Mô hình chuẩn MIMIN OS: UserAccount → Phòng ban + Vai trò (1-n) + Data scope
 
-import { DEMO_USERS } from "./supabase/client";
+import { USERS } from "./users";
 import { logAudit } from "./audit-log";
 import type { VaiTroChuan, DataScope } from "./vai-tro-chuan";
 
@@ -70,7 +70,8 @@ export interface UserAccount {
 }
 
 // ============ DEFAULT ACCOUNTS ============
-const DEFAULT_ACCOUNTS: UserAccount[] = DEMO_USERS.map((u, i) => {
+// Map từ 19 user nội bộ thật (USERS) sang UserAccount local (cho phân quyền settings)
+const DEFAULT_ACCOUNTS: UserAccount[] = USERS.map((u, i) => {
   // Map role sang phòng ban mặc định
   const roleToPhongBan: Record<string, PhongBan> = {
     admin: "ban-giam-doc",
@@ -88,11 +89,11 @@ const DEFAULT_ACCOUNTS: UserAccount[] = DEMO_USERS.map((u, i) => {
     name: u.name,
     role: u.role as any,
     phongBan: roleToPhongBan[u.role] || "khac",
-    chucVu: u.title,
+    chucVu: u.chucVu,
     trangThai: "active",
     ngayTao: "2025-01-15",
-    maNV: `NV${String(i + 1).padStart(3, "0")}`,
-    sdt: `09${String(Math.floor(Math.random() * 100000000)).padStart(8, "0")}`,
+    maNV: u.maNV || `NV${String(i + 1).padStart(3, "0")}`,
+    sdt: u.sdt || `09${String(Math.floor(Math.random() * 100000000)).padStart(8, "0")}`,
   };
 });
 

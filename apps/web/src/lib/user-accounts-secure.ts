@@ -22,17 +22,10 @@ export interface UserAccount {
   trangThai: "active" | "inactive";
 }
 
-// ============ 7 USER CŨ (admin/planner/warehouse/sewing/qc/finishing/accountant) ============
+// ============ 19 USER NỘI BỘ + 13 CÔNG NHÂN (theo 10 nhóm chốt a Cường) ============
+// 7 tài khoản test admin/planner/... đã bị xoá ngày 2026-08-01 theo yêu cầu anh Sang
+// Chi giữ lại 19 tài khoản nội bộ thật
 export const USER_ACCOUNTS_SECURE: UserAccount[] = [
-  { id: "u1", email: "admin@mimin.vn",      passwordHash: PRECOMPUTED_HASHES["admin123"],       name: "Nguyễn Văn An",    role: "admin",      nhom: "ban-giam-doc",   chucVu: "Quản trị viên",      trangThai: "active" },
-  { id: "u2", email: "planner@mimin.vn",    passwordHash: PRECOMPUTED_HASHES["planner123"],     name: "Trần Thị Bình",    role: "planner",    nhom: "ke-hoach-sx",    chucVu: "Chuyên viên KH",     trangThai: "active" },
-  { id: "u3", email: "warehouse@mimin.vn",  passwordHash: PRECOMPUTED_HASHES["warehouse123"],   name: "Lê Văn Cường",     role: "warehouse",  nhom: "kho-soi",        chucVu: "Quản lý kho",        trangThai: "active" },
-  { id: "u4", email: "sewing@mimin.vn",     passwordHash: PRECOMPUTED_HASHES["sewing123"],      name: "Phạm Thị Dung",    role: "sewing",     nhom: "to-may",         chucVu: "Tổ trưởng may",      trangThai: "active" },
-  { id: "u5", email: "qc@mimin.vn",         passwordHash: PRECOMPUTED_HASHES["qc123"],          name: "Hoàng Minh Đức",   role: "qc",         nhom: "qc",             chucVu: "Kiểm tra CL",        trangThai: "active" },
-  { id: "u6", email: "finishing@mimin.vn",  passwordHash: PRECOMPUTED_HASHES["finishing123"],   name: "Đỗ Thị Hương",     role: "finishing",  nhom: "hoan-thien",     chucVu: "Tổ trưởng HT",       trangThai: "active" },
-  { id: "u7", email: "accountant@mimin.vn", passwordHash: PRECOMPUTED_HASHES["accountant123"],  name: "Bùi Văn Hùng",     role: "accountant", nhom: "ke-toan",        chucVu: "Kế toán",            trangThai: "active" },
-
-  // ============ 19 USER NỘI BỘ + 13 CÔNG NHÂN (theo 10 nhóm chốt a Cường) ============
   // 6 nhóm quản lý
   { id: "u8",  email: "sang@mimin.vn",   passwordHash: PRECOMPUTED_HASHES["sang123"],    name: "Anh Sang (Admin)",  role: "admin", nhom: "quan-tri",  phongBan: "ban-giam-doc", maNV: "NV035", chucVu: "Quản trị hệ thống", trangThai: "active" },
   { id: "u9",  email: "giau@mimin.vn",   passwordHash: PRECOMPUTED_HASHES["giau123"],    name: "Chị Giàu",          role: "admin", nhom: "dieu-hanh", phongBan: "ban-giam-doc", maNV: "NV001", chucVu: "Giám đốc điều hành", trangThai: "active" },

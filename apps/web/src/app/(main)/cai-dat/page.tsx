@@ -3,7 +3,8 @@
 import { Settings, Users, Shield, Database, KeyRound, AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { can, ROLE_LABELS, ALL_ROLES, ALL_MODULES, MODULE_LABELS, ROLE_COLORS, getFullMatrix, type Role, type Module } from "@/lib/permissions";
-import { DEMO_USERS } from "@/lib/supabase/client";
+import { DEMO_USERS } from "@/lib/supabase/client"; // Xoá 2026-08-01 - dùng USERS
+import { USERS } from "@/lib/users";
 import { Avatar } from "@/components/Avatar";
 
 export default function Page() {
@@ -45,15 +46,15 @@ export default function Page() {
         <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
           <Settings className="w-7 h-7 text-brand-500" /> Cài đặt hệ thống
         </h1>
-        <p className="opacity-70 mt-1 text-sm">Cấu hình phân quyền · {ALL_ROLES.length} vai trò · {ALL_MODULES.length} module · 7 demo users</p>
+        <p className="opacity-70 mt-1 text-sm">Cấu hình phân quyền · {ALL_ROLES.length} vai trò · {ALL_MODULES.length} module · {USERS.length} tài khoản nội bộ</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card p-5">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Users className="w-3 h-3" /> Demo users</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1">{DEMO_USERS.length}</div>
-          <div className="text-xs opacity-60 mt-1">tài khoản</div>
+          <div className="text-xs opacity-70 flex items-center gap-1"><Users className="w-3 h-3" /> Tài khoản nội bộ</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1">{USERS.length}</div>
+          <div className="text-xs opacity-60 mt-1">tài khoản thật</div>
         </div>
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><Shield className="w-3 h-3" /> Vai trò</div>
@@ -74,15 +75,15 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Demo users */}
+      {/* Tài khoản nội bộ */}
       <div className="card overflow-hidden">
         <div className="p-4 border-b" style={{ borderColor: "var(--border)" }}>
           <h3 className="font-semibold flex items-center gap-2">
-            <Users className="w-4 h-4 text-brand-500" /> Demo users (click để test phân quyền)
+            <Users className="w-4 h-4 text-brand-500" /> Tài khoản nội bộ ({USERS.length} người - click để đăng nhập nhanh)
           </h3>
         </div>
         <div className="p-4 grid md:grid-cols-2 gap-3">
-          {DEMO_USERS.map((u) => {
+          {USERS.map((u) => {
             const role = u.role as Role;
             return (
               <div key={u.email} className="card p-3 flex items-center gap-3 hover:shadow-lg transition">
@@ -94,7 +95,7 @@ export default function Page() {
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r ${ROLE_COLORS[role] || "from-slate-500 to-slate-700"} text-white`}>
                       {ROLE_LABELS[role] || u.role}
                     </span>
-                    <span className="text-[10px] opacity-60 ml-2">pw: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{u.password}</code></span>
+                    {u.maNV && <span className="text-[10px] opacity-60 ml-2">Mã: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{u.maNV}</code></span>}
                   </div>
                 </div>
                 {user?.email === u.email && (
