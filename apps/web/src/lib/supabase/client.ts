@@ -8,7 +8,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://nftlwdcsmlp
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
 
 // Tạo client chỉ khi có config thật
-export const isSupabaseEnabled = !!(supabaseUrl && supabaseAnonKey);
+export const isSupabaseEnabled = false; // Tạm tắt Supabase để bypass 2FA
 
 export const supabase: SupabaseClient | null = isSupabaseEnabled
   ? createClient(supabaseUrl, supabaseAnonKey, {
