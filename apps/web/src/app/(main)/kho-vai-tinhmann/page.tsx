@@ -36,6 +36,8 @@ export default function KhoVaiPage() {
   const [showNhap, setShowNhap] = useState<string | null>(null);
   const [showTaoMa, setShowTaoMa] = useState(false);
   const [uploadingVT, setUploadingVT] = useState<string | null>(null);
+  const [editingVT, setEditingVT] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,7 +171,7 @@ export default function KhoVaiPage() {
               <RefreshCw className="w-4 h-4" /> Refresh
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-4">
             {inventory.slice(0, 20).map((v, index) => (
               <div key={v.maVT} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all relative overflow-hidden group">
                 
@@ -202,11 +204,32 @@ export default function KhoVaiPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate" title={v.tenVT}>{v.tenVT}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1.5 truncate">
-                      <span className="w-3 h-3 rounded-full shadow-inner border border-slate-200 dark:border-slate-700" style={{ backgroundColor: getColorHex(v.mauSac) }}></span> 
-                      {v.mauSac}
-                    </p>
+                    {editingVT === v.maVT ? (
+                      <div className="space-y-2">
+                        <input 
+                          type="text" 
+                          className="w-full text-sm font-bold text-slate-800 p-1 border rounded"
+                          value={editForm.tenVT || ''} 
+                          onChange={(e) => setEditForm({...editForm, tenVT: e.target.value})}
+                          placeholder="Tên vải"
+                        />
+                        <input 
+                          type="text" 
+                          className="w-full text-xs p-1 border rounded"
+                          value={editForm.mauSac || ''} 
+                          onChange={(e) => setEditForm({...editForm, mauSac: e.target.value})}
+                          placeholder="Màu sắc"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate" title={v.tenVT}>{v.tenVT}</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1.5 truncate">
+                          <span className="w-3 h-3 rounded-full shadow-inner border border-slate-200 dark:border-slate-700" style={{ backgroundColor: getColorHex(v.mauSac) }}></span> 
+                          {v.mauSac}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -229,11 +252,54 @@ export default function KhoVaiPage() {
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div>
                     <div className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Đơn giá</div>
-                    <div className="font-bold text-slate-700 dark:text-slate-300">{v.donGia.toLocaleString()} ₫</div>
+                    {editingVT === v.maVT ? (
+                      <input 
+                        type="number" 
+                        className="w-20 text-sm font-bold text-slate-700 p-0.5 border rounded"
+                        value={editForm.donGia || 0} 
+                        onChange={(e) => setEditForm({...editForm, donGia: Number(e.target.value)})}
+                      />
+                    ) : (
+                      <div className="font-bold text-slate-700 dark:text-slate-300">{v.donGia.toLocaleString()} ₫</div>
+                    )}
                   </div>
-                  <button onClick={() => handleNhapKho(v.maVT)} className="btn-primary text-sm py-1.5 px-4 shadow-sm hover:shadow-md font-semibold rounded-lg">
-                    + Nhập
-                  </button>
+                  <div className="flex gap-1.5">
+                    {editingVT === v.maVT ? (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setInventory(prev => prev.map(item => item.maVT === v.maVT ? { ...item, ...editForm } : item));
+                            toast.success("Đã lưu thông tin mã vải!");
+                            setEditingVT(null);
+                          }} 
+                          className="bg-green-500 hover:bg-green-600 text-white text-xs py-1.5 px-3 shadow-sm rounded-lg font-bold"
+                        >
+                          Lưu
+                        </button>
+                        <button 
+                          onClick={() => setEditingVT(null)} 
+                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-1.5 px-2 shadow-sm rounded-lg font-bold"
+                        >
+                          Huỷ
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setEditForm(v);
+                            setEditingVT(v.maVT);
+                          }} 
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs py-1.5 px-3 shadow-sm font-semibold rounded-lg"
+                        >
+                          Sửa
+                        </button>
+                        <button onClick={() => handleNhapKho(v.maVT)} className="btn-primary text-xs py-1.5 px-3 shadow-sm hover:shadow-md font-semibold rounded-lg">
+                          + Nhập
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
