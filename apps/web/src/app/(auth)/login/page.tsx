@@ -45,9 +45,8 @@ const DEMO_ACCOUNTS = [
   { email: "phuong@mimin.vn", password: "phuong123", name: "Phương (ĐG)", role: "CN ĐG" },
   { email: "tim@mimin.vn", password: "tim123", name: "Tím (ĐG)", role: "CN ĐG" },
   { email: "phien@mimin.vn", password: "phien123", name: "Phiên (ĐG)", role: "CN ĐG" },
-  // 7 mock user (legacy cho test)
-  { email: "admin@mimin.vn", password: "admin123", name: "Nguyễn Văn An (Mock)", role: "Quản trị viên" },
-  { email: "sewing@mimin.vn", password: "sewing123", name: "Phạm Thị Dung (Mock)", role: "Tổ trưởng may" },
+  // Đã xoá 7 tài khoản test (admin/planner/...) ngày 2026-08-01 theo yêu cầu anh Sang
+  // Chỉ giữ 19 tài khoản nội bộ thật
 ];
 
 export default function LoginPage() {
@@ -55,8 +54,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [email, setEmail] = useState("admin@mimin.vn");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("sang@mimin.vn");
+  const [password, setPassword] = useState("sang123");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);

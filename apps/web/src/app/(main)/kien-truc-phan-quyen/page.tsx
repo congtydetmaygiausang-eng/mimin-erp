@@ -261,7 +261,7 @@ function DemoView() {
           Vào <a href="/quan-ly-tai-khoan" className="text-blue-600 underline">Quản lý tài khoản</a> → tab "Demo Users" → chuyển role khác để xem records khác nhau.
         </p>
         <p className="text-xs opacity-80 mt-1">
-          VD: Login user <code>warehouse@mimin.vn</code> (Kho sợi) → chỉ thấy record phòng ban "Kho sợi"
+          VD: Login user <code>hau@mimin.vn</code> (Thủ kho trưởng) → chỉ thấy record phòng ban "Kho"
         </p>
       </div>
     </div>

@@ -51,17 +51,17 @@ const STORAGE_KEY = "mimin_kho_vai_v2";
 // Data mẫu: giao dịch nhập kho ban đầu
 const GIAO_DICH_DEFAULT: GiaoDichKho[] = [
   // Nhập vải
-  { id: "GD-001", ngay: "2026-07-15", loai: "NHAP", maVT: "V-XAMCHI035", tenVT: "XÁM CHÌ 035", soLuong: 200, donVi: "kg", donGia: 70000, thanhTien: 14000000, nguonNhap: "NCC Dệt Phong Phú", nguoiThucHien: "Nguyễn Văn An", ghiChu: "Nhập lô đầu tháng 7" },
-  { id: "GD-002", ngay: "2026-07-18", loai: "NHAP", maVT: "V-XANHDENCM", tenVT: "XANH ĐEN CM", soLuong: 150, donVi: "kg", donGia: 91000, thanhTien: 13650000, nguonNhap: "NCC Dệt Việt Hưng", nguoiThucHien: "Nguyễn Văn An" },
-  { id: "GD-003", ngay: "2026-07-20", loai: "NHAP", maVT: "V-MAU11", tenVT: "MÀU 11", soLuong: 100, donVi: "kg", donGia: 71000, thanhTien: 7100000, nguonNhap: "NCC Dệt Phong Phú", nguoiThucHien: "Trần Thị Bình" },
-  { id: "GD-004", ngay: "2026-07-22", loai: "NHAP", maVT: "V-BO068", tenVT: "BÒ (068) 26", soLuong: 180, donVi: "kg", donGia: 71000, thanhTien: 12780000, nguonNhap: "NCC Dệt Sài Gòn", nguoiThucHien: "Nguyễn Văn An" },
-  { id: "GD-005", ngay: "2026-07-25", loai: "NHAP", maVT: "V-TRANG003", tenVT: "TRẮNG 003", soLuong: 250, donVi: "kg", donGia: 64000, thanhTien: 16000000, nguonNhap: "NCC Dệt Việt Hưng", nguoiThucHien: "Trần Thị Bình" },
+  { id: "GD-001", ngay: "2026-07-15", loai: "NHAP", maVT: "V-XAMCHI035", tenVT: "XÁM CHÌ 035", soLuong: 200, donVi: "kg", donGia: 70000, thanhTien: 14000000, nguonNhap: "NCC Dệt Phong Phú", nguoiThucHien: "Nguyễn Quốc Hậu", ghiChu: "Nhập lô đầu tháng 7" },
+  { id: "GD-002", ngay: "2026-07-18", loai: "NHAP", maVT: "V-XANHDENCM", tenVT: "XANH ĐEN CM", soLuong: 150, donVi: "kg", donGia: 91000, thanhTien: 13650000, nguonNhap: "NCC Dệt Việt Hưng", nguoiThucHien: "Nguyễn Quốc Hậu" },
+  { id: "GD-003", ngay: "2026-07-20", loai: "NHAP", maVT: "V-MAU11", tenVT: "MÀU 11", soLuong: 100, donVi: "kg", donGia: 71000, thanhTien: 7100000, nguonNhap: "NCC Dệt Phong Phú", nguoiThucHien: "Bùi Thị Thanh" },
+  { id: "GD-004", ngay: "2026-07-22", loai: "NHAP", maVT: "V-BO068", tenVT: "BÒ (068) 26", soLuong: 180, donVi: "kg", donGia: 71000, thanhTien: 12780000, nguonNhap: "NCC Dệt Sài Gòn", nguoiThucHien: "Nguyễn Quốc Hậu" },
+  { id: "GD-005", ngay: "2026-07-25", loai: "NHAP", maVT: "V-TRANG003", tenVT: "TRẮNG 003", soLuong: 250, donVi: "kg", donGia: 64000, thanhTien: 16000000, nguonNhap: "NCC Dệt Việt Hưng", nguoiThucHien: "Bùi Thị Thanh" },
   // Nhập phụ liệu
-  { id: "GD-006", ngay: "2026-07-15", loai: "NHAP", maVT: "VT-CUC-001", tenVT: "Cúc áo trắng 4 lỗ", soLuong: 5000, donVi: "cái", donGia: 200, thanhTien: 1000000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Trần Thị Bình" },
-  { id: "GD-007", ngay: "2026-07-16", loai: "NHAP", maVT: "VT-CHI-001", tenVT: "Chỉ may Polyester", soLuong: 50000, donVi: "m", donGia: 150, thanhTien: 7500000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Nguyễn Văn An" },
-  { id: "GD-008", ngay: "2026-07-18", loai: "NHAP", maVT: "VT-BOCO-001", tenVT: "Bo cổ 2 da (poly)", soLuong: 1500, donVi: "cái", donGia: 6500, thanhTien: 9750000, nguonNhap: "NCC Bo cổ Hà Nội", nguoiThucHien: "Trần Thị Bình" },
-  { id: "GD-009", ngay: "2026-07-20", loai: "NHAP", maVT: "VT-NHAN-001", tenVT: "Nhãn mác size M-L-XL", soLuong: 8000, donVi: "cái", donGia: 800, thanhTien: 6400000, nguonNhap: "NCC Nhãn mác Việt", nguoiThucHien: "Lê Thị Hoa" },
-  { id: "GD-010", ngay: "2026-07-22", loai: "NHAP", maVT: "VT-TUI-001", tenVT: "Túi PE đóng gói", soLuong: 6000, donVi: "cái", donGia: 350, thanhTien: 2100000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Trần Thị Bình" },
+  { id: "GD-006", ngay: "2026-07-15", loai: "NHAP", maVT: "VT-CUC-001", tenVT: "Cúc áo trắng 4 lỗ", soLuong: 5000, donVi: "cái", donGia: 200, thanhTien: 1000000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Bùi Thị Thanh" },
+  { id: "GD-007", ngay: "2026-07-16", loai: "NHAP", maVT: "VT-CHI-001", tenVT: "Chỉ may Polyester", soLuong: 50000, donVi: "m", donGia: 150, thanhTien: 7500000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Nguyễn Quốc Hậu" },
+  { id: "GD-008", ngay: "2026-07-18", loai: "NHAP", maVT: "VT-BOCO-001", tenVT: "Bo cổ 2 da (poly)", soLuong: 1500, donVi: "cái", donGia: 6500, thanhTien: 9750000, nguonNhap: "NCC Bo cổ Hà Nội", nguoiThucHien: "Bùi Thị Thanh" },
+  { id: "GD-009", ngay: "2026-07-20", loai: "NHAP", maVT: "VT-NHAN-001", tenVT: "Nhãn mác size M-L-XL", soLuong: 8000, donVi: "cái", donGia: 800, thanhTien: 6400000, nguonNhap: "NCC Nhãn mác Việt", nguoiThucHien: "Bùi Thị Thanh" },
+  { id: "GD-010", ngay: "2026-07-22", loai: "NHAP", maVT: "VT-TUI-001", tenVT: "Túi PE đóng gói", soLuong: 6000, donVi: "cái", donGia: 350, thanhTien: 2100000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Bùi Thị Thanh" },
   // Xuất vải cho lệnh cắt
   { id: "GD-011", ngay: "2026-07-22", loai: "XUAT", maVT: "V-XAMCHI035", tenVT: "XÁM CHÌ 035", soLuong: 75, donVi: "kg", donGia: 70000, thanhTien: 5250000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi", ghiChu: "Xuất cho lệnh cắt M758" },
   { id: "GD-012", ngay: "2026-07-22", loai: "XUAT", maVT: "V-XANHDENCM", tenVT: "XANH ĐEN CM", soLuong: 75, donVi: "kg", donGia: 91000, thanhTien: 6825000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi" },

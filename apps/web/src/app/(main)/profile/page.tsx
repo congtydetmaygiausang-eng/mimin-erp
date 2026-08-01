@@ -115,7 +115,7 @@ function InfoTab({ user }: { user: any }) {
         <Row icon={Mail} label="Email" value={user.email} />
         <Row icon={Phone} label="Số điện thoại" value="0901234567" />
         <Row icon={Shield} label="Vai trò" value={ROLE_LABELS[role]} />
-        <Row icon={User} label="Tài khoản demo" value={user.email === "admin@mimin.vn" ? "Có" : user.email} />
+        <Row icon={User} label="Tài khoản demo" value={user.email === "sang@mimin.vn" ? "Có" : user.email} />
       </div>
       <div className="card p-5 space-y-3">
         <h3 className="font-semibold mb-2 flex items-center gap-2">
