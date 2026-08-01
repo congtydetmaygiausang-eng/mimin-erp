@@ -16,6 +16,7 @@ import { DoiSoatProvider } from "@/lib/data/doi-soat-store";
 import { HoanThienProvider } from "@/lib/data/hoan-thien-store";
 import { KhoMobileProvider } from "@/lib/data/kho-mobile-store";
 import { QCProvider } from "@/lib/data/qc-store";
+import { LenhCatProvider } from "@/lib/data/lenh-cat-store";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -44,8 +45,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                       <HoanThienProvider>
                         <KhoMobileProvider>
                           <QCProvider>
-                            <NotificationProvider>
-                              <ErrorBoundary>
+                            <LenhCatProvider>
+                              <NotificationProvider>
+                                <ErrorBoundary>
                                 {children}
                               </ErrorBoundary>
                               <PWAInstallPrompt />
@@ -58,17 +60,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                 }}
                               />
                             </NotificationProvider>
-                          </QCProvider>
-                        </KhoMobileProvider>
-                      </HoanThienProvider>
-                    </DoiSoatProvider>
-                  </GiaoHangProvider>
-                </KHSXProvider>
-              </GiaCongProvider>
-            </KhoProvider>
-          </PhanCongProvider>
-        </SessionProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+                          </LenhCatProvider>
+                        </QCProvider>
+                      </KhoMobileProvider>
+                    </HoanThienProvider>
+                  </DoiSoatProvider>
+                </GiaoHangProvider>
+              </KHSXProvider>
+            </GiaCongProvider>
+          </KhoProvider>
+        </PhanCongProvider>
+      </SessionProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
   );
 }
