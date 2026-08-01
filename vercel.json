@@ -5,35 +5,28 @@
   "installCommand": "npm install --legacy-peer-deps && cd apps/web && npm install --legacy-peer-deps",
   "framework": "nextjs",
   "regions": ["sin1"],
-  "outputDirectory": "apps/web/.next",
+  "outputDirectory": "apps/web/out",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdGx3ZGNzbWxwZWlhemh1b2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjYwMDMsImV4cCI6MjEwMDMwMjAwM30.1xV4In7HFFr6meIZpPFfbZKPBoCviPHeSCQvR-MyJqU",
     "NEXT_PUBLIC_APP_NAME": "MIMIN ERP",
-    "NEXT_PUBLIC_APP_VERSION": "89.6.9.3"
+    "NEXT_PUBLIC_APP_VERSION": "89.6.9.3",
+    "DATABASE_URL": "postgresql://postgres.nftlwdcsmlpeiazhuoho:HtUkba9rRPdDmigJ@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
   },
   "build": {
     "env": {
       "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdGx3ZGNzbWxwZWlhemh1b2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjYwMDMsImV4cCI6MjEwMDMwMjAwM30.1xV4In7HFFr6meIZpPFfbZKPBoCviPHeSCQvR-MyJqU"
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdGx3ZGNzbWxwZWlhemh1b2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjYwMDMsImV4cCI6MjEwMDMwMjAwM30.1xV4In7HFFr6meIZpPFfbZKPBoCviPHeSCQvR-MyJqU",
+      "DATABASE_URL": "postgresql://postgres.nftlwdcsmlpeiazhuoho:HtUkba9rRPdDmigJ@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
     }
   },
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
   ],

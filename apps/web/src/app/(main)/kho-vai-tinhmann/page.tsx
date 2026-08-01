@@ -169,74 +169,77 @@ export default function KhoVaiPage() {
               <RefreshCw className="w-4 h-4" /> Refresh
             </button>
           </div>
-          <div className="card overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                <tr>
-                  <th className="p-3 text-left font-semibold">Mã VT</th>
-                  <th className="p-3 text-left font-semibold">Tên vải</th>
-                  <th className="p-3 text-left font-semibold">Màu</th>
-                  <th className="p-3 text-right font-semibold">Tồn kho (Quy đổi)</th>
-                  <th className="p-3 text-right font-semibold">Đơn giá</th>
-                  <th className="p-3 text-right font-semibold">Giá trị</th>
-                  <th className="p-3 text-center font-semibold">Trạng thái</th>
-                  <th className="p-3 text-center font-semibold">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {inventory.slice(0, 20).map((v, index) => (
-                  <tr key={v.maVT} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="p-3 font-semibold text-slate-900 dark:text-white">
-                      {`VAI-${(index + 1).toString().padStart(2, "0")}`}
-                    </td>
-                    <td className="p-3 font-medium text-slate-800 dark:text-slate-200">{v.tenVT}</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-16 h-16 rounded-xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-md overflow-hidden flex-shrink-0 cursor-pointer relative group flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:shadow-lg transition-all"
-                          style={{ backgroundColor: (v as any).imageUrl ? 'transparent' : getColorHex(v.mauSac) }}
-                          onClick={() => { setUploadingVT(v.maVT); fileInputRef.current?.click(); }}
-                          title="Bấm để tải ảnh lên"
-                        >
-                          {(v as any).imageUrl ? (
-                            <img src={(v as any).imageUrl} alt={v.mauSac} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-[10px] text-white/80 font-bold opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md">+Ảnh</span>
-                          )}
-                        </div>
-                        <span className="font-medium">{v.mauSac}</span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="font-bold text-sky-600 dark:text-sky-400 text-base">{v.tonKho.toFixed(0)} kg</div>
-                      <div className="text-xs text-slate-500 mt-1 flex flex-col items-end gap-1">
-                        <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-medium">≈ {(v.tonKho / 20).toFixed(1)} cây</span>
-                        <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-medium">≈ {(v.tonKho * 2).toFixed(0)} m</span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-right text-slate-600 dark:text-slate-400">{v.donGia.toLocaleString()}</td>
-                    <td className="p-3 text-right font-medium">{(v.tonKho * v.donGia / 1_000_000).toFixed(2)}tr</td>
-                    <td className="p-3 text-center">
-                      {v.tonKho < 50 ? (
-                        <span className="inline-flex px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-500/10 text-rose-600 font-medium text-xs">Sắp hết</span>
-                      ) : v.tonKho > 400 ? (
-                        <span className="inline-flex px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 font-medium text-xs">Nhiều</span>
-                      ) : (
-                        <span className="inline-flex px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-xs">Bình thường</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-center">
-                      <button onClick={() => handleNhapKho(v.maVT)} className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline">
-                        + Nhập
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="p-3 text-sm text-slate-500 text-center bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800">
-              Đang hiển thị 20/{inventory.length} loại vải
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+            {inventory.slice(0, 20).map((v, index) => (
+              <div key={v.maVT} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all relative overflow-hidden group">
+                
+                {/* Top row: ID and actions */}
+                <div className="flex justify-between items-start mb-3">
+                  <div className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-sm font-bold text-slate-700 dark:text-slate-300 tracking-wider">
+                    {`VAI-${(index + 1).toString().padStart(2, "0")}`}
+                  </div>
+                  <div className="flex gap-2">
+                    {v.tonKho < 50 ? (
+                      <span className="bg-rose-50 dark:bg-rose-500/10 text-rose-600 px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider">Sắp hết</span>
+                    ) : v.tonKho > 400 ? (
+                      <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider">Nhiều</span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Main content: Color image & Name */}
+                <div className="flex gap-4 items-center mb-4">
+                  <div 
+                    className="w-16 h-16 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group/img flex items-center justify-center bg-slate-100 dark:bg-slate-800 transition-transform group-hover:scale-105"
+                    style={{ backgroundColor: (v as any).imageUrl ? 'transparent' : getColorHex(v.mauSac) }}
+                    onClick={() => { setUploadingVT(v.maVT); fileInputRef.current?.click(); }}
+                    title="Bấm để tải ảnh lên"
+                  >
+                    {(v as any).imageUrl ? (
+                      <img src={(v as any).imageUrl} alt={v.mauSac} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] text-white/90 font-bold opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md">+Ảnh</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate" title={v.tenVT}>{v.tenVT}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1.5 truncate">
+                      <span className="w-3 h-3 rounded-full shadow-inner border border-slate-200 dark:border-slate-700" style={{ backgroundColor: getColorHex(v.mauSac) }}></span> 
+                      {v.mauSac}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50/80 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">Tồn kho (kg)</div>
+                    <div className="font-black text-sky-600 dark:text-sky-400 text-lg">{v.tonKho.toFixed(0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">Quy đổi</div>
+                    <div className="flex flex-col gap-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                      <span>≈ {(v.tonKho / 20).toFixed(1)} cây</span>
+                      <span>≈ {(v.tonKho * 2).toFixed(0)} m</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Footer: Price and Action */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <div className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Đơn giá</div>
+                    <div className="font-bold text-slate-700 dark:text-slate-300">{v.donGia.toLocaleString()} ₫</div>
+                  </div>
+                  <button onClick={() => handleNhapKho(v.maVT)} className="btn-primary text-sm py-1.5 px-4 shadow-sm hover:shadow-md font-semibold rounded-lg">
+                    + Nhập
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-4 text-sm text-slate-500 font-medium text-center mt-2">
+            Đang hiển thị 20/{inventory.length} loại vải
           </div>
         </>
       )}
