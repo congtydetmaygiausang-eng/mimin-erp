@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Package, AlertCircle, CheckCircle2, TrendingDown, TrendingUp,
-  Scissors, Calculator, FileText, RefreshCw, BarChart3
+  Scissors, Calculator, FileText, RefreshCw, BarChart3, Plus, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
@@ -14,7 +14,7 @@ import {
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
-import { KHO_VAI, type KhoVai } from "@/lib/data/real-data";
+import { KHO_VAI, DOI_TAC, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 
 const TINH_MAN_PHAN_LOAI = [
@@ -33,6 +33,7 @@ export default function KhoVaiPage() {
   const [soLuong, setSoLuong] = useState(500);
   const [sizeStr, setSizeStr] = useState("M, L, XL, 2XL");
   const [baoCaoLenSX, setBaoCaoLenSX] = useState("LSX-2026-001");
+  const [showNhap, setShowNhap] = useState<string | null>(null);
 
   useEffect(() => {
     setInventory(getAllInventory());
@@ -82,12 +83,8 @@ export default function KhoVaiPage() {
   };
 
   const handleNhapKho = (maVT: string) => {
-    const sl = parseInt(prompt("Nhập số kg:", "100") || "0");
-    if (sl > 0) {
-      const r = nhapKho(maVT, sl, user, "Nhập thủ công");
-      if (r.ok) toast.success(r.message);
-      refresh();
-    }
+    // Mở Modal thay vì dùng prompt() (chuẩn hoá form nhập liệu)
+    setShowNhap(maVT);
   };
 
   // Báo cáo theo LSX
@@ -346,6 +343,208 @@ export default function KhoVaiPage() {
           </div>
         </>
       )}
+
+      {/* Modal Nhập kho vải (chuẩn hoá theo form Kho Phụ liệu) */}
+      {showNhap && (
+        <VaiNhapKho
+          maVT={showNhap}
+          user={user}
+          onClose={() => setShowNhap(null)}
+          onSuccess={() => refresh()}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============ MODAL NHẬP KHO VẢI (chuẩn hoá theo form Kho Phụ liệu) ============
+function VaiNhapKho({
+  maVT,
+  user,
+  onClose,
+  onSuccess,
+}: {
+  maVT: string;
+  user: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const vt = KHO_VAI.find((v) => v.maVT === maVT);
+  const nccList = DOI_TAC.filter((n) => n.trangThai === "Đang hợp tác");
+  const [form, setForm] = useState({
+    ngay: new Date().toISOString().split("T")[0],
+    soLuong: 0,
+    donGia: vt?.donGia ?? 0,
+    nguonNhap: nccList[0]?.tenDonVi || "",
+    nguoiThucHien: user?.name || user?.id || "NV kho",
+    ghiChu: "",
+  });
+
+  if (!vt) return null;
+
+  const thanhTien = form.soLuong * form.donGia;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (form.soLuong <= 0) {
+      toast.error("Số lượng phải > 0");
+      return;
+    }
+    if (!form.nguonNhap) {
+      toast.error("Vui lòng chọn nguồn nhập (NCC)");
+      return;
+    }
+    const r = nhapKho(maVT, form.soLuong, user, form.ghiChu, {
+      ngay: form.ngay,
+      donGia: form.donGia,
+      nguonNhap: form.nguonNhap,
+      nguoiThucHien: form.nguoiThucHien,
+    });
+    if (r.ok) {
+      toast.success(`✅ Nhập kho ${vt.tenVT}: +${form.soLuong.toLocaleString()}kg (${formatVNDShort(thanhTien)})`);
+      onSuccess();
+      onClose();
+    } else {
+      toast.error(r.message);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="card max-w-md w-full p-6 animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <Plus className="w-5 h-5 text-sky-600" />
+            Nhập kho vải: {vt.tenVT}
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-white/40 dark:hover:bg-white/5 rounded"
+            aria-label="Đóng"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Thông tin VT (read-only) */}
+        <div className="bg-sky-500/10 dark:bg-sky-500/20 rounded p-2 mb-3 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span><span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b></span>
+          <span><span className="opacity-70">ĐVT:</span> <b>kg</b></span>
+          <span><span className="opacity-70">Loại:</span> <b>{vt.loai || "—"}</b></span>
+          <span><span className="opacity-70">Màu:</span> <b>{vt.mauSac || "—"}</b></span>
+          <span><span className="opacity-70">Tồn hiện tại:</span> <b className="text-sky-700">{vt.tonKho.toFixed(0)} kg</b></span>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium block mb-1">Ngày nhập *</label>
+              <input
+                type="date"
+                required
+                className="input w-full"
+                value={form.ngay}
+                onChange={(e) => setForm({ ...form, ngay: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Số lượng (kg) *</label>
+              <input
+                type="number"
+                required
+                min={1}
+                step="0.1"
+                className="input w-full"
+                value={form.soLuong || ""}
+                onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium block mb-1">Đơn giá (đ/kg) *</label>
+              <input
+                type="number"
+                required
+                min={0}
+                className="input w-full"
+                value={form.donGia}
+                onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Thành tiền</label>
+              <div className="input w-full bg-emerald-500/10 text-emerald-700 font-bold flex items-center">
+                {formatVNDShort(thanhTien)}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium block mb-1">
+              Nguồn nhập (NCC) *{" "}
+              {nccList.length === 0 && (
+                <span className="text-rose-600 font-normal">— chưa có NCC "Đang hợp tác"</span>
+              )}
+            </label>
+            <select
+              required
+              className="input w-full"
+              value={form.nguonNhap}
+              onChange={(e) => setForm({ ...form, nguonNhap: e.target.value })}
+            >
+              <option value="">-- Chọn NCC --</option>
+              {nccList.map((n) => (
+                <option key={n.maDT} value={n.tenDonVi}>
+                  {n.tenDonVi}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium block mb-1">Người thực hiện</label>
+            <input
+              className="input w-full"
+              value={form.nguoiThucHien}
+              onChange={(e) => setForm({ ...form, nguoiThucHien: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium block mb-1">Ghi chú</label>
+            <textarea
+              className="input w-full min-h-[60px]"
+              value={form.ghiChu}
+              onChange={(e) => setForm({ ...form, ghiChu: e.target.value })}
+              placeholder="VD: Nhập lô đầu tháng 8, chất lượng OK, đã kiểm tra mẫu..."
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary flex-1"
+            >
+              Huỷ
+            </button>
+            <button
+              type="submit"
+              className="btn-primary flex-1 bg-sky-500 hover:bg-sky-600"
+            >
+              Xác nhận nhập kho
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

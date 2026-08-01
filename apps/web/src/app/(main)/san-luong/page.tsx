@@ -60,12 +60,16 @@ function SanLuongContent() {
   })();
 
   // Tính theo từng khâu
+  // FIX BUG #3: Tính SL theo sanLuongUpdates (đã có ngay chính xác) thay vì ngayHoanThanh gốc
+  //  vì user có thể báo cáo SL hôm nay nhưng phiếu chưa hoàn thành nên ngayHoanThanh = ""
   const stats = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - 7);
     const monthStart = new Date(now);
     monthStart.setDate(monthStart.getDate() - 30);
+    const weekStartStr = weekStart.toISOString().split("T")[0];
+    const monthStartStr = monthStart.toISOString().split("T")[0];
 
     const result = {
       today: 0, week: 0, month: 0,
@@ -73,12 +77,19 @@ function SanLuongContent() {
       total: 0, loi: 0,
     };
 
-    for (const t of effectiveTasks) {
-      const date = t.ngayHoanThanh || t.ngayGiao || "";
-      if (date >= today) result.today += t.soLuongDat;
-      if (date >= weekStart.toISOString().split("T")[0]) result.week += t.soLuongDat;
-      if (date >= monthStart.toISOString().split("T")[0]) result.month += t.soLuongDat;
+    // Lấy danh sách taskId thuộc về user hiện tại
+    const myTaskIds = new Set(effectiveTasks.map((t) => t.id));
 
+    // Tính SL theo sanLuongUpdates (cho today/week/month)
+    for (const u of sanLuongUpdates) {
+      if (!myTaskIds.has(u.taskId)) continue;
+      if (u.ngay === today) result.today += u.soLuongDat;
+      if (u.ngay >= weekStartStr) result.week += u.soLuongDat;
+      if (u.ngay >= monthStartStr) result.month += u.soLuongDat;
+    }
+
+    // Tính byKhau, total, loi dựa trên effectiveTasks (SL tổng)
+    for (const t of effectiveTasks) {
       // Theo khâu (theo prefix id)
       const khau = t.id.startsWith("CAT_") ? "cat"
         : t.id.startsWith("INTD_") ? "intd"
@@ -94,7 +105,7 @@ function SanLuongContent() {
     }
 
     return result;
-  }, [effectiveTasks, period]);
+  }, [effectiveTasks, sanLuongUpdates, period]);
 
   const periodValue = period === "today" ? stats.today : period === "week" ? stats.week : stats.month;
 

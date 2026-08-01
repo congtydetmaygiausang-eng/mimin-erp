@@ -217,7 +217,13 @@ export function nhapKho(
   maVT: string,
   soLuong: number,
   user: any,
-  ghiChu: string = ""
+  ghiChu: string = "",
+  options?: {
+    ngay?: string;             // YYYY-MM-DD, mặc định hôm nay
+    donGia?: number;           // đ/kg, mặc định lấy từ v.donGia
+    nguonNhap?: string;        // NCC, mặc định rỗng
+    nguoiThucHien?: string;    // Người thực hiện, mặc định user.name
+  }
 ): TruTonKhoResult {
   const inv = getInventory();
   const v = inv[maVT];
@@ -226,13 +232,22 @@ export function nhapKho(
   }
   const tonKhoTruoc = v.tonKho;
   const tonKhoSau = round(tonKhoTruoc + soLuong, 2);
-  inv[maVT] = { ...v, tonKho: tonKhoSau };
+  // Cập nhật đơn giá nếu có truyền vào (giúp đồng bộ giá mới nhất từ NCC)
+  const donGiaMoi = options?.donGia ?? v.donGia;
+  inv[maVT] = { ...v, tonKho: tonKhoSau, donGia: donGiaMoi };
   saveInventory(inv);
+
+  // Build mô tả audit log đầy đủ hơn
+  const nguonNhap = options?.nguonNhap ? ` NCC=${options.nguonNhap}` : "";
+  const donGiaDesc = options?.donGia ? ` đơn giá=${options.donGia.toLocaleString()}đ` : "";
+  const nguoiThucHien = options?.nguoiThucHien ? ` bởi ${options.nguoiThucHien}` : "";
+  const ngayDesc = options?.ngay ? ` ngày ${options.ngay}` : "";
 
   logAudit({
     user, action: "create", module: "kho-vai",
-    description: `Nhập kho ${v.tenVT}: +${soLuong}kg (${tonKhoTruoc}kg → ${tonKhoSau}kg). ${ghiChu}`,
+    description: `Nhập kho ${v.tenVT}: +${soLuong}kg (${tonKhoTruoc}kg → ${tonKhoSau}kg)${donGiaDesc}${nguonNhap}${nguoiThucHien}${ngayDesc}. ${ghiChu}`,
     resourceId: maVT, success: true,
+    newValue: { soLuong, donGia: donGiaMoi, nguonNhap, nguoiThucHien: options?.nguoiThucHien, ngay: options?.ngay, ghiChu },
   });
 
   return {

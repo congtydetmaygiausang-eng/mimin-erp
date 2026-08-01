@@ -33,9 +33,17 @@ export default function TrangChuGiaCongPage() {
   }
 
   const maNV = getMaNVFromUser(user);
-  const kpi = getGiaCongKPI(user);
+  const { sanLuongUpdates } = useGiaCong();
   const allWorkflow = getWorkflowForUser(user);
   const effectiveWorkflow = allWorkflow.map((p) => getEffectiveTask(p.id) || p);
+  // FIX BUG #1+#2+#3: truyền effectiveWorkflow (đã merge taskStates) và sanLuongUpdates
+  //  để KPI phản ánh đúng thay đổi từ gia-cong-store
+  const myMaNV = maNV || user.id;
+  const myUpdates = sanLuongUpdates.filter((u) => {
+    // SanLuongUpdate không có userId riêng → filter theo taskId thuộc phiếu của mình
+    return effectiveWorkflow.some((p) => p.id === u.taskId);
+  });
+  const kpi = getGiaCongKPI(effectiveWorkflow, myUpdates);
 
   // Lệnh mới (chờ nhận) + đang thực hiện
   const moi = effectiveWorkflow.filter((p) =>

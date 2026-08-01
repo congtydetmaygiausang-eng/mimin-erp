@@ -67,6 +67,38 @@ export type PhieuKho = {
 };
 
 const STORAGE_KEY = "mimin_kho_mobile_v1";
+const STORAGE_TON_KEY = "mimin_kho_ton_delta_v1";
+
+// FIX BUG #4: tồn kho runtime - lưu delta so với data gốc KHO_VAI/KHO_VAT_TU
+// Khi phiếu nhập "Hoàn thành" → delta[loaiKho][maVT] += soLuong
+// Khi phiếu xuất "Hoàn thành" → delta[loaiKho][maVT] -= soLuong
+// Khi phiếu bị từ chối / xoá sau khi đã hoàn thành → revert delta
+type TonKhoDelta = Record<LoaiKho, Record<string, number>>;
+
+const EMPTY_TON_DELTA: TonKhoDelta = {
+  "vai": {},
+  "phu-lieu": {},
+  "thanh-pham": {},
+};
+
+function loadTonDelta(): TonKhoDelta {
+  if (typeof window === "undefined") return EMPTY_TON_DELTA;
+  try {
+    const raw = localStorage.getItem(STORAGE_TON_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...EMPTY_TON_DELTA, ...parsed };
+    }
+  } catch {}
+  return EMPTY_TON_DELTA;
+}
+
+function saveTonDelta(d: TonKhoDelta) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_TON_KEY, JSON.stringify(d));
+  } catch {}
+}
 
 function buildDefault(): PhieuKho[] {
   // Tạo 3 phiếu mẫu từ data thật
@@ -166,6 +198,7 @@ function buildDefault(): PhieuKho[] {
 
 type StoreContext = {
   phieu: PhieuKho[];
+  tonKhoDelta: TonKhoDelta; // FIX BUG #4: expose để helper tính tồn runtime
   taoPhieu: (data: Omit<PhieuKho, "id" | "ngayTao" | "trangThai" | "lichSu">, user: AppUser | null) => string;
   duyetPhieu: (id: string, user: AppUser | null) => void;
   tuChoiPhieu: (id: string, lyDo: string, user: AppUser | null) => void;
@@ -197,10 +230,12 @@ function saveData(d: PhieuKho[]) {
 
 export function KhoMobileProvider({ children }: { children: ReactNode }) {
   const [phieu, setPhieu] = useState<PhieuKho[]>(buildDefault);
+  const [tonKhoDelta, setTonKhoDelta] = useState<TonKhoDelta>(EMPTY_TON_DELTA);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setPhieu(loadData());
+    setTonKhoDelta(loadTonDelta());
     setHydrated(true);
   }, []);
 
@@ -208,9 +243,32 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
     if (hydrated) saveData(phieu);
   }, [phieu, hydrated]);
 
+  useEffect(() => {
+    if (hydrated) saveTonDelta(tonKhoDelta);
+  }, [tonKhoDelta, hydrated]);
+
+  // FIX BUG #4: apply delta tồn kho khi phiếu chuyển trạng thái
+  // - Phiếu nhập chuyển sang "Hoàn thành" → cộng dồn vào tồn
+  // - Phiếu xuất chuyển sang "Hoàn thành" → trừ tồn
+  // - Phiếu đã Hoàn thành bị từ chối/xoá → revert delta
+  const applyTonDelta = useCallback((p: PhieuKho, sign: 1 | -1) => {
+    setTonKhoDelta((prev) => {
+      const next: TonKhoDelta = {
+        ...prev,
+        [p.loaiKho]: { ...(prev[p.loaiKho] || {}) },
+      };
+      const cur = next[p.loaiKho][p.maSP] || 0;
+      const delta = (p.loai === "nhap" ? p.soLuong : p.loai === "xuat" ? -p.soLuong : 0) * sign;
+      next[p.loaiKho][p.maSP] = cur + delta;
+      return next;
+    });
+  }, []);
+
   const updateStatus = useCallback((id: string, trangThaiMoi: TrangThaiPhieuKho, user: AppUser | null, ghiChu?: string) => {
+    let phieuCu: PhieuKho | undefined;
     setPhieu((prev) => prev.map((p) => {
       if (p.id !== id) return p;
+      phieuCu = p;
       const lichSuMoi = [...(p.lichSu || []), {
         ngay: new Date().toISOString(),
         trangThaiCu: p.trangThai,
@@ -227,7 +285,15 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
         lichSu: lichSuMoi,
       };
     }));
-  }, []);
+    // FIX BUG #4: nếu chuyển sang "Hoàn thành" → apply delta +1
+    if (trangThaiMoi === "Hoàn thành" && phieuCu) {
+      applyTonDelta(phieuCu, 1);
+    }
+    // Nếu rời khỏi "Hoàn thành" (vd: chuyển sang "Từ chối" sau khi đã Hoàn thành) → revert
+    if (phieuCu?.trangThai === "Hoàn thành" && trangThaiMoi !== "Hoàn thành") {
+      applyTonDelta(phieuCu, -1);
+    }
+  }, [applyTonDelta]);
 
   const taoPhieu = useCallback((data: Omit<PhieuKho, "id" | "ngayTao" | "trangThai" | "lichSu">, user: AppUser | null) => {
     const id = `PK-${data.loai === "nhap" ? "NK" : data.loai === "xuat" ? "XK" : "KK"}-${data.loaiKho.toUpperCase().slice(0, 4)}-${Date.now()}`;
@@ -264,17 +330,26 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
   }, [updateStatus]);
 
   const xoaPhieu = useCallback((id: string, user: AppUser | null) => {
-    setPhieu((prev) => prev.filter((p) => p.id !== id));
+    // FIX BUG #4: nếu xoá phiếu đã Hoàn thành → revert delta
+    setPhieu((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target?.trangThai === "Hoàn thành") {
+        applyTonDelta(target, -1);
+      }
+      return prev.filter((p) => p.id !== id);
+    });
     logWorkflow(user, "delete", `Xoá phiếu ${id}`, id);
-  }, []);
+  }, [applyTonDelta]);
 
   const reset = useCallback(() => {
     setPhieu(buildDefault());
+    setTonKhoDelta(EMPTY_TON_DELTA);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try { localStorage.removeItem(STORAGE_TON_KEY); } catch {}
   }, []);
 
   return (
-    <Ctx.Provider value={{ phieu, taoPhieu, duyetPhieu, tuChoiPhieu, hoanThanh, xoaPhieu, reset }}>
+    <Ctx.Provider value={{ phieu, tonKhoDelta, taoPhieu, duyetPhieu, tuChoiPhieu, hoanThanh, xoaPhieu, reset }}>
       {children}
     </Ctx.Provider>
   );

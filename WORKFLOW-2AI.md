@@ -127,6 +127,7 @@ main                              <- Production (cẩn thận, chỉ merge OK)
 5. ✅ Update AGENTS.md khi có quy tắc mới
 6. ✅ Tạo branch riêng cho mỗi feature
 7. ✅ Build OK trước khi báo user
+8. ✅ Ghi log vào `CHANGELOG-2AI.md` sau mỗi thay đổi
 
 ## 🔍 Review checklist (khi review code AI khác)
 
@@ -139,6 +140,7 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 - [ ] Test trên browser
 - [ ] Có audit log cho action quan trọng
 - [ ] Có responsive mobile
+- [ ] Đã ghi log vào CHANGELOG-2AI.md
 
 ## 📞 Quy trình báo cáo
 
@@ -151,6 +153,7 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 - Test: OK
 - Branch: feature/x
 - Sẵn sàng review
+- Đã ghi CHANGELOG-2AI.md
 ```
 
 ### Khi gặp lỗi
@@ -160,6 +163,35 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 - File liên quan: path/to/file
 - Đề xuất: cần Mavis review hoặc cần Antigravity fix tiếp
 ```
+
+## 🔄 Quy trình đồng bộ (MỚI - 2026-08-01)
+
+### Trước khi code
+1. **Đọc `CHANGELOG-2AI.md`** - xem AI kia đang làm gì
+2. **Đọc `WORKFLOW-2AI.md`** - nhớ quy tắc
+3. **Chạy `sync-2ai.ps1`** - check branch status + pending changes
+4. **Tạo branch riêng** trước khi code
+5. **Pull latest main** trước khi code
+
+### Trong khi code
+1. **Comment rõ ràng** - `// @mavis` hoặc `// @antigravity` ở đầu file
+2. **KHÔNG đụng file của AI khác**
+3. **Build thường xuyên** - check lỗi
+4. **Commit nhỏ** - mỗi feature = 1 commit
+
+### Sau khi code xong
+1. **Build + test** kỹ
+2. **Ghi log vào `CHANGELOG-2AI.md`** - format chuẩn
+3. **Push branch** lên GitHub
+4. **Báo user** - review qua user
+5. **Đợi user merge** vào main
+6. **KHÔNG tự merge** code của mình
+
+### Conflict resolution
+1. **DỪNG LẠI** ngay khi phát hiện conflict
+2. **Báo user** - kèm mô tả conflict
+3. **Đợi user quyết** - KHÔNG tự resolve
+4. **Sau khi user quyết** - apply đúng hướng
 
 ## 🎯 Memory notes (cho cả 2 AI)
 
@@ -177,7 +209,44 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 
 ---
 
-**Version**: 1.0
-**Last updated**: 2026-08-01 (Mavis tạo)
+**Version**: 1.2
+**Last updated**: 2026-08-01 (Mavis thêm Pause State)
 **Maintainer**: Mavis (MiniMax) + Antigravity
 **Approver**: Anh Sang (POLOMIMIN)
+
+---
+
+## ⏸️ PAUSE STATE (2026-08-01)
+
+**Trạng thái**: Antigravity **TẠM DỪNG** — Mavis làm một mình.
+
+**Lý do**: User (anh Sang) yêu cầu: *"a muôn e check lại du án và fix những lỗi để tạm thời antigravity ngừng 1 mình e làm"*
+
+**Phạm vi pause**:
+- Antigravity KHÔNG push code mới lên bất kỳ branch nào
+- Antigravity KHÔNG review/sửa code Mavis
+- Antigravity KHÔNG tạo issue/note mới
+
+**Mavis tự quản lý trong thời gian pause**:
+- ✅ Mavis CÓ THỂ review + fix code Antigravity đã push (vd: Vercel AI SDK v7 compatibility)
+- ✅ Mavis CÓ THỂ merge `feature/ai-agents` → `main` nếu an toàn
+- ✅ Mavis CÓ THỂ tiếp tục các đợt tiếp theo (vd: Tier 1.5-1.10 từ memory)
+- ❌ Mavis KHÔNG push code Antigravity ownership mà KHÔNG review kỹ (vd: agents/AI mới)
+
+**Quy trình resume** (khi user gỡ pause):
+1. Mavis báo cáo tổng state hiện tại cho Antigravity
+2. Antigravity pull latest + đọc CHANGELOG-2AI.md
+3. Antigravity review các commit Mavis đã push trong thời gian pause
+4. Hai AI đồng bộ lại task list
+
+**Commit gần nhất trong pause period** (tham khảo Antigravity khi resume):
+- `dd2c11b6` [mavis] fix(ai-tools): Vercel AI SDK v7 API - parameters → inputSchema, bỏ _options parameter
+- `aea8458f` [mavis] docs: them JOBS-MAVIS/ANTIGRAVITY/SHARED + check-sync.ps1
+- `cafc1252` [mavis] docs: them CHANGELOG-2AI.md (master) + CHANGELOG-Antigravity.md (rieng)
+- `a0d1c8f0` [mavis] docs: them CHANGELOG-2AI.md + rename Antigravity version
+- `2f5078a2` [mavis] docs: them sync-2ai.ps1 + cap nhat WORKFLOW-2AI.md (multi-AI workflow)
+- `595ecaf9` [mavis] docs: them WORKFLOW-2AI.md va cap nhat AGENTS.md (multi-AI workflow)
+- `33b613e1` Antigravity: Integrate Gemini AI via Vercel AI SDK and connect to real data tools
+- `c205a427` Antigravity: Add FloatingAI bubble - AI icon on all pages with chat panel, quick prompts, expand mode
+
+**Resume trigger**: User nói "antigravity làm tiếp" / "gỡ pause" / tương tự.
