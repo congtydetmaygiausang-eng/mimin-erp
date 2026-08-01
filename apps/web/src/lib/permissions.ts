@@ -1,5 +1,6 @@
 // Permission Matrix cho MIMIN ERP
-// 7 role × 21 module × 4 action (view/create/edit/delete)
+// 7 role × 26 module × 4 action (view/create/edit/delete)
+// 2026-08-01: thêm 2 module audit-log + phan-quyen-tuy-chinh (admin only)
 
 export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant";
 export type Action = "view" | "create" | "edit" | "delete";
@@ -28,7 +29,9 @@ export type Module =
   | "cai-dat"
   | "trang-chu-gia-cong"
   | "bang-dieu-hanh-sx"
-  | "doi-soat-tien-cong";
+  | "doi-soat-tien-cong"
+  | "audit-log"
+  | "phan-quyen-tuy-chinh";
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Quản trị viên",
@@ -75,6 +78,8 @@ export const MODULE_LABELS: Record<Module, string> = {
   "trang-chu-gia-cong": "Trang chủ gia công",
   "bang-dieu-hanh-sx": "Bảng điều hành SX",
   "doi-soat-tien-cong": "Đối soát tiền công",
+  "audit-log": "Audit log (lịch sử thao tác)",
+  "phan-quyen-tuy-chinh": "Phân quyền tùy chỉnh",
 };
 
 // Permission Matrix: 7 role × 21 module × 4 action
@@ -107,6 +112,8 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "trang-chu-gia-cong": "rcud",
     "bang-dieu-hanh-sx": "rcud",
     "doi-soat-tien-cong": "rcud",
+    "audit-log": "rcud",
+    "phan-quyen-tuy-chinh": "rcud",
   },
   // Planner (chuyên viên kế hoạch): tạo lệnh cắt, KH, đơn hàng, KHSX. Xem các phần liên quan
   planner: {
@@ -134,6 +141,8 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "trang-chu-gia-cong": "r",
     "bang-dieu-hanh-sx": "rcu",
     "doi-soat-tien-cong": "r",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
   },
   // Warehouse (quản lý kho): CRUD kho, xem các phần liên quan
   warehouse: {
@@ -161,6 +170,8 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "trang-chu-gia-cong": "r",
     "bang-dieu-hanh-sx": "r",
     "doi-soat-tien-cong": "",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
   },
   // Sewing (tổ trưởng may): quản lý tổ may, chấm công, xem lệnh cắt
   sewing: {
@@ -188,6 +199,8 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "trang-chu-gia-cong": "rcu",
     "bang-dieu-hanh-sx": "r",
     "doi-soat-tien-cong": "r",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
   },
   // QC (kiểm tra chất lượng): CRUD QC, xem các phần liên quan SX
   qc: {
@@ -215,6 +228,8 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "trang-chu-gia-cong": "r",
     "bang-dieu-hanh-sx": "r",
     "doi-soat-tien-cong": "",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
   },
   // Finishing (tổ trưởng hoàn thiện): CRUD hoàn thiện, giao hàng
   finishing: {
@@ -242,6 +257,8 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "trang-chu-gia-cong": "rcu",
     "bang-dieu-hanh-sx": "r",
     "doi-soat-tien-cong": "r",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
   },
   // Accountant (kế toán): CRUD bảng lương, công nợ, NCC, xem báo cáo
   accountant: {
@@ -269,12 +286,57 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "trang-chu-gia-cong": "r",
     "bang-dieu-hanh-sx": "r",
     "doi-soat-tien-cong": "rcud",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
   },
 };
 
+// ============================================
+// CUSTOM PERMISSION MATRIX (admin có thể tùy chỉnh)
+// Lưu localStorage - ưu tiên dùng khi có
+// ============================================
+const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v1";
+
+/** Load matrix hiệu lực: ưu tiên localStorage (admin tùy chỉnh), fallback PERMISSIONS mặc định */
+export function getEffectivePermissions(): Record<Role, Record<Module, string>> {
+  if (typeof window === "undefined") return PERMISSIONS;
+  try {
+    const raw = localStorage.getItem(CUSTOM_MATRIX_KEY);
+    if (raw) {
+      const custom = JSON.parse(raw) as Record<Role, Record<Module, string>>;
+      // Merge: ưu tiên custom nhưng fallback PERMISSIONS nếu thiếu key
+      const merged: any = { ...PERMISSIONS };
+      (Object.keys(PERMISSIONS) as Role[]).forEach((role) => {
+        if (custom[role]) {
+          merged[role] = { ...PERMISSIONS[role], ...custom[role] };
+        }
+      });
+      return merged;
+    }
+  } catch {}
+  return PERMISSIONS;
+}
+
+/** Lưu matrix tùy chỉnh vào localStorage */
+export function saveCustomMatrix(matrix: Record<Role, Record<Module, string>>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CUSTOM_MATRIX_KEY, JSON.stringify(matrix));
+  } catch (err) {
+    console.error("[permissions] Không lưu được custom matrix:", err);
+  }
+}
+
+/** Reset về mặc định */
+export function resetCustomMatrix(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(CUSTOM_MATRIX_KEY);
+}
+
 export function can(role: Role | string | undefined, module: Module, action: Action): boolean {
   if (!role) return false;
-  const r = PERMISSIONS[role as Role];
+  const matrix = getEffectivePermissions();
+  const r = matrix[role as Role];
   if (!r) return false;
   const perms = r[module] || "";
   switch (action) {
@@ -293,13 +355,14 @@ export const canDelete = (role: Role | string | undefined, mod: Module) => can(r
 
 export function getAccessibleModules(role: Role | string | undefined): Module[] {
   if (!role) return [];
-  const r = PERMISSIONS[role as Role];
+  const matrix = getEffectivePermissions();
+  const r = matrix[role as Role];
   if (!r) return [];
   return (Object.keys(r) as Module[]).filter((m) => can(role, m, "view"));
 }
 
 export function getFullMatrix(): Record<Role, Record<Module, string>> {
-  return PERMISSIONS;
+  return getEffectivePermissions();
 }
 
 export const ALL_ROLES: Role[] = ["admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant"];
@@ -308,5 +371,7 @@ export const ALL_MODULES: Module[] = [
   "kho-vai", "kho-phu-lieu", "kho-thanh-pham", "don-hang",
   "cong-no-cong-doan", "kiem-tra-chat-luong", "to-may", "hoan-thien",
   "giao-hang", "cham-cong", "bang-luong", "nha-cung-cap",
-  "gia-cong-ngoai", "bao-cao", "realtime", "cai-dat"
+  "gia-cong-ngoai", "bao-cao", "realtime", "cai-dat",
+  "trang-chu-gia-cong", "bang-dieu-hanh-sx", "doi-soat-tien-cong",
+  "audit-log", "phan-quyen-tuy-chinh",
 ];

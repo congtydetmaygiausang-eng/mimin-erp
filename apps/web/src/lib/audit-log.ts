@@ -16,6 +16,7 @@ export type AuditModule =
   | "cong-no-cong-doan" | "kiem-tra-chat-luong" | "to-may" | "hoan-thien"
   | "giao-hang" | "cham-cong" | "bang-luong" | "nha-cung-cap"
   | "gia-cong-ngoai" | "bao-cao" | "realtime" | "cai-dat" | "audit-log"
+  | "phan-quyen-tuy-chinh"
   | "2fa" | "role-management" | "session" | "kho-soi";
 
 export type AuditLog = {
