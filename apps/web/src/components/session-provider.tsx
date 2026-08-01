@@ -29,6 +29,33 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 
 const STORAGE_KEY = "mimin_erp_session";
 
+// Danh sách email MOCK cũ - nếu session còn dùng thì force logout
+const MOCK_EMAILS = [
+  "admin@mimin.vn",
+  "sewing@mimin.vn",
+  "planner@mimin.vn",
+  "qc@mimin.vn",
+  "finishing@mimin.vn",
+  "accountant@mimin.vn",
+  "warehouse@mimin.vn",
+];
+
+function clearMockSession() {
+  if (typeof window === "undefined") return;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    if (parsed?.email && MOCK_EMAILS.includes(parsed.email.toLowerCase())) {
+      console.log(`[session] Force logout mock user: ${parsed.email}`);
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("mimin_erp_session_ttl");
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +65,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // Auto-migrate legacy keys
     migrateLegacyKeys();
     migrateLarkConfig();
+    // Xoá session nếu còn dùng email mock cũ (force re-login)
+    clearMockSession();
     // Get session with TTL check
     const ttlUser = getSessionWithTTL();
     if (ttlUser) {

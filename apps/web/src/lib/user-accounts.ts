@@ -97,7 +97,40 @@ const DEFAULT_ACCOUNTS: UserAccount[] = USERS.map((u, i) => {
   };
 });
 
-const ACCOUNTS_KEY = "mimin_users_v2";
+const ACCOUNTS_KEY = "mimin_users_v3"; // v3: 2026-08-01 - reset, xoá 7 mock user cũ, chỉ giữ 19 user thật
+
+// Danh sách email MOCK cũ cần xoá khi load (nếu còn trong localStorage)
+const MOCK_EMAILS = [
+  "admin@mimin.vn",
+  "sewing@mimin.vn",
+  "planner@mimin.vn",
+  "qc@mimin.vn",
+  "finishing@mimin.vn",
+  "accountant@mimin.vn",
+  "warehouse@mimin.vn",
+];
+
+function migrateStorage(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (!raw) return;
+    const list: UserAccount[] = JSON.parse(raw);
+    // Lọc bỏ user có email mock
+    const filtered = list.filter((a) => !MOCK_EMAILS.includes(a.email.toLowerCase()));
+    if (filtered.length !== list.length) {
+      console.log(`[migrate] Xoá ${list.length - filtered.length} user mock cũ khỏi localStorage`);
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(filtered));
+    }
+  } catch (err) {
+    console.warn("[migrate] Lỗi migrate localStorage:", err);
+  }
+}
+
+// Auto-migrate khi load module (chỉ chạy 1 lần)
+if (typeof window !== "undefined") {
+  migrateStorage();
+}
 
 function getStorage<T>(key: string, defaultData: T): T {
   if (typeof window === "undefined") return defaultData;
