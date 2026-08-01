@@ -2,18 +2,20 @@
   "version": 2,
   "buildCommand": "cd apps/web && npm run build",
   "devCommand": "cd apps/web && npm run dev",
-  "installCommand": "cd apps/web && npm install",
+  "installCommand": "npm install --legacy-peer-deps && cd apps/web && npm install --legacy-peer-deps",
   "framework": "nextjs",
   "regions": ["sin1"],
   "outputDirectory": "apps/web/.next",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdGx3ZGNzbWxwZWlhemh1b2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjYwMDMsImV4cCI6MjEwMDMwMjAwM30.1xV4In7HFFr6meIZpPFfbZKPBoCviPHeSCQvR-MyJqU",
     "NEXT_PUBLIC_APP_NAME": "MIMIN ERP",
-    "NEXT_PUBLIC_APP_VERSION": "89.6.8"
+    "NEXT_PUBLIC_APP_VERSION": "89.6.9.3"
   },
   "build": {
     "env": {
-      "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co"
+      "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdGx3ZGNzbWxwZWlhemh1b2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjYwMDMsImV4cCI6MjEwMDMwMjAwM30.1xV4In7HFFr6meIZpPFfbZKPBoCviPHeSCQvR-MyJqU"
     }
   },
   "headers": [

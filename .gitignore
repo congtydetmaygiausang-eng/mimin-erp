@@ -31,3 +31,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Test scripts (khong commit)
+test-*.mjs
+test-*.js
+apply-schema.mjs
+test-dns.mjs
+check-sync.ps1
+sync-2ai.ps1
+CHANGELOG-Antigravity.md

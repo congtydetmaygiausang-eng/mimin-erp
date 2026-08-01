@@ -72,9 +72,8 @@ export function verify2FACode(email: string, inputCode: string): { ok: boolean; 
  * Check email có bật 2FA không
  */
 export function is2FAEnabled(email: string): boolean {
-  // Trong app thật: check vào users table
-  // Ở đây: hardcoded cho demo
-  return ["sang@mimin.vn", "giau@mimin.vn"].includes(email);
+  // Đã tắt tạm thời cho môi trường dev/demo để dễ dàng đăng nhập
+  return false;
 }
 
 
