@@ -77,8 +77,11 @@ async function callOpenAICompatible(
   systemPrompt: string,
   userMessage: string
 ): Promise<string> {
+  // DeepSeek: api.deepseek.com (chỉ cần API key)
+  // MiniMax (MiniMax) International: api.minimax.io (chỉ cần API key, OpenAI-compatible)
+  // Note: MiniMax China (api.minimax.chat) cần thêm GroupId - không dùng ở đây
   const baseUrl =
-    provider === "deepseek" ? "https://api.deepseek.com/v1" : "https://api.minimax.chat/v1";
+    provider === "deepseek" ? "https://api.deepseek.com/v1" : "https://api.minimax.io/v1";
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
