@@ -82,6 +82,37 @@
     background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #f8fafc 100%);
   }
 
+  /* Mobile App Style: Background gradient xanh-trắng (ảnh 2) */
+  .mobile-nav-gradient {
+    background: linear-gradient(135deg, rgba(207, 250, 254, 0.95) 0%, rgba(224, 242, 254, 0.92) 35%, rgba(255, 255, 255, 0.95) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(14, 165, 233, 0.12);
+  }
+
+  .mobile-nav-gradient-bottom {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.92) 65%, rgba(186, 230, 253, 0.95) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(14, 165, 233, 0.12);
+  }
+
+  .mobile-content-bg {
+    background: linear-gradient(180deg, rgba(207, 250, 254, 0.35) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(186, 230, 253, 0.25) 100%);
+  }
+
+  .mobile-nav-text {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .mobile-nav-text-sm {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
   .bg-module-doi-tac-gia-cong {
     background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 40%, #f8fafc 100%);
   }

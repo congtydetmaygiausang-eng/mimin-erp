@@ -17,19 +17,19 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="sticky top-0 z-30 glass border-b" style={{ borderColor: "var(--border)" }}>
+    <header className="sticky top-0 z-30 mobile-nav-gradient shadow-[0_2px_12px_rgba(14,165,233,0.06)] md:glass md:border-b" style={{ borderColor: "var(--border)" }}>
       <DemoBanner user={user} />
       <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 h-14">
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-white/30 dark:hover:bg-white/5 transition"
+            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-white/40 dark:hover:bg-white/10 transition"
             aria-label="Mở menu"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-5 h-5 text-slate-700" />
           </button>
         )}
-        <div className="md:hidden font-bold text-brand-600 text-sm">MIMIN</div>
+        <div className="md:hidden mobile-nav-text text-sky-700">MIMIN</div>
         <GlobalSearch />
         <div className="flex-1 sm:flex-none" />
         <button

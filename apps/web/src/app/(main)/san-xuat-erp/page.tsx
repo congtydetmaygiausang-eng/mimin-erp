@@ -42,9 +42,9 @@ export default function SanXuatERPPage() {
         <p className="opacity-70 text-xs">Module tổng hợp · Mobile/Tablet chuẩn app</p>
       </div>
 
-      {/* Bottom tab bar (mobile app style) */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-2xl">
-        <div className="grid grid-cols-6 max-w-3xl mx-auto">
+      {/* Bottom tab bar (mobile app style) - gradient xanh-trắng + text to + bold */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 mobile-nav-gradient-bottom shadow-[0_-4px_20px_rgba(14,165,233,0.08)] pb-[env(safe-area-inset-bottom)]">
+        <div className="grid grid-cols-6 max-w-3xl mx-auto px-1 py-1.5">
           {[
             { key: "dashboard", label: "Tổng", icon: BarChart3, color: "blue" },
             { key: "master", label: "Danh bạ", icon: Users, color: "slate" },
@@ -59,12 +59,14 @@ export default function SanXuatERPPage() {
               <button
                 key={t.key}
                 onClick={() => setTab(t.key as Tab)}
-                className={`flex flex-col items-center py-2 px-1 ${
-                  isActive ? `text-${t.color}-600` : "opacity-50"
+                className={`flex flex-col items-center py-1.5 px-1 rounded-xl transition-all min-w-0 ${
+                  isActive
+                    ? `text-${t.color}-700 bg-white/60 shadow-sm scale-105`
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? "" : ""}`} />
-                <span className="text-[10px] font-semibold mt-0.5">{t.label}</span>
+                <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5]" : "stroke-[2]"}`} />
+                <span className={`mobile-nav-text-sm ${isActive ? "" : "text-slate-600"}`}>{t.label}</span>
               </button>
             );
           })}

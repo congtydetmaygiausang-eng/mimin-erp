@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ClipboardList, CheckSquare, Wallet, User } from "lucide-react";
 
+/**
+ * Mobile Bottom Navigation - dùng cho các trang gia công mobile
+ * Style: gradient xanh-trắng, text to + bold (mobile-friendly)
+ */
 export function MobileBottomNav() {
   const pathname = usePathname();
 
@@ -16,21 +20,23 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-50 px-2 py-1 shadow-lg">
-      <div className="flex justify-around items-center">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-nav-gradient-bottom shadow-[0_-4px_20px_rgba(14,165,233,0.08)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex justify-around items-center px-1 py-1.5 max-w-3xl mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center py-1 px-3 rounded-lg text-xs transition-colors ${
-                isActive ? "text-sky-600 font-bold" : "text-slate-500 hover:text-slate-800"
+              className={`flex flex-col items-center py-1.5 px-2 rounded-xl transition-all min-w-[60px] ${
+                isActive
+                  ? "text-sky-700 bg-white/60 shadow-sm scale-105"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <Icon className={`w-5 h-5 mb-0.5 ${isActive ? "stroke-[2.5]" : "stroke-[1.75]"}`} />
-              <span>{item.label}</span>
+              <Icon className={`w-5 h-5 mb-0.5 ${isActive ? "stroke-[2.5]" : "stroke-[2]"}`} />
+              <span className={`mobile-nav-text-sm ${isActive ? "text-sky-700" : "text-slate-600"}`}>{item.label}</span>
             </Link>
           );
         })}
