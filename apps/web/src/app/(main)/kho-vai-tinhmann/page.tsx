@@ -117,43 +117,45 @@ export default function KhoVaiPage() {
   return (
     <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <Package className="w-7 h-7 text-blue-500" /> Kho Vải & Định Mức Vải
-        </h1>
-        <p className="opacity-70 mt-1 text-sm">
-          Quản lý tồn kho 29 loại vải · Tính định mức vải theo sản phẩm + size · Trừ kho tự động khi cắt
-        </p>
-      </div>
+      <div className="bg-[#134e5e] p-5 md:p-6 rounded-3xl shadow-lg border border-teal-800/30 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-white">
+            <Package className="w-7 h-7 text-teal-300" /> Kho Vải & Định Mức Vải
+          </h1>
+          <p className="opacity-90 mt-1 text-sm text-teal-100">
+            Quản lý tồn kho 29 loại vải · Tính định mức vải theo sản phẩm + size · Trừ kho tự động khi cắt
+          </p>
+        </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat icon={<Package className="w-4 h-4" />} label="Tổng tồn" value={`${(totalTonKho / 1000).toFixed(1)} tấn`} color="blue" />
-        <Stat icon={<TrendingUp className="w-4 h-4" />} label="Giá trị tồn" value={`${(totalDonGia / 1_000_000).toFixed(1)}tr`} color="emerald" />
-        <Stat icon={<AlertCircle className="w-4 h-4" />} label="Sắp hết (<50kg)" value={vaiSapHet} color="rose" />
-        <Stat icon={<CheckCircle2 className="w-4 h-4" />} label="Nhiều (>400kg)" value={vaiNhieu} color="violet" />
-      </div>
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+          <Stat icon={<Package className="w-4 h-4" />} label="Tổng tồn" value={`${(totalTonKho / 1000).toFixed(1)} tấn`} color="blue" />
+          <Stat icon={<TrendingUp className="w-4 h-4" />} label="Giá trị tồn" value={`${(totalDonGia / 1_000_000).toFixed(1)}tr`} color="emerald" />
+          <Stat icon={<AlertCircle className="w-4 h-4" />} label="Sắp hết (<50kg)" value={vaiSapHet} color="rose" />
+          <Stat icon={<CheckCircle2 className="w-4 h-4" />} label="Nhiều (>400kg)" value={vaiNhieu} color="violet" />
+        </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl p-1.5 w-fit">
-        {[
-          { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
-          { key: "tinhman", label: "Định mức vải", icon: <Calculator className="w-4 h-4" /> },
-          { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
-          { key: "danhmuc", label: "Quản lý danh mục", icon: <Plus className="w-4 h-4" /> },
-        ].map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key as any)}
-            className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all ${
-              tab === t.key 
-                ? "bg-white dark:bg-slate-700 shadow-md font-bold text-blue-600 dark:text-blue-400" 
-                : "font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
+        {/* Tabs */}
+        <div className="flex gap-2 bg-black/20 rounded-xl p-1.5 w-fit mt-5">
+          {[
+            { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
+            { key: "tinhman", label: "Định mức vải", icon: <Calculator className="w-4 h-4" /> },
+            { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
+            { key: "danhmuc", label: "Quản lý danh mục", icon: <Plus className="w-4 h-4" /> },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as any)}
+              className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all ${
+                tab === t.key 
+                  ? "bg-teal-500 shadow-md font-bold text-white" 
+                  : "font-medium text-teal-100 hover:bg-black/20 hover:text-white"
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab: Tồn kho */}
