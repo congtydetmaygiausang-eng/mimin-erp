@@ -176,7 +176,7 @@ export default function KhoVaiPage() {
                   <th className="p-3 text-left font-semibold">Mã VT</th>
                   <th className="p-3 text-left font-semibold">Tên vải</th>
                   <th className="p-3 text-left font-semibold">Màu</th>
-                  <th className="p-3 text-right font-semibold">Tồn kho (kg)</th>
+                  <th className="p-3 text-right font-semibold">Tồn kho (Quy đổi)</th>
                   <th className="p-3 text-right font-semibold">Đơn giá</th>
                   <th className="p-3 text-right font-semibold">Giá trị</th>
                   <th className="p-3 text-center font-semibold">Trạng thái</th>
@@ -207,7 +207,13 @@ export default function KhoVaiPage() {
                         <span className="font-medium">{v.mauSac}</span>
                       </div>
                     </td>
-                    <td className="p-3 text-right font-bold text-sky-600 dark:text-sky-400">{v.tonKho.toFixed(0)}</td>
+                    <td className="p-3 text-right">
+                      <div className="font-bold text-sky-600 dark:text-sky-400 text-base">{v.tonKho.toFixed(0)} kg</div>
+                      <div className="text-xs text-slate-500 mt-1 flex flex-col items-end gap-1">
+                        <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-medium">≈ {(v.tonKho / 20).toFixed(1)} cây</span>
+                        <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-medium">≈ {(v.tonKho * 2).toFixed(0)} m</span>
+                      </div>
+                    </td>
                     <td className="p-3 text-right text-slate-600 dark:text-slate-400">{v.donGia.toLocaleString()}</td>
                     <td className="p-3 text-right font-medium">{(v.tonKho * v.donGia / 1_000_000).toFixed(2)}tr</td>
                     <td className="p-3 text-center">
