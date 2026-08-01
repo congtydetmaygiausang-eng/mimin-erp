@@ -1,7 +1,5 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -17,34 +15,33 @@ const QUICK_PROMPTS = [
   { icon: TrendingUp, label: "Công nợ?", query: "Công nợ hiện tại ra sao?" },
 ];
 
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  agent?: { id: string; name: string; provider: string; model: string };
+  routing?: { taskTypes: string[]; isMultiAgent: boolean; totalAgents: number };
+  timestamp: number;
+}
+
 export function FloatingAI() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [pulse, setPulse] = useState(true);
   const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
 
   const isKhoRoute = pathname?.includes("-kho") || pathname?.includes("trang-chu-kho");
 
-  const { messages, sendMessage, status, error } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/v1/orchestrator/query",
-      body: { 
-        user_id: "sang@mimin.vn",
-        hint_agent: isKhoRoute ? "agent-kho" : undefined
-      },
-    }),
-  });
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Don't show on AI assistant page (already has full chat)
   if (pathname === "/ai-assistant" || pathname === "/agents-chat") return null;
-
-  const isLoading = status === "submitted" || status === "streaming";
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -57,21 +54,110 @@ export function FloatingAI() {
     }
   }, [open]);
 
-  useEffect(() => {
-    if (error) {
-      toast.error("AI bị lỗi: " + error.message);
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: text,
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/v1/orchestrator/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: "sang@mimin.vn",
+          messages: [{ role: "user", content: text }],
+          hint_agent: isKhoRoute ? "agent-kho" : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      // Detect response format: streaming (Gemini) hoặc JSON (DeepSeek/Minimax)
+      const contentType = res.headers.get("content-type") || "";
+
+      if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
+        // Gemini streaming - đọc toàn bộ text
+        const text = await res.text();
+        // Parse SSE format
+        const lines = text.split("\n").filter((l) => l.startsWith("data: "));
+        const fullText = lines
+          .map((l) => l.slice(6))
+          .filter((l) => l && l !== "[DONE]")
+          .join("");
+        try {
+          const parsed = JSON.parse(fullText);
+          const content = parsed.choices?.[0]?.message?.content || parsed.response || fullText;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              role: "assistant",
+              content: typeof content === "string" ? content : JSON.stringify(content),
+              agent: { id: "agent-tai-chinh", name: "Anh Quốc (Gemini)", provider: "gemini", model: "gemini-1.5-pro" },
+              timestamp: Date.now(),
+            },
+          ]);
+        } catch {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              role: "assistant",
+              content: fullText,
+              agent: { id: "agent-tai-chinh", name: "Anh Quốc (Gemini)", provider: "gemini", model: "gemini-1.5-pro" },
+              timestamp: Date.now(),
+            },
+          ]);
+        }
+      } else {
+        // DeepSeek/Minimax JSON
+        const data = await res.json();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            role: "assistant",
+            content: data.response || data.error || "Không có phản hồi",
+            agent: data.agent,
+            routing: data.routing,
+            timestamp: Date.now(),
+          },
+        ]);
+      }
+    } catch (err: any) {
+      toast.error("AI bị lỗi: " + err.message);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          role: "assistant",
+          content: `❌ Lỗi: ${err.message}`,
+          timestamp: Date.now(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
     }
-  }, [error]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    sendMessage({ text: input });
+    sendMessage(input);
     setInput("");
   };
 
   const sendQuickPrompt = (query: string) => {
-    sendMessage({ text: query });
+    sendMessage(query);
   };
 
   const botName = isKhoRoute ? "Minimax AI (Kho)" : "MIMIN AI";
@@ -176,10 +262,19 @@ export function FloatingAI() {
                 </div>
               )}
               {messages.map((msg) => {
-                const textContent = msg.parts
-                  ?.filter((p: any) => p.type === "text")
-                  .map((p: any) => p.text)
-                  .join("\n") || "";
+                const textContent = msg.content || "";
+                const agentBadge = msg.agent ? (
+                  <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-semibold opacity-70">
+                    <Sparkles className="w-3 h-3" />
+                    <span>{msg.agent.name}</span>
+                    <span className="opacity-50">· {msg.agent.provider}</span>
+                    {msg.routing?.isMultiAgent && (
+                      <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-700 rounded-full text-[9px]">
+                        🤝 {msg.routing.totalAgents} agents
+                      </span>
+                    )}
+                  </div>
+                ) : null;
                 return (
                   <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     {msg.role === "assistant" && (
@@ -192,6 +287,7 @@ export function FloatingAI() {
                         ? isKhoRoute ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-br-md" : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-br-md"
                         : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-700/50"
                     }`}>
+                      {agentBadge}
                       <div className="whitespace-pre-wrap">{textContent.split("**").map((part: string, i: number) =>
                         i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
                       )}</div>
