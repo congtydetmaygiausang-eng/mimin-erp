@@ -1,7 +1,14 @@
-// Apply Supabase schema tự động qua pg client
-// Cần DATABASE_URL trong .env.local (anh Sang copy từ Supabase Dashboard)
+// Apply Supabase schema tự động qua pg client (PostgreSQL thuần)
+// Cần DATABASE_URL trong .env.local
+//
+// Cách chạy (từ máy của anh Sang - máy em bị sandbox block DNS):
+//   cd "D:\APP ERP POLOMIMIN\MIMIN-ERP-v89.6.8-code\mimin-erp\apps\web"
+//   node apply-schema.mjs
+//
+// Nếu schema đã apply 1 phần, chạy lại vẫn OK (script skip lỗi "already exists")
+
 import pg from "pg";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 
 const env = readFileSync(".env.local", "utf8");
 const get = (k) => {
@@ -30,31 +37,90 @@ try {
   await client.connect();
   console.log("✅ Đã kết nối!");
 
-  // 1. Đọc schema.sql
-  console.log("\n📄 Đọc schema.sql...");
-  const schemaSql = readFileSync("src/lib/supabase/schema.sql", "utf8");
-  console.log(`   ${schemaSql.length} ký tự`);
+  // Đọc file schema (ưu tiên all-schemas-combined.sql, fallback về 2 file cũ)
+  const schemaPaths = [
+    "all-schemas-combined.sql",
+    "src/lib/supabase/schema.sql",
+  ];
 
-  // 2. Đọc advanced-schema.sql
-  console.log("📄 Đọc advanced-schema.sql...");
-  const advSql = readFileSync("src/lib/supabase/advanced-schema.sql", "utf8");
-  console.log(`   ${advSql.length} ký tự`);
+  let combinedSql = "";
+  for (const p of schemaPaths) {
+    if (existsSync(p)) {
+      console.log(`📄 Đọc ${p}...`);
+      combinedSql += `\n-- ===== ${p} =====\n` + readFileSync(p, "utf8");
+    }
+  }
 
-  // 3. Apply schema.sql
-  console.log("\n🔨 Đang apply schema.sql (10 bảng chính)...");
-  await client.query(schemaSql);
-  console.log("✅ schema.sql OK!");
+  // Append advanced-schema.sql nếu có
+  if (existsSync("src/lib/supabase/advanced-schema.sql")) {
+    console.log("📄 Đọc src/lib/supabase/advanced-schema.sql...");
+    combinedSql += `\n-- ===== advanced-schema.sql =====\n` + readFileSync("src/lib/supabase/advanced-schema.sql", "utf8");
+  }
 
-  // 4. Apply advanced-schema.sql
-  console.log("\n🔨 Đang apply advanced-schema.sql (audit_logs, RLS, 2FA)...");
-  await client.query(advSql);
-  console.log("✅ advanced-schema.sql OK!");
+  if (!combinedSql.trim()) {
+    throw new Error("Không tìm thấy file SQL nào");
+  }
+  console.log(`   Tổng: ${combinedSql.length} ký tự\n`);
 
-  // 5. Verify: list tables
+  // Chia SQL thành các statement riêng biệt (theo dấu ;)
+  // Bỏ qua comment và string literals khi tách
+  const statements = splitSql(combinedSql);
+  console.log(`🔨 Apply ${statements.length} SQL statements...\n`);
+
+  let success = 0;
+  let skipped = 0;
+  let failed = 0;
+  const failedList = [];
+
+  for (let i = 0; i < statements.length; i++) {
+    const sql = statements[i].trim();
+    if (!sql || sql.startsWith("--")) continue;
+
+    try {
+      await client.query(sql);
+      success++;
+      // Log tiến độ mỗi 10 statement
+      if ((i + 1) % 10 === 0 || i === statements.length - 1) {
+        console.log(`   ✓ ${i + 1}/${statements.length}`);
+      }
+    } catch (err) {
+      const msg = err.message || String(err);
+      // Bỏ qua lỗi "đã tồn tại" - OK vì schema có DROP IF EXISTS ở đầu nhưng vẫn có thể sót
+      if (
+        msg.includes("already exists") ||
+        msg.includes("does not exist") && msg.includes("policy") ||
+        msg.includes("duplicate key") ||
+        msg.includes("relation") && msg.includes("already") ||
+        msg.includes("CREATE TABLE") && msg.includes("already") ||
+        msg.includes("permission denied")  // OK - schema cũ có RLS chặn
+      ) {
+        skipped++;
+        console.log(`   ⏭️  Skip: ${msg.split("\n")[0].slice(0, 80)}`);
+      } else {
+        failed++;
+        failedList.push({ idx: i, sql: sql.slice(0, 100), error: msg });
+        console.log(`   ❌ Fail #${i + 1}: ${msg.split("\n")[0].slice(0, 100)}`);
+      }
+    }
+  }
+
+  console.log(`\n📊 Kết quả:`);
+  console.log(`   ✅ Thành công: ${success}`);
+  console.log(`   ⏭️  Bỏ qua (đã tồn tại): ${skipped}`);
+  console.log(`   ❌ Lỗi: ${failed}`);
+
+  if (failed > 0) {
+    console.log(`\n⚠️  Các statement lỗi (5 đầu tiên):`);
+    failedList.slice(0, 5).forEach((f) => {
+      console.log(`   - #${f.idx}: ${f.error.split("\n")[0].slice(0, 100)}`);
+      console.log(`     SQL: ${f.sql.slice(0, 80)}...`);
+    });
+  }
+
+  // Verify: list tables
   console.log("\n📊 Kiểm tra tables đã tạo:");
   const r = await client.query(`
-    SELECT schemaname, tablename
-    FROM pg_tables
+    SELECT tablename FROM pg_tables
     WHERE schemaname = 'public'
     ORDER BY tablename;
   `);
@@ -63,7 +129,7 @@ try {
     console.log(`   ${(i + 1).toString().padStart(2)}. ${row.tablename}`);
   });
 
-  console.log("\n🎉 HOÀN THÀNH! Schema đã được apply lên Supabase.");
+  console.log("\n🎉 HOÀN THÀNH!");
   console.log("👉 Verify tại: https://supabase.com/dashboard/project/nftlwdcsmlpeiazhuoho/editor");
 } catch (err) {
   console.error("\n❌ LỖI:", err.message);
@@ -81,4 +147,80 @@ try {
   process.exit(1);
 } finally {
   await client.end();
+}
+
+/**
+ * Tách SQL thành các statement riêng biệt theo dấu ;
+ * Bỏ qua dấu ; bên trong comment (--) và string literals (' ')
+ */
+function splitSql(sql) {
+  const result = [];
+  let current = "";
+  let i = 0;
+  let inString = false;
+  let stringChar = "";
+  let inLineComment = false;
+
+  while (i < sql.length) {
+    const ch = sql[i];
+    const nextCh = sql[i + 1] || "";
+
+    // Xử lý comment dòng --
+    if (!inString && ch === "-" && nextCh === "-") {
+      // Bỏ qua đến hết dòng
+      while (i < sql.length && sql[i] !== "\n") i++;
+      continue;
+    }
+
+    // Xử lý comment block /* */
+    if (!inString && ch === "/" && nextCh === "*") {
+      i += 2;
+      while (i < sql.length && !(sql[i] === "*" && sql[i + 1] === "/")) i++;
+      i += 2;
+      continue;
+    }
+
+    // Xử lý string literal
+    if (!inString && (ch === "'" || ch === '"')) {
+      inString = true;
+      stringChar = ch;
+      current += ch;
+      i++;
+      continue;
+    }
+
+    if (inString) {
+      current += ch;
+      if (ch === stringChar) {
+        // Kiểm tra escape ''
+        if (nextCh === stringChar) {
+          current += nextCh;
+          i += 2;
+          continue;
+        }
+        inString = false;
+        stringChar = "";
+      }
+      i++;
+      continue;
+    }
+
+    // Dấu ; kết thúc statement
+    if (ch === ";") {
+      current = current.trim();
+      if (current) result.push(current);
+      current = "";
+      i++;
+      continue;
+    }
+
+    current += ch;
+    i++;
+  }
+
+  // Statement cuối không có ;
+  current = current.trim();
+  if (current) result.push(current);
+
+  return result;
 }

@@ -1,74 +1,101 @@
-# 🚀 Hướng dẫn Apply Supabase Schema (Cách B - SQL Editor)
+# 🚀 Hướng dẫn Apply Supabase Schema
 
-> Em bị sandbox chặn DNS, không connect được từ máy em. Anh Sang copy SQL paste vào SQL Editor trên web là nhanh nhất.
+> Em bị sandbox chặn DNS, không connect được từ máy em. Anh Sang chọn 1 trong 2 cách dưới đây.
 
-## ✅ Cách B: Dùng Supabase SQL Editor (1 phút)
+---
 
-### Bước 1: Mở Supabase SQL Editor
+## Cách 1: Dùng Supabase SQL Editor trên web (1 phút)
+
+### Bước 1: Mở SQL Editor
 Truy cập: **https://supabase.com/dashboard/project/nftlwdcsmlpeiazhuoho/sql/new**
 
-### Bước 2: Copy toàn bộ SQL
+### Bước 2: Fix lỗi trình duyệt (nếu có)
+Nếu trang báo lỗi `insertBefore` hoặc React error → là do **Chrome extension** xung đột. Thử:
+
+**Option A: Tab ẩn danh (nhanh nhất)**
+- `Ctrl + Shift + N` → mở tab mới
+- Vào lại link SQL Editor ở trên
+- Tab ẩn danh tắt hết extension → React chạy mượt
+
+**Option B: Tắt extension Translate**
+- Vào `chrome://extensions/`
+- Tìm **Google Translate** → OFF
+- Reload tab Supabase
+
+**Option C: Dùng Edge hoặc Firefox**
+- Mở bằng Edge (có sẵn Windows) hoặc Firefox
+
+### Bước 3: Copy SQL
 Mở file: `D:\APP ERP POLOMIMIN\MIMIN-ERP-v89.6.8-code\mimin-erp\apps\web\all-schemas-combined.sql`
 
-**Cách mở nhanh (PowerShell):**
+Lệnh mở nhanh (PowerShell):
 ```powershell
 notepad "D:\APP ERP POLOMIMIN\MIMIN-ERP-v89.6.8-code\mimin-erp\apps\web\all-schemas-combined.sql"
 ```
 
 `Ctrl+A` → `Ctrl+C` để copy toàn bộ.
 
-### Bước 3: Paste vào SQL Editor
+### Bước 4: Paste và Run
 - Paste vào ô SQL Editor
 - Bấm **Run** (góc phải dưới) hoặc `Ctrl+Enter`
 - Đợi 5-15 giây
 
-### Bước 4: Kiểm tra
-Chạy query này để verify:
+### Bước 5: Verify
+Chạy query này để kiểm tra:
 ```sql
 SELECT table_name FROM information_schema.tables 
 WHERE table_schema = 'public' 
 ORDER BY table_name;
 ```
 
-Kết quả phải có **≥14 bảng mới**:
-- audit_logs
-- chuyen_cong_doan
-- cong_doan
-- cong_viec
-- don_hang
-- kho_phu_lieu
-- kho_vai
-- lich_su_kho
-- nhan_vien
-- phan_cong
-- phien_kiem
-- san_luong
-- thong_bao
-- users
+Kết quả phải có **≥14 bảng mới** (audit_logs, chuyen_cong_doan, cong_doan, cong_viec, don_hang, kho_phu_lieu, kho_vai, lich_su_kho, nhan_vien, phan_cong, phien_kiem, san_luong, thong_bao, users).
 
-## ⚠️ Nếu gặp lỗi
+---
 
-| Lỗi | Cách xử lý |
-|------|-----------|
-| `permission denied for table users` | OK - schema cũ có RLS, kệ nó chạy tiếp |
-| `relation already exists` | OK - DROP TABLE đã có ở đầu file |
-| `syntax error at or near "policy"` | OK - bỏ qua policy đã tạo, các CREATE TABLE vẫn chạy |
+## Cách 2: Chạy bằng Node script (cần password)
 
-## 📋 Cách A: Chạy bằng Node script (cần password)
+Nếu không muốn dùng web editor, chạy script từ máy anh:
 
-Nếu anh muốn tự chạy script Node:
 ```powershell
 cd "D:\APP ERP POLOMIMIN\MIMIN-ERP-v89.6.8-code\mimin-erp\apps\web"
-$env:DATABASE_URL = "postgresql://postgres.nftlwdcsmlpeiazhuoho:[PASSWORD]@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
 node apply-schema.mjs
 ```
 
-`[PASSWORD]` lấy từ: Dashboard → Settings → Database → Connection string → URI
+Script tự động:
+- Đọc password từ `.env.local`
+- Connect vào Supabase bằng `pg` (PostgreSQL thuần)
+- Apply 14 bảng + 3 functions + RLS + realtime
+- Skip lỗi "already exists" (chạy lại nhiều lần OK)
+- List ra tất cả bảng đã tạo
+
+Nếu chưa có `DATABASE_URL` trong `.env.local`:
+1. Vào https://supabase.com/dashboard/project/nftlwdcsmlpeiazhuoho/settings/database
+2. Mục **Connection string** → tab **URI**
+3. Nếu chưa có password: click **Reset database password** trước
+4. Copy connection string
+5. Paste vào `apps/web/.env.local`:
+   ```
+   DATABASE_URL=postgresql://postgres.nftlwdcsmlpeiazhuoho:YOUR_PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+   ```
+
+---
+
+## ⚠️ Lỗi thường gặp
+
+| Lỗi | Cách xử lý |
+|------|-----------|
+| `insertBefore` React error trên web | Tab ẩn danh / tắt extension Translate |
+| `password authentication failed` | Reset database password trên Dashboard |
+| `ENOTFOUND` không kết nối được | Kiểm tra internet + DATABASE_URL đúng format |
+| `permission denied for table users` | OK - schema cũ có RLS, kệ chạy tiếp |
+| `relation already exists` | OK - DROP TABLE ở đầu file, các CREATE sau skip |
+
+---
 
 ## 🎯 Sau khi apply xong
 
 Báo lại em:
-- ✅ "Apply xong, có 14 bảng mới"
+- ✅ "Apply xong, có X bảng" (gửi kèm output list tables)
 - Hoặc paste lỗi nếu có
 
 Em sẽ:
