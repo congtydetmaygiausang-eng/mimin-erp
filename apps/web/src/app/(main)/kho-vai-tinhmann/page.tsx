@@ -111,17 +111,19 @@ export default function KhoVaiPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 w-fit">
+      <div className="flex gap-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl p-1.5 w-fit">
         {[
-          { key: "tonkho", label: "Tồn kho", icon: <Package className="w-3.5 h-3.5" /> },
-          { key: "tinhman", label: "Tính màn", icon: <Calculator className="w-3.5 h-3.5" /> },
-          { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-3.5 h-3.5" /> },
+          { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
+          { key: "tinhman", label: "Tính màn", icon: <Calculator className="w-4 h-4" /> },
+          { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
         ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key as any)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center gap-1.5 ${
-              tab === t.key ? "bg-white dark:bg-slate-700 shadow" : "opacity-60 hover:opacity-100"
+            className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all ${
+              tab === t.key 
+                ? "bg-white dark:bg-slate-700 shadow-md font-bold text-blue-600 dark:text-blue-400" 
+                : "font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             {t.icon} {t.label}
@@ -143,40 +145,42 @@ export default function KhoVaiPage() {
               <RefreshCw className="w-4 h-4" /> Refresh
             </button>
           </div>
-          <div className="card overflow-x-auto">
+          <div className="card overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
             <table className="w-full text-sm">
-              <thead className="bg-slate-100 dark:bg-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                 <tr>
-                  <th className="p-2 text-left">Mã VT</th>
-                  <th className="p-2 text-left">Tên vải</th>
-                  <th className="p-2 text-left">Màu</th>
-                  <th className="p-2 text-right">Tồn kho (kg)</th>
-                  <th className="p-2 text-right">Đơn giá</th>
-                  <th className="p-2 text-right">Giá trị</th>
-                  <th className="p-2 text-center">Trạng thái</th>
-                  <th className="p-2 text-center">Action</th>
+                  <th className="p-3 text-left font-semibold">Mã VT</th>
+                  <th className="p-3 text-left font-semibold">Tên vải</th>
+                  <th className="p-3 text-left font-semibold">Màu</th>
+                  <th className="p-3 text-right font-semibold">Tồn kho (kg)</th>
+                  <th className="p-3 text-right font-semibold">Đơn giá</th>
+                  <th className="p-3 text-right font-semibold">Giá trị</th>
+                  <th className="p-3 text-center font-semibold">Trạng thái</th>
+                  <th className="p-3 text-center font-semibold">Thao tác</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {inventory.slice(0, 20).map((v) => (
-                  <tr key={v.maVT} className="border-t border-slate-200 dark:border-slate-700">
-                    <td className="p-2 font-mono text-xs">{v.maVT}</td>
-                    <td className="p-2">{v.tenVT}</td>
-                    <td className="p-2 opacity-70 text-xs">{v.mauSac}</td>
-                    <td className="p-2 text-right font-bold">{v.tonKho.toFixed(0)}</td>
-                    <td className="p-2 text-right">{v.donGia.toLocaleString()}</td>
-                    <td className="p-2 text-right">{(v.tonKho * v.donGia / 1_000_000).toFixed(2)}tr</td>
-                    <td className="p-2 text-center">
+                  <tr key={v.maVT} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                      {v.maVT.replace(/^V-/, "")}
+                    </td>
+                    <td className="p-3 font-medium text-slate-800 dark:text-slate-200">{v.tenVT}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-400">{v.mauSac}</td>
+                    <td className="p-3 text-right font-bold text-sky-600 dark:text-sky-400">{v.tonKho.toFixed(0)}</td>
+                    <td className="p-3 text-right text-slate-600 dark:text-slate-400">{v.donGia.toLocaleString()}</td>
+                    <td className="p-3 text-right font-medium">{(v.tonKho * v.donGia / 1_000_000).toFixed(2)}tr</td>
+                    <td className="p-3 text-center">
                       {v.tonKho < 50 ? (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700">Sắp hết</span>
+                        <span className="inline-flex px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-500/10 text-rose-600 font-medium text-xs">Sắp hết</span>
                       ) : v.tonKho > 400 ? (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700">Nhiều</span>
+                        <span className="inline-flex px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 font-medium text-xs">Nhiều</span>
                       ) : (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700">Bình thường</span>
+                        <span className="inline-flex px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-xs">Bình thường</span>
                       )}
                     </td>
-                    <td className="p-2 text-center">
-                      <button onClick={() => handleNhapKho(v.maVT)} className="text-xs text-blue-500 underline">
+                    <td className="p-3 text-center">
+                      <button onClick={() => handleNhapKho(v.maVT)} className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline">
                         + Nhập
                       </button>
                     </td>
@@ -184,8 +188,8 @@ export default function KhoVaiPage() {
                 ))}
               </tbody>
             </table>
-            <div className="p-2 text-xs opacity-50 text-center">
-              Hiển thị 20/{inventory.length} loại vải
+            <div className="p-3 text-sm text-slate-500 text-center bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800">
+              Đang hiển thị 20/{inventory.length} loại vải
             </div>
           </div>
         </>

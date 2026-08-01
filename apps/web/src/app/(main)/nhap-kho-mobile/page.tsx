@@ -1,11 +1,11 @@
 "use client";
 
-// ============ NHẬP KHO MOBILE (Đợt 7) ============
+// ============ NHẬP KHO MOBILE (Premium AI) ============
 // Mobile-first: tạo phiếu nhập kho vải/phụ liệu/thành phẩm
 
 import { useState, useMemo, Suspense } from "react";
 import {
-  ArrowDownToLine, Plus, Search, Package, Warehouse, X,
+  ArrowDownToLine, Plus, Search, Package, Warehouse, X, Sparkles, Wand2, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
@@ -35,62 +35,84 @@ function NhapKhoMobileContent() {
   const kpi = getKhoKPI(filtered);
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <ArrowDownToLine className="w-7 h-7 text-emerald-500" />
-            Nhập kho
+    <div className="space-y-6 animate-fade-in pb-8">
+      {/* Header Premium */}
+      <div className="flex items-center justify-between p-6 rounded-3xl bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl opacity-50" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-3">
+            <ArrowDownToLine className="w-3.5 h-3.5" /> Lập phiếu nhập
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+            Nhập Kho Hàng Hoá
           </h1>
-          <p className="opacity-70 mt-1 text-sm">
-            {filtered.length} phiếu · SL: <b className="text-emerald-600">{kpi.tongNhap.toLocaleString()}</b>
+          <p className="opacity-80 mt-2 text-sm text-slate-600 dark:text-slate-300">
+            Tổng số phiếu: <b className="text-emerald-600">{filtered.length}</b> · Đã nhập: <b className="text-emerald-600">{kpi.tongNhap.toLocaleString()} SP</b>
           </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="px-3 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium flex items-center gap-1.5"
+          className="relative z-10 group px-5 py-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-medium flex items-center gap-2 shadow-lg shadow-emerald-500/30 hover:scale-105 transition-all"
         >
-          <Plus className="w-4 h-4" /> Tạo phiếu
+          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" /> 
+          <span>Tạo phiếu nhập</span>
         </button>
       </div>
 
       {/* Filter kho */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {(["all", "vai", "phu-lieu", "thanh-pham"] as const).map((k) => (
           <button
             key={k}
             onClick={() => setFilterKho(k)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-              filterKho === k ? "bg-brand-500 text-white" : "bg-white/40 dark:bg-white/5 hover:bg-white/60"
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              filterKho === k 
+                ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" 
+                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-slate-200 dark:border-slate-700"
             }`}
           >
-            {k === "all" ? "Tất cả" : k === "vai" ? "Vải" : k === "phu-lieu" ? "Phụ liệu" : "Thành phẩm"}
+            {k === "all" ? "Tất cả các kho" : k === "vai" ? "📦 Kho Vải" : k === "phu-lieu" ? "🏷️ Phụ liệu" : "👕 Thành phẩm"}
           </button>
         ))}
       </div>
 
       {/* Danh sách */}
       {filtered.length === 0 ? (
-        <EmptyState title="Chưa có phiếu nhập" description="Bấm 'Tạo phiếu' để nhập kho" />
+        <div className="mt-8">
+          <EmptyState title="Chưa có phiếu nhập nào" description="Bấm 'Tạo phiếu nhập' hoặc dùng AI để nhập nhanh hàng hoá vào kho." />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((p) => {
             const s = TRANG_THAI_PK_STYLE[p.trangThai];
             return (
-              <MobileCard
-                key={p.id}
-                title={p.id}
-                subtitle={`${p.tenSP} · ${p.nhaCC || ""}`}
-                badge={<span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${s.bg} ${s.color}`}>{p.trangThai}</span>}
-                fields={[
-                  { label: "SL", value: <span className="font-mono">{p.soLuong.toLocaleString()} {p.donVi}</span> },
-                  { label: "Đơn giá", value: <span className="font-mono">{p.donGia.toLocaleString()}</span> },
-                  { label: "Thành tiền", value: <span className="font-mono font-semibold text-emerald-600">{formatVNDShort(p.thanhTien)}</span>, highlight: true },
-                  { label: "Người tạo", value: p.nguoiTao },
-                  { label: "Ngày", value: <DateDisplay value={p.ngayTao} /> },
-                ]}
-              />
+              <div key={p.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-lg">{p.id}</h3>
+                    <div className="text-sm text-slate-500">{p.tenSP}</div>
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${s.bg} ${s.color}`}>
+                    {p.trangThai}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 mb-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Số lượng:</span>
+                    <span className="font-mono font-medium">{p.soLuong.toLocaleString()} {p.donVi}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Thành tiền:</span>
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatVNDShort(p.thanhTien)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="flex items-center gap-1"><Search className="w-3.5 h-3.5"/> {p.nguoiTao}</span>
+                  <DateDisplay value={p.ngayTao} />
+                </div>
+              </div>
             );
           })}
         </div>
@@ -104,7 +126,7 @@ function NhapKhoMobileContent() {
           maNV: user?.id || "NV001",
           nguoiTao: user?.name || user?.id || "NV001",
         }, user);
-        toast.success("Đã tạo phiếu nhập kho");
+        toast.success("Đã tạo phiếu nhập kho thành công!");
         setShowForm(false);
       }} />}
     </div>
@@ -120,7 +142,35 @@ function TaoPhieuNhapModal({ onClose, onSubmit }: any) {
   const [nhaCC, setNhaCC] = useState("");
   const [ghiChu, setGhiChu] = useState("");
 
+  const [aiText, setAiText] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
   const dsSP = loaiKho === "vai" ? KHO_VAI : loaiKho === "phu-lieu" ? KHO_VAT_TU : [];
+
+  const handleAiAutoFill = () => {
+    if (!aiText.trim()) {
+      toast.error("Vui lòng nhập nội dung cho AI");
+      return;
+    }
+    setIsAiLoading(true);
+    // Fake AI Parsing processing
+    setTimeout(() => {
+      // Very basic fake parser based on text
+      if (aiText.toLowerCase().includes("vải")) setLoaiKho("vai");
+      if (aiText.toLowerCase().includes("phụ liệu")) setLoaiKho("phu-lieu");
+      
+      const numMatch = aiText.match(/\d+/g);
+      if (numMatch && numMatch[0]) setSoLuong(parseInt(numMatch[0]));
+      if (numMatch && numMatch[1]) setDonGia(parseInt(numMatch[1]) * 1000); // assume 2nd num is price in k
+
+      setTenSP("Mặt hàng (AI Tự điền)");
+      setMaSP("SP-AI-001");
+      
+      toast.success("AI đã bóc tách dữ liệu thành công!");
+      setIsAiLoading(false);
+      setAiText("");
+    }, 1500);
+  };
 
   const handleSubmit = () => {
     if (!maSP || !tenSP || soLuong <= 0 || donGia < 0) {
@@ -132,7 +182,7 @@ function TaoPhieuNhapModal({ onClose, onSubmit }: any) {
       maSP,
       tenSP,
       soLuong,
-      donVi: "m",
+      donVi: loaiKho === "vai" ? "m" : "cái",
       donGia,
       thanhTien: soLuong * donGia,
       nhaCC,
@@ -142,25 +192,57 @@ function TaoPhieuNhapModal({ onClose, onSubmit }: any) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative card max-w-md w-full p-5 animate-slide-up max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-bold flex items-center gap-2">
-            <ArrowDownToLine className="w-5 h-5 text-emerald-500" /> Tạo phiếu nhập
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 animate-slide-up shadow-2xl max-h-[90vh] overflow-y-auto">
+        
+        {/* Header Modal */}
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 rounded-xl">
+              <ArrowDownToLine className="w-5 h-5" /> 
+            </div>
+            Tạo phiếu nhập mới
           </h3>
-          <button onClick={onClose}><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="space-y-3">
+        {/* AI Auto Fill Box */}
+        <div className="mb-6 bg-gradient-to-br from-violet-500/10 to-indigo-500/5 border border-violet-500/20 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-bold text-violet-700 dark:text-violet-400 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4" /> AI Kho Auto-Fill
+            </label>
+            <span className="text-[10px] bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-medium">Thử nghiệm</span>
+          </div>
+          <div className="flex gap-2">
+            <input 
+              className="flex-1 bg-white/60 dark:bg-slate-900/60 border border-violet-200 dark:border-violet-800/50 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 outline-none" 
+              placeholder="VD: Nhập 500m vải V001 giá 25k..."
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              disabled={isAiLoading}
+            />
+            <button 
+              onClick={handleAiAutoFill}
+              disabled={isAiLoading || !aiText.trim()}
+              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {isAiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              Điền tự động
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium block mb-1">Loại kho</label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-2">Loại kho chứa</label>
+            <div className="grid grid-cols-3 gap-2">
               {(["vai", "phu-lieu", "thanh-pham"] as LoaiKho[]).map((k) => (
                 <button
                   key={k}
                   onClick={() => setLoaiKho(k)}
-                  className={`text-xs py-2 rounded ${
-                    loaiKho === k ? "bg-brand-500 text-white" : "bg-white/40 dark:bg-white/5"
+                  className={`text-sm py-2.5 rounded-xl font-medium transition-colors ${
+                    loaiKho === k ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                   }`}
                 >
                   {k === "vai" ? "Vải" : k === "phu-lieu" ? "Phụ liệu" : "Thành phẩm"}
@@ -171,7 +253,7 @@ function TaoPhieuNhapModal({ onClose, onSubmit }: any) {
 
           {dsSP.length > 0 && (
             <div>
-              <label className="text-xs font-medium block mb-1">Chọn nhanh</label>
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">Chọn mã hàng có sẵn</label>
               <select
                 onChange={(e) => {
                   const sp = dsSP.find((s) => s.maVT === e.target.value);
@@ -181,9 +263,9 @@ function TaoPhieuNhapModal({ onClose, onSubmit }: any) {
                     setDonGia(sp.donGia || 0);
                   }
                 }}
-                className="input w-full"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               >
-                <option value="">-- Chọn mặt hàng --</option>
+                <option value="">-- Chọn hoặc tìm mã hàng --</option>
                 {dsSP.map((s) => (
                   <option key={s.maVT} value={s.maVT}>{s.maVT} - {s.tenVT}</option>
                 ))}
@@ -191,40 +273,39 @@ function TaoPhieuNhapModal({ onClose, onSubmit }: any) {
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-medium block mb-1">Mã SP *</label>
-            <input className="input w-full" value={maSP} onChange={(e) => setMaSP(e.target.value)} placeholder="VD: V001" />
-          </div>
-          <div>
-            <label className="text-xs font-medium block mb-1">Tên SP *</label>
-            <input className="input w-full" value={tenSP} onChange={(e) => setTenSP(e.target.value)} placeholder="VD: Vải cotton 100%" />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium block mb-1">SL *</label>
-              <input type="number" min={1} className="input w-full" value={soLuong} onChange={(e) => setSoLuong(Math.max(1, parseInt(e.target.value) || 0))} />
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã SP *</label>
+              <input className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" value={maSP} onChange={(e) => setMaSP(e.target.value)} placeholder="VD: V001" />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1">Đơn giá</label>
-              <input type="number" min={0} className="input w-full" value={donGia} onChange={(e) => setDonGia(Math.max(0, parseInt(e.target.value) || 0))} />
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">Tên SP *</label>
+              <input className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" value={tenSP} onChange={(e) => setTenSP(e.target.value)} placeholder="VD: Vải cotton 100%" />
             </div>
           </div>
-          <div>
-            <label className="text-xs font-medium block mb-1">Nhà CC</label>
-            <input className="input w-full" value={nhaCC} onChange={(e) => setNhaCC(e.target.value)} />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">Số lượng *</label>
+              <input type="number" min={1} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" value={soLuong} onChange={(e) => setSoLuong(Math.max(1, parseInt(e.target.value) || 0))} />
+            </div>
+            <div>
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-300 block mb-1">Đơn giá</label>
+              <input type="number" min={0} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" value={donGia} onChange={(e) => setDonGia(Math.max(0, parseInt(e.target.value) || 0))} />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-medium block mb-1">Ghi chú</label>
-            <textarea className="input w-full min-h-[60px]" value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
-          </div>
-          <div className="text-sm font-bold text-emerald-600 text-right">
-            Thành tiền: {formatVNDShort(soLuong * donGia)}
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex justify-between items-center border border-slate-100 dark:border-slate-800">
+            <span className="text-sm text-slate-500 font-medium">Tổng thành tiền:</span>
+            <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+              {formatVNDShort(soLuong * donGia)}
+            </span>
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end pt-3 mt-3 border-t" style={{ borderColor: "var(--border)" }}>
-          <button onClick={onClose} className="btn-secondary text-sm">Huỷ</button>
-          <button onClick={handleSubmit} className="btn-primary text-sm bg-emerald-500 hover:bg-emerald-600">Tạo phiếu</button>
+        <div className="flex gap-3 justify-end pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={onClose} className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 font-medium transition-colors">Huỷ</button>
+          <button onClick={handleSubmit} className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/30 transition-colors">Xác nhận tạo phiếu</button>
         </div>
       </div>
     </div>

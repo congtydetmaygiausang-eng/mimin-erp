@@ -280,6 +280,8 @@ export const KHO_VAI: KhoVai[] = [
   { maVT: "V-2DAREU", tenVT: "VẢI 2DA RÊU", loai: "Vải", dvt: "kg", donGia: 71000.0, tonKho: 0.0, tonToiThieu: 0.0, kho: "Kho vải", mauSac: "Rêu", ghiChu: "Vải chính", soCayNhap: 0.0, tonCay: 0.0 },
   { maVT: "V-2DANAU", tenVT: "VẢI 2DA NÂU ĐẤT", loai: "Vải", dvt: "kg", donGia: 71000.0, tonKho: 0.0, tonToiThieu: 0.0, kho: "Kho vải", mauSac: "Nâu đất", ghiChu: "Vải chính", soCayNhap: 0.0, tonCay: 0.0 },
   { maVT: "V-2DAXAMCHI", tenVT: "VẢI 2DA XÁM CHÌ", loai: "Vải", dvt: "kg", donGia: 71000.0, tonKho: 0.0, tonToiThieu: 0.0, kho: "Kho vải", mauSac: "Xám chì", ghiChu: "Vải chính", soCayNhap: 0.0, tonCay: 0.0 },
+  { maVT: "V-COTTON100-TRANG", tenVT: "VẢI COTTON 100% TRẮNG", loai: "Vải", dvt: "kg", donGia: 85000.0, tonKho: 0.0, tonToiThieu: 0.0, kho: "Kho vải", mauSac: "Trắng", ghiChu: "Vải mới thêm", soCayNhap: 0.0, tonCay: 0.0 },
+  { maVT: "V-CASAUDEN", tenVT: "VẢI CÁ SẤU ĐEN", loai: "Vải", dvt: "kg", donGia: 95000.0, tonKho: 0.0, tonToiThieu: 0.0, kho: "Kho vải", mauSac: "Đen", ghiChu: "Vải mới thêm", soCayNhap: 0.0, tonCay: 0.0 },
 ];
 
 // ========== 8. KHO PHỤ LIỆU / BO VẬT TƯ (58 mặt hàng) ==========
