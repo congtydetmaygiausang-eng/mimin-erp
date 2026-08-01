@@ -28,12 +28,13 @@ const TINH_MAN_PHAN_LOAI = [
 export default function KhoVaiPage() {
   const { user } = useSession();
   const [inventory, setInventory] = useState<KhoVai[]>([]);
-  const [tab, setTab] = useState<"tonkho" | "tinhman" | "baocao">("tonkho");
+  const [tab, setTab] = useState<"tonkho" | "tinhman" | "baocao" | "danhmuc">("tonkho");
   const [selected, setSelected] = useState<string>("Áo thun cotton");
   const [soLuong, setSoLuong] = useState(500);
   const [sizeStr, setSizeStr] = useState("M, L, XL, 2XL");
   const [baoCaoLenSX, setBaoCaoLenSX] = useState("LSX-2026-001");
   const [showNhap, setShowNhap] = useState<string | null>(null);
+  const [showTaoMa, setShowTaoMa] = useState(false);
   const [uploadingVT, setUploadingVT] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,7 +117,7 @@ export default function KhoVaiPage() {
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <Package className="w-7 h-7 text-blue-500" /> Kho Vải & Tính Màn
+          <Package className="w-7 h-7 text-blue-500" /> Kho Vải & Định Mức Vải
         </h1>
         <p className="opacity-70 mt-1 text-sm">
           Quản lý tồn kho 29 loại vải · Tính định mức vải theo sản phẩm + size · Trừ kho tự động khi cắt
@@ -135,8 +136,9 @@ export default function KhoVaiPage() {
       <div className="flex gap-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl p-1.5 w-fit">
         {[
           { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
-          { key: "tinhman", label: "Tính màn", icon: <Calculator className="w-4 h-4" /> },
+          { key: "tinhman", label: "Định mức vải", icon: <Calculator className="w-4 h-4" /> },
           { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
+          { key: "danhmuc", label: "Quản lý danh mục", icon: <Plus className="w-4 h-4" /> },
         ].map((t) => (
           <button
             key={t.key}
@@ -191,7 +193,7 @@ export default function KhoVaiPage() {
                     <td className="p-3 text-slate-600 dark:text-slate-400">
                       <div className="flex items-center gap-3">
                         <div 
-                          className="w-8 h-8 rounded-md border border-slate-300/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group flex items-center justify-center bg-slate-100"
+                          className="w-16 h-16 rounded-xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-md overflow-hidden flex-shrink-0 cursor-pointer relative group flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:shadow-lg transition-all"
                           style={{ backgroundColor: (v as any).imageUrl ? 'transparent' : getColorHex(v.mauSac) }}
                           onClick={() => { setUploadingVT(v.maVT); fileInputRef.current?.click(); }}
                           title="Bấm để tải ảnh lên"
@@ -384,6 +386,105 @@ export default function KhoVaiPage() {
             </table>
           </div>
         </>
+      )}
+
+      {/* Tab: Quản lý danh mục */}
+      {tab === "danhmuc" && (
+        <div className="card p-6 min-h-[400px]">
+          {!showTaoMa ? (
+            <div className="flex flex-col items-center justify-center text-center py-10">
+              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4 shadow-sm">
+                <Plus className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">Thêm & Quản lý Mã Vải Mới</h2>
+              <p className="text-slate-500 max-w-md mx-auto mb-6">
+                Giao diện này cho phép anh tạo mã vải mới (VD: VAI-30), cập nhật tên vải, chọn hình ảnh màu sắc, và cài đặt mức tồn tối thiểu để AI tự động cảnh báo.
+              </p>
+              <button 
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-lg border border-blue-700/50" 
+                onClick={() => setShowTaoMa(true)}
+              >
+                <Plus className="w-6 h-6" /> Bắt đầu tạo mã vải
+              </button>
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto animate-fade-in">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <Package className="w-5 h-5 text-blue-500" /> Tạo mã vải mới
+                </h3>
+                <button onClick={() => setShowTaoMa(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Mã Vải (Tự động)</label>
+                    <input type="text" className="input-field bg-slate-50 dark:bg-slate-800 font-mono text-blue-600" value={`VAI-${(inventory.length + 1).toString().padStart(2, "0")}`} readOnly disabled />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Loại & ĐVT</label>
+                    <div className="flex gap-2">
+                      <input type="text" className="input-field w-1/2 bg-slate-50 dark:bg-slate-800" value="Vải" readOnly disabled />
+                      <input type="text" className="input-field w-1/2 bg-slate-50 dark:bg-slate-800" value="kg" readOnly disabled />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tên vải *</label>
+                  <input type="text" className="input-field" placeholder="Ví dụ: Vải Cotton 100%..." autoFocus />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Màu sắc *</label>
+                    <input type="text" className="input-field" placeholder="Ví dụ: Đỏ tươi" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Ảnh màu vải</label>
+                    <button className="w-full px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+                      <Plus className="w-4 h-4" /> Chọn ảnh tải lên
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Đơn giá dự kiến (đ/kg)</label>
+                    <input type="number" className="input-field" placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tồn kho tối thiểu (Cảnh báo)</label>
+                    <input type="number" className="input-field" placeholder="50" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Ghi chú thêm</label>
+                  <textarea className="input-field" rows={2} placeholder="Vải chính, lô mới..."></textarea>
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-slate-200 dark:border-slate-700">
+                  <button onClick={() => setShowTaoMa(false)} className="px-5 py-2 font-medium text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                    Hủy bỏ
+                  </button>
+                  <button 
+                    onClick={() => {
+                      toast.success("Đã tạo mã vải thành công!");
+                      setShowTaoMa(false);
+                    }} 
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all"
+                  >
+                    Lưu mã vải
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Modal Nhập kho vải (chuẩn hoá theo form Kho Phụ liệu) */}

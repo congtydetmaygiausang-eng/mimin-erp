@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   MessageSquare, X, Send, Sparkles, Bot, User, Loader2,
@@ -8,12 +8,18 @@ import {
   Minimize2, Maximize2, ArrowUpRight, Warehouse
 } from "lucide-react";
 import { toast } from "sonner";
+import { getQuickPrompts, detectContext, getContextLabel } from "@/lib/ai-quick-prompts";
 
-const QUICK_PROMPTS = [
-  { icon: Package, label: "Tồn kho?", query: "Tồn kho hiện tại thế nào?" },
-  { icon: BarChart3, label: "Nhân sự?", query: "Công ty có những phòng ban nào?" },
-  { icon: TrendingUp, label: "Công nợ?", query: "Công nợ hiện tại ra sao?" },
-];
+// Icon mapper cho quick prompts (emoji → lucide icon)
+const ICON_MAP: Record<string, any> = {
+  "📦": Package, "📥": ArrowUpRight, "⚠️": AlertTriangle, "🔍": FileText,
+  "✂️": Warehouse, "📋": FileText, "⏱️": TrendingUp, "🚨": AlertTriangle,
+  "🪡": Warehouse, "💰": TrendingUp, "📊": BarChart3,
+  "👥": User, "📅": FileText, "💸": TrendingUp, "📝": FileText,
+  "🛒": Package, "📞": User, "🚚": Warehouse,
+  "📈": TrendingUp, "💵": TrendingUp, "🔄": ArrowUpRight,
+  "🏭": Warehouse,
+};
 
 interface ChatMessage {
   id: string;
@@ -36,6 +42,17 @@ export function FloatingAI() {
   const pathname = usePathname();
 
   const isKhoRoute = pathname?.includes("-kho") || pathname?.includes("trang-chu-kho");
+
+  // Quick prompts theo context (kho, sx, gia-cong, nhan-su, ke-toan, ...)
+  const quickPrompts = useMemo(() => {
+    const list = getQuickPrompts(pathname);
+    return list.map((p) => ({
+      ...p,
+      iconComp: ICON_MAP[p.icon] || Sparkles,
+    }));
+  }, [pathname]);
+
+  const contextLabel = useMemo(() => getContextLabel(detectContext(pathname)), [pathname]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -312,8 +329,8 @@ export function FloatingAI() {
             {messages.length === 0 && (
               <div className="px-4 pb-3 bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="flex flex-wrap gap-2">
-                  {QUICK_PROMPTS.map((p) => {
-                    const Icon = p.icon;
+                  {quickPrompts.map((p) => {
+                    const Icon = p.iconComp;
                     return (
                       <button
                         key={p.label}
