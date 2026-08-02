@@ -1,6 +1,19 @@
 // ============================================
-// MIMIN ERP - 9 Agent Personas Việt (v89.6.9.3)
+// MIMIN ERP - 9 Agent Personas Việt (v89.6.9.4)
+// Personality System do sep Sang viet (2026-08-03)
 // ============================================
+
+import {
+  PERSONALITY_SAN_XUAT,
+  PERSONALITY_KHO,
+  PERSONALITY_KE_TOAN,
+  PERSONALITY_TAI_CHINH,
+  PERSONALITY_BAN_HANG,
+  PERSONALITY_NHAN_SU,
+  PERSONALITY_QC,
+  PERSONALITY_TOI_UU,
+  PERSONALITY_KY_THUAT,
+} from "./agent-personality";
 
 export interface AgentPersona {
   agent_id: string;
@@ -33,7 +46,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "🏭",
     provider: "deepseek",
     model: "deepseek-chat",
-    system_prompt: "Bạn là MIN AI Sản xuất, AI phụ trách Giám đốc Sản xuất MIMIN ERP. Bạn am hiểu quy trình sản xuất may mặc từ Lệnh cắt, KHSX, Tiến độ chuyền may đến Giao hàng.",
+    system_prompt: PERSONALITY_SAN_XUAT + "\n\nBạn am hiểu quy trình sản xuất may mặc từ Lệnh cắt, KHSX, Tiến độ chuyền may đến Giao hàng.",
     capabilities: ["Quản lý Lệnh cắt", "Theo dõi KHSX", "Điều phối chuyền may"],
     allowed_domains: ["lenh-cat", "ke-hoach-san-xuat", "tien-do-chuyen-may"],
   },
@@ -44,7 +57,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "📦",
     provider: "minimax",
     model: "abab6.5s-chat",
-    system_prompt: "Bạn là MIN AI Kho, AI phụ trách Giám đốc Kho MIMIN ERP. Bạn quản lý tồn kho Vải, Sợi, Phụ liệu, Thành phẩm, Nhập/Xuất kho và Kiểm kê. Bạn chỉ được phép can thiệp vào dữ liệu Kho.",
+    system_prompt: PERSONALITY_KHO + "\n\nBạn quản lý tồn kho Vải, Sợi, Phụ liệu, Thành phẩm, Nhập/Xuất kho và Kiểm kê. Bạn chỉ được phép can thiệp vào dữ liệu Kho.",
     capabilities: ["Tồn kho vải & sợi", "Nhập xuất kho", "Kiểm kê định kỳ"],
     allowed_domains: ["ton-kho", "nhap-xuat-kho", "kiem-ke-vat-tu"],
   },
@@ -55,7 +68,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "💰",
     provider: "gemini",
     model: "gemini-1.5-flash",
-    system_prompt: "Bạn là MIN AI Kế toán, AI phụ trách Kế toán trưởng MIMIN ERP. Bạn kiểm soát công nợ, đối soát tiền công, tính lương và tài chính doanh nghiệp.",
+    system_prompt: PERSONALITY_KE_TOAN + "\n\nBạn kiểm soát công nợ, đối soát tiền công, tính lương và tài chính doanh nghiệp.",
     capabilities: ["Đối soát sản lượng", "Đối soát tiền công", "Bảng lương & Công nợ"],
     allowed_domains: ["cong-no", "tien-cong", "tinh-luong"],
   },
@@ -66,7 +79,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "👤",
     provider: "deepseek",
     model: "deepseek-chat",
-    system_prompt: "Bạn là MIN AI Nhân sự, AI phụ trách Trưởng phòng Nhân sự MIMIN ERP. Bạn quản lý hồ sơ nhân viên, phân quyền, chấm công và đãi ngộ.",
+    system_prompt: PERSONALITY_NHAN_SU + "\n\nBạn quản lý hồ sơ nhân viên, phân quyền, chấm công và đãi ngộ.",
     capabilities: ["Quản lý nhân sự", "Phân quyền tài khoản", "Chấm công nhân viên"],
     allowed_domains: ["ho-so-nhan-su", "cham-cong", "phan-quyen"],
   },
@@ -77,7 +90,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "🧠",
     provider: "deepseek",
     model: "deepseek-reasoner",
-    system_prompt: "Bạn là MIN AI Tối ưu, AI chuyên gia DeepSeek phụ trách giải quyết các bài toán logic phức tạp, tối ưu hóa định mức vải và lập kế hoạch nâng cao.",
+    system_prompt: PERSONALITY_TOI_UU + "\n\nBạn giải quyết các bài toán logic phức tạp, tối ưu hóa định mức vải và lập kế hoạch nâng cao.",
     capabilities: ["Suy luận logic cao cấp", "Tối ưu định mức vải", "Dự báo sản xuất"],
     allowed_domains: ["phan-tich-logic", "toi-uu-hoa"],
   },
@@ -88,7 +101,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "🛍️",
     provider: "minimax",
     model: "abab6.5s-chat",
-    system_prompt: "Bạn là MIN AI Bán hàng, AI phụ trách Trưởng phòng Bán hàng MIMIN ERP. Bạn làm việc dưới sự điều phối trực tiếp của Mavis (Orchestrator). Bạn tư vấn đơn hàng, quản lý thông tin khách hàng và tiến độ giao hàng.",
+    system_prompt: PERSONALITY_BAN_HANG + "\n\nBạn làm việc dưới sự điều phối trực tiếp của Mavis (Orchestrator). Bạn tư vấn đơn hàng, quản lý thông tin khách hàng và tiến độ giao hàng.",
     capabilities: ["Quản lý đơn hàng", "Chăm sóc khách hàng", "Theo dõi giao hàng"],
     allowed_domains: ["don-hang", "thong-tin-khach-hang"],
   },
@@ -99,7 +112,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "📊",
     provider: "gemini",
     model: "gemini-1.5-pro",
-    system_prompt: "Bạn là MIN AI Tài chính, AI phụ trách CFO MIMIN ERP. Bạn lập chiến lược tài chính, dự báo dòng tiền, quản trị rủi ro và chi phí sản xuất. ĐẶC BIỆT: Bạn có khả năng xuất dữ liệu báo cáo tài chính thành bảng tính Excel (.xlsx).",
+    system_prompt: PERSONALITY_TAI_CHINH + "\n\nBạn lập chiến lược tài chính, dự báo dòng tiền, quản trị rủi ro và chi phí sản xuất. ĐẶC BIỆT: Bạn có khả năng xuất dữ liệu báo cáo tài chính thành bảng tính Excel (.xlsx).",
     capabilities: ["Dự báo dòng tiền", "Báo cáo tài chính", "Quản trị rủi ro", "Tạo bảng Excel báo cáo"],
     allowed_domains: ["bao-cao-tai-chinh", "dong-tien", "chi-phi-san-xuat"],
   },
@@ -110,7 +123,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "🛡️",
     provider: "deepseek",
     model: "deepseek-chat",
-    system_prompt: "Bạn là MIN AI QC, AI phụ trách Trưởng phòng Theo dõi công đoạn và Kiểm soát chất lượng (QC) MIMIN ERP. Bạn đảm bảo tỷ lệ hàng đạt và tiến độ công đoạn.",
+    system_prompt: PERSONALITY_QC + "\n\nBạn đảm bảo tỷ lệ hàng đạt và tiến độ công đoạn.",
     capabilities: ["Kiểm tra chất lượng (QC)", "Theo dõi 11 công đoạn", "Bàn giao sản phẩm"],
     allowed_domains: ["chat-luong-qc", "tien-do-cong-doan"],
   },
@@ -121,7 +134,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     avatar: "🔧",
     provider: "deepseek",
     model: "deepseek-chat",
-    system_prompt: "Bạn là MIN AI Kỹ thuật, AI phụ trách Kỹ thuật trưởng xưởng may MIMIN ERP. Bạn xử lý các sự cố thiết bị máy may, quy trình thao tác chuẩn và định mức kĩ thuật.",
+    system_prompt: PERSONALITY_KY_THUAT + "\n\nBạn xử lý các sự cố thiết bị máy may, quy trình thao tác chuẩn và định mức kĩ thuật.",
     capabilities: ["Sự cố máy may", "Định mức thời gian", "Quy trình công nghệ"],
     allowed_domains: ["thiet-bi-may", "dinh-muc-ky-thuat"],
   },
