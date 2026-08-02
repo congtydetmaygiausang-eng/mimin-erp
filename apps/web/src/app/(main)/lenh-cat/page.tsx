@@ -28,6 +28,7 @@ export default function LenhCatPage() {
   const { dsLenhCat, xoaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi, dsMauCongDoan, dsMauChiPhi, xoaMauCongDoan, xoaMauChiPhi } = useLenhCat();
   const [showTaoMauCD, setShowTaoMauCD] = useState(false);
   const [customStepName, setCustomStepName] = useState("");
+  const [customCostName, setCustomCostName] = useState("");
   const [newMauCD, setNewMauCD] = useState<{id: string; ten: string; giaCong: {id: string; tenCongDoan: string; nguoiMa: string; nguoiTen: string; donGia: number}[]}>({ id: "", ten: "", giaCong: [
     { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 0 },
     { id: "mayAo", tenCongDoan: "May Áo", nguoiMa: "", nguoiTen: "", donGia: 0 },
@@ -299,7 +300,7 @@ export default function LenhCatPage() {
                           <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
                           {m.ten}
                           <span className="text-xs font-normal text-slate-400">
-                            ({(m.chiPhi.baoBi + m.chiPhi.temNhan + m.chiPhi.khauHao).toLocaleString()}đ/sp)
+                            ({Object.values(m.chiPhi || {}).reduce((s, v) => s + v, 0).toLocaleString()}đ/sp)
                           </span>
                         </button>
                         <button
@@ -321,12 +322,15 @@ export default function LenhCatPage() {
                       </div>
                       {expandedMauCP === m.id && (
                         <div className="border-t border-emerald-100 px-3 py-2 space-y-1">
-                          <div className="flex justify-between text-xs"><span className="text-slate-600">Bao Bì, Túi PE</span><span className="font-bold text-emerald-700">{m.chiPhi.baoBi.toLocaleString()}đ</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-slate-600">Tem, Nhãn mác</span><span className="font-bold text-emerald-700">{m.chiPhi.temNhan.toLocaleString()}đ</span></div>
-                          <div className="flex justify-between text-xs"><span className="text-slate-600">Khấu hao, Điện nước</span><span className="font-bold text-emerald-700">{m.chiPhi.khauHao.toLocaleString()}đ</span></div>
+                          {Object.entries(m.chiPhi || {}).map(([key, val]) => (
+                            <div key={key} className="flex justify-between text-xs">
+                              <span className="text-slate-600">{key}</span>
+                              <span className="font-bold text-emerald-700">{val.toLocaleString()}đ</span>
+                            </div>
+                          ))}
                           <div className="flex justify-between text-xs pt-1 border-t border-emerald-100 mt-1">
                             <span className="font-bold text-slate-700">Tổng chi phí cố định/SP</span>
-                            <span className="font-bold text-emerald-600">{(m.chiPhi.baoBi + m.chiPhi.temNhan + m.chiPhi.khauHao).toLocaleString()}đ</span>
+                            <span className="font-bold text-emerald-600">{Object.values(m.chiPhi || {}).reduce((s, v) => s + v, 0).toLocaleString()}đ</span>
                           </div>
                         </div>
                       )}
@@ -433,15 +437,67 @@ export default function LenhCatPage() {
                 <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
                 <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value }))} />
               </div>
-              {["baoBi", "temNhan", "khauHao"].map((k) => {
-                const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
-                return (
-                  <div key={k} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{labels[k]}</span>
-                    <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Chi phí" value={(newMauCP.chiPhi as any)[k] || ""} onChange={e => setNewMauCP(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [k]: parseInt(e.target.value) || 0 } }))} />
+              <div className="space-y-3 overflow-y-auto max-h-[300px] pr-1">
+                {Object.entries(newMauCP.chiPhi || {}).map(([key, val], index) => (
+                  <div key={index} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1">
+                      <button onClick={() => {
+                        setNewMauCP(prev => {
+                          const newChiPhi = { ...prev.chiPhi };
+                          delete newChiPhi[key];
+                          return { ...prev, chiPhi: newChiPhi };
+                        });
+                      }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <input className="text-sm font-medium border-b border-dashed border-slate-300 focus:outline-none flex-1 bg-transparent" value={key} onChange={e => {
+                        const newKey = e.target.value;
+                        if (newKey && newKey !== key) {
+                          setNewMauCP(prev => {
+                            const newChiPhi = { ...prev.chiPhi };
+                            const currentVal = newChiPhi[key];
+                            delete newChiPhi[key];
+                            newChiPhi[newKey] = currentVal;
+                            return { ...prev, chiPhi: newChiPhi };
+                          });
+                        }
+                      }} />
+                    </div>
+                    <div className="flex items-center gap-1 w-32 border rounded px-2">
+                      <input type="number" className="w-full py-1 focus:outline-none bg-transparent" placeholder="Chi phí" value={val || ""} onChange={e => {
+                        const newVal = parseInt(e.target.value) || 0;
+                        setNewMauCP(prev => ({
+                          ...prev,
+                          chiPhi: { ...prev.chiPhi, [key]: newVal }
+                        }));
+                      }} />
+                      <span className="text-xs text-slate-400">đ</span>
+                    </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+              
+              {/* Thêm chi phí mới */}
+              <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+                <input className="flex-1 px-3 py-1.5 border rounded text-sm" placeholder="Nhập tên chi phí mới..." value={customCostName} onChange={e => setCustomCostName(e.target.value)} onKeyDown={e => {
+                  if (e.key === "Enter" && customCostName.trim()) {
+                    setNewMauCP(prev => ({
+                      ...prev,
+                      chiPhi: { ...prev.chiPhi, [customCostName.trim()]: 0 }
+                    }));
+                    setCustomCostName("");
+                  }
+                }}/>
+                <button onClick={() => {
+                  if (customCostName.trim()) {
+                    setNewMauCP(prev => ({
+                      ...prev,
+                      chiPhi: { ...prev.chiPhi, [customCostName.trim()]: 0 }
+                    }));
+                    setCustomCostName("");
+                  }
+                }} className="px-3 py-1.5 bg-slate-100 text-slate-700 font-medium text-sm rounded hover:bg-slate-200 whitespace-nowrap">+ Thêm</button>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600 font-bold hover:bg-slate-50">Huỷ</button>

@@ -166,7 +166,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   
   // Chi Phí Cố Định
   const [mauChiPhi, setMauChiPhi] = useState<string>("BoTheThao");
-  const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>(dsMauChiPhi.find(x => x.id === "BoTheThao")?.chiPhi || { baoBi: 0, temNhan: 0, khauHao: 0 });
+  const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>(dsMauChiPhi.find(x => x.id === "BoTheThao")?.chiPhi || {});
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -180,7 +180,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   }, [dsMauCongDoan, phanCong]);
 
   useEffect(() => {
-    if (dsMauChiPhi.length > 0 && chiPhiCoDinh.baoBi === 0 && chiPhiCoDinh.temNhan === 0 && chiPhiCoDinh.khauHao === 0) {
+    if (dsMauChiPhi.length > 0 && Object.keys(chiPhiCoDinh).length === 0) {
       const defaultCP = dsMauChiPhi.find(x => x.id === "BoTheThao") || dsMauChiPhi[0];
       if (defaultCP) {
         setMauChiPhi(defaultCP.id);
@@ -285,7 +285,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     if (kh && kh.donGia) giaCong1SP += kh.donGia;
   });
 
-  const tongChiPhiCoDinh = chiPhiCoDinh.baoBi + chiPhiCoDinh.temNhan + chiPhiCoDinh.khauHao;
+  const tongChiPhiCoDinh = Object.values(chiPhiCoDinh).reduce((a, b) => a + b, 0);
   const giaVonBinhQuan = (tongTienVai / validTongSL) + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
@@ -810,18 +810,12 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
 </div>
                   </div>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center bg-white p-2 rounded shadow-sm">
-                      <span className="text-sm font-semibold text-slate-700">Bao bì, Túi PE</span>
-                      <input type="number" className="w-24 px-2 py-1 text-sm text-right border rounded" value={chiPhiCoDinh.baoBi} onChange={e => setChiPhiCoDinh(p => ({...p, baoBi: parseInt(e.target.value)||0}))} />
-                    </div>
-                    <div className="flex justify-between items-center bg-white p-2 rounded shadow-sm">
-                      <span className="text-sm font-semibold text-slate-700">Tem, Nhãn mác</span>
-                      <input type="number" className="w-24 px-2 py-1 text-sm text-right border rounded" value={chiPhiCoDinh.temNhan} onChange={e => setChiPhiCoDinh(p => ({...p, temNhan: parseInt(e.target.value)||0}))} />
-                    </div>
-                    <div className="flex justify-between items-center bg-white p-2 rounded shadow-sm">
-                      <span className="text-sm font-semibold text-slate-700">Khấu hao máy, Điện nước</span>
-                      <input type="number" className="w-24 px-2 py-1 text-sm text-right border rounded" value={chiPhiCoDinh.khauHao} onChange={e => setChiPhiCoDinh(p => ({...p, khauHao: parseInt(e.target.value)||0}))} />
-                    </div>
+                    {Object.entries(chiPhiCoDinh).map(([key, val]) => (
+                      <div key={key} className="flex justify-between items-center bg-white p-2 rounded shadow-sm">
+                        <span className="text-sm font-semibold text-slate-700">{key}</span>
+                        <input type="number" className="w-24 px-2 py-1 text-sm text-right border rounded" value={val} onChange={e => setChiPhiCoDinh(p => ({...p, [key]: parseInt(e.target.value)||0}))} />
+                      </div>
+                    ))}
                   </div>
                 </div>
 

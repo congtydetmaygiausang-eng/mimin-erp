@@ -69,9 +69,7 @@ export type CongDoanItem = {
 export type PhanCongGiaCong = CongDoanItem[];
 
 export type ChiPhiCoDinh = {
-  baoBi: number;
-  temNhan: number;
-  khauHao: number;
+  [key: string]: number;
 };
 
 export type BangCOGS = {
@@ -152,9 +150,9 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
 ];
 
 const DEFAULT_MAU_CHI_PHI: MauChiPhiItem[] = [
-  { id: "AoThun", ten: "Áo Thun", chiPhi: { baoBi: 1500, temNhan: 500, khauHao: 2000 } },
-  { id: "Quan", ten: "Quần", chiPhi: { baoBi: 1200, temNhan: 300, khauHao: 1500 } },
-  { id: "BoTheThao", ten: "Bộ Thể Thao", chiPhi: { baoBi: 2500, temNhan: 1000, khauHao: 3500 } }
+  { id: "AoThun", ten: "Áo Thun", chiPhi: { "Bao Bì, Túi PE": 1500, "Tem, Nhãn mác": 500, "Khấu hao máy, Điện nước": 2000 } },
+  { id: "Quan", ten: "Quần", chiPhi: { "Bao Bì, Túi PE": 1200, "Tem, Nhãn mác": 300, "Khấu hao máy, Điện nước": 1500 } },
+  { id: "BoTheThao", ten: "Bộ Thể Thao", chiPhi: { "Bao Bì, Túi PE": 2500, "Tem, Nhãn mác": 1000, "Khấu hao máy, Điện nước": 3500 } }
 ];
 
 const STORAGE_KEY_MCD = "mimin_mau_cong_doan";
