@@ -69,16 +69,17 @@ export default function LenhCatPage() {
   // ============ KPIs ============
   const stats = {
     tongLC: dsLenhCat.length,
-    moi: dsLenhCat.filter((l) => l.trangThai === "Moi").length,
+    nhap: dsLenhCat.filter((l) => l.trangThai === "Nhap").length,
+    daTao: dsLenhCat.filter((l) => l.trangThai === "DaTao").length,
     dangCat: dsLenhCat.filter((l) => l.trangThai === "DangCat").length,
-    daCat: dsLenhCat.filter((l) => l.trangThai === "DaCat").length,
     hoanThanh: dsLenhCat.filter((l) => l.trangThai === "HoanThanh").length,
+    chuyenTiep: dsLenhCat.filter((l) => l.trangThai === "ChuyenTiep").length,
     tongSL: dsLenhCat.reduce((s, l) => s + l.tongSL, 0),
-    tongGiaVon: dsLenhCat.reduce((s, l) => s + (l.bangCOGS?.tongGiaVon ?? 0), 0),
+    tongGiaVon: dsLenhCat.reduce((s, l) => s + ((l.bangCOGS as any)?.tongGiaVon ?? (l.bangCOGS as any)?.giaVonBinhQuan ?? 0) * l.tongSL, 0),
     giaVonTBSP: (() => {
       const valid = dsLenhCat.filter((l) => l.tongSL > 0 && l.bangCOGS);
       if (valid.length === 0) return 0;
-      return valid.reduce((s, l) => s + l.tongSL * (l.bangCOGS?.giaVon1SP ?? 0), 0) /
+      return valid.reduce((s, l) => s + l.tongSL * ((l.bangCOGS as any)?.giaVon1SP ?? (l.bangCOGS as any)?.giaVonBinhQuan ?? 0), 0) /
         valid.reduce((s, l) => s + l.tongSL, 0);
     })(),
   };
@@ -155,16 +156,16 @@ export default function LenhCatPage() {
         />
         <StatCard
           icon={<Clock className="w-4 h-4" />}
-          label="Mới + Đang cắt"
-          value={(stats.moi + stats.dangCat).toString()}
-          sub={`${stats.moi} mới · ${stats.dangCat} đang cắt`}
+          label="Nháp + Đang cắt"
+          value={(stats.nhap + stats.dangCat).toString()}
+          sub={`${stats.nhap} nháp · ${stats.dangCat} đang cắt`}
           color="amber"
         />
         <StatCard
           icon={<CheckCircle2 className="w-4 h-4" />}
-          label="Đã cắt + Hoàn thành"
-          value={(stats.daCat + stats.hoanThanh).toString()}
-          sub={`${stats.daCat} đã cắt · ${stats.hoanThanh} xong`}
+          label="Đã tạo + Hoàn thành"
+          value={(stats.daTao + stats.hoanThanh).toString()}
+          sub={`${stats.daTao} đã tạo · ${stats.hoanThanh} xong`}
           color="emerald"
         />
         <StatCard
@@ -178,7 +179,7 @@ export default function LenhCatPage() {
 
       {/* Filter chips */}
       <div className="flex flex-wrap gap-1.5 overflow-x-auto">
-        {(["ALL", "Moi", "DangCat", "DaCat", "HoanThanh"] as const).map((tt) => {
+        {(["ALL", "Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as const).map((tt) => {
           const count = tt === "ALL" ? dsLenhCat.length : dsLenhCat.filter((l) => l.trangThai === tt).length;
           const active = filterTrangThai === tt;
           return (
@@ -588,10 +589,10 @@ function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="opacity-60 flex items-center gap-1">
-            <Shirt className="w-3 h-3" /> Phân bổ size
+            <Shirt className="w-3 h-3" /> Tỉ lệ size
           </span>
           <span className="font-mono text-[10px]">
-            {lc.phanBoSize.map((p) => `${p.size}:${p.sl}`).join(" · ")}
+            {lc.tiLeSize || "--"}
           </span>
         </div>
         <div className="flex items-center justify-between text-xs">
@@ -635,7 +636,7 @@ function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
           onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
           className="text-[10px] px-1 py-1 rounded border" style={{ borderColor: "var(--border)" }}
         >
-          {(["Moi", "DangCat", "DaCat", "HoanThanh"] as TrangThaiLenhCat[]).map((tt) => (
+          {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
             <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
           ))}
         </select>

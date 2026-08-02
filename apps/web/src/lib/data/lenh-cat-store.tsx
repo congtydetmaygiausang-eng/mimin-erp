@@ -105,6 +105,7 @@ export type LenhCat = {
   bangCOGS?: BangCOGS;
   // Meta
   phuTrachCat: string;
+  phuTrachSX?: string;
   ghiChu?: string;
   trangThai: TrangThaiLenhCat;
   phienBanDinhMuc: number;
