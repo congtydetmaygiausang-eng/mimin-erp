@@ -109,7 +109,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [tiLeSize, setTiLeSize] = useState("1:2:2:1");
   const [soMau, setSoMau] = useState(4);
   const [dsMau, setDsMau] = useState<MauVai[]>(Array.from({ length: 4 }).map(() => ({ 
-    ten: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
+    ten: "", maSKU: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
   })));
   const [canhBaoTonKho, setCanhBaoTonKho] = useState<string[]>([]);
 
@@ -160,7 +160,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
       if (prev.length === soMau) return prev;
       if (prev.length < soMau) {
         return [...prev, ...Array.from({ length: soMau - prev.length }).map(() => ({ 
-          ten: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
+          ten: "", maSKU: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
         }))];
       }
       return prev.slice(0, soMau);
@@ -415,6 +415,20 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
 
                   {/* Right: Details & Sizes */}
                   <div className="w-2/3 flex flex-col gap-3 justify-center">
+                    <div className="flex gap-2">
+                      <div className="w-full">
+                        <label className="text-[10px] font-bold text-slate-500 mb-1 block">Mã SKU Biến Thể</label>
+                        <input 
+                          type="text"
+                          className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold text-emerald-700" 
+                          placeholder="VD: SP001-DEN"
+                          value={mau.maSKU || ""}
+                          onChange={(e) => {
+                            const next = [...dsMau]; next[idx].maSKU = e.target.value; setDsMau(next);
+                          }}
+                        />
+                      </div>
+                    </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 mb-1 block">Kho Vải Chính</label>
                       <select 
@@ -469,6 +483,27 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                         {(!mau.phanBoSize || mau.phanBoSize.length === 0) && <span className="text-xs text-slate-400">Nhập SL Dự kiến để chia size...</span>}
                       </div>
                     </div>
+                    
+                    {/* BỔ SUNG GIÁ TIỀN VẢI MÀU NÀY */}
+                    {(() => {
+                      const v = KHO_VAI.find(x => x.maVT === mau.maVai);
+                      const donGia = v ? (v.donGia || 0) : 0;
+                      const tienVai1SP = mau.dinhMuc * donGia;
+                      const tongTienVaiMau = tienVai1SP * (mau.slDuKien || 0);
+                      return (
+                        <div className="flex gap-2 mt-1">
+                          <div className="w-1/2 bg-amber-50 p-2 rounded border border-amber-200">
+                             <div className="text-[10px] font-bold text-amber-700">Giá vải / 1 SP</div>
+                             <div className="text-sm font-bold text-amber-900">{formatVND(tienVai1SP)}</div>
+                          </div>
+                          <div className="w-1/2 bg-emerald-50 p-2 rounded border border-emerald-200">
+                             <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này</div>
+                             <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                   </div>
                 </div>
               ))}

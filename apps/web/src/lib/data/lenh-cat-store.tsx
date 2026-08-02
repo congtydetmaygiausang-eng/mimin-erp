@@ -39,6 +39,7 @@ export const TRANG_THAI_LC_STYLE: Record<TrangThaiLenhCat, { bg: string; color: 
 
 export type MauVai = {
   ten: string;
+  maSKU?: string;
   maVai: string;
   dinhMuc: number;
   slDuKien: number;
