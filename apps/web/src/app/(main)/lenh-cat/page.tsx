@@ -42,7 +42,7 @@ export default function LenhCatPage() {
   const [newMauCP, setNewMauCP] = useState({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
 
   const handleCreateCD = () => {
-    setNewMauCD({ id: "", ten: "", giaCong: [
+    setNewMauCD({ id: "cd_" + Date.now(), ten: "", giaCong: [
       { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 0 },
       { id: "mayAo", tenCongDoan: "May Áo", nguoiMa: "", nguoiTen: "", donGia: 0 },
       { id: "mayQuan", tenCongDoan: "May Quần", nguoiMa: "", nguoiTen: "", donGia: 0 },
@@ -55,7 +55,7 @@ export default function LenhCatPage() {
   };
 
   const handleCreateCP = () => {
-    setNewMauCP({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
+    setNewMauCP({ id: "cp_" + Date.now(), ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
     setShowTaoMauCP(true);
   };
   const [showModal, setShowModal] = useState(false);
@@ -367,10 +367,7 @@ export default function LenhCatPage() {
             <div className="space-y-3 mb-6">
               <div>
                 <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => {
-                  const isEdit = dsMauCongDoan.some(x => x.id === prev.id && prev.id !== "");
-                  return { ...prev, ten: e.target.value, id: isEdit ? prev.id : e.target.value.replace(/\s/g, "") };
-                })} />
+                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value }))} />
               </div>
               {newMauCD.giaCong.map((item, index) => (
                   <div key={index} className="flex items-center justify-between gap-2">
@@ -420,7 +417,7 @@ export default function LenhCatPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600 font-bold hover:bg-slate-50">Huỷ</button>
-              <button onClick={() => { themMauCongDoan(newMauCD); setShowTaoMauCD(false); toast.success("Đã lưu mẫu công đoạn"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold hover:bg-violet-700 shadow-lg">Lưu Mẫu</button>
+              <button onClick={() => { if (!newMauCD.ten.trim()) { toast.error("Vui lòng nhập tên mẫu"); return; } themMauCongDoan(newMauCD); setShowTaoMauCD(false); toast.success("Đã lưu mẫu công đoạn"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold hover:bg-violet-700 shadow-lg">Lưu Mẫu</button>
             </div>
           </div>
         </div>
@@ -434,10 +431,7 @@ export default function LenhCatPage() {
             <div className="space-y-3 mb-6">
               <div>
                 <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
-                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => {
-                  const isEdit = dsMauChiPhi.some(x => x.id === prev.id && prev.id !== "");
-                  return { ...prev, ten: e.target.value, id: isEdit ? prev.id : e.target.value.replace(/\s/g, "") };
-                })} />
+                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value }))} />
               </div>
               {["baoBi", "temNhan", "khauHao"].map((k) => {
                 const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
@@ -451,7 +445,7 @@ export default function LenhCatPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600 font-bold hover:bg-slate-50">Huỷ</button>
-              <button onClick={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); toast.success("Đã lưu bảng giá"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold hover:bg-violet-700 shadow-lg">Lưu Bảng Giá</button>
+              <button onClick={() => { if (!newMauCP.ten.trim()) { toast.error("Vui lòng nhập tên bảng giá"); return; } themMauChiPhi(newMauCP); setShowTaoMauCP(false); toast.success("Đã lưu bảng giá"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold hover:bg-violet-700 shadow-lg">Lưu Bảng Giá</button>
             </div>
           </div>
         </div>
