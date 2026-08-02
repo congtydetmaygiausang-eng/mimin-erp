@@ -1,7 +1,11 @@
+const fs = require('fs');
+const file = 'apps/web/src/lib/data/lenh-cat-store.tsx';
+let code = fs.readFileSync(file, 'utf8');
 
+const newInterface = `
 // ============ LENH CAT STORE (Giai đoạn 3 - Nâng cấp) ============
 // Quản lý Lệnh Cắt mới tạo (CuttingOrder)
-// Lưu localStorage `mimin_lenh_cat_v2`
+// Lưu localStorage \`mimin_lenh_cat_v2\`
 // Auto-generate ID theo format LC-2026-XXXX
 // CRUD: themLenhCat, suaLenhCat, xoaLenhCat
 
@@ -116,14 +120,14 @@ const STORAGE_KEY = "mimin_lenh_cat_v2";
 
 export function generateLenhCatId(existing: LenhCat[]): string {
   const year = new Date().getFullYear();
-  const yearPrefix = `LC-${year}-`;
+  const yearPrefix = \`LC-\${year}-\`;
   const yearItems = existing.filter((l) => l.id.startsWith(yearPrefix));
   const maxNum = yearItems.reduce((max, l) => {
     const n = parseInt(l.id.replace(yearPrefix, ""), 10);
     return isNaN(n) ? max : Math.max(max, n);
   }, 0);
   const nextNum = (maxNum + 1).toString().padStart(4, "0");
-  return `${yearPrefix}${nextNum}`;
+  return \`\${yearPrefix}\${nextNum}\`;
 }
 
 // Bỏ hàm tính COGS tĩnh, sẽ tính động trong component và lưu lúc submit
@@ -164,7 +168,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-    logWorkflow(`Tạo lệnh cắt ${lenh.id}`, "Tạo mới", u, "Thành công");
+    logWorkflow(\`Tạo lệnh cắt \${lenh.id}\`, "Tạo mới", u, "Thành công");
   }, []);
 
   const suaLenhCat = useCallback((id: string, lenh: Partial<LenhCat>, u: AppUser) => {
@@ -173,7 +177,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-    logWorkflow(`Cập nhật lệnh cắt ${id}`, "Cập nhật", u, "Thành công");
+    logWorkflow(\`Cập nhật lệnh cắt \${id}\`, "Cập nhật", u, "Thành công");
   }, []);
 
   const xoaLenhCat = useCallback((id: string, u: AppUser) => {
@@ -182,7 +186,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-    logWorkflow(`Xoá lệnh cắt ${id}`, "Xoá", u, "Thành công");
+    logWorkflow(\`Xoá lệnh cắt \${id}\`, "Xoá", u, "Thành công");
   }, []);
 
   if (!isLoaded) return null;
@@ -199,3 +203,6 @@ export function useLenhCat() {
   if (!ctx) throw new Error("useLenhCat must be used within LenhCatProvider");
   return ctx;
 }
+`;
+
+fs.writeFileSync(file, newInterface);

@@ -1,50 +1,11 @@
-"use client";
+const fs = require('fs');
+const file = 'apps/web/src/components/LenhCatModal.tsx';
+let code = fs.readFileSync(file, 'utf8');
 
-// ============ LENH CAT MODAL (Giai đoạn 1 - Mavis) ============
-// Form 4 sections theo layout anh Sang yeu cau:
-//   Section 1: Thong tin chung & Ke hoach (Loai SP, Ma SP, Tong SL, Size, Han, Phu trach Cat)
-//   Section 2: Vai (multi-mau, so kg, don gia) → auto tinh gia vai BQ
-//   Section 3: Phu lieu (Bo co, Khoa, Cuc, Chi, Nhan, Tui PE...) → auto tinh chi phi / SP
-//   Section 4: Phan cong gia cong 5 khau (Cat, May Ao, May Quan, InTheu, UiQC)
-//   Section 5: Bang tinh gia von san xuat (COGS) tu dong
-// Buttons: [Huy bo] [Phat lenh & Dieu chuyen]
-//
-// Giai doan 1: Focus Section 1 + 5 (form + COGS auto + luu DB)
-// Giai doan 2 (sau): Auto tru kho + Phan cong/Cong no
+const componentStart = code.indexOf('export default function LenhCatModal');
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
-  Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-} from "lucide-react";
-import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
-import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
-import {
-  type LenhCat, type LoaiSP, type LenhCatVai, type LenhCatPhuLieu,
-  type PhanCongGiaCong, type TrangThaiLenhCat,
-  LOAI_SP_LABELS, TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE,
-  tinhCOGS, useLenhCat,
-} from "@/lib/data/lenh-cat-store";
-
-// Constants
-const SIZE_OPTIONS = ["S", "M", "L", "XL", "2XL", "3XL"];
-const DEFAULT_HAO_HUT = 1.5; // 1.5%
-const DEFAULT_DON_GIA = {
-  cat: 3500,
-  mayAo: 22000,
-  mayQuan: 18000,
-  inTheu: 4500,
-  uiQC: 3000,
-};
-
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  editId?: string | null; // Nếu có → edit mode, ngược lại → create
-}
-
-
+if (componentStart > -1) {
+  const newCode = `
 import { KHACH_HANG_DATA } from "@/lib/data/real-data";
 import { 
   type LoaiLenh, type MauVai, type LenhCat, type ChiPhiCoDinh,
@@ -190,7 +151,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         const v = KHO_VAI.find(x => x.maVT === m.maVai);
         const tonKhoThuc = v ? (v.tonKho || 50) : 50; 
         if (req > tonKhoThuc) {
-          alerts.push(`Thiếu vải Màu ${i+1} (${v?.tenVT || m.maVai}): Cần ${req}kg, chỉ còn ${tonKhoThuc}kg`);
+          alerts.push(\`Thiếu vải Màu \${i+1} (\${v?.tenVT || m.maVai}): Cần \${req}kg, chỉ còn \${tonKhoThuc}kg\`);
         }
       }
     });
@@ -200,7 +161,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         const v = KHO_VAT_TU.find(x => x.maVT === p.maPL);
         const tonKhoThuc = v ? (v.tonKho || 1000) : 1000;
         if (p.soLuong > tonKhoThuc) {
-          alerts.push(`Thiếu phụ liệu ${p.tenPL}: Cần ${p.soLuong}, chỉ còn ${tonKhoThuc}`);
+          alerts.push(\`Thiếu phụ liệu \${p.tenPL}: Cần \${p.soLuong}, chỉ còn \${tonKhoThuc}\`);
         }
       }
     });
@@ -262,7 +223,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
       >
         {/* Header Close */}
         <div className="flex justify-between items-center p-3 bg-[#2B4C3E]">
-          <h2 className="text-white font-bold ml-2">TẠO LỆNH CẮT MỚI {editId ? `(${editId})` : "(LC-XXXX-XXXX)"}</h2>
+          <h2 className="text-white font-bold ml-2">TẠO LỆNH CẮT MỚI {editId ? \`(\${editId})\` : "(LC-XXXX-XXXX)"}</h2>
           <div className="flex gap-2">
             <span className="bg-slate-700/50 text-white text-xs px-3 py-1 rounded-full flex items-center">
               Version BOM: {phienBanDinhMuc}.0
@@ -646,7 +607,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                    <div className="space-y-2">
                      {dsMau.map((mau, idx) => (
                        <div key={idx} className="flex gap-2 items-center bg-slate-700/50 p-2 rounded">
-                         <div className="w-24 text-xs text-white truncate font-bold">{mau.ten || `Màu ${idx+1}`}</div>
+                         <div className="w-24 text-xs text-white truncate font-bold">{mau.ten || \`Màu \${idx+1}\`}</div>
                          <input type="number" placeholder="Kg thực tế..." className="w-1/3 px-2 py-1 text-sm bg-slate-900 text-white border border-slate-600 rounded" value={mau.kgThucTe || ""} onChange={e => { const n = [...dsMau]; n[idx].kgThucTe = parseFloat(e.target.value); setDsMau(n); }} />
                          <input type="number" placeholder="% Hao hụt..." className="w-1/3 px-2 py-1 text-sm bg-slate-900 text-white border border-slate-600 rounded" value={mau.haoHut || ""} onChange={e => { const n = [...dsMau]; n[idx].haoHut = parseFloat(e.target.value); setDsMau(n); }} />
                        </div>
@@ -705,3 +666,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     </div>
   );
 }
+`;
+  code = code.substring(0, componentStart) + newCode;
+}
+
+fs.writeFileSync(file, code);
