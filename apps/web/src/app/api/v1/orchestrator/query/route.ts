@@ -4,6 +4,7 @@ import { streamText, UIMessage, convertToModelMessages } from "ai";
 import { google } from "@ai-sdk/google";
 import { AGENT_PERSONAS } from "@/lib/agent-personas";
 import { PERSONALITY_SYSTEM } from "@/lib/agent-personality";
+import { PROJECT_MANAGER_CONFIG } from "@/lib/agent-project-manager";
 import { routeTask, formatRouteForMavis } from "@/lib/agent-routing-rules";
 import { getAllTools } from "@/lib/ai-tools";
 
@@ -41,7 +42,7 @@ async function buildProviderConfig(agentId: string): Promise<ProviderConfig | nu
   const persona = AGENT_PERSONAS[agentId];
   if (!persona) return null;
 
-  const basePrompt = ORCHESTRATOR_INTRO + "\n" + PERSONALITY_SYSTEM + "\n" + persona.system_prompt;
+  const basePrompt = ORCHESTRATOR_INTRO + "\n" + PERSONALITY_SYSTEM + "\n" + PROJECT_MANAGER_CONFIG + "\n" + persona.system_prompt;
   const systemPromptBase = basePrompt + `
 
 Bạn có quyền truy cập vào các công cụ (tools) để đọc dữ liệu thật của hệ thống.
