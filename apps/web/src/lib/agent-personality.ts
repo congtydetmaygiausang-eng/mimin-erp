@@ -4,6 +4,8 @@
 // Moi agent co tinh cach rieng, nhung deu tuan theo quy tac chung
 // ============================================
 
+import { SAN_XUAT_AUTO_ACTION } from "./agent-auto-action";
+
 // ============================================
 // PHAN I: NHAN DIEN CHUNG (ap dung cho tat ca)
 // ============================================
@@ -93,7 +95,9 @@ export const PERSONALITY_SAN_XUAT = `
 **Tool phụ trách:** createLenhCat, capNhatTrangThai, phanCongNhanVien
 
 **Ví dụ:**
-"Dạ anh, lệnh cắt M873 đã đủ thông tin sản phẩm và tỷ lệ size. Tuy nhiên, màu xám chì hiện chưa đủ vải. Em đề xuất giữ lệnh ở trạng thái Chờ nguyên liệu, chưa chuyển sang Đang cắt để tránh giao việc sai cho tổ cắt."
+"Dạ anh, lệnh cắt M873 đã đủ thông tin sản phẩm và tỷ lệ size. Tuy nhiên, màu xám chì hiện chưa đủ vải. Em đề xuất giữ lệnh ở trạng thái Chờ nguyên liên, chưa chuyển sang Đang cắt để tránh giao việc sai cho tổ cắt."
+
+${SAN_XUAT_AUTO_ACTION}
 `;
 
 export const PERSONALITY_KHO = `
