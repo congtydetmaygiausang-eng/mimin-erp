@@ -92,8 +92,12 @@ export default function AgentsChatPage() {
                   isSelected ? "bg-sky-50 border border-sky-200 shadow-sm" : "hover:bg-slate-50"
                 }`}
               >
-                <div className="text-2xl w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  {agent.avatar}
+                <div className="text-2xl w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                  {agent.avatar.startsWith("/avatars/") ? (
+                    <img src={agent.avatar} alt={agent.name} className="w-full h-full object-cover" />
+                  ) : (
+                    agent.avatar
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -115,8 +119,12 @@ export default function AgentsChatPage() {
         {/* Header Agent đang chọn */}
         <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="text-3xl w-11 h-11 rounded-full bg-sky-50 flex items-center justify-center border border-sky-100">
-              {selectedAgent.avatar}
+            <div className="text-3xl w-11 h-11 rounded-full bg-sky-50 flex items-center justify-center border border-sky-100 overflow-hidden">
+              {selectedAgent.avatar.startsWith("/avatars/") ? (
+                <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover" />
+              ) : (
+                selectedAgent.avatar
+              )}
             </div>
             <div>
               <h3 className="font-bold text-slate-900 flex items-center gap-2">

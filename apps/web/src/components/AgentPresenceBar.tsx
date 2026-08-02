@@ -73,9 +73,17 @@ export function AgentPresenceBar({
       <div className="flex items-start gap-3">
         {/* Avatar */}
         <div className="relative flex-shrink-0">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-2xl shadow-md">
-            {primary.avatar}
-          </div>
+          {primary.avatar.startsWith("/avatars/") ? (
+            <img
+              src={primary.avatar}
+              alt={primary.name}
+              className="w-12 h-12 rounded-2xl shadow-md object-cover bg-gradient-to-br from-violet-500 to-fuchsia-600"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-2xl shadow-md">
+              {primary.avatar}
+            </div>
+          )}
           <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white" />
         </div>
 
