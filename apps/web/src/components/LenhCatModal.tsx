@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
+import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
 import {
   type LenhCat, type LoaiSP, type LenhCatVai, type LenhCatPhuLieu,
@@ -28,6 +29,62 @@ import {
   LOAI_SP_LABELS, TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE,
   tinhCOGS, useLenhCat,
 } from "@/lib/data/lenh-cat-store";
+
+
+const getDoiTuongOptions = (tenCongDoan: string) => {
+  const cd = (tenCongDoan || "").toLowerCase();
+  
+  // 1. Cắt
+  if (cd.includes("cắt") || cd.includes("cat")) {
+    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("cắt") || (nv.ghiChu || "").toLowerCase().includes("cắt"))
+      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Cắt)` }));
+  }
+  
+  // 2. Khuy nút
+  if (cd.includes("khuy") || cd.includes("nút") || cd.includes("cúc")) {
+    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("khuy") || (nv.ghiChu || "").toLowerCase().includes("khuy"))
+      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Khuy nút)` }));
+  }
+  
+  // 3. Ủi
+  if (cd.includes("ủi") || cd.includes("ui")) {
+    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("ủi") || (nv.ghiChu || "").toLowerCase().includes("ủi"))
+      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Ủi)` }));
+  }
+  
+  // 4. Đóng Gói
+  if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
+    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
+      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` }));
+  }
+
+  // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
+  if (cd.includes("trụ") || cd.includes("tru")) {
+    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU"))
+      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Trụ)` }));
+  }
+  if (cd.includes("tròn") || cd.includes("tron")) {
+    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRON"))
+      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Tròn)` }));
+  }
+  if (cd.includes("quần") || cd.includes("quan")) {
+    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-QUAN"))
+      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Quần)` }));
+  }
+  if (cd.includes("in") || cd.includes("thêu") || cd.includes("dập")) {
+    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-IN"))
+      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công In/Thêu)` }));
+  }
+
+  if (cd.includes("may") || cd.includes("gia công") || cd.includes("outsource")) {
+    return DOI_TAC_GIA_CONG.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
+  }
+
+  return [
+    ...REAL_NHAN_VIEN.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Nội bộ)` })),
+    ...DOI_TAC_GIA_CONG.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }))
+  ];
+};
 
 // Constants
 const SIZE_OPTIONS = ["S", "M", "L", "XL", "2XL", "3XL"];
@@ -426,7 +483,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <select className="px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm" value={phuTrachSX} onChange={e => setPhuTrachSX(e.target.value)}>
-                      {REAL_NHAN_VIEN.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
+                      {getDoiTuongOptions(kh.tenCongDoan).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                     </select>
                     <input className="px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#2B4C3E]" value={sdtLienHe} onChange={e => setSdtLienHe(e.target.value)} placeholder="SĐT liên hệ..." />
                   </div>
@@ -752,16 +809,18 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                         <div className="col-span-3 font-semibold text-slate-700 text-sm truncate" title={kh.tenCongDoan}>{kh.tenCongDoan}</div>
                         <div className="col-span-6 flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold overflow-hidden border border-blue-200 flex-shrink-0 text-[10px]">
-                            {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || "NV") : "NV"}
+                            {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : "NV"}
                           </div>
                           <select 
                           className="flex-1 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
                           value={kh.nguoiMa}
                           onChange={(e) => {
                             const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                            const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                            const selectedName = nv?.ten || dt?.tenDonVi || e.target.value;
                             setPhanCong(p => {
                               const next = [...(p as any[])];
-                              next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || e.target.value };
+                              next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: selectedName };
                               return next as any;
                             });
                           }}
