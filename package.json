@@ -6,6 +6,6 @@
     "dev": "cd apps/web && npm run dev",
     "build": "cd apps/web && npm run build",
     "start": "cd apps/web && npm run start",
-    "vercel-build": "cd apps/web && npm run build"
+    "vercel-build": "cd apps/web && npm install --legacy-peer-deps && npm run build && cd ../.. && rm -rf .next && cp -r apps/web/.next .next"
   }
 }

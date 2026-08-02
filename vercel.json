@@ -5,7 +5,7 @@
   "installCommand": "echo 'install handled in buildCommand'",
   "framework": "nextjs",
   "regions": ["sin1"],
-  "outputDirectory": "apps/web/out",
+  "outputDirectory": "apps/web/.next",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdGx3ZGNzbWxwZWlhemh1b2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjYwMDMsImV4cCI6MjEwMDMwMjAwM30.1xV4In7HFFr6meIZpPFfbZKPBoCviPHeSCQvR-MyJqU",
