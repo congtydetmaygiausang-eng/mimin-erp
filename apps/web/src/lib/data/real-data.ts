@@ -242,15 +242,17 @@ export const NCCS: NCC[] = [
 
 // ========== HELPERS ==========
 export const formatVND = (n: number) => {
-  if (n === 0) return "0 đ";
-  return n.toLocaleString("vi-VN") + " đ";
+  const safe = Number(n) || 0;
+  if (safe === 0) return "0 đ";
+  return safe.toLocaleString("vi-VN") + " đ";
 };
 
 export const formatVNDShort = (n: number) => {
-  if (n === 0) return "0";
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + " tỷ";
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(0) + " tr";
-  return n.toLocaleString("vi-VN") + " đ";
+  const safe = Number(n) || 0;
+  if (safe === 0) return "0";
+  if (safe >= 1_000_000_000) return (safe / 1_000_000_000).toFixed(2) + " tỷ";
+  if (safe >= 1_000_000) return (safe / 1_000_000).toFixed(0) + " tr";
+  return safe.toLocaleString("vi-VN") + " đ";
 };
 // ========== 7. KHO VẢI (29 loại vải) ==========
 export type KhoVai = {

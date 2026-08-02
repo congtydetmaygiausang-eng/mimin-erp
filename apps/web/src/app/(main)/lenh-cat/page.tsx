@@ -271,12 +271,12 @@ export default function LenhCatPage() {
                           {(Array.isArray(m.giaCong) ? m.giaCong : []).map((k, i) => (
                             <div key={i} className="flex items-center justify-between text-xs">
                               <span className="text-slate-600">{k.tenCongDoan}</span>
-                              <span className="font-bold text-violet-700">{k.donGia.toLocaleString()}đ</span>
+                              <span className="font-bold text-violet-700">{(k.donGia || 0).toLocaleString()}đ</span>
                             </div>
                           ))}
                           <div className="flex items-center justify-between text-xs pt-1 border-t border-violet-100 mt-1">
                             <span className="font-bold text-slate-700">Tổng gia công/SP</span>
-                            <span className="font-bold text-emerald-600">{(Array.isArray(m.giaCong) ? m.giaCong : []).reduce((s, k) => s + k.donGia, 0).toLocaleString()}đ</span>
+                            <span className="font-bold text-emerald-600">{(Array.isArray(m.giaCong) ? m.giaCong : []).reduce((s, k) => s + (k.donGia || 0), 0).toLocaleString()}đ</span>
                           </div>
                         </div>
                       )}
@@ -326,7 +326,7 @@ export default function LenhCatPage() {
                           {Object.entries(m.chiPhi || {}).map(([key, val]) => (
                             <div key={key} className="flex justify-between text-xs">
                               <span className="text-slate-600">{key}</span>
-                              <span className="font-bold text-emerald-700">{val.toLocaleString()}đ</span>
+                              <span className="font-bold text-emerald-700">{(Number(val) || 0).toLocaleString()}đ</span>
                             </div>
                           ))}
                           <div className="flex justify-between text-xs pt-1 border-t border-emerald-100 mt-1">
@@ -585,7 +585,7 @@ function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
           <span className="opacity-60 flex items-center gap-1">
             <Package className="w-3 h-3" /> Tổng SL
           </span>
-          <span className="font-bold tabular-nums">{lc.tongSL.toLocaleString()}</span>
+          <span className="font-bold tabular-nums">{(lc.tongSL || 0).toLocaleString()}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="opacity-60 flex items-center gap-1">
