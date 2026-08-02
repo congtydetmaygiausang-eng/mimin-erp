@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
+import { useSession } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
 import {
@@ -86,6 +87,11 @@ const getDoiTuongOptions = (tenCongDoan: string) => {
   ];
 };
 
+const isOutsourceStage = (tenCongDoan: string) => {
+  const cd = (tenCongDoan || "").toLowerCase();
+  return cd.includes("may") || cd.includes("in") || cd.includes("thêu") || cd.includes("dập") || cd.includes("gia công");
+};
+
 // Constants
 const SIZE_OPTIONS = ["S", "M", "L", "XL", "2XL", "3XL"];
 const DEFAULT_HAO_HUT = 1.5; // 1.5%
@@ -114,7 +120,36 @@ import {
 
 export default function LenhCatModal({ open, onClose, editId }: Props) {
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi } = useLenhCat();
+  const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
+
+  // Sync editing data into states when editing changes
+  useEffect(() => {
+    if (editing) {
+      setLoaiLenh(editing.loaiLenh);
+      setKhachHang(editing.khachHang || "");
+      setLoaiSP(editing.loaiSP);
+      setMaSP(editing.maSP);
+      setTenSP(editing.tenSP);
+      setTongSL(editing.tongSL);
+      setTongSLThucTe(editing.tongSLThucTe || "");
+      if (editing.ngayTao) setNgayBatDau(editing.ngayTao);
+      setHanHoanThanh(editing.hanHoanThanh);
+      setPhuTrachCat(editing.phuTrachCat || "NV006");
+      setPhuTrachSX(editing.phuTrachSX || "NV001");
+      setGhiChu(editing.ghiChu || "");
+      setTrangThai(editing.trangThai || "Nhap");
+      setTiLeSize(editing.tiLeSize || "1:2:2:1");
+      setSoMau(editing.dsMau?.length || 4);
+      setDsMau(editing.dsMau || []);
+      setDsPhuLieu(editing.dsPhuLieu || []);
+      setMauCongDoan(editing.mauCongDoan || "BoTheThao");
+      setPhanCong(editing.phanCong || []);
+      setMauChiPhi(editing.mauChiPhi || "BoTheThao");
+      setChiPhiCoDinh(editing.chiPhiCoDinh || {});
+      setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
+    }
+  }, [editing]);
 
   // ============ Form state ============
   const [loaiLenh, setLoaiLenh] = useState<LoaiLenh>("HangNha");
@@ -320,6 +355,79 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     return `mockup sản phẩm may mặc ${loaiText} màu ${colorText}, studio lighting, nền trắng`;
   };
 
+
+  const handleSave = (status: TrangThaiLenhCat) => {
+    if (!maSP || !tenSP || !tongSL) {
+      toast.error("Vui lòng điền đầy đủ Mã SP, Tên SP và Tổng SL!");
+      return;
+    }
+
+    const cogsData = {
+      tongTienVai,
+      tongTienPhuLieu,
+      giaCong1SP,
+      tongChiPhiCoDinh,
+      giaVonBinhQuan
+    };
+
+    if (editing) {
+      suaLenhCat(editing.id, {
+        loaiLenh,
+        khachHang: loaiLenh === "HangDat" ? khachHang : undefined,
+        loaiSP,
+        maSP,
+        tenSP,
+        tongSL: Number(tongSL) || 0,
+        tongSLThucTe: Number(tongSLThucTe) || undefined,
+        hanHoanThanh,
+        tiLeSize,
+        dsMau,
+        dsPhuLieu,
+        mauCongDoan,
+        phanCong,
+        mauChiPhi,
+        chiPhiCoDinh,
+        bangCOGS: cogsData,
+        phuTrachSX,
+        ghiChu,
+        trangThai: status,
+      }, user || { ma: "NV001", ten: "Nguyễn Thị Ngọc Giàu", vaiTro: "DIEU_HANH" });
+      
+      toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
+    } else {
+      const newId = `LC-${new Date().getFullYear()}-${String(dsLenhCat.length + 1).padStart(4, "0")}`;
+      themLenhCat({
+        id: newId,
+        loaiLenh,
+        khachHang: loaiLenh === "HangDat" ? khachHang : undefined,
+        loaiSP,
+        maSP,
+        tenSP,
+        tongSL: Number(tongSL) || 0,
+        tongSLThucTe: Number(tongSLThucTe) || undefined,
+        hanHoanThanh,
+        tiLeSize,
+        dsMau,
+        dsPhuLieu,
+        mauCongDoan,
+        phanCong,
+        mauChiPhi,
+        chiPhiCoDinh,
+        bangCOGS: cogsData,
+        phuTrachCat,
+        phuTrachSX,
+        ghiChu,
+        trangThai: status,
+        phienBanDinhMuc: 1,
+        ngayTao: new Date().toISOString().split("T")[0],
+        nguoiTao: user?.ten || "Nguyễn Thị Ngọc Giàu"
+      }, user || { ma: "NV001", ten: "Nguyễn Thị Ngọc Giàu", vaiTro: "DIEU_HANH" });
+
+      toast.success(`Đã tạo thành công Lệnh Cắt mới: ${newId} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
+    }
+    onClose();
+  };
+
   if (!open) return null;
 
   // ============ Calculate Auto Values ============
@@ -483,7 +591,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <select className="px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm" value={phuTrachSX} onChange={e => setPhuTrachSX(e.target.value)}>
-                      {getDoiTuongOptions(kh.tenCongDoan).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                      {REAL_NHAN_VIEN.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
                     </select>
                     <input className="px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#2B4C3E]" value={sdtLienHe} onChange={e => setSdtLienHe(e.target.value)} placeholder="SĐT liên hệ..." />
                   </div>
@@ -615,7 +723,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                       </div>
                     </div>
                     
-                    {/* BỔ SUNG GIÁ TIỀN VẢI MÀU NÀY */}
+                                        {/* BỔ SUNG GIÁ TIỀN VẢI MÀU NÀY */}
                     {(() => {
                       const v = KHO_VAI.find(x => x.maVT === mau.maVai);
                       const donGia = v ? (v.donGia || 0) : 0;
@@ -624,107 +732,15 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                       return (
                         <div className="flex gap-2 mt-1">
                           <div className="w-1/2 bg-amber-50 p-2 rounded border border-amber-200">
-                             <div className="text-[10px] font-bold text-amber-700">Giá vải / 1 SP</div>
-                             <div className="text-sm font-bold text-amber-900">{formatVND(tienVai1SP)}</div>
+                            <div className="text-[10px] font-bold text-amber-700">Giá vải / 1 SP</div>
+                            <div className="text-sm font-bold text-amber-900">{formatVND(tienVai1SP)}</div>
                           </div>
                           <div className="w-1/2 bg-emerald-50 p-2 rounded border border-emerald-200">
-                             <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này</div>
-                             <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}
-
-  {/* Modal Tạo Mẫu Công Đoạn */}
-  
-
-  {/* Modal Tạo Mẫu Chi Phí */}
-  {showTaoMauCP && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Cố Định Mới</h3>
-        <div className="space-y-3 mb-6">
-          <div>
-            <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
-          </div>
-          {["baoBi", "temNhan", "khauHao"].map((k) => {
-            const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
-            return (
-              <div key={k} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{labels[k]}</span>
-                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Chi phí" value={(newMauCP.chiPhi as any)[k] || ""} onChange={e => setNewMauCP(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [k]: parseInt(e.target.value) || 0 } }))} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex justify-end gap-2">
-          <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
-          <button onClick={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); setMauChiPhi(newMauCP.id); setChiPhiCoDinh(newMauCP.chiPhi); toast.success("Đã lưu mẫu chi phí"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Bảng Giá</button>
-        </div>
-      </div>
-    </div>
-  )}
-
-  {/* Modal Tạo Mẫu Công Đoạn */}
-  {showTaoMauCD && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
-        <div className="space-y-3 mb-6">
-          <div>
-            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
-          </div>
-          {["cat", "mayAo", "mayQuan", "inTheu", "uiQC"].map((k) => {
-            const labels: any = { cat: "Cắt", mayAo: "May Áo", mayQuan: "May Quần", inTheu: "In/Thêu", uiQC: "Ủi/Đóng Gói" };
-            return (
-              <div key={k} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{labels[k]}</span>
-                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Đơn giá" value={(newMauCD.giaCong as any)[k].donGia || ""} onChange={e => setNewMauCD(prev => ({ ...prev, giaCong: { ...prev.giaCong, [k]: { ...(prev.giaCong as any)[k], donGia: parseInt(e.target.value) || 0 } } }))} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex justify-end gap-2">
-          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
-          <button onClick={() => { themMauCongDoan(newMauCD); setShowTaoMauCD(false); setMauCongDoan(newMauCD.id); setPhanCong(newMauCD.giaCong); toast.success("Đã lưu mẫu công đoạn"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Mẫu</button>
-        </div>
-      </div>
-    </div>
-  )}
-
-  {/* Modal Tạo Mẫu Chi Phí */}
-  {showTaoMauCP && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Cố Định Mới</h3>
-        <div className="space-y-3 mb-6">
-          <div>
-            <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
-          </div>
-          {["baoBi", "temNhan", "khauHao"].map((k) => {
-            const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
-            return (
-              <div key={k} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{labels[k]}</span>
-                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Chi phí" value={(newMauCP.chiPhi as any)[k] || ""} onChange={e => setNewMauCP(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [k]: parseInt(e.target.value) || 0 } }))} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex justify-end gap-2">
-          <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
-          <button onClick={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); setMauChiPhi(newMauCP.id); setChiPhiCoDinh(newMauCP.chiPhi); toast.success("Đã lưu mẫu chi phí"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Bảng Giá</button>
-        </div>
-      </div>
-    </div>
-  )}
-
-
-
-      </div>
-    </div>
-  </div>
-  );
-
+                            <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này</div>
+                            <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}</div>
+                          </div>
+                        </div>
+                      );
                     })()}
 
                   </div>
@@ -808,8 +824,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                       <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
                         <div className="col-span-3 font-semibold text-slate-700 text-sm truncate" title={kh.tenCongDoan}>{kh.tenCongDoan}</div>
                         <div className="col-span-6 flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold overflow-hidden border border-blue-200 flex-shrink-0 text-[10px]">
-                            {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : "NV"}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold overflow-hidden border flex-shrink-0 text-[10px] ${isOutsourceStage(kh.tenCongDoan) ? "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
+                            {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
                           <select 
                           className="flex-1 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
@@ -872,7 +888,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                   <div className="space-y-3">
                     {Object.entries(chiPhiCoDinh).map(([key, val]) => (
                       <div key={key} className="flex justify-between items-center bg-white p-2 rounded shadow-sm">
-                        <span className="text-sm font-semibold text-slate-700">{key}</span>
+                        <span className="text-sm font-semibold text-slate-700">{key === "baoBi" ? "Bao Bì, Túi PE" : key === "temNhan" ? "Tem, Nhãn mác" : key === "khauHao" ? "Khấu hao máy, Điện nước" : key}</span>
                         <input type="number" className="w-24 px-2 py-1 text-sm text-right border rounded" value={val} onChange={e => setChiPhiCoDinh(p => ({...p, [key]: parseInt(e.target.value)||0}))} />
                       </div>
                     ))}
@@ -938,32 +954,21 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           <div className="flex gap-3">
             <button 
               className="px-6 py-2 rounded font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-600"
-              onClick={() => {
-                setTrangThai("Nhap");
-                toast.success("Đã lưu nháp Lệnh Cắt");
-                onClose();
-              }}
+              onClick={() => handleSave("Nhap")}
             >
               Lưu Nháp
             </button>
 
             <button 
               className="px-6 py-2 rounded font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors shadow-lg"
-              onClick={() => {
-                setTrangThai("DaTao");
-                toast.success("Đã tạo lệnh cắt thành công");
-              }}
+              onClick={() => handleSave("DaTao")}
             >
               Hoàn Tất Tạo Lệnh
             </button>
 
             <button 
               className="px-6 py-2 rounded font-bold text-slate-900 bg-[#F0A619] hover:bg-[#F0A619]/90 transition-colors shadow-lg flex items-center gap-2"
-              onClick={() => {
-                setTrangThai("ChuyenTiep");
-                toast.success("Đã chuyển khâu tiếp nhận");
-                onClose();
-              }}
+              onClick={() => handleSave("ChuyenTiep")}
             >
               <Send className="w-5 h-5" />
               Chuyển Khâu Tiếp Nhận
