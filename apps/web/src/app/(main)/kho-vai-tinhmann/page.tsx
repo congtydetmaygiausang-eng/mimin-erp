@@ -16,6 +16,7 @@ import {
 } from "@/lib/inventory-engine";
 import { KHO_VAI, NHA_CUNG_CAP, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
+import { Portal } from "@/components/ui/Portal";
 
 const TINH_MAN_PHAN_LOAI = [
   "Áo thun cotton",
@@ -661,142 +662,144 @@ function VaiNhapKho({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
+    <Portal>
       <div
-        className="card max-w-md w-full p-6 animate-slide-up"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+        onClick={onClose}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <Plus className="w-5 h-5 text-sky-600" />
-            Nhập kho vải: {vt.tenVT}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/40 dark:hover:bg-white/5 rounded"
-            aria-label="Đóng"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Thông tin VT (read-only) */}
-        <div className="bg-sky-500/10 dark:bg-sky-500/20 rounded p-2 mb-3 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span><span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b></span>
-          <span><span className="opacity-70">ĐVT:</span> <b>kg</b></span>
-          <span><span className="opacity-70">Loại:</span> <b>{vt.loai || "—"}</b></span>
-          <span><span className="opacity-70">Màu:</span> <b>{vt.mauSac || "—"}</b></span>
-          <span><span className="opacity-70">Tồn hiện tại:</span> <b className="text-sky-700">{vt.tonKho.toFixed(0)} kg</b></span>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Ngày nhập *</label>
-              <input
-                type="date"
-                required
-                className="input w-full"
-                value={form.ngay}
-                onChange={(e) => setForm({ ...form, ngay: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Số lượng (kg) *</label>
-              <input
-                type="number"
-                required
-                min={1}
-                step="0.1"
-                className="input w-full"
-                value={form.soLuong || ""}
-                onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })}
-              />
-            </div>
+        <div
+          className="card max-w-md w-full p-6 animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Plus className="w-5 h-5 text-sky-600" />
+              Nhập kho vải: {vt.tenVT}
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-white/40 dark:hover:bg-white/5 rounded"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Đơn giá (đ/kg) *</label>
-              <input
-                type="number"
-                required
-                min={0}
-                className="input w-full"
-                value={form.donGia}
-                onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Thành tiền</label>
-              <div className="input w-full bg-emerald-500/10 text-emerald-700 font-bold flex items-center">
-                {formatVNDShort(thanhTien)}
+          {/* Thông tin VT (read-only) */}
+          <div className="bg-sky-500/10 dark:bg-sky-500/20 rounded p-2 mb-3 text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span><span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b></span>
+            <span><span className="opacity-70">ĐVT:</span> <b>kg</b></span>
+            <span><span className="opacity-70">Loại:</span> <b>{vt.loai || "—"}</b></span>
+            <span><span className="opacity-70">Màu:</span> <b>{vt.mauSac || "—"}</b></span>
+            <span><span className="opacity-70">Tồn hiện tại:</span> <b className="text-sky-700">{vt.tonKho.toFixed(0)} kg</b></span>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-1">Ngày nhập *</label>
+                <input
+                  type="date"
+                  required
+                  className="input w-full"
+                  value={form.ngay}
+                  onChange={(e) => setForm({ ...form, ngay: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">Số lượng (kg) *</label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  step="0.1"
+                  className="input w-full"
+                  value={form.soLuong || ""}
+                  onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })}
+                />
               </div>
             </div>
-          </div>
 
-          <div>
-            <label className="text-xs font-medium block mb-1">
-              Nguồn nhập (NCC) *{" "}
-              {nccList.length === 0 && (
-                <span className="text-rose-600 font-normal">— chưa có NCC "Đang hợp tác"</span>
-              )}
-            </label>
-            <select
-              required
-              className="input w-full"
-              value={form.nguonNhap}
-              onChange={(e) => setForm({ ...form, nguonNhap: e.target.value })}
-            >
-              <option value="">-- Chọn NCC --</option>
-              {nccList.map((n) => (
-                <option key={n.maNCC} value={n.tenDonVi}>
-                  {n.tenDonVi}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-1">Đơn giá (đ/kg) *</label>
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  className="input w-full"
+                  value={form.donGia}
+                  onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">Thành tiền</label>
+                <div className="input w-full bg-emerald-500/10 text-emerald-700 font-bold flex items-center">
+                  {formatVNDShort(thanhTien)}
+                </div>
+              </div>
+            </div>
 
-          <div>
-            <label className="text-xs font-medium block mb-1">Người thực hiện</label>
-            <input
-              className="input w-full"
-              value={form.nguoiThucHien}
-              onChange={(e) => setForm({ ...form, nguoiThucHien: e.target.value })}
-            />
-          </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">
+                Nguồn nhập (NCC) *{" "}
+                {nccList.length === 0 && (
+                  <span className="text-rose-600 font-normal">— chưa có NCC "Đang hợp tác"</span>
+                )}
+              </label>
+              <select
+                required
+                className="input w-full"
+                value={form.nguonNhap}
+                onChange={(e) => setForm({ ...form, nguonNhap: e.target.value })}
+              >
+                <option value="">-- Chọn NCC --</option>
+                {nccList.map((n) => (
+                  <option key={n.maNCC} value={n.tenDonVi}>
+                    {n.tenDonVi}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="text-xs font-medium block mb-1">Ghi chú</label>
-            <textarea
-              className="input w-full min-h-[60px]"
-              value={form.ghiChu}
-              onChange={(e) => setForm({ ...form, ghiChu: e.target.value })}
-              placeholder="VD: Nhập lô đầu tháng 8, chất lượng OK, đã kiểm tra mẫu..."
-            />
-          </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Người thực hiện</label>
+              <input
+                className="input w-full"
+                value={form.nguoiThucHien}
+                onChange={(e) => setForm({ ...form, nguoiThucHien: e.target.value })}
+              />
+            </div>
 
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary flex-1"
-            >
-              Huỷ
-            </button>
-            <button
-              type="submit"
-              className="btn-primary flex-1 bg-sky-500 hover:bg-sky-600"
-            >
-              Xác nhận nhập kho
-            </button>
-          </div>
-        </form>
+            <div>
+              <label className="text-xs font-medium block mb-1">Ghi chú</label>
+              <textarea
+                className="input w-full min-h-[60px]"
+                value={form.ghiChu}
+                onChange={(e) => setForm({ ...form, ghiChu: e.target.value })}
+                placeholder="VD: Nhập lô đầu tháng 8, chất lượng OK, đã kiểm tra mẫu..."
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn-secondary flex-1"
+              >
+                Huỷ
+              </button>
+              <button
+                type="submit"
+                className="btn-primary flex-1 bg-sky-500 hover:bg-sky-600"
+              >
+                Xác nhận nhập kho
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 
