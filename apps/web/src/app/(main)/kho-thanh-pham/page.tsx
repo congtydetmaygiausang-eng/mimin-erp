@@ -9,6 +9,19 @@ import { MORE_LSX } from "@/lib/more-workflow-data";
 // Combine tất cả phiếu workflow
 const ALL_PHIEU: PhieuWorkflow[] = [...ALL_REAL_PHIEU, ...(MORE_LSX as any)];
 
+const DS_TI_LE_SIZE = [
+  "M-L-XL-2XL-3XL (1-1-1-1-1)",
+  "L-XL-XL-2XL-3XL (0-1-2-1-1)",
+  "L-XL-XL-2XL-2XL-3XL (0-1-2-2-1)",
+  "L-XL-2XL-3XL (1-1-1-1)",
+  "L-XL-XL-2XL-3XL (1-2-1-1)"
+];
+
+const DS_KHU_KE_HANG = [
+  "Khu A1", "Khu A2", "Khu A3", "Khu A4", "Khu A5", "Khu A6",
+  "Khu B1", "Khu B2", "Khu B3", "Khu B4", "Khu C1"
+];
+
 // ============ TYPES ============
 interface SanPhamTP {
   id: string;
@@ -74,6 +87,8 @@ export default function KhoThanhPhamPage() {
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | SanPhamTP["trangThai"]>("all");
   const [filterLoai, setFilterLoai] = useState<"all" | string>("all");
+  const [filterSize, setFilterSize] = useState<"all" | string>("all");
+  const [filterViTri, setFilterViTri] = useState<"all" | string>("all");
   const [sortBy, setSortBy] = useState<"ngay" | "sl" | "gt">("ngay");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [editing, setEditing] = useState<SanPhamTP | null>(null);
@@ -113,6 +128,8 @@ export default function KhoThanhPhamPage() {
     }
     if (filterTrangThai !== "all") result = result.filter((s) => s.trangThai === filterTrangThai);
     if (filterLoai !== "all") result = result.filter((s) => s.maSP === filterLoai);
+    if (filterSize !== "all") result = result.filter((s) => s.size.includes(filterSize));
+    if (filterViTri !== "all") result = result.filter((s) => s.viTri.includes(filterViTri));
     // Sort
     result = [...result].sort((a, b) => {
       let cmp = 0;
@@ -122,7 +139,7 @@ export default function KhoThanhPhamPage() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return result;
-  }, [dsSanPham, search, filterTrangThai, filterLoai, sortBy, sortDir]);
+  }, [dsSanPham, search, filterTrangThai, filterLoai, filterSize, filterViTri, sortBy, sortDir]);
 
   // Thống kê
   const stats = useMemo(() => {
@@ -273,6 +290,24 @@ export default function KhoThanhPhamPage() {
               {s.l} {sortBy === s.k && (sortDir === "desc" ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />)}
             </button>
           ))}
+          <div className="flex items-center gap-2 ml-2 border-l pl-2 border-slate-200">
+            <select
+              value={filterSize}
+              onChange={(e) => setFilterSize(e.target.value)}
+              className="px-2 py-1 bg-white border rounded text-xs outline-none text-slate-700"
+            >
+              <option value="all">Tỉ lệ size</option>
+              {DS_TI_LE_SIZE.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select
+              value={filterViTri}
+              onChange={(e) => setFilterViTri(e.target.value)}
+              className="px-2 py-1 bg-white border rounded text-xs outline-none text-slate-700"
+            >
+              <option value="all">Khu kệ hàng</option>
+              {DS_KHU_KE_HANG.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
           <span className="ml-auto text-slate-500">Hiển thị <b>{filtered.length}</b>/{dsSanPham.length} sản phẩm</span>
         </div>
 
@@ -424,8 +459,11 @@ function AddEditModal({ sp, onClose, onSave }: { sp?: SanPhamTP; onClose: () => 
               <input value={form.mau} onChange={(e) => setForm({ ...form, mau: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Size</label>
-              <input value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+              <label className="text-xs font-semibold text-slate-700 mb-1 block">Size / Tỉ lệ</label>
+              <input list="ds-ti-le-size" value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+              <datalist id="ds-ti-le-size">
+                {DS_TI_LE_SIZE.map(s => <option key={s} value={s} />)}
+              </datalist>
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 mb-1 block">LSX</label>
@@ -442,8 +480,11 @@ function AddEditModal({ sp, onClose, onSave }: { sp?: SanPhamTP; onClose: () => 
               <input type="number" min="0" value={form.donGia} onChange={(e) => setForm({ ...form, donGia: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Vị trí kho</label>
-              <input value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+              <label className="text-xs font-semibold text-slate-700 mb-1 block">Vị trí (Khu kệ)</label>
+              <input list="ds-khu-ke-hang" value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+              <datalist id="ds-khu-ke-hang">
+                {DS_KHU_KE_HANG.map(s => <option key={s} value={s} />)}
+              </datalist>
             </div>
           </div>
           <div>
