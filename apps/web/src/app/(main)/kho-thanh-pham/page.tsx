@@ -160,6 +160,19 @@ export default function KhoThanhPhamPage() {
     return result;
   }, [dsSanPham, search, filterTrangThai, filterLoai, filterSize, filterViTri, sortBy, sortDir]);
 
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, SanPhamTP[]> = {};
+    filtered.forEach(s => {
+      if (!groups[s.maSP]) groups[s.maSP] = [];
+      groups[s.maSP].push(s);
+    });
+    return Object.entries(groups).map(([maSP, items]) => ({
+      maSP,
+      tenSP: items[0].tenSP,
+      items
+    }));
+  }, [filtered]);
+
   // Thống kê
   const stats = useMemo(() => {
     const tongSP = dsSanPham.reduce((s, x) => s + x.soLuong, 0);
@@ -346,64 +359,101 @@ export default function KhoThanhPhamPage() {
               <div className="text-xs mt-1">Click "Auto" để tự động tạo từ workflow data</div>
             </div>
           ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            <div className="flex flex-col gap-8">
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-              {filtered.map((s) => (
-                <div key={s.id} onClick={() => setEditing(s)} className="relative overflow-hidden rounded-2xl group cursor-pointer aspect-[3/4] bg-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 ring-1 ring-slate-200 dark:ring-slate-800 hover:ring-amber-400">
-                  {/* Image background */}
-                  {productImages[s.id] ? (
-                    <img src={productImages[s.id]} alt={s.tenSP} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 text-slate-400 group-hover:scale-105 transition-transform duration-500">
-                      <PackageOpen className="w-16 h-16 opacity-30 mb-2 group-hover:text-amber-500 transition-colors" />
-                      <span className="text-sm font-semibold opacity-50">Chưa có ảnh</span>
-                    </div>
-                  )}
-                  
-                  {/* Overlay gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent flex flex-col justify-end p-4 text-white">
-                    {/* Top actions */}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 translate-x-2 group-hover:translate-x-0">
-                      <button onClick={(e) => { e.stopPropagation(); setUploadingSP(s.id); fileInputRef.current?.click(); }} className="p-2.5 bg-black/40 hover:bg-amber-500 backdrop-blur rounded-full text-white transition-colors shadow-lg" title="Tải ảnh">
-                        <Camera className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleXuatKho(s.id); }} className="p-2.5 bg-black/40 hover:bg-sky-500 backdrop-blur rounded-full text-white transition-colors shadow-lg" title="Xuất kho">
-                        <Truck className="w-4 h-4" />
-                      </button>
-                    </div>
-                    
-                    {/* Status Badge */}
-                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
-                      {s.trangThai === "con" && <span className="px-2.5 py-1 bg-emerald-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Còn hàng</span>}
-                      {s.trangThai === "dat-hang" && <span className="px-2.5 py-1 bg-amber-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Đã đặt</span>}
-                      {s.trangThai === "xuat-kho" && <span className="px-2.5 py-1 bg-slate-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Đã xuất</span>}
-                      {s.trangThai === "khong-dat" && <span className="px-2.5 py-1 bg-rose-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Không đặt</span>}
-                      <span className="px-2.5 py-1 bg-black/40 backdrop-blur text-white text-[10px] rounded-full font-bold shadow-sm">{s.viTri}</span>
+              {groupedProducts.map(group => {
+                const totalQty = group.items.reduce((s, x) => s + x.soLuong, 0);
+                const totalValue = group.items.reduce((s, x) => s + x.giaTri, 0);
+                const priceRange = Array.from(new Set(group.items.map(x => x.donGia)));
+                const priceDisplay = priceRange.length === 1 ? priceRange[0].toLocaleString() : `${Math.min(...priceRange).toLocaleString()} - ${Math.max(...priceRange).toLocaleString()}`;
+
+                return (
+                  <div key={group.maSP} className="bg-white rounded-2xl shadow-sm border-2 border-emerald-500 overflow-hidden flex flex-col">
+                    {/* Header: Khung vùng xanh lá */}
+                    <div className="bg-gradient-to-r from-emerald-600 to-teal-500 p-4 md:p-5 text-white flex flex-col md:flex-row gap-5 items-start md:items-center">
+                      <div 
+                        className="w-20 h-20 md:w-28 md:h-28 bg-black/20 rounded-xl flex-shrink-0 relative overflow-hidden group cursor-pointer"
+                        onClick={() => { setUploadingSP(group.maSP); fileInputRef.current?.click(); }}
+                      >
+                        {productImages[group.maSP] ? (
+                          <img src={productImages[group.maSP]} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt={group.tenSP} />
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <Camera className="w-6 h-6 mb-1 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider opacity-80">Tải ảnh</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 w-full">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="inline-block px-2 py-0.5 bg-white/20 rounded text-[10px] font-bold uppercase tracking-wider mb-1.5 backdrop-blur">{group.maSP}</div>
+                            <h2 className="text-xl md:text-2xl font-bold leading-tight mb-3">{group.tenSP}</h2>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className="bg-black/10 rounded-lg p-2 backdrop-blur border border-white/10">
+                            <div className="text-[10px] text-emerald-100 uppercase font-semibold mb-0.5">Tổng số lượng</div>
+                            <div className="text-base font-black">{totalQty.toLocaleString()}</div>
+                          </div>
+                          <div className="bg-black/10 rounded-lg p-2 backdrop-blur border border-white/10">
+                            <div className="text-[10px] text-emerald-100 uppercase font-semibold mb-0.5">Giá bán</div>
+                            <div className="text-base font-bold">{priceDisplay}đ</div>
+                          </div>
+                          <div className="bg-black/10 rounded-lg p-2 backdrop-blur border border-white/10">
+                            <div className="text-[10px] text-emerald-100 uppercase font-semibold mb-0.5">Tổng giá trị</div>
+                            <div className="text-base font-bold">{(totalValue/1000).toFixed(0)}K</div>
+                          </div>
+                          <div className="bg-black/10 rounded-lg p-2 backdrop-blur border border-white/10">
+                            <div className="text-[10px] text-emerald-100 uppercase font-semibold mb-0.5">Kiện biến thể</div>
+                            <div className="text-base font-bold">{group.items.length}</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Info */}
-                    <div className="relative z-10 translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
-                      <div className="font-mono text-[10px] text-amber-400 font-bold mb-1 tracking-wider">{s.maSP} • {s.lsx}</div>
-                      <h3 className="font-bold text-xl leading-tight mb-1 truncate" title={s.tenSP}>{s.tenSP}</h3>
-                      <div className="text-xs text-white/70 mb-4 flex items-center gap-2">
-                        <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px] uppercase font-bold">{s.mau}</span>
-                        <span className="truncate">{s.size}</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
-                        <div>
-                          <div className="text-[10px] text-white/50 uppercase font-semibold tracking-wider mb-0.5">Số lượng</div>
-                          <div className="font-black text-lg text-white">{s.soLuong.toLocaleString()}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-[10px] text-white/50 uppercase font-semibold tracking-wider mb-0.5">Tổng giá trị</div>
-                          <div className="font-black text-lg text-emerald-400">{(s.giaTri/1000).toFixed(0)}K</div>
-                        </div>
+                    {/* Body: Danh sách biến thể */}
+                    <div className="p-4 md:p-5 bg-slate-50 flex-1">
+                      <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5" /> Chi tiết biến thể
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {group.items.map(s => (
+                          <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm relative group hover:border-amber-400 hover:shadow-md transition-all">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <div className="font-bold text-sm text-slate-800">{s.mau}</div>
+                                <div className="text-xs text-slate-500 font-semibold">{s.size}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-black text-amber-600 text-lg">{s.soLuong.toLocaleString()}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{s.lsx}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                              <div className="flex flex-col gap-1">
+                                {s.trangThai === "con" && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded font-bold w-fit">Còn hàng</span>}
+                                {s.trangThai === "dat-hang" && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] rounded font-bold w-fit">Đã đặt</span>}
+                                {s.trangThai === "xuat-kho" && <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] rounded font-bold w-fit">Đã xuất</span>}
+                                {s.trangThai === "khong-dat" && <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] rounded font-bold w-fit">Không đặt</span>}
+                                <span className="text-[10px] font-semibold text-slate-500 flex items-center gap-1"><Box className="w-3 h-3" /> {s.viTri}</span>
+                              </div>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={(e) => { e.stopPropagation(); setEditing(s); }} className="p-1.5 hover:bg-amber-100 text-amber-600 rounded-lg" title="Sửa thông tin, giá, số lượng">
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); handleXuatKho(s.id); }} className="p-1.5 hover:bg-emerald-100 text-emerald-600 rounded-lg" title="Xuất kho">
+                                  <Truck className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="card overflow-x-auto">
