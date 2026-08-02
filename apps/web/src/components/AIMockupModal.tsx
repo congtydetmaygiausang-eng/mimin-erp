@@ -39,10 +39,49 @@ export function AIMockupModal({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<{ hint?: string; key_prefix?: string } | null>(null);
 
   // Reference image (ảnh mẫu tương tự) - dùng để MiniMax giữ phong cách/người mẫu
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-resize ảnh tham chiếu về max 1024px + JPEG 0.8 để giảm size gửi API
+  const resizeImage = (file: File, maxSize = 1024, quality = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height / width) * maxSize;
+              width = maxSize;
+            } else {
+              width = (width / height) * maxSize;
+              height = maxSize;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas not supported"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          // JPEG 0.8 - balance quality + size
+          const dataUrl = canvas.toDataURL("image/jpeg", quality);
+          resolve(dataUrl);
+        };
+        img.onerror = () => reject(new Error("Cannot load image"));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error("Cannot read file"));
+      reader.readAsDataURL(file);
+    });
+  };
 
   if (!open) return null;
 
@@ -50,23 +89,28 @@ export function AIMockupModal({
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Chỉ chấp nhận file ảnh");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File quá lớn (max 10MB)");
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File quá lớn (max 20MB)");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setReferenceImage(ev.target?.result as string);
-      toast.success("Đã chọn ảnh tham chiếu");
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Resize ảnh về max 1024px JPEG 0.8 để giảm payload
+      const originalSizeKB = Math.round(file.size / 1024);
+      const resized = await resizeImage(file, 1024, 0.8);
+      const resizedSizeKB = Math.round((resized.length * 3) / 4 / 1024); // base64 → bytes
+      console.log(`[AIMockup] Resized: ${originalSizeKB}KB → ${resizedSizeKB}KB`);
+      setReferenceImage(resized);
+      toast.success(`Đã chọn ảnh (${originalSizeKB}KB → ${resizedSizeKB}KB)`);
+    } catch (err: any) {
+      toast.error("Lỗi xử lý ảnh: " + err.message);
+    }
     // Reset input để chọn lại cùng file vẫn trigger
     e.target.value = "";
   };
@@ -82,8 +126,10 @@ export function AIMockupModal({
     }
     setLoading(true);
     setError(null);
+    setErrorDetail(null);
     setResult(null);
     try {
+      console.log(`[AIMockup] Generate | prompt: ${prompt.length} chars | aspect: ${aspect} | ref: ${referenceImage ? "yes" : "no"}`);
       const res = await fetch("/api/v1/ai/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,9 +141,12 @@ export function AIMockupModal({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error(`[AIMockup] API error ${res.status}:`, err);
+        setErrorDetail({ hint: err.hint, key_prefix: err.key_prefix });
         throw new Error(err.error || `HTTP ${res.status}`);
       }
       const data = await res.json();
+      console.log("[AIMockup] Success:", data);
       setResult(data.url);
       toast.success("✨ MiniMax đã tạo ảnh thành công!");
     } catch (err: any) {
@@ -249,8 +298,26 @@ export function AIMockupModal({
           )}
 
           {error && (
-            <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm text-rose-700">
-              <strong>Lỗi:</strong> {error}
+            <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm text-rose-700 space-y-2">
+              <div>
+                <strong>❌ Lỗi:</strong> {error}
+              </div>
+              {errorDetail?.hint && (
+                <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-xs">
+                  <strong>💡 Gợi ý:</strong> {errorDetail.hint}
+                </div>
+              )}
+              {errorDetail?.key_prefix && (
+                <div className="text-slate-600 text-xs">
+                  <strong>Key hiện tại:</strong> <code className="bg-slate-100 px-1.5 py-0.5 rounded">{errorDetail.key_prefix}...</code>
+                </div>
+              )}
+              <details className="text-xs">
+                <summary className="cursor-pointer text-slate-500 hover:text-slate-700">🔍 Debug chi tiết (DevTools)</summary>
+                <div className="mt-2 p-2 bg-slate-50 rounded text-slate-600 font-mono text-[10px] overflow-auto">
+                  Mở DevTools (F12) → tab <strong>Network</strong> → click request <code>generate-image</code> → xem Response body
+                </div>
+              </details>
             </div>
           )}
 
