@@ -329,8 +329,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                </div>
             </div>
 
-            {/* Grid Thẻ Màu Sắc */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {dsMau.map((mau, idx) => (
                 <div key={idx} className="bg-white rounded-lg shadow-md p-3 flex flex-col gap-3">
                   <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Màu {idx + 1}</div>
