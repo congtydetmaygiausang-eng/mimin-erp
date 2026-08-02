@@ -30,6 +30,10 @@ export default function KhoPhuLieuPage() {
   const [showXuat, setShowXuat] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
   
+  const [inventory, setInventory] = useState(KHO_VAT_TU);
+  const [editingVT, setEditingVT] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
+
   const [inventoryImages, setInventoryImages] = useState<Record<string, string>>({});
   const [uploadingVT, setUploadingVT] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,37 +56,37 @@ export default function KhoPhuLieuPage() {
   const dsTrangThai = danhSachTrangThai("phu-lieu");
   const tongGiaTri = dsTrangThai.reduce((s, t) => s + t.giaTriTon, 0);
   const dsCanhBao = dsTrangThai.filter((t) => t.canhBao);
-  const tongNhap = giaoDich.filter((g) => g.loai === "NHAP" && KHO_VAT_TU.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
-  const tongXuat = giaoDich.filter((g) => g.loai === "XUAT" && KHO_VAT_TU.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
+  const tongNhap = giaoDich.filter((g) => g.loai === "NHAP" && inventory.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
+  const tongXuat = giaoDich.filter((g) => g.loai === "XUAT" && inventory.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
 
   // Group VT theo loại
   const dsTheoLoai = useMemo(() => {
-    const groups: Record<string, typeof KHO_VAT_TU> = {};
-    for (const v of KHO_VAT_TU) {
+    const groups: Record<string, typeof inventory> = {};
+    for (const v of inventory) {
       const loai = v.loai || "Khác";
       if (!groups[loai]) groups[loai] = [];
       groups[loai].push(v);
     }
     return groups;
-  }, []);
+  }, [inventory]);
 
   const filteredVT = useMemo(() => {
-    return KHO_VAT_TU.filter((v) => {
+    return inventory.filter((v) => {
       const matchSearch = [v.tenVT, v.maVT, v.loai].some((x) => (x || "").toLowerCase().includes(search.toLowerCase()));
       return matchSearch;
     });
-  }, [search]);
+  }, [search, inventory]);
 
   const filteredGD = useMemo(() => {
     return giaoDich
-      .filter((g) => KHO_VAT_TU.find((v) => v.maVT === g.maVT))
+      .filter((g) => inventory.find((v) => v.maVT === g.maVT))
       .filter((g) => {
         const matchSearch = [g.maVT, g.tenVT, g.nguonNhap, g.nguoiThucHien].some((x) => (x || "").toLowerCase().includes(search.toLowerCase()));
         const matchLoai = tab === "nhap" ? g.loai === "NHAP" : tab === "xuat" ? g.loai === "XUAT" : true;
         return matchSearch && matchLoai;
       })
       .sort((a, b) => b.ngay.localeCompare(a.ngay));
-  }, [giaoDich, search, tab]);
+  }, [giaoDich, search, tab, inventory]);
 
   return (
     <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
@@ -96,7 +100,7 @@ export default function KhoPhuLieuPage() {
               Kho Phụ Liệu
             </h1>
             <p className="opacity-90 mt-1 text-sm text-teal-100">
-              {KHO_VAT_TU.length} mã phụ liệu · Tổng giá trị tồn <b className="text-emerald-400">{formatVNDShort(tongGiaTri)}</b>
+              {inventory.length} mã phụ liệu · Tổng giá trị tồn <b className="text-emerald-400">{formatVNDShort(tongGiaTri)}</b>
               {dsCanhBao.length > 0 && <> · <b className="text-rose-400">⚠️ {dsCanhBao.length} mã dưới tồn tối thiểu</b></>}
             </p>
           </div>
@@ -105,7 +109,7 @@ export default function KhoPhuLieuPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
-          <Stat icon={<Box className="w-4 h-4" />} label="Tổng tồn kho" value={`${KHO_VAT_TU.length} mã`} subValue={`${Object.keys(dsTheoLoai).length} loại`} color="blue" />
+          <Stat icon={<Box className="w-4 h-4" />} label="Tổng tồn kho" value={`${inventory.length} mã`} subValue={`${Object.keys(dsTheoLoai).length} loại`} color="blue" />
           <Stat icon={<DollarSign className="w-4 h-4" />} label="Giá trị tồn" value={formatVNDShort(tongGiaTri)} subValue={formatVND(tongGiaTri)} color="emerald" />
           <Stat icon={<TrendingUp className="w-4 h-4" />} label="Tổng nhập" value={formatVNDShort(tongNhap)} color="violet" />
           <Stat icon={<AlertTriangle className="w-4 h-4" />} label="Cảnh báo tồn" value={dsCanhBao.length} subValue="mã dưới tối thiểu" color={dsCanhBao.length > 0 ? "rose" : "blue"} />
@@ -127,7 +131,7 @@ export default function KhoPhuLieuPage() {
         {/* Tabs */}
         <div className="flex gap-2 bg-black/20 rounded-xl p-1.5 w-fit mt-5">
           {([
-            { id: "tongquan" as Tab, label: `Tổng quan (${KHO_VAT_TU.length})`, icon: <Boxes className="w-4 h-4" /> },
+            { id: "tongquan" as Tab, label: `Tổng quan (${inventory.length})`, icon: <Boxes className="w-4 h-4" /> },
             { id: "nhap" as Tab, label: `Nhập kho`, icon: <Plus className="w-4 h-4" /> },
             { id: "xuat" as Tab, label: `Xuất kho`, icon: <Minus className="w-4 h-4" /> },
             { id: "lichsu" as Tab, label: "Lịch sử GD", icon: <History className="w-4 h-4" /> },
@@ -210,7 +214,19 @@ export default function KhoPhuLieuPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate" title={v.tenVT}>{v.tenVT}</h3>
+                    {editingVT === v.maVT ? (
+                      <div className="space-y-2">
+                        <input 
+                          type="text" 
+                          className="w-full text-sm font-bold text-slate-800 p-1 border rounded"
+                          value={editForm.tenVT || ''} 
+                          onChange={(e) => setEditForm({...editForm, tenVT: e.target.value})}
+                          placeholder="Tên phụ liệu"
+                        />
+                      </div>
+                    ) : (
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate" title={v.tenVT}>{v.tenVT}</h3>
+                    )}
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1.5 truncate">
                       <span className="w-3 h-3 rounded-full shadow-inner border border-slate-200 dark:border-slate-700 bg-violet-400"></span> 
                       {v.loai}
@@ -236,15 +252,56 @@ export default function KhoPhuLieuPage() {
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div>
                     <div className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Đơn giá</div>
-                    <div className="font-bold text-slate-700 dark:text-slate-300">{v.donGia.toLocaleString()} ₫</div>
+                    {editingVT === v.maVT ? (
+                      <input 
+                        type="number" 
+                        className="w-20 text-sm font-bold text-slate-700 p-0.5 border rounded"
+                        value={editForm.donGia || 0} 
+                        onChange={(e) => setEditForm({...editForm, donGia: Number(e.target.value)})}
+                      />
+                    ) : (
+                      <div className="font-bold text-slate-700 dark:text-slate-300">{v.donGia.toLocaleString()} ₫</div>
+                    )}
                   </div>
                   <div className="flex gap-1.5">
-                    <button onClick={() => setShowXuat(v.maVT)} className="bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs py-1.5 px-3 shadow-sm font-semibold rounded-lg flex items-center gap-1">
-                      <Minus className="w-3 h-3" /> Xuất
-                    </button>
-                    <button onClick={() => setShowNhap(v.maVT)} className="bg-sky-500 hover:bg-sky-600 text-white text-xs py-1.5 px-3 shadow-sm hover:shadow-md font-semibold rounded-lg flex items-center gap-1">
-                      <Plus className="w-3 h-3" /> Nhập
-                    </button>
+                    {editingVT === v.maVT ? (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setInventory(prev => prev.map(item => item.maVT === v.maVT ? { ...item, ...editForm } : item));
+                            toast.success("Đã lưu thông tin phụ liệu!");
+                            setEditingVT(null);
+                          }} 
+                          className="bg-green-500 hover:bg-green-600 text-white text-xs py-1.5 px-3 shadow-sm rounded-lg font-bold"
+                        >
+                          Lưu
+                        </button>
+                        <button 
+                          onClick={() => setEditingVT(null)} 
+                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-1.5 px-2 shadow-sm rounded-lg font-bold"
+                        >
+                          Huỷ
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setEditingVT(v.maVT);
+                            setEditForm({ tenVT: v.tenVT, donGia: v.donGia });
+                          }} 
+                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-1.5 px-2 shadow-sm font-semibold rounded-lg"
+                        >
+                          Sửa
+                        </button>
+                        <button onClick={() => setShowXuat(v.maVT)} className="bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs py-1.5 px-3 shadow-sm font-semibold rounded-lg flex items-center gap-1">
+                          <Minus className="w-3 h-3" /> Xuất
+                        </button>
+                        <button onClick={() => setShowNhap(v.maVT)} className="bg-sky-500 hover:bg-sky-600 text-white text-xs py-1.5 px-3 shadow-sm hover:shadow-md font-semibold rounded-lg flex items-center gap-1">
+                          <Plus className="w-3 h-3" /> Nhập
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
