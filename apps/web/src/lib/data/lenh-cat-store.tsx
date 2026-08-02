@@ -113,6 +113,34 @@ export type LenhCat = {
   nguoiTao?: string;
 };
 
+
+export type MauCongDoanItem = {
+  id: string;
+  ten: string;
+  giaCong: PhanCongGiaCong;
+};
+
+export type MauChiPhiItem = {
+  id: string;
+  ten: string;
+  chiPhi: ChiPhiCoDinh;
+};
+
+const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
+  { id: "AoThun", ten: "Áo Thun", giaCong: { cat: { nguoiMa: "", nguoiTen: "", donGia: 1400 }, mayAo: { nguoiMa: "", nguoiTen: "", donGia: 12000 }, inTheu: { nguoiMa: "", nguoiTen: "", donGia: 3000 }, uiQC: { nguoiMa: "", nguoiTen: "", donGia: 2000 } } },
+  { id: "Quan", ten: "Quần", giaCong: { cat: { nguoiMa: "", nguoiTen: "", donGia: 900 }, mayQuan: { nguoiMa: "", nguoiTen: "", donGia: 15000 }, uiQC: { nguoiMa: "", nguoiTen: "", donGia: 2500 } } },
+  { id: "BoTheThao", ten: "Bộ Thể Thao", giaCong: { cat: { nguoiMa: "", nguoiTen: "", donGia: 2300 }, mayAo: { nguoiMa: "", nguoiTen: "", donGia: 12000 }, mayQuan: { nguoiMa: "", nguoiTen: "", donGia: 15000 }, inTheu: { nguoiMa: "", nguoiTen: "", donGia: 3000 }, uiQC: { nguoiMa: "", nguoiTen: "", donGia: 4500 } } }
+];
+
+const DEFAULT_MAU_CHI_PHI: MauChiPhiItem[] = [
+  { id: "AoThun", ten: "Áo Thun", chiPhi: { baoBi: 1500, temNhan: 500, khauHao: 2000 } },
+  { id: "Quan", ten: "Quần", chiPhi: { baoBi: 1200, temNhan: 300, khauHao: 1500 } },
+  { id: "BoTheThao", ten: "Bộ Thể Thao", chiPhi: { baoBi: 2500, temNhan: 1000, khauHao: 3500 } }
+];
+
+const STORAGE_KEY_MCD = "mimin_mau_cong_doan";
+const STORAGE_KEY_MCP = "mimin_mau_chi_phi";
+
 const STORAGE_KEY = "mimin_lenh_cat_v2";
 
 export function generateLenhCatId(existing: LenhCat[]): string {
@@ -134,6 +162,12 @@ interface LenhCatStore {
   themLenhCat: (lenh: LenhCat, nguoiTao: AppUser) => void;
   suaLenhCat: (id: string, lenh: Partial<LenhCat>, nguoiSua: AppUser) => void;
   xoaLenhCat: (id: string, nguoiXoa: AppUser) => void;
+  dsMauCongDoan: MauCongDoanItem[];
+  dsMauChiPhi: MauChiPhiItem[];
+  themMauCongDoan: (mau: MauCongDoanItem) => void;
+  themMauChiPhi: (mau: MauChiPhiItem) => void;
+  capNhatTrangThai: (id: string, tt: TrangThaiLenhCat, u: any) => void;
+  reset: () => void;
 }
 
 const LenhCatContext = createContext<LenhCatStore | null>(null);
@@ -142,6 +176,10 @@ const DUMMY_DATA: LenhCat[] = [];
 
 export function LenhCatProvider({ children }: { children: ReactNode }) {
   const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>([]);
+
+  const [dsMauCongDoan, setDsMauCongDoan] = useState<MauCongDoanItem[]>([]);
+  const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
+
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -150,12 +188,22 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (stored) {
         setDsLenhCat(JSON.parse(stored));
       } else {
+
         setDsLenhCat(DUMMY_DATA);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(DUMMY_DATA));
       }
     } catch (err) {
       console.error(err);
     }
+    
+      const storedMCD = localStorage.getItem(STORAGE_KEY_MCD);
+      if (storedMCD) setDsMauCongDoan(JSON.parse(storedMCD));
+      else { setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN)); }
+      
+      const storedMCP = localStorage.getItem(STORAGE_KEY_MCP);
+      if (storedMCP) setDsMauChiPhi(JSON.parse(storedMCP));
+      else { setDsMauChiPhi(DEFAULT_MAU_CHI_PHI); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(DEFAULT_MAU_CHI_PHI)); }
+
     setIsLoaded(true);
   }, []);
 
@@ -185,11 +233,27 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     });
     logWorkflow(`Xoá lệnh cắt ${id}`, "Xoá", u, "Thành công");
   }, []);
+  
+  const themMauCongDoan = useCallback((mau: MauCongDoanItem) => {
+    setDsMauCongDoan(prev => { const next = [...prev, mau]; localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(next)); return next; });
+  }, []);
+  const themMauChiPhi = useCallback((mau: MauChiPhiItem) => {
+    setDsMauChiPhi(prev => { const next = [...prev, mau]; localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
+  }, []);
+  const capNhatTrangThai = useCallback((id: string, tt: TrangThaiLenhCat, u: any) => {
+    setDsLenhCat(prev => { const next = prev.map(x => x.id === id ? { ...x, trangThai: tt } : x); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; });
+  }, []);
+  const reset = useCallback(() => {
+    setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
+    setDsMauChiPhi(DEFAULT_MAU_CHI_PHI); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(DEFAULT_MAU_CHI_PHI));
+  }, []);
+
 
   if (!isLoaded) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat }}>
+    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi, capNhatTrangThai, reset }}>
       {children}
     </LenhCatContext.Provider>
   );

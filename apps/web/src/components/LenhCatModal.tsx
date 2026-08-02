@@ -51,35 +51,10 @@ import {
   type BangCOGS, type PhanCongGiaCong, type TrangThaiLenhCat 
 } from "@/lib/data/lenh-cat-store";
 
-const MAU_CONG_DOAN = {
-  "AoThun": { 
-    cat: { nguoiMa: "", nguoiTen: "", donGia: 1400 }, 
-    mayAo: { nguoiMa: "", nguoiTen: "", donGia: 12000 }, 
-    inTheu: { nguoiMa: "", nguoiTen: "", donGia: 3000 }, 
-    uiQC: { nguoiMa: "", nguoiTen: "", donGia: 2000 } 
-  },
-  "Quan": { 
-    cat: { nguoiMa: "", nguoiTen: "", donGia: 900 }, 
-    mayQuan: { nguoiMa: "", nguoiTen: "", donGia: 15000 }, 
-    uiQC: { nguoiMa: "", nguoiTen: "", donGia: 2500 } 
-  },
-  "BoTheThao": { 
-    cat: { nguoiMa: "", nguoiTen: "", donGia: 2300 }, 
-    mayAo: { nguoiMa: "", nguoiTen: "", donGia: 12000 }, 
-    mayQuan: { nguoiMa: "", nguoiTen: "", donGia: 15000 }, 
-    inTheu: { nguoiMa: "", nguoiTen: "", donGia: 3000 }, 
-    uiQC: { nguoiMa: "", nguoiTen: "", donGia: 4500 } 
-  }
-};
 
-const MAU_CHI_PHI = {
-  "AoThun": { baoBi: 1500, temNhan: 500, khauHao: 2000 },
-  "Quan": { baoBi: 1200, temNhan: 300, khauHao: 1500 },
-  "BoTheThao": { baoBi: 2500, temNhan: 1000, khauHao: 3500 }
-};
 
 export default function LenhCatModal({ open, onClose, editId }: Props) {
-  const { dsLenhCat, themLenhCat, suaLenhCat } = useLenhCat();
+  const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi } = useLenhCat();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
   // ============ Form state ============
@@ -173,12 +148,19 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [dsPhuLieu, setDsPhuLieu] = useState<LenhCatPhuLieu[]>([]);
   
   // Section 4 - Phân công
+  
+  const [showTaoMauCD, setShowTaoMauCD] = useState(false);
+  const [newMauCD, setNewMauCD] = useState({ id: "", ten: "", giaCong: { cat: { nguoiMa: "", nguoiTen: "", donGia: 0 }, mayAo: { nguoiMa: "", nguoiTen: "", donGia: 0 }, mayQuan: { nguoiMa: "", nguoiTen: "", donGia: 0 }, inTheu: { nguoiMa: "", nguoiTen: "", donGia: 0 }, uiQC: { nguoiMa: "", nguoiTen: "", donGia: 0 } } });
+
+  const [showTaoMauCP, setShowTaoMauCP] = useState(false);
+  const [newMauCP, setNewMauCP] = useState({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
+
   const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
-  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(MAU_CONG_DOAN["BoTheThao"]);
+  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || {});
   
   // Chi Phí Cố Định
   const [mauChiPhi, setMauChiPhi] = useState<string>("BoTheThao");
-  const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>(MAU_CHI_PHI["BoTheThao"]);
+  const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>(dsMauChiPhi.find(x => x.id === "BoTheThao")?.chiPhi || { baoBi: 0, temNhan: 0, khauHao: 0 });
 
   // Cảnh báo tồn kho
   useEffect(() => {
@@ -500,10 +482,127 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                           </div>
                           <div className="w-1/2 bg-emerald-50 p-2 rounded border border-emerald-200">
                              <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này</div>
-                             <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}</div>
-                          </div>
-                        </div>
-                      );
+                             <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}
+
+  {/* Modal Tạo Mẫu Công Đoạn */}
+  {showTaoMauCD && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
+        <div className="space-y-3 mb-6">
+          <div>
+            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+          </div>
+          {["cat", "mayAo", "mayQuan", "inTheu", "uiQC"].map((k) => {
+            const labels: any = { cat: "Cắt", mayAo: "May Áo", mayQuan: "May Quần", inTheu: "In/Thêu", uiQC: "Ủi/Đóng Gói" };
+            return (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-sm font-medium">{labels[k]}</span>
+                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Đơn giá" value={(newMauCD.giaCong as any)[k].donGia || ""} onChange={e => setNewMauCD(prev => ({ ...prev, giaCong: { ...prev.giaCong, [k]: { ...(prev.giaCong as any)[k], donGia: parseInt(e.target.value) || 0 } } }))} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => { themMauCongDoan(newMauCD); setShowTaoMauCD(false); setMauCongDoan(newMauCD.id); setPhanCong(newMauCD.giaCong); toast.success("Đã lưu mẫu công đoạn"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Mẫu</button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* Modal Tạo Mẫu Chi Phí */}
+  {showTaoMauCP && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Cố Định Mới</h3>
+        <div className="space-y-3 mb-6">
+          <div>
+            <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
+            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+          </div>
+          {["baoBi", "temNhan", "khauHao"].map((k) => {
+            const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
+            return (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-sm font-medium">{labels[k]}</span>
+                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Chi phí" value={(newMauCP.chiPhi as any)[k] || ""} onChange={e => setNewMauCP(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [k]: parseInt(e.target.value) || 0 } }))} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); setMauChiPhi(newMauCP.id); setChiPhiCoDinh(newMauCP.chiPhi); toast.success("Đã lưu mẫu chi phí"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Bảng Giá</button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* Modal Tạo Mẫu Công Đoạn */}
+  {showTaoMauCD && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
+        <div className="space-y-3 mb-6">
+          <div>
+            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+          </div>
+          {["cat", "mayAo", "mayQuan", "inTheu", "uiQC"].map((k) => {
+            const labels: any = { cat: "Cắt", mayAo: "May Áo", mayQuan: "May Quần", inTheu: "In/Thêu", uiQC: "Ủi/Đóng Gói" };
+            return (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-sm font-medium">{labels[k]}</span>
+                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Đơn giá" value={(newMauCD.giaCong as any)[k].donGia || ""} onChange={e => setNewMauCD(prev => ({ ...prev, giaCong: { ...prev.giaCong, [k]: { ...(prev.giaCong as any)[k], donGia: parseInt(e.target.value) || 0 } } }))} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => { themMauCongDoan(newMauCD); setShowTaoMauCD(false); setMauCongDoan(newMauCD.id); setPhanCong(newMauCD.giaCong); toast.success("Đã lưu mẫu công đoạn"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Mẫu</button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* Modal Tạo Mẫu Chi Phí */}
+  {showTaoMauCP && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Cố Định Mới</h3>
+        <div className="space-y-3 mb-6">
+          <div>
+            <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
+            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+          </div>
+          {["baoBi", "temNhan", "khauHao"].map((k) => {
+            const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
+            return (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-sm font-medium">{labels[k]}</span>
+                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Chi phí" value={(newMauCP.chiPhi as any)[k] || ""} onChange={e => setNewMauCP(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [k]: parseInt(e.target.value) || 0 } }))} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); setMauChiPhi(newMauCP.id); setChiPhiCoDinh(newMauCP.chiPhi); toast.success("Đã lưu mẫu chi phí"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Bảng Giá</button>
+        </div>
+      </div>
+    </div>
+  )}
+
+
+
+      </div>
+    </div>
+  </div>
+  );
+
                     })()}
 
                   </div>
@@ -628,7 +727,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                       value={mauChiPhi}
                       onChange={(e) => {
                         setMauChiPhi(e.target.value);
-                        setChiPhiCoDinh(MAU_CHI_PHI[e.target.value as keyof typeof MAU_CHI_PHI]);
+                        const m = dsMauChiPhi.find(x => x.id === e.target.value); if (m) setChiPhiCoDinh(m.chiPhi);
                       }}
                     >
                       <option value="AoThun">Bảng giá: Áo</option>
@@ -742,8 +841,67 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
               Chuyển Khâu Tiếp Nhận
             </button>
           </div>
+        
+
+  {/* Modal Tạo Mẫu Công Đoạn */}
+  {showTaoMauCD && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
+        <div className="space-y-3 mb-6">
+          <div>
+            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+          </div>
+          {["cat", "mayAo", "mayQuan", "inTheu", "uiQC"].map((k) => {
+            const labels: any = { cat: "Cắt", mayAo: "May Áo", mayQuan: "May Quần", inTheu: "In/Thêu", uiQC: "Ủi/Đóng Gói" };
+            return (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-sm font-medium">{labels[k]}</span>
+                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Đơn giá" value={(newMauCD.giaCong as any)[k].donGia || ""} onChange={e => setNewMauCD(prev => ({ ...prev, giaCong: { ...prev.giaCong, [k]: { ...(prev.giaCong as any)[k], donGia: parseInt(e.target.value) || 0 } } }))} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => { themMauCongDoan(newMauCD); setShowTaoMauCD(false); setMauCongDoan(newMauCD.id); setPhanCong(newMauCD.giaCong); toast.success("Đã lưu mẫu công đoạn"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Mẫu</button>
         </div>
       </div>
     </div>
+  )}
+
+  {/* Modal Tạo Mẫu Chi Phí */}
+  {showTaoMauCP && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Cố Định Mới</h3>
+        <div className="space-y-3 mb-6">
+          <div>
+            <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
+            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+          </div>
+          {["baoBi", "temNhan", "khauHao"].map((k) => {
+            const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
+            return (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-sm font-medium">{labels[k]}</span>
+                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Chi phí" value={(newMauCP.chiPhi as any)[k] || ""} onChange={e => setNewMauCP(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [k]: parseInt(e.target.value) || 0 } }))} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); setMauChiPhi(newMauCP.id); setChiPhiCoDinh(newMauCP.chiPhi); toast.success("Đã lưu mẫu chi phí"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Bảng Giá</button>
+        </div>
+      </div>
+    </div>
+  )}
+
+      </div>
+    </div>
+  </div>
   );
+
 }
