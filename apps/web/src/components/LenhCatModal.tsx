@@ -842,7 +842,9 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                           }}
                         >
                           <option value="">-- Chọn NV/Xưởng --</option>
-                          {REAL_NHAN_VIEN.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
+                          {getDoiTuongOptions(kh.tenCongDoan).map(opt => (
+                            <option key={opt.ma} value={opt.ma}>{opt.ten}</option>
+                          ))}
                         </select>
                         </div>
                         <div className="col-span-3 relative">
