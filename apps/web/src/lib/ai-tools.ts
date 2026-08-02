@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import { KHO_VAI, KHO_VAT_TU, NHAN_SU, DOI_TAC } from "./data/real-data";
 import { PHAN_CONG } from "./data/cong-no";
+import { AGENT_PERSONAS } from "./agent-personas";
+import { ALL_MODULES, ROLE_LABELS, getFullMatrix } from "./permissions";
 
 // Hàm helper định dạng tiền VND
 function formatVND(amount: number) {
@@ -101,10 +103,81 @@ export const getStaffList = tool({
   },
 });
 
+export const getSystemConfig = tool({
+  description: "Đọc cấu hình hệ thống MIMIN ERP hiện tại: version app, môi trường (production/development), danh sách 9 agent personas + RBAC, danh sách modules + phân quyền, cấu hình Supabase, ngày giờ build. Dùng tool này khi cần biết context hệ thống đang thay đổi trong quá trình chỉnh sửa để cập nhật hỗ trợ phù hợp.",
+  inputSchema: z.object({
+    section: z.enum(["all", "version", "agents", "modules", "rbac", "supabase", "build"]).optional()
+      .describe("Phần thông tin cần đọc (mặc định: all)"),
+  }),
+  execute: async ({ section = "all" }) => {
+    const config: Record<string, any> = {
+      app: {
+        name: process.env.NEXT_PUBLIC_APP_NAME || "MIMIN ERP",
+        version: process.env.NEXT_PUBLIC_APP_VERSION || "89.6.9.3",
+        env: process.env.NODE_ENV,
+        build_time: new Date().toISOString(),
+      },
+      agents: Object.values(AGENT_PERSONAS).map((a) => ({
+        agent_id: a.agent_id,
+        name: a.name,
+        role: a.role_title,
+        provider: a.provider,
+        model: a.model,
+        allowed_domains: a.allowed_domains,
+      })),
+      modules: ALL_MODULES,
+    };
+
+    if (section === "version" || section === "all") {
+      // version đã có trong app
+    }
+
+    if (section === "agents" || section === "all") {
+      // agents đã có
+    }
+
+    if (section === "modules" || section === "all") {
+      // modules đã có
+    }
+
+    if (section === "rbac" || section === "all") {
+      config.rbac = {
+        roles: Object.keys(ROLE_LABELS),
+        role_labels: ROLE_LABELS,
+        admin_email: "sang@mimin.vn",
+        matrix_size: `${Object.keys(ROLE_LABELS).length} roles × ${ALL_MODULES.length} modules`,
+        note: "Phân quyền chi tiết theo module trong getFullMatrix()",
+      };
+    }
+
+    if (section === "supabase" || section === "all") {
+      config.supabase = {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL || "(chưa cấu hình)",
+        has_service_role: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        project: "nftlwdcsmlpeiazhuoho",
+      };
+    }
+
+    if (section === "build" || section === "all") {
+      config.build = {
+        next_output: "export (static)",
+        framework: "Next.js 15.5.0 + React 19.0.0",
+        deploy_target: "Vercel",
+        edge_functions: "API routes v1 (orchestrator, lark, users)",
+      };
+    }
+
+    // Trả về JSON string dễ đọc
+    const filtered = section === "all" ? config : { [section]: config[section] || config };
+    return `⚙️ Cấu hình hệ thống MIMIN ERP:\n\`\`\`json\n${JSON.stringify(filtered, null, 2)}\n\`\`\``;
+  },
+});
+
 export const getAllTools = () => {
   return {
     getInventoryStatus,
     getDebtStatus,
     getStaffList,
+    getSystemConfig,
   };
 };
