@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { Box, Plus, Search, Filter, Download, Upload, Trash2, Edit, Eye, Package, TrendingUp, TrendingDown, Calendar, User, Building2, Hash, Sparkles, ChevronDown, ChevronUp, FileSpreadsheet, AlertTriangle, CheckCircle2, Truck, ShoppingBag } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Box, Plus, Search, Filter, Download, Upload, Trash2, Edit, Eye, Package, TrendingUp, TrendingDown, Calendar, User, Building2, Hash, Sparkles, ChevronDown, ChevronUp, FileSpreadsheet, AlertTriangle, CheckCircle2, Truck, ShoppingBag, LayoutGrid, List, Camera, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import type { PhieuWorkflow } from "@/lib/workflow-data";
@@ -94,6 +94,25 @@ export default function KhoThanhPhamPage() {
   const [editing, setEditing] = useState<SanPhamTP | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
+
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
+  const [uploadingSP, setUploadingSP] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadingSP) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setProductImages((prev) => ({
+          ...prev,
+          [uploadingSP]: ev.target?.result as string,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Load data
   useEffect(() => {
@@ -308,19 +327,86 @@ export default function KhoThanhPhamPage() {
               {DS_KHU_KE_HANG.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <span className="ml-auto text-slate-500">Hiển thị <b>{filtered.length}</b>/{dsSanPham.length} sản phẩm</span>
+          
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-slate-500 mr-2">Hiển thị <b>{filtered.length}</b>/{dsSanPham.length}</span>
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded border">
+              <button onClick={() => setViewMode("grid")} className={`p-1 rounded ${viewMode === "grid" ? "bg-white shadow" : "text-slate-500 hover:text-slate-700"}`} title="Grid view"><LayoutGrid className="w-4 h-4" /></button>
+              <button onClick={() => setViewMode("table")} className={`p-1 rounded ${viewMode === "table" ? "bg-white shadow" : "text-slate-500 hover:text-slate-700"}`} title="Table view"><List className="w-4 h-4" /></button>
+            </div>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="card overflow-hidden">
+        {/* Content */}
+        <div className="overflow-hidden">
           {filtered.length === 0 ? (
-            <div className="p-12 text-center text-slate-400">
+            <div className="card p-12 text-center text-slate-400">
               <Box className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <div className="text-sm font-semibold">Chưa có sản phẩm nào trong kho</div>
               <div className="text-xs mt-1">Click "Auto" để tự động tạo từ workflow data</div>
             </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+              {filtered.map((s) => (
+                <div key={s.id} onClick={() => setEditing(s)} className="relative overflow-hidden rounded-2xl group cursor-pointer aspect-[3/4] bg-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 ring-1 ring-slate-200 dark:ring-slate-800 hover:ring-amber-400">
+                  {/* Image background */}
+                  {productImages[s.id] ? (
+                    <img src={productImages[s.id]} alt={s.tenSP} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 text-slate-400 group-hover:scale-105 transition-transform duration-500">
+                      <PackageOpen className="w-16 h-16 opacity-30 mb-2 group-hover:text-amber-500 transition-colors" />
+                      <span className="text-sm font-semibold opacity-50">Chưa có ảnh</span>
+                    </div>
+                  )}
+                  
+                  {/* Overlay gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent flex flex-col justify-end p-4 text-white">
+                    {/* Top actions */}
+                    <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 translate-x-2 group-hover:translate-x-0">
+                      <button onClick={(e) => { e.stopPropagation(); setUploadingSP(s.id); fileInputRef.current?.click(); }} className="p-2.5 bg-black/40 hover:bg-amber-500 backdrop-blur rounded-full text-white transition-colors shadow-lg" title="Tải ảnh">
+                        <Camera className="w-4 h-4" />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleXuatKho(s.id); }} className="p-2.5 bg-black/40 hover:bg-sky-500 backdrop-blur rounded-full text-white transition-colors shadow-lg" title="Xuất kho">
+                        <Truck className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
+                      {s.trangThai === "con" && <span className="px-2.5 py-1 bg-emerald-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Còn hàng</span>}
+                      {s.trangThai === "dat-hang" && <span className="px-2.5 py-1 bg-amber-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Đã đặt</span>}
+                      {s.trangThai === "xuat-kho" && <span className="px-2.5 py-1 bg-slate-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Đã xuất</span>}
+                      {s.trangThai === "khong-dat" && <span className="px-2.5 py-1 bg-rose-500/90 backdrop-blur text-white text-[11px] rounded-full font-bold shadow-sm uppercase tracking-wider">Không đặt</span>}
+                      <span className="px-2.5 py-1 bg-black/40 backdrop-blur text-white text-[10px] rounded-full font-bold shadow-sm">{s.viTri}</span>
+                    </div>
+
+                    {/* Info */}
+                    <div className="relative z-10 translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
+                      <div className="font-mono text-[10px] text-amber-400 font-bold mb-1 tracking-wider">{s.maSP} • {s.lsx}</div>
+                      <h3 className="font-bold text-xl leading-tight mb-1 truncate" title={s.tenSP}>{s.tenSP}</h3>
+                      <div className="text-xs text-white/70 mb-4 flex items-center gap-2">
+                        <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px] uppercase font-bold">{s.mau}</span>
+                        <span className="truncate">{s.size}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
+                        <div>
+                          <div className="text-[10px] text-white/50 uppercase font-semibold tracking-wider mb-0.5">Số lượng</div>
+                          <div className="font-black text-lg text-white">{s.soLuong.toLocaleString()}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] text-white/50 uppercase font-semibold tracking-wider mb-0.5">Tổng giá trị</div>
+                          <div className="font-black text-lg text-emerald-400">{(s.giaTri/1000).toFixed(0)}K</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="card overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-amber-50 text-amber-900">
                   <tr>
