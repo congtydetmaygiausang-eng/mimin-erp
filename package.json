@@ -2,20 +2,10 @@
   "name": "mimin-erp",
   "version": "89.6.9",
   "private": true,
-  "workspaces": [
-    "apps/*"
-  ],
   "scripts": {
     "dev": "cd apps/web && npm run dev",
     "build": "cd apps/web && npm run build",
-    "start": "cd apps/web && npm run start"
-  },
-  "dependencies": {
-    "next": "15.2.9",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
-  },
-  "devDependencies": {
-    "pg": "^8.22.0"
+    "start": "cd apps/web && npm run start",
+    "vercel-build": "cd apps/web && npm run build"
   }
 }

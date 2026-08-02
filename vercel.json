@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "cd apps/web && npm run build",
+  "buildCommand": "cd apps/web && npm install --legacy-peer-deps && npm run build",
   "devCommand": "cd apps/web && npm run dev",
-  "installCommand": "npm install --legacy-peer-deps && cd apps/web && npm install --legacy-peer-deps",
+  "installCommand": "echo 'install handled in buildCommand'",
   "framework": "nextjs",
   "regions": ["sin1"],
-  "outputDirectory": "apps/web/.next",
+  "outputDirectory": "apps/web/out",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://nftlwdcsmlpeiazhuoho.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdGx3ZGNzbWxwZWlhemh1b2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MjYwMDMsImV4cCI6MjEwMDMwMjAwM30.1xV4In7HFFr6meIZpPFfbZKPBoCviPHeSCQvR-MyJqU",
@@ -28,12 +28,6 @@
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/v1/lark/webhook",
-      "destination": "/apps/web/src/app/api/v1/lark/webhook/route.ts"
     }
   ]
 }
