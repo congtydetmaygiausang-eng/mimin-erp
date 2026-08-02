@@ -1,50 +1,13 @@
-"use client";
+const fs = require('fs');
+const file = 'apps/web/src/components/LenhCatModal.tsx';
+let code = fs.readFileSync(file, 'utf8');
 
-// ============ LENH CAT MODAL (Giai đoạn 1 - Mavis) ============
-// Form 4 sections theo layout anh Sang yeu cau:
-//   Section 1: Thong tin chung & Ke hoach (Loai SP, Ma SP, Tong SL, Size, Han, Phu trach Cat)
-//   Section 2: Vai (multi-mau, so kg, don gia) → auto tinh gia vai BQ
-//   Section 3: Phu lieu (Bo co, Khoa, Cuc, Chi, Nhan, Tui PE...) → auto tinh chi phi / SP
-//   Section 4: Phan cong gia cong 5 khau (Cat, May Ao, May Quan, InTheu, UiQC)
-//   Section 5: Bang tinh gia von san xuat (COGS) tu dong
-// Buttons: [Huy bo] [Phat lenh & Dieu chuyen]
-//
-// Giai doan 1: Focus Section 1 + 5 (form + COGS auto + luu DB)
-// Giai doan 2 (sau): Auto tru kho + Phan cong/Cong no
+// I will write the complete logic to replace the file from `export default function LenhCatModal` to the end.
+// We need to keep the imports untouched. Let's find the start of the component.
+const componentStart = code.indexOf('export default function LenhCatModal');
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
-  Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-} from "lucide-react";
-import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
-import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
-import {
-  type LenhCat, type LoaiSP, type LenhCatVai, type LenhCatPhuLieu,
-  type PhanCongGiaCong, type TrangThaiLenhCat,
-  LOAI_SP_LABELS, TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE,
-  tinhCOGS, useLenhCat,
-} from "@/lib/data/lenh-cat-store";
-
-// Constants
-const SIZE_OPTIONS = ["S", "M", "L", "XL", "2XL", "3XL"];
-const DEFAULT_HAO_HUT = 1.5; // 1.5%
-const DEFAULT_DON_GIA = {
-  cat: 3500,
-  mayAo: 22000,
-  mayQuan: 18000,
-  inTheu: 4500,
-  uiQC: 3000,
-};
-
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  editId?: string | null; // Nếu có → edit mode, ngược lại → create
-}
-
-export default function LenhCatModal({ open, onClose, editId }: Props) {
+if (componentStart > -1) {
+  const newCode = `export default function LenhCatModal({ open, onClose, editId }: Props) {
   const { dsLenhCat, themLenhCat, suaLenhCat } = useLenhCat();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
@@ -297,7 +260,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
 
                 <div className="bg-white p-4 rounded border-2 border-red-500">
                   <div className="flex items-center justify-between mb-3 border-b pb-2">
-                    <label className="text-sm font-bold text-slate-700">Phân bổ size * <span className={`ml-2 text-xs ${sizeHopLe ? "text-emerald-600" : "text-rose-600"}`}>({tongPhanBoSize} / {tongSL || 0})</span></label>
+                    <label className="text-sm font-bold text-slate-700">Phân bổ size * <span className={\`ml-2 text-xs \${sizeHopLe ? "text-emerald-600" : "text-rose-600"}\`}>({tongPhanBoSize} / {tongSL || 0})</span></label>
                     <button onClick={addSizeRow} className="text-xs text-[#2B4C3E] hover:underline flex items-center font-bold">
                       <Plus className="w-3 h-3 mr-0.5" /> Thêm size
                     </button>
@@ -576,3 +539,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     </div>
   );
 }
+`;
+  code = code.substring(0, componentStart) + newCode;
+}
+
+fs.writeFileSync(file, code);
