@@ -1,99 +1,18 @@
-"use client";
+const fs = require('fs');
+const file = 'apps/web/src/components/LenhCatModal.tsx';
+let code = fs.readFileSync(file, 'utf8');
 
-// ============ LENH CAT MODAL (Giai đoạn 1 - Mavis) ============
-// Form 4 sections theo layout anh Sang yeu cau:
-//   Section 1: Thong tin chung & Ke hoach (Loai SP, Ma SP, Tong SL, Size, Han, Phu trach Cat)
-//   Section 2: Vai (multi-mau, so kg, don gia) → auto tinh gia vai BQ
-//   Section 3: Phu lieu (Bo co, Khoa, Cuc, Chi, Nhan, Tui PE...) → auto tinh chi phi / SP
-//   Section 4: Phan cong gia cong 5 khau (Cat, May Ao, May Quan, InTheu, UiQC)
-//   Section 5: Bang tinh gia von san xuat (COGS) tu dong
-// Buttons: [Huy bo] [Phat lenh & Dieu chuyen]
-//
-// Giai doan 1: Focus Section 1 + 5 (form + COGS auto + luu DB)
-// Giai doan 2 (sau): Auto tru kho + Phan cong/Cong no
-
-import { useEffect, useMemo, useState } from "react";
-import {
-  X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
-  Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-} from "lucide-react";
-import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
-import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
-import {
-  type LenhCat, type LoaiSP, type LenhCatVai, type LenhCatPhuLieu,
-  type PhanCongGiaCong, type TrangThaiLenhCat,
-  LOAI_SP_LABELS, TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE,
-  tinhCOGS, useLenhCat,
-} from "@/lib/data/lenh-cat-store";
-
-// Constants
-const SIZE_OPTIONS = ["S", "M", "L", "XL", "2XL", "3XL"];
-const DEFAULT_HAO_HUT = 1.5; // 1.5%
-const DEFAULT_DON_GIA = {
-  cat: 3500,
-  mayAo: 22000,
-  mayQuan: 18000,
-  inTheu: 4500,
-  uiQC: 3000,
-};
-
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  editId?: string | null; // Nếu có → edit mode, ngược lại → create
+if (!code.includes('const [dsMau, setDsMau]')) {
+  code = code.replace(
+    'const [ghiChu, setGhiChu] = useState("");',
+    `const [ghiChu, setGhiChu] = useState("");\n  const [dsMau, setDsMau] = useState([\n    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" },\n    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" },\n    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" },\n    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" }\n  ]);`
+  );
 }
 
-export default function LenhCatModal({ open, onClose, editId }: Props) {
-  const { dsLenhCat, themLenhCat, suaLenhCat } = useLenhCat();
-  const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
-
-  // ============ Form state ============
-  const [loaiSP, setLoaiSP] = useState<LoaiSP>("BoTru");
-  const [maSP, setMaSP] = useState("");
-  const [tenSP, setTenSP] = useState("");
-  const [tongSL, setTongSL] = useState(500);
-  const [hanHoanThanh, setHanHoanThanh] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 14);
-    return d.toISOString().split("T")[0];
-  });
-  const [phanBoSize, setPhanBoSize] = useState<{ size: string; sl: number }[]>([
-    { size: "M", sl: 100 },
-    { size: "L", sl: 200 },
-    { size: "XL", sl: 150 },
-    { size: "2XL", sl: 50 },
-  ]);
-  const [phuTrachCat, setPhuTrachCat] = useState("NV002");
-  const [ghiChu, setGhiChu] = useState("");
-  const [dsMau, setDsMau] = useState([
-    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" },
-    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" },
-    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" },
-    { ten: "màu vải chính", sl: "", ghiChu: "", img: "" }
-  ]);
-
-  // Section 2 - Vải
-  const [dsVai, setDsVai] = useState<LenhCatVai[]>([]);
-  // Section 3 - Phụ liệu
-  const [dsPhuLieu, setDsPhuLieu] = useState<LenhCatPhuLieu[]>([]);
-  // Section 4 - Phân công
-  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>({
-    cat: { nguoiMa: "NV002", nguoiTen: "Nguyễn Thị Mỹ Nhi (Cắt)", donGia: DEFAULT_DON_GIA.cat },
-    mayAo: { nguoiMa: "GS002", nguoiTen: "Xưởng may Liễu", donGia: DEFAULT_DON_GIA.mayAo },
-    mayQuan: { nguoiMa: "GS001", nguoiTen: "Xưởng may Hương (Quần)", donGia: DEFAULT_DON_GIA.mayQuan },
-    inTheu: { nguoiMa: "DT-IT-005", nguoiTen: "In Bảo Ngân", donGia: DEFAULT_DON_GIA.inTheu },
-    uiQC: { nguoiMa: "NV010", nguoiTen: "Trương Minh Tâm (Ủi)", donGia: DEFAULT_DON_GIA.uiQC },
-  });
-  const [haoHutPhanTram, setHaoHutPhanTram] = useState(DEFAULT_HAO_HUT);
-
-  // UI state
-  const [showSection2, setShowSection2] = useState(false);
-  const [showSection3, setShowSection3] = useState(false);
-  const [showSection4, setShowSection4] = useState(false);
-  const [showSection5, setShowSection5] = useState(true); // COGS luôn hiện
-
-  const handleColorImageUpload = (idx: number) => {
+if (!code.includes('handleColorImageUpload')) {
+  code = code.replace(
+    '// ============ Load data khi edit ============',
+    `const handleColorImageUpload = (idx: number) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -114,245 +33,13 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     input.click();
   };
 
-  // ============ Load data khi edit ============
-  useEffect(() => {
-    if (editing) {
-      setLoaiSP(editing.loaiSP);
-      setMaSP(editing.maSP);
-      setTenSP(editing.tenSP);
-      setTongSL(editing.tongSL);
-      setHanHoanThanh(editing.hanHoanThanh);
-      setPhanBoSize(editing.phanBoSize);
-      setPhuTrachCat(editing.phuTrachCat);
-      setGhiChu(editing.ghiChu || "");
-      setDsVai(editing.dsVai);
-      setDsPhuLieu(editing.dsPhuLieu);
-      setPhanCong(editing.phanCong);
-      setHaoHutPhanTram(editing.haoHutPhanTram);
-    }
-  }, [editing]);
-
-  // ============ ESC to close ============
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  // ============ Auto-fill tenSP khi đổi loaiSP ============
-  useEffect(() => {
-    if (!maSP && tenSP === "") {
-      setTenSP(LOAI_SP_LABELS[loaiSP]);
-    }
-  }, [loaiSP, maSP, tenSP]);
-
-  // ============ Real-time COGS ============
-  const bangCOGS = useMemo(
-    () => tinhCOGS(loaiSP, tongSL, dsVai, dsPhuLieu, phanCong, haoHutPhanTram),
-    [loaiSP, tongSL, dsVai, dsPhuLieu, phanCong, haoHutPhanTram]
+  // ============ Load data khi edit ============`
   );
+}
 
-  // ============ Tính tổng phân bổ size ============
-  const tongPhanBoSize = phanBoSize.reduce((s, p) => s + p.sl, 0);
-  const sizeHopLe = tongPhanBoSize === tongSL;
-
-  if (!open) return null;
-
-  // ============ Handlers ============
-  const handlePhuTrachCatChange = (maNV: string) => {
-    setPhuTrachCat(maNV);
-    const nv = REAL_NHAN_VIEN.find((n) => n.ma === maNV);
-    if (nv) {
-      // Có thể lưu tên vào form data
-    }
-  };
-
-  const handlePhanCongChange = (
-    khau: keyof PhanCongGiaCong,
-    field: "nguoiMa" | "donGia",
-    value: string | number
-  ) => {
-    setPhanCong((prev) => {
-      const current = prev[khau];
-      if (!current) return prev;
-      if (field === "nguoiMa") {
-        const maNV = value as string;
-        const nv = REAL_NHAN_VIEN.find((n) => n.ma === maNV);
-        return {
-          ...prev,
-          [khau]: {
-            ...current,
-            nguoiMa: maNV,
-            nguoiTen: nv?.ten || maNV,
-          },
-        };
-      } else {
-        return {
-          ...prev,
-          [khau]: { ...current, donGia: value as number },
-        };
-      }
-    });
-  };
-
-  // ============ Add/Remove Vải ============
-  const addVai = () => {
-    if (KHO_VAI.length === 0) {
-      toast.error("Chưa có dữ liệu vải");
-      return;
-    }
-    const v = KHO_VAI[0];
-    setDsVai((prev) => [
-      ...prev,
-      { maVai: v.maVT, tenVai: v.tenVT, soKg: 100, donGia: v.donGia || 70000 },
-    ]);
-  };
-
-  const updateVai = (idx: number, field: keyof LenhCatVai, value: string | number) => {
-    setDsVai((prev) => {
-      const next = [...prev];
-      const current = { ...next[idx], [field]: value };
-      // Auto-fill tên vải khi đổi mã
-      if (field === "maVai") {
-        const v = KHO_VAI.find((x) => x.maVT === value);
-        if (v) {
-          current.tenVai = v.tenVT;
-          if (v.donGia) current.donGia = v.donGia;
-        }
-      }
-      next[idx] = current;
-      return next;
-    });
-  };
-
-  const removeVai = (idx: number) => {
-    setDsVai((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // ============ Add/Remove Phụ liệu ============
-  const addPhuLieu = () => {
-    if (KHO_VAT_TU.length === 0) {
-      toast.error("Chưa có dữ liệu phụ liệu");
-      return;
-    }
-    const p = KHO_VAT_TU[0];
-    setDsPhuLieu((prev) => [
-      ...prev,
-      { maPL: p.maVT, tenPL: p.tenVT, soLuong: 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái" },
-    ]);
-  };
-
-  const updatePhuLieu = (idx: number, field: keyof LenhCatPhuLieu, value: string | number) => {
-    setDsPhuLieu((prev) => {
-      const next = [...prev];
-      const current = { ...next[idx], [field]: value };
-      if (field === "maPL") {
-        const p = KHO_VAT_TU.find((x) => x.maVT === value);
-        if (p) {
-          current.tenPL = p.tenVT;
-          if (p.donGia) current.donGia = p.donGia;
-          current.dvt = p.dvt || "cái";
-        }
-      }
-      next[idx] = current;
-      return next;
-    });
-  };
-
-  const removePhuLieu = (idx: number) => {
-    setDsPhuLieu((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // ============ Phân bổ size helpers ============
-  const addSizeRow = () => {
-    const used = new Set(phanBoSize.map((p) => p.size));
-    const next = SIZE_OPTIONS.find((s) => !used.has(s));
-    if (next) setPhanBoSize((prev) => [...prev, { size: next, sl: 0 }]);
-  };
-
-  const updateSizeRow = (idx: number, field: "size" | "sl", value: string | number) => {
-    setPhanBoSize((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
-  };
-
-  const removeSizeRow = (idx: number) => {
-    setPhanBoSize((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // ============ Submit ============
-  const handleSubmit = () => {
-    // Validate
-    if (!maSP.trim()) {
-      toast.error("Vui lòng nhập Mã SP");
-      return;
-    }
-    if (!tenSP.trim()) {
-      toast.error("Vui lòng nhập Tên SP");
-      return;
-    }
-    if (tongSL < 1) {
-      toast.error("Tổng SL phải >= 1");
-      return;
-    }
-    if (phanBoSize.length === 0) {
-      toast.error("Vui lòng thêm ít nhất 1 size");
-      return;
-    }
-    if (phanBoSize.some((p) => p.sl < 1)) {
-      toast.error("Mỗi size phải có SL >= 1");
-      return;
-    }
-    if (!sizeHopLe) {
-      toast.error(
-        `Tổng phân bổ size (${tongPhanBoSize}) chưa khớp Tổng SL (${tongSL})`
-      );
-      return;
-    }
-    if (dsVai.length === 0) {
-      toast.error("Vui lòng thêm ít nhất 1 loại vải");
-      return;
-    }
-    if (dsPhuLieu.length === 0) {
-      toast.error("Vui lòng thêm ít nhất 1 phụ liệu");
-      return;
-    }
-
-    // Tìm tên người phụ trách cắt
-    const phuTrachCatTen = REAL_NHAN_VIEN.find((n) => n.ma === phuTrachCat)?.ten || phuTrachCat;
-
-    const data = {
-      loaiSP,
-      maSP: maSP.trim(),
-      tenSP: tenSP.trim(),
-      tongSL,
-      hanHoanThanh,
-      phanBoSize,
-      phuTrachCat,
-      phuTrachCatTen,
-      ghiChu: ghiChu.trim(),
-      dsVai,
-      dsPhuLieu,
-      phanCong,
-      haoHutPhanTram,
-    };
-
-    if (editing) {
-      suaLenhCat(editing.id, data, null);
-      toast.success(`✅ Đã cập nhật ${editing.id}`);
-    } else {
-      const newLC = themLenhCat(data, null);
-      toast.success(`✅ Đã tạo ${newLC.id} - ${tenSP} (${tongSL} sp, COGS: ${formatVND(bangCOGS.giaVon1SP)}/sp)`);
-    }
-    onClose();
-  };
-
-  // ============ Render ============
+const renderStart = code.indexOf('// ============ Render ============');
+if (renderStart > -1) {
+  const newRender = `// ============ Render ============
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-2 md:p-6 animate-fade-in" onClick={onClose}>
       <div 
@@ -556,3 +243,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     </div>
   );
 }
+`;
+  code = code.substring(0, renderStart) + newRender;
+}
+
+fs.writeFileSync(file, code);
