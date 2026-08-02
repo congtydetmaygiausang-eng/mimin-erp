@@ -362,19 +362,15 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                 </select>
               </div>
               <div>
-                {loaiLenh === "HangDat" ? (
-                  <>
-                    <label className="text-sm font-bold text-slate-700 block mb-1">Khách Hàng *</label>
-                    <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={khachHang} onChange={e => setKhachHang(e.target.value)}>
-                      <option value="">-- Chọn Khách Hàng --</option>
-                      {KHACH_HANG_DATA.map(k => <option key={k.maKH} value={k.maKH}>{k.ten}</option>)}
-                    </select>
-                  </>
-                ) : (
-                  <div className="h-full flex items-end pb-2">
-                    <span className="text-xs text-slate-400 italic">Đang tạo Lệnh Cắt cho Hàng Nhà</span>
-                  </div>
-                )}
+                <label className="text-sm font-bold text-slate-700 block mb-1">Tổng SL cắt dự kiến *</label>
+                <input type="number" min={1} className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tongSL} onChange={(e) => {
+                  const val = e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value) || 0);
+                  setTongSL(val);
+                  if (val && typeof val === "number") {
+                    const perColor = Math.floor(val / soMau);
+                    setDsMau(prev => prev.map(m => ({ ...m, slDuKien: perColor })));
+                  }
+                }} placeholder="Nhập số lượng..." />
               </div>
 
               {/* Row 2 */}
@@ -393,28 +389,33 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                 <input type="date" className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={hanHoanThanh} onChange={(e) => setHanHoanThanh(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm font-bold text-slate-700 block mb-1">Tổng SL cắt dự kiến *</label>
-                <input type="number" min={1} className="w-full px-3 py-2 bg-white border-2 border-[#2B4C3E] rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tongSL} onChange={(e) => {
-                  const val = e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value) || 0);
-                  setTongSL(val);
-                  if (val && typeof val === "number") {
-                    const perColor = Math.floor(val / soMau);
-                    setDsMau(prev => prev.map(m => ({ ...m, slDuKien: perColor })));
-                  }
-                }} placeholder="Nhập số lượng..." />
-              </div>
-
-              {/* Row 4 */}
-              <div>
                 <label className="text-sm font-bold text-slate-700 block mb-1">Tỉ lệ size * (Áp dụng cho từng màu)</label>
                 <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tiLeSize} onChange={(e) => setTiLeSize(e.target.value)}>
                   {TI_LE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="text-sm font-bold text-slate-700 block mb-1">Ghi chú sản xuất</label>
-                <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
-              </div>
+
+              {/* Row 4 */}
+              {loaiLenh === "HangDat" ? (
+                <>
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 block mb-1">Khách Hàng *</label>
+                    <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={khachHang} onChange={e => setKhachHang(e.target.value)}>
+                      <option value="">-- Chọn Khách Hàng --</option>
+                      {KHACH_HANG_DATA.map(k => <option key={k.maKH} value={k.maKH}>{k.ten}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 block mb-1">Ghi chú sản xuất</label>
+                    <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
+                  </div>
+                </>
+              ) : (
+                <div className="col-span-2">
+                  <label className="text-sm font-bold text-slate-700 block mb-1">Ghi chú sản xuất</label>
+                  <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
+                </div>
+              )}
 
               {/* Row 5 */}
               <div className="col-span-2">
