@@ -185,6 +185,8 @@ interface LenhCatStore {
   dsMauChiPhi: MauChiPhiItem[];
   themMauCongDoan: (mau: MauCongDoanItem) => void;
   themMauChiPhi: (mau: MauChiPhiItem) => void;
+  xoaMauCongDoan: (id: string) => void;
+  xoaMauChiPhi: (id: string) => void;
   capNhatTrangThai: (id: string, tt: TrangThaiLenhCat, u: any) => void;
   reset: () => void;
 }
@@ -259,6 +261,12 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const themMauChiPhi = useCallback((mau: MauChiPhiItem) => {
     setDsMauChiPhi(prev => { const next = [...prev, mau]; localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
   }, []);
+  const xoaMauCongDoan = useCallback((id: string) => {
+    setDsMauCongDoan(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(next)); return next; });
+  }, []);
+  const xoaMauChiPhi = useCallback((id: string) => {
+    setDsMauChiPhi(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
+  }, []);
   const capNhatTrangThai = useCallback((id: string, tt: TrangThaiLenhCat, u: any) => {
     setDsLenhCat(prev => { const next = prev.map(x => x.id === id ? { ...x, trangThai: tt } : x); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; });
   }, []);
@@ -272,7 +280,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   if (!isLoaded) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi, capNhatTrangThai, reset }}>
+    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi, xoaMauCongDoan, xoaMauChiPhi, capNhatTrangThai, reset }}>
       {children}
     </LenhCatContext.Provider>
   );

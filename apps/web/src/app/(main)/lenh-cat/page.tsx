@@ -25,7 +25,7 @@ import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { MobileCard, EmptyState, DateDisplay } from "@/components/ui";
 
 export default function LenhCatPage() {
-  const { dsLenhCat, xoaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi } = useLenhCat();
+  const { dsLenhCat, xoaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi, dsMauCongDoan, dsMauChiPhi, xoaMauCongDoan, xoaMauChiPhi } = useLenhCat();
   const [showTaoMauCD, setShowTaoMauCD] = useState(false);
   const [customStepName, setCustomStepName] = useState("");
   const [newMauCD, setNewMauCD] = useState<{id: string; ten: string; giaCong: {id: string; tenCongDoan: string; nguoiMa: string; nguoiTen: string; donGia: number}[]}>({ id: "", ten: "", giaCong: [
@@ -43,6 +43,9 @@ export default function LenhCatPage() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [filterTrangThai, setFilterTrangThai] = useState<TrangThaiLenhCat | "ALL">("ALL");
+  const [expandedMauCD, setExpandedMauCD] = useState<string | null>(null);
+  const [expandedMauCP, setExpandedMauCP] = useState<string | null>(null);
+  const [showDanhSachMau, setShowDanhSachMau] = useState(false);
 
   // ============ KPIs ============
   const stats = {
@@ -189,6 +192,114 @@ export default function LenhCatPage() {
           + Tạo bảng chi phí
         </button>
 
+
+      {/* Danh sách mẫu đã lưu */}
+      {(dsMauCongDoan.length > 0 || dsMauChiPhi.length > 0) && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 overflow-hidden">
+          <button
+            onClick={() => setShowDanhSachMau(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-violet-600">📋</span>
+              Danh sách mẫu đã lưu
+              <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-bold">
+                {dsMauCongDoan.length} công đoạn · {dsMauChiPhi.length} bảng chi phí
+              </span>
+            </span>
+            <span className={`text-slate-400 transition-transform ${showDanhSachMau ? 'rotate-180' : ''}`}>▼</span>
+          </button>
+
+          {showDanhSachMau && (
+            <div className="border-t border-slate-200 dark:border-slate-700 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Mẫu Công Đoạn */}
+              <div>
+                <h4 className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <span>✂️</span> Mẫu Công Đoạn ({dsMauCongDoan.length})
+                </h4>
+                <div className="space-y-2">
+                  {dsMauCongDoan.map((m) => (
+                    <div key={m.id} className="border border-violet-100 rounded-lg bg-violet-50/50 overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <button
+                          onClick={() => setExpandedMauCD(expandedMauCD === m.id ? null : m.id)}
+                          className="font-semibold text-sm text-slate-800 flex items-center gap-1.5 flex-1 text-left"
+                        >
+                          <span className="w-2 h-2 rounded-full bg-violet-400 flex-shrink-0"></span>
+                          {m.ten}
+                          <span className="text-xs font-normal text-slate-400">({m.giaCong.length} khâu)</span>
+                        </button>
+                        <button
+                          onClick={() => { if (confirm(`Xoá mẫu "${m.ten}"?`)) { xoaMauCongDoan(m.id); toast.success('Đã xoá mẫu'); } }}
+                          className="p-1 text-rose-400 hover:bg-rose-100 rounded ml-2 flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {expandedMauCD === m.id && (
+                        <div className="border-t border-violet-100 px-3 py-2 space-y-1">
+                          {m.giaCong.map((k, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="text-slate-600">{k.tenCongDoan}</span>
+                              <span className="font-bold text-violet-700">{k.donGia.toLocaleString()}đ</span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-violet-100 mt-1">
+                            <span className="font-bold text-slate-700">Tổng gia công/SP</span>
+                            <span className="font-bold text-emerald-600">{m.giaCong.reduce((s, k) => s + k.donGia, 0).toLocaleString()}đ</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bảng Chi Phí */}
+              <div>
+                <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <span>💰</span> Bảng Chi Phí Cố Định ({dsMauChiPhi.length})
+                </h4>
+                <div className="space-y-2">
+                  {dsMauChiPhi.map((m) => (
+                    <div key={m.id} className="border border-emerald-100 rounded-lg bg-emerald-50/50 overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <button
+                          onClick={() => setExpandedMauCP(expandedMauCP === m.id ? null : m.id)}
+                          className="font-semibold text-sm text-slate-800 flex items-center gap-1.5 flex-1 text-left"
+                        >
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                          {m.ten}
+                          <span className="text-xs font-normal text-slate-400">
+                            ({(m.chiPhi.baoBi + m.chiPhi.temNhan + m.chiPhi.khauHao).toLocaleString()}đ/sp)
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => { if (confirm(`Xoá bảng giá "${m.ten}"?`)) { xoaMauChiPhi(m.id); toast.success('Đã xoá bảng giá'); } }}
+                          className="p-1 text-rose-400 hover:bg-rose-100 rounded ml-2 flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {expandedMauCP === m.id && (
+                        <div className="border-t border-emerald-100 px-3 py-2 space-y-1">
+                          <div className="flex justify-between text-xs"><span className="text-slate-600">Bao Bì, Túi PE</span><span className="font-bold text-emerald-700">{m.chiPhi.baoBi.toLocaleString()}đ</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-slate-600">Tem, Nhãn mác</span><span className="font-bold text-emerald-700">{m.chiPhi.temNhan.toLocaleString()}đ</span></div>
+                          <div className="flex justify-between text-xs"><span className="text-slate-600">Khấu hao, Điện nước</span><span className="font-bold text-emerald-700">{m.chiPhi.khauHao.toLocaleString()}đ</span></div>
+                          <div className="flex justify-between text-xs pt-1 border-t border-emerald-100 mt-1">
+                            <span className="font-bold text-slate-700">Tổng chi phí cố định/SP</span>
+                            <span className="font-bold text-emerald-600">{(m.chiPhi.baoBi + m.chiPhi.temNhan + m.chiPhi.khauHao).toLocaleString()}đ</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* List */}
       {filteredLC.length === 0 ? (

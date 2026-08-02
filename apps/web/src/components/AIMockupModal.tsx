@@ -4,10 +4,11 @@
 // AI MOCKUP MODAL - MiniMax image-01
 // Component riêng để tránh conflict với LenhCatModal (Antigravity đang redesign)
 // Click nút "Tạo mockup AI" từ LenhCatModal → mở modal này
+// Hỗ trợ upload ảnh tham chiếu (reference image) để tạo ảnh tương tự
 // ============================================
 
-import { useState } from "react";
-import { X, Wand2, Loader2, Image as ImageIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import { X, Wand2, Loader2, Image as ImageIcon, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AIMockupModalProps {
@@ -39,7 +40,40 @@ export function AIMockupModal({
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Reference image (ảnh mẫu tương tự) - dùng để MiniMax giữ phong cách/người mẫu
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!open) return null;
+
+  const handlePickReference = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Chỉ chấp nhận file ảnh");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File quá lớn (max 10MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setReferenceImage(ev.target?.result as string);
+      toast.success("Đã chọn ảnh tham chiếu");
+    };
+    reader.readAsDataURL(file);
+    // Reset input để chọn lại cùng file vẫn trigger
+    e.target.value = "";
+  };
+
+  const handleRemoveReference = () => {
+    setReferenceImage(null);
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -56,6 +90,7 @@ export function AIMockupModal({
         body: JSON.stringify({
           prompt,
           aspect_ratio: aspect,
+          reference_image: referenceImage || undefined,
         }),
       });
       if (!res.ok) {
@@ -114,6 +149,52 @@ export function AIMockupModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Reference image (ảnh mẫu tương tự) */}
+          <div>
+            <label className="text-sm font-bold text-slate-700 block mb-1.5">
+              Ảnh tham chiếu (tuỳ chọn)
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+              data-testid="ai-mockup-ref-input"
+            />
+            {referenceImage ? (
+              <div className="relative w-32 h-32 rounded-lg border-2 border-violet-300 overflow-hidden bg-slate-50 group">
+                <img
+                  src={referenceImage}
+                  alt="Reference"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={handleRemoveReference}
+                  disabled={loading}
+                  className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-full hover:bg-rose-600 disabled:opacity-50"
+                  title="Xóa ảnh tham chiếu"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handlePickReference}
+                disabled={loading}
+                data-testid="btn-upload-reference"
+                className="w-full px-3 py-4 border-2 border-dashed border-slate-300 rounded-lg hover:border-violet-400 hover:bg-violet-50/30 transition-colors flex flex-col items-center gap-1 text-slate-500 hover:text-violet-600 disabled:opacity-50"
+              >
+                <Upload className="w-6 h-6" />
+                <span className="text-xs font-medium">Upload ảnh mẫu tương tự (style/người mẫu)</span>
+                <span className="text-[10px] text-slate-400">PNG, JPG · tối đa 10MB</span>
+              </button>
+            )}
+            <div className="text-xs text-slate-500 mt-1 italic">
+              💡 Upload ảnh polo mẫu có sẵn → MiniMax sẽ giữ phong cách tương tự nhưng đổi màu/kiểu theo mô tả
+            </div>
+          </div>
+
           <div>
             <label className="text-sm font-bold text-slate-700 block mb-1.5">
               Mô tả sản phẩm (prompt)
@@ -160,7 +241,8 @@ export function AIMockupModal({
             <div className="flex flex-col items-center justify-center py-12 bg-slate-50 rounded-lg">
               <Loader2 className="w-10 h-10 text-violet-500 animate-spin mb-3" />
               <p className="text-sm font-medium text-slate-600">
-                MiniMax image-01 đang tạo ảnh...
+                MiniMax image-01 đang tạo ảnh
+                {referenceImage ? " (giữ phong cách từ ảnh tham chiếu)..." : "..."}
               </p>
               <p className="text-xs text-slate-500 mt-1">Mất khoảng 10-20 giây</p>
             </div>
