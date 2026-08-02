@@ -218,8 +218,23 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     }
     
       const storedMCD = localStorage.getItem(STORAGE_KEY_MCD);
-      if (storedMCD) setDsMauCongDoan(JSON.parse(storedMCD));
-      else { setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN)); }
+      if (storedMCD) {
+        try {
+          const parsed = JSON.parse(storedMCD);
+          // If old format (object instead of array), reset
+          if (parsed.length > 0 && !Array.isArray(parsed[0].giaCong)) {
+            setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
+            localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
+          } else {
+            setDsMauCongDoan(parsed);
+          }
+        } catch {
+          setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
+        }
+      } else {
+        setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
+        localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
+      }
       
       const storedMCP = localStorage.getItem(STORAGE_KEY_MCP);
       if (storedMCP) setDsMauChiPhi(JSON.parse(storedMCP));

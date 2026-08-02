@@ -227,7 +227,7 @@ export default function LenhCatPage() {
                         >
                           <span className="w-2 h-2 rounded-full bg-violet-400 flex-shrink-0"></span>
                           {m.ten}
-                          <span className="text-xs font-normal text-slate-400">({m.giaCong.length} khâu)</span>
+                          <span className="text-xs font-normal text-slate-400">({Array.isArray(m.giaCong) ? m.giaCong.length : 0} khâu)</span>
                         </button>
                         <button
                           onClick={() => { if (confirm(`Xoá mẫu "${m.ten}"?`)) { xoaMauCongDoan(m.id); toast.success('Đã xoá mẫu'); } }}
@@ -238,7 +238,7 @@ export default function LenhCatPage() {
                       </div>
                       {expandedMauCD === m.id && (
                         <div className="border-t border-violet-100 px-3 py-2 space-y-1">
-                          {m.giaCong.map((k, i) => (
+                          {(Array.isArray(m.giaCong) ? m.giaCong : []).map((k, i) => (
                             <div key={i} className="flex items-center justify-between text-xs">
                               <span className="text-slate-600">{k.tenCongDoan}</span>
                               <span className="font-bold text-violet-700">{k.donGia.toLocaleString()}đ</span>
@@ -246,7 +246,7 @@ export default function LenhCatPage() {
                           ))}
                           <div className="flex items-center justify-between text-xs pt-1 border-t border-violet-100 mt-1">
                             <span className="font-bold text-slate-700">Tổng gia công/SP</span>
-                            <span className="font-bold text-emerald-600">{m.giaCong.reduce((s, k) => s + k.donGia, 0).toLocaleString()}đ</span>
+                            <span className="font-bold text-emerald-600">{(Array.isArray(m.giaCong) ? m.giaCong : []).reduce((s, k) => s + k.donGia, 0).toLocaleString()}đ</span>
                           </div>
                         </div>
                       )}
