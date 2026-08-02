@@ -271,10 +271,20 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const themMauCongDoan = useCallback((mau: MauCongDoanItem) => {
-    setDsMauCongDoan(prev => { const next = [...prev, mau]; localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(next)); return next; });
+    setDsMauCongDoan(prev => {
+      const exists = prev.some(x => x.id === mau.id);
+      const next = exists ? prev.map(x => x.id === mau.id ? mau : x) : [...prev, mau];
+      localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(next));
+      return next;
+    });
   }, []);
   const themMauChiPhi = useCallback((mau: MauChiPhiItem) => {
-    setDsMauChiPhi(prev => { const next = [...prev, mau]; localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
+    setDsMauChiPhi(prev => {
+      const exists = prev.some(x => x.id === mau.id);
+      const next = exists ? prev.map(x => x.id === mau.id ? mau : x) : [...prev, mau];
+      localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next));
+      return next;
+    });
   }, []);
   const xoaMauCongDoan = useCallback((id: string) => {
     setDsMauCongDoan(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(next)); return next; });

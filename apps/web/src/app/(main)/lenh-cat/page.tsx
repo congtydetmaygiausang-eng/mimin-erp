@@ -40,6 +40,24 @@ export default function LenhCatPage() {
 
   const [showTaoMauCP, setShowTaoMauCP] = useState(false);
   const [newMauCP, setNewMauCP] = useState({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
+
+  const handleCreateCD = () => {
+    setNewMauCD({ id: "", ten: "", giaCong: [
+      { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 0 },
+      { id: "mayAo", tenCongDoan: "May Áo", nguoiMa: "", nguoiTen: "", donGia: 0 },
+      { id: "mayQuan", tenCongDoan: "May Quần", nguoiMa: "", nguoiTen: "", donGia: 0 },
+      { id: "in", tenCongDoan: "In", nguoiMa: "", nguoiTen: "", donGia: 0 },
+      { id: "theu", tenCongDoan: "Thêu", nguoiMa: "", nguoiTen: "", donGia: 0 },
+      { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 0 },
+      { id: "dongGoi", tenCongDoan: "Đóng Gói", nguoiMa: "", nguoiTen: "", donGia: 0 }
+    ] });
+    setShowTaoMauCD(true);
+  };
+
+  const handleCreateCP = () => {
+    setNewMauCP({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
+    setShowTaoMauCP(true);
+  };
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [filterTrangThai, setFilterTrangThai] = useState<TrangThaiLenhCat | "ALL">("ALL");
@@ -180,13 +198,13 @@ export default function LenhCatPage() {
 
         <div className="w-px h-6 bg-slate-300 mx-2 self-center"></div>
         <button
-          onClick={() => setShowTaoMauCD(true)}
+          onClick={handleCreateCD}
           className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-violet-100 text-violet-700 hover:bg-violet-200 border border-violet-200 shadow-sm"
         >
           + Tạo mẫu công đoạn
         </button>
         <button
-          onClick={() => setShowTaoMauCP(true)}
+          onClick={handleCreateCP}
           className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-200 shadow-sm"
         >
           + Tạo bảng chi phí
@@ -228,6 +246,16 @@ export default function LenhCatPage() {
                           <span className="w-2 h-2 rounded-full bg-violet-400 flex-shrink-0"></span>
                           {m.ten}
                           <span className="text-xs font-normal text-slate-400">({Array.isArray(m.giaCong) ? m.giaCong.length : 0} khâu)</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNewMauCD(m);
+                            setShowTaoMauCD(true);
+                          }}
+                          className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700/50 rounded ml-2 flex-shrink-0"
+                          title="Sửa mẫu"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => { if (confirm(`Xoá mẫu "${m.ten}"?`)) { xoaMauCongDoan(m.id); toast.success('Đã xoá mẫu'); } }}
@@ -273,6 +301,16 @@ export default function LenhCatPage() {
                           <span className="text-xs font-normal text-slate-400">
                             ({(m.chiPhi.baoBi + m.chiPhi.temNhan + m.chiPhi.khauHao).toLocaleString()}đ/sp)
                           </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNewMauCP(m);
+                            setShowTaoMauCP(true);
+                          }}
+                          className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700/50 rounded ml-2 flex-shrink-0"
+                          title="Sửa bảng giá"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => { if (confirm(`Xoá bảng giá "${m.ten}"?`)) { xoaMauChiPhi(m.id); toast.success('Đã xoá bảng giá'); } }}
@@ -325,11 +363,14 @@ export default function LenhCatPage() {
       {showTaoMauCD && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in zoom-in-95">
-            <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
+            <h3 className="text-lg font-bold mb-4">{dsMauCongDoan.some(x => x.id === newMauCD.id && newMauCD.id !== "") ? "Cập Nhật Mẫu Công Đoạn" : "Tạo Mẫu Công Đoạn Mới"}</h3>
             <div className="space-y-3 mb-6">
               <div>
                 <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => {
+                  const isEdit = dsMauCongDoan.some(x => x.id === prev.id && prev.id !== "");
+                  return { ...prev, ten: e.target.value, id: isEdit ? prev.id : e.target.value.replace(/\s/g, "") };
+                })} />
               </div>
               {newMauCD.giaCong.map((item, index) => (
                   <div key={index} className="flex items-center justify-between gap-2">
@@ -389,11 +430,14 @@ export default function LenhCatPage() {
       {showTaoMauCP && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in zoom-in-95">
-            <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Cố Định Mới</h3>
+            <h3 className="text-lg font-bold mb-4">{dsMauChiPhi.some(x => x.id === newMauCP.id && newMauCP.id !== "") ? "Cập Nhật Mẫu Chi Phí Cố Định" : "Tạo Mẫu Chi Phí Cố Định Mới"}</h3>
             <div className="space-y-3 mb-6">
               <div>
                 <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
-                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
+                <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => {
+                  const isEdit = dsMauChiPhi.some(x => x.id === prev.id && prev.id !== "");
+                  return { ...prev, ten: e.target.value, id: isEdit ? prev.id : e.target.value.replace(/\s/g, "") };
+                })} />
               </div>
               {["baoBi", "temNhan", "khauHao"].map((k) => {
                 const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
