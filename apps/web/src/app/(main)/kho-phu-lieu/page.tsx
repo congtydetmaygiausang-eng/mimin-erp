@@ -85,17 +85,17 @@ export default function KhoPhuLieuPage() {
   }, [giaoDich, search, tab]);
 
   return (
-    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-violet-400/20 via-violet-200/10 to-transparent dark:from-violet-900/30 dark:via-slate-900 dark:to-slate-900">
+    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
         
-      <div className="bg-[#2e1065] p-5 md:p-6 rounded-3xl shadow-lg border border-violet-800/30 mb-6">
+      <div className="bg-[#134e5e] p-5 md:p-6 rounded-3xl shadow-lg border border-teal-800/30 mb-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-white">
-              <Boxes className="w-7 h-7 text-violet-300" />
+              <Boxes className="w-7 h-7 text-teal-300" />
               Kho Phụ Liệu
             </h1>
-            <p className="opacity-90 mt-1 text-sm text-violet-100">
+            <p className="opacity-90 mt-1 text-sm text-teal-100">
               {KHO_VAT_TU.length} mã phụ liệu · Tổng giá trị tồn <b className="text-emerald-400">{formatVNDShort(tongGiaTri)}</b>
               {dsCanhBao.length > 0 && <> · <b className="text-rose-400">⚠️ {dsCanhBao.length} mã dưới tồn tối thiểu</b></>}
             </p>
@@ -104,30 +104,11 @@ export default function KhoPhuLieuPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
-          <div className="card p-4 bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-0">
-            <div className="text-xs font-medium text-violet-200 flex items-center gap-1.5 opacity-80"><Box className="w-4 h-4" /> Tổng tồn kho</div>
-            <div className="text-xl font-bold mt-1 text-white">{KHO_VAT_TU.length} mã</div>
-            <div className="text-xs opacity-60 mt-1 text-violet-200">{Object.keys(dsTheoLoai).length} loại</div>
-          </div>
-          <div className="card p-4 bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-0">
-            <div className="text-xs font-medium text-emerald-200 flex items-center gap-1.5 opacity-80"><DollarSign className="w-4 h-4" /> Giá trị tồn</div>
-            <div className="text-xl font-bold mt-1 text-emerald-400">{formatVNDShort(tongGiaTri)}</div>
-            <div className="text-xs opacity-60 mt-1 text-emerald-200/70">{formatVND(tongGiaTri)}</div>
-          </div>
-          <div className="card p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-0">
-            <div className="text-xs font-medium text-blue-200 flex items-center gap-1.5 opacity-80"><TrendingUp className="w-4 h-4" /> Tổng nhập</div>
-            <div className="text-xl font-bold mt-1 text-blue-400">{formatVNDShort(tongNhap)}</div>
-          </div>
-          <div className={`card p-4 bg-gradient-to-br border-0 ${dsCanhBao.length > 0 ? "from-rose-500/20 to-red-500/20" : "from-violet-500/10 to-purple-500/10"}`}>
-            <div className={`text-xs font-medium flex items-center gap-1.5 opacity-80 ${dsCanhBao.length > 0 ? 'text-rose-200' : 'text-violet-200'}`}>
-              <AlertTriangle className="w-4 h-4" /> Cảnh báo tồn
-            </div>
-            <div className={`text-xl font-bold mt-1 ${dsCanhBao.length > 0 ? "text-rose-400" : "text-white"}`}>
-              {dsCanhBao.length}
-            </div>
-            <div className={`text-xs opacity-60 mt-1 ${dsCanhBao.length > 0 ? 'text-rose-200' : 'text-violet-200'}`}>mã dưới tối thiểu</div>
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+          <Stat icon={<Box className="w-4 h-4" />} label="Tổng tồn kho" value={`${KHO_VAT_TU.length} mã`} subValue={`${Object.keys(dsTheoLoai).length} loại`} color="blue" />
+          <Stat icon={<DollarSign className="w-4 h-4" />} label="Giá trị tồn" value={formatVNDShort(tongGiaTri)} subValue={formatVND(tongGiaTri)} color="emerald" />
+          <Stat icon={<TrendingUp className="w-4 h-4" />} label="Tổng nhập" value={formatVNDShort(tongNhap)} color="violet" />
+          <Stat icon={<AlertTriangle className="w-4 h-4" />} label="Cảnh báo tồn" value={dsCanhBao.length} subValue="mã dưới tối thiểu" color={dsCanhBao.length > 0 ? "rose" : "blue"} />
         </div>
 
         {dsCanhBao.length > 0 && (
@@ -156,8 +137,8 @@ export default function KhoPhuLieuPage() {
               onClick={() => setTab(t.id)}
               className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all ${
                 tab === t.id 
-                  ? "bg-violet-500 shadow-md font-bold text-white" 
-                  : "font-medium text-violet-100 hover:bg-black/20 hover:text-white"
+                  ? "bg-teal-500 shadow-md font-bold text-white" 
+                  : "font-medium text-teal-100 hover:bg-black/20 hover:text-white"
               }`}
             >
               {t.icon} {t.label}
@@ -543,5 +524,21 @@ function PLLichSu({ maVT, loai, onClose }: { maVT: string; loai: "vai" | "phu-li
         </div>
       </div>
     </Portal>
+  );
+}
+
+function Stat({ icon, label, value, subValue, color }: { icon: React.ReactNode; label: string; value: any; subValue?: string; color: string }) {
+  const colors: Record<string, string> = {
+    blue: "from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400",
+    emerald: "from-emerald-500/10 to-green-500/10 text-emerald-600 dark:text-emerald-400",
+    rose: "from-rose-500/10 to-red-500/10 text-rose-600 dark:text-rose-400",
+    violet: "from-violet-500/10 to-purple-500/10 text-violet-600 dark:text-violet-400",
+  };
+  return (
+    <div className={`card p-3 bg-gradient-to-br ${colors[color]}`}>
+      <div className="flex items-center gap-1.5 opacity-80 text-xs">{icon}<span>{label}</span></div>
+      <div className="text-xl font-bold mt-1">{value}</div>
+      {subValue && <div className="text-xs opacity-70 mt-1">{subValue}</div>}
+    </div>
   );
 }
