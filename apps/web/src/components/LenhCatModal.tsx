@@ -90,6 +90,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [tenSP, setTenSP] = useState("");
   const [tongSL, setTongSL] = useState<number | "">("");
   const [tongSLThucTe, setTongSLThucTe] = useState<number | "">("");
+  const [ngayBatDau, setNgayBatDau] = useState(() => new Date().toISOString().split("T")[0]);
+  const [sdtLienHe, setSdtLienHe] = useState("");
   const [hanHoanThanh, setHanHoanThanh] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 14);
@@ -585,8 +587,12 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                     return (
                       <div key={khKey} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
                         <div className="col-span-3 font-semibold text-slate-700 text-sm">{labels[khKey]}</div>
-                        <select 
-                          className="col-span-6 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
+                        <div className="col-span-6 flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold overflow-hidden border border-blue-200 flex-shrink-0 text-[10px]">
+                            {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || "NV") : "NV"}
+                          </div>
+                          <select 
+                          className="flex-1 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
                           value={kh.nguoiMa}
                           onChange={(e) => {
                             const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
@@ -596,6 +602,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                           <option value="">-- Chọn NV/Xưởng --</option>
                           {REAL_NHAN_VIEN.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
                         </select>
+                        </div>
                         <div className="col-span-3 relative">
                           <input 
                             type="number" min={0}
