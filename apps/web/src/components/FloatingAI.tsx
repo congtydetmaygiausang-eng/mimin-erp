@@ -120,7 +120,7 @@ export function FloatingAI() {
               id: `ai-${Date.now()}`,
               role: "assistant",
               content: typeof content === "string" ? content : JSON.stringify(content),
-              agent: { id: "agent-tai-chinh", name: "Anh Quốc (Gemini)", provider: "gemini", model: "gemini-1.5-pro" },
+              agent: { id: "agent-tai-chinh", name: "MIN AI Tài chính", provider: "gemini", model: "gemini-1.5-pro" },
               timestamp: Date.now(),
             },
           ]);
@@ -131,7 +131,7 @@ export function FloatingAI() {
               id: `ai-${Date.now()}`,
               role: "assistant",
               content: fullText,
-              agent: { id: "agent-tai-chinh", name: "Anh Quốc (Gemini)", provider: "gemini", model: "gemini-1.5-pro" },
+              agent: { id: "agent-tai-chinh", name: "MIN AI Tài chính", provider: "gemini", model: "gemini-1.5-pro" },
               timestamp: Date.now(),
             },
           ]);

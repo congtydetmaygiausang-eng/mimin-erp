@@ -68,7 +68,7 @@ export default function TrangChuKhoPage() {
           {/* AI Quick Chat Widget */}
           <div className="w-full md:w-96 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-white/30 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
             <div className="flex items-center gap-2 mb-2 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-              <Sparkles className="w-4 h-4" /> AI Kho (Minimax)
+              <Sparkles className="w-4 h-4" /> MIN AI Kho
             </div>
             {aiResponse ? (
               <div className="text-sm bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 p-3 rounded-xl mb-2 animate-fade-in border border-emerald-100 dark:border-emerald-500/20">
