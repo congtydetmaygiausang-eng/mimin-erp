@@ -307,7 +307,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] flex flex-col">
+        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-4 flex flex-col gap-4">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -320,7 +320,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           )}
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
-          <div className="p-6 border-b-[8px] border-[#2B4C3E]">
+          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
               <div className="flex gap-4 items-center">
@@ -435,7 +435,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           </div>
 
           {/* KHỐI 2: MÀU SẮC, VẢI, NGUYÊN PHỤ LIỆU */}
-          <div className="bg-[#9ACBB8] p-6 border-b-[8px] border-[#2B4C3E]">
+          <div className="bg-[#E6F3EE] p-5 rounded-lg border border-emerald-200/80 shadow-sm">
             <div className="flex justify-between items-center mb-4">
                <h2 className="text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">MÀU SẮC, VẢI & CHIA SIZE</h2>
                <div className="flex items-center gap-2">
@@ -718,7 +718,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           </div>
 
           {/* KHỐI 3: GIA CÔNG VÀ ĐƠN GIÁ */}
-          <div className="bg-[#F0A619] p-6 pb-8">
+          <div className="bg-[#FCF5E8] p-5 rounded-lg border border-amber-200/80 shadow-sm mb-2">
             <h2 className="text-xl font-bold text-slate-900 mb-6 uppercase tracking-wide drop-shadow-sm">
               MẪU CÔNG ĐOẠN & CHI PHÍ
             </h2>
@@ -837,7 +837,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           
           {/* KHỐI 4: NHẬP THỰC TẾ (Chỉ hiện khi Đang cắt hoặc Hoàn thành) */}
           {(trangThai === "DangCat" || trangThai === "HoanThanh" || trangThai === "ChuyenTiep") && (
-            <div className="bg-slate-800 p-6">
+            <div className="bg-slate-800 text-white p-5 rounded-lg border border-slate-700 shadow-sm">
               <h2 className="text-xl font-bold text-white mb-6 uppercase tracking-wide">THÔNG SỐ THỰC TẾ SAU CẮT</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
