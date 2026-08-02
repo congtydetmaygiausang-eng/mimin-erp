@@ -27,7 +27,16 @@ import { MobileCard, EmptyState, DateDisplay } from "@/components/ui";
 export default function LenhCatPage() {
   const { dsLenhCat, xoaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi } = useLenhCat();
   const [showTaoMauCD, setShowTaoMauCD] = useState(false);
-  const [newMauCD, setNewMauCD] = useState({ id: "", ten: "", giaCong: { cat: { nguoiMa: "", nguoiTen: "", donGia: 0 }, mayAo: { nguoiMa: "", nguoiTen: "", donGia: 0 }, mayQuan: { nguoiMa: "", nguoiTen: "", donGia: 0 }, inTheu: { nguoiMa: "", nguoiTen: "", donGia: 0 }, uiQC: { nguoiMa: "", nguoiTen: "", donGia: 0 } } });
+  const [customStepName, setCustomStepName] = useState("");
+  const [newMauCD, setNewMauCD] = useState<{id: string; ten: string; giaCong: {id: string; tenCongDoan: string; nguoiMa: string; nguoiTen: string; donGia: number}[]}>({ id: "", ten: "", giaCong: [
+    { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 0 },
+    { id: "mayAo", tenCongDoan: "May Áo", nguoiMa: "", nguoiTen: "", donGia: 0 },
+    { id: "mayQuan", tenCongDoan: "May Quần", nguoiMa: "", nguoiTen: "", donGia: 0 },
+    { id: "in", tenCongDoan: "In", nguoiMa: "", nguoiTen: "", donGia: 0 },
+    { id: "theu", tenCongDoan: "Thêu", nguoiMa: "", nguoiTen: "", donGia: 0 },
+    { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 0 },
+    { id: "dongGoi", tenCongDoan: "Đóng Gói", nguoiMa: "", nguoiTen: "", donGia: 0 }
+  ] });
 
   const [showTaoMauCP, setShowTaoMauCP] = useState(false);
   const [newMauCP, setNewMauCP] = useState({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
@@ -211,15 +220,51 @@ export default function LenhCatPage() {
                 <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
                 <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
               </div>
-              {["cat", "mayAo", "mayQuan", "inTheu", "uiQC"].map((k) => {
-                const labels: any = { cat: "Cắt", mayAo: "May Áo", mayQuan: "May Quần", inTheu: "In/Thêu", uiQC: "Ủi/Đóng Gói" };
-                return (
-                  <div key={k} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{labels[k]}</span>
-                    <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Đơn giá" value={(newMauCD.giaCong as any)[k].donGia || ""} onChange={e => setNewMauCD(prev => ({ ...prev, giaCong: { ...prev.giaCong, [k]: { ...(prev.giaCong as any)[k], donGia: parseInt(e.target.value) || 0 } } }))} />
+              {newMauCD.giaCong.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1">
+                      <button onClick={() => {
+                        const newGiaCong = [...newMauCD.giaCong];
+                        newGiaCong.splice(index, 1);
+                        setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
+                      }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <input className="text-sm font-medium border-b border-dashed border-slate-300 focus:outline-none flex-1 bg-transparent" value={item.tenCongDoan} onChange={e => {
+                        const newGiaCong = [...newMauCD.giaCong];
+                        newGiaCong[index].tenCongDoan = e.target.value;
+                        setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
+                      }} />
+                    </div>
+                    <div className="flex items-center gap-1 w-32 border rounded px-2">
+                      <input type="number" className="w-full py-1 focus:outline-none bg-transparent" placeholder="Đơn giá" value={item.donGia || ""} onChange={e => {
+                        const newGiaCong = [...newMauCD.giaCong];
+                        newGiaCong[index].donGia = parseInt(e.target.value) || 0;
+                        setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
+                      }} />
+                      <span className="text-xs text-slate-400">đ</span>
+                    </div>
                   </div>
-                );
-              })}
+                ))}
+                
+                {/* Thêm công đoạn mới */}
+                <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+                  <input className="flex-1 px-3 py-1.5 border rounded text-sm" placeholder="Nhập tên công đoạn mới..." value={customStepName} onChange={e => setCustomStepName(e.target.value)} onKeyDown={e => {
+                    if (e.key === "Enter" && customStepName.trim()) {
+                      const newId = "cd_" + Date.now();
+                      setNewMauCD(prev => ({ ...prev, giaCong: [...prev.giaCong, { id: newId, tenCongDoan: customStepName.trim(), nguoiMa: "", nguoiTen: "", donGia: 0 }] }));
+                      setCustomStepName("");
+                    }
+                  }}/>
+                  <button onClick={() => {
+                    if (customStepName.trim()) {
+                      const newId = "cd_" + Date.now();
+                      setNewMauCD(prev => ({ ...prev, giaCong: [...prev.giaCong, { id: newId, tenCongDoan: customStepName.trim(), nguoiMa: "", nguoiTen: "", donGia: 0 }] }));
+                      setCustomStepName("");
+                    }
+                  }} className="px-3 py-1.5 bg-slate-100 text-slate-700 font-medium text-sm rounded hover:bg-slate-200 whitespace-nowrap">+ Thêm</button>
+                </div>
+
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600 font-bold hover:bg-slate-50">Huỷ</button>

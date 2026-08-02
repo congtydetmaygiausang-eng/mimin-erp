@@ -16,10 +16,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
   Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
+import { AIMockupModal } from "@/components/AIMockupModal";
 import {
   type LenhCat, type LoaiSP, type LenhCatVai, type LenhCatPhuLieu,
   type PhanCongGiaCong, type TrangThaiLenhCat,
@@ -90,6 +92,9 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   })));
   const [canhBaoTonKho, setCanhBaoTonKho] = useState<string[]>([]);
 
+  // ============ AI Mockup state (MiniMax image-01) - tách riêng component ============
+  const [aiMockupIdx, setAiMockupIdx] = useState<number | null>(null);
+
   // Tự chia size theo màu
   useEffect(() => {
     setDsMau(prev => {
@@ -156,7 +161,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [newMauCP, setNewMauCP] = useState({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
 
   const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
-  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || {});
+  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || []);
   
   // Chi Phí Cố Định
   const [mauChiPhi, setMauChiPhi] = useState<string>("BoTheThao");
@@ -213,6 +218,29 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     input.click();
   };
 
+  // ============ AI Mockup handlers (MiniMax image-01) ============
+  const openAiMockup = (idx: number) => {
+    setAiMockupIdx(idx);
+  };
+
+  const applyAIMockup = (url: string) => {
+    if (aiMockupIdx === null) return;
+    setDsMau(prev => {
+      const next = [...prev];
+      next[aiMockupIdx] = { ...next[aiMockupIdx], img: url };
+      return next;
+    });
+  };
+
+  const buildAiPrompt = (idx: number): string => {
+    const loaiText = loaiSP === "BoTru" ? "bộ trụ" : "áo polo";
+    const colorText = dsMau[idx]?.ten || "";
+    if (tenSP) {
+      return `${tenSP} ${loaiText} màu ${colorText}, may mặc Việt Nam, chất liệu cotton, studio lighting, nền trắng`;
+    }
+    return `mockup sản phẩm may mặc ${loaiText} màu ${colorText}, studio lighting, nền trắng`;
+  };
+
   if (!open) return null;
 
   // ============ Calculate Auto Values ============
@@ -231,7 +259,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   let tongTienPhuLieu = dsPhuLieu.reduce((s, p) => s + p.soLuong * p.donGia, 0);
   
   let giaCong1SP = 0;
-  Object.values(phanCong).forEach(kh => {
+  (Array.isArray(phanCong) ? phanCong : []).forEach((kh: any) => {
     if (kh && kh.donGia) giaCong1SP += kh.donGia;
   });
 
@@ -395,6 +423,16 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                         </div>
                       )}
                     </div>
+                    {/* Nút tạo mockup bằng AI - MiniMax image-01 */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); openAiMockup(idx); }}
+                      data-testid={`btn-ai-mockup-${idx}`}
+                      className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-xs font-bold rounded hover:from-violet-600 hover:to-fuchsia-600 transition-all shadow-sm"
+                    >
+                      <Wand2 className="w-3.5 h-3.5" />
+                      Tạo mockup bằng AI
+                    </button>
                   </div>
 
                   {/* Right: Details & Sizes */}
@@ -485,32 +523,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                              <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}
 
   {/* Modal Tạo Mẫu Công Đoạn */}
-  {showTaoMauCD && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
-        <div className="space-y-3 mb-6">
-          <div>
-            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
-          </div>
-          {["cat", "mayAo", "mayQuan", "inTheu", "uiQC"].map((k) => {
-            const labels: any = { cat: "Cắt", mayAo: "May Áo", mayQuan: "May Quần", inTheu: "In/Thêu", uiQC: "Ủi/Đóng Gói" };
-            return (
-              <div key={k} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{labels[k]}</span>
-                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Đơn giá" value={(newMauCD.giaCong as any)[k].donGia || ""} onChange={e => setNewMauCD(prev => ({ ...prev, giaCong: { ...prev.giaCong, [k]: { ...(prev.giaCong as any)[k], donGia: parseInt(e.target.value) || 0 } } }))} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex justify-end gap-2">
-          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
-          <button onClick={() => { themMauCongDoan(newMauCD); setShowTaoMauCD(false); setMauCongDoan(newMauCD.id); setPhanCong(newMauCD.giaCong); toast.success("Đã lưu mẫu công đoạn"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Mẫu</button>
-        </div>
-      </div>
-    </div>
-  )}
+  
 
   {/* Modal Tạo Mẫu Chi Phí */}
   {showTaoMauCP && (
@@ -670,25 +683,21 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                     value={mauCongDoan}
                     onChange={(e) => {
                       setMauCongDoan(e.target.value);
-                      setPhanCong(MAU_CONG_DOAN[e.target.value as keyof typeof MAU_CONG_DOAN] as any);
+                      setPhanCong(dsMauCongDoan.find(x => x.id === e.target.value)?.giaCong || []);
                     }}
                   >
-                    <option value="AoThun">Mẫu: Áo Thun</option>
-                    <option value="Quan">Mẫu: Quần</option>
-                    <option value="BoTheThao">Mẫu: Bộ Thể Thao</option>
+                    {dsMauCongDoan.map(m => <option key={m.id} value={m.id}>Mẫu: {m.ten}</option>)}
                   </select>
 <button type="button" onClick={() => setShowTaoMauCD(true)} className="px-2 py-1 text-xs bg-violet-600 text-white rounded font-bold hover:bg-violet-700 whitespace-nowrap shadow-sm">+ Tạo mẫu</button>
 </div>
                 </div>
                 
                 <div className="space-y-2">
-                  {Object.keys(phanCong).map((khKey) => {
-                    const kh = phanCong[khKey as keyof PhanCongGiaCong];
+                  {(Array.isArray(phanCong) ? phanCong : []).map((kh, idx) => {
                     if (!kh) return null;
-                    const labels: Record<string, string> = { cat: "Cắt", mayAo: "May Áo", mayQuan: "May Quần", inTheu: "In/Thêu", uiQC: "Ủi/Đóng Gói" };
                     return (
-                      <div key={khKey} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
-                        <div className="col-span-3 font-semibold text-slate-700 text-sm">{labels[khKey]}</div>
+                      <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
+                        <div className="col-span-3 font-semibold text-slate-700 text-sm truncate" title={kh.tenCongDoan}>{kh.tenCongDoan}</div>
                         <div className="col-span-6 flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold overflow-hidden border border-blue-200 flex-shrink-0 text-[10px]">
                             {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || "NV") : "NV"}
@@ -698,7 +707,11 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                           value={kh.nguoiMa}
                           onChange={(e) => {
                             const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
-                            setPhanCong(p => ({ ...p, [khKey]: { ...p[khKey as keyof PhanCongGiaCong], nguoiMa: e.target.value, nguoiTen: nv?.ten || e.target.value } }));
+                            setPhanCong(p => {
+                              const next = [...(p as any[])];
+                              next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || e.target.value };
+                              return next as any;
+                            });
                           }}
                         >
                           <option value="">-- Chọn NV/Xưởng --</option>
@@ -710,7 +723,13 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                             type="number" min={0}
                             className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm text-right pr-6"
                             value={kh.donGia}
-                            onChange={(e) => setPhanCong(p => ({ ...p, [khKey]: { ...p[khKey as keyof PhanCongGiaCong], donGia: parseInt(e.target.value) || 0 } }))}
+                            onChange={(e) => {
+                              setPhanCong(p => {
+                                const next = [...(p as any[])];
+                                next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                                return next as any;
+                              });
+                            }}
                           />
                           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">đ</span>
                         </div>
@@ -907,6 +926,19 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
 
       </div>
     </div>
+
+    {/* ============ AI MOCKUP MODAL (MiniMax image-01) - component riêng ============ */}
+    {aiMockupIdx !== null && (
+      <AIMockupModal
+        open={true}
+        onClose={() => setAiMockupIdx(null)}
+        onApply={applyAIMockup}
+        colorIndex={aiMockupIdx}
+        colorName={dsMau[aiMockupIdx]?.ten || ""}
+        productName={tenSP}
+        defaultPrompt={buildAiPrompt(aiMockupIdx)}
+      />
+    )}
   </div>
   );
 
