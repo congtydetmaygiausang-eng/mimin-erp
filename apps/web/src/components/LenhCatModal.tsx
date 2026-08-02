@@ -664,7 +664,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
               <div className="bg-white/20 p-4 rounded-xl flex flex-col gap-4">
                 <div className="flex justify-between items-center border-b border-black/10 pb-2">
                   <h3 className="font-bold text-slate-800">1. GIA CÔNG SẢN XUẤT</h3>
-                  <select 
+<div className="flex items-center gap-2">
+<select 
                     className="px-2 py-1 text-xs border rounded shadow-sm bg-white font-bold text-[#2B4C3E]"
                     value={mauCongDoan}
                     onChange={(e) => {
@@ -676,6 +677,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                     <option value="Quan">Mẫu: Quần</option>
                     <option value="BoTheThao">Mẫu: Bộ Thể Thao</option>
                   </select>
+<button type="button" onClick={() => setShowTaoMauCD(true)} className="px-2 py-1 text-xs bg-violet-600 text-white rounded font-bold hover:bg-violet-700 whitespace-nowrap shadow-sm">+ Tạo mẫu</button>
+</div>
                 </div>
                 
                 <div className="space-y-2">
@@ -722,7 +725,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                 <div className="bg-white/20 p-4 rounded-xl">
                   <div className="flex justify-between items-center border-b border-black/10 pb-2 mb-3">
                     <h3 className="font-bold text-slate-800">2. CHI PHÍ CỐ ĐỊNH / SẢN PHẨM</h3>
-                    <select 
+<div className="flex items-center gap-2">
+<select 
                       className="px-2 py-1 text-xs border rounded shadow-sm bg-white font-bold text-[#2B4C3E]"
                       value={mauChiPhi}
                       onChange={(e) => {
@@ -734,6 +738,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                       <option value="Quan">Bảng giá: Quần</option>
                       <option value="BoTheThao">Bảng giá: Bộ</option>
                     </select>
+<button type="button" onClick={() => setShowTaoMauCP(true)} className="px-2 py-1 text-xs bg-violet-600 text-white rounded font-bold hover:bg-violet-700 whitespace-nowrap shadow-sm">+ Tạo mẫu</button>
+</div>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center bg-white p-2 rounded shadow-sm">
