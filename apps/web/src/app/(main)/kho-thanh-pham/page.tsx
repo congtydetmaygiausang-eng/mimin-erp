@@ -38,6 +38,7 @@ interface SanPhamTP {
   viTri: string;       // "Kệ A1-A2"
   trangThai: "con" | "dat-hang" | "xuat-kho" | "khong-dat";
   khachHang?: string;
+  tiLeSize?: string;
   ghiChu?: string;
 }
 
@@ -89,6 +90,7 @@ export default function KhoThanhPhamPage() {
   const [filterLoai, setFilterLoai] = useState<"all" | string>("all");
   const [filterSize, setFilterSize] = useState<"all" | string>("all");
   const [filterViTri, setFilterViTri] = useState<"all" | string>("all");
+  const [filterTiLeSize, setFilterTiLeSize] = useState<"all" | string>("all");
   const [sortBy, setSortBy] = useState<"ngay" | "sl" | "gt">("ngay");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [editing, setEditing] = useState<SanPhamTP | null>(null);
@@ -98,6 +100,7 @@ export default function KhoThanhPhamPage() {
 
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [showMasterDetails, setShowMasterDetails] = useState<string | null>(null);
   const [productVideos, setProductVideos] = useState<Record<string, string>>({});
   const [uploadingSP, setUploadingSP] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<"image" | "video">("image");
@@ -153,6 +156,7 @@ export default function KhoThanhPhamPage() {
     if (filterLoai !== "all") result = result.filter((s) => s.maSP === filterLoai);
     if (filterSize !== "all") result = result.filter((s) => s.size.includes(filterSize));
     if (filterViTri !== "all") result = result.filter((s) => s.viTri.includes(filterViTri));
+    if (filterTiLeSize !== "all") result = result.filter((s) => s.tiLeSize === filterTiLeSize);
     // Sort
     result = [...result].sort((a, b) => {
       let cmp = 0;
@@ -462,7 +466,7 @@ export default function KhoThanhPhamPage() {
                           
                           {/* Buttons */}
                           <div className="flex gap-2 flex-wrap xl:justify-end shrink-0">
-                            <button onClick={() => alert('Xem chi tiết lệnh tổng: ' + group.tenSP)} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur text-white transition-all text-sm font-semibold flex items-center gap-2 shadow-sm border border-white/10 hover:scale-105" title="Xem chi tiết">
+                            <button onClick={() => setShowMasterDetails(group.maSP)} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur text-white transition-all text-sm font-semibold flex items-center gap-2 shadow-sm border border-white/10 hover:scale-105" title="Xem chi tiết">
                               <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Chi tiết</span>
                             </button>
                             <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur text-white transition-all text-sm font-semibold flex items-center gap-2 shadow-sm border border-white/10 hover:scale-105" title="Thêm đơn hàng">
@@ -734,8 +738,15 @@ function AddEditModal({ sp, initialImage, onClose, onSave }: { sp?: SanPhamTP; i
                 onChange={(e) => {
                   const val = e.target.value;
                   const newForm = { ...form, lsx: val };
+                  const matchedLC = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.id?.startsWith("LC_"));
                   const matched = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.mau);
-                  if (matched && matched.mau) {
+                  
+                  if (matchedLC) {
+                    if (!form.maSP) newForm.maSP = matchedLC.maSP || "";
+                    if (!form.tenSP) newForm.tenSP = matchedLC.phanLoai || "";
+                    if (!form.mau) newForm.mau = matchedLC.mau || "Trắng";
+                    if (!form.size) newForm.size = matchedLC.size || "M";
+                  } else if (matched && matched.mau) {
                     newForm.mau = matched.mau;
                     if (!form.maSP) newForm.maSP = matched.maSP || "";
                     if (!form.tenSP) newForm.tenSP = matched.phanLoai || "";
