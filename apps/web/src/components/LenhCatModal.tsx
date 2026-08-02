@@ -370,6 +370,9 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
       giaVonBinhQuan
     };
 
+    const catStage = phanCong.find(x => x.tenCongDoan.toLowerCase().includes("cắt") || x.tenCongDoan.toLowerCase().includes("cat"));
+    const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "NV006";
+
     if (editing) {
       suaLenhCat(editing.id, {
         loaiLenh,
@@ -388,9 +391,11 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         mauChiPhi,
         chiPhiCoDinh,
         bangCOGS: cogsData,
+        phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
         ghiChu,
         trangThai: status,
+        ngayTao: ngayBatDau,
       }, user || { ma: "NV001", ten: "Nguyễn Thị Ngọc Giàu", vaiTro: "DIEU_HANH" });
       
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
@@ -414,12 +419,12 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         mauChiPhi,
         chiPhiCoDinh,
         bangCOGS: cogsData,
-        phuTrachCat,
+        phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
         ghiChu,
         trangThai: status,
         phienBanDinhMuc: 1,
-        ngayTao: new Date().toISOString().split("T")[0],
+        ngayTao: ngayBatDau,
         nguoiTao: user?.ten || "Nguyễn Thị Ngọc Giàu"
       }, user || { ma: "NV001", ten: "Nguyễn Thị Ngọc Giàu", vaiTro: "DIEU_HANH" });
 
