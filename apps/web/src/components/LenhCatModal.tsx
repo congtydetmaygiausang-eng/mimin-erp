@@ -168,6 +168,27 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [mauChiPhi, setMauChiPhi] = useState<string>("BoTheThao");
   const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>(dsMauChiPhi.find(x => x.id === "BoTheThao")?.chiPhi || { baoBi: 0, temNhan: 0, khauHao: 0 });
 
+  // Sync default phanCong and chiPhiCoDinh when templates are loaded
+  useEffect(() => {
+    if (dsMauCongDoan.length > 0 && (!phanCong || phanCong.length === 0)) {
+      const defaultCD = dsMauCongDoan.find(x => x.id === "BoTheThao") || dsMauCongDoan[0];
+      if (defaultCD) {
+        setMauCongDoan(defaultCD.id);
+        setPhanCong(defaultCD.giaCong);
+      }
+    }
+  }, [dsMauCongDoan, phanCong]);
+
+  useEffect(() => {
+    if (dsMauChiPhi.length > 0 && chiPhiCoDinh.baoBi === 0 && chiPhiCoDinh.temNhan === 0 && chiPhiCoDinh.khauHao === 0) {
+      const defaultCP = dsMauChiPhi.find(x => x.id === "BoTheThao") || dsMauChiPhi[0];
+      if (defaultCP) {
+        setMauChiPhi(defaultCP.id);
+        setChiPhiCoDinh(defaultCP.chiPhi);
+      }
+    }
+  }, [dsMauChiPhi, chiPhiCoDinh]);
+
   // Cảnh báo tồn kho
   useEffect(() => {
     const alerts: string[] = [];
@@ -332,7 +353,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
               {/* Row 1 */}
               <div>
                 <label className="text-sm font-bold text-slate-700 block mb-1">Loại SP *</label>
@@ -385,20 +406,18 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
 
               {/* Row 4 */}
               <div>
-                <label className="text-sm font-bold text-slate-700 block mb-1">Người phụ trách cắt *</label>
-                <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={phuTrachCat} onChange={e => setPhuTrachCat(e.target.value)}>
-                  {REAL_NHAN_VIEN.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
-                </select>
-              </div>
-              <div>
                 <label className="text-sm font-bold text-slate-700 block mb-1">Tỉ lệ size * (Áp dụng cho từng màu)</label>
                 <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tiLeSize} onChange={(e) => setTiLeSize(e.target.value)}>
                   {TI_LE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="text-sm font-bold text-slate-700 block mb-1">Ghi chú sản xuất</label>
+                <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
+              </div>
 
               {/* Row 5 */}
-              <div>
+              <div className="col-span-2">
                 <label className="text-sm font-bold text-slate-700 block mb-1">Người phụ trách sản xuất & SĐT liên hệ *</label>
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm border-2 border-emerald-300 flex-shrink-0">
@@ -410,37 +429,6 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                     </select>
                     <input className="px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#2B4C3E]" value={sdtLienHe} onChange={e => setSdtLienHe(e.target.value)} placeholder="SĐT liên hệ..." />
                   </div>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-bold text-slate-700 block mb-1">Ghi chú sản xuất</label>
-                <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
-              </div>
-
-              {/* Row 6 */}
-              <div className="md:col-span-2">
-                <label className="text-sm font-bold text-slate-700 block mb-2">Nhân công phụ trách từng khâu (Lương sản phẩm)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { label: "✂️ Cắt", key: "cat", color: "bg-amber-100 text-amber-700 border-amber-200" },
-                    { label: "♨️ Ủi", key: "ui", color: "bg-orange-100 text-orange-700 border-orange-200" },
-                    { label: "📦 Đóng Gói", key: "dongGoi", color: "bg-blue-100 text-blue-700 border-blue-200" }
-                  ].map(({ label, key, color }) => {
-                    const khau = (Array.isArray(phanCong) ? phanCong : []).find((k: any) => k.id === key);
-                    const nv = khau?.nguoiMa ? REAL_NHAN_VIEN.find(n => n.ma === khau.nguoiMa) : null;
-                    return (
-                      <div key={key} className="flex items-center gap-2 bg-white/70 rounded-lg p-2 border border-slate-200 shadow-sm">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border flex-shrink-0 ${color}`}>
-                          {nv?.ten?.substring(0,2) || "--"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-slate-500 uppercase">{label}</div>
-                          <div className="text-xs text-slate-800 truncate font-semibold">{nv?.ten || "Chưa phân công"}</div>
-                        </div>
-                        {khau?.donGia ? <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">{khau.donGia.toLocaleString()}đ</div> : null}
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
             </div>
@@ -816,9 +804,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                         const m = dsMauChiPhi.find(x => x.id === e.target.value); if (m) setChiPhiCoDinh(m.chiPhi);
                       }}
                     >
-                      <option value="AoThun">Bảng giá: Áo</option>
-                      <option value="Quan">Bảng giá: Quần</option>
-                      <option value="BoTheThao">Bảng giá: Bộ</option>
+                      {dsMauChiPhi.map(m => <option key={m.id} value={m.id}>Bảng giá: {m.ten}</option>)}
                     </select>
 <button type="button" onClick={() => setShowTaoMauCP(true)} className="px-2 py-1 text-xs bg-violet-600 text-white rounded font-bold hover:bg-violet-700 whitespace-nowrap shadow-sm">+ Tạo mẫu</button>
 </div>
