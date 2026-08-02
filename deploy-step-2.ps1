@@ -1,9 +1,12 @@
 # ============================================
 # MIMIN ERP - Step 2: Set env + Deploy (PowerShell native)
-# Chạy SAU khi đã vercel login + vercel link xong
+# Chay SAU khi da vercel login + vercel link xong
 # ============================================
 
 $ErrorActionPreference = "Stop"
+
+# Su dung vercel.cmd de bypass PowerShell wrapper bug
+$vercelCmd = "vercel.cmd"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -11,22 +14,22 @@ Write-Host "  MIMIN ERP - Set Env + Deploy" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check vercel đã login chưa
-$vercelWho = vercel whoami 2>$null
+# Check vercel da login chua
+$vercelWho = & $vercelCmd whoami 2>$null
 if (-not $vercelWho) {
     Write-Host "[ERR] Chua login Vercel. Chay: vercel login" -ForegroundColor Red
     exit 1
 }
 Write-Host "[OK] Logged in: $vercelWho" -ForegroundColor Green
 
-# Check project đã link chưa
+# Check project da link chua
 if (-not (Test-Path ".vercel\project.json")) {
     Write-Host "[ERR] Chua link project. Chay: vercel link --project mimin-erp --yes" -ForegroundColor Red
     exit 1
 }
 Write-Host "[OK] Project linked" -ForegroundColor Green
 
-# Đọc keys từ apps/web/.env.local
+# Doc keys tu apps/web/.env.local
 $envFile = "apps\web\.env.local"
 if (-not (Test-Path $envFile)) {
     Write-Host "[ERR] Khong tim thay $envFile" -ForegroundColor Red
@@ -47,7 +50,7 @@ foreach ($line in (Get-Content $envFile)) {
     }
 }
 
-# Danh sách env cần set (lấy từ .env.local, filter theo whitelist)
+# Danh sach env can set
 $wantedKeys = @(
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -77,35 +80,25 @@ foreach ($name in $wantedKeys) {
     }
 
     $preview = $val.Substring(0, [Math]::Min(15, $val.Length))
+    Write-Host "   Setting $name = $preview..." -ForegroundColor Gray
 
-    # Set cho production (chính), skip preview/dev để tránh tốn quota
-    Write-Host "   Setting $name = $preview..." -ForegroundColor Gray -NoNewline
+    # Remove neu ton tai (im lai output)
+    & $vercelCmd env rm $name production --yes 2>&1 | Out-Null
 
-    # Tạo temp file chứa value
+    # Add moi - su dung echo de pipe value vao stdin
     $tmpFile = [System.IO.Path]::GetTempFileName()
     try {
         Set-Content -Path $tmpFile -Value $val -NoNewline -Encoding UTF8
-
-        # vercel env add sẽ hỏi: nếu biến tồn tại → chọn Keep/Replace/Cancel
-        # Dùng `yes` command trên stdin hoặc flag
-        $output = & vercel env add $name production --yes < $tmpFile 2>&1
+        $content = Get-Content -Path $tmpFile -Raw
+        # Pipe value vao vercel env add
+        $output = $content | & $vercelCmd env add $name production --yes 2>&1
         $exitCode = $LASTEXITCODE
 
         if ($exitCode -eq 0) {
-            Write-Host " [OK]" -ForegroundColor Green
+            Write-Host "   [OK] $name" -ForegroundColor Green
             $setCount++
         } else {
-            # Có thể biến đã tồn tại, thử remove + add lại
-            Write-Host " [RETRY]" -ForegroundColor Yellow
-            & vercel env rm $name production --yes 2>&1 | Out-Null
-            $output = & vercel env add $name production --yes < $tmpFile 2>&1
-            $exitCode = $LASTEXITCODE
-            if ($exitCode -eq 0) {
-                Write-Host "   [OK] $name (after retry)" -ForegroundColor Green
-                $setCount++
-            } else {
-                Write-Host "   [FAIL] $name : $output" -ForegroundColor Red
-            }
+            Write-Host "   [FAIL] $name : $output" -ForegroundColor Red
         }
     } finally {
         Remove-Item -Path $tmpFile -Force -ErrorAction SilentlyContinue
@@ -121,8 +114,8 @@ Write-Host "----------------------------------------" -ForegroundColor Cyan
 Write-Host "Dang deploy..." -ForegroundColor Yellow
 Write-Host ""
 
-# Build + deploy từ root
-vercel deploy --prod --yes 2>&1 | Tee-Object -FilePath "vercel-deploy.log"
+# Build + deploy tu root
+& $vercelCmd deploy --prod --yes 2>&1 | Tee-Object -FilePath "vercel-deploy.log"
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""

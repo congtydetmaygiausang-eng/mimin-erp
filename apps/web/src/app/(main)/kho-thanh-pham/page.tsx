@@ -97,7 +97,9 @@ export default function KhoThanhPhamPage() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
 
   const [productImages, setProductImages] = useState<Record<string, string>>({});
+  const [productVideos, setProductVideos] = useState<Record<string, string>>({});
   const [uploadingSP, setUploadingSP] = useState<string | null>(null);
+  const [uploadType, setUploadType] = useState<"image" | "video">("image");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,10 +107,11 @@ export default function KhoThanhPhamPage() {
     if (file && uploadingSP) {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setProductImages((prev) => ({
-          ...prev,
-          [uploadingSP]: ev.target?.result as string,
-        }));
+        if (uploadType === "video") {
+          setProductVideos((prev) => ({ ...prev, [uploadingSP]: ev.target?.result as string }));
+        } else {
+          setProductImages((prev) => ({ ...prev, [uploadingSP]: ev.target?.result as string }));
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -651,7 +654,7 @@ function AddEditModal({ sp, initialImage, onClose, onSave }: { sp?: SanPhamTP; i
         <div className="p-4 space-y-3">
           <div className="flex gap-4 items-start mb-4">
              <div className="w-24 h-24 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-amber-400 transition-colors" onClick={() => fileInputRef.current?.click()}>
-               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+               <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
                {image ? (
                  <img src={image} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
                ) : (
