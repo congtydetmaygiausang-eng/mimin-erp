@@ -25,10 +25,10 @@ import { useSession } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
 import {
-  type LenhCat, type LoaiSP, type LenhCatVai, type LenhCatPhuLieu,
+  type LenhCat, type LoaiSP, type MauVai, type LenhCatPhuLieu,
   type PhanCongGiaCong, type TrangThaiLenhCat,
-  LOAI_SP_LABELS, TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE,
-  tinhCOGS, useLenhCat,
+  LOAI_SP_LABELS,
+  useLenhCat,
 } from "@/lib/data/lenh-cat-store";
 
 
