@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   Boxes,
   Plus,
@@ -28,6 +28,24 @@ export default function KhoPhuLieuPage() {
   const [showNhap, setShowNhap] = useState<string | null>(null);
   const [showXuat, setShowXuat] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
+  
+  const [inventoryImages, setInventoryImages] = useState<Record<string, string>>({});
+  const [uploadingVT, setUploadingVT] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadingVT) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setInventoryImages((prev) => ({
+          ...prev,
+          [uploadingVT]: e.target?.result as string,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // KPIs
   const dsTrangThai = danhSachTrangThai("phu-lieu");
@@ -147,6 +165,8 @@ export default function KhoPhuLieuPage() {
         </div>
       </div>
 
+      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+
       <div className="card p-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
@@ -191,8 +211,21 @@ export default function KhoPhuLieuPage() {
 
                 {/* Main content: Icon & Name */}
                 <div className="flex gap-4 items-center mb-4">
-                  <div className="w-16 h-16 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden flex-shrink-0 flex items-center justify-center bg-violet-50 dark:bg-violet-900/20">
-                    <Boxes className="w-8 h-8 text-violet-400" />
+                  <div 
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group/img flex items-center justify-center bg-violet-50 dark:bg-violet-900/20 transition-transform hover:scale-105"
+                    onClick={() => { setUploadingVT(v.maVT); fileInputRef.current?.click(); }}
+                    title="Bấm để tải ảnh lên"
+                  >
+                    {inventoryImages[v.maVT] ? (
+                      <img src={inventoryImages[v.maVT]} alt={v.tenVT} className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <Boxes className="w-8 h-8 sm:w-10 sm:h-10 text-violet-400 opacity-80 group-hover/img:opacity-0 transition-opacity" />
+                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-violet-600 bg-violet-100/80 opacity-0 group-hover/img:opacity-100 transition-opacity">
+                          + Tải ảnh
+                        </span>
+                      </>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate" title={v.tenVT}>{v.tenVT}</h3>
