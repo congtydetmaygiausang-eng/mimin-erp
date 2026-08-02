@@ -97,6 +97,7 @@ export default function KhoThanhPhamPage() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
 
   const [productImages, setProductImages] = useState<Record<string, string>>({});
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [productVideos, setProductVideos] = useState<Record<string, string>>({});
   const [uploadingSP, setUploadingSP] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<"image" | "video">("image");
@@ -391,10 +392,7 @@ export default function KhoThanhPhamPage() {
                           className="flex-1 bg-black/20 rounded-xl relative overflow-hidden group border border-white/20 shadow-inner"
                           onClick={() => {
                             if (productImages[group.maSP]) {
-                              const a = document.createElement('a');
-                              a.href = productImages[group.maSP];
-                              a.download = `anh-bia-${group.maSP}.png`;
-                              a.click();
+                              setViewingImage(productImages[group.maSP]);
                             } else {
                               setUploadingSP(group.maSP); setUploadType("image"); fileInputRef.current?.click();
                             }
@@ -425,12 +423,7 @@ export default function KhoThanhPhamPage() {
                         <div 
                           className="w-[35%] bg-black/20 rounded-xl relative overflow-hidden group border border-white/20 shadow-inner flex-shrink-0"
                           onClick={() => {
-                            if (productVideos[group.maSP]) {
-                              const a = document.createElement('a');
-                              a.href = productVideos[group.maSP];
-                              a.download = `video-${group.maSP}.mp4`;
-                              a.click();
-                            } else {
+                            if (!productVideos[group.maSP]) {
                               setUploadingSP(group.maSP); setUploadType("video"); fileInputRef.current?.click();
                             }
                           }}
@@ -447,7 +440,7 @@ export default function KhoThanhPhamPage() {
                           )}
 
                           {productVideos[group.maSP] ? (
-                            <video src={productVideos[group.maSP]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer" muted loop playsInline controls={false} />
+                            <video src={productVideos[group.maSP]} className="w-full h-full object-contain bg-black/40" controls playsInline />
                           ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors">
                               <Video className="w-8 h-8 mb-3 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
