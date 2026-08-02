@@ -187,18 +187,26 @@ export default function KhoThanhPhamPage() {
   const dsLoai = useMemo(() => Array.from(new Set(dsSanPham.map((s) => s.maSP))).sort(), [dsSanPham]);
 
   // Handlers
-  const handleAdd = (sp: Omit<SanPhamTP, "id" | "giaTri">) => {
+  const handleAdd = (data: any) => {
+    const { __tempImage, ...sp } = data;
     const newSp: SanPhamTP = {
       ...sp,
       id: `TP${Date.now().toString().slice(-6)}`,
       giaTri: sp.soLuong * sp.donGia,
     };
     update([newSp, ...dsSanPham]);
+    if (__tempImage) {
+      setProductImages((prev) => ({ ...prev, [newSp.id]: __tempImage }));
+    }
     toast.success(`Đã thêm ${sp.tenSP} (${sp.soLuong} sp)`);
   };
 
-  const handleEdit = (sp: SanPhamTP) => {
+  const handleEdit = (data: any) => {
+    const { __tempImage, ...sp } = data;
     update(dsSanPham.map((s) => (s.id === sp.id ? { ...sp, giaTri: sp.soLuong * sp.donGia } : s)));
+    if (__tempImage) {
+      setProductImages((prev) => ({ ...prev, [sp.id]: __tempImage }));
+    }
     toast.success("Đã cập nhật");
     setEditing(null);
   };
@@ -419,32 +427,43 @@ export default function KhoThanhPhamPage() {
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                         {group.items.map(s => (
-                          <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm relative group hover:border-amber-400 hover:shadow-md transition-all">
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <div className="font-bold text-sm text-slate-800">{s.mau}</div>
-                                <div className="text-xs text-slate-500 font-semibold">{s.size}</div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-black text-amber-600 text-lg">{s.soLuong.toLocaleString()}</div>
-                                <div className="text-[10px] text-slate-400 font-mono">{s.lsx}</div>
-                              </div>
+                          <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm relative group hover:border-amber-400 hover:shadow-md transition-all flex gap-3">
+                            <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer border border-slate-200" onClick={(e) => { e.stopPropagation(); setUploadingSP(s.id); fileInputRef.current?.click(); }}>
+                              {productImages[s.id] ? (
+                                <img src={productImages[s.id]} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:text-amber-500 transition-colors">
+                                  <Camera className="w-5 h-5 opacity-60" />
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-                              <div className="flex flex-col gap-1">
-                                {s.trangThai === "con" && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded font-bold w-fit">Còn hàng</span>}
-                                {s.trangThai === "dat-hang" && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] rounded font-bold w-fit">Đã đặt</span>}
-                                {s.trangThai === "xuat-kho" && <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] rounded font-bold w-fit">Đã xuất</span>}
-                                {s.trangThai === "khong-dat" && <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] rounded font-bold w-fit">Không đặt</span>}
-                                <span className="text-[10px] font-semibold text-slate-500 flex items-center gap-1"><Box className="w-3 h-3" /> {s.viTri}</span>
+                            <div className="flex-1 flex flex-col justify-between">
+                              <div className="flex justify-between items-start mb-1">
+                                <div>
+                                  <div className="font-bold text-sm text-slate-800">{s.mau}</div>
+                                  <div className="text-xs text-slate-500 font-semibold">{s.size}</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-black text-amber-600 text-lg leading-none">{s.soLuong.toLocaleString()}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono mt-1">{s.lsx}</div>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => { e.stopPropagation(); setEditing(s); }} className="p-1.5 hover:bg-amber-100 text-amber-600 rounded-lg" title="Sửa thông tin, giá, số lượng">
-                                  <Edit className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleXuatKho(s.id); }} className="p-1.5 hover:bg-emerald-100 text-emerald-600 rounded-lg" title="Xuất kho">
-                                  <Truck className="w-3.5 h-3.5" />
-                                </button>
+                              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {s.trangThai === "con" && <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] rounded font-bold w-fit">Còn</span>}
+                                  {s.trangThai === "dat-hang" && <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] rounded font-bold w-fit">Đã đặt</span>}
+                                  {s.trangThai === "xuat-kho" && <span className="px-1.5 py-0.5 bg-slate-200 text-slate-700 text-[9px] rounded font-bold w-fit">Đã xuất</span>}
+                                  {s.trangThai === "khong-dat" && <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[9px] rounded font-bold w-fit">Không đặt</span>}
+                                  <span className="text-[9px] font-semibold text-slate-500 flex items-center gap-0.5"><Box className="w-2.5 h-2.5" /> {s.viTri}</span>
+                                </div>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={(e) => { e.stopPropagation(); setEditing(s); }} className="p-1 hover:bg-amber-100 text-amber-600 rounded" title="Sửa thông tin, giá, số lượng">
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleXuatKho(s.id); }} className="p-1 hover:bg-emerald-100 text-emerald-600 rounded" title="Xuất kho">
+                                    <Truck className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -550,12 +569,12 @@ export default function KhoThanhPhamPage() {
 
       {/* Modal thêm */}
       {showAdd && <AddEditModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
-      {editing && <AddEditModal sp={editing} onClose={() => setEditing(null)} onSave={(data) => handleEdit({ ...editing, ...data } as SanPhamTP)} />}
+      {editing && <AddEditModal sp={editing} initialImage={productImages[editing.id]} onClose={() => setEditing(null)} onSave={handleEdit} />}
     </div>
   );
 }
 
-function AddEditModal({ sp, onClose, onSave }: { sp?: SanPhamTP; onClose: () => void; onSave: (data: any) => void }) {
+function AddEditModal({ sp, initialImage, onClose, onSave }: { sp?: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
   const [form, setForm] = useState({
     maSP: sp?.maSP || "",
     tenSP: sp?.tenSP || "",
@@ -571,24 +590,52 @@ function AddEditModal({ sp, onClose, onSave }: { sp?: SanPhamTP; onClose: () => 
     ghiChu: sp?.ghiChu || "",
   });
 
+  const [image, setImage] = useState(initialImage || "");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const r = new FileReader();
+      r.onload = ev => setImage(ev.target?.result as string);
+      r.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 flex items-center justify-between">
-          <h2 className="font-bold text-lg">{sp ? "Sửa" : "Thêm"} sản phẩm</h2>
+          <h2 className="font-bold text-lg">{sp ? "Sửa" : "Thêm"} biến thể</h2>
           <button onClick={onClose} className="px-2 py-1 hover:bg-white/20 rounded">✕</button>
         </div>
         <div className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Mã SP *</label>
-              <input value={form.maSP} onChange={(e) => setForm({ ...form, maSP: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP *</label>
-              <input value={form.tenSP} onChange={(e) => setForm({ ...form, tenSP: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
+          <div className="flex gap-4 items-start mb-4">
+             <div className="w-24 h-24 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-amber-400 transition-colors" onClick={() => fileInputRef.current?.click()}>
+               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+               {image ? (
+                 <img src={image} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+               ) : (
+                 <div className="text-center text-slate-400 group-hover:text-amber-500 transition-colors">
+                   <Camera className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                   <div className="text-[9px] font-bold uppercase">Tải ảnh</div>
+                 </div>
+               )}
+             </div>
+             <div className="flex-1 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 mb-1 block">Mã SP mẹ *</label>
+                    <input value={form.maSP} onChange={(e) => setForm({ ...form, maSP: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP mẹ *</label>
+                    <input value={form.tenSP} onChange={(e) => setForm({ ...form, tenSP: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+                  </div>
+                </div>
+             </div>
           </div>
+
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Màu</label>
@@ -642,10 +689,10 @@ function AddEditModal({ sp, onClose, onSave }: { sp?: SanPhamTP; onClose: () => 
             <div>SL: <b>{form.soLuong.toLocaleString()}</b> × {form.donGia.toLocaleString()}đ = <b className="text-emerald-600">{(form.soLuong * form.donGia).toLocaleString()}đ</b></div>
           </div>
         </div>
-        <div className="p-4 border-t flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 rounded-lg font-semibold">Huỷ</button>
-          <button onClick={() => onSave(form)} className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold flex items-center justify-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" /> {sp ? "Cập nhật" : "Thêm"}
+        <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-2xl">
+          <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-semibold">Hủy</button>
+          <button onClick={() => onSave({ ...form, __tempImage: image })} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 flex items-center gap-2">
+            <Save className="w-4 h-4" /> Lưu biến thể
           </button>
         </div>
       </div>
