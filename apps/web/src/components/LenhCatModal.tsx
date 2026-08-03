@@ -31,6 +31,7 @@ import {
   LOAI_SP_LABELS,
   useLenhCat,
 } from "@/lib/data/lenh-cat-store";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 
@@ -127,6 +128,7 @@ interface Props {
 
 export default function LenhCatModal({ open, onClose, editId }: Props) {
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi } = useLenhCat();
+  const { dsSanPham } = useDanhMucSP();
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
@@ -619,6 +621,34 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
               </div>
 
               {/* Row 2 */}
+              <div className="md:col-span-2">
+                <label className="text-sm font-bold text-blue-700 block mb-1 flex items-center gap-1">
+                  <Package className="w-4 h-4" />
+                  Chọn nhanh từ danh mục SP ({dsSanPham.length} sản phẩm)
+                </label>
+                <select
+                  className="w-full px-3 py-2 bg-blue-50 border-2 border-blue-300 rounded focus:ring-2 focus:ring-blue-500 font-semibold text-blue-900"
+                  value=""
+                  onChange={(e) => {
+                    const sp = dsSanPham.find((s) => s.id === e.target.value);
+                    if (sp) {
+                      setMaSP(sp.id);
+                      setTenSP(sp.tenSP);
+                      setLoaiSP(sp.loaiSP);
+                      if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
+                      toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
+                    }
+                  }}
+                >
+                  <option value="">-- Chọn sản phẩm có sẵn từ danh mục --</option>
+                  {dsSanPham.map((sp) => (
+                    <option key={sp.id} value={sp.id}>
+                      [{sp.id}] {sp.tenSP} - {LOAI_SP_LABELS[sp.loaiSP]} ({sp.dsMau.length} màu)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="text-sm font-bold text-slate-700 block mb-1">Mã SP *</label>
                 <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={maSP} onChange={(e) => setMaSP(e.target.value.toUpperCase())} placeholder="VD: M001" />
