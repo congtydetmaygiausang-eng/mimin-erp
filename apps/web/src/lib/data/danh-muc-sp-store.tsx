@@ -69,7 +69,12 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     try {
       const saved = localStorage.getItem("mimin_danh_muc_sp");
       if (saved) {
-        setDsSanPham(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setDsSanPham(parsed);
+        } else {
+          setDsSanPham(MOCK_DANH_MUC);
+        }
       } else {
         setDsSanPham(MOCK_DANH_MUC);
         localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(MOCK_DANH_MUC));

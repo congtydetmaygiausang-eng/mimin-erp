@@ -19,14 +19,15 @@ import {
   Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { KHO_VAI, KHO_VAT_TU, KHACH_HANG_DATA, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
-import { useSession } from "@/components/session-provider";
+import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
 import {
   type LenhCat, type LoaiSP, type MauVai, type LenhCatPhuLieu,
-  type PhanCongGiaCong, type TrangThaiLenhCat,
+  type PhanCongGiaCong, type TrangThaiLenhCat, type LoaiLenh,
+  type ChiPhiCoDinh, type BangCOGS,
   LOAI_SP_LABELS,
   useLenhCat,
 } from "@/lib/data/lenh-cat-store";
@@ -103,19 +104,24 @@ const DEFAULT_DON_GIA = {
   uiQC: 3000,
 };
 
+/**
+ * Fallback user khi session null (chưa login) — dùng cho logWorkflow vẫn ghi nhận action.
+ * Match đúng shape AppUser (id/email/name/role/title/source).
+ */
+const getFallbackUser = (): AppUser => ({
+  id: "NV001",
+  email: "sang@mimin.vn",
+  name: "Hồ Minh Sang",
+  role: "DIEU_HANH",
+  title: "Admin",
+  source: "demo",
+});
+
 interface Props {
   open: boolean;
   onClose: () => void;
   editId?: string | null; // Nếu có → edit mode, ngược lại → create
 }
-
-
-import { KHACH_HANG_DATA } from "@/lib/data/real-data";
-import { 
-  type LoaiLenh, type MauVai, type LenhCat, type ChiPhiCoDinh,
-  type BangCOGS, type PhanCongGiaCong, type TrangThaiLenhCat 
-} from "@/lib/data/lenh-cat-store";
-
 
 
 export default function LenhCatModal({ open, onClose, editId }: Props) {
@@ -455,7 +461,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         ghiChu,
         trangThai: status,
         ngayTao: ngayBatDau,
-      }, user || { ma: "NV001", ten: "Nguyễn Thị Ngọc Giàu", vaiTro: "DIEU_HANH" });
+      }, user || getFallbackUser());
       
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
     } else {
@@ -484,8 +490,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         trangThai: status,
         phienBanDinhMuc: 1,
         ngayTao: ngayBatDau,
-        nguoiTao: user?.ten || "Nguyễn Thị Ngọc Giàu"
-      }, user || { ma: "NV001", ten: "Nguyễn Thị Ngọc Giàu", vaiTro: "DIEU_HANH" });
+        nguoiTao: user?.name || "Nguyễn Thị Ngọc Giàu"
+      }, user || getFallbackUser());
 
       toast.success(`Đã tạo thành công Lệnh Cắt mới: ${newId} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
       localStorage.removeItem("lenhCatDraft");

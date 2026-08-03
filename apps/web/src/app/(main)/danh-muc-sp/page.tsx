@@ -21,10 +21,10 @@ export default function DanhMucSanPhamPage() {
 
   if (!mounted) return null;
 
-  const filtered = dsSanPham.filter(
+  const filtered = (dsSanPham || []).filter(
     (sp) =>
-      sp.id.toLowerCase().includes(search.toLowerCase()) ||
-      sp.tenSP.toLowerCase().includes(search.toLowerCase())
+      (sp?.id || "").toLowerCase().includes(search.toLowerCase()) ||
+      (sp?.tenSP || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (

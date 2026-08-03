@@ -78,6 +78,9 @@ export type BangCOGS = {
   giaCong1SP: number;
   tongChiPhiCoDinh: number;
   giaVonBinhQuan: number;
+  // Aliases cho UI hiển thị (Antigravity dùng trong page.tsx)
+  giaVon1SP?: number;       // = giaVonBinhQuan
+  tongGiaVon?: number;      // = giaVonBinhQuan * tongSL
 };
 
 export type LenhCat = {
