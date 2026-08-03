@@ -135,25 +135,29 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    // Tự động mở các group chứa trang hiện tại
-    const newOpenGroups = { ...openGroups };
-    NAV.forEach(group => {
-      if (group.isGroup && group.subItems) {
-        if (group.subItems.some(sub => pathname?.startsWith(sub.href))) {
-          newOpenGroups[group.label] = true;
+    setOpenGroups((prev) => {
+      const nextOpenGroups = { ...prev };
+      NAV.forEach((group) => {
+        if (group.isGroup && group.subItems) {
+          const shouldOpen = group.subItems.some((sub) => pathname?.startsWith(sub.href));
+          if (shouldOpen) {
+            nextOpenGroups[group.label] = true;
+          }
         }
-      }
+      });
+      return nextOpenGroups;
     });
-    if (Object.keys(newOpenGroups).length > 0) {
-      setOpenGroups(newOpenGroups);
-    }
   }, [pathname]);
 
   const toggleGroup = (label: string) => {
-    setOpenGroups(prev => ({
-      ...prev,
-      [label]: !prev[label]
-    }));
+    setOpenGroups(prev => {
+      const nextOpen = !(prev[label] ?? false);
+      return {
+        ...prev,
+        [label]: nextOpen,
+      };
+    });
+
     if (isCollapsed && toggleCollapse) {
       toggleCollapse();
     }
@@ -177,18 +181,30 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
 
   return (
     <>
-      <div className={clsx("p-5 border-b flex items-center justify-between", isCollapsed && "justify-center")} style={{ borderColor: "var(--border)" }}>
-        <Link href="/dashboard" className="flex items-center gap-2" onClick={onItemClick}>
+      <div className={clsx("p-5 border-b flex items-center", isCollapsed ? "justify-center" : "justify-between")} style={{ borderColor: "var(--border)" }}>
+        <Link href="/dashboard" className="flex items-center gap-2 min-w-0" onClick={onItemClick}>
           <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold shadow-lg">
             M
           </div>
           {!isCollapsed && (
-            <div>
-              <div className="font-bold text-sm">MIMIN ERP</div>
-              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Quản lý may mặc</div>
+            <div className="min-w-0">
+              <div className="font-bold text-sm truncate">MIMIN ERP</div>
+              <div className="text-xs truncate" style={{ color: "var(--text-muted)" }}>Quản lý may mặc</div>
             </div>
           )}
         </Link>
+
+        {toggleCollapse && (
+          <button
+            onClick={toggleCollapse}
+            className="hidden md:inline-flex ml-2 shrink-0 rounded-lg border p-1.5 transition-colors hover:bg-brand-500/10 hover:text-brand-600"
+            aria-label={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
+            title={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
+          >
+            {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
+        )}
+
         {onItemClick && (
           <button
             onClick={onItemClick}
@@ -219,12 +235,13 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                 <div key={item.label} className="mb-1">
                   <button
                     onClick={() => toggleGroup(item.label)}
+                    aria-expanded={isOpen}
                     className={clsx(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[17px] font-bold transition-all",
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-all border border-transparent",
                       isGroupActive && !isOpen
-                        ? "bg-brand-500/20 text-brand-700 dark:text-brand-300"
+                        ? "bg-brand-500/14 text-brand-700 dark:text-brand-300 border-brand-500/20 shadow-sm"
                         : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300",
-                      isCollapsed && "justify-center px-0"
+                      isCollapsed && "justify-center px-2"
                     )}
                     style={(!isGroupActive && !isOpen) ? { color: "var(--text-secondary)" } : undefined}
                     title={isCollapsed ? item.label : undefined}
@@ -238,8 +255,14 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     )}
                   </button>
                   
-                  {!isCollapsed && isOpen && (
-                    <div className="ml-4 mt-1 space-y-1 border-l-2 pl-2" style={{ borderColor: "var(--border)" }}>
+                  {!isCollapsed && (
+                    <div
+                      className={clsx(
+                        "ml-3 mt-1 overflow-hidden rounded-lg border border-slate-200/70 bg-slate-50/70 px-2 py-1 transition-all duration-200 dark:border-slate-700/70 dark:bg-slate-900/30",
+                        isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                      )}
+                      style={{ borderColor: "var(--border)" }}
+                    >
                       {item.subItems.map((sub) => {
                         const SubIcon = sub.icon;
                         const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
@@ -249,7 +272,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                             href={sub.href}
                             onClick={onItemClick}
                             className={clsx(
-                              "flex items-center gap-2 px-2.5 py-2 rounded-md text-[15px] font-bold transition-all",
+                              "flex items-center gap-2 px-2.5 py-2 rounded-md text-[14px] font-medium transition-all",
                               subActive
                                 ? "bg-brand-500/15 text-brand-700 dark:text-brand-300 shadow-sm"
                                 : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
@@ -310,6 +333,19 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
 export function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("mimin-sidebar-collapsed");
+    if (saved === "true") setIsCollapsed(true);
+    if (saved === "false") setIsCollapsed(false);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("mimin-sidebar-collapsed", String(isCollapsed));
+    }
+  }, [isCollapsed]);
   
   // Không render sidebar ở trang login hoặc register
   if (pathname === "/login" || pathname === "/register" || pathname?.startsWith("/lark-login")) {
@@ -324,7 +360,7 @@ export function Sidebar() {
       <NavContent 
         pathname={pathname || ""} 
         isCollapsed={isCollapsed} 
-        toggleCollapse={() => setIsCollapsed(!isCollapsed)} 
+        toggleCollapse={() => setIsCollapsed((prev) => !prev)} 
       />
     </aside>
   );

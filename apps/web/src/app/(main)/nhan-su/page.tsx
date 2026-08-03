@@ -22,6 +22,7 @@ import {
   Wallet,
   History,
   Lock,
+  ImagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -32,6 +33,37 @@ import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { usePermission } from "@/components/PermissionGuard";
 import { NHAN_SU_KHOI_DAU, type NhanSuExt } from "./data";
 
+async function loadEmployeesFromSupabase() {
+  const response = await fetch("/api/employee-records", { method: "GET" });
+  if (!response.ok) {
+    throw new Error("Không thể tải danh sách nhân sự từ Supabase");
+  }
+  const data = await response.json();
+  return (data.records || []).map((record: any) => ({
+    ...record,
+    stt: Number(record.stt || 0),
+    maNV: record.ma_nv || record.maNV,
+    hoTen: record.ho_ten || record.hoTen,
+    boPhan: record.bo_phan || record.boPhan,
+    chucVu: record.chuc_vu || record.chucVu,
+    sdt: record.sdt,
+    email: record.email,
+    luongCung: Number(record.luong_cung || record.luongCung || 0),
+    rating: Number(record.rating || 4),
+    trangThai: record.trang_thai || record.trangThai || "dang_lam",
+    avatar: record.avatar_url || record.avatar,
+    cccdFrontImage: record.cccd_front_url || record.cccdFrontImage,
+    cccdBackImage: record.cccd_back_url || record.cccdBackImage,
+    ngaySinh: record.ngay_sinh || record.ngaySinh,
+    gioiTinh: record.gioi_tinh || record.gioiTinh,
+    cccd: record.cccd,
+    diaChiTT: record.dia_chi_tt || record.diaChiTT,
+    diaChiTamTru: record.dia_chi_tam_tru || record.diaChiTamTru,
+    ngayVao: record.ngay_vao || record.ngayVao,
+    taiKhoan: record.tai_khoan || record.taiKhoan,
+  })) as NhanSuExt[];
+}
+
 export default function NhanSuPage() {
   const [list, setList] = useState<NhanSuExt[]>(NHAN_SU_KHOI_DAU);
   const [search, setSearch] = useState("");
@@ -40,9 +72,28 @@ export default function NhanSuPage() {
   const [showLuong, setShowLuong] = useState<NhanSuExt | null>(null);
   const [showDetail, setShowDetail] = useState<NhanSuExt | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const perm = usePermission();
 
   const { phanCong } = usePhanCong();
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const fromSupabase = await loadEmployeesFromSupabase();
+        if (!mounted) return;
+        if (fromSupabase.length > 0) {
+          setList(fromSupabase);
+          toast.success(`Đã tải ${fromSupabase.length} nhân viên từ Supabase`);
+        }
+      } catch (error) {
+        console.error("load employees failed", error);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
 
   // KPIs (memoize - tranh tinh lai moi render)
   const kpis = useMemo(() => {
@@ -336,6 +387,16 @@ export default function NhanSuPage() {
       {showForm && <NVForm mode={showForm.mode} nv={showForm.nv} existingCount={list.length} onClose={() => setShowForm(null)} onSave={handleSave} />}
       {showDetail && <ChiTietNhanSuModal nv={showDetail} luongSP={luongSPTheoNV[showDetail.maNV] || 0} onClose={() => setShowDetail(null)} onEdit={() => { const target = showDetail; setShowDetail(null); setShowForm({ mode: "edit", nv: target }); }} onLuong={() => { const target = showDetail; setShowDetail(null); setShowLuong(target); }} />}
       {showLuong && <BangLuongNV nv={showLuong} luongSP={luongSPTheoNV[showLuong.maNV] || 0} onClose={() => setShowLuong(null)} />}
+      {previewImage && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/85 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="relative max-w-5xl w-full">
+            <button type="button" onClick={() => setPreviewImage(null)} className="absolute right-3 top-3 rounded-full bg-white/90 p-2 text-slate-700 shadow-lg">
+              <X className="w-5 h-5" />
+            </button>
+            <img src={previewImage} alt="Preview ảnh" className="max-h-[85vh] w-full rounded-3xl object-contain shadow-2xl" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -373,18 +434,96 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
     taiKhoan: "",
   } as NhanSuExt);
 
+  const [uploadFiles, setUploadFiles] = useState<Record<string, File | null>>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = "auto"; };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleUpload = (field: "avatar" | "cccdFrontImage" | "cccdBackImage") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadFiles((prev) => ({ ...prev, [field]: file }));
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setForm((prev) => ({ ...prev, [field]: ev.target?.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadToSupabase = async (field: "avatar" | "cccdFrontImage" | "cccdBackImage", file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const safeBase = (form.maNV || `nv-${existingCount + 1}`).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "employee";
+    const path = `nhan-su/${safeBase}/${field}-${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
+    formData.append("path", path);
+
+    const response = await fetch("/api/employee-uploads", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Không thể upload ảnh lên Supabase");
+    }
+
+    const data = await response.json();
+    return data.url as string;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.hoTen || !form.sdt) {
       toast.error("Vui lòng nhập tên và SĐT");
       return;
     }
-    onSave(form);
+
+    const hasFront = Boolean(form.cccdFrontImage || uploadFiles.cccdFrontImage || nv?.cccdFrontImage);
+    const hasBack = Boolean(form.cccdBackImage || uploadFiles.cccdBackImage || nv?.cccdBackImage);
+    if (!hasFront || !hasBack) {
+      toast.error("Vui lòng tải cả ảnh CCCD mặt trước và mặt sau trước khi lưu");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const [avatarUrl, cccdFrontUrl, cccdBackUrl] = await Promise.all([
+        uploadFiles.avatar ? uploadToSupabase("avatar", uploadFiles.avatar) : Promise.resolve(form.avatar || nv?.avatar || ""),
+        uploadFiles.cccdFrontImage ? uploadToSupabase("cccdFrontImage", uploadFiles.cccdFrontImage) : Promise.resolve(form.cccdFrontImage || nv?.cccdFrontImage || ""),
+        uploadFiles.cccdBackImage ? uploadToSupabase("cccdBackImage", uploadFiles.cccdBackImage) : Promise.resolve(form.cccdBackImage || nv?.cccdBackImage || ""),
+      ]);
+
+      const savedEmployee = {
+        ...form,
+        avatar: avatarUrl || form.avatar || "",
+        cccdFrontImage: cccdFrontUrl || form.cccdFrontImage || "",
+        cccdBackImage: cccdBackUrl || form.cccdBackImage || "",
+      } as NhanSuExt;
+
+      const response = await fetch("/api/employee-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(savedEmployee),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Không thể lưu dữ liệu nhân sự vào Supabase");
+      }
+
+      onSave(savedEmployee);
+      toast.success("Đã lưu nhân sự vào Supabase");
+    } catch (error) {
+      console.error("Upload employee images failed", error);
+      toast.error(error instanceof Error ? error.message : "Không thể lưu ảnh lên Supabase");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -412,7 +551,7 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
           {/* Avatar Upload Header */}
           <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
             <div className="relative group cursor-pointer">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-teal-500/30 shadow-md overflow-hidden bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-teal-500/30 shadow-md overflow-hidden bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold cursor-pointer" onClick={() => (form.avatar ? setPreviewImage(form.avatar) : null)}>
                 {form.avatar ? (
                   <img src={form.avatar} alt={form.hoTen} className="w-full h-full object-cover" />
                 ) : (
@@ -425,14 +564,7 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (ev) => setForm({ ...form, avatar: ev.target?.result as string });
-                      reader.readAsDataURL(file);
-                    }
-                  }}
+                  onChange={handleUpload("avatar")}
                 />
               </label>
             </div>
@@ -497,6 +629,34 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
             </div>
           </div>
 
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800/40 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200">
+              <ImagePlus className="w-4 h-4 text-teal-600" />
+              Ảnh CCCD và hồ sơ nhân viên
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { key: "cccdFrontImage", label: "CCCD mặt trước", preview: form.cccdFrontImage },
+                { key: "cccdBackImage", label: "CCCD mặt sau", preview: form.cccdBackImage },
+              ].map((item) => (
+                <label key={item.key} className="cursor-pointer rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/50 p-3 transition hover:border-teal-500">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{item.label}</span>
+                    <span className="text-[10px] px-2 py-1 rounded-full bg-teal-500/10 text-teal-700 dark:text-teal-300">Tải ảnh</span>
+                  </div>
+                  {item.preview ? (
+                    <img src={item.preview} alt={item.label} className="h-28 w-full rounded-xl object-cover border border-slate-200 dark:border-slate-700" onClick={(e) => { e.stopPropagation(); setPreviewImage(item.preview || null); }} />
+                  ) : (
+                    <div className="flex h-28 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-800/70 text-[11px] text-slate-500 dark:text-slate-400">
+                      Chưa có ảnh
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleUpload(item.key as "cccdFrontImage" | "cccdBackImage")} />
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Địa chỉ thường trú</label>
             <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.diaChiTT || ""} onChange={(e) => setForm({ ...form, diaChiTT: e.target.value })} placeholder="Địa chỉ nơi ở hiện tại..." />
@@ -551,10 +711,11 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
             </button>
             <button
               type="submit"
-              className="w-full sm:w-2/3 py-3.5 rounded-2xl font-bold bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white shadow-lg shadow-teal-500/25 transition flex items-center justify-center gap-2 text-base"
+              disabled={isUploading}
+              className="w-full sm:w-2/3 py-3.5 rounded-2xl font-bold bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white shadow-lg shadow-teal-500/25 transition flex items-center justify-center gap-2 text-base disabled:cursor-not-allowed disabled:opacity-70"
             >
               {mode === "add" ? <Plus className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />}
-              {mode === "add" ? "Thêm nhân viên mới" : "Lưu thay đổi"}
+              {isUploading ? "Đang lưu ảnh lên Supabase..." : (mode === "add" ? "Thêm nhân viên mới" : "Lưu thay đổi")}
             </button>
           </div>
         </form>
@@ -564,6 +725,8 @@ function NVForm({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "e
 }
 
 function ChiTietNhanSuModal({ nv, luongSP, onClose, onEdit, onLuong }: { nv: NhanSuExt; luongSP: number; onClose: () => void; onEdit: () => void; onLuong: () => void }) {
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = "auto"; };
@@ -585,7 +748,9 @@ function ChiTietNhanSuModal({ nv, luongSP, onClose, onEdit, onLuong }: { nv: Nha
 
         {/* Profile Header */}
         <div className="flex flex-col sm:flex-row items-center gap-5 p-5 rounded-2xl bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-indigo-500/10 border border-teal-500/20">
-          <Avatar name={nv.hoTen} src={nv.avatar} size="2xl" className="border-4 border-white dark:border-slate-800 shadow-xl" />
+          <div className="cursor-pointer" onClick={() => (nv.avatar ? setPreviewImage(nv.avatar) : null)}>
+            <Avatar name={nv.hoTen} src={nv.avatar} size="2xl" className="border-4 border-white dark:border-slate-800 shadow-xl" />
+          </div>
           <div className="text-center sm:text-left space-y-1.5 flex-1">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{nv.hoTen}</h2>
@@ -618,6 +783,23 @@ function ChiTietNhanSuModal({ nv, luongSP, onClose, onEdit, onLuong }: { nv: Nha
             <div className="flex justify-between py-1"><span className="opacity-70">Đánh giá sếp:</span> <span className="font-bold text-amber-500 flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-amber-400" /> {nv.rating || 4}/5</span></div>
           </div>
         </div>
+
+        {(nv.cccdFrontImage || nv.cccdBackImage) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {nv.cccdFrontImage && (
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/40 p-3">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">CCCD mặt trước</div>
+                <img src={nv.cccdFrontImage} alt="CCCD mặt trước" className="h-36 w-full rounded-xl object-cover border border-slate-200 dark:border-slate-700 cursor-pointer" onClick={() => setPreviewImage(nv.cccdFrontImage || null)} />
+              </div>
+            )}
+            {nv.cccdBackImage && (
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/40 p-3">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">CCCD mặt sau</div>
+                <img src={nv.cccdBackImage} alt="CCCD mặt sau" className="h-36 w-full rounded-xl object-cover border border-slate-200 dark:border-slate-700 cursor-pointer" onClick={() => setPreviewImage(nv.cccdBackImage || null)} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">

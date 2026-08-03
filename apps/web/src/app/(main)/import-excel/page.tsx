@@ -1,6 +1,16 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
+import { mapCsvRowsToEmployees } from "@/lib/employee-import";
+
+async function clearExistingEmployees() {
+  const response = await fetch("/api/employee-records", { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response.json();
+}
 import {
   FileSpreadsheet,
   Download,
@@ -32,18 +42,18 @@ const IMPORT_MODULES = [
     icon: Users,
     color: "violet",
     description: "Danh sách nhân viên, bộ phận, chức vụ, lương cứng",
-    templateCols: ["STT", "Mã NV", "Họ tên", "Bộ phận", "Chức vụ", "SĐT", "Email", "Lương cứng", "Ngày vào làm", "Trạng thái"],
+    templateCols: ["STT", "BHXH", "Mã NV", "Họ Tên", "Vị Trí", "SĐT", "Ngày Sinh", "Giới Tính", "CCCD", "Ngày Cấp", "Nơi Cấp", "Email", "Địa Chỉ Thường Trú", "Địa Chỉ Tạm Trú", "Số TK", "Ngân Hàng", "Trạng Thái", "Loại Lương", "Đơn giá SP", "Lương CB", "Ghi chú"],
     sampleData: [
-      ["1", "NV001", "Nguyễn Thị A", "Cắt", "Tổ trưởng", "0901234567", "a@mimin.vn", "8500000", "2024-01-01", "dang_lam"],
-      ["2", "NV002", "Trần Văn B", "May", "Thợ may", "0912345678", "b@mimin.vn", "7500000", "2024-03-15", "dang_lam"],
-      ["3", "NV003", "Lê Thị C", "Hoàn thiện", "Thợ may", "0923456789", "", "6800000", "2024-06-01", "nghi_viec"],
+      ["1", "9622347690", "GS001", "Phạm Văn Đệ", "Cắt", "0834033992", "08/09/2007", "Nam", "096207010504", "22/12/2021", "Cà Mau", "de7481039@gmail.com", "Việt Thắng, Phú Tân, Cà Mau", "12/39 Đường Xuân Thới Thượng 58C, ấp 7, Xã Xuân Thới Thượng, Huyện Hóc Môn, TP Hồ Chí Minh", "19075053256016", "Techcombank", "đang_lam", "Lương sản phẩm", "Áo trụ: 1.400đ, Áo tròn: 1.200đ, Quần: 900đ", "", ""],
+      ["2", "", "GS002", "NGUYỄN THỊ MỸ NHI", "Gấp xếp", "0901207771", "25/12/2007", "Nữ", "080307011543", "29/03/2022", "Long An", "Nguyennhi192145@gmail.com", "Ấp 4, Thạch Hưng, Tân Hưng, Long An", "12/39 Đường Xuân Thới Thượng 58C, ấp 7, Xã Xuân Thới Thượng, Huyện Hóc Môn, TP Hồ Chí Minh", "ACB-42718017", "ACB", "đang_lam", "Lương sản phẩm", "Bộ Thường: 1.300đ, Áo Thường: 800đ, Bộ Trắng: 1.500đ, Áo Trắng: 1.000đ", "0", ""],
     ],
     validateRow: (row: string[]) => {
       const errors: string[] = [];
-      if (!row[1]?.trim()) errors.push("Thiếu Mã NV");
-      if (!row[2]?.trim()) errors.push("Thiếu Họ tên");
-      if (!row[3]?.trim()) errors.push("Thiếu Bộ phận");
-      if (row[7] && isNaN(Number(row[7]))) errors.push("Lương cứng phải là số");
+      if (!row[2]?.trim()) errors.push("Thiếu Mã NV");
+      if (!row[3]?.trim()) errors.push("Thiếu Họ tên");
+      if (!row[4]?.trim()) errors.push("Thiếu Vị trí");
+      if (row[5] && !/^\d{9,11}$/.test(row[5].replace(/\D/g, ""))) errors.push("SĐT không hợp lệ");
+      if (row[19] && isNaN(Number(row[19]))) errors.push("Lương CB phải là số");
       return errors;
     },
   },
@@ -202,6 +212,7 @@ export default function ImportExcelPage() {
   const [step, setStep] = useState<ImportStep>("select");
   const [selectedModule, setSelectedModule] = useState<(typeof IMPORT_MODULES)[0] | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [headerRow, setHeaderRow] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState("");
   const [importing, setImporting] = useState(false);
@@ -212,6 +223,7 @@ export default function ImportExcelPage() {
     setSelectedModule(mod);
     setStep("upload");
     setParsedRows([]);
+    setHeaderRow([]);
     setFileName("");
   };
 
@@ -219,15 +231,42 @@ export default function ImportExcelPage() {
     (file: File) => {
       if (!selectedModule) return;
       setFileName(file.name);
+      const isXlsx = file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls");
+
+      if (isXlsx) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = e.target?.result;
+          if (!data) return;
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as string[][];
+          const header = Array.isArray(rows[0]) ? rows[0].map((value) => String(value ?? "")) : [];
+          const dataRows = rows.slice(1).filter((r) => Array.isArray(r) && r.some((c) => String(c || "").trim()));
+          const parsed: ParsedRow[] = dataRows.map((row, i) => {
+            const errors = selectedModule.validateRow(row as string[]);
+            return { index: i + 2, data: row as string[], errors, status: errors.length > 0 ? "error" : "ok" };
+          });
+          setHeaderRow(header);
+          setParsedRows(parsed);
+          setStep("preview");
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
         const rows = parseCSV(text);
+        const header = Array.isArray(rows[0]) ? rows[0].map((value) => String(value ?? "")) : [];
         const dataRows = rows.slice(1).filter((r) => r.some((c) => c.trim()));
         const parsed: ParsedRow[] = dataRows.map((row, i) => {
           const errors = selectedModule.validateRow(row);
           return { index: i + 2, data: row, errors, status: errors.length > 0 ? "error" : "ok" };
         });
+        setHeaderRow(header);
         setParsedRows(parsed);
         setStep("preview");
       };
@@ -251,7 +290,42 @@ export default function ImportExcelPage() {
   const handleImport = async () => {
     const okRows = parsedRows.filter((r) => r.status === "ok");
     if (okRows.length === 0) { toast.error("Không có dòng hợp lệ để import!"); return; }
-    setImporting(true);
+
+    if (selectedModule?.id === "nhan-su") {
+      try {
+        setImporting(true);
+        const employees = mapCsvRowsToEmployees(okRows.map((row) => row.data), headerRow);
+        const results = await Promise.allSettled(
+          employees.map(async (employee) => {
+            const response = await fetch("/api/employee-records", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(employee),
+            });
+            if (!response.ok) {
+              throw new Error(await response.text());
+            }
+          })
+        );
+
+        const successCount = results.filter((r) => r.status === "fulfilled").length;
+        const failedCount = results.length - successCount;
+        setImportedCount(successCount);
+        setImporting(false);
+        setStep("done");
+        if (failedCount > 0) {
+          toast.error(`⚠️ Import xong ${successCount} bản ghi, bỏ qua ${failedCount} bản ghi do lỗi.`);
+        } else {
+          toast.success(`✅ Đã import thành công ${successCount} bản ghi vào module ${selectedModule?.name}!`);
+        }
+        return;
+      } catch (error) {
+        setImporting(false);
+        toast.error(error instanceof Error ? error.message : "Không thể import nhân sự");
+        return;
+      }
+    }
+
     await new Promise((r) => setTimeout(r, 1800));
     setImporting(false);
     setImportedCount(okRows.length);
@@ -263,6 +337,7 @@ export default function ImportExcelPage() {
     setStep("select");
     setSelectedModule(null);
     setParsedRows([]);
+    setHeaderRow([]);
     setFileName("");
     setImportedCount(0);
   };
@@ -270,6 +345,15 @@ export default function ImportExcelPage() {
   const okCount = parsedRows.filter((r) => r.status === "ok").length;
   const errCount = parsedRows.filter((r) => r.status === "error").length;
   const colors = selectedModule ? COLOR_MAP[selectedModule.color] : null;
+
+  const handleClearExisting = async () => {
+    try {
+      await clearExistingEmployees();
+      toast.success("Đã xóa toàn bộ dữ liệu nhân sự cũ");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể xóa dữ liệu cũ");
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">
@@ -370,7 +454,7 @@ export default function ImportExcelPage() {
             <h3 className="font-bold mb-1 flex items-center gap-2">
               <Upload className="w-4 h-4" /> Bước 2: Upload file đã điền dữ liệu
             </h3>
-            <p className="text-sm opacity-60 mb-4">Chấp nhận file <strong>.csv</strong> — lưu từ Excel với encoding UTF-8.</p>
+            <p className="text-sm opacity-60 mb-4">Chấp nhận file <strong>.csv</strong> hoặc <strong>.xlsx</strong> — có thể import trực tiếp từ bảng Excel.</p>
             <div
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
@@ -385,7 +469,7 @@ export default function ImportExcelPage() {
               <Upload className={`w-12 h-12 mx-auto mb-3 ${isDragging ? colors.text : "opacity-20"} transition-all`} />
               <p className="font-semibold opacity-70">Kéo thả file CSV vào đây</p>
               <p className="text-sm opacity-40 mt-1">hoặc bấm để chọn file từ máy tính</p>
-              <input ref={fileRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleFileInput} />
+              <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={handleFileInput} />
             </div>
           </div>
         </div>
@@ -464,10 +548,15 @@ export default function ImportExcelPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 flex-wrap">
             <button onClick={() => { setStep("upload"); setParsedRows([]); setFileName(""); }} className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
               <Trash2 className="w-4 h-4" /> Huỷ
             </button>
+            {selectedModule?.id === "nhan-su" && (
+              <button onClick={handleClearExisting} className="px-4 py-2.5 rounded-xl border border-rose-300 text-rose-700 dark:border-rose-700 dark:text-rose-300 font-bold text-sm hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-1.5 transition-all">
+                <Trash2 className="w-4 h-4" /> Xóa toàn bộ dữ liệu nhân sự cũ trước khi import
+              </button>
+            )}
             <button
               onClick={handleImport}
               disabled={importing || okCount === 0}

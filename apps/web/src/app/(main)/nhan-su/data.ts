@@ -11,6 +11,8 @@ export type NhanSuExt = NhanSu & {
   luongCung?: number;
   taiKhoan?: string;
   avatar?: string;
+  cccdFrontImage?: string;
+  cccdBackImage?: string;
 };
 
 /**

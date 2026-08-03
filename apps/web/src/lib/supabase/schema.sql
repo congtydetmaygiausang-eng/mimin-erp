@@ -104,6 +104,16 @@ CREATE TABLE IF NOT EXISTS nhan_su (
   luong_cung NUMERIC DEFAULT 8500000,
   rating NUMERIC DEFAULT 4,
   trang_thai TEXT DEFAULT 'dang_lam',
+  avatar_url TEXT,
+  cccd_front_url TEXT,
+  cccd_back_url TEXT,
+  ngay_sinh TEXT,
+  gioi_tinh TEXT,
+  cccd TEXT,
+  dia_chi_tt TEXT,
+  dia_chi_tam_tru TEXT,
+  ngay_vao TEXT,
+  tai_khoan TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
