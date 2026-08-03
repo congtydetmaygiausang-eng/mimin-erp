@@ -158,6 +158,55 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6">
+          {/* BẢNG SIZE - Ở TRÊN CÙNG cho dễ thấy */}
+          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-5 rounded-lg border-2 border-blue-300 shadow-sm">
+             <h3 className="text-lg font-bold text-blue-700 uppercase tracking-wide mb-4 border-b-2 border-blue-200 pb-2 flex items-center gap-2">
+               <span className="text-2xl">📐</span>
+               BẢNG SIZE (M, L, XL, 2XL, 3XL) <span className="text-xs font-normal text-blue-500">← ở trên cùng để dễ thấy</span>
+             </h3>
+             <div className="grid grid-cols-5 gap-3 mb-3">
+               {bangSize.sizes.map((size, idx) => (
+                 <div key={size} className="text-center">
+                   <label className="text-xs font-bold text-slate-600 uppercase block mb-1">{size}</label>
+                   <input
+                     type="number"
+                     min="0"
+                     className="w-full px-2 py-3 border-2 border-blue-300 rounded text-center font-bold text-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                     value={bangSize.ratios[idx]}
+                     onChange={(e) => {
+                       const n = [...bangSize.ratios] as [number, number, number, number, number];
+                       n[idx] = Number(e.target.value) || 0;
+                       const riSo = n.reduce((a, b) => a + b, 0);
+                       setBangSize({ ...bangSize, ratios: n, riSo });
+                       setTiLeSize(n.join(":"));
+                     }}
+                   />
+                 </div>
+               ))}
+             </div>
+             <div className="flex flex-wrap items-center gap-2">
+               <div className="px-3 py-1.5 bg-white border-2 border-blue-300 rounded-lg shadow-sm">
+                 <span className="text-xs font-semibold text-blue-600 block">TỈ LỆ</span>
+                 <span className="font-mono font-bold text-blue-900 text-lg">{bangSize.ratios.join(":")}</span>
+               </div>
+               <div className="px-3 py-1.5 bg-white border-2 border-emerald-300 rounded-lg shadow-sm">
+                 <span className="text-xs font-semibold text-emerald-600 block">RÌ (1 RI = )</span>
+                 <span className="font-mono font-bold text-emerald-900 text-lg">{bangSize.riSo} SP</span>
+               </div>
+               {bangSize.riSo > 0 && (
+                 <div className="px-3 py-1.5 bg-white border-2 border-amber-300 rounded-lg shadow-sm">
+                   <span className="text-xs font-semibold text-amber-600 block">VD 100 SP = {Math.floor(100 / bangSize.riSo)} rì</span>
+                   <span className="text-[10px] text-amber-700">
+                     (M:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[0])}, L:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[1])}, XL:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[2])}, 2XL:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[3])}, 3XL:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[4])})
+                   </span>
+                 </div>
+               )}
+             </div>
+             <p className="text-xs text-blue-700 mt-3 italic font-semibold">
+               💡 Mỗi màu trong Bảng Màu bên dưới sẽ áp dụng tỉ lệ này. Khi tạo lệnh cắt → hệ thống tự tính SL từng size.
+             </p>
+          </div>
+
           <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
              <h3 className="text-lg font-bold text-[#2B4C3E] uppercase tracking-wide mb-4 border-b pb-2">THÔNG TIN CƠ BẢN</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -208,51 +257,7 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
              </div>
           </div>
 
-          {/* BẢNG SIZE (5 size: M, L, XL, 2XL, 3XL) */}
-          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
-             <h3 className="text-lg font-bold text-[#2B4C3E] uppercase tracking-wide mb-4 border-b pb-2 flex items-center gap-2">
-               📐 BẢNG SIZE (M, L, XL, 2XL, 3XL)
-             </h3>
-             <div className="grid grid-cols-5 gap-3">
-               {bangSize.sizes.map((size, idx) => (
-                 <div key={size} className="text-center">
-                   <label className="text-xs font-bold text-slate-600 uppercase block mb-1">{size}</label>
-                   <input
-                     type="number"
-                     min="0"
-                     className="w-full px-2 py-3 border-2 border-slate-200 rounded text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                     value={bangSize.ratios[idx]}
-                     onChange={(e) => {
-                       const n = [...bangSize.ratios] as [number, number, number, number, number];
-                       n[idx] = Number(e.target.value) || 0;
-                       const riSo = n.reduce((a, b) => a + b, 0);
-                       setBangSize({ ...bangSize, ratios: n, riSo });
-                       setTiLeSize(n.join(":"));
-                     }}
-                   />
-                 </div>
-               ))}
-             </div>
-             <div className="mt-4 flex flex-wrap items-center gap-3">
-               <div className="px-3 py-2 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                 <span className="text-xs font-semibold text-blue-600 block">TỈ LỆ</span>
-                 <span className="font-mono font-bold text-blue-900 text-lg">{bangSize.ratios.join(":")}</span>
-               </div>
-               <div className="px-3 py-2 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
-                 <span className="text-xs font-semibold text-emerald-600 block">RÌ (1 RI = )</span>
-                 <span className="font-mono font-bold text-emerald-900 text-lg">{bangSize.riSo} SP</span>
-               </div>
-               {bangSize.riSo > 0 && (
-                 <div className="px-3 py-2 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                   <span className="text-xs font-semibold text-amber-600 block">VD 100 SP = {Math.floor(100 / bangSize.riSo)} rì</span>
-                   <span className="text-[10px] text-amber-700">→ M: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[0])}, L: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[1])}, XL: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[2])}, 2XL: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[3])}, 3XL: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[4])}</span>
-                 </div>
-               )}
-             </div>
-             <p className="text-xs text-slate-500 mt-3 italic">
-               💡 Mỗi màu trong Bảng Màu bên dưới sẽ áp dụng tỉ lệ này. Khi tạo lệnh cắt → hệ thống tự tính SL từng size.
-             </p>
-          </div>
+          {/* BẢNG SIZE đã chuyển lên đầu modal */}
 
           <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
              <div className="flex justify-between items-center mb-4 border-b pb-2">
