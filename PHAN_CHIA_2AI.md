@@ -116,11 +116,20 @@ apps/web/src/components/mobile/**         ← Mobile-specific
 | Đợt 8 | Project Manager config (14 phần) | ✅ xong |
 | Đợt 9 | Agent Screen Config (24 màn) | ✅ xong |
 | Đợt 10 | Admin Requirements checklist | ✅ xong |
-| Sprint 1 | Fix bug Antigravity push (TypeScript) | ✅ xong (vừa rồi) |
-| Sprint 2 | 14 API CRUD lên Supabase | 🔜 sắp tới |
+| Sprint 1 | Fix bug Antigravity push (TypeScript) | ✅ xong (commit `008a014`) |
+| Sprint 2 | 14 API CRUD lên Supabase | 🔜 đang làm |
+| Sprint 2A | Schema `nha_cung_cap` đầy đủ + 20 đối tác | ✅ xong (commit `9ae663c`) |
+| Sprint 2B | Sync 19 user Auth → 18 user mới (Excel) | ⏳ chờ sếp chạy script |
+| Sprint 2C | Schema 14 bảng còn lại (don_hang, nhan_su, bang_luong...) | 🔜 sau khi user sync |
 | Sprint 3 | 6 tool Phase 2 (createDonHang, phanCong...) | 🔜 sắp tới |
 | Sprint 4 | 12 tools Project Manager | 🔜 sắp tới |
 | Sprint 5 | 9 stores localStorage → Supabase | 🔜 sau schema |
+
+### Sếp Sang đang phụ trách (KHÔNG đụng)
+| Module | Trạng thái | Ghi chú |
+|---|---|---|
+| **Kho vải** (`kho-vai`) | ✅ Sếp Sang đã làm | KHÔNG sửa, sếp tự maintain |
+| **Kho nguyên liệu** (`kho-phu-lieu`) | ✅ Sếp Sang đã làm | KHÔNG sửa, sếp tự maintain |
 
 ### Antigravity đang phụ trách
 | Đợt | Công việc | Trạng thái |
