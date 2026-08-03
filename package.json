@@ -6,6 +6,14 @@
     "dev": "cd apps/web && npm run dev",
     "build": "cd apps/web && npm run build",
     "start": "cd apps/web && npm run start",
-    "vercel-build": "cd apps/web && npm install --legacy-peer-deps && npm run build && cd ../.. && rm -rf .next && cp -r apps/web/.next .next"
+    "vercel-build": "cd apps/web && npm install --legacy-peer-deps && npm run build"
+  },
+  "dependencies": {
+    "next": "15.2.9",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
   }
 }
