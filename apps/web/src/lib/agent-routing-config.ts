@@ -24,7 +24,7 @@ export const PROVIDER_CONFIGS: Record<AIProvider, ProviderEndpoint> = {
     provider: "minimax",
     baseUrl: "https://api.minimax.io/v1",  // MiniMax International (chỉ cần API key, OpenAI-compatible)
     apiKeyEnv: "MINIMAX_API_KEY",
-    defaultModel: "abab6.5s-chat",
+    defaultModel: "MiniMax-M3",
   },
   gemini: {
     provider: "gemini",
