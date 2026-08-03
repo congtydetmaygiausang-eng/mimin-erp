@@ -31,7 +31,8 @@ export type Module =
   | "bang-dieu-hanh-sx"
   | "doi-soat-tien-cong"
   | "audit-log"
-  | "phan-quyen-tuy-chinh";
+  | "phan-quyen-tuy-chinh"
+  | "danh-muc-sp";
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Quản trị viên",
@@ -80,6 +81,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   "doi-soat-tien-cong": "Đối soát tiền công",
   "audit-log": "Audit log (lịch sử thao tác)",
   "phan-quyen-tuy-chinh": "Phân quyền tùy chỉnh",
+  "danh-muc-sp": "Danh mục sản phẩm",
 };
 
 // Permission Matrix: 7 role × 21 module × 4 action
@@ -114,6 +116,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "doi-soat-tien-cong": "rcud",
     "audit-log": "rcud",
     "phan-quyen-tuy-chinh": "rcud",
+    "danh-muc-sp": "rcud",
   },
   // Planner (chuyên viên kế hoạch): tạo lệnh cắt, KH, đơn hàng, KHSX. Xem các phần liên quan
   planner: {
@@ -133,8 +136,8 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "giao-hang": "r",
     "cham-cong": "r",
     "bang-luong": "",
-    "nha-cung-cap": "r",
-    "gia-cong-ngoai": "r",
+    "nha-cung-cap": "rcu",
+    "gia-cong-ngoai": "rcu",
     "bao-cao": "r",
     "realtime": "r",
     "cai-dat": "",
@@ -143,6 +146,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "doi-soat-tien-cong": "r",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "rcu",
   },
   // Warehouse (quản lý kho): CRUD kho, xem các phần liên quan
   warehouse: {
@@ -162,7 +166,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "giao-hang": "r",
     "cham-cong": "",
     "bang-luong": "",
-    "nha-cung-cap": "ru",
+    "nha-cung-cap": "rcu",
     "gia-cong-ngoai": "r",
     "bao-cao": "r",
     "realtime": "r",
@@ -172,6 +176,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "doi-soat-tien-cong": "",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "r",
   },
   // Sewing (tổ trưởng may): quản lý tổ may, chấm công, xem lệnh cắt
   sewing: {
@@ -201,6 +206,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "doi-soat-tien-cong": "r",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "r",
   },
   // QC (kiểm tra chất lượng): CRUD QC, xem các phần liên quan SX
   qc: {
@@ -230,6 +236,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "doi-soat-tien-cong": "",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "r",
   },
   // Finishing (tổ trưởng hoàn thiện): CRUD hoàn thiện, giao hàng
   finishing: {
@@ -259,6 +266,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "doi-soat-tien-cong": "r",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "r",
   },
   // Accountant (kế toán): CRUD bảng lương, công nợ, NCC, xem báo cáo
   accountant: {
@@ -288,6 +296,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "doi-soat-tien-cong": "rcud",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "r",
   },
 };
 
@@ -295,7 +304,7 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
 // CUSTOM PERMISSION MATRIX (admin có thể tùy chỉnh)
 // Lưu localStorage - ưu tiên dùng khi có
 // ============================================
-const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v1";
+const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v2";
 
 /** Load matrix hiệu lực: ưu tiên localStorage (admin tùy chỉnh), fallback PERMISSIONS mặc định */
 export function getEffectivePermissions(): Record<Role, Record<Module, string>> {

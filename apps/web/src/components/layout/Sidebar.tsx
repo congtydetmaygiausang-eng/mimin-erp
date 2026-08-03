@@ -108,7 +108,7 @@ const NAV: NavItem[] = [
   },
   {
     label: "📁 Danh Mục Dữ Liệu", icon: Building2, isGroup: true, subItems: [
-      { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, permModule: "dashboard" },
+      { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, permModule: "danh-muc-sp" },
       { href: "/nhan-su", label: "Nhân sự", icon: Users, permModule: "nhan-su" },
       { href: "/khach-hang", label: "Khách hàng", icon: Users, permModule: "khach-hang" },
       { href: "/nha-cung-cap", label: "Nhà cung cấp", icon: Building2, permModule: "nha-cung-cap" },
