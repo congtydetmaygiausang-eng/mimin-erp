@@ -97,7 +97,41 @@ export default function DanhMucSanPhamPage() {
                   <div className="font-semibold text-emerald-600">{formatVND(sp.giaBanDuKien)}</div>
                 </div>
               </div>
-              
+
+              {/* BẢNG SIZE MINI - hiển thị ngay trong card */}
+              {sp.bangSize && (
+                <div className="mt-3 p-2 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-[10px] font-bold text-blue-700 uppercase flex items-center gap-1">
+                      📐 Bảng Size
+                    </div>
+                    <div className="text-[10px] font-mono font-bold text-blue-900">
+                      Ri {sp.bangSize.riSo}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {sp.bangSize.sizes.map((size, idx) => {
+                      const r = sp.bangSize!.ratios[idx];
+                      const isActive = r > 0;
+                      return (
+                        <div
+                          key={size}
+                          className={`text-center rounded py-1 ${
+                            isActive
+                              ? "bg-blue-600 text-white"
+                              : "bg-slate-200 text-slate-400 line-through"
+                          }`}
+                          title={`${size}: ${r} phần`}
+                        >
+                          <div className="text-[8px] font-semibold uppercase leading-none">{size}</div>
+                          <div className="text-xs font-bold leading-tight">{r}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-3 flex items-center gap-1.5 flex-wrap">
                 {sp.dsMau.map(m => (
                   <span key={m.maSKU} className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-full font-medium text-slate-600 border">
