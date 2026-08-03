@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
-import { Plus, Search, Shirt, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, Shirt, Edit2, Trash2, Ruler } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import DanhMucSPModal from "@/components/DanhMucSPModal";
+import BangSizeManagerModal from "@/components/BangSizeManagerModal";
 import { toast } from "sonner";
 
 export default function DanhMucSanPhamPage() {
@@ -13,6 +14,7 @@ export default function DanhMucSanPhamPage() {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [showBangSize, setShowBangSize] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -37,16 +39,25 @@ export default function DanhMucSanPhamPage() {
           </h1>
           <p className="text-slate-500 text-sm mt-1">Quản lý Master Data (Thông tin gốc) của các sản phẩm</p>
         </div>
-        <button
-          onClick={() => {
-            setEditId(null);
-            setShowModal(true);
-          }}
-          className="bg-[#2B4C3E] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-[#1A3329] transition-colors shadow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm Mẫu Mới
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowBangSize(true)}
+            className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
+          >
+            <Ruler className="w-5 h-5" />
+            Bảng Size ({dsSanPham?.length || 0})
+          </button>
+          <button
+            onClick={() => {
+              setEditId(null);
+              setShowModal(true);
+            }}
+            className="bg-[#2B4C3E] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-[#1A3329] transition-colors shadow-lg"
+          >
+            <Plus className="w-5 h-5" />
+            Thêm Mẫu Mới
+          </button>
+        </div>
       </div>
 
       {/* Search */}
