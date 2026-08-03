@@ -7,8 +7,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://nftlwdcsmlp
 // Hỗ trợ cả anon key (cũ) và publishable key (Supabase 2024+)
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
 
+// Re-export từ sync-helper để các store dùng tiện
+export { supabaseUpsert, supabaseDelete, supabaseFetchAll, useSupabaseSync, checkSupabase } from "./sync-helper";
+
 // Tạo client chỉ khi có config thật
-export const isSupabaseEnabled = false; // Tạm tắt Supabase để bypass 2FA
+// 2026-08-03: BẬT lại sau khi sếp Sang apply schema (commit 9ae0b4b)
+export const isSupabaseEnabled = true;
 
 export const supabase: SupabaseClient | null = isSupabaseEnabled
   ? createClient(supabaseUrl, supabaseAnonKey, {

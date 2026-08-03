@@ -1,12 +1,14 @@
 
 // ============ LENH CAT STORE (Giai đoạn 3 - Nâng cấp) ============
 // Quản lý Lệnh Cắt mới tạo (CuttingOrder)
-// Lưu localStorage `mimin_lenh_cat_v2`
+// Lưu localStorage `mimin_lenh_cat_v2` + sync Supabase
 // Auto-generate ID theo format LC-2026-XXXX
 // CRUD: themLenhCat, suaLenhCat, xoaLenhCat
+// 2026-08-03: Thêm sync Supabase (sếp Sang bật lại schema)
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { logWorkflow } from "../audit-log";
+import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
 import type { AppUser } from "@/components/session-provider";
 
 export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron";
@@ -226,15 +228,34 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       return next;
     });
     logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
+    // Sync Supabase (background, không block UI)
+    if (isSupabaseEnabled) {
+      supabaseUpsert("lenh_cat", lenh as any).catch((err) =>
+        console.error("[LenhCatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const suaLenhCat = useCallback((id: string, lenh: Partial<LenhCat>, u: AppUser) => {
+    let updated: LenhCat | null = null;
     setDsLenhCat((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, ...lenh } : item));
+      const next = prev.map((item) => {
+        if (item.id === id) {
+          updated = { ...item, ...lenh };
+          return updated;
+        }
+        return item;
+      });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
     logWorkflow(u, "update", `Cập nhật lệnh cắt ${id}`, id, { module: "lenh-cat" });
+    // Sync Supabase
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("lenh_cat", updated as any).catch((err) =>
+        console.error("[LenhCatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const xoaLenhCat = useCallback((id: string, u: AppUser) => {
@@ -244,6 +265,12 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       return next;
     });
     logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat" });
+    // Sync Supabase
+    if (isSupabaseEnabled) {
+      supabaseDelete("lenh_cat", id).catch((err) =>
+        console.error("[LenhCatStore] Supabase delete error:", err)
+      );
+    }
   }, []);
   
   const themMauCongDoan = useCallback((mau: MauCongDoanItem) => {
