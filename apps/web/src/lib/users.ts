@@ -1,6 +1,5 @@
 // USERS - Source of truth duy nhất cho toàn bộ hệ thống
-// Bao gồm: 6 quản lý + 13 công nhân + 7 mock legacy = 26 user
-
+// Imported từ file Excel sếp Sang ngày 2026-08-03: 1 admin + 17 user mới (NV001-NV019 + NV020-NV027)
 
 
 // CANONICAL: định nghĩa ModuleSX ở đây (congnhan-13.ts re-export từ đây)
@@ -41,139 +40,126 @@ export interface UserAccount {
   loginCount?: number;
 }
 
-// 19 user nội bộ (theo 10 nhóm) + 13 CN = unified 19 users với đầy đủ thông tin
+// 18 user: 1 admin (sang) + 17 user từ Excel
 export const USERS: UserAccount[] = [
-  // ============ 6 NHÓM QUẢN LÝ ============
+  // ============ ADMIN ============
   {
     id: "sang", maNV: "NV035", email: "sang@mimin.vn", password: "sang123", passwordHash: "",
     name: "Hồ Minh Sang", role: "admin", chucVu: "Quản trị hệ thống",
     phongBan: "ban-giam-doc", nhom: "quan-tri", laCongNhan: false,
-    sdt: "0901234567",
+    sdt: "0774480916",
   },
   {
-    id: "giau", maNV: "NV001", email: "giau@mimin.vn", password: "giau123", passwordHash: "",
-    name: "Nguyễn Thị Ngọc Giàu", role: "admin", chucVu: "GĐ điều hành",
-    phongBan: "ban-giam-doc", nhom: "dieu-hanh", laCongNhan: false,
-    sdt: "0912345678",
-  },
-  {
-    id: "thanh", maNV: "NV002", email: "thanh@mimin.vn", password: "thanh123", passwordHash: "",
-    name: "Bùi Thị Thanh", role: "accountant", chucVu: "Kế toán trưởng + Điều phối SX",
-    phongBan: "ke-toan", nhom: "ke-toan", laCongNhan: false,
-    sdt: "0923456789",
-  },
-  {
-    id: "huyen", maNV: "NV003", email: "huyen@mimin.vn", password: "huyen123", passwordHash: "",
-    name: "Đỗ Thị Huyền", role: "planner", chucVu: "Trưởng phòng KH sỉ",
-    phongBan: "kinh-doanh", nhom: "ban-si", laCongNhan: false,
-    sdt: "0934567890",
-  },
-  {
-    id: "vy", maNV: "NV004", email: "vy@mimin.vn", password: "vy123", passwordHash: "",
-    name: "Nguyễn Ngọc Cẩm Vy", role: "admin", chucVu: "Trưởng nhóm Content - Media",
-    phongBan: "marketing", nhom: "content", laCongNhan: false,
-    sdt: "0945678901",
-  },
-  {
-    id: "hau", maNV: "NV005", email: "hau@mimin.vn", password: "hau123", passwordHash: "",
-    name: "Nguyễn Quốc Hậu", role: "warehouse", chucVu: "Thủ kho trưởng",
-    phongBan: "kho", nhom: "kho", laCongNhan: false,
-    sdt: "0956789012",
-  },
-  // ============ NHÓM CẮT (3 CN) ============
-  {
-    id: "giang", maNV: "NV006", email: "giang@mimin.vn", password: "giang123", passwordHash: "",
-    name: "Nguyễn Hoàng Giang", role: "sewing", chucVu: "Tổ trưởng Cắt",
+    id: "de", maNV: "NV007", email: "de7481039@gmail.com", password: "de123", passwordHash: "",
+    name: "Phạm Văn Đệ", role: "sewing", chucVu: "cắt - Áo trụ: 1.400đ, Áo tròn: 1.200đ, Quần: 900đ",
     phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",
-    donGia: 1200, donVi: "cái", sdt: "0966789012",
+    donGia: 1400, donVi: "cái", sdt: "0834033992",
   },
   {
-    id: "de", maNV: "NV007", email: "de@mimin.vn", password: "de123", passwordHash: "",
-    name: "Phạm Văn Đệ", role: "sewing", chucVu: "CN Cắt (1400đ/1200đ/900đ)",
+    id: "nhi", maNV: "NV009", email: "Nguyennhi192145@gmail.com", password: "nhi123", passwordHash: "",
+    name: "NGUYỄN THỊ MỸ NHI", role: "finishing", chucVu: "Gấp xếp - Bộ Thường: 1.300đ, Áo Thường: 800đ, Bộ Trắng: 1.500đ, Áo Trắng: 1.000đ",
+    phongBan: "to-may", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
+    donGia: 1300, donVi: "cái", sdt: "0901207771",
+  },
+  {
+    id: "phuong", maNV: "NV010", email: "vop61089@gmail.com", password: "phuong123", passwordHash: "",
+    name: "VÕ THỊ PHƯỜNG", role: "finishing", chucVu: "Gấp xếp - Bộ Thường: 1.300đ, Áo Thường: 800đ, Bộ Trắng: 1.500đ, Áo Trắng: 1.000đ",
+    phongBan: "to-may", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
+    donGia: 1300, donVi: "cái", sdt: "0702501456",
+  },
+  {
+    id: "vy", maNV: "NV004", email: "nvy967300@gmail.com", password: "vy123", passwordHash: "",
+    name: "NGUYỄN NGỌC CẨM VY", role: "admin", chucVu: "Content - Media - Lương CB: 8,000,000đ",
+    phongBan: "marketing", nhom: "content", laCongNhan: false, module: "cat",
+    donGia: 0, donVi: "cái", sdt: "0779182053",
+  },
+  {
+    id: "huyen", maNV: "NV003", email: "dohuyencpr81@gmail.com", password: "huyen123", passwordHash: "",
+    name: "ĐỖ THỊ HUYỀN", role: "planner", chucVu: "QL Khách hàng Sỉ - Lương CB: 7,000,000đ",
+    phongBan: "kinh-doanh", nhom: "ban-si", laCongNhan: false, module: "cat",
+    donGia: 0, donVi: "cái", sdt: "0376327699",
+  },
+  {
+    id: "thanh", maNV: "NV002", email: "buithanh151199@gmail.com", password: "thanh123", passwordHash: "",
+    name: "BÙI THỊ THANH", role: "accountant", chucVu: "Kế toán điều phối SX - Lương CB: 8,000,000đ",
+    phongBan: "ke-toan", nhom: "ke-toan", laCongNhan: false, module: "cat",
+    donGia: 0, donVi: "cái", sdt: "0911546004",
+  },
+  {
+    id: "be", maNV: "NV019", email: "beekhuong1505@gmail.com", password: "be123", passwordHash: "",
+    name: "NGUYỄN THỊ BÉ", role: "finishing", chucVu: "Gấp xếp - Bộ Thường: 1.300đ, Áo Thường: 800đ, Bộ Trắng: 1.500đ, Áo Trắng: 1.000đ",
+    phongBan: "to-may", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
+    donGia: 1300, donVi: "cái", sdt: "0363073998",
+  },
+  {
+    id: "hoa", maNV: "NV020", email: "xhoa14052004@gmail.com", password: "hoa123", passwordHash: "",
+    name: "HUỲNH XUÂN HÒA", role: "admin", chucVu: "Media - Lương CB: 10,000,000đ",
+    phongBan: "marketing", nhom: "content", laCongNhan: false, module: "cat",
+    donGia: 0, donVi: "cái", sdt: "0334536752",
+  },
+  {
+    id: "duc1", maNV: "NV021", email: "nguyenminhduc199024@gmail.com", password: "duc1123", passwordHash: "",
+    name: "NGUYỄN MINH ĐỨC", role: "finishing", chucVu: "Ủi - Áo trụ: 800đ, Áo tròn: 700đ, Quần: 600đ",
+    phongBan: "to-may", nhom: "ui", laCongNhan: true, module: "ui",
+    donGia: 800, donVi: "cái", sdt: "0365052474",
+  },
+  {
+    id: "tam", maNV: "NV022", email: "truongtam2044@gmail.com", password: "tam123", passwordHash: "",
+    name: "TRƯƠNG MINH TÂM", role: "finishing", chucVu: "Ủi - Áo trụ: 800đ, Áo tròn: 700đ, Quần: 600đ",
+    phongBan: "to-may", nhom: "ui", laCongNhan: true, module: "ui",
+    donGia: 800, donVi: "cái", sdt: "0343513417",
+  },
+  {
+    id: "dinh", maNV: "NV023", email: "nan499229@gmail.com", password: "dinh123", passwordHash: "",
+    name: "LÊ ĐỊNH", role: "finishing", chucVu: "Ủi - Áo trụ: 800đ, Áo tròn: 700đ, Quần: 600đ",
+    phongBan: "to-may", nhom: "ui", laCongNhan: true, module: "ui",
+    donGia: 800, donVi: "cái", sdt: "334047628",
+  },
+  {
+    id: "vinh", maNV: "NV024", email: "duongvinh3102005@gmail.com", password: "vinh123", passwordHash: "",
+    name: "DƯƠNG TẤN VĨNH", role: "sewing", chucVu: "Cắt - Áo trụ: 1.400đ, Áo tròn: 1.200đ, Quần: 900đ",
     phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",
-    donGia: 1200, donVi: "cái", sdt: "0977890123",
+    donGia: 1400, donVi: "cái", sdt: "0392123831",
   },
   {
-    id: "phu", maNV: "NV008", email: "phu@mimin.vn", password: "phu123", passwordHash: "",
-    name: "Hồ Văn Minh Phú", role: "sewing", chucVu: "CN Cắt hỗ trợ",
+    id: "minh1", maNV: "NV025", email: "An Thạnh, An Phú, An Giang", password: "minh1123", passwordHash: "",
+    name: "NGUYỄN QUỐC MINH", role: "sewing", chucVu: "Cắt - Áo trụ: 1.400đ, Áo tròn: 1.200đ, Quần: 900đ",
     phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",
-    donGia: 1200, donVi: "cái", sdt: "0988901234",
-  },
-  // ============ NHÓM ĐÓNG GÓI (4 CN) - đổi từ "gap" → "dong-goi" ============
-  {
-    id: "nhi", maNV: "NV009", email: "nhi@mimin.vn", password: "nhi123", passwordHash: "",
-    name: "Nguyễn Thị Mỹ Nhi", role: "sewing", chucVu: "Tổ trưởng Gấp xếp",
-    phongBan: "hoan-thien", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
-    donGia: 800, donVi: "cái", sdt: "0999012345",
+    donGia: 1400, donVi: "cái", sdt: "0332026731",
   },
   {
-    id: "phuong", maNV: "NV010", email: "phuong@mimin.vn", password: "phuong123", passwordHash: "",
-    name: "Võ Thị Phương", role: "sewing", chucVu: "CN Gấp - Xếp",
-    phongBan: "hoan-thien", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
-    donGia: 800, donVi: "cái", sdt: "0990123456",
-  },
-  // ============ NHÓM ỦI (4 CN) ============
-  {
-    id: "tuyen", maNV: "NV011", email: "tuyen@mimin.vn", password: "tuyen123", passwordHash: "",
-    name: "Đặng Võ Công Tuyền", role: "finishing", chucVu: "Tổ trưởng Ủi",
-    phongBan: "hoan-thien", nhom: "ui", laCongNhan: true, module: "ui",
-    donGia: 2000, donVi: "sp", sdt: "0912234567",
+    id: "nhan", maNV: "NV026", email: "trvannhan1402@gmail.com", password: "nhan123", passwordHash: "",
+    name: "TRƯƠNG VĂN NHẪN", role: "sewing", chucVu: "Cắt - Áo trụ: 1.400đ, Áo tròn: 1.200đ, Quần: 900đ",
+    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",
+    donGia: 1400, donVi: "cái", sdt: "0345141953",
   },
   {
-    id: "huynh", maNV: "NV012", email: "huynh@mimin.vn", password: "huynh123", passwordHash: "",
-    name: "Phạm Văn Huynh", role: "finishing", chucVu: "CN Ủi áo/quần",
-    phongBan: "hoan-thien", nhom: "ui", laCongNhan: true, module: "ui",
-    donGia: 2000, donVi: "sp", sdt: "0923345678",
+    id: "hau", maNV: "NV005", email: "Beo26032019@gmail.com", password: "hau123", passwordHash: "",
+    name: "NGUYỄN QUỐC HẬU", role: "warehouse", chucVu: "Nhân viên Kho - Lương CB: 7,000,000đ",
+    phongBan: "kho", nhom: "kho", laCongNhan: false, module: "cat",
+    donGia: 0, donVi: "cái", sdt: "0386231456",
   },
   {
-    id: "thuy", maNV: "NV013", email: "thuy@mimin.vn", password: "thuy123", passwordHash: "",
-    name: "Chu Quang Thủy", role: "finishing", chucVu: "CN Ủi hoàn thiện",
-    phongBan: "hoan-thien", nhom: "ui", laCongNhan: true, module: "ui",
-    donGia: 2000, donVi: "sp", sdt: "0934456789",
+    id: "phi", maNV: "NV027", email: "fizxnm2251994@mail.com", password: "phi123", passwordHash: "",
+    name: "LƯƠNG HOÀNG PHI", role: "admin", chucVu: "Media",
+    phongBan: "marketing", nhom: "content", laCongNhan: false, module: "cat",
+    donGia: 0, donVi: "cái", sdt: "0938625594",
   },
   {
-    id: "anhui", maNV: "NV014", email: "anhui@mimin.vn", password: "anhui123", passwordHash: "",
-    name: "Thế Anh", role: "finishing", chucVu: "CN Ủi theo lô",
-    phongBan: "hoan-thien", nhom: "ui", laCongNhan: true, module: "ui",
-    donGia: 2000, donVi: "sp", sdt: "0945567890",
+    id: "ruong", maNV: "NV017", email: "nguyenvanruong14@gmail.com", password: "ruong123", passwordHash: "",
+    name: "NGUYỄN VĂN RUỘNG", role: "sewing", chucVu: "Khuy nút - Chung: 750đ",
+    phongBan: "to-may", nhom: "khuy-nut", laCongNhan: true, module: "khuy-nut",
+    donGia: 750, donVi: "cái", sdt: "0339724459",
   },
-  // ============ NHÓM ĐÓNG GÓI (cont.) ============
-  {
-    id: "tim", maNV: "NV015", email: "tim@mimin.vn", password: "tim123", passwordHash: "",
-    name: "Tím", role: "sewing", chucVu: "CN Phân loại - Bao",
-    phongBan: "hoan-thien", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
-    donGia: 800, donVi: "cái", sdt: "0956678901",
-  },
-  {
-    id: "phien", maNV: "NV016", email: "phien@mimin.vn", password: "phien123", passwordHash: "",
-    name: "Trần Thị Bé Phiên", role: "sewing", chucVu: "CN Gấp - Tem - Đóng bao",
-    phongBan: "hoan-thien", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
-    donGia: 800, donVi: "cái", sdt: "0967789012",
-  },
-  // ============ NHÓM KHUY NÚT (2 CN) ============
-  {
-    id: "ruong", maNV: "NV017", email: "ruong@mimin.vn", password: "ruong123", passwordHash: "",
-    name: "Nguyễn Văn Ruộng", role: "finishing", chucVu: "Tổ trưởng Khuy nút (750đ/cái)",
-    phongBan: "hoan-thien", nhom: "khuy-nut", laCongNhan: true, module: "khuy-nut",
-    donGia: 750, donVi: "cái", sdt: "0978890123",
-  },
-  {
-    id: "khoi", maNV: "NV018", email: "khoi@mimin.vn", password: "khoi123", passwordHash: "",
-    name: "Bùi Minh Khôi", role: "finishing", chucVu: "CN Khuy nút hỗ trợ",
-    phongBan: "hoan-thien", nhom: "khuy-nut", laCongNhan: true, module: "khuy-nut",
-    donGia: 750, donVi: "cái", sdt: "0989901234",
-  },
-  // ============ 7 MOCK LEGACY ============
-  // 7 tài khoản test admin/planner/... đã bị xoá ngày 2026-08-01 theo yêu cầu anh Sang
-  // Chi giữ lại 19 tài khoản nội bộ thật
 ];
 
-// Công nhân (13 người) - lọc từ USERS
-export const CONG_NHAN_13: UserAccount[] = USERS.filter((u) => u.nhom === "cn");
+// ============ HELPER FUNCTIONS ============
 
-// Helpers
+// Backward-compat: filter công nhân (nhom === 'cn' hoặc laCongNhan === true)
+export const CONG_NHAN_13: UserAccount[] = USERS.filter((u) => u.laCongNhan);
+
 export function findUserByEmail(email: string): UserAccount | undefined {
-  return USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  return USERS.find((u) => u.email === email);
 }
 
 export function findUserByMaNV(maNV: string): UserAccount | undefined {
@@ -193,11 +179,11 @@ export function getCongNhan(): UserAccount[] {
 }
 
 export function getQuanLy(): UserAccount[] {
-  return USERS.filter((u) => !u.laCongNhan && !u.isMock);
+  return USERS.filter((u) => !u.laCongNhan);
 }
 
 export const USER_STATS = {
-  total: USERS.length,
+  tong: USERS.length,
   quanLy: getQuanLy().length,
   congNhan: getCongNhan().length,
   mock: USERS.filter((u) => u.isMock).length,
