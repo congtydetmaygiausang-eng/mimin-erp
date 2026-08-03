@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Users,
   Phone,
@@ -24,104 +24,13 @@ import {
   Lock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { NHAN_SU, formatVND, formatVNDShort, type NhanSu } from "@/lib/data/real-data";
-import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
+import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityCard";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { usePermission } from "@/components/PermissionGuard";
-
-type NhanSuExt = NhanSu & {
-  rating?: number;
-  ngayVao?: string;
-  luongCung?: number;
-  taiKhoan?: string;
-  avatar?: string;
-};
-
-// ============ MAP NV LARK THẬT → NhanSuExt ============
-// Suy ra chucVu từ boPhan + ghiChu của REAL_NHAN_VIEN
-function inferChucVu(boPhan: string, ghiChu: string, ma: string): string {
-  // Quản lý cấp cao
-  if (boPhan === "Điều hành") return "Giám đốc điều hành";
-  if (boPhan.includes("Kế toán")) return "Kế toán trưởng";
-  if (boPhan.includes("Quản lý KH")) return "Trưởng phòng KD";
-  if (boPhan.includes("Content")) return "Trưởng nhóm Media";
-  if (boPhan === "Kho") return "Thủ kho trưởng";
-  // Tổ trưởng nếu ghi chú chứa từ khóa
-  if (/trưởng|quản lý/i.test(ghiChu)) return "Tổ trưởng";
-  if (/hỗ trợ|phụ/i.test(ghiChu)) return "Công nhân hỗ trợ";
-  return "Công nhân";
-}
-
-function inferLuongCung(boPhan: string, chucVu: string): number {
-  if (chucVu.includes("Giám đốc")) return 25000000;
-  if (chucVu.includes("trưởng")) return 12000000;
-  if (boPhan === "Kế toán") return 10000000;
-  if (boPhan === "Kho") return 8000000;
-  return 7000000;
-}
-
-// Mock bổ sung thông tin thiếu cho NV (sdt, email, ngaySinh, gioiTinh, cccd)
-// Mapping chi tiết theo từng NV để hiển thị đầy đủ thông tin
-const NV_MOCK_DETAIL: Record<string, { sdt: string; email: string; ngaySinh: string; gioiTinh: string; cccd: string; diaChiTT: string }> = {
-  NV001: { sdt: "0901234567", email: "giau.nt@mimin.vn", ngaySinh: "1985-05-15", gioiTinh: "Nữ", cccd: "079185000123", diaChiTT: "12/39 Xuân Thới Thượng, Hóc Môn, TP.HCM" },
-  NV002: { sdt: "0912345678", email: "thanh.bt@mimin.vn", ngaySinh: "1990-08-20", gioiTinh: "Nữ", cccd: "079190000456", diaChiTT: "Quận 12, TP.HCM" },
-  NV003: { sdt: "0933456789", email: "huyen.dt@mimin.vn", ngaySinh: "1992-03-10", gioiTinh: "Nữ", cccd: "079192000789", diaChiTT: "Gò Vấp, TP.HCM" },
-  NV004: { sdt: "0944567890", email: "vy.nn@mimin.vn", ngaySinh: "1995-11-25", gioiTinh: "Nữ", cccd: "079195000234", diaChiTT: "Bà Điểm, Hóc Môn, TP.HCM" },
-  NV005: { sdt: "0955678901", email: "hau.nq@mimin.vn", ngaySinh: "1988-07-12", gioiTinh: "Nam", cccd: "079188000567", diaChiTT: "Hóc Môn, TP.HCM" },
-  NV006: { sdt: "0966789012", email: "giang.nh@mimin.vn", ngaySinh: "1991-04-18", gioiTinh: "Nam", cccd: "079191000890", diaChiTT: "Củ Chi, TP.HCM" },
-  NV007: { sdt: "0977890123", email: "de.pv@mimin.vn", ngaySinh: "1989-09-30", gioiTinh: "Nam", cccd: "079189000123", diaChiTT: "Hóc Môn, TP.HCM" },
-  NV008: { sdt: "0988901234", email: "phu.hvm@mimin.vn", ngaySinh: "1993-12-05", gioiTinh: "Nam", cccd: "079193000456", diaChiTT: "Bình Chánh, TP.HCM" },
-  NV009: { sdt: "0999012345", email: "nhi.ntm@mimin.vn", ngaySinh: "1996-02-22", gioiTinh: "Nữ", cccd: "079196000789", diaChiTT: "Tân Hưng, Long An" },
-  NV010: { sdt: "0901123456", email: "phuong.vt@mimin.vn", ngaySinh: "1994-06-14", gioiTinh: "Nữ", cccd: "079194000012", diaChiTT: "Bà Điểm, Hóc Môn" },
-  NV011: { sdt: "0912234567", email: "tuyen.dvc@mimin.vn", ngaySinh: "1987-10-08", gioiTinh: "Nam", cccd: "079187000345", diaChiTT: "Quận 12, TP.HCM" },
-  NV012: { sdt: "0923345678", email: "huynh.pv@mimin.vn", ngaySinh: "1990-01-25", gioiTinh: "Nam", cccd: "079190000678", diaChiTT: "Hóc Môn, TP.HCM" },
-  NV013: { sdt: "0934456789", email: "thuy.cq@mimin.vn", ngaySinh: "1988-08-17", gioiTinh: "Nam", cccd: "079188000901", diaChiTT: "Củ Chi, TP.HCM" },
-  NV014: { sdt: "0945567890", email: "anh.t@mimin.vn", ngaySinh: "1992-11-03", gioiTinh: "Nam", cccd: "079192000234", diaChiTT: "Đức Hòa, Long An" },
-  NV015: { sdt: "0956678901", email: "tim@mimin.vn", ngaySinh: "1995-05-28", gioiTinh: "Nữ", cccd: "079195000567", diaChiTT: "Bình Chánh, TP.HCM" },
-  NV016: { sdt: "0967789012", email: "phien.ttb@mimin.vn", ngaySinh: "1993-09-09", gioiTinh: "Nữ", cccd: "079193000890", diaChiTT: "Hóc Môn, TP.HCM" },
-  NV017: { sdt: "0978890123", email: "ruong.nv@mimin.vn", ngaySinh: "1986-04-12", gioiTinh: "Nam", cccd: "079186000123", diaChiTT: "Phú Tân, An Giang" },
-  NV018: { sdt: "0989901234", email: "khoi.bm@mimin.vn", ngaySinh: "1997-07-20", gioiTinh: "Nam", cccd: "079197000456", diaChiTT: "Sóc Trăng" },
-};
-
-// Map 18 NV thật (NV001-NV018) từ Lark → NhanSuExt
-const NHAN_SU_KHOI_DAU: NhanSuExt[] = REAL_NHAN_VIEN.map((nv, i) => {
-  const chucVu = inferChucVu(nv.boPhan, nv.ghiChu, nv.ma);
-  const luongCung = inferLuongCung(nv.boPhan, chucVu);
-  const detail = NV_MOCK_DETAIL[nv.ma] || { sdt: "", email: "", ngaySinh: "1990-01-01", gioiTinh: "Nữ", cccd: "", diaChiTT: "" };
-  return {
-    stt: i + 1,
-    maNV: nv.ma,
-    hoTen: nv.ten,
-    boPhan: nv.boPhan,
-    chucVu,
-    ngaySinh: detail.ngaySinh,
-    gioiTinh: detail.gioiTinh,
-    cccd: detail.cccd,
-    sdt: detail.sdt,
-    email: detail.email,
-    diaChiTT: detail.diaChiTT,
-    diaChiTamTru: detail.diaChiTT,
-    viTri: nv.ghiChu,
-    ngayVaoLam: `2020-${String((i % 12) + 1).padStart(2, "0")}-01`,
-    loaiHD: "HĐ không xác định thời hạn",
-    tinhTrangHN: "Đã đóng BHXH",
-    soTK: "",
-    nganHang: "",
-    mst: "",
-    bhxh: `79${String(1000000 + i * 137).padStart(7, "0")}`,
-    trangThai: "dang_lam",
-    luongCB: luongCung,
-    loaiLuong: "Thời gian + Sản phẩm",
-    // Extended
-    rating: 3.5 + (i % 3) * 0.5,
-    ngayVao: `2020-${String((i % 12) + 1).padStart(2, "0")}-01`,
-    luongCung,
-    taiKhoan: `nv${(i + 1).toString().padStart(3, "0")}`,
-  } as NhanSuExt;
-});
+import { NHAN_SU_KHOI_DAU, type NhanSuExt } from "./data";
 
 export default function NhanSuPage() {
   const [list, setList] = useState<NhanSuExt[]>(NHAN_SU_KHOI_DAU);
@@ -135,15 +44,22 @@ export default function NhanSuPage() {
 
   const { phanCong } = usePhanCong();
 
-  // KPIs
-  const tongNV = list.length;
-  const dsBP = Array.from(new Set(list.map((n) => n.boPhan)));
-  const tongLuongCung = list.reduce((s, n) => s + (n.luongCung || 0), 0);
-  const dsSanXuat = list.filter((n) => n.boPhan === "Sản xuất").length;
-  const dsKho = list.filter((n) => n.boPhan === "Kho vận").length;
-  const dsQC = list.filter((n) => n.boPhan === "QC").length;
+  // KPIs (memoize - tranh tinh lai moi render)
+  const kpis = useMemo(() => {
+    const bp = new Set<string>();
+    let tongLuongCung = 0;
+    let dsSanXuat = 0, dsKho = 0, dsQC = 0;
+    for (const n of list) {
+      bp.add(n.boPhan);
+      tongLuongCung += n.luongCung || 0;
+      if (n.boPhan === "Sản xuất") dsSanXuat++;
+      if (n.boPhan === "Kho vận") dsKho++;
+      if (n.boPhan === "QC") dsQC++;
+    }
+    return { tongNV: list.length, dsBP: Array.from(bp), tongLuongCung, dsSanXuat, dsKho, dsQC };
+  }, [list]);
 
-  // Lương sản phẩm từ PHAN_CONG (nếu NV là người phụ trách)
+  // Lương sản phẩm từ PHAN_CONG (memoize)
   const luongSPTheoNV = useMemo(() => {
     const map: Record<string, number> = {};
     for (const pc of phanCong) {
@@ -154,30 +70,37 @@ export default function NhanSuPage() {
     return map;
   }, [phanCong]);
 
-  // Filter
-  const filtered = list.filter((n) => {
-    const matchSearch = [n.hoTen, n.maNV, n.sdt, n.email, n.chucVu, n.boPhan].some((y) => (y || "").toLowerCase().includes(search.toLowerCase()));
-    const matchBP = filterBP === "all" || n.boPhan === filterBP;
-    return matchSearch && matchBP;
-  });
+  // Filter (memoize)
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return list.filter((n) => {
+      const matchSearch = !q || [n.hoTen, n.maNV, n.sdt, n.email, n.chucVu, n.boPhan].some(
+        (y) => (y || "").toLowerCase().includes(q)
+      );
+      const matchBP = filterBP === "all" || n.boPhan === filterBP;
+      return matchSearch && matchBP;
+    });
+  }, [list, search, filterBP]);
 
-  const handleSave = (nv: NhanSuExt) => {
-    if (showForm?.mode === "add") {
-      setList([...list, nv]);
-      toast.success(`Đã thêm NV: ${nv.hoTen}`);
-    } else if (showForm?.mode === "edit") {
-      setList(list.map((x) => (x.maNV === nv.maNV ? nv : x)));
-      toast.success(`Đã cập nhật: ${nv.hoTen}`);
-    }
+  const handleSave = useCallback((nv: NhanSuExt) => {
+    setList((prev) => {
+      if (showForm?.mode === "add") {
+        toast.success(`Đã thêm NV: ${nv.hoTen}`);
+        return [...prev, nv];
+      } else {
+        toast.success(`Đã cập nhật: ${nv.hoTen}`);
+        return prev.map((x) => (x.maNV === nv.maNV ? nv : x));
+      }
+    });
     setShowForm(null);
-  };
+  }, [showForm]);
 
-  const handleDelete = (nv: NhanSuExt) => {
+  const handleDelete = useCallback((nv: NhanSuExt) => {
     if (confirm(`Xoá NV "${nv.hoTen}"?`)) {
-      setList(list.filter((x) => x.maNV !== nv.maNV));
+      setList((prev) => prev.filter((x) => x.maNV !== nv.maNV));
       toast.success(`Đã xoá: ${nv.hoTen}`);
     }
-  };
+  }, []);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -193,7 +116,7 @@ export default function NhanSuPage() {
               Nhân sự
             </h1>
             <p className="text-white/80 mt-1 text-sm font-medium">
-              {tongNV} nhân viên · Tổng quỹ lương cứng <b className="text-white">{formatVNDShort(tongLuongCung)}/tháng</b>
+              {kpis.tongNV} nhân viên · Tổng quỹ lương cứng <b className="text-white">{formatVNDShort(kpis.tongLuongCung)}/tháng</b>
             </p>
           </div>
           {perm.canCreate("nhan-su") ? (
@@ -212,23 +135,23 @@ export default function NhanSuPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><Users className="w-3 h-3" /> Tổng nhân viên</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1">{tongNV}</div>
-          <div className="text-xs opacity-60 mt-1">{dsBP.length} bộ phận</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1">{kpis.tongNV}</div>
+          <div className="text-xs opacity-60 mt-1">{kpis.dsBP.length} bộ phận</div>
         </div>
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><Briefcase className="w-3 h-3" /> Sản xuất</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-sky-600">{dsSanXuat}</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1 text-sky-600">{kpis.dsSanXuat}</div>
           <div className="text-xs opacity-60 mt-1">công nhân</div>
         </div>
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><Shield className="w-3 h-3" /> QC + Kho</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-violet-600">{dsQC + dsKho}</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1 text-violet-600">{kpis.dsQC + kpis.dsKho}</div>
           <div className="text-xs opacity-60 mt-1">kiểm soát</div>
         </div>
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><Wallet className="w-3 h-3" /> Quỹ lương</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-emerald-600">{formatVNDShort(tongLuongCung)}</div>
-          <div className="text-xs opacity-60 mt-1">{formatVND(tongLuongCung)}/tháng</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1 text-emerald-600">{formatVNDShort(kpis.tongLuongCung)}</div>
+          <div className="text-xs opacity-60 mt-1">{formatVND(kpis.tongLuongCung)}/tháng</div>
         </div>
       </div>
 
@@ -236,7 +159,7 @@ export default function NhanSuPage() {
       <div className="card p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-2 flex-1">
-            {["all", ...dsBP].map((bp) => (
+            {["all", ...kpis.dsBP].map((bp) => (
               <button
                 key={bp}
                 onClick={() => setFilterBP(bp)}
