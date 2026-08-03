@@ -3,6 +3,10 @@
 // Supabase Sync Helper - Tự động sync localStorage ↔ Supabase
 // 2026-08-03 - Mavis
 //
+// QUAN TRỌNG: App dùng camelCase (loaiLenh, maSP, tenSP, tongSL...)
+//            Supabase dùng snake_case (loai_lenh, ma_sp, ten_sp, tong_sl...)
+//            Helpers tự động convert qua lại
+//
 // Cách dùng:
 //   const { data, setData, loading, error } = useSupabaseSync<LenhCat>(
 //     "mimin_lenh_cat_v2",
@@ -17,6 +21,49 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase, isSupabaseEnabled } from "./client";
 
 /**
+ * Convert camelCase → snake_case
+ * VD: loaiLenh → loai_lenh, maSP → ma_sp, bangCOGS → bang_cogs, ngayTao → ngay_tao
+ */
+export function camelToSnakeKey(key: string): string {
+  return key
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2") // COGS + Foo => COGS_Foo
+    .replace(/([a-z\d])([A-Z])/g, "$1_$2")       // aFoo => a_Foo
+    .toLowerCase();
+}
+
+/**
+ * Convert snake_case → camelCase
+ * VD: loai_lenh → loaiLenh, ma_sp → maSP, bang_cogs → bangCOGS, ngay_tao → ngayTao
+ *
+ * Lưu ý: snake_case cần đồng nhất - nếu DB lưu `bang_cogs` thì convert thành `bangCogs` (không phải `bangCOGS`)
+ * Nếu muốn giữ acronym (COGS, SP, SL), cần config riêng
+ */
+export function snakeToCamelKey(key: string): string {
+  return key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+/**
+ * Deep convert object keys
+ */
+function convertKeys(obj: any, converter: (k: string) => string): any {
+  if (Array.isArray(obj)) return obj.map((item) => convertKeys(item, converter));
+  if (obj !== null && typeof obj === "object" && !(obj instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [converter(k), convertKeys(v, converter)])
+    );
+  }
+  return obj;
+}
+
+export function camelToSnake<T = any>(obj: T): T {
+  return convertKeys(obj, camelToSnakeKey) as T;
+}
+
+export function snakeToCamel<T = any>(obj: T): T {
+  return convertKeys(obj, snakeToCamelKey) as T;
+}
+
+/**
  * Check Supabase có sẵn sàng không
  */
 export function checkSupabase(): boolean {
@@ -25,6 +72,7 @@ export function checkSupabase(): boolean {
 
 /**
  * Fetch tất cả rows từ 1 bảng
+ * Tự động convert snake_case → camelCase cho khớp với app code
  */
 export async function supabaseFetchAll<T = any>(
   table: string,
@@ -40,27 +88,29 @@ export async function supabaseFetchAll<T = any>(
     console.error(`[Supabase] fetchAll(${table}) error:`, error);
     return [];
   }
-  return (data as T[]) || [];
+  return (data || []).map((row) => snakeToCamel(row)) as T[];
 }
 
 /**
  * Insert hoặc update 1 row
+ * Tự động convert camelCase → snake_case để khớp với schema Supabase
  */
 export async function supabaseUpsert<T extends { id: string }>(
   table: string,
   row: T
 ): Promise<T | null> {
   if (!checkSupabase()) return null;
+  const snakeRow = camelToSnake(row);
   const { data, error } = await supabase!
     .from(table)
-    .upsert(row, { onConflict: "id" })
+    .upsert(snakeRow, { onConflict: "id" })
     .select()
     .single();
   if (error) {
-    console.error(`[Supabase] upsert(${table}) error:`, error);
+    console.error(`[Supabase] upsert(${table}) error:`, error.message, error.details);
     return null;
   }
-  return (data as T) || null;
+  return data ? (snakeToCamel(data) as T) : null;
 }
 
 /**
