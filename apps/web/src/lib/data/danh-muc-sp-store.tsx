@@ -11,17 +11,33 @@ export interface MauTieuChuan {
   img: string;
 }
 
+export interface BangSize {
+  // 5 size: M, L, XL, 2XL, 3XL (5 so tuong ung)
+  // 0 = khong lay size do
+  // VD: [1, 2, 2, 2, 1] = ratio 1:2:2:2:1 (Ri8)
+  sizes: ["M", "L", "XL", "2XL", "3XL"];
+  ratios: [number, number, number, number, number];
+  riSo: number; // Tong 1 ri = sum(ratios)
+}
+
 export interface SanPham {
   id: string; // e.g. M001
   tenSP: string;
   loaiSP: LoaiSP;
   giaBanDuKien: number;
   giaVonDuKien: number;
-  tiLeSize: string; // e.g. "1:2:2:1"
+  tiLeSize: string; // e.g. "1:2:2:2:1" (string de hien thi)
+  bangSize: BangSize; // BANG SIZE rieng cua SP
   dsMau: MauTieuChuan[];
   ghiChu: string;
   ngayTao: string;
 }
+
+const DEFAULT_BANGSIZE_5SIZE: BangSize = {
+  sizes: ["M", "L", "XL", "2XL", "3XL"],
+  ratios: [1, 2, 2, 2, 1],
+  riSo: 8,
+};
 
 const MOCK_DANH_MUC: SanPham[] = [
   {
@@ -30,7 +46,8 @@ const MOCK_DANH_MUC: SanPham[] = [
     loaiSP: "BoTru",
     giaBanDuKien: 250000,
     giaVonDuKien: 110000,
-    tiLeSize: "1:2:2:1",
+    tiLeSize: "1:2:2:2:1",
+    bangSize: { sizes: ["M", "L", "XL", "2XL", "3XL"], ratios: [1, 2, 2, 2, 1], riSo: 8 },
     dsMau: [
       { ten: "Đen", maSKU: "M001-DEN", dinhMuc: 0.25, img: "" },
       { ten: "Trắng", maSKU: "M001-TRA", dinhMuc: 0.25, img: "" }
@@ -44,7 +61,8 @@ const MOCK_DANH_MUC: SanPham[] = [
     loaiSP: "AoTru",
     giaBanDuKien: 120000,
     giaVonDuKien: 65000,
-    tiLeSize: "0:1:2:2:1",
+    tiLeSize: "1:2:2:1",
+    bangSize: { sizes: ["M", "L", "XL", "2XL", "3XL"], ratios: [1, 2, 2, 1, 0], riSo: 6 },
     dsMau: [
       { ten: "Xanh Đen", maSKU: "A001-XDEN", dinhMuc: 0.15, img: "" },
       { ten: "Rêu", maSKU: "A001-REU", dinhMuc: 0.15, img: "" }

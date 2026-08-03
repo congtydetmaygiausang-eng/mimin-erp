@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { X, Plus, Trash2, Wand2, Shirt, Save, Info, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AIMockupModal } from "@/components/AIMockupModal";
-import { useDanhMucSP, type SanPham, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
+import { useDanhMucSP, type SanPham, type MauTieuChuan, type BangSize } from "@/lib/data/danh-muc-sp-store";
 import { type LoaiSP, LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
-import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
+import { SIZE_RATIO_5SIZE } from "@/lib/size-ratio-presets";
 
 interface Props {
   open: boolean;
@@ -14,9 +14,16 @@ interface Props {
   editId?: string | null;
 }
 
-const TI_LE_OPTIONS = SIZE_RATIO_PRESETS.map((p) => ({
+const DEFAULT_BANGSIZE: BangSize = {
+  sizes: ["M", "L", "XL", "2XL", "3XL"],
+  ratios: [1, 2, 2, 2, 1],
+  riSo: 8,
+};
+
+const TI_LE_OPTIONS = SIZE_RATIO_5SIZE.map((p) => ({
   label: p.label,
   value: p.value,
+  ratios: p.ratios,
 }));
 
 export default function DanhMucSPModal({ open, onClose, editId }: Props) {
@@ -28,6 +35,7 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
   const [giaVonDuKien, setGiaVonDuKien] = useState<number | "">("");
   const [giaBanDuKien, setGiaBanDuKien] = useState<number | "">("");
   const [tiLeSize, setTiLeSize] = useState("1:2:2:1");
+  const [bangSize, setBangSize] = useState<BangSize>(DEFAULT_BANGSIZE);
   const [ghiChu, setGhiChu] = useState("");
   const [dsMau, setDsMau] = useState<MauTieuChuan[]>([
     { ten: "Đen", maSKU: "", dinhMuc: 0.25, img: "" }
@@ -45,6 +53,7 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
         setGiaVonDuKien(sp.giaVonDuKien);
         setGiaBanDuKien(sp.giaBanDuKien);
         setTiLeSize(sp.tiLeSize);
+        setBangSize(sp.bangSize || DEFAULT_BANGSIZE);
         setGhiChu(sp.ghiChu);
         setDsMau(sp.dsMau);
       }
@@ -55,6 +64,7 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
       setGiaVonDuKien("");
       setGiaBanDuKien("");
       setTiLeSize("1:2:2:1");
+      setBangSize(DEFAULT_BANGSIZE);
       setGhiChu("");
       setDsMau([{ ten: "", maSKU: "", dinhMuc: 0.25, img: "" }]);
     }
@@ -79,6 +89,7 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
       giaVonDuKien: Number(giaVonDuKien) || 0,
       giaBanDuKien: Number(giaBanDuKien) || 0,
       tiLeSize,
+      bangSize,
       dsMau: finalDsMau,
       ghiChu,
       ngayTao: new Date().toISOString().split("T")[0]
@@ -165,10 +176,21 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
                   </select>
                </div>
                <div>
-                  <label className="text-sm font-bold text-slate-700 block mb-1">Bảng Size (Tỉ lệ) *</label>
-                  <select className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tiLeSize} onChange={e => setTiLeSize(e.target.value)}>
+                  <label className="text-sm font-bold text-slate-700 block mb-1">Bảng Size (Tỉ lệ mẫu) *</label>
+                  <select
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#2B4C3E]"
+                    value={tiLeSize}
+                    onChange={e => {
+                      const opt = TI_LE_OPTIONS.find(o => o.value === e.target.value);
+                      if (opt) {
+                        setTiLeSize(opt.value);
+                        setBangSize({ sizes: ["M", "L", "XL", "2XL", "3XL"], ratios: opt.ratios as [number, number, number, number, number], riSo: opt.ratios.reduce((a: number, b: number) => a + b, 0) });
+                      }
+                    }}
+                  >
                     {TI_LE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
+                  <p className="text-[10px] text-slate-500 mt-1 italic">Chọn tỉ lệ mẫu → tự điền vào bảng size bên dưới (có thể chỉnh tay)</p>
                </div>
                <div>
                   <label className="text-sm font-bold text-slate-700 block mb-1">Giá Vốn Dự Kiến (COGS)</label>
@@ -184,6 +206,52 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
                 <label className="text-sm font-bold text-slate-700 block mb-1">Ghi chú & Đặc tả</label>
                 <textarea className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} rows={3} placeholder="VD: Chất liệu cotton co giãn, thiết kế trẻ trung..."></textarea>
              </div>
+          </div>
+
+          {/* BẢNG SIZE (5 size: M, L, XL, 2XL, 3XL) */}
+          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+             <h3 className="text-lg font-bold text-[#2B4C3E] uppercase tracking-wide mb-4 border-b pb-2 flex items-center gap-2">
+               📐 BẢNG SIZE (M, L, XL, 2XL, 3XL)
+             </h3>
+             <div className="grid grid-cols-5 gap-3">
+               {bangSize.sizes.map((size, idx) => (
+                 <div key={size} className="text-center">
+                   <label className="text-xs font-bold text-slate-600 uppercase block mb-1">{size}</label>
+                   <input
+                     type="number"
+                     min="0"
+                     className="w-full px-2 py-3 border-2 border-slate-200 rounded text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     value={bangSize.ratios[idx]}
+                     onChange={(e) => {
+                       const n = [...bangSize.ratios] as [number, number, number, number, number];
+                       n[idx] = Number(e.target.value) || 0;
+                       const riSo = n.reduce((a, b) => a + b, 0);
+                       setBangSize({ ...bangSize, ratios: n, riSo });
+                       setTiLeSize(n.join(":"));
+                     }}
+                   />
+                 </div>
+               ))}
+             </div>
+             <div className="mt-4 flex flex-wrap items-center gap-3">
+               <div className="px-3 py-2 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                 <span className="text-xs font-semibold text-blue-600 block">TỈ LỆ</span>
+                 <span className="font-mono font-bold text-blue-900 text-lg">{bangSize.ratios.join(":")}</span>
+               </div>
+               <div className="px-3 py-2 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                 <span className="text-xs font-semibold text-emerald-600 block">RÌ (1 RI = )</span>
+                 <span className="font-mono font-bold text-emerald-900 text-lg">{bangSize.riSo} SP</span>
+               </div>
+               {bangSize.riSo > 0 && (
+                 <div className="px-3 py-2 bg-amber-50 border-2 border-amber-200 rounded-lg">
+                   <span className="text-xs font-semibold text-amber-600 block">VD 100 SP = {Math.floor(100 / bangSize.riSo)} rì</span>
+                   <span className="text-[10px] text-amber-700">→ M: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[0])}, L: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[1])}, XL: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[2])}, 2XL: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[3])}, 3XL: {Math.floor((100 / bangSize.riSo) * bangSize.ratios[4])}</span>
+                 </div>
+               )}
+             </div>
+             <p className="text-xs text-slate-500 mt-3 italic">
+               💡 Mỗi màu trong Bảng Màu bên dưới sẽ áp dụng tỉ lệ này. Khi tạo lệnh cắt → hệ thống tự tính SL từng size.
+             </p>
           </div>
 
           <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
