@@ -31,6 +31,7 @@ import {
   LOAI_SP_LABELS,
   useLenhCat,
 } from "@/lib/data/lenh-cat-store";
+import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 
 const getDoiTuongOptions = (tenCongDoan: string) => {
@@ -179,11 +180,11 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [phienBanDinhMuc, setPhienBanDinhMuc] = useState(1);
 
   // ============ Size Ratio & Màu sắc ============
-  const TI_LE_OPTIONS = [
-    { label: "S:M:L:XL (1:2:2:1)", value: "1:2:2:1", sizes: ["S", "M", "L", "XL"] },
-    { label: "M:L:XL:2XL (1:2:2:1)", value: "0:1:2:2:1", sizes: ["M", "L", "XL", "2XL"] },
-    { label: "S:M:L:XL:2XL (1:2:2:2:1)", value: "1:2:2:2:1", sizes: ["S", "M", "L", "XL", "2XL"] },
-  ];
+  const TI_LE_OPTIONS = SIZE_RATIO_PRESETS.map((p) => ({
+    label: p.label,
+    value: p.value,
+    sizes: p.sizes,
+  }));
   const [tiLeSize, setTiLeSize] = useState("1:2:2:1");
   const [soMau, setSoMau] = useState(4);
   const [dsMau, setDsMau] = useState<MauVai[]>(Array.from({ length: 4 }).map(() => ({ 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AIMockupModal } from "@/components/AIMockupModal";
 import { useDanhMucSP, type SanPham, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { type LoaiSP, LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 interface Props {
   open: boolean;
@@ -13,11 +14,10 @@ interface Props {
   editId?: string | null;
 }
 
-const TI_LE_OPTIONS = [
-  { label: "S:M:L:XL (1:2:2:1)", value: "1:2:2:1" },
-  { label: "M:L:XL:2XL (0:1:2:2:1)", value: "0:1:2:2:1" },
-  { label: "S:M:L:XL:2XL (1:2:2:2:1)", value: "1:2:2:2:1" },
-];
+const TI_LE_OPTIONS = SIZE_RATIO_PRESETS.map((p) => ({
+  label: p.label,
+  value: p.value,
+}));
 
 export default function DanhMucSPModal({ open, onClose, editId }: Props) {
   const { dsSanPham, themSP, suaSP } = useDanhMucSP();

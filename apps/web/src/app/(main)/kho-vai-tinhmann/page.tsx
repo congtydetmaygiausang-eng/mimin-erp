@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
 import { logAudit } from "@/lib/audit-log";
 import {
-  getAllInventory, truTonKho, nhapKho, resetInventory,
+  getAllInventory, truTonKho, nhapKho, resetInventory, resetInventoryToZero, updateVaiInfo,
   tinhMan, parseSize, goiYVai,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   type BaoCaoVai
@@ -106,6 +106,13 @@ export default function KhoVaiPage() {
     toast.success("Đã reset tồn kho");
   };
 
+  const handleResetToZero = () => {
+    if (!confirm("⚠️ Đưa tất cả tồn kho về 0kg? Dùng khi muốn nhập kho thực tế từ đầu.")) return;
+    resetInventoryToZero();
+    refresh();
+    toast.success("✅ Đã đưa toàn bộ tồn kho về 0kg");
+  };
+
   const handleNhapKho = (maVT: string) => {
     // Mở Modal thay vì dùng prompt() (chuẩn hoá form nhập liệu)
     setShowNhap(maVT);
@@ -168,7 +175,13 @@ export default function KhoVaiPage() {
               <Scissors className="w-4 h-4" /> Trừ kho cho 6 LSX Cắt
             </button>
             <button onClick={handleReset} className="btn-secondary text-sm flex items-center gap-1.5">
-              <RefreshCw className="w-4 h-4" /> Reset tồn kho (500kg/mỗi loại)
+              <RefreshCw className="w-4 h-4" /> Reset về 500kg
+            </button>
+            <button
+              onClick={handleResetToZero}
+              className="bg-rose-500 hover:bg-rose-600 text-white text-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-semibold shadow-sm transition-all"
+            >
+              <RefreshCw className="w-4 h-4" /> Đưa về 0kg
             </button>
             <button onClick={refresh} className="btn-secondary text-sm flex items-center gap-1.5">
               <RefreshCw className="w-4 h-4" /> Refresh
@@ -231,6 +244,16 @@ export default function KhoVaiPage() {
                           onChange={(e) => setEditForm({...editForm, mauSac: e.target.value})}
                           placeholder="Màu sắc"
                         />
+                        <div className="flex items-center gap-1">
+                          <label className="text-[10px] text-slate-500 whitespace-nowrap">Tồn kho (kg):</label>
+                          <input 
+                            type="number"
+                            min={0}
+                            className="w-full text-sm font-bold text-emerald-700 p-1 border border-emerald-300 rounded bg-emerald-50"
+                            value={editForm.tonKho ?? v.tonKho} 
+                            onChange={(e) => setEditForm({...editForm, tonKho: Number(e.target.value)})}
+                          />
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -279,8 +302,15 @@ export default function KhoVaiPage() {
                       <>
                         <button 
                           onClick={() => {
-                            setInventory(prev => prev.map(item => item.maVT === v.maVT ? { ...item, ...editForm } : item));
-                            toast.success("Đã lưu thông tin mã vải!");
+                            // Persist vào localStorage qua inventory-engine
+                            updateVaiInfo(v.maVT, {
+                              tenVT: editForm.tenVT ?? v.tenVT,
+                              mauSac: editForm.mauSac ?? v.mauSac,
+                              donGia: editForm.donGia ?? v.donGia,
+                              tonKho: editForm.tonKho ?? v.tonKho,
+                            });
+                            refresh(); // đọc lại từ localStorage
+                            toast.success(`✅ Đã lưu: ${editForm.tenVT || v.tenVT} — tồn kho: ${editForm.tonKho ?? v.tonKho}kg`);
                             setEditingVT(null);
                           }} 
                           className="bg-green-500 hover:bg-green-600 text-white text-xs py-1.5 px-3 shadow-sm rounded-lg font-bold"

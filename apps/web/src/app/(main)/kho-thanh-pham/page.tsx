@@ -5,17 +5,13 @@ import { toast } from "sonner";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import type { PhieuWorkflow } from "@/lib/workflow-data";
 import { MORE_LSX } from "@/lib/more-workflow-data";
+import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 // Combine tất cả phiếu workflow
 const ALL_PHIEU: PhieuWorkflow[] = [...ALL_REAL_PHIEU, ...(MORE_LSX as any)];
 
-const DS_TI_LE_SIZE = [
-  "M-L-XL-2XL-3XL (1-1-1-1-1)",
-  "L-XL-XL-2XL-3XL (0-1-2-1-1)",
-  "L-XL-XL-2XL-2XL-3XL (0-1-2-2-1)",
-  "L-XL-2XL-3XL (1-1-1-1)",
-  "L-XL-XL-2XL-3XL (1-2-1-1)"
-];
+// Danh sách tỉ lệ size — lấy từ preset chung
+const DS_TI_LE_SIZE = SIZE_RATIO_PRESETS.map((p) => p.label);
 
 const DS_KHU_KE_HANG = [
   "Khu A1", "Khu A2", "Khu A3", "Khu A4", "Khu A5", "Khu A6",

@@ -261,6 +261,33 @@ export function resetInventory() {
   localStorage.removeItem(TON_KHO_KEY);
 }
 
+/** Reset về 0kg (không phải 500kg) — dùng khi nhập kho thực tế từ đầu */
+export function resetInventoryToZero() {
+  const inv = getInventory();
+  Object.keys(inv).forEach((maVT) => {
+    inv[maVT] = { ...inv[maVT], tonKho: 0 };
+  });
+  saveInventory(inv);
+}
+
+/** Cập nhật tonKho trực tiếp cho 1 loại vải (dùng khi chỉnh sửa thủ công) */
+export function updateTonKho(maVT: string, tonKhoMoi: number): boolean {
+  const inv = getInventory();
+  if (!inv[maVT]) return false;
+  inv[maVT] = { ...inv[maVT], tonKho: Math.max(0, tonKhoMoi) };
+  saveInventory(inv);
+  return true;
+}
+
+/** Cập nhật thông tin chung của 1 loại vải (tên, màu, đơn giá, tồn kho) */
+export function updateVaiInfo(maVT: string, update: Partial<KhoVai>): boolean {
+  const inv = getInventory();
+  if (!inv[maVT]) return false;
+  inv[maVT] = { ...inv[maVT], ...update };
+  saveInventory(inv);
+  return true;
+}
+
 function round(n: number, digits: number = 2): number {
   const f = Math.pow(10, digits);
   return Math.round(n * f) / f;
