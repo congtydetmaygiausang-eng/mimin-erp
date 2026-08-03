@@ -32,7 +32,7 @@ import {
   useLenhCat,
 } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
-import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
+import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE } from "@/lib/size-ratio-presets";
 
 
 const getDoiTuongOptions = (tenCongDoan: string) => {
@@ -182,11 +182,11 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [phienBanDinhMuc, setPhienBanDinhMuc] = useState(1);
 
   // ============ Size Ratio & Màu sắc ============
-  const TI_LE_OPTIONS = SIZE_RATIO_PRESETS.map((p) => ({
-    label: p.label,
-    value: p.value,
-    sizes: p.sizes,
-  }));
+  // 2 bang size: co 3XL (5 size) + bo 3XL (4 size)
+  const TI_LE_OPTIONS = [
+    ...SIZE_RATIO_5SIZE.map((p) => ({ label: "📐 " + p.label, value: p.value, sizes: p.sizes })),
+    ...SIZE_RATIO_4SIZE.map((p) => ({ label: "📏 " + p.label, value: p.value, sizes: p.sizes })),
+  ];
   const [tiLeSize, setTiLeSize] = useState("1:2:2:1");
   const [soMau, setSoMau] = useState(4);
   const [dsMau, setDsMau] = useState<MauVai[]>(Array.from({ length: 4 }).map(() => ({ 
