@@ -103,7 +103,7 @@ export default function LenhCatPage() {
 
   const handleDelete = (id: string) => {
     if (confirm(`Xoá ${id}? Hành động này không thể hoàn tác.`)) {
-      xoaLenhCat(id, null);
+      xoaLenhCat(id, (typeof window !== 'undefined' && (window as any).__currentUser) || null as any);
       toast.success(`Đã xoá ${id}`);
     }
   };
@@ -306,7 +306,7 @@ export default function LenhCatPage() {
                         </button>
                         <button
                           onClick={() => {
-                            setNewMauCP(m);
+                            setNewMauCP(m as any);
                             setShowTaoMauCP(true);
                           }}
                           className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700/50 rounded ml-2 flex-shrink-0"
@@ -444,9 +444,9 @@ export default function LenhCatPage() {
                     <div className="flex items-center gap-2 flex-1">
                       <button onClick={() => {
                         setNewMauCP(prev => {
-                          const newChiPhi = { ...prev.chiPhi };
+                          const newChiPhi: Record<string, number> = { ...prev.chiPhi };
                           delete newChiPhi[key];
-                          return { ...prev, chiPhi: newChiPhi };
+                          return { ...prev, chiPhi: newChiPhi as { baoBi: number; temNhan: number; khauHao: number } };
                         });
                       }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
                         <Trash2 className="w-4 h-4" />
@@ -455,11 +455,11 @@ export default function LenhCatPage() {
                         const newKey = e.target.value;
                         if (newKey && newKey !== key) {
                           setNewMauCP(prev => {
-                            const newChiPhi = { ...prev.chiPhi };
+                            const newChiPhi: Record<string, number> = { ...prev.chiPhi };
                             const currentVal = newChiPhi[key];
                             delete newChiPhi[key];
                             newChiPhi[newKey] = currentVal;
-                            return { ...prev, chiPhi: newChiPhi };
+                            return { ...prev, chiPhi: newChiPhi as { baoBi: number; temNhan: number; khauHao: number } };
                           });
                         }
                       }} />
@@ -609,13 +609,13 @@ function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
                   <Calculator className="w-3 h-3" /> Giá vốn / SP
                 </span>
                 <span className="font-bold text-violet-600 tabular-nums">
-                  {formatVND(cogs.giaVon1SP)}
+                  {formatVND(cogs.giaVon1SP ?? cogs.giaVonBinhQuan)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs mt-0.5">
                 <span className="opacity-60">Tổng lô:</span>
                 <span className="font-mono text-emerald-600 tabular-nums text-[11px]">
-                  {formatVND(cogs.tongGiaVon)}
+                  {formatVND(cogs.tongGiaVon ?? cogs.giaVonBinhQuan)}
                 </span>
               </div>
             </div>

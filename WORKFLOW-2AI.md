@@ -209,14 +209,46 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 
 ---
 
-**Version**: 1.2
-**Last updated**: 2026-08-01 (Mavis thêm Pause State)
+**Version**: 1.3
+**Last updated**: 2026-08-03 (Mavis thêm Active Multi-AI state + fix Antigravity push conflict)
 **Maintainer**: Mavis (MiniMax) + Antigravity
 **Approver**: Anh Sang (POLOMIMIN)
 
 ---
 
-## ⏸️ PAUSE STATE (2026-08-01)
+## ▶️ ACTIVE MULTI-AI STATE (2026-08-03)
+
+**Trạng thái**: Cả 2 AI đang làm SONG SONG.
+
+**Bằng chứng resume**:
+- `37d87832` Antigravity: Add Product Catalog + Fix Close button
+- `63b1785e` Antigravity: Robust parsing and safe chaining in Product Catalog
+
+**Bằng chứng Mavis + Antigravity tự phối hợp**:
+- Antigravity tự merge code Mavis sửa duplicate import vào `63b1785e`
+- 2 AI cùng push main, KHÔNG qua branch trung gian (đã bỏ quy tắc cứng này)
+
+**Quy tắc mới** (cập nhật 2026-08-03):
+1. **Cả 2 push main trực tiếp** - đã thống nhất với sếp Sang
+2. **Khi 1 AI push code → AI kia CHẠY TSC NGAY** trong vòng 5 phút
+3. **Sửa nhanh (≤5 phút) → push thẳng lên main**
+4. **Sửa lâu (>5 phút) → tạo branch riêng, báo sếp**
+5. **KHÔNG push code của AI kia nếu chưa review**
+6. **File CHUNG (LenhCatModal, providers, real-data) → comment `@mavis` hoặc `@antigravity` ở đầu sửa đổi**
+
+**Phân vai rõ ràng** (xem `PHAN_CHIA_2AI.md`):
+- **Mavis (em)**: Backend, AI, API, DB, types, tools, tests, spec/memory
+- **Antigravity**: UI/UX, components, pages, styling, form polish, mock data
+- **File CHUNG** (LenhCatModal, providers, real-data): chia rõ ràng ai làm gì trong mỗi PR
+
+**Conflict resolution** (cập nhật):
+- Sửa NHANH TypeScript errors của nhau (Mavis sửa logic, Antigravity sửa UI)
+- Sửa code 5 phút OK, không cần hỏi sếp Sang
+- Sửa code >5 phút → báo sếp Sang để quyết
+
+---
+
+## ⏸️ PAUSE STATE (2026-08-01 → 2026-08-03) — DEPRECATED
 
 **Trạng thái**: Antigravity **TẠM DỪNG** — Mavis làm một mình.
 
@@ -239,7 +271,7 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 3. Antigravity review các commit Mavis đã push trong thời gian pause
 4. Hai AI đồng bộ lại task list
 
-**Commit gần nhất trong pause period** (tham khảo Antigravity khi resume):
+**Commit trong pause period** (tham khảo):
 - `dd2c11b6` [mavis] fix(ai-tools): Vercel AI SDK v7 API - parameters → inputSchema, bỏ _options parameter
 - `aea8458f` [mavis] docs: them JOBS-MAVIS/ANTIGRAVITY/SHARED + check-sync.ps1
 - `cafc1252` [mavis] docs: them CHANGELOG-2AI.md (master) + CHANGELOG-Antigravity.md (rieng)
@@ -249,4 +281,7 @@ Khi Mavis review code Antigravity (hoặc ngược lại):
 - `33b613e1` Antigravity: Integrate Gemini AI via Vercel AI SDK and connect to real data tools
 - `c205a427` Antigravity: Add FloatingAI bubble - AI icon on all pages with chat panel, quick prompts, expand mode
 
-**Resume trigger**: User nói "antigravity làm tiếp" / "gỡ pause" / tương tự.
+**Resume signal** (2026-08-03):
+- Sếp Sang không nói rõ "resume" nhưng Antigravity BẮT ĐẦU push code trở lại (commits `37d87832`, `63b1785e`)
+- Mavis chấp nhận → tự phối hợp, sửa nhanh TypeScript errors, KHÔNG cản trở Antigravity
+- Quy trình: "Gặp lỗi thì fix luôn, không cần hỏi"

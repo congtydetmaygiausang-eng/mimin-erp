@@ -251,7 +251,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-    logWorkflow(`Tạo lệnh cắt ${lenh.id}`, "Tạo mới", u, "Thành công");
+    logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
   }, []);
 
   const suaLenhCat = useCallback((id: string, lenh: Partial<LenhCat>, u: AppUser) => {
@@ -260,7 +260,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-    logWorkflow(`Cập nhật lệnh cắt ${id}`, "Cập nhật", u, "Thành công");
+    logWorkflow(u, "update", `Cập nhật lệnh cắt ${id}`, id, { module: "lenh-cat" });
   }, []);
 
   const xoaLenhCat = useCallback((id: string, u: AppUser) => {
@@ -269,7 +269,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-    logWorkflow(`Xoá lệnh cắt ${id}`, "Xoá", u, "Thành công");
+    logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat" });
   }, []);
   
   const themMauCongDoan = useCallback((mau: MauCongDoanItem) => {
