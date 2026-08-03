@@ -3,7 +3,8 @@
 -- Sếp Sang chạy file này SAU khi apply APPLY-SUPABASE-MANUAL.sql
 -- 2026-08-03 - Mavis
 -- ============================================
--- Vào: https://supabase.com/dashboard/project/nftlwdcsmlpeiazhuoho/sql/new
+-- Vào: https://supabase.com/dashboard/project/ejcuqyaiwabfygyesvxj/sql/new
+-- (Project MỚI - Gói Pro $25/tháng)
 -- Paste toàn bộ → bấm "Run and enable RLS"
 -- ============================================
 

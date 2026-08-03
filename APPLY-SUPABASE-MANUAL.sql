@@ -1,10 +1,13 @@
 -- ============================================
 -- MIMIN ERP - FULL SUPABASE SETUP (Chạy thủ công)
 -- Sếp Sang copy toàn bộ file này → paste vào:
--- https://supabase.com/dashboard/project/nftlwdcsmlpeiazhuoho/sql/new
+-- https://supabase.com/dashboard/project/ejcuqyaiwabfygyesvxj/sql/new
+-- (Project MỚI - Gói Pro $25/tháng)
 -- Bấm Run ▶️
 -- ============================================
 -- Tạo bởi: Mavis - 2026-08-03
+-- Project cũ: nftlwdcsmlpeiazhuoho (Free) - KHÔNG dùng nữa
+-- Project mới: ejcuqyaiwabfygyesvxj (Pro) - DÙNG từ giờ
 -- Tổng cộng: 18 bảng + 20 đối tác + RLS + indexes
 -- ============================================
 
