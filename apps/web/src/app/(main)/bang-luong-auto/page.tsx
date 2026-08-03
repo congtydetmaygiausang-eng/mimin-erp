@@ -6,7 +6,10 @@ import {
   Filter, Calculator, FileText, BarChart3, Clock,
 } from "lucide-react";
 import { tinhBangLuongThang, tongKetBangLuong, fmtVND, type BangLuongNV } from "@/lib/bang-luong-engine";
-import { CONG_NHAN_13, MODULE_SX_INFO } from "@/lib/congnhan-13";
+import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
+import { CONG_NHAN_13 } from "@/lib/congnhan-13";
+
+const BO_PHAN_INFO_LOCAL: Record<string, { name: string; icon: string; color: string }> = { cat: { name: "Cắt", icon: "X", color: "amber" }, "khuy-nut": { name: "Khuy nút", icon: "O", color: "pink" }, ui: { name: "Ủi", icon: "U", color: "cyan" }, "dong-goi": { name: "Đóng gói", icon: "D", color: "emerald" } };
 
 export default function BangLuongAutoPage() {
   const today = new Date();
@@ -20,7 +23,7 @@ export default function BangLuongAutoPage() {
 
   const filtered = useMemo(() => {
     return bangLuong.filter((bl) => {
-      if (filterModule && bl.module !== filterModule) return false;
+      if (filterModule && bl.boPhan !== filterModule) return false;
       if (search && !(`${bl.maNV} ${bl.tenNV}`.toLowerCase().includes(search.toLowerCase()))) return false;
       return true;
     });
@@ -30,7 +33,7 @@ export default function BangLuongAutoPage() {
     const rows = [
       ["Mã NV", "Tên NV", "Module", "Đơn giá", "SL Giao", "SL Đạt", "SL Lỗi", "SL Vượt", "Tiền công", "Phạt lỗi", "Thưởng", "Phạt trễ", "Thực nhận", "Ngày trả"],
       ...filtered.map((bl) => [
-        bl.maNV, bl.tenNV, bl.module, bl.donGia, bl.soLuongGiao, bl.soLuongDat, bl.soLuongLoi, bl.soLuongVuot,
+        bl.maNV, bl.tenNV, bl.boPhan, bl.donGia, bl.soLuongGiao, bl.soLuongDat, bl.soLuongLoi, bl.soLuongVuot,
         bl.tienCong, bl.phatLoi, bl.thuongVuot, bl.phatTreHan, bl.thucNhan, bl.ngayTra,
       ]),
     ];
@@ -56,8 +59,8 @@ export default function BangLuongAutoPage() {
             Áp dụng: <b>Phạt lỗi 30%</b>, <b>Thưởng vượt 20%</b>, <b>Phạt trễ hạn 50K/task</b>.
           </p>
           <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
-            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{tongKet.tongCN}</div><div className="opacity-90">CN</div></div>
-            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{fmtVND(tongKet.tongTienCong)}</div><div className="opacity-90">Tiền công</div></div>
+            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{tongKet.tongNV}</div><div className="opacity-90">CN</div></div>
+            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{fmtVND(tongKet.tongThucNhan)}</div><div className="opacity-90">Tiền công</div></div>
             <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold text-rose-200">-{fmtVND(tongKet.tongPhatLoi + tongKet.tongPhatTreHan)}</div><div className="opacity-90">Phạt</div></div>
             <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold text-emerald-200">+{fmtVND(tongKet.tongThuongVuot)}</div><div className="opacity-90">Thưởng</div></div>
             <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-2xl font-bold text-amber-200">{fmtVND(tongKet.tongThucNhan)}</div><div className="opacity-90">Thực trả</div></div>
@@ -86,7 +89,7 @@ export default function BangLuongAutoPage() {
           />
           <select value={filterModule} onChange={(e) => setFilterModule(e.target.value)} className="px-2 py-1.5 text-sm border rounded">
             <option value="">-- Tất cả module --</option>
-            {Object.entries(MODULE_SX_INFO).map(([k, v]: [string, any]) => (
+            {Object.entries(BO_PHAN_INFO_LOCAL).map(([k, v]: [string, any]) => (
               <option key={k} value={k}>{v.icon} {v.name}</option>
             ))}
           </select>
@@ -97,12 +100,12 @@ export default function BangLuongAutoPage() {
 
         {/* Theo module */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {tongKet.theoModule.map((m) => (
-            <div key={m.module} className="card p-3" style={{ borderLeft: `4px solid ${m.mau}` }}>
+          {tongKet.theoBoPhan.map((m) => (
+            <div key={m.boPhan} className="card p-3" style={{ borderLeft: `4px solid ${m.mau}` }}>
               <div className="text-[10px] text-slate-500">{m.ten}</div>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-lg font-bold">{m.tongCN} CN</div>
+                  <div className="text-lg font-bold">{m.tongNV} CN</div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-emerald-600">{fmtVND(m.thucNhan)}</div>
@@ -139,7 +142,7 @@ export default function BangLuongAutoPage() {
             </thead>
             <tbody>
               {filtered.map((bl) => {
-                const info = MODULE_SX_INFO[bl.module];
+                const info = BO_PHAN_INFO_LOCAL[bl.boPhan];
                 return (
                   <tr key={bl.maNV} className="border-b hover:bg-slate-50">
                     <td className="px-2 py-1.5 font-mono text-[10px]">{bl.maNV}</td>
