@@ -271,6 +271,54 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const [mauChiPhi, setMauChiPhi] = useState<string>("BoTheThao");
   const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>(dsMauChiPhi.find(x => x.id === "BoTheThao")?.chiPhi || {});
 
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!editId && !draftLoaded) {
+      try {
+        const saved = localStorage.getItem("lenhCatDraft");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.loaiLenh) setLoaiLenh(parsed.loaiLenh);
+          if (parsed.khachHang) setKhachHang(parsed.khachHang);
+          if (parsed.loaiSP) setLoaiSP(parsed.loaiSP);
+          if (parsed.maSP) setMaSP(parsed.maSP);
+          if (parsed.tenSP) setTenSP(parsed.tenSP);
+          if (parsed.tongSL) setTongSL(parsed.tongSL);
+          if (parsed.tongSLThucTe) setTongSLThucTe(parsed.tongSLThucTe);
+          if (parsed.ngayBatDau) setNgayBatDau(parsed.ngayBatDau);
+          if (parsed.sdtLienHe) setSdtLienHe(parsed.sdtLienHe);
+          if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
+          if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
+          if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
+          if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
+          if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
+          if (parsed.soMau) setSoMau(parsed.soMau);
+          if (parsed.dsMau && parsed.dsMau.length > 0) setDsMau(parsed.dsMau);
+          if (parsed.dsPhuLieu && parsed.dsPhuLieu.length > 0) setDsPhuLieu(parsed.dsPhuLieu);
+          if (parsed.mauCongDoan) setMauCongDoan(parsed.mauCongDoan);
+          if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
+          if (parsed.mauChiPhi) setMauChiPhi(parsed.mauChiPhi);
+          if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
+        }
+      } catch (e) {
+        console.error("Lỗi tải nháp", e);
+      }
+      setDraftLoaded(true);
+    }
+  }, [editId, draftLoaded]);
+
+  useEffect(() => {
+    if (!editId && draftLoaded) {
+      const draft = {
+        loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
+        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu,
+        tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, mauChiPhi, chiPhiCoDinh
+      };
+      localStorage.setItem("lenhCatDraft", JSON.stringify(draft));
+    }
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, mauChiPhi, chiPhiCoDinh, editId, draftLoaded]);
+
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
     if (dsMauCongDoan.length > 0 && (!phanCong || phanCong.length === 0)) {
@@ -440,6 +488,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
       }, user || { ma: "NV001", ten: "Nguyễn Thị Ngọc Giàu", vaiTro: "DIEU_HANH" });
 
       toast.success(`Đã tạo thành công Lệnh Cắt mới: ${newId} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
+      localStorage.removeItem("lenhCatDraft");
     }
     onClose();
   };
@@ -470,7 +519,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   const giaVonBinhQuan = (tongTienVai / validTongSL) + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-2 md:p-6 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-2 md:p-6 animate-fade-in">
       <div 
         className="bg-[#2B4C3E] rounded-xl shadow-2xl max-w-6xl w-full max-h-[96vh] overflow-hidden flex flex-col animate-slide-up border-4 border-[#2B4C3E]"
         onClick={(e) => e.stopPropagation()}
@@ -501,10 +550,18 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           )}
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
-          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm relative">
+            <button 
+              onClick={onClose} 
+              className="absolute -top-3 -right-3 p-2 bg-rose-500 text-white hover:bg-rose-600 rounded-full shadow-lg transition-transform hover:scale-110 z-10 flex items-center justify-center"
+              title="Đóng cửa sổ"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
-              <div className="flex gap-4 items-center">
+              <div className="flex gap-4 items-center pr-6">
                 <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
                   <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="accent-[#2B4C3E]" />
                   <span className="text-sm font-bold text-slate-700">Hàng Nhà</span>
@@ -967,6 +1024,12 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           <div>
             <button className="px-4 py-2 rounded font-bold text-slate-300 hover:bg-slate-800 transition-colors flex items-center gap-2 border border-slate-600">
                In Phiếu / Xuất PDF
+            </button>
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 ml-2 rounded font-bold text-rose-300 hover:bg-rose-900/30 transition-colors border border-rose-800/50"
+            >
+               Đóng
             </button>
           </div>
           <div className="flex gap-3">

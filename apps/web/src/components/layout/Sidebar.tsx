@@ -39,6 +39,8 @@ import {
   RefreshCw,
   X,
   Lock,
+  PanelLeftClose,
+  PanelLeftOpen,
   CheckCircle2,
   Bot,
   Cpu,
@@ -106,6 +108,7 @@ const NAV: NavItem[] = [
   },
   {
     label: "📁 Danh Mục Dữ Liệu", icon: Building2, isGroup: true, subItems: [
+      { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, permModule: "dashboard" },
       { href: "/nhan-su", label: "Nhân sự", icon: Users, permModule: "nhan-su" },
       { href: "/khach-hang", label: "Khách hàng", icon: Users, permModule: "khach-hang" },
       { href: "/nha-cung-cap", label: "Nhà cung cấp", icon: Building2, permModule: "nha-cung-cap" },
@@ -125,7 +128,7 @@ const NAV: NavItem[] = [
   }
 ];
 
-function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?: () => void }) {
+function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pathname: string; onItemClick?: () => void; isCollapsed?: boolean; toggleCollapse?: () => void }) {
   const { user } = useSession();
   const role = user?.role;
   
@@ -151,6 +154,9 @@ function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?:
       ...prev,
       [label]: !prev[label]
     }));
+    if (isCollapsed && toggleCollapse) {
+      toggleCollapse();
+    }
   };
 
   // Filter menu theo permission
@@ -171,15 +177,17 @@ function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?:
 
   return (
     <>
-      <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+      <div className={clsx("p-5 border-b flex items-center justify-between", isCollapsed && "justify-center")} style={{ borderColor: "var(--border)" }}>
         <Link href="/dashboard" className="flex items-center gap-2" onClick={onItemClick}>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold shadow-lg">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold shadow-lg">
             M
           </div>
-          <div>
-            <div className="font-bold text-sm">MIMIN ERP</div>
-            <div className="text-xs" style={{ color: "var(--text-muted)" }}>Quản lý may mặc</div>
-          </div>
+          {!isCollapsed && (
+            <div>
+              <div className="font-bold text-sm">MIMIN ERP</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Quản lý may mặc</div>
+            </div>
+          )}
         </Link>
         {onItemClick && (
           <button
@@ -215,16 +223,22 @@ function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?:
                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[17px] font-bold transition-all",
                       isGroupActive && !isOpen
                         ? "bg-brand-500/20 text-brand-700 dark:text-brand-300"
-                        : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
+                        : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300",
+                      isCollapsed && "justify-center px-0"
                     )}
                     style={(!isGroupActive && !isOpen) ? { color: "var(--text-secondary)" } : undefined}
+                    title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
+                    <Icon className="w-5 h-5 shrink-0" />
+                    {!isCollapsed && (
+                      <>
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
+                      </>
+                    )}
                   </button>
                   
-                  {isOpen && (
+                  {!isCollapsed && isOpen && (
                     <div className="ml-4 mt-1 space-y-1 border-l-2 pl-2" style={{ borderColor: "var(--border)" }}>
                       {item.subItems.map((sub) => {
                         const SubIcon = sub.icon;
@@ -264,19 +278,30 @@ function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?:
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[17px] font-bold transition-all",
                   active
                     ? "bg-brand-500/20 text-brand-700 dark:text-brand-300"
-                    : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
+                    : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300",
+                  isCollapsed && "justify-center px-0"
                 )}
                 style={!active ? { color: "var(--text-secondary)" } : undefined}
+                title={isCollapsed ? item.label : undefined}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="flex-1">{item.label}</span>
+                <Icon className="w-5 h-5 shrink-0" />
+                {!isCollapsed && <span className="flex-1">{item.label}</span>}
               </Link>
             );
           })
         )}
       </nav>
-      <div className="p-4 border-t text-xs opacity-50 text-center" style={{ borderColor: "var(--border)" }}>
-        &copy; 2026 Polo Mimin
+      <div className={clsx("p-4 border-t text-xs opacity-50 flex items-center", isCollapsed ? "justify-center" : "justify-between")} style={{ borderColor: "var(--border)" }}>
+        {!isCollapsed && <span>&copy; 2026 Polo Mimin</span>}
+        {toggleCollapse && (
+          <button 
+            onClick={toggleCollapse} 
+            className="p-1 hover:text-brand-600 transition-colors"
+            title={isCollapsed ? "Mở menu" : "Thu gọn menu"}
+          >
+            {isCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+          </button>
+        )}
       </div>
     </>
   );
@@ -284,6 +309,7 @@ function NavContent({ pathname, onItemClick }: { pathname: string; onItemClick?:
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Không render sidebar ở trang login hoặc register
   if (pathname === "/login" || pathname === "/register" || pathname?.startsWith("/lark-login")) {
@@ -291,8 +317,15 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 glass border-r z-40 shadow-sm" style={{ borderColor: "var(--border)" }}>
-      <NavContent pathname={pathname || ""} />
+    <aside className={clsx(
+      "hidden md:flex flex-col h-screen sticky top-0 glass border-r z-40 shadow-sm transition-all duration-300",
+      isCollapsed ? "w-20" : "w-64"
+    )} style={{ borderColor: "var(--border)" }}>
+      <NavContent 
+        pathname={pathname || ""} 
+        isCollapsed={isCollapsed} 
+        toggleCollapse={() => setIsCollapsed(!isCollapsed)} 
+      />
     </aside>
   );
 }
