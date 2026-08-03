@@ -13,6 +13,7 @@ import { ALL_REAL_PHIEU } from "../real-workflow-data";
 import type { PhieuWorkflow } from "../workflow-data";
 import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
+import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 
 // ============ TYPES ============
 

@@ -14,6 +14,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
 import { KHO_VAI, KHO_VAT_TU } from "./real-data";
+import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type LoaiKho = "vai" | "phu-lieu" | "thanh-pham";
 export type LoaiPhieu = "nhap" | "xuat" | "kiem-ke";

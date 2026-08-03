@@ -19,6 +19,7 @@ import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
 import { ALL_REAL_PHIEU } from "../real-workflow-data";
 import type { PhieuWorkflow } from "../workflow-data";
+import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type TrangThaiHoanThien =
   | "Chờ nhận"      // May xong, NV HT chưa nhận

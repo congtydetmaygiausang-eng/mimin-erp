@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { KHO_VAI as KHO_VAI_DEFAULT, KHO_VAT_TU as KHO_VAT_TU_DEFAULT, type KhoVai } from "./real-data";
+import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 
 // ============ TYPES ============
 export type LoaiKho = "vai" | "phu-lieu";
@@ -48,33 +49,12 @@ const Ctx = createContext<StoreContext | null>(null);
 
 const STORAGE_KEY = "mimin_kho_vai_v2";
 
-// Data mẫu: giao dịch nhập kho ban đầu
-const GIAO_DICH_DEFAULT: GiaoDichKho[] = [
-  // Nhập vải
-  { id: "GD-001", ngay: "2026-07-15", loai: "NHAP", maVT: "V-XAMCHI035", tenVT: "XÁM CHÌ 035", soLuong: 200, donVi: "kg", donGia: 70000, thanhTien: 14000000, nguonNhap: "NCC Dệt Phong Phú", nguoiThucHien: "Nguyễn Quốc Hậu", ghiChu: "Nhập lô đầu tháng 7" },
-  { id: "GD-002", ngay: "2026-07-18", loai: "NHAP", maVT: "V-XANHDENCM", tenVT: "XANH ĐEN CM", soLuong: 150, donVi: "kg", donGia: 91000, thanhTien: 13650000, nguonNhap: "NCC Dệt Việt Hưng", nguoiThucHien: "Nguyễn Quốc Hậu" },
-  { id: "GD-003", ngay: "2026-07-20", loai: "NHAP", maVT: "V-MAU11", tenVT: "MÀU 11", soLuong: 100, donVi: "kg", donGia: 71000, thanhTien: 7100000, nguonNhap: "NCC Dệt Phong Phú", nguoiThucHien: "Bùi Thị Thanh" },
-  { id: "GD-004", ngay: "2026-07-22", loai: "NHAP", maVT: "V-BO068", tenVT: "BÒ (068) 26", soLuong: 180, donVi: "kg", donGia: 71000, thanhTien: 12780000, nguonNhap: "NCC Dệt Sài Gòn", nguoiThucHien: "Nguyễn Quốc Hậu" },
-  { id: "GD-005", ngay: "2026-07-25", loai: "NHAP", maVT: "V-TRANG003", tenVT: "TRẮNG 003", soLuong: 250, donVi: "kg", donGia: 64000, thanhTien: 16000000, nguonNhap: "NCC Dệt Việt Hưng", nguoiThucHien: "Bùi Thị Thanh" },
-  // Nhập phụ liệu
-  { id: "GD-006", ngay: "2026-07-15", loai: "NHAP", maVT: "VT-CUC-001", tenVT: "Cúc áo trắng 4 lỗ", soLuong: 5000, donVi: "cái", donGia: 200, thanhTien: 1000000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Bùi Thị Thanh" },
-  { id: "GD-007", ngay: "2026-07-16", loai: "NHAP", maVT: "VT-CHI-001", tenVT: "Chỉ may Polyester", soLuong: 50000, donVi: "m", donGia: 150, thanhTien: 7500000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Nguyễn Quốc Hậu" },
-  { id: "GD-008", ngay: "2026-07-18", loai: "NHAP", maVT: "VT-BOCO-001", tenVT: "Bo cổ 2 da (poly)", soLuong: 1500, donVi: "cái", donGia: 6500, thanhTien: 9750000, nguonNhap: "NCC Bo cổ Hà Nội", nguoiThucHien: "Bùi Thị Thanh" },
-  { id: "GD-009", ngay: "2026-07-20", loai: "NHAP", maVT: "VT-NHAN-001", tenVT: "Nhãn mác size M-L-XL", soLuong: 8000, donVi: "cái", donGia: 800, thanhTien: 6400000, nguonNhap: "NCC Nhãn mác Việt", nguoiThucHien: "Bùi Thị Thanh" },
-  { id: "GD-010", ngay: "2026-07-22", loai: "NHAP", maVT: "VT-TUI-001", tenVT: "Túi PE đóng gói", soLuong: 6000, donVi: "cái", donGia: 350, thanhTien: 2100000, nguonNhap: "NCC Phụ liệu Minh Tâm", nguoiThucHien: "Bùi Thị Thanh" },
-  // Xuất vải cho lệnh cắt
-  { id: "GD-011", ngay: "2026-07-22", loai: "XUAT", maVT: "V-XAMCHI035", tenVT: "XÁM CHÌ 035", soLuong: 75, donVi: "kg", donGia: 70000, thanhTien: 5250000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi", ghiChu: "Xuất cho lệnh cắt M758" },
-  { id: "GD-012", ngay: "2026-07-22", loai: "XUAT", maVT: "V-XANHDENCM", tenVT: "XANH ĐEN CM", soLuong: 75, donVi: "kg", donGia: 91000, thanhTien: 6825000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi" },
-  { id: "GD-013", ngay: "2026-07-22", loai: "XUAT", maVT: "V-MAU11", tenVT: "MÀU 11", soLuong: 75, donVi: "kg", donGia: 71000, thanhTien: 5325000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi" },
-  { id: "GD-014", ngay: "2026-07-22", loai: "XUAT", maVT: "V-BO068", tenVT: "BÒ (068) 26", soLuong: 75, donVi: "kg", donGia: 71000, thanhTien: 5325000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi" },
-  // Xuất phụ liệu
-  { id: "GD-015", ngay: "2026-07-25", loai: "XUAT", maVT: "VT-CUC-001", tenVT: "Cúc áo trắng 4 lỗ", soLuong: 4000, donVi: "cái", donGia: 200, thanhTien: 800000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi", ghiChu: "8 cúc/áo × 500 áo" },
-  { id: "GD-016", ngay: "2026-07-25", loai: "XUAT", maVT: "VT-BOCO-001", tenVT: "Bo cổ 2 da (poly)", soLuong: 500, donVi: "cái", donGia: 6500, thanhTien: 3250000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi" },
-  { id: "GD-017", ngay: "2026-07-25", loai: "XUAT", maVT: "VT-CHI-001", tenVT: "Chỉ may Polyester", soLuong: 25000, donVi: "m", donGia: 150, thanhTien: 3750000, nguonNhap: "LC-M758 Bộ trụ 500 bộ", nguoiThucHien: "Nguyễn Thị Mỹ Nhi", ghiChu: "50m/bộ × 500 bộ" },
-];
+// Đã xoá GIAO_DICH_DEFAULT ngày 2026-08-03 (sep Sang muon bat dau nhap moi tu dau)
+
+
 
 export function KhoProvider({ children }: { children: ReactNode }) {
-  const [giaoDich, setGiaoDich] = useState<GiaoDichKho[]>(GIAO_DICH_DEFAULT);
+  const [giaoDich, setGiaoDich] = useState<GiaoDichKho[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   // Load từ localStorage
@@ -100,14 +80,26 @@ export function KhoProvider({ children }: { children: ReactNode }) {
   }, [giaoDich, hydrated]);
 
   const themGiaoDich = useCallback((gd: Omit<GiaoDichKho, "id">) => {
+    let newRow = null;
     setGiaoDich((prev) => {
       const nextNum = prev.length + 1;
-      return [...prev, { ...gd, id: `GD-${String(nextNum).padStart(3, "0")}` }];
+      newRow = { ...gd, id: `GD-${String(nextNum).padStart(3, "0")}` };
+      return [...prev, newRow];
     });
+    if (isSupabaseEnabled && newRow) {
+      supabaseUpsert("giao_dich_kho", newRow).catch((err) =>
+        console.error("[KhoStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const xoaGiaoDich = useCallback((id: string) => {
     setGiaoDich((prev) => prev.filter((g) => g.id !== id));
+    if (isSupabaseEnabled) {
+      supabaseDelete("giao_dich_kho", id).catch((err) =>
+        console.error("[KhoStore] Supabase delete error:", err)
+      );
+    }
   }, []);
 
   const tinhTonKho = useCallback(
@@ -163,7 +155,7 @@ export function KhoProvider({ children }: { children: ReactNode }) {
   );
 
   const reset = useCallback(() => {
-    setGiaoDich(GIAO_DICH_DEFAULT);
+    setGiaoDich([]);
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}

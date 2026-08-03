@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { PHAN_CONG as PHAN_CONG_DEFAULT, type PhanCongCongDoan, type CongDoanKey, type NguoiPhuTrach } from "./cong-no";
 import { layDanhSachNguoiPT } from "./cong-no";
+import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 
 // ============ STORE CONTEXT ============
 type StoreContext = {
@@ -81,6 +82,11 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
 
   const xoaPhanCong = useCallback((id: string) => {
     setPhanCong((prev) => prev.filter((p) => p.id !== id));
+    if (isSupabaseEnabled) {
+      supabaseDelete("cong_no", id).catch((err) =>
+        console.error("[Store] Supabase delete error:", err)
+      );
+    }
   }, []);
 
   const reset = useCallback(() => {
