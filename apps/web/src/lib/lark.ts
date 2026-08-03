@@ -2,7 +2,7 @@
 // Docs: https://open.larksuite.com/document/server-docs/docs/bitable-v1/overview
 
 import type { PhieuWorkflow } from "./workflow-data";
-import { setupMockFetchInterceptor } from "./lark-mock";
+// lark-mock removed 2026-08-03 (sep Sang xoa du lieu mau)
 
 // ============ TYPES ============
 export type LarkConfig = {

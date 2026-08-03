@@ -129,35 +129,9 @@ export type MauChiPhiItem = {
   chiPhi: ChiPhiCoDinh;
 };
 
-const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
-  { id: "AoThun", ten: "Áo Thun", giaCong: [
-    { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 1400 },
-    { id: "mayAo", tenCongDoan: "May Áo", nguoiMa: "", nguoiTen: "", donGia: 12000 },
-    { id: "in", tenCongDoan: "In", nguoiMa: "", nguoiTen: "", donGia: 3000 },
-    { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 1000 },
-    { id: "dongGoi", tenCongDoan: "Đóng Gói", nguoiMa: "", nguoiTen: "", donGia: 1000 }
-  ] },
-  { id: "Quan", ten: "Quần", giaCong: [
-    { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 900 },
-    { id: "mayQuan", tenCongDoan: "May Quần", nguoiMa: "", nguoiTen: "", donGia: 15000 },
-    { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 1250 },
-    { id: "dongGoi", tenCongDoan: "Đóng Gói", nguoiMa: "", nguoiTen: "", donGia: 1250 }
-  ] },
-  { id: "BoTheThao", ten: "Bộ Thể Thao", giaCong: [
-    { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 2300 },
-    { id: "mayAo", tenCongDoan: "May Áo", nguoiMa: "", nguoiTen: "", donGia: 12000 },
-    { id: "mayQuan", tenCongDoan: "May Quần", nguoiMa: "", nguoiTen: "", donGia: 15000 },
-    { id: "in", tenCongDoan: "In", nguoiMa: "", nguoiTen: "", donGia: 3000 },
-    { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 2000 },
-    { id: "dongGoi", tenCongDoan: "Đóng Gói", nguoiMa: "", nguoiTen: "", donGia: 2500 }
-  ] }
-];
+const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [];
 
-const DEFAULT_MAU_CHI_PHI: MauChiPhiItem[] = [
-  { id: "AoThun", ten: "Áo Thun", chiPhi: { "Bao Bì, Túi PE": 1500, "Tem, Nhãn mác": 500, "Khấu hao máy, Điện nước": 2000 } },
-  { id: "Quan", ten: "Quần", chiPhi: { "Bao Bì, Túi PE": 1200, "Tem, Nhãn mác": 300, "Khấu hao máy, Điện nước": 1500 } },
-  { id: "BoTheThao", ten: "Bộ Thể Thao", chiPhi: { "Bao Bì, Túi PE": 2500, "Tem, Nhãn mác": 1000, "Khấu hao máy, Điện nước": 3500 } }
-];
+const DEFAULT_MAU_CHI_PHI: MauChiPhiItem[] = [];
 
 const STORAGE_KEY_MCD = "mimin_mau_cong_doan";
 const STORAGE_KEY_MCP = "mimin_mau_chi_phi";
@@ -231,16 +205,16 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
             setDsMauCongDoan(parsed);
           }
         } catch {
-          setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
+          setDsMauCongDoan([]);
         }
       } else {
-        setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
+        setDsMauCongDoan([]);
         localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
       }
       
       const storedMCP = localStorage.getItem(STORAGE_KEY_MCP);
       if (storedMCP) setDsMauChiPhi(JSON.parse(storedMCP));
-      else { setDsMauChiPhi(DEFAULT_MAU_CHI_PHI); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(DEFAULT_MAU_CHI_PHI)); }
+      else { setDsMauChiPhi([]); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify([])); }
 
     setIsLoaded(true);
   }, []);
@@ -300,7 +274,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(() => {
     setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
-    setDsMauChiPhi(DEFAULT_MAU_CHI_PHI); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(DEFAULT_MAU_CHI_PHI));
+    setDsMauChiPhi([]); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify([]));
   }, []);
 
 

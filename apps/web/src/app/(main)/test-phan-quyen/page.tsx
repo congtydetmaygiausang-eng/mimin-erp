@@ -2,21 +2,21 @@
 import { useState } from "react";
 import { ShieldCheck, Users, LogIn, ChevronRight, User, Building2, Tag } from "lucide-react";
 import Link from "next/link";
-import { DEMO_USERS_19, type DemoUser } from "@/lib/demo-users-19";
+import { USERS, type UserAccount } from "@/lib/users";
 import { CONG_NHAN_13 } from "@/lib/congnhan-13";
 import { USER_ACCOUNTS_SECURE } from "@/lib/user-accounts-secure";
 
 export default function TestPhanQuyenPage() {
-  const [selected, setSelected] = useState<DemoUser | null>(null);
+  const [selected, setSelected] = useState<UserAccount | null>(null);
 
   const allUsers = [
-    ...DEMO_USERS_19,
+    ...USERS,
     ...CONG_NHAN_13,
   ].filter((u, i, arr) => arr.findIndex((x) => x.email === u.email) === i);
 
   const nhomQuanLy = allUsers.filter((u: any) => u.nhom && !u.laCongNhan);
   const nhomSX = allUsers.filter((u: any) => u.laCongNhan);
-  const mockLegacy = USER_ACCOUNTS_SECURE.filter((u: any) => !DEMO_USERS_19.find((d) => d.email === u.email) && !CONG_NHAN_13.find((c) => c.email === u.email));
+  const mockLegacy = USER_ACCOUNTS_SECURE.filter((u: any) => !USERS.find((d) => d.email === u.email) && !CONG_NHAN_13.find((c) => c.email === u.email));
 
   const handleLogin = (email: string, password: string) => {
     localStorage.setItem("mimin_erp_session", JSON.stringify({

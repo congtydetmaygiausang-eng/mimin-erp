@@ -8,7 +8,7 @@ import {
 import { useSession } from "@/components/session-provider";
 import { getLarkConfig, saveLarkConfig, testLarkConnection, isLarkEnabled, type LarkConfig } from "@/lib/lark";
 import { pullAllFromLark } from "@/lib/lark-sync";
-import { setupMockFetchInterceptor, resetMockLarkData, getMockBaseData } from "@/lib/lark-mock";
+// lark-mock removed 2026-08-03 (sep Sang xoa du lieu mau)
 import { toast } from "sonner";
 
 export default function LarkSettingsPage() {
