@@ -190,6 +190,7 @@ export function DoiSoatProvider({ children }: { children: ReactNode }) {
   }, [doiSoat, hydrated]);
 
   const capNhatTrangThai = useCallback((id: string, trangThaiMoi: TrangThaiDoiSoat, user: AppUser | null, ghiChu?: string) => {
+    let updated: BanGhiDoiSoat | null = null;
     setDoiSoat((prev) => prev.map((d) => {
       if (d.id !== id) return d;
       if (d.locked) return d;
@@ -200,16 +201,23 @@ export function DoiSoatProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu,
       }];
-      return { ...d, trangThai: trangThaiMoi, lichSu: lichSuMoi };
+      updated = { ...d, trangThai: trangThaiMoi, lichSu: lichSuMoi };
+      return updated;
     }));
     const action = trangThaiMoi === "Đã thanh toán" ? "payment"
       : trangThaiMoi === "Có khiếu nại" ? "report_issue"
       : trangThaiMoi === "Đã xác nhận" || trangThaiMoi === "Chờ NV xác nhận" ? "confirm"
       : "update";
     logWorkflow(user, action as any, `Đối soát ${id}`, id, { newValue: { trangThaiMoi } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("doi_soat", updated as any).catch((err) =>
+        console.error("[DoiSoatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const capNhatThanhToan = useCallback((id: string, soTien: number, user: AppUser | null) => {
+    let updated: BanGhiDoiSoat | null = null;
     setDoiSoat((prev) => prev.map((d) => {
       if (d.id !== id) return d;
       if (d.locked) return d;
@@ -218,23 +226,37 @@ export function DoiSoatProvider({ children }: { children: ReactNode }) {
       let trangThaiMoi = d.trangThai;
       if (conNoMoi === 0) trangThaiMoi = "Đã thanh toán";
       else if (daThanhToanMoi > 0) trangThaiMoi = "Đã thanh toán 1 phần";
-      return { ...d, daThanhToan: daThanhToanMoi, conNo: conNoMoi, trangThai: trangThaiMoi };
+      updated = { ...d, daThanhToan: daThanhToanMoi, conNo: conNoMoi, trangThai: trangThaiMoi };
+      return updated;
     }));
     logWorkflow(user, "payment", `Thanh toán ${id}`, id, { newValue: { soTien } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("doi_soat", updated as any).catch((err) =>
+        console.error("[DoiSoatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const capNhatKhauTru = useCallback((id: string, soTien: number, user: AppUser | null) => {
+    let updated: BanGhiDoiSoat | null = null;
     setDoiSoat((prev) => prev.map((d) => {
       if (d.id !== id) return d;
       if (d.locked) return d;
       const khauTruMoi = Math.max(0, Math.min(d.thanhTien, soTien));
       const thucNhanMoi = d.thanhTien - khauTruMoi;
-      return { ...d, khauTru: khauTruMoi, thucNhan: thucNhanMoi, conNo: thucNhanMoi - d.daThanhToan };
+      updated = { ...d, khauTru: khauTruMoi, thucNhan: thucNhanMoi, conNo: thucNhanMoi - d.daThanhToan };
+      return updated;
     }));
     logWorkflow(user, "update", `Khấu trừ ${id}`, id, { newValue: { khauTru: soTien } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("doi_soat", updated as any).catch((err) =>
+        console.error("[DoiSoatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const themKhiieuNai = useCallback((id: string, noiDung: string, user: AppUser | null) => {
+    let updated: BanGhiDoiSoat | null = null;
     setDoiSoat((prev) => prev.map((d) => {
       if (d.id !== id) return d;
       if (d.locked) return d;
@@ -247,7 +269,7 @@ export function DoiSoatProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu: `Khiếu nại: ${noiDung}`,
       }];
-      return {
+      updated = {
         ...d,
         trangThai: "Có khiếu nại" as TrangThaiDoiSoat,
         lichSu: lichSuMoi,
@@ -259,31 +281,64 @@ export function DoiSoatProvider({ children }: { children: ReactNode }) {
           trangThai: "moi",
         },
       };
+      return updated;
     }));
     logWorkflow(user, "report_issue", `Khiếu nại ${id}`, id, { newValue: { noiDung } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("doi_soat", updated as any).catch((err) =>
+        console.error("[DoiSoatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const giaiQuyetKhiieuNai = useCallback((id: string, user: AppUser | null) => {
+    let updated: BanGhiDoiSoat | null = null;
     setDoiSoat((prev) => prev.map((d) => {
       if (d.id !== id || !d.khiieuNai) return d;
-      return {
+      updated = {
         ...d,
         khiieuNai: { ...d.khiieuNai, trangThai: "da-giai-quyet" },
         // Quay lại trạng thái trước đó (lấy từ lichSu cuối)
         trangThai: d.lichSu?.[d.lichSu.length - 1]?.trangThaiCu || d.trangThai,
       };
+      return updated;
     }));
     logWorkflow(user, "approve", `Giải quyết khiếu nại ${id}`, id);
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("doi_soat", updated as any).catch((err) =>
+        console.error("[DoiSoatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const khoa = useCallback((id: string, user: AppUser | null) => {
-    setDoiSoat((prev) => prev.map((d) => d.id === id ? { ...d, locked: true } : d));
+    let updated: BanGhiDoiSoat | null = null;
+    setDoiSoat((prev) => prev.map((d) => {
+      if (d.id !== id) return d;
+      updated = { ...d, locked: true };
+      return updated;
+    }));
     logWorkflow(user, "lock", `Khóa đối soát ${id}`, id);
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("doi_soat", updated as any).catch((err) =>
+        console.error("[DoiSoatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const moKhoa = useCallback((id: string, user: AppUser | null) => {
-    setDoiSoat((prev) => prev.map((d) => d.id === id ? { ...d, locked: false } : d));
+    let updated: BanGhiDoiSoat | null = null;
+    setDoiSoat((prev) => prev.map((d) => {
+      if (d.id !== id) return d;
+      updated = { ...d, locked: false };
+      return updated;
+    }));
     logWorkflow(user, "update", `Mở khóa ${id}`, id);
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("doi_soat", updated as any).catch((err) =>
+        console.error("[DoiSoatStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const reset = useCallback(() => {
