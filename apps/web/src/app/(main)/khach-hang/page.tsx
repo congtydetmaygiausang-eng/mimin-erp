@@ -19,18 +19,27 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
-import { KHACH_HANG_DATA, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityCard";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
+import { supabase } from "@/lib/supabase/client";
+import { useEffect } from "react";
 
-type KH = typeof KHACH_HANG_DATA[number] & {
+type KH = {
+  id?: string;
+  maKH: string;
+  ten: string;
+  sdt: string;
+  email: string;
+  diaChi: string;
+  mst?: string;
+  congNo: number;
   rating: number;
-  ghiChu?: string;
+  ghiChu: string;
+  loai?: string;
   avatar?: string;
 };
-
-const KH_KHOI_DAU: KH[] = KHACH_HANG_DATA.map((k) => ({ ...k, rating: k.rating || 4 }));
 
 // Tính từ đơn hàng (mock data)
 const DOANH_THU_KH: Record<string, number> = {
@@ -51,10 +60,49 @@ const SO_DON_KH: Record<string, number> = {
 };
 
 export default function KhachHangPage() {
-  const [list, setList] = useState<KH[]>(KH_KHOI_DAU);
+  const [list, setList] = useState<KH[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KH } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
+
+  useEffect(() => {
+    fetchKhachHang();
+  }, []);
+
+  const fetchKhachHang = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    const { data, error } = await supabase.from('khach_hang').select('*').order('created_at', { ascending: false });
+    if (!error && data) {
+      const mapped = data.map((d: any) => {
+        let r = 4;
+        const match = d.ghi_chu?.match(/Đánh giá:\s*(\d)/);
+        if (match) r = parseInt(match[1], 10);
+        
+        let mst = "";
+        const mstMatch = d.ghi_chu?.match(/MST:\s*([\d\-]+)/);
+        if (mstMatch) mst = mstMatch[1];
+
+        return {
+          id: d.id,
+          maKH: d.ma_kh,
+          ten: d.ten_kh,
+          sdt: d.sdt || "",
+          email: d.email || "",
+          diaChi: d.dia_chi || "",
+          loai: d.loai || "",
+          congNo: d.cong_no || 0,
+          ghiChu: d.ghi_chu || "",
+          trangThai: d.trang_thai || "",
+          rating: r,
+          mst: mst
+        };
+      });
+      setList(mapped);
+    }
+    setLoading(false);
+  };
 
   const tongKH = list.length;
   const dsVIP = list.filter((k) => (k.rating || 0) >= 4.5);
@@ -70,20 +118,40 @@ export default function KhachHangPage() {
     return matchSearch;
   });
 
-  const handleSave = (kh: KH) => {
-    if (showForm?.mode === "add") {
-      setList([...list, kh]);
-      toast.success(`Đã thêm KH: ${kh.ten}`);
-    } else if (showForm?.mode === "edit") {
-      setList(list.map((x) => (x.maKH === kh.maKH ? kh : x)));
+  const handleSave = async (kh: KH) => {
+    if (!supabase) return;
+    const isEdit = showForm?.mode === "edit";
+    const payload = {
+      ma_kh: kh.maKH,
+      ten_kh: kh.ten,
+      sdt: kh.sdt,
+      email: kh.email,
+      dia_chi: kh.diaChi,
+      cong_no: kh.congNo,
+      loai: kh.loai || "",
+      ghi_chu: kh.mst ? `MST: ${kh.mst}. Đánh giá: ${kh.rating} sao. ${kh.ghiChu}` : `Đánh giá: ${kh.rating} sao. ${kh.ghiChu}`,
+    };
+
+    if (isEdit && kh.id) {
+      const { error } = await supabase.from("khach_hang").update(payload).eq("id", kh.id);
+      if (error) { toast.error("Lỗi khi cập nhật"); return; }
+      setList(list.map((x) => (x.id === kh.id ? { ...kh, id: kh.id } : x)));
       toast.success(`Đã cập nhật: ${kh.ten}`);
+    } else {
+      const { data, error } = await supabase.from("khach_hang").insert([payload]).select().single();
+      if (error) { toast.error("Lỗi khi thêm mới"); return; }
+      setList([{ ...kh, id: data.id }, ...list]);
+      toast.success(`Đã thêm KH: ${kh.ten}`);
     }
     setShowForm(null);
   };
 
-  const handleDelete = (kh: KH) => {
+  const handleDelete = async (kh: KH) => {
+    if (!supabase || !kh.id) return;
     if (confirm(`Xoá KH "${kh.ten}"?`)) {
-      setList(list.filter((x) => x.maKH !== kh.maKH));
+      const { error } = await supabase.from("khach_hang").delete().eq("id", kh.id);
+      if (error) { toast.error("Lỗi khi xoá"); return; }
+      setList(list.filter((x) => x.id !== kh.id));
       toast.success(`Đã xoá: ${kh.ten}`);
     }
   };
@@ -312,7 +380,6 @@ export default function KhachHangPage() {
 
 function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "edit"; kh?: KH; existingCount: number; onClose: () => void; onSave: (k: KH) => void }) {
   const [form, setForm] = useState<KH>(kh || {
-    stt: existingCount + 1,
     maKH: `KH-${(existingCount + 1).toString().padStart(3, "0")}`,
     ten: "",
     sdt: "",

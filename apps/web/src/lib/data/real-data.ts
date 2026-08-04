@@ -346,5 +346,9 @@ export const KHO_VAT_TU: KhoVatTu[] = [
   { maVT: "BO-044", tenVT: "Bo 1 sọc nhí xanh đen sọc trắng", loai: "Bo cổ", dvt: "bộ", donGia: 6000, tonKho: 60, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "(Nhiều màu)", ghiChu: "", soCayNhap: 0.0, tonCay: 0.0 },
   { maVT: "BO-045", tenVT: "Bo 1 sọc nhí cỏ úa sọc trắng", loai: "Bo cổ", dvt: "bộ", donGia: 6000, tonKho: 250, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "(Nhiều màu)", ghiChu: "", soCayNhap: 0.0, tonCay: 0.0 },
   { maVT: "BO-046", tenVT: "Bo 1 sọc nhí gừng sọc đen", loai: "Bo cổ", dvt: "bộ", donGia: 6000, tonKho: 150, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "(Nhiều màu)", ghiChu: "", soCayNhap: 0.0, tonCay: 0.0 },
-  { maVT: "BO-047", tenVT: "Bo 1 sọc nhí đen sọc gừng", loai: "Bo cổ", dvt: "bộ", donGia: 6000, tonKho: 60, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "(Nhiều màu)", ghiChu: "", soCayNhap: 0.0, tonCay: 0.0 }
+  { maVT: "BO-047", tenVT: "Bo 1 sọc nhí đen sọc gừng", loai: "Bo cổ", dvt: "bộ", donGia: 6000, tonKho: 60, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "(Nhiều màu)", ghiChu: "", soCayNhap: 0.0, tonCay: 0.0 },
+  { maVT: "BAOBI_GIAY", tenVT: "Bao bì + Giấy", loai: "Phụ liệu", dvt: "sp", donGia: 700, tonKho: 0, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "", ghiChu: "Chi phí cố định", soCayNhap: 0.0, tonCay: 0.0 },
+  { maVT: "THEBAI", tenVT: "Thẻ bài", loai: "Phụ liệu", dvt: "sp", donGia: 700, tonKho: 0, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "", ghiChu: "Chi phí cố định", soCayNhap: 0.0, tonCay: 0.0 },
+  { maVT: "DAYKEO", tenVT: "Dây kéo", loai: "Phụ liệu", dvt: "sp", donGia: 1400, tonKho: 0, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "", ghiChu: "Chi phí cố định", soCayNhap: 0.0, tonCay: 0.0 },
+  { maVT: "THUNQUAN", tenVT: "Thun quần", loai: "Phụ liệu", dvt: "sp", donGia: 1500, tonKho: 0, tonToiThieu: 0.0, kho: "Kho phụ liệu", mauSac: "", ghiChu: "Chi phí cố định", soCayNhap: 0.0, tonCay: 0.0 }
 ];

@@ -3,8 +3,10 @@
 import { useState, useMemo } from "react";
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, Users, Calendar, Download, Briefcase, Building2, Award, AlertCircle, Wallet, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, NHAN_SU, KHACH_HANG_DATA, formatVND, formatVNDShort } from "@/lib/data/real-data";
-import { PHAN_CONG, tinhCongNo } from "@/lib/data/cong-no";
+import { KHO_VAI, KHO_VAT_TU, NHAN_SU, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { useSupabaseSync } from "@/lib/supabase/client";
+import { tinhCongNo } from "@/lib/data/cong-no";
+import { usePhanCong } from "@/lib/data/cong-no-store";
 import { useKho } from "@/lib/data/kho-store";
 import { DoanhThuChart, LoiNhuanChart, TopSanPhamChart, CongNoPieChart, TienDoChart } from "@/components/charts/Charts";
 
@@ -20,8 +22,11 @@ const DON_HANG_DATA = [
 ];
 
 export default function BaoCaoPage() {
-  const [tab, setTab] = useState<"tongquan" | "doanhthu" | "chiphi" | "loinhuan" | "thang">("tongquan");
+  const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
+  const { phanCong } = usePhanCong();
   const { giaoDich, danhSachTrangThai } = useKho();
+  const [kyBaoCao, setKyBaoCao] = useState("Tháng này");
+  const [tab, setTab] = useState<"tongquan" | "doanhthu" | "chiphi" | "loinhuan" | "thang">("tongquan");
 
   // ===== Tính toán KPIs =====
   // Doanh thu: tổng tiền đơn hàng (trừ đơn hủy)
@@ -33,7 +38,7 @@ export default function BaoCaoPage() {
   // - Gia công: PHAN_CONG đã trả
   // - Nguyên vật liệu: giao dịch NHAP
   const luongNV = NHAN_SU.reduce((s, n) => s + 8500000, 0);  // Ước tính
-  const cpGiaCong = PHAN_CONG.reduce((s, p) => s + p.daThanhToan, 0);
+  const cpGiaCong = phanCong.reduce((s: number, p: any) => s + p.daThanhToan, 0);
   const cpNVL = giaoDich.filter((g) => g.loai === "NHAP").reduce((s, g) => s + g.thanhTien, 0);
   const tongChiPhi = luongNV + cpGiaCong + cpNVL;
   const loiNhuan = tongDoanhThu - tongChiPhi;
@@ -45,7 +50,7 @@ export default function BaoCaoPage() {
   const tongTonKho = tonKhoVai + tonKhoPL;
 
   // Công nợ
-  const congNo = tinhCongNo(PHAN_CONG);
+  const congNo = tinhCongNo(phanCong);
 
   // Top KH
   const topKH = useMemo(() => {
@@ -74,7 +79,7 @@ export default function BaoCaoPage() {
   // Công nợ theo người
   const congNoData = useMemo(() => {
     const map: Record<string, { name: string; value: number }> = {};
-    for (const pc of PHAN_CONG) {
+    for (const pc of phanCong) {
       const conNo = pc.donGiaGiao * pc.soLuongGiao - pc.daThanhToan;
       if (conNo <= 0) continue;
       const key = pc.nguoiPhuTrach.ma;
@@ -134,6 +139,11 @@ export default function BaoCaoPage() {
             {formatVNDShort(loiNhuan)}
           </div>
           <div className="text-xs opacity-60 mt-1">Margin: {margin.toFixed(1)}%</div>
+        </div>
+        <div className="card p-5">
+          <div className="text-xs opacity-70 flex items-center gap-1"><Users className="w-3 h-3 text-blue-600" /> Khách hàng</div>
+          <div className="text-xl md:text-2xl font-bold mt-1 text-blue-600">{khachHangs?.length || 0}</div>
+          <div className="text-xs opacity-60 mt-1">Đã đồng bộ</div>
         </div>
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><Package className="w-3 h-3 text-violet-600" /> Tồn kho</div>

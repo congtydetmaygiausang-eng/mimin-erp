@@ -12,7 +12,7 @@ import {
   ChevronRight, Calculator, Wallet, Clock, CheckCircle2, Edit3, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import LenhCatModal from "@/components/LenhCatModal";
+import { LenhCatModal } from "@/components/LenhCatModal";
 import {
   useLenhCat,
   type LenhCat,
@@ -513,7 +513,7 @@ export default function LenhCatPage() {
       {/* Modal */}
       {showModal && (
         <LenhCatModal
-          open={showModal}
+          isOpen={true}
           onClose={() => {
             setShowModal(false);
             setEditId(null);

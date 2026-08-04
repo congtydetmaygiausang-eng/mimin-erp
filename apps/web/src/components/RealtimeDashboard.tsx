@@ -9,7 +9,8 @@ import {
 import { DoanhThuChart, LoiNhuanChart, TopSanPhamChart, CongNoPieChart, TienDoChart, CongDoanChart, NhanSuPieChart, Sparkline } from "./charts/Charts";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { useKho } from "@/lib/data/kho-store";
-import { NHAN_SU, KHO_VAI, KHO_VAT_TU, KHACH_HANG_DATA, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { NHAN_SU, KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { useSupabaseSync } from "@/lib/supabase/client";
 import { tinhCongNo } from "@/lib/data/cong-no";
 
 const DON_HANG = [
@@ -31,6 +32,7 @@ const TOP_SP = [
 ];
 
 export function RealtimeDashboard() {
+  const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { phanCong } = usePhanCong();
   const { giaoDich, danhSachTrangThai } = useKho();
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -87,14 +89,14 @@ export function RealtimeDashboard() {
       loiNhuan: tongDT - tongCP,
       margin: tongDT > 0 ? ((tongDT - tongCP) / tongDT) * 100 : 0,
       nhanSu: NHAN_SU.length,
-      khachHang: KHACH_HANG_DATA.length,
+      khachHang: khachHangs?.length || 0,
       tonKho: tonKhoValue,
       soMaVT: KHO_VAI.length + KHO_VAT_TU.length,
       congNo: congNo.tongConNo,
       soPC: phanCong.length,
       treHan: dsTreHan,
     };
-  }, [phanCong, giaoDich, danhSachTrangThai, lastUpdate]);
+  }, [phanCong, giaoDich, danhSachTrangThai, lastUpdate, khachHangs]);
 
   // Công đoạn theo trạng thái
   const congDoanData = useMemo(() => {

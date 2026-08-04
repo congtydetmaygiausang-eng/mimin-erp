@@ -20,7 +20,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { KHACH_HANG_DATA, NCCS, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { NCCS, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { useSupabaseSync } from "@/lib/supabase/client";
 
 type TrangThaiDH = "Mới" | "Đã duyệt" | "Đang SX" | "Hoàn thành" | "Đã giao" | "Hủy";
 
@@ -62,6 +63,7 @@ const TRANG_THAI_STYLE: Record<TrangThaiDH, { color: string; bg: string; icon: a
 };
 
 export default function DonHangPage() {
+  const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const [list, setList] = useState<DonHang[]>(DON_HANG_KHOI_DAU);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | TrangThaiDH>("all");
@@ -284,19 +286,19 @@ export default function DonHangPage() {
         </div>
       </div>
 
-      {showForm && <DHForm mode={showForm.mode} dh={showForm.dh} existingCount={list.length} onClose={() => setShowForm(null)} onSave={handleSave} />}
+      {showForm && <DonHangForm mode={showForm.mode} dh={showForm.dh} existingCount={list.length} khachHangs={khachHangs} onClose={() => setShowForm(null)} onSave={handleSave} />}
       {showDetail && <DHDetailModal dh={showDetail} onClose={() => setShowDetail(null)} />}
     </div>
   );
 }
 
-function DHForm({ mode, dh, existingCount, onClose, onSave }: { mode: "add" | "edit"; dh?: DonHang; existingCount: number; onClose: () => void; onSave: (d: DonHang) => void }) {
+function DonHangForm({ mode, dh, existingCount, onClose, onSave, khachHangs }: any) {
   const [form, setForm] = useState<DonHang>(dh || {
     id: `DH-${(existingCount + 1).toString().padStart(3, "0")}`,
     maDH: `DH-2026-${(existingCount + 1).toString().padStart(3, "0")}`,
     ngayDat: new Date().toISOString().split("T")[0],
     ngayGiao: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    khachHang: KHACH_HANG_DATA[0]?.ten || "",
+    khachHang: khachHangs?.[0]?.ten_kh || "",
     sdt: "",
     sanPham: "",
     loai: "Bộ",
@@ -347,7 +349,7 @@ function DHForm({ mode, dh, existingCount, onClose, onSave }: { mode: "add" | "e
               <label className="text-xs font-medium block mb-1">Khách hàng *</label>
               <select required className="input w-full" value={form.khachHang} onChange={(e) => setForm({ ...form, khachHang: e.target.value })}>
                 <option value="">-- Chọn KH --</option>
-                {KHACH_HANG_DATA.map((k) => <option key={k.maKH} value={k.ten}>{k.ten}</option>)}
+                {khachHangs.map((k: any) => <option key={k.ma_kh} value={k.ten_kh}>{k.ten_kh}</option>)}
                 <option value="__khac__">+ Khác (tự nhập)</option>
               </select>
             </div>

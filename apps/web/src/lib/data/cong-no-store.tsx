@@ -19,7 +19,7 @@ type StoreContext = {
 
 const Ctx = createContext<StoreContext | null>(null);
 
-const STORAGE_KEY = "mimin_phanCong_v1";
+const STORAGE_KEY = "mimin_phan_cong_v1";
 
 export function PhanCongProvider({ children }: { children: ReactNode }) {
   const [phanCong, setPhanCong] = useState<PhanCongCongDoan[]>(PHAN_CONG_DEFAULT);

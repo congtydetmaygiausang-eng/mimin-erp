@@ -19,7 +19,8 @@ import {
   Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, KHACH_HANG_DATA, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { useSupabaseSync } from "@/lib/supabase/client";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
@@ -120,14 +121,8 @@ const getFallbackUser = (): AppUser => ({
   source: "demo",
 });
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  editId?: string | null; // Nếu có → edit mode, ngược lại → create
-}
-
-
-export default function LenhCatModal({ open, onClose, editId }: Props) {
+export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
+  const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
   const { user } = useSession();
@@ -667,7 +662,7 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                     <label className="text-sm font-bold text-slate-700 block mb-1">Khách Hàng *</label>
                     <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={khachHang} onChange={e => setKhachHang(e.target.value)}>
                       <option value="">-- Chọn Khách Hàng --</option>
-                      {KHACH_HANG_DATA.map(k => <option key={k.maKH} value={k.maKH}>{k.ten}</option>)}
+                      {khachHangs?.map((k: any) => <option key={k.ma_kh} value={k.ma_kh}>{k.ten_kh}</option>)}
                     </select>
                   </div>
                   <div>
