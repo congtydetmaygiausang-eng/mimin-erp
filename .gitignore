@@ -40,3 +40,4 @@ test-dns.mjs
 check-sync.ps1
 sync-2ai.ps1
 CHANGELOG-Antigravity.md
+.env*
