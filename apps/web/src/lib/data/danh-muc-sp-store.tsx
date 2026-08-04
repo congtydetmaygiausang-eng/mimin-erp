@@ -109,14 +109,29 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(next));
       return next;
     });
+    if (isSupabaseEnabled) {
+      supabaseUpsert("danh_muc_sp", sp as any).catch((err) =>
+        console.error("[DanhMucSPStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const suaSP = useCallback((id: string, data: Partial<SanPham>) => {
+    let updated: SanPham | null = null;
     setDsSanPham(prev => {
-      const next = prev.map(p => p.id === id ? { ...p, ...data } : p);
+      const next = prev.map(p => {
+        if (p.id !== id) return p;
+        updated = { ...p, ...data };
+        return updated;
+      });
       localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(next));
       return next;
     });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("danh_muc_sp", updated as any).catch((err) =>
+        console.error("[DanhMucSPStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const xoaSP = useCallback((id: string) => {
@@ -125,6 +140,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(next));
       return next;
     });
+    if (isSupabaseEnabled) {
+      supabaseDelete("danh_muc_sp", id).catch((err) =>
+        console.error("[DanhMucSPStore] Supabase delete error:", err)
+      );
+    }
   }, []);
 
   return (
