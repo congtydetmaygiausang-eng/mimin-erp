@@ -91,23 +91,53 @@ export function GiaoHangProvider({ children }: { children: ReactNode }) {
     };
     setGiaoHang((prev) => [newGH, ...prev]);
     logWorkflow(user, "create", g.maGH, newGH.id);
+    if (isSupabaseEnabled) {
+      supabaseUpsert("giao_hang", newGH as any).catch((err) =>
+        console.error("[GiaoHangStore] Supabase upsert error:", err)
+      );
+    }
     return newGH;
   }, []);
 
   const suaLoGiao = useCallback((id: string, patch: Partial<GiaoHang>, user: AppUser | null) => {
-    setGiaoHang((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g)));
+    let updated: GiaoHang | null = null;
+    setGiaoHang((prev) => prev.map((g) => {
+      if (g.id !== id) return g;
+      updated = { ...g, ...patch };
+      return updated;
+    }));
     logWorkflow(user, "update", `Giao hàng ${id}`, id, { newValue: patch });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("giao_hang", updated as any).catch((err) =>
+        console.error("[GiaoHangStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const xoaLoGiao = useCallback((id: string, user: AppUser | null) => {
     setGiaoHang((prev) => prev.filter((g) => g.id !== id));
     logWorkflow(user, "delete", `Giao hàng ${id}`, id);
+    if (isSupabaseEnabled) {
+      supabaseDelete("giao_hang", id).catch((err) =>
+        console.error("[GiaoHangStore] Supabase delete error:", err)
+      );
+    }
   }, []);
 
   const capNhatTrangThai = useCallback((id: string, status: TrangThaiGH, user: AppUser | null) => {
-    setGiaoHang((prev) => prev.map((g) => (g.id === id ? { ...g, trangThai: status } : g)));
+    let updated: GiaoHang | null = null;
+    setGiaoHang((prev) => prev.map((g) => {
+      if (g.id !== id) return g;
+      updated = { ...g, trangThai: status };
+      return updated;
+    }));
     const action = status === "Đã giao" ? "approve" : status === "Trễ" ? "report_issue" : "update";
     logWorkflow(user, action, `Giao hàng ${id}`, id, { newValue: { trangThai: status } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("giao_hang", updated as any).catch((err) =>
+        console.error("[GiaoHangStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const reset = useCallback(() => {
