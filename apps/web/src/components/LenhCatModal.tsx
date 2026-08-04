@@ -29,6 +29,7 @@ import {
   type PhanCongGiaCong, type TrangThaiLenhCat, type LoaiLenh,
   type ChiPhiCoDinh, type BangCOGS,
   LOAI_SP_LABELS,
+  BANG_CHI_PHI_CO_DINH,
   useLenhCat,
 } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
@@ -127,7 +128,7 @@ interface Props {
 
 
 export default function LenhCatModal({ open, onClose, editId }: Props) {
-  const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi } = useLenhCat();
+  const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
@@ -153,9 +154,8 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
       setDsMau(editing.dsMau || []);
       setDsPhuLieu(editing.dsPhuLieu || []);
       setMauCongDoan(editing.mauCongDoan || "BoTheThao");
-      setPhanCong(editing.phanCong || []);
-      setMauChiPhi(editing.mauChiPhi || "BoTheThao");
-      setChiPhiCoDinh(editing.chiPhiCoDinh || {});
+      if (editing.phanCong) setPhanCong(editing.phanCong);
+      setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
       setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
     }
   }, [editing]);
@@ -270,15 +270,11 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   });
   const [customStepName, setCustomStepName] = useState("");
 
-  const [showTaoMauCP, setShowTaoMauCP] = useState(false);
-  const [newMauCP, setNewMauCP] = useState({ id: "", ten: "", chiPhi: { baoBi: 0, temNhan: 0, khauHao: 0 } });
-
   const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
   const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || []);
   
   // Chi Phí Cố Định
-  const [mauChiPhi, setMauChiPhi] = useState<string>("BoTheThao");
-  const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>(dsMauChiPhi.find(x => x.id === "BoTheThao")?.chiPhi || {});
+  const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>({});
 
   const [draftLoaded, setDraftLoaded] = useState(false);
 
@@ -307,7 +303,6 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
           if (parsed.dsPhuLieu && parsed.dsPhuLieu.length > 0) setDsPhuLieu(parsed.dsPhuLieu);
           if (parsed.mauCongDoan) setMauCongDoan(parsed.mauCongDoan);
           if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
-          if (parsed.mauChiPhi) setMauChiPhi(parsed.mauChiPhi);
           if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
         }
       } catch (e) {
@@ -322,11 +317,11 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
       const draft = {
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
         ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu,
-        tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, mauChiPhi, chiPhiCoDinh
+        tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh
       };
       localStorage.setItem("lenhCatDraft", JSON.stringify(draft));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, mauChiPhi, chiPhiCoDinh, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -340,14 +335,11 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
   }, [dsMauCongDoan, phanCong]);
 
   useEffect(() => {
-    if (dsMauChiPhi.length > 0 && Object.keys(chiPhiCoDinh).length === 0) {
-      const defaultCP = dsMauChiPhi.find(x => x.id === "BoTheThao") || dsMauChiPhi[0];
-      if (defaultCP) {
-        setMauChiPhi(defaultCP.id);
-        setChiPhiCoDinh(defaultCP.chiPhi);
-      }
+    if (!editId) {
+      // Khi user chưa lưu nháp phần chi phí, và chuyển loaiSP -> tự động reset chi phí theo bảng
+      setChiPhiCoDinh(BANG_CHI_PHI_CO_DINH[loaiSP] || {});
     }
-  }, [dsMauChiPhi, chiPhiCoDinh]);
+  }, [loaiSP, editId]);
 
   // Cảnh báo tồn kho
   useEffect(() => {
@@ -456,7 +448,6 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         dsPhuLieu,
         mauCongDoan,
         phanCong,
-        mauChiPhi,
         chiPhiCoDinh,
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
@@ -484,7 +475,6 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
         dsPhuLieu,
         mauCongDoan,
         phanCong,
-        mauChiPhi,
         chiPhiCoDinh,
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
@@ -983,25 +973,12 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
                 <div className="bg-white/20 p-4 rounded-xl">
                   <div className="flex justify-between items-center border-b border-black/10 pb-2 mb-3">
                     <h3 className="font-bold text-slate-800">2. CHI PHÍ CỐ ĐỊNH / SẢN PHẨM</h3>
-<div className="flex items-center gap-2">
-<select 
-                      className="px-2 py-1 text-xs border rounded shadow-sm bg-white font-bold text-[#2B4C3E]"
-                      value={mauChiPhi}
-                      onChange={(e) => {
-                        setMauChiPhi(e.target.value);
-                        const m = dsMauChiPhi.find(x => x.id === e.target.value); if (m) setChiPhiCoDinh(m.chiPhi);
-                      }}
-                    >
-                      {dsMauChiPhi.map(m => <option key={m.id} value={m.id}>Bảng giá: {m.ten}</option>)}
-                    </select>
-<button type="button" onClick={() => setShowTaoMauCP(true)} className="px-2 py-1 text-xs bg-violet-600 text-white rounded font-bold hover:bg-violet-700 whitespace-nowrap shadow-sm">+ Tạo mẫu</button>
-</div>
                   </div>
                   <div className="space-y-3">
                     {Object.entries(chiPhiCoDinh).map(([key, val]) => (
                       <div key={key} className="flex justify-between items-center bg-white p-2 rounded shadow-sm">
-                        <span className="text-sm font-semibold text-slate-700">{key === "baoBi" ? "Bao Bì, Túi PE" : key === "temNhan" ? "Tem, Nhãn mác" : key === "khauHao" ? "Khấu hao máy, Điện nước" : key}</span>
-                        <input type="number" className="w-24 px-2 py-1 text-sm text-right border rounded" value={val} onChange={e => setChiPhiCoDinh(p => ({...p, [key]: parseInt(e.target.value)||0}))} />
+                        <span className="text-sm font-semibold text-slate-700">{key}</span>
+                        <input type="number" className="w-24 px-2 py-1 text-sm text-right border rounded font-mono font-bold text-[#2B4C3E]" value={val} onChange={e => setChiPhiCoDinh(p => ({...p, [key]: parseInt(e.target.value)||0}))} />
                       </div>
                     ))}
                   </div>
@@ -1169,33 +1146,6 @@ export default function LenhCatModal({ open, onClose, editId }: Props) {
     </div>
   )}
 
-  {/* Modal Tạo Mẫu Chi Phí */}
-  {showTaoMauCP && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Cố Định Mới</h3>
-        <div className="space-y-3 mb-6">
-          <div>
-            <label className="block text-sm font-bold mb-1">Tên Bảng Giá</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Bảng giá Áo Trẻ Em" value={newMauCP.ten} onChange={e => setNewMauCP(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") }))} />
-          </div>
-          {["baoBi", "temNhan", "khauHao"].map((k) => {
-            const labels: any = { baoBi: "Bao Bì, Túi PE", temNhan: "Tem, Nhãn mác", khauHao: "Khấu hao máy, Điện nước" };
-            return (
-              <div key={k} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{labels[k]}</span>
-                <input type="number" className="w-32 px-3 py-1 border rounded" placeholder="Chi phí" value={(newMauCP.chiPhi as any)[k] || ""} onChange={e => setNewMauCP(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [k]: parseInt(e.target.value) || 0 } }))} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex justify-end gap-2">
-          <button onClick={() => setShowTaoMauCP(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
-          <button onClick={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); setMauChiPhi(newMauCP.id); setChiPhiCoDinh(newMauCP.chiPhi); toast.success("Đã lưu mẫu chi phí"); }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Bảng Giá</button>
-        </div>
-      </div>
-    </div>
-  )}
 
       </div>
     </div>

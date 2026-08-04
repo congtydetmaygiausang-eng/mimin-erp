@@ -1,0 +1,8 @@
+feat(doi-tac): dong bo 20 NCC tu Excel chuan - fix SDT them 0 + ten chinh ta
+
+- SDT: them so 0 o dau (20/20 NCC, vi du 978417243 -> 0978417243)
+- tenDonVi: format chuan tu Excel (vd "Xuong in/theu/dap Hanh" -> "Xuong theu chi Hanh")
+- nganHang: viet hoa chuan (OCB, MB, ACB, BIDV, Vietcombank, Sacombank, Agribank, Techcombank, VietinBank, "TMCP Cong Thuong Viet Nam")
+- ghiChu: separator "|" thay "-"
+- diaChi: viet hoa chuan cac ten quan/huyen
+- helper parseCCCD: xu ly separator "|" + bo "---" placeholder

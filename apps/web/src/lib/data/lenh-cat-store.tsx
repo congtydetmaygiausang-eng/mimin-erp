@@ -21,6 +21,13 @@ export const LOAI_SP_LABELS: Record<LoaiSP, string> = {
   "BoCoTron": "Bộ Cổ Tròn",
 };
 
+export const BANG_CHI_PHI_CO_DINH: Record<LoaiSP, ChiPhiCoDinh> = {
+  "BoTru": { "Cắt": 1600, "Ép keo trụ": 300, "Ép nhãn": 300, "Khuy nút": 750, "Ủi": 1500, "Đóng gói": 1200, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 1500 },
+  "AoTru": { "Cắt": 900, "Ép keo trụ": 300, "Ép nhãn": 300, "Khuy nút": 750, "Ủi": 900, "Đóng gói": 700, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 0 },
+  "BoCoTron": { "Cắt": 1600, "Ép keo trụ": 0, "Ép nhãn": 300, "Khuy nút": 0, "Ủi": 1400, "Đóng gói": 700, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 1500 },
+  "AoCoTron": { "Cắt": 800, "Ép keo trụ": 0, "Ép nhãn": 300, "Khuy nút": 0, "Ủi": 800, "Đóng gói": 1300, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 0 }
+};
+
 export type TrangThaiLenhCat = "Nhap" | "DaTao" | "DangCat" | "HoanThanh" | "ChuyenTiep";
 
 export const TRANG_THAI_LC_LABELS: Record<TrangThaiLenhCat, string> = {
@@ -133,11 +140,7 @@ export type MauChiPhiItem = {
 
 const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [];
 
-const DEFAULT_MAU_CHI_PHI: MauChiPhiItem[] = [];
-
 const STORAGE_KEY_MCD = "mimin_mau_cong_doan";
-const STORAGE_KEY_MCP = "mimin_mau_chi_phi";
-
 const STORAGE_KEY = "mimin_lenh_cat_v2";
 
 export function generateLenhCatId(existing: LenhCat[]): string {
@@ -160,11 +163,8 @@ interface LenhCatStore {
   suaLenhCat: (id: string, lenh: Partial<LenhCat>, nguoiSua: AppUser) => void;
   xoaLenhCat: (id: string, nguoiXoa: AppUser) => void;
   dsMauCongDoan: MauCongDoanItem[];
-  dsMauChiPhi: MauChiPhiItem[];
   themMauCongDoan: (mau: MauCongDoanItem) => void;
-  themMauChiPhi: (mau: MauChiPhiItem) => void;
   xoaMauCongDoan: (id: string) => void;
-  xoaMauChiPhi: (id: string) => void;
   capNhatTrangThai: (id: string, tt: TrangThaiLenhCat, u: any) => void;
   reset: () => void;
 }
@@ -175,10 +175,7 @@ const DUMMY_DATA: LenhCat[] = [];
 
 export function LenhCatProvider({ children }: { children: ReactNode }) {
   const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>([]);
-
   const [dsMauCongDoan, setDsMauCongDoan] = useState<MauCongDoanItem[]>([]);
-  const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
-
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -213,10 +210,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
         setDsMauCongDoan([]);
         localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
       }
-      
-      const storedMCP = localStorage.getItem(STORAGE_KEY_MCP);
-      if (storedMCP) setDsMauChiPhi(JSON.parse(storedMCP));
-      else { setDsMauChiPhi([]); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify([])); }
+
 
     setIsLoaded(true);
   }, []);
@@ -281,19 +275,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
-  const themMauChiPhi = useCallback((mau: MauChiPhiItem) => {
-    setDsMauChiPhi(prev => {
-      const exists = prev.some(x => x.id === mau.id);
-      const next = exists ? prev.map(x => x.id === mau.id ? mau : x) : [...prev, mau];
-      localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next));
-      return next;
-    });
-  }, []);
   const xoaMauCongDoan = useCallback((id: string) => {
     setDsMauCongDoan(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(next)); return next; });
-  }, []);
-  const xoaMauChiPhi = useCallback((id: string) => {
-    setDsMauChiPhi(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
   }, []);
   const capNhatTrangThai = useCallback((id: string, tt: TrangThaiLenhCat, u: any) => {
     setDsLenhCat(prev => { const next = prev.map(x => x.id === id ? { ...x, trangThai: tt } : x); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; });
@@ -301,14 +284,13 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(() => {
     setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
-    setDsMauChiPhi([]); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify([]));
   }, []);
 
 
   if (!isLoaded) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, dsMauChiPhi, themMauCongDoan, themMauChiPhi, xoaMauCongDoan, xoaMauChiPhi, capNhatTrangThai, reset }}>
+    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, capNhatTrangThai, reset }}>
       {children}
     </LenhCatContext.Provider>
   );
