@@ -267,6 +267,7 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
 
   const updateStatus = useCallback((id: string, trangThaiMoi: TrangThaiPhieuKho, user: AppUser | null, ghiChu?: string) => {
     let phieuCu: PhieuKho | undefined;
+    let updated: PhieuKho | null = null;
     setPhieu((prev) => prev.map((p) => {
       if (p.id !== id) return p;
       phieuCu = p;
@@ -277,7 +278,7 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu,
       }];
-      return {
+      updated = {
         ...p,
         trangThai: trangThaiMoi,
         nguoiDuyet: trangThaiMoi === "Đã duyệt" ? (user?.name || user?.id) : p.nguoiDuyet,
@@ -285,6 +286,7 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
         ngayHoanThanh: trangThaiMoi === "Hoàn thành" ? new Date().toISOString().split("T")[0] : p.ngayHoanThanh,
         lichSu: lichSuMoi,
       };
+      return updated;
     }));
     // FIX BUG #4: nếu chuyển sang "Hoàn thành" → apply delta +1
     if (trangThaiMoi === "Hoàn thành" && phieuCu) {
@@ -294,11 +296,16 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
     if (phieuCu?.trangThai === "Hoàn thành" && trangThaiMoi !== "Hoàn thành") {
       applyTonDelta(phieuCu, -1);
     }
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("kho_mobile", updated as any).catch((err) =>
+        console.error("[KhoMobileStore] Supabase upsert error:", err)
+      );
+    }
   }, [applyTonDelta]);
 
   const taoPhieu = useCallback((data: Omit<PhieuKho, "id" | "ngayTao" | "trangThai" | "lichSu">, user: AppUser | null) => {
     const id = `PK-${data.loai === "nhap" ? "NK" : data.loai === "xuat" ? "XK" : "KK"}-${data.loaiKho.toUpperCase().slice(0, 4)}-${Date.now()}`;
-    setPhieu((prev) => [...prev, {
+    const newPhieu: PhieuKho = {
       ...data,
       id,
       ngayTao: new Date().toISOString().split("T")[0],
@@ -310,8 +317,14 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu: "Tạo phiếu mới",
       }],
-    }]);
+    };
+    setPhieu((prev) => [...prev, newPhieu]);
     logWorkflow(user, "create", `Tạo phiếu ${id}`, id);
+    if (isSupabaseEnabled) {
+      supabaseUpsert("kho_mobile", newPhieu as any).catch((err) =>
+        console.error("[KhoMobileStore] Supabase upsert error:", err)
+      );
+    }
     return id;
   }, []);
 
@@ -340,6 +353,11 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
       return prev.filter((p) => p.id !== id);
     });
     logWorkflow(user, "delete", `Xoá phiếu ${id}`, id);
+    if (isSupabaseEnabled) {
+      supabaseDelete("kho_mobile", id).catch((err) =>
+        console.error("[KhoMobileStore] Supabase delete error:", err)
+      );
+    }
   }, [applyTonDelta]);
 
   const reset = useCallback(() => {
