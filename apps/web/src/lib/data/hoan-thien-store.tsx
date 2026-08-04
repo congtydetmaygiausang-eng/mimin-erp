@@ -180,6 +180,7 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
   }, [banGhi, hydrated]);
 
   const updateStatus = useCallback((id: string, trangThaiMoi: TrangThaiHoanThien, user: AppUser | null, ghiChu?: string) => {
+    let updated: any = null;
     setBanGhi((prev) => prev.map((b) => {
       if (b.id !== id) return b;
       if (b.locked) return b;
@@ -190,9 +191,15 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu,
       }];
-      return { ...b, trangThai: trangThaiMoi, lichSu: lichSuMoi };
+      updated = { ...b, trangThai: trangThaiMoi, lichSu: lichSuMoi };
+      return updated;
     }));
     logWorkflow(user, "update", `Hoàn thiện ${id} → ${trangThaiMoi}`, id, { newValue: { trangThaiMoi } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+        console.error("[HoanThienStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const nhanViec = useCallback((id: string, user: AppUser | null) => {
@@ -204,13 +211,20 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
   }, [updateStatus]);
 
   const capNhatSanLuong = useCallback((id: string, slDat: number, slLoi: number, user: AppUser | null) => {
+    let updated: any = null;
     setBanGhi((prev) => prev.map((b) => {
       if (b.id !== id) return b;
       if (b.locked) return b;
       const thanhTienMoi = slDat * b.donGia;
-      return { ...b, soLuongDat: slDat, soLuongLoi: slLoi, thanhTien: thanhTienMoi };
+      updated = { ...b, soLuongDat: slDat, soLuongLoi: slLoi, thanhTien: thanhTienMoi };
+      return updated;
     }));
     logWorkflow(user, "report_progress", `Cập nhật SL ${id}`, id, { newValue: { slDat, slLoi } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+        console.error("[HoanThienStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const hoanThanh = useCallback((id: string, user: AppUser | null) => {
@@ -218,6 +232,7 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
   }, [updateStatus]);
 
   const banGiao = useCallback((id: string, user: AppUser | null) => {
+    let updated: any = null;
     setBanGhi((prev) => prev.map((b) => {
       if (b.id !== id) return b;
       if (b.locked) return b;
@@ -228,17 +243,24 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu: "Bàn giao kho thành phẩm",
       }];
-      return {
+      updated = {
         ...b,
         trangThai: "Bàn giao kho TP" as TrangThaiHoanThien,
         ngayBanGiao: new Date().toISOString().split("T")[0],
         lichSu: lichSuMoi,
       };
+      return updated;
     }));
     logWorkflow(user, "handover", `Bàn giao kho TP ${id}`, id);
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+        console.error("[HoanThienStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const baoLoi = useCallback((id: string, noiDung: string, user: AppUser | null) => {
+    let updated: any = null;
     const lichSuMoi = {
       ngay: new Date().toISOString(),
       trangThaiCu: "Đang làm" as TrangThaiHoanThien,
@@ -248,9 +270,15 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
     };
     setBanGhi((prev) => prev.map((b) => {
       if (b.id !== id) return b;
-      return { ...b, lichSu: [...(b.lichSu || []), lichSuMoi] };
+      updated = { ...b, lichSu: [...(b.lichSu || []), lichSuMoi] };
+      return updated;
     }));
     logWorkflow(user, "report_issue", `Báo lỗi ${id}`, id, { newValue: { noiDung } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+        console.error("[HoanThienStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const reset = useCallback(() => {
