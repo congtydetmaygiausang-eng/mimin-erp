@@ -1,0 +1,25 @@
+feat(cong-nhan-gia-cong): tao bang + trang + CRUD cho cong nhan gia cong du phong
+
+Phase 2: Công nhân gia công dự phòng (27 người từ file Excel "gia cong du phong.xlsx")
+
+File mới:
+- apps/web/src/lib/data/cong-nhan-gia-cong.tsx (15KB) - Store với 27 CN mặc định + CRUD + sync Supabase (camelCase)
+- apps/web/src/app/(main)/cong-nhan-gia-cong/page.tsx (27KB) - Trang quản lý với bảng + filter + CRUD modal
+- APPLY-SUPABASE-CONG-NHAN-GIA-CONG.sql (6KB) - Schema bảng cong_nhan_gia_cong (camelCase) + 27 rows + RLS
+
+Sửa:
+- apps/web/src/components/providers.tsx - Thêm CongNhanGiaCongProvider
+- apps/web/src/app/(main)/layout.tsx - Thêm /cong-nhan-gia-cong vào MODULE_CLASSES
+- apps/web/src/components/layout/Sidebar.tsx - Thêm menu item "Công nhân gia công dự phòng"
+- apps/web/src/lib/data/lenh-cat-store.tsx - Fix bug pre-existing: thêm MauChiPhi store (dsMauChiPhi, themMauChiPhi, xoaMauChiPhi) + DEFAULT_MAU_CHI_PHI empty + STORAGE_KEY_MCP
+
+Tính năng:
+- 27 công nhân gia công dự phòng từ file Excel sếp Sang cung cấp
+- Chuẩn hóa loại hàng: cổ tròn, cổ trụ, polo, thun, sơ mi, áo khoác, móc xích, váy, đa dạng
+- Trạng thái: sẵn sàng, tạm ngưng, hết việc
+- SĐT có nút gọi điện + nhắn Zalo
+- Tìm kiếm + filter theo loại + filter theo trạng thái
+- CRUD: thêm/sửa/xoá + sync Supabase (camelCase → snake_case)
+- Phân biệt rõ với /doi-tac-gia-cong (20 NCC chính thức, hợp tác ổn định)
+
+Build: 104/104 routes, /cong-nhan-gia-cong 8.42 kB

@@ -113,6 +113,7 @@ const NAV: NavItem[] = [
       { href: "/khach-hang", label: "Khách hàng", icon: Users, permModule: "khach-hang" },
       { href: "/nha-cung-cap", label: "Nhà cung cấp", icon: Building2, permModule: "nha-cung-cap" },
       { href: "/doi-tac-gia-cong", label: "Đối tác gia công", icon: Users, permModule: "nha-cung-cap" },
+      { href: "/cong-nhan-gia-cong", label: "Công nhân gia công dự phòng", icon: Hammer, permModule: "nha-cung-cap" },
       { href: "/master-data", label: "Master Data", icon: Database, permModule: "nha-cung-cap" },
     ]
   },

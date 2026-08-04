@@ -22,10 +22,10 @@ export const LOAI_SP_LABELS: Record<LoaiSP, string> = {
 };
 
 export const BANG_CHI_PHI_CO_DINH: Record<LoaiSP, ChiPhiCoDinh> = {
-  "BoTru": { "Cắt": 1600, "Ép keo trụ": 300, "Ép nhãn": 300, "Khuy nút": 750, "Ủi": 1500, "Đóng gói": 1200, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 1500 },
-  "AoTru": { "Cắt": 900, "Ép keo trụ": 300, "Ép nhãn": 300, "Khuy nút": 750, "Ủi": 900, "Đóng gói": 700, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 0 },
-  "BoCoTron": { "Cắt": 1600, "Ép keo trụ": 0, "Ép nhãn": 300, "Khuy nút": 0, "Ủi": 1400, "Đóng gói": 700, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 1500 },
-  "AoCoTron": { "Cắt": 800, "Ép keo trụ": 0, "Ép nhãn": 300, "Khuy nút": 0, "Ủi": 800, "Đóng gói": 1300, "Bao bì": 700, "Tem mác": 700, "Lưng thun": 0 }
+  "BoTru": { "Cắt": 1600, "EPKEOTRU": 300, "EPNHAN": 300, "Khuy nút": 750, "Ủi": 1500, "Đóng gói": 1200, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
+  "AoTru": { "Cắt": 900, "EPKEOTRU": 300, "EPNHAN": 300, "Khuy nút": 750, "Ủi": 900, "Đóng gói": 700, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
+  "BoCoTron": { "Cắt": 1600, "EPKEOTRU": 0, "EPNHAN": 300, "Khuy nút": 0, "Ủi": 1400, "Đóng gói": 700, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
+  "AoCoTron": { "Cắt": 800, "EPKEOTRU": 0, "EPNHAN": 300, "Khuy nút": 0, "Ủi": 800, "Đóng gói": 1300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 }
 };
 
 export type TrangThaiLenhCat = "Nhap" | "DaTao" | "DangCat" | "HoanThanh" | "ChuyenTiep";
@@ -138,9 +138,61 @@ export type MauChiPhiItem = {
   chiPhi: ChiPhiCoDinh;
 };
 
-const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [];
+const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
+  {
+    id: "MCD-AO-TRON",
+    ten: "Áo tròn",
+    giaCong: [
+      { id: "cat", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400 },
+      { id: "in_theu", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500 },
+      { id: "may_ao", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000 },
+      { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900 },
+      { id: "dong_goi", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700 }
+    ]
+  },
+  {
+    id: "MCD-AO-TRU",
+    ten: "Áo trụ",
+    giaCong: [
+      { id: "cat", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400 },
+      { id: "in_theu", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500 },
+      { id: "may_ao", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 15000 },
+      { id: "khuy_nut", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750 },
+      { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900 },
+      { id: "dong_goi", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700 }
+    ]
+  },
+  {
+    id: "MCD-BO-TRON",
+    ten: "Bộ tròn",
+    giaCong: [
+      { id: "cat", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300 },
+      { id: "in_theu", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500 },
+      { id: "may_ao", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000 },
+      { id: "may_quan", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500 },
+      { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 1500 },
+      { id: "dong_goi", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200 }
+    ]
+  },
+  {
+    id: "MCD-BO-TRU",
+    ten: "Bộ trụ",
+    giaCong: [
+      { id: "cat", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300 },
+      { id: "in_theu", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500 },
+      { id: "may_ao", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000 },
+      { id: "may_quan", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500 },
+      { id: "khuy_nut", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750 },
+      { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900 },
+      { id: "dong_goi", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200 }
+    ]
+  }
+];
+
+const DEFAULT_MAU_CHI_PHI: MauChiPhiItem[] = [];
 
 const STORAGE_KEY_MCD = "mimin_mau_cong_doan";
+const STORAGE_KEY_MCP = "mimin_mau_chi_phi";
 const STORAGE_KEY = "mimin_lenh_cat_v2";
 
 export function generateLenhCatId(existing: LenhCat[]): string {
@@ -165,6 +217,9 @@ interface LenhCatStore {
   dsMauCongDoan: MauCongDoanItem[];
   themMauCongDoan: (mau: MauCongDoanItem) => void;
   xoaMauCongDoan: (id: string) => void;
+  dsMauChiPhi: MauChiPhiItem[];
+  themMauChiPhi: (mau: MauChiPhiItem) => void;
+  xoaMauChiPhi: (id: string) => void;
   capNhatTrangThai: (id: string, tt: TrangThaiLenhCat, u: any) => void;
   reset: () => void;
 }
@@ -176,6 +231,7 @@ const DUMMY_DATA: LenhCat[] = [];
 export function LenhCatProvider({ children }: { children: ReactNode }) {
   const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>([]);
   const [dsMauCongDoan, setDsMauCongDoan] = useState<MauCongDoanItem[]>([]);
+  const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -209,6 +265,24 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       } else {
         setDsMauCongDoan([]);
         localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
+      }
+
+      const storedMCP = localStorage.getItem(STORAGE_KEY_MCP);
+      if (storedMCP) {
+        try {
+          const parsed = JSON.parse(storedMCP);
+          if (Array.isArray(parsed) && parsed.every((p: any) => p && typeof p.id === "string")) {
+            setDsMauChiPhi(parsed);
+          } else {
+            setDsMauChiPhi(DEFAULT_MAU_CHI_PHI);
+            localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(DEFAULT_MAU_CHI_PHI));
+          }
+        } catch {
+          setDsMauChiPhi([]);
+        }
+      } else {
+        setDsMauChiPhi(DEFAULT_MAU_CHI_PHI);
+        localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(DEFAULT_MAU_CHI_PHI));
       }
 
 
@@ -278,6 +352,17 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const xoaMauCongDoan = useCallback((id: string) => {
     setDsMauCongDoan(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(next)); return next; });
   }, []);
+  const themMauChiPhi = useCallback((mau: MauChiPhiItem) => {
+    setDsMauChiPhi(prev => {
+      const exists = prev.some(x => x.id === mau.id);
+      const next = exists ? prev.map(x => x.id === mau.id ? mau : x) : [...prev, mau];
+      localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const xoaMauChiPhi = useCallback((id: string) => {
+    setDsMauChiPhi(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
+  }, []);
   const capNhatTrangThai = useCallback((id: string, tt: TrangThaiLenhCat, u: any) => {
     setDsLenhCat(prev => { const next = prev.map(x => x.id === id ? { ...x, trangThai: tt } : x); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; });
   }, []);
@@ -290,7 +375,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   if (!isLoaded) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, capNhatTrangThai, reset }}>
+    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, reset }}>
       {children}
     </LenhCatContext.Provider>
   );

@@ -18,6 +18,7 @@ import { KhoMobileProvider } from "@/lib/data/kho-mobile-store";
 import { QCProvider } from "@/lib/data/qc-store";
 import { LenhCatProvider } from "@/lib/data/lenh-cat-store";
 import { DanhMucSPProvider } from "@/lib/data/danh-muc-sp-store";
+import { CongNhanGiaCongProvider } from "@/lib/data/cong-nhan-gia-cong";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -48,33 +49,35 @@ export function Providers({ children }: { children: React.ReactNode }) {
                           <QCProvider>
                             <LenhCatProvider>
                               <DanhMucSPProvider>
-                                <NotificationProvider>
-                                  <ErrorBoundary>
-                                {children}
-                              </ErrorBoundary>
-                              <PWAInstallPrompt />
-                              <Toaster
-                                position="top-right"
-                                richColors
-                                closeButton
-                                toastOptions={{
-                                  duration: 3000,
-                                }}
-                              />
-                                </NotificationProvider>
+                                <CongNhanGiaCongProvider>
+                                  <NotificationProvider>
+                                    <ErrorBoundary>
+                                      {children}
+                                      <PWAInstallPrompt />
+                                      <Toaster
+                                        position="top-right"
+                                        richColors
+                                        closeButton
+                                        toastOptions={{
+                                          duration: 3000,
+                                        }}
+                                      />
+                                    </ErrorBoundary>
+                                  </NotificationProvider>
+                                </CongNhanGiaCongProvider>
                               </DanhMucSPProvider>
                             </LenhCatProvider>
                           </QCProvider>
-                      </KhoMobileProvider>
-                    </HoanThienProvider>
-                  </DoiSoatProvider>
-                </GiaoHangProvider>
-              </KHSXProvider>
-            </GiaCongProvider>
-          </KhoProvider>
-        </PhanCongProvider>
-      </SessionProvider>
-    </QueryClientProvider>
-  </ThemeProvider>
+                        </KhoMobileProvider>
+                      </HoanThienProvider>
+                    </DoiSoatProvider>
+                  </GiaoHangProvider>
+                </KHSXProvider>
+              </GiaCongProvider>
+            </KhoProvider>
+          </PhanCongProvider>
+        </SessionProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

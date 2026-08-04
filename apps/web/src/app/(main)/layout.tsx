@@ -12,6 +12,7 @@ const MODULE_CLASSES: Record<string, string> = {
   "/nhan-su": "bg-module-nhan-su",
   "/nha-cung-cap": "bg-module-nha-cung-cap",
   "/doi-tac-gia-cong": "bg-module-doi-tac-gia-cong",
+  "/cong-nhan-gia-cong": "bg-module-doi-tac-gia-cong",
   "/kho-vai-tinhmann": "bg-module-kho",
   "/kho-phu-lieu": "bg-module-kho",
 };
