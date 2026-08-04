@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase, DEMO_USERS, isSupabaseEnabled } from "@/lib/supabase/client";
+import { supabase, DEMO_USERS, isSupabaseEnabled, supabaseUpsert, supabaseFetchAll } from "@/lib/supabase/client";
 import { findUserByEmail } from "@/lib/users";
 import { checkRateLimit, recordLoginFailure, clearLoginFailures, getSessionWithTTL, clearSession, createSessionWithTTL } from "@/lib/security";
 import { is2FAEnabled, generate2FACode, verify2FACode } from "@/lib/two-factor";
@@ -15,6 +15,10 @@ export type AppUser = {
   role: string;
   title: string;
   source: "supabase" | "demo";
+  maNV?: string;
+  phongBan?: string;
+  donGia?: number;
+  laCongNhan?: boolean;
 };
 
 type SessionContextValue = {
@@ -130,10 +134,40 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             role,
             title: titles[role] || role,
             source: "supabase",
+            maNV: userMeta.maNV as string | undefined,
+            phongBan: userMeta.phongBan as string | undefined,
+            donGia: userMeta.donGia as number | undefined,
+            laCongNhan: userMeta.laCongNhan as boolean | undefined,
           };
           setUser(u);
           setAuthSource("supabase");
           localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+          clearLoginFailures(email);
+
+          // Auto-sync profile vao bang users trong Supabase (neu chua co)
+          if (u.maNV) {
+            try {
+              const existing = await supabaseFetchAll<{ id: string }>("users");
+              const hasProfile = existing.some((p) => p.id === u.id);
+              if (!hasProfile) {
+                await supabaseUpsert("users", {
+                  id: u.id,
+                  email: u.email,
+                  maNV: u.maNV,
+                  name: u.name,
+                  role: u.role,
+                  chucVu: u.title,
+                  phongBan: u.phongBan || "khac",
+                  donGia: u.donGia || 0,
+                  laCongNhan: u.laCongNhan ?? false,
+                  isActive: true,
+                });
+                console.log(`[session] Synced user ${u.email} to Supabase users table`);
+              }
+            } catch (syncErr) {
+              console.warn("[session] Failed to sync user profile to Supabase:", syncErr);
+            }
+          }
           return { ok: true };
         }
         if (error?.message?.includes("Invalid login")) {
