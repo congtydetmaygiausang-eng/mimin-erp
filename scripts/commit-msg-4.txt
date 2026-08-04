@@ -1,0 +1,21 @@
+feat(bang-luong): Sprint 3 - use-bang-luong fetch tu Supabase + Sprint 2 push 9 store
+
+Phase Sprint 2+3 (audit 2026-08-05 fix):
+- Sprint 2: Them Supabase sync cho 9 store (commit truoc)
+  + doi-soat-store (7 methods)
+  + gia-cong-store (4 methods)
+  + giao-hang-store (4 methods)
+  + hoan-thien-store (4 methods)
+  + kho-mobile-store (3 methods)
+  + khsx-store (5 methods)
+  + qc-store (3 methods)
+  + danh-muc-sp-store (3 methods)
+- Sprint 3: Update use-bang-luong fetch tu Supabase
+  + Strategy: Supabase first, fallback localStorage
+  + Lay data tu 5 bang: phan_cong, doi_soat, qc_records, khsx, hoan_thien
+  + Converter functions: phanCongToWorkflow, doiSoatToWorkflow, qcToWorkflow, khsxToWorkflow, hoanThienToWorkflow
+  + Them field "source" de debug: supabase | localStorage | empty
+  + Them key moi: mimin_phan_cong_v1 (fix tu Sprint 1)
+
+Build: TypeScript clean, 104/104 routes
+Tong cong: 41 methods CRUD, 8 co sync truoc -> 38/41 co sync (92.7%)
