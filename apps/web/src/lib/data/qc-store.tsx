@@ -149,6 +149,7 @@ export function QCProvider({ children }: { children: ReactNode }) {
   }, [banGhi, hydrated]);
 
   const updateStatus = useCallback((id: string, trangThaiMoi: TrangThaiQC, user: AppUser | null, ghiChu?: string) => {
+    let updated: any = null;
     setBanGhi((prev) => prev.map((b) => {
       if (b.id !== id) return b;
       const lichSuMoi = [...(b.lichSu || []), {
@@ -158,7 +159,7 @@ export function QCProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu,
       }];
-      return {
+      updated = {
         ...b,
         trangThai: trangThaiMoi,
         nguoiKiem: user?.name || user?.id,
@@ -166,7 +167,13 @@ export function QCProvider({ children }: { children: ReactNode }) {
         ngayHoanThanh: trangThaiMoi === "Đạt" ? new Date().toISOString().split("T")[0] : b.ngayHoanThanh,
         lichSu: lichSuMoi,
       };
+      return updated;
     }));
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("qc_records", updated as any).catch((err) =>
+        console.error("[QCStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const nhanKiem = useCallback((id: string, user: AppUser | null) => {
@@ -175,6 +182,7 @@ export function QCProvider({ children }: { children: ReactNode }) {
   }, [updateStatus]);
 
   const dat = useCallback((id: string, slDat: number, slLoi: number, ghiChu: string | undefined, user: AppUser | null) => {
+    let updated: any = null;
     setBanGhi((prev) => prev.map((b) => {
       if (b.id !== id) return b;
       const tiLe = slDat + slLoi > 0 ? Math.round((slDat / (slDat + slLoi)) * 100) : 100;
@@ -185,7 +193,7 @@ export function QCProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu,
       }];
-      return {
+      updated = {
         ...b,
         soLuongKiem: slDat + slLoi,
         soLuongDat: slDat,
@@ -196,11 +204,18 @@ export function QCProvider({ children }: { children: ReactNode }) {
         ngayHoanThanh: new Date().toISOString().split("T")[0],
         lichSu: lichSuMoi,
       };
+      return updated;
     }));
     logWorkflow(user, "approve", `QC duyệt ${id}`, id, { newValue: { slDat, slLoi } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("qc_records", updated as any).catch((err) =>
+        console.error("[QCStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const baoLoi = useCallback((id: string, loi: LoiQC[], ghiChu: string | undefined, user: AppUser | null) => {
+    let updated: any = null;
     setBanGhi((prev) => prev.map((b) => {
       if (b.id !== id) return b;
       const lichSuMoi = [...(b.lichSu || []), {
@@ -210,9 +225,15 @@ export function QCProvider({ children }: { children: ReactNode }) {
         nguoiThucHien: user?.name || user?.id || "unknown",
         ghiChu,
       }];
-      return { ...b, loi, trangThai: "Có lỗi", lichSu: lichSuMoi };
+      updated = { ...b, loi, trangThai: "Có lỗi", lichSu: lichSuMoi };
+      return updated;
     }));
     logWorkflow(user, "report_issue", `QC báo lỗi ${id}`, id, { newValue: { soLoi: loi.length } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("qc_records", updated as any).catch((err) =>
+        console.error("[QCStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const xuLyLoi = useCallback((id: string, user: AppUser | null) => {
