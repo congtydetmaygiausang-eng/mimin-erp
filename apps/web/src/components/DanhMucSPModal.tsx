@@ -7,6 +7,7 @@ import { AIMockupModal } from "@/components/AIMockupModal";
 import { useDanhMucSP, type SanPham, type MauTieuChuan, type BangSize } from "@/lib/data/danh-muc-sp-store";
 import { type LoaiSP, LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { SIZE_RATIO_5SIZE } from "@/lib/size-ratio-presets";
+import BangSizeInput from "@/components/BangSizeInput";
 
 interface Props {
   open: boolean;
@@ -159,52 +160,15 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
 
         <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6">
           {/* BẢNG SIZE - Ở TRÊN CÙNG cho dễ thấy */}
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-5 rounded-lg border-2 border-blue-300 shadow-sm">
-             <h3 className="text-lg font-bold text-blue-700 uppercase tracking-wide mb-4 border-b-2 border-blue-200 pb-2 flex items-center gap-2">
-               <span className="text-2xl">📐</span>
-               BẢNG SIZE (M, L, XL, 2XL, 3XL) <span className="text-xs font-normal text-blue-500">← ở trên cùng để dễ thấy</span>
-             </h3>
-             <div className="grid grid-cols-5 gap-3 mb-3">
-               {bangSize.sizes.map((size, idx) => (
-                 <div key={size} className="text-center">
-                   <label className="text-xs font-bold text-slate-600 uppercase block mb-1">{size}</label>
-                   <input
-                     type="number"
-                     min="0"
-                     className="w-full px-2 py-3 border-2 border-blue-300 rounded text-center font-bold text-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                     value={bangSize.ratios[idx]}
-                     onChange={(e) => {
-                       const n = [...bangSize.ratios] as [number, number, number, number, number];
-                       n[idx] = Number(e.target.value) || 0;
-                       const riSo = n.reduce((a, b) => a + b, 0);
-                       setBangSize({ ...bangSize, ratios: n, riSo });
-                       setTiLeSize(n.join(":"));
-                     }}
-                   />
-                 </div>
-               ))}
-             </div>
-             <div className="flex flex-wrap items-center gap-2">
-               <div className="px-3 py-1.5 bg-white border-2 border-blue-300 rounded-lg shadow-sm">
-                 <span className="text-xs font-semibold text-blue-600 block">TỈ LỆ</span>
-                 <span className="font-mono font-bold text-blue-900 text-lg">{bangSize.ratios.join(":")}</span>
-               </div>
-               <div className="px-3 py-1.5 bg-white border-2 border-emerald-300 rounded-lg shadow-sm">
-                 <span className="text-xs font-semibold text-emerald-600 block">RÌ (1 RI = )</span>
-                 <span className="font-mono font-bold text-emerald-900 text-lg">{bangSize.riSo} SP</span>
-               </div>
-               {bangSize.riSo > 0 && (
-                 <div className="px-3 py-1.5 bg-white border-2 border-amber-300 rounded-lg shadow-sm">
-                   <span className="text-xs font-semibold text-amber-600 block">VD 100 SP = {Math.floor(100 / bangSize.riSo)} rì</span>
-                   <span className="text-[10px] text-amber-700">
-                     (M:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[0])}, L:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[1])}, XL:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[2])}, 2XL:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[3])}, 3XL:{Math.floor((100 / bangSize.riSo) * bangSize.ratios[4])})
-                   </span>
-                 </div>
-               )}
-             </div>
-             <p className="text-xs text-blue-700 mt-3 italic font-semibold">
-               💡 Mỗi màu trong Bảng Màu bên dưới sẽ áp dụng tỉ lệ này. Khi tạo lệnh cắt → hệ thống tự tính SL từng size.
-             </p>
+          <div className="mb-2">
+             <BangSizeInput 
+                ratios={bangSize.ratios}
+                onChange={(n) => {
+                   const riSo = n.reduce((a, b) => a + b, 0);
+                   setBangSize({ ...bangSize, ratios: n, riSo });
+                   setTiLeSize(n.join(":"));
+                }}
+             />
           </div>
 
           <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
