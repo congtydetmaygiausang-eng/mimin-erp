@@ -25,6 +25,7 @@ import {
   ImagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { normalizeEmployeeRecord } from "@/lib/employee-records";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { Avatar } from "@/components/Avatar";
@@ -39,29 +40,7 @@ async function loadEmployeesFromSupabase() {
     throw new Error("Không thể tải danh sách nhân sự từ Supabase");
   }
   const data = await response.json();
-  return (data.records || []).map((record: any) => ({
-    ...record,
-    stt: Number(record.stt || 0),
-    maNV: record.ma_nv || record.maNV,
-    hoTen: record.ho_ten || record.hoTen,
-    boPhan: record.bo_phan || record.boPhan,
-    chucVu: record.chuc_vu || record.chucVu,
-    sdt: record.sdt,
-    email: record.email,
-    luongCung: Number(record.luong_cung || record.luongCung || 0),
-    rating: Number(record.rating || 4),
-    trangThai: record.trang_thai || record.trangThai || "dang_lam",
-    avatar: record.avatar_url || record.avatar,
-    cccdFrontImage: record.cccd_front_url || record.cccdFrontImage,
-    cccdBackImage: record.cccd_back_url || record.cccdBackImage,
-    ngaySinh: record.ngay_sinh || record.ngaySinh,
-    gioiTinh: record.gioi_tinh || record.gioiTinh,
-    cccd: record.cccd,
-    diaChiTT: record.dia_chi_tt || record.diaChiTT,
-    diaChiTamTru: record.dia_chi_tam_tru || record.diaChiTamTru,
-    ngayVao: record.ngay_vao || record.ngayVao,
-    taiKhoan: record.tai_khoan || record.taiKhoan,
-  })) as NhanSuExt[];
+  return (data.records || []).map((record: any) => normalizeEmployeeRecord(record) as NhanSuExt);
 }
 
 export default function NhanSuPage() {
@@ -146,10 +125,20 @@ export default function NhanSuPage() {
     setShowForm(null);
   }, [showForm]);
 
-  const handleDelete = useCallback((nv: NhanSuExt) => {
-    if (confirm(`Xoá NV "${nv.hoTen}"?`)) {
+  const handleDelete = useCallback(async (nv: NhanSuExt) => {
+    if (!confirm(`Xoá NV "${nv.hoTen}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/employee-records?maNV=${encodeURIComponent(nv.maNV || "")}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
       setList((prev) => prev.filter((x) => x.maNV !== nv.maNV));
       toast.success(`Đã xoá: ${nv.hoTen}`);
+    } catch (error) {
+      console.error("delete employee failed", error);
+      toast.error(error instanceof Error ? error.message : "Không thể xoá nhân sự khỏi Supabase");
     }
   }, []);
 

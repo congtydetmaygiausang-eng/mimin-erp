@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { toSupabaseEmployeeRecord } from "@/lib/employee-records";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
@@ -26,7 +27,7 @@ export async function GET() {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: "Supabase service role chưa cấu hình" }, { status: 500 });
@@ -36,7 +37,13 @@ export async function DELETE() {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { error } = await supabase.from("nhan_su").delete().neq("ma_nv", "");
+    const { searchParams } = new URL(request.url);
+    const maNV = searchParams.get("maNV");
+
+    const { error } = maNV
+      ? await supabase.from("nhan_su").delete().eq("ma_nv", maNV)
+      : await supabase.from("nhan_su").delete().neq("ma_nv", "");
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -59,28 +66,7 @@ export async function POST(request: NextRequest) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const record = {
-      stt: Number(payload.stt || 0),
-      ma_nv: payload.maNV,
-      ho_ten: payload.hoTen,
-      bo_phan: payload.boPhan,
-      chuc_vu: payload.chucVu,
-      sdt: payload.sdt,
-      email: payload.email || null,
-      luong_cung: Number(payload.luongCung || 0),
-      rating: Number(payload.rating || 4),
-      trang_thai: payload.trangThai || "dang_lam",
-      avatar_url: payload.avatar || null,
-      cccd_front_url: payload.cccdFrontImage || null,
-      cccd_back_url: payload.cccdBackImage || null,
-      ngay_sinh: payload.ngaySinh || null,
-      gioi_tinh: payload.gioiTinh || null,
-      cccd: payload.cccd || null,
-      dia_chi_tt: payload.diaChiTT || null,
-      dia_chi_tam_tru: payload.diaChiTamTru || null,
-      ngay_vao: payload.ngayVao || null,
-      tai_khoan: payload.taiKhoan || null,
-    };
+    const record = toSupabaseEmployeeRecord(payload);
 
     const { error } = await supabase.from("nhan_su").upsert(record, { onConflict: "ma_nv" });
     if (error) {
