@@ -14,6 +14,7 @@ import {
   type UserAccount, type PhongBan,
 } from "@/lib/user-accounts";
 import { ROLE_LABELS } from "@/lib/permissions";
+import UserProfileModal from "@/components/UserProfileModal";
 
 const PHONG_BAN_OPTIONS: PhongBan[] = [
   "ban-giam-doc", "ke-toan", "mua-hang", "kho-soi", "xuong-det",
@@ -30,6 +31,7 @@ export default function QuanLyTaiKhoanPage() {
   const [filterPhongBan, setFilterPhongBan] = useState<string>("Tất cả");
   const [filterStatus, setFilterStatus] = useState<string>("Tất cả");
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+  const [viewProfile, setViewProfile] = useState<UserAccount | null>(null);
 
   const refresh = () => setList(getAllAccounts());
 
@@ -176,8 +178,16 @@ export default function QuanLyTaiKhoanPage() {
                 </div>
                 <div className="flex flex-col gap-1 shrink-0">
                   <button
+                    onClick={() => setViewProfile(a)}
+                    className="text-xs px-2 py-1 rounded bg-cyan-500 text-white"
+                    title="Xem profile"
+                  >
+                    <Eye className="w-3 h-3" />
+                  </button>
+                  <button
                     onClick={() => setEditing(a)}
                     className="text-xs px-2 py-1 rounded bg-blue-500 text-white"
+                    title="Sửa"
                   >
                     <Edit className="w-3 h-3" />
                   </button>
@@ -228,6 +238,25 @@ export default function QuanLyTaiKhoanPage() {
           ))
         )}
       </div>
+
+      {/* Profile modal (B+) */}
+      <UserProfileModal
+        open={!!viewProfile}
+        onClose={() => setViewProfile(null)}
+        account={viewProfile}
+        onEdit={(a) => {
+          setViewProfile(null);
+          setEditing(a);
+        }}
+        onToggleLock={(id) => {
+          const r = toggleAccountStatus(id, user);
+          if (r.ok) {
+            toast.success(r.message);
+            refresh();
+            setViewProfile(null);
+          } else toast.error(r.message);
+        }}
+      />
 
       {/* Edit modal */}
       {editing && (
