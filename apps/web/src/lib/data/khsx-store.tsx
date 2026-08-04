@@ -94,20 +94,41 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     };
     setKHSX((prev) => [newKHSX, ...prev]);
     logWorkflow(user, "create", k.maKHSX, newKHSX.id);
+    if (isSupabaseEnabled) {
+      supabaseUpsert("khsx", newKHSX as any).catch((err) =>
+        console.error("[KHSXStore] Supabase upsert error:", err)
+      );
+    }
     return newKHSX;
   }, []);
 
   const suaKHSX = useCallback((id: string, patch: Partial<KHSX>, user: AppUser | null) => {
-    setKHSX((prev) => prev.map((k) => (k.id === id ? { ...k, ...patch } : k)));
+    let updated: KHSX | null = null;
+    setKHSX((prev) => prev.map((k) => {
+      if (k.id !== id) return k;
+      updated = { ...k, ...patch };
+      return updated;
+    }));
     logWorkflow(user, "update", `KHSX ${id}`, id, { newValue: patch });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("khsx", updated as any).catch((err) =>
+        console.error("[KHSXStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const xoaKHSX = useCallback((id: string, user: AppUser | null) => {
     setKHSX((prev) => prev.filter((k) => k.id !== id));
     logWorkflow(user, "delete", `KHSX ${id}`, id);
+    if (isSupabaseEnabled) {
+      supabaseDelete("khsx", id).catch((err) =>
+        console.error("[KHSXStore] Supabase delete error:", err)
+      );
+    }
   }, []);
 
   const capNhatTienDo = useCallback((id: string, soLuongHT: number, user: AppUser | null) => {
+    let updated: KHSX | null = null;
     setKHSX((prev) =>
       prev.map((k) => {
         if (k.id !== id) return k;
@@ -121,22 +142,48 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
           const today = new Date();
           if (new Date(k.denNgay) < today) trangThai = "Trễ hạn";
         }
-        return { ...k, daHoanThanh: daHT, trangThai };
+        updated = { ...k, daHoanThanh: daHT, trangThai };
+        return updated;
       })
     );
     logWorkflow(user, "update", `KHSX ${id}`, id, { newValue: { soLuongHT } });
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("khsx", updated as any).catch((err) =>
+        console.error("[KHSXStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const batDauSX = useCallback((id: string, user: AppUser | null) => {
-    setKHSX((prev) => prev.map((k) => (k.id === id ? { ...k, trangThai: "Đang SX" } : k)));
+    let updated: KHSX | null = null;
+    setKHSX((prev) => prev.map((k) => {
+      if (k.id !== id) return k;
+      updated = { ...k, trangThai: "Đang SX" };
+      return updated;
+    }));
     logWorkflow(user, "start", `KHSX ${id}`, id);
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("khsx", updated as any).catch((err) =>
+        console.error("[KHSXStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const hoanThanh = useCallback((id: string, user: AppUser | null) => {
+    let updated: KHSX | null = null;
     setKHSX((prev) =>
-      prev.map((k) => (k.id === id ? { ...k, trangThai: "Hoàn thành", daHoanThanh: k.soLuong } : k))
+      prev.map((k) => {
+        if (k.id !== id) return k;
+        updated = { ...k, trangThai: "Hoàn thành", daHoanThanh: k.soLuong };
+        return updated;
+      })
     );
     logWorkflow(user, "approve", `KHSX ${id}`, id);
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("khsx", updated as any).catch((err) =>
+        console.error("[KHSXStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const reset = useCallback(() => {
