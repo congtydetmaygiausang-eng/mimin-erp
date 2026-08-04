@@ -1,0 +1,22 @@
+fix(sprint-1): fix 3 critical bugs trong cong-no-store + bang-luong-engine
+
+Phase 1: Fix critical bugs (Sprint 1 theo audit 2026-08-05)
+
+File sua:
+- apps/web/src/lib/data/cong-no-store.tsx
+  + STORAGE_KEY: "mimin_phanCong_v1" (camelCase, sai format)
+                -> "mimin_phan_cong_v1" (snake_case, khop convention)
+  + supabaseDelete: "cong_no" (bang khong ton tai)
+                   -> "phan_cong" (bang that trong DB)
+  + themThanhToan: them supabaseUpsert (truoc do chi luu localStorage)
+  + themPhanCong: them supabaseUpsert (truoc do chi luu localStorage)
+  + capNhatPhanCong: them supabaseUpsert (truoc do chi luu localStorage)
+  + xoaPhanCong: doi log prefix tu "[Store]" -> "[PhanCongStore]"
+  + Tat ca CRUD methods gio co sync Supabase (silent fail da fix)
+
+- apps/web/src/lib/bang-luong-engine.ts
+  + ngayTra: fix bug khi thang = 12 (cu: "2026-13-05", moi: "2027-01-05")
+  + them bien nextThang, nextNam de handle rollover nam
+
+Build: TypeScript clean, 104/104 routes OK
+Audit: tong 41 methods CRUD, 8 co sync truoc -> 12 co sync (them 4 tu cong-no-store)

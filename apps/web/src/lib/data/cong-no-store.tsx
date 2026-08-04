@@ -52,39 +52,65 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
   }, [phanCong, hydrated]);
 
   const themThanhToan = useCallback((id: string, soTien: number, ghiChu?: string) => {
+    let updated: PhanCongCongDoan | null = null;
     setPhanCong((prev) =>
       prev.map((p) => {
         if (p.id !== id) return p;
         const newDaTT = p.daThanhToan + soTien;
         const thanhTien = p.donGiaGiao * p.soLuongGiao;
         const newTrangThai = newDaTT >= thanhTien ? "Đã thanh toán" : p.trangThai;
-        return {
+        updated = {
           ...p,
           daThanhToan: newDaTT,
           trangThai: newTrangThai,
           ghiChu: ghiChu ? `${p.ghiChu ? p.ghiChu + " | " : ""}${new Date().toLocaleDateString("vi-VN")}: +${soTien.toLocaleString()}đ ${ghiChu}` : p.ghiChu,
         };
+        return updated;
       })
     );
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("phan_cong", updated as any).catch((err) =>
+        console.error("[PhanCongStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const themPhanCong = useCallback((pc: Omit<PhanCongCongDoan, "id">) => {
+    let newRow: PhanCongCongDoan | null = null;
     setPhanCong((prev) => {
       const nextNum = prev.length + 1;
       const newId = `PC-${pc.lenhCatId.replace("LC-", "")}-${String(nextNum).padStart(2, "0")}`;
-      return [...prev, { ...pc, id: newId }];
+      newRow = { ...pc, id: newId };
+      return [...prev, newRow];
     });
+    if (isSupabaseEnabled && newRow) {
+      supabaseUpsert("phan_cong", newRow as any).catch((err) =>
+        console.error("[PhanCongStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const capNhatPhanCong = useCallback((id: string, patch: Partial<PhanCongCongDoan>) => {
-    setPhanCong((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    let updated: PhanCongCongDoan | null = null;
+    setPhanCong((prev) => prev.map((p) => {
+      if (p.id === id) {
+        updated = { ...p, ...patch };
+        return updated;
+      }
+      return p;
+    }));
+    if (isSupabaseEnabled && updated) {
+      supabaseUpsert("phan_cong", updated as any).catch((err) =>
+        console.error("[PhanCongStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const xoaPhanCong = useCallback((id: string) => {
     setPhanCong((prev) => prev.filter((p) => p.id !== id));
     if (isSupabaseEnabled) {
-      supabaseDelete("cong_no", id).catch((err) =>
-        console.error("[Store] Supabase delete error:", err)
+      supabaseDelete("phan_cong", id).catch((err) =>
+        console.error("[PhanCongStore] Supabase delete error:", err)
       );
     }
   }, []);

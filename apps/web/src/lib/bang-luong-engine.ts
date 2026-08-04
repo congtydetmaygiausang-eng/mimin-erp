@@ -112,8 +112,10 @@ export function tinhBangLuongThang(
     const thucNhanSP = Math.max(0, tienCong - phatLoi - phatTreHan + thuongVuot);
     const thucNhan = isLuongSP ? thucNhanSP : luongCung;
 
-    // Ngày trả: ngày 5 tháng sau
-    const ngayTra = `${nam}-${String(thang + 1).padStart(2, "0")}-05`;
+    // Ngày trả: ngày 5 tháng sau (handle rollover năm khi thang = 12)
+    const nextThang = thang === 12 ? 1 : thang + 1;
+    const nextNam = thang === 12 ? nam + 1 : nam;
+    const ngayTra = `${nextNam}-${String(nextThang).padStart(2, "0")}-05`;
 
     result.push({
       maNV: nv.ma,
