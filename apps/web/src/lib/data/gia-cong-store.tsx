@@ -143,37 +143,62 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
   }, [data, hydrated]);
 
   const nhanViec = useCallback((taskId: string, user: AppUser | null) => {
-    setData((d) => ({
-      ...d,
-      taskStates: {
-        ...d.taskStates,
-        [taskId]: { ...d.taskStates[taskId], trangThai: "Đang làm", ngayNhan: new Date().toISOString().split("T")[0] },
-      },
-    }));
+    let updatedState: any = null;
+    setData((d) => {
+      updatedState = { ...d.taskStates[taskId], trangThai: "Đang làm", ngayNhan: new Date().toISOString().split("T")[0] };
+      return {
+        ...d,
+        taskStates: {
+          ...d.taskStates,
+          [taskId]: updatedState,
+        },
+      };
+    });
     logWorkflow(user, "receive", taskId, taskId);
+    if (isSupabaseEnabled && updatedState) {
+      supabaseUpsert("gia_cong", { id: taskId, ...updatedState } as any).catch((err) =>
+        console.error("[GiaCongStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const batDauLam = useCallback((taskId: string, user: AppUser | null) => {
-    setData((d) => ({
-      ...d,
-      taskStates: {
-        ...d.taskStates,
-        [taskId]: { ...d.taskStates[taskId], trangThai: "Đang làm" },
-      },
-    }));
+    let updatedState: any = null;
+    setData((d) => {
+      updatedState = { ...d.taskStates[taskId], trangThai: "Đang làm" };
+      return {
+        ...d,
+        taskStates: {
+          ...d.taskStates,
+          [taskId]: updatedState,
+        },
+      };
+    });
     logWorkflow(user, "start", taskId, taskId);
+    if (isSupabaseEnabled && updatedState) {
+      supabaseUpsert("gia_cong", { id: taskId, ...updatedState } as any).catch((err) =>
+        console.error("[GiaCongStore] Supabase upsert error:", err)
+      );
+    }
   }, []);
 
   const capNhatSanLuong = useCallback(
     (taskId: string, sl: { soLuongDat: number; soLuongLoi: number; soLuongThieu?: number; ghiChu?: string }, user: AppUser | null) => {
       const ts = Date.now();
       const id = `SL-${taskId}-${ts}`;
+      let updatedState: any = null;
       setData((d) => {
         // Tính tổng SL đạt/lỗi từ các update trước
         const oldUpdates = d.sanLuongUpdates.filter((u) => u.taskId === taskId);
         const totalDat = oldUpdates.reduce((s, u) => s + u.soLuongDat, 0) + sl.soLuongDat;
         const totalLoi = oldUpdates.reduce((s, u) => s + u.soLuongLoi, 0) + sl.soLuongLoi;
         const totalThieu = oldUpdates.reduce((s, u) => s + u.soLuongThieu, 0) + (sl.soLuongThieu || 0);
+        updatedState = {
+          ...d.taskStates[taskId],
+          soLuongDat: totalDat,
+          soLuongLoi: totalLoi,
+          soLuongThieu: totalThieu,
+        };
         return {
           ...d,
           sanLuongUpdates: [
@@ -191,18 +216,18 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
           ],
           taskStates: {
             ...d.taskStates,
-            [taskId]: {
-              ...d.taskStates[taskId],
-              soLuongDat: totalDat,
-              soLuongLoi: totalLoi,
-              soLuongThieu: totalThieu,
-            },
+            [taskId]: updatedState,
           },
         };
       });
       logWorkflow(user, "report_progress", taskId, taskId, {
         newValue: { soLuongDat: sl.soLuongDat, soLuongLoi: sl.soLuongLoi },
       });
+      if (isSupabaseEnabled && updatedState) {
+        supabaseUpsert("gia_cong", { id: taskId, ...updatedState } as any).catch((err) =>
+          console.error("[GiaCongStore] Supabase upsert error:", err)
+        );
+      }
     },
     []
   );
@@ -212,33 +237,42 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
       const ts = Date.now();
       const id = `BG-${taskId}-${ts}`;
       const ngayBanGiao = new Date().toISOString().split("T")[0];
-      setData((d) => ({
-        ...d,
-        banGiaoRecords: [
-          ...d.banGiaoRecords,
-          {
-            id, taskId, ngayBanGiao,
-            soLuongBanGiao: bg.soLuongBanGiao,
-            nguoiBanGiao: user?.id || "unknown",
-            nguoiNhan: bg.nguoiNhan,
-            ghiChu: bg.ghiChu,
-            ts,
+      let updatedState: any = null;
+      setData((d) => {
+        updatedState = {
+          ...d.taskStates[taskId],
+          trangThai: "Hoàn thành",
+          ngayHoanThanh: ngayBanGiao,
+          nguoiXacNhan: bg.nguoiNhan || user?.name,
+          soLuongNhan: bg.soLuongBanGiao,
+        };
+        return {
+          ...d,
+          banGiaoRecords: [
+            ...d.banGiaoRecords,
+            {
+              id, taskId, ngayBanGiao,
+              soLuongBanGiao: bg.soLuongBanGiao,
+              nguoiBanGiao: user?.id || "unknown",
+              nguoiNhan: bg.nguoiNhan,
+              ghiChu: bg.ghiChu,
+              ts,
+            },
+          ],
+          taskStates: {
+            ...d.taskStates,
+            [taskId]: updatedState,
           },
-        ],
-        taskStates: {
-          ...d.taskStates,
-          [taskId]: {
-            ...d.taskStates[taskId],
-            trangThai: "Hoàn thành",
-            ngayHoanThanh: ngayBanGiao,
-            nguoiXacNhan: bg.nguoiNhan || user?.name,
-            soLuongNhan: bg.soLuongBanGiao,
-          },
-        },
-      }));
+        };
+      });
       logWorkflow(user, "handover", taskId, taskId, {
         newValue: { soLuongBanGiao: bg.soLuongBanGiao, nguoiNhan: bg.nguoiNhan },
       });
+      if (isSupabaseEnabled && updatedState) {
+        supabaseUpsert("gia_cong", { id: taskId, ...updatedState } as any).catch((err) =>
+          console.error("[GiaCongStore] Supabase upsert error:", err)
+        );
+      }
     },
     []
   );
