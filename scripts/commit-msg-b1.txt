@@ -1,0 +1,12 @@
+perf(soi-det-nhuom-erp): B.1 - Tach page 55.5KB thanh 7 file gon, route 56KB -> 10.2kB
+
+- Tao data.ts (1.6KB) - Screen type + SCREENS array 14 screen
+- Tao components/ui-blocks.tsx (2.4KB) - Stat, Field, FormulaBlock typed
+- Tao components/Dashboard.tsx (4.9KB) - Dashboard + WORKFLOW_STEPS
+- Tao components/NhapKhoScreens.tsx (15.9KB) - NhapSoi + KhoSoi + KhoMoc + KhoTP
+- Tao components/SanXuatScreens.tsx (17.4KB) - LenhDet + NghiemThuMoc + MeNhuom + NghiemThuMau
+- Tao components/BaoCaoScreens.tsx (13KB) - CongNo + BaoCaoHaoHut + BaoCaoGiaVon + KhoLog + TruyNguoc
+- Sua page.tsx (56KB -> 2.9KB) - chi con router + header + import 3 file component
+
+Tong: +1159/-1097 lines, route giam 81.6% (55.5KB -> 10.2kB first load)
+Build OK, TypeScript clean. Tiep theo B.2 (kho-thanh-pham 52.9KB)
