@@ -1,89 +1,192 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  Users, Plus, Edit, Trash2, Lock, Unlock, Search, Filter, X,
+  Users, Plus, Edit, Trash2, Lock, Unlock, Search, X,
   Shield, Key, Mail, Phone, Building2, UserCheck, UserX,
-  Eye, EyeOff, Copy, Check, AlertCircle,
+  Eye, EyeOff, RefreshCw, AlertCircle, Building, Hammer, Filter,
+  Briefcase,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
-import {
-  getAllAccounts, upsertAccount, deleteAccount, toggleAccountStatus,
-  resetPassword, thongKeAccounts, PHONG_BAN_LABELS, PHONG_BAN_COLORS,
-  type UserAccount, type PhongBan,
-} from "@/lib/user-accounts";
-import { ROLE_LABELS } from "@/lib/permissions";
-import UserProfileModal from "@/components/UserProfileModal";
+import { ROLE_LABELS, ROLE_COLORS, ALL_ROLES } from "@/lib/permissions";
 
-const PHONG_BAN_OPTIONS: PhongBan[] = [
-  "ban-giam-doc", "ke-toan", "mua-hang", "kho-soi", "xuong-det",
-  "xuong-nhuom", "kho-tp", "qc", "to-may", "hoan-thien", "giao-hang", "khac",
-];
+export const dynamic = "force-dynamic";
 
-const ROLE_OPTIONS = ["admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant"] as const;
+// 9 role (them content, partner)
+const ROLE_OPTIONS = ALL_ROLES;
+
+// Phong ban
+const PHONG_BAN_OPTIONS = [
+  "ban-giam-doc", "ban-dieu-hanh", "ke-toan", "ban-content", "ban-kho",
+  "to-cat", "to-may", "to-khuy-nut", "to-ui", "to-dong-goi",
+  "ban-qc", "doi-tac", "khac",
+] as const;
+
+const PHONG_BAN_LABELS: Record<string, string> = {
+  "ban-giam-doc": "Ban giám đốc",
+  "ban-dieu-hanh": "Điều hành SX",
+  "ke-toan": "Kế toán",
+  "ban-content": "Content / Media",
+  "ban-kho": "Kho",
+  "to-cat": "Tổ cắt",
+  "to-may": "Tổ may",
+  "to-khuy-nut": "Khuy nút",
+  "to-ui": "Ủi",
+  "to-dong-goi": "Gấp xếp / Đóng gói",
+  "ban-qc": "QC",
+  "doi-tac": "Đối tác gia công",
+  "khac": "Khác",
+};
+
+const PHONG_BAN_COLORS: Record<string, string> = {
+  "ban-giam-doc": "bg-rose-500",
+  "ban-dieu-hanh": "bg-violet-500",
+  "ke-toan": "bg-blue-500",
+  "ban-content": "bg-pink-500",
+  "ban-kho": "bg-amber-500",
+  "to-cat": "bg-cyan-500",
+  "to-may": "bg-sky-500",
+  "to-khuy-nut": "bg-orange-500",
+  "to-ui": "bg-rose-500",
+  "to-dong-goi": "bg-fuchsia-500",
+  "ban-qc": "bg-emerald-500",
+  "doi-tac": "bg-purple-500",
+  "khac": "bg-slate-500",
+};
+
+type UserRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  chucVu: string | null;
+  phongBan: string | null;
+  maNV: string | null;
+  isActive: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type UserType = "all" | "noi-bo" | "ncc";
 
 export default function QuanLyTaiKhoanPage() {
   const { user } = useSession();
-  const [list, setList] = useState(getAllAccounts());
-  const [editing, setEditing] = useState<UserAccount | null>(null);
+  const [list, setList] = useState<UserRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState<string>("Tất cả");
   const [filterPhongBan, setFilterPhongBan] = useState<string>("Tất cả");
-  const [filterStatus, setFilterStatus] = useState<string>("Tất cả");
-  const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
-  const [viewProfile, setViewProfile] = useState<UserAccount | null>(null);
+  const [filterType, setFilterType] = useState<UserType>("all");
+  const [editing, setEditing] = useState<UserRow | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  const refresh = () => setList(getAllAccounts());
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/users", { cache: "no-store" });
+      const json = await res.json();
+      if (json.error) {
+        toast.error("Lỗi: " + json.error);
+        setList([]);
+      } else {
+        setList(json.users || []);
+      }
+    } catch (e) {
+      toast.error("Lỗi fetch: " + (e as Error).message);
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   // Filter
-  let filtered = list;
-  if (search) {
-    filtered = filtered.filter((a) =>
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.email.toLowerCase().includes(search.toLowerCase()) ||
-      a.chucVu.toLowerCase().includes(search.toLowerCase())
-    );
-  }
-  if (filterPhongBan !== "Tất cả") {
-    filtered = filtered.filter((a) => a.phongBan === filterPhongBan);
-  }
-  if (filterStatus !== "Tất cả") {
-    filtered = filtered.filter((a) => a.trangThai === filterStatus);
-  }
+  const filtered = useMemo(() => {
+    let f = list;
+    if (search) {
+      const s = search.toLowerCase();
+      f = f.filter(
+        (u) =>
+          u.name.toLowerCase().includes(s) ||
+          u.email.toLowerCase().includes(s) ||
+          (u.chucVu || "").toLowerCase().includes(s)
+      );
+    }
+    if (filterRole !== "Tất cả") f = f.filter((u) => u.role === filterRole);
+    if (filterPhongBan !== "Tất cả") f = f.filter((u) => u.phongBan === filterPhongBan);
+    if (filterType === "noi-bo") f = f.filter((u) => u.role !== "partner");
+    if (filterType === "ncc") f = f.filter((u) => u.role === "partner");
+    return f;
+  }, [list, search, filterRole, filterPhongBan, filterType]);
 
   // Stats
-  const stats = thongKeAccounts();
+  const stats = useMemo(() => {
+    const tong = list.length;
+    const active = list.filter((u) => u.isActive).length;
+    const partner = list.filter((u) => u.role === "partner").length;
+    const pbSet = new Set(list.map((u) => u.phongBan).filter(Boolean));
+    return { tong, active, partner, phongBan: pbSet.size };
+  }, [list]);
+
+  // Phan bo theo phong ban
+  const byPhongBan = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of list) {
+      const pb = u.phongBan || "khac";
+      map.set(pb, (map.get(pb) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([pb, count]) => ({ pb, count, label: PHONG_BAN_LABELS[pb] || pb, color: PHONG_BAN_COLORS[pb] || "bg-slate-500" }));
+  }, [list]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-3 p-3 animate-fade-in">
       {/* Header */}
       <div className="card p-4 bg-gradient-to-r from-blue-500/10 via-violet-500/10 to-rose-500/10">
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <Users className="w-7 h-7 text-blue-500" /> Quản lý tài khoản
-        </h1>
-        <p className="opacity-70 text-sm">
-          Phân quyền theo Role + Phòng ban · Tạo tài khoản từ hồ sơ nhân sự
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <Users className="w-7 h-7 text-blue-500" /> Quản lý tài khoản
+            </h1>
+            <p className="opacity-70 text-sm">
+              Phân quyền theo Role + Phòng ban · Tạo tài khoản từ hồ sơ nhân sự
+            </p>
+          </div>
+          <button
+            onClick={fetchUsers}
+            className="text-xs px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 flex items-center gap-1"
+            title="Tải lại"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Làm mới
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Stat n={stats.tong} label="Tổng TK" sub="Tất cả" color="blue" icon={Users} />
         <Stat n={stats.active} label="Đang hoạt động" sub="active" color="emerald" icon={UserCheck} />
-        <Stat n={stats.disabled} label="Bị khóa" sub="disabled" color="rose" icon={UserX} />
-        <Stat n={stats.theoPhongBan.length} label="Phòng ban" sub="đang hoạt động" color="violet" icon={Building2} />
+        <Stat n={stats.tong - stats.active} label="Bị khóa" sub="disabled" color="rose" icon={UserX} />
+        <Stat n={stats.phongBan} label="Phòng ban" sub="đang hoạt động" color="violet" icon={Building2} />
       </div>
 
-      {/* Phân bố theo phòng ban */}
+      {/* Phan bo theo phong ban */}
       <div className="card p-3">
-        <h3 className="font-semibold text-sm mb-2">🏢 Phân bố theo phòng ban</h3>
+        <h3 className="font-semibold text-sm mb-2 flex items-center gap-1">
+          <Building className="w-4 h-4" /> Phân bố theo phòng ban
+        </h3>
         <div className="space-y-1.5">
-          {stats.theoPhongBan.map((p) => (
-            <div key={p.phongBan} className="flex items-center gap-2">
+          {byPhongBan.map((p) => (
+            <div key={p.pb} className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${p.color}`} />
-              <span className="text-xs flex-1">{p.ten}</span>
+              <span className="text-xs flex-1">{p.label}</span>
               <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                <div className={`h-full ${p.color}`} style={{ width: `${(p.count / stats.tong) * 100}%` }} />
+                <div className={`h-full ${p.color}`} style={{ width: `${(p.count / Math.max(stats.tong, 1)) * 100}%` }} />
               </div>
               <span className="text-xs font-bold w-8 text-right">{p.count}</span>
             </div>
@@ -102,216 +205,276 @@ export default function QuanLyTaiKhoanPage() {
             className="w-full pl-7 pr-2 py-1.5 rounded border text-xs"
           />
         </div>
-        <select value={filterPhongBan} onChange={(e) => setFilterPhongBan(e.target.value)} className="text-xs px-2 py-1.5 rounded border">
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value as UserType)} className="text-xs px-2 py-1.5 rounded border" title="Loại user">
+          <option value="all">Tất cả loại</option>
+          <option value="noi-bo">👔 Nội bộ</option>
+          <option value="ncc">🤝 NCC gia công</option>
+        </select>
+        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="text-xs px-2 py-1.5 rounded border" title="Lọc theo role">
+          <option>Tất cả</option>
+          {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+        </select>
+        <select value={filterPhongBan} onChange={(e) => setFilterPhongBan(e.target.value)} className="text-xs px-2 py-1.5 rounded border" title="Lọc theo phòng ban">
           <option>Tất cả</option>
           {PHONG_BAN_OPTIONS.map((p) => <option key={p} value={p}>{PHONG_BAN_LABELS[p]}</option>)}
         </select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="text-xs px-2 py-1.5 rounded border">
-          <option>Tất cả</option>
-          <option value="active">Đang hoạt động</option>
-          <option value="disabled">Bị khóa</option>
-        </select>
         <button
-          onClick={() => setEditing({
-            id: "", email: "", password: "", name: "", role: "planner",
-            phongBan: "khac", chucVu: "", trangThai: "active", ngayTao: new Date().toISOString().slice(0, 10),
-          })}
-          className="btn-primary text-xs bg-blue-500"
+          onClick={() => setCreating(true)}
+          className="text-xs px-3 py-1.5 rounded bg-blue-500 hover:bg-blue-600 text-white font-bold flex items-center gap-1"
         >
-          <Plus className="w-3.5 h-3.5 inline" /> Tạo TK
+          <Plus className="w-3.5 h-3.5" /> Tạo TK
         </button>
       </div>
 
       {/* Account list */}
       <div className="space-y-2">
-        {filtered.length === 0 ? (
-          <div className="card p-6 text-center text-sm opacity-60">Không có tài khoản nào</div>
+        {loading ? (
+          <div className="card p-6 text-center text-sm opacity-60">
+            <RefreshCw className="w-5 h-5 inline animate-spin mr-2" /> Đang tải...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="card p-6 text-center text-sm opacity-60">
+            Không có tài khoản nào khớp bộ lọc
+          </div>
         ) : (
-          filtered.map((a) => (
-            <div key={a.id} className="card p-3">
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-full ${PHONG_BAN_COLORS[a.phongBan]} text-white flex items-center justify-center font-bold shrink-0`}>
-                  {a.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm">{a.name}</span>
-                    <span className="text-[10px] font-mono opacity-60">{a.id}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded text-white ${
-                      a.role === "admin" ? "bg-rose-500" :
-                      a.role === "qc" ? "bg-emerald-500" :
-                      a.role === "warehouse" ? "bg-amber-500" :
-                      a.role === "sewing" ? "bg-sky-500" :
-                      "bg-blue-500"
-                    }`}>
-                      {ROLE_LABELS[a.role as keyof typeof ROLE_LABELS] || (a.role as string)}
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded text-white ${PHONG_BAN_COLORS[a.phongBan]}`}>
-                      {PHONG_BAN_LABELS[a.phongBan]}
-                    </span>
-                    {a.trangThai === "disabled" && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded text-white bg-slate-500">
-                        🔒 BỊ KHÓA
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs opacity-70 mt-1 flex items-center gap-3 flex-wrap">
-                    <span className="flex items-center gap-1"><Mail className="w-2.5 h-2.5" /> {a.email}</span>
-                    {a.sdt && <span className="flex items-center gap-1"><Phone className="w-2.5 h-2.5" /> {a.sdt}</span>}
-                    <span className="flex items-center gap-1">
-                      <Key className="w-2.5 h-2.5" />
-                      <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded text-[10px]">
-                        {showPassword[a.id] ? a.password : "••••••••"}
-                      </code>
-                      <button
-                        onClick={() => setShowPassword({ ...showPassword, [a.id]: !showPassword[a.id] })}
-                        className="text-[10px] opacity-60"
-                      >
-                        {showPassword[a.id] ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
-                      </button>
-                    </span>
-                  </div>
-                  <div className="text-[10px] opacity-60 mt-1">
-                    Chức vụ: {a.chucVu} · Tạo: {a.ngayTao}
-                    {a.lanDangNhapCuoi && ` · Đăng nhập cuối: ${a.lanDangNhapCuoi}`}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1 shrink-0">
-                  <button
-                    onClick={() => setViewProfile(a)}
-                    className="text-xs px-2 py-1 rounded bg-cyan-500 text-white"
-                    title="Xem profile"
-                  >
-                    <Eye className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => setEditing(a)}
-                    className="text-xs px-2 py-1 rounded bg-blue-500 text-white"
-                    title="Sửa"
-                  >
-                    <Edit className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      const r = toggleAccountStatus(a.id, user);
-                      if (r.ok) { toast.success(r.message); refresh(); }
-                      else toast.error(r.message);
-                    }}
-                    className={`text-xs px-2 py-1 rounded text-white ${
-                      a.trangThai === "active" ? "bg-amber-500" : "bg-emerald-500"
-                    }`}
-                    title={a.trangThai === "active" ? "Khóa TK" : "Mở khóa"}
-                  >
-                    {a.trangThai === "active" ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      const newPw = prompt(`Reset mật khẩu cho ${a.email}:`, "newpass123");
-                      if (newPw && newPw.length >= 6) {
-                        const r = resetPassword(a.id, newPw, user);
-                        if (r.ok) { toast.success(r.message); refresh(); }
-                      } else {
-                        toast.error("Mật khẩu phải >= 6 ký tự");
-                      }
-                    }}
-                    className="text-xs px-2 py-1 rounded bg-violet-500 text-white"
-                    title="Reset MK"
-                  >
-                    <Key className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Xóa tài khoản ${a.email}?`)) {
-                        const r = deleteAccount(a.id, user);
-                        if (r.ok) { toast.success(r.message); refresh(); }
-                        else toast.error(r.message);
-                      }
-                    }}
-                    className="text-xs px-2 py-1 rounded bg-rose-500 text-white"
-                    title="Xóa"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
+          filtered.map((u) => (
+            <UserCard
+              key={u.id}
+              u={u}
+              onEdit={() => setEditing(u)}
+              onDeleted={fetchUsers}
+              onToggled={fetchUsers}
+            />
           ))
         )}
       </div>
 
-      {/* Profile modal (B+) */}
-      <UserProfileModal
-        open={!!viewProfile}
-        onClose={() => setViewProfile(null)}
-        account={viewProfile}
-        onEdit={(a) => {
-          setViewProfile(null);
-          setEditing(a);
-        }}
-        onToggleLock={(id) => {
-          const r = toggleAccountStatus(id, user);
-          if (r.ok) {
-            toast.success(r.message);
-            refresh();
-            setViewProfile(null);
-          } else toast.error(r.message);
-        }}
-      />
-
       {/* Edit modal */}
       {editing && (
-        <Modal onClose={() => setEditing(null)}>
-          <AccountForm
-            acc={editing}
-            onClose={() => setEditing(null)}
-            onSave={() => { refresh(); setEditing(null); }}
-            currentUser={user}
-          />
-        </Modal>
+        <EditUserModal
+          user={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); fetchUsers(); }}
+        />
+      )}
+
+      {/* Create modal */}
+      {creating && (
+        <CreateUserModal
+          onClose={() => setCreating(false)}
+          onCreated={() => { setCreating(false); fetchUsers(); }}
+        />
       )}
     </div>
   );
 }
 
-function AccountForm({ acc, onClose, onSave, currentUser }: any) {
-  const [data, setData] = useState(acc);
-  const [showPw, setShowPw] = useState(false);
+// =================== USER CARD ===================
+function UserCard({ u, onEdit, onDeleted, onToggled }: {
+  u: UserRow;
+  onEdit: () => void;
+  onDeleted: () => void;
+  onToggled: () => void;
+}) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const isNew = !acc.id;
-  const generatedPassword = isNew ? `${data.email.split("@")[0] || "user"}${Math.floor(Math.random() * 1000)}` : data.password;
+  const handleToggle = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !u.isActive }),
+      });
+      const json = await res.json();
+      if (json.error) toast.error("Lỗi: " + json.error);
+      else { toast.success(u.isActive ? "Đã khóa TK" : "Đã mở khóa"); onToggled(); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Xóa tài khoản ${u.email}?\n\nLưu ý: Xóa trong CẢ auth.users và bảng users. Không thể hoàn tác.`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.error) toast.error("Lỗi: " + json.error);
+      else { toast.success("Đã xóa TK"); onDeleted(); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div className="space-y-2">
-      <h3 className="font-bold text-lg flex items-center gap-2">
-        {isNew ? <Plus className="w-5 h-5 text-blue-500" /> : <Edit className="w-5 h-5 text-blue-500" />}
-        {isNew ? "Tạo tài khoản mới" : `Sửa ${acc.name}`}
-      </h3>
-
-      <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-2 rounded flex items-start gap-1">
-        <AlertCircle className="w-3.5 h-3.5 mt-0.5" />
-        Mật khẩu lưu plain text (chỉ demo). Khi deploy thật cần hash + salt.
+    <div className="card p-3">
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-full ${PHONG_BAN_COLORS[u.phongBan || "khac"] || "bg-slate-500"} text-white flex items-center justify-center font-bold shrink-0`}>
+          {u.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-sm">{u.name}</span>
+            {u.maNV && <span className="text-[10px] font-mono opacity-60">{u.maNV}</span>}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded text-white ${ROLE_COLORS[u.role as keyof typeof ROLE_COLORS] || "bg-slate-500"}`}>
+              {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] || u.role}
+            </span>
+            {u.phongBan && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded text-white ${PHONG_BAN_COLORS[u.phongBan] || "bg-slate-500"}`}>
+                {PHONG_BAN_LABELS[u.phongBan] || u.phongBan}
+              </span>
+            )}
+            {!u.isActive && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded text-white bg-slate-500">🔒 BỊ KHÓA</span>
+            )}
+          </div>
+          <div className="text-xs opacity-70 mt-1 flex items-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1"><Mail className="w-2.5 h-2.5" /> {u.email}</span>
+          </div>
+          <div className="text-[10px] opacity-60 mt-1">
+            Chức vụ: {u.chucVu || "—"} · Tạo: {new Date(u.created_at).toLocaleDateString("vi-VN")}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 shrink-0">
+          <button onClick={onEdit} disabled={busy} className="text-xs px-2 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50" title="Sửa">
+            <Edit className="w-3 h-3" />
+          </button>
+          <button onClick={handleToggle} disabled={busy} className={`text-xs px-2 py-1 rounded text-white ${u.isActive ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-500 hover:bg-emerald-600"} disabled:opacity-50`} title={u.isActive ? "Khóa" : "Mở"}>
+            {u.isActive ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+          </button>
+          <button onClick={handleDelete} disabled={busy} className="text-xs px-2 py-1 rounded bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50" title="Xóa">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
 
+// =================== EDIT MODAL ===================
+function EditUserModal({ user, onClose, onSaved }: {
+  user: UserRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [data, setData] = useState({ ...user });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          role: data.role,
+          chucVu: data.chucVu,
+          phongBan: data.phongBan,
+          maNV: data.maNV,
+          isActive: data.isActive,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) toast.error("Lỗi: " + json.error);
+      else { toast.success("Đã cập nhật"); onSaved(); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title={`Sửa tài khoản: ${user.email}`}>
       <div className="grid grid-cols-2 gap-2">
-        <div className="col-span-2">
-          <label className="text-xs font-semibold opacity-70">Họ tên *</label>
-          <input
-            value={data.name}
-            onChange={(e) => setData({ ...data, name: e.target.value })}
-            placeholder="Nguyễn Văn A"
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">Email *</label>
-          <input
-            type="email"
-            value={data.email}
-            onChange={(e) => setData({ ...data, email: e.target.value })}
-            placeholder="a@mimin.vn"
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          />
-        </div>
+        <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} />
+        <Field label="Mã NV" value={data.maNV || ""} onChange={(v) => setData({ ...data, maNV: v })} />
+        <Field label="Chức vụ" value={data.chucVu || ""} onChange={(v) => setData({ ...data, chucVu: v })} />
+        <SelectField label="Role *" value={data.role} options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => setData({ ...data, role: v })} />
+        <SelectField label="Phòng ban" value={data.phongBan || "khac"} options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))} onChange={(v) => setData({ ...data, phongBan: v })} />
+        <SelectField
+          label="Trạng thái"
+          value={data.isActive ? "active" : "disabled"}
+          options={[
+            { value: "active", label: "🟢 Hoạt động" },
+            { value: "disabled", label: "🔒 Bị khóa" },
+          ]}
+          onChange={(v) => setData({ ...data, isActive: v === "active" })}
+        />
+      </div>
+      <div className="p-2 rounded bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-700 dark:text-amber-300 mt-2">
+        <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
+        Thay đổi Role sẽ đồng bộ sang <code>auth.users.app_metadata</code>. User cần <b>đăng xuất + đăng nhập lại</b> để áp dụng.
+      </div>
+      <div className="flex gap-2 pt-3">
+        <button onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
+        <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 bg-blue-500 disabled:opacity-50">
+          {saving ? "Đang lưu..." : "💾 Cập nhật"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// =================== CREATE MODAL ===================
+function CreateUserModal({ onClose, onCreated }: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [data, setData] = useState({
+    email: "",
+    password: "",
+    name: "",
+    role: "planner" as string,
+    chucVu: "",
+    phongBan: "khac" as string,
+    maNV: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+
+  const handleCreate = async () => {
+    if (!data.email || !data.password || !data.name) {
+      toast.error("Vui lòng điền email, mật khẩu, họ tên");
+      return;
+    }
+    if (data.password.length < 6) {
+      toast.error("Mật khẩu phải >= 6 ký tự");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (json.error) toast.error("Lỗi: " + json.error);
+      else { toast.success("Đã tạo tài khoản: " + data.email); onCreated(); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title="Tạo tài khoản mới">
+      <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-2 rounded mb-2">
+        Tạo user thật trong <code>auth.users</code> + bảng <code>users</code> (Supabase). Có thể login ngay.
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} placeholder="Nguyễn Văn A" />
+        <Field label="Mã NV" value={data.maNV} onChange={(v) => setData({ ...data, maNV: v })} placeholder="NV001" />
+        <Field label="Email *" value={data.email} onChange={(v) => setData({ ...data, email: v })} placeholder="a@mimin.vn" type="email" />
         <div>
           <label className="text-xs font-semibold opacity-70">Mật khẩu *</label>
           <div className="relative">
@@ -319,126 +482,35 @@ function AccountForm({ acc, onClose, onSave, currentUser }: any) {
               type={showPw ? "text" : "password"}
               value={data.password}
               onChange={(e) => setData({ ...data, password: e.target.value })}
+              placeholder="Mimin@123 (mặc định)"
               className="w-full mt-0.5 px-2 py-1.5 pr-8 rounded border text-sm"
             />
-            <button
-              type="button"
-              onClick={() => setShowPw(!showPw)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
-            >
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
               {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </button>
           </div>
-          {isNew && (
-            <button
-              type="button"
-              onClick={() => setData({ ...data, password: generatedPassword })}
-              className="text-[10px] text-blue-600 mt-0.5"
-            >
-              🎲 Auto-generate: {generatedPassword}
-            </button>
-          )}
         </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">Chức vụ *</label>
-          <input
-            value={data.chucVu}
-            onChange={(e) => setData({ ...data, chucVu: e.target.value })}
-            placeholder="Nhân viên kho"
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">SĐT</label>
-          <input
-            value={data.sdt || ""}
-            onChange={(e) => setData({ ...data, sdt: e.target.value })}
-            placeholder="0901234567"
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">Role *</label>
-          <select
-            value={data.role}
-            onChange={(e) => setData({ ...data, role: e.target.value as any })}
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          >
-            {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">Phòng ban *</label>
-          <select
-            value={data.phongBan}
-            onChange={(e) => setData({ ...data, phongBan: e.target.value as PhongBan })}
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          >
-            {PHONG_BAN_OPTIONS.map((p) => <option key={p} value={p}>{PHONG_BAN_LABELS[p]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">Mã NV (liên kết)</label>
-          <input
-            value={data.maNV || ""}
-            onChange={(e) => setData({ ...data, maNV: e.target.value })}
-            placeholder="NV001"
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">Trạng thái</label>
-          <select
-            value={data.trangThai}
-            onChange={(e) => setData({ ...data, trangThai: e.target.value as any })}
-            className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
-          >
-            <option value="active">🟢 Đang hoạt động</option>
-            <option value="disabled">🔒 Bị khóa</option>
-          </select>
-        </div>
+        <Field label="Chức vụ" value={data.chucVu} onChange={(v) => setData({ ...data, chucVu: v })} placeholder="Nhân viên kho" />
+        <SelectField label="Role *" value={data.role} options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => setData({ ...data, role: v })} />
+        <SelectField label="Phòng ban" value={data.phongBan} options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))} onChange={(v) => setData({ ...data, phongBan: v })} />
       </div>
-
-      {/* Hiển thị phân quyền theo role + phòng ban */}
-      <div className="p-2 rounded bg-blue-50 dark:bg-blue-900/20 text-xs">
-        <div className="font-semibold mb-1">📋 Phân quyền tự động:</div>
-        <div>• Role: <strong>{ROLE_LABELS[data.role as keyof typeof ROLE_LABELS] || (data.role as string)}</strong> → Quyền theo ma trận 21 module</div>
-        <div>• Phòng ban: <strong>{PHONG_BAN_LABELS[data.phongBan as keyof typeof PHONG_BAN_LABELS] || (data.phongBan as string)}</strong> → Scope dữ liệu</div>
-      </div>
-
-      <div className="flex gap-2 pt-2">
+      <div className="flex gap-2 pt-3">
         <button onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-        <button
-          onClick={() => {
-            if (!data.name || !data.email || !data.password || !data.chucVu) {
-              toast.error("Vui lòng điền đầy đủ");
-              return;
-            }
-            if (data.password.length < 6) {
-              toast.error("Mật khẩu phải >= 6 ký tự");
-              return;
-            }
-            const r = upsertAccount(data, currentUser);
-            if (r.ok) {
-              toast.success(r.message);
-              onSave();
-            } else toast.error(r.message);
-          }}
-          className="btn-primary flex-1 bg-blue-500"
-        >
-          💾 {isNew ? "Tạo tài khoản" : "Cập nhật"}
+        <button onClick={handleCreate} disabled={saving} className="btn-primary flex-1 bg-blue-500 disabled:opacity-50">
+          {saving ? "Đang tạo..." : "🚀 Tạo tài khoản"}
         </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
+// =================== HELPER COMPONENTS ===================
 function Stat({ n, label, sub, color, icon: Icon }: any) {
   const colors: Record<string, string> = {
-    blue: "from-blue-500/10 to-cyan-500/10 text-blue-700",
-    emerald: "from-emerald-500/10 to-green-500/10 text-emerald-700",
-    rose: "from-rose-500/10 to-red-500/10 text-rose-700",
-    violet: "from-violet-500/10 to-purple-500/10 text-violet-700",
+    blue: "from-blue-500/10 to-cyan-500/10 text-blue-700 dark:text-blue-300",
+    emerald: "from-emerald-500/10 to-green-500/10 text-emerald-700 dark:text-emerald-300",
+    rose: "from-rose-500/10 to-red-500/10 text-rose-700 dark:text-rose-300",
+    violet: "from-violet-500/10 to-purple-500/10 text-violet-700 dark:text-violet-300",
   };
   return (
     <div className={`card p-2 bg-gradient-to-br ${colors[color]}`}>
@@ -452,11 +524,57 @@ function Stat({ n, label, sub, color, icon: Icon }: any) {
   );
 }
 
-function Modal({ children, onClose }: any) {
+function Field({ label, value, onChange, placeholder, type = "text" }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="text-xs font-semibold opacity-70">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
+      />
+    </div>
+  );
+}
+
+function SelectField({ label, value, options, onChange }: {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="text-xs font-semibold opacity-70">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function Modal({ children, onClose, title }: any) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
       <div className="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4 shadow-2xl">
-        <div className="flex justify-end mb-2">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-500" /> {title}
+          </h2>
           <button onClick={onClose} className="p-1"><X className="w-5 h-5" /></button>
         </div>
         {children}
