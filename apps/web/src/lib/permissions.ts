@@ -1,8 +1,9 @@
 // Permission Matrix cho MIMIN ERP
-// 7 role × 26 module × 4 action (view/create/edit/delete)
-// 2026-08-01: thêm 2 module audit-log + phan-quyen-tuy-chinh (admin only)
+// 9 role × 30 module × 4 action (view/create/edit/delete)
+// 2026-08-05: thêm 2 role content + partner (cho 44 user @mimin.vn)
+// 2026-08-05: thêm 4 module gia-cong-mobile (trang-chu-gia-cong, cong-viec, san-luong, tien-cong)
 
-export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant";
+export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner";
 export type Action = "view" | "create" | "edit" | "delete";
 
 export type Module =
@@ -32,7 +33,12 @@ export type Module =
   | "doi-soat-tien-cong"
   | "audit-log"
   | "phan-quyen-tuy-chinh"
-  | "danh-muc-sp";
+  | "danh-muc-sp"
+  // Modules gia cong mobile (cho NCC + cong nhan)
+  | "cong-viec-gia-cong"
+  | "ban-giao-gia-cong"
+  | "san-luong-gia-cong"
+  | "tien-cong-gia-cong";
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Quản trị viên",
@@ -42,6 +48,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   qc: "Kiểm tra chất lượng",
   finishing: "Tổ trưởng hoàn thiện",
   accountant: "Kế toán",
+  content: "Content / Media",
+  partner: "Đối tác gia công",
 };
 
 export const ROLE_COLORS: Record<Role, string> = {
@@ -52,6 +60,8 @@ export const ROLE_COLORS: Record<Role, string> = {
   qc: "from-emerald-500 to-green-500",
   finishing: "from-fuchsia-500 to-pink-500",
   accountant: "from-blue-500 to-indigo-500",
+  content: "from-pink-500 to-rose-500",
+  partner: "from-purple-500 to-fuchsia-500",
 };
 
 export const MODULE_LABELS: Record<Module, string> = {
@@ -82,6 +92,10 @@ export const MODULE_LABELS: Record<Module, string> = {
   "audit-log": "Audit log (lịch sử thao tác)",
   "phan-quyen-tuy-chinh": "Phân quyền tùy chỉnh",
   "danh-muc-sp": "Danh mục sản phẩm",
+  "cong-viec-gia-cong": "Công việc gia công",
+  "ban-giao-gia-cong": "Bàn giao gia công",
+  "san-luong-gia-cong": "Sản lượng gia công",
+  "tien-cong-gia-cong": "Tiền công gia công",
 };
 
 // Permission Matrix: 7 role × 21 module × 4 action
@@ -117,6 +131,10 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "audit-log": "rcud",
     "phan-quyen-tuy-chinh": "rcud",
     "danh-muc-sp": "rcud",
+    "cong-viec-gia-cong": "rcud",
+    "ban-giao-gia-cong": "rcud",
+    "san-luong-gia-cong": "rcud",
+    "tien-cong-gia-cong": "rcud",
   },
   // Planner (chuyên viên kế hoạch): tạo lệnh cắt, KH, đơn hàng, KHSX. Xem các phần liên quan
   planner: {
@@ -147,6 +165,10 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "rcu",
+    "cong-viec-gia-cong": "r",
+    "ban-giao-gia-cong": "r",
+    "san-luong-gia-cong": "r",
+    "tien-cong-gia-cong": "r",
   },
   // Warehouse (quản lý kho): CRUD kho, xem các phần liên quan
   warehouse: {
@@ -207,6 +229,10 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "r",
+    "cong-viec-gia-cong": "rcu",
+    "ban-giao-gia-cong": "rcu",
+    "san-luong-gia-cong": "r",
+    "tien-cong-gia-cong": "r",
   },
   // QC (kiểm tra chất lượng): CRUD QC, xem các phần liên quan SX
   qc: {
@@ -237,6 +263,10 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "r",
+    "cong-viec-gia-cong": "r",
+    "ban-giao-gia-cong": "r",
+    "san-luong-gia-cong": "r",
+    "tien-cong-gia-cong": "r",
   },
   // Finishing (tổ trưởng hoàn thiện): CRUD hoàn thiện, giao hàng
   finishing: {
@@ -267,6 +297,10 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "r",
+    "cong-viec-gia-cong": "rcu",
+    "ban-giao-gia-cong": "rcu",
+    "san-luong-gia-cong": "r",
+    "tien-cong-gia-cong": "r",
   },
   // Accountant (kế toán): CRUD bảng lương, công nợ, NCC, xem báo cáo
   accountant: {
@@ -297,6 +331,78 @@ const PERMISSIONS: Record<Role, Record<Module, string>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "r",
+    "cong-viec-gia-cong": "r",
+    "ban-giao-gia-cong": "r",
+    "san-luong-gia-cong": "r",
+    "tien-cong-gia-cong": "r",
+  },
+  // Content (Content / Media): CRUD danh mục SP, xem đơn hàng + sản xuất để chụp ảnh, báo cáo marketing
+  content: {
+    "dashboard": "r",
+    "lenh-cat": "r",
+    "khach-hang": "r",
+    "ke-hoach-sx": "r",
+    "nhan-su": "",
+    "kho-vai": "",
+    "kho-phu-lieu": "",
+    "kho-thanh-pham": "r",
+    "don-hang": "r",
+    "cong-no-cong-doan": "",
+    "kiem-tra-chat-luong": "",
+    "to-may": "",
+    "hoan-thien": "",
+    "giao-hang": "",
+    "cham-cong": "",
+    "bang-luong": "",
+    "nha-cung-cap": "r",
+    "gia-cong-ngoai": "",
+    "bao-cao": "r",
+    "realtime": "",
+    "cai-dat": "",
+    "trang-chu-gia-cong": "",
+    "bang-dieu-hanh-sx": "",
+    "doi-soat-tien-cong": "",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "rcud",
+    "cong-viec-gia-cong": "",
+    "ban-giao-gia-cong": "",
+    "san-luong-gia-cong": "",
+    "tien-cong-gia-cong": "",
+  },
+  // Partner (đối tác gia công may): CHỈ thấy phiếu giao cho mình - dùng cho 20 NCC
+  partner: {
+    "dashboard": "",
+    "lenh-cat": "",
+    "khach-hang": "",
+    "ke-hoach-sx": "",
+    "nhan-su": "",
+    "kho-vai": "",
+    "kho-phu-lieu": "",
+    "kho-thanh-pham": "",
+    "don-hang": "",
+    "cong-no-cong-doan": "",
+    "kiem-tra-chat-luong": "",
+    "to-may": "",
+    "hoan-thien": "",
+    "giao-hang": "",
+    "cham-cong": "",
+    "bang-luong": "",
+    "nha-cung-cap": "r",
+    "gia-cong-ngoai": "ru",
+    "bao-cao": "",
+    "realtime": "",
+    "cai-dat": "",
+    "trang-chu-gia-cong": "rcud",
+    "bang-dieu-hanh-sx": "",
+    "doi-soat-tien-cong": "",
+    "audit-log": "",
+    "phan-quyen-tuy-chinh": "",
+    "danh-muc-sp": "",
+    "cong-viec-gia-cong": "rcu",
+    "ban-giao-gia-cong": "rcu",
+    "san-luong-gia-cong": "r",
+    "tien-cong-gia-cong": "r",
   },
 };
 
@@ -374,7 +480,7 @@ export function getFullMatrix(): Record<Role, Record<Module, string>> {
   return getEffectivePermissions();
 }
 
-export const ALL_ROLES: Role[] = ["admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant"];
+export const ALL_ROLES: Role[] = ["admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner"];
 export const ALL_MODULES: Module[] = [
   "dashboard", "lenh-cat", "khach-hang", "ke-hoach-sx", "nhan-su",
   "kho-vai", "kho-phu-lieu", "kho-thanh-pham", "don-hang",
@@ -382,5 +488,6 @@ export const ALL_MODULES: Module[] = [
   "giao-hang", "cham-cong", "bang-luong", "nha-cung-cap",
   "gia-cong-ngoai", "bao-cao", "realtime", "cai-dat",
   "trang-chu-gia-cong", "bang-dieu-hanh-sx", "doi-soat-tien-cong",
-  "audit-log", "phan-quyen-tuy-chinh",
+  "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp",
+  "cong-viec-gia-cong", "ban-giao-gia-cong", "san-luong-gia-cong", "tien-cong-gia-cong",
 ];

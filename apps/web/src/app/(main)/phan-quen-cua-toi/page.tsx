@@ -24,13 +24,15 @@ const ACTION_META: Record<string, { label: string; icon: any; color: string; let
 };
 
 const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  admin: "Toàn quyền - Quản lý tất cả 21 module",
+  admin: "Toàn quyền - Quản lý tất cả 30 module",
   planner: "Chuyên viên kế hoạch - Tạo lệnh cắt, KH, đơn hàng",
   warehouse: "Quản lý kho - CRUD kho, xem các phần liên quan",
   sewing: "Tổ trưởng may - Quản lý tổ may, chấm công",
   qc: "Kiểm tra chất lượng - CRUD QC, xem SX",
   finishing: "Tổ trưởng hoàn thiện - Hoàn thiện, giao hàng",
   accountant: "Kế toán - Bảng lương, công nợ, NCC, báo cáo",
+  content: "Content / Media - CRUD danh mục SP, xem marketing",
+  partner: "Đối tác gia công - CHỈ thấy phiếu giao cho mình (20 NCC)",
 };
 
 export default function PhanQuenCuaToiPage() {
@@ -48,7 +50,7 @@ export default function PhanQuenCuaToiPage() {
           <Shield className="w-7 h-7 text-blue-500" /> Phân quyền của tôi
         </h1>
         <p className="opacity-70 text-sm">
-          Xem quyền hiện tại · Ma trận 7 role × 21 module · Đổi role để test
+          Xem quyền hiện tại · Ma trận 9 role × 30 module · Đổi role để test
         </p>
       </div>
 
@@ -145,7 +147,7 @@ export default function PhanQuenCuaToiPage() {
       {/* View: Ma trận */}
       {view === "matrix" && (
         <div className="card p-3">
-          <h3 className="font-bold text-sm mb-2">🛡️ Ma trận 7 Role × 21 Module × 4 Action</h3>
+          <h3 className="font-bold text-sm mb-2">🛡️ Ma trận 9 Role × 30 Module × 4 Action</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-[10px]">
               <thead>
