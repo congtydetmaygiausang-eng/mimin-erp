@@ -1,0 +1,25 @@
+perf(kho-phu-lieu): B.8 - Tach page 33KB thanh 5 file, page.tsx -> 5.5KB (HOAN THANH DOT B)
+
+- Tao data.ts (0.2KB) - Tab + LoaiKho type
+- Tao components/ui-blocks.tsx (1KB) - Stat helper
+- Tao components/Header.tsx (3.8KB) - Header banner + 4 KPIs + Tabs
+- Tao components/InventoryGrid.tsx (8.2KB) - Grid card voi edit/sua
+- Tao components/TransactionTable.tsx (2.5KB) - Bang giao dich (nhap/xuat/lichsu)
+- Tao components/Modals.tsx (13.7KB) - 3 modal: PLNhapKho/PLXuatKho/PLLichSu
+- Sua page.tsx (33KB -> 5.5KB) - chi state + handlers + render 4 component
+
+Tong: page.tsx giam 83.3%, route 9.74 kB (giam 70.5%)
+Build OK, TypeScript clean
+
+TONG KET DOT B (8 commits):
+- B.1 soi-det-nhuom-erp 55.5KB -> 10.2kB (giam 81.6%)
+- B.2 kho-thanh-pham 52.9KB -> 12.3kB (giam 76.7%)
+- B.3 nhan-su 53KB -> 6.5kB (page.tsx giam 87.7%)
+- B.4 san-xuat-erp 48KB -> 2.6kB (page.tsx giam 94.5%)
+- B.5 cong-no 49.7KB -> 12.2kB (giam 75.5%)
+- B.6 role-workspaces 41.6KB -> 10.1kB (giam 75.7%)
+- B.7 lenh-cat 35.5KB -> 7.5kB (page.tsx giam 78.9%)
+- B.8 kho-phu-lieu 33KB -> 5.5kB (page.tsx giam 83.3%)
+
+Trung binh giam 75-95% kich thuoc file page.tsx, route giam tu 70-80%.
+Vercel auto-deploy sau moi push.
