@@ -14,8 +14,58 @@ import {
   type Role, type Module,
 } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit-log";
+import { supabase, supabaseUpsert, isSupabaseEnabled } from "@/lib/supabase/client";
+import { useState as useReactState } from "react";
 
 type Matrix = Record<Role, Record<Module, string>>;
+
+// 44 user @mimin.vn (sync tu Supabase 2026-08-05)
+const USERS_MIMIN_VN: Array<{ email: string; name: string; role: Role; phongBan: string; chucVu?: string }> = [
+  { email: "sang@mimin.vn", name: "Hồ Minh Sang", role: "admin", phongBan: "BĐH", chucVu: "Quản trị hệ thống" },
+  { email: "hoa@mimin.vn", name: "Huỳnh Xuân Hòa", role: "admin", phongBan: "BĐH", chucVu: "Trợ lý admin (Media)" },
+  { email: "phi@mimin.vn", name: "Lương Hoàng Phi", role: "admin", phongBan: "BĐH", chucVu: "Media" },
+  { email: "vy2@mimin.vn", name: "Vy (Kho)", role: "admin", phongBan: "BĐH", chucVu: "NV Kho phụ" },
+  { email: "giau@mimin.vn", name: "Nguyễn Thị Giàu", role: "planner", phongBan: "ĐPSX", chucVu: "Điều hành SX" },
+  { email: "huyen@mimin.vn", name: "Đỗ Thị Huyền", role: "planner", phongBan: "ĐPSX", chucVu: "QL Khách hàng Sỉ" },
+  { email: "huyen2@mimin.vn", name: "Huyền 2 (Bán sỉ)", role: "planner", phongBan: "ĐPSX", chucVu: "Bán sỉ" },
+  { email: "thanh@mimin.vn", name: "Bùi Thị Thanh", role: "accountant", phongBan: "Kế toán", chucVu: "Kế toán trưởng" },
+  { email: "thanh2@mimin.vn", name: "Thanh 2", role: "accountant", phongBan: "Kế toán" },
+  { email: "vy@mimin.vn", name: "Cẩm Vy", role: "content", phongBan: "Marketing", chucVu: "Content - Media" },
+  { email: "hau@mimin.vn", name: "Quốc Hậu", role: "warehouse", phongBan: "Kho vải", chucVu: "Thủ kho trưởng" },
+  { email: "giang@mimin.vn", name: "Phan Văn Giang", role: "sewing", phongBan: "Tổ cắt", chucVu: "Tổ trưởng Cắt" },
+  { email: "de@mimin.vn", name: "Phạm Văn Đệ", role: "sewing", phongBan: "Tổ cắt", chucVu: "CN Cắt" },
+  { email: "phu@mimin.vn", name: "Nguyễn Văn Phú", role: "sewing", phongBan: "Tổ cắt", chucVu: "CN Cắt hỗ trợ" },
+  { email: "vinh@mimin.vn", name: "Dương Tấn Vĩnh", role: "sewing", phongBan: "Tổ cắt", chucVu: "CN Cắt" },
+  { email: "minh1@mimin.vn", name: "Nguyễn Quốc Minh", role: "sewing", phongBan: "Tổ cắt", chucVu: "CN Cắt" },
+  { email: "nhan@mimin.vn", name: "Trương Văn Nhẫn", role: "sewing", phongBan: "Tổ cắt", chucVu: "CN Cắt" },
+  { email: "ruong@mimin.vn", name: "Nguyễn Văn Ruộng", role: "sewing", phongBan: "Khuy nút", chucVu: "Tổ trưởng Khuy nút" },
+  { email: "nhi@mimin.vn", name: "Nguyễn Thị Mỹ Nhi", role: "finishing", phongBan: "Gấp xếp", chucVu: "Gấp xếp" },
+  { email: "phuong@mimin.vn", name: "Võ Thị Phượng", role: "finishing", phongBan: "Gấp xếp", chucVu: "Gấp xếp" },
+  { email: "be@mimin.vn", name: "Nguyễn Thị Bé", role: "finishing", phongBan: "Gấp xếp", chucVu: "Gấp xếp" },
+  { email: "duc1@mimin.vn", name: "Nguyễn Minh Đức", role: "finishing", phongBan: "Ủi", chucVu: "Ủi" },
+  { email: "tam@mimin.vn", name: "Trương Minh Tâm", role: "finishing", phongBan: "Ủi", chucVu: "Ủi" },
+  { email: "dinh@mimin.vn", name: "Lê Đỉnh", role: "finishing", phongBan: "Ủi", chucVu: "Ủi" },
+  { email: "gc-gc-in-001@mimin.vn", name: "Bảo Ngân (IN-001)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-in-002@mimin.vn", name: "Hạnh (IN-002)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-in-003@mimin.vn", name: "Thanh Sơn (IN-003)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-in-004@mimin.vn", name: "Tiến Đạt (IN-004)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-in-006@mimin.vn", name: "Anh Vui (IN-006)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-quan-001@mimin.vn", name: "Chị Dung (QUAN-001)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-quan-002@mimin.vn", name: "Minh Vy (QUAN-002)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-quan-003@mimin.vn", name: "Anh Thơ (QUAN-003)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-quan-004@mimin.vn", name: "Chị Hương (QUAN-004)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tron-001@mimin.vn", name: "Anh Trai (TRON-001)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tron-002@mimin.vn", name: "Chị Hằng (TRON-002)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tron-003@mimin.vn", name: "Anh Chiến (TRON-003)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tron-004@mimin.vn", name: "Anh Thuận (TRON-004)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tron-005@mimin.vn", name: "Anh Quang (TRON-005)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tru-001@mimin.vn", name: "Chị Liễu (TRU-001)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tru-002@mimin.vn", name: "Tý Sơn (TRU-002)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tru-003@mimin.vn", name: "Anh Duẩn (TRU-003)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tru-005@mimin.vn", name: "Anh Thông (TRU-005)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tru-006@mimin.vn", name: "Cô Cúc (TRU-006)", role: "partner", phongBan: "Gia công ngoài" },
+  { email: "gc-gc-tru-007@mimin.vn", name: "Anh Sản (TRU-007)", role: "partner", phongBan: "Gia công ngoài" },
+];
 
 const ACTION_META = {
   r: { label: "Xem", icon: Eye, color: "blue", letter: "R" },
@@ -35,6 +85,9 @@ export default function PhanQuyenTuyChinhPage() {
   const [dirty, setDirty] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"matrix" | "users">("matrix");
+  const [users, setUsers] = useState(USERS_MIMIN_VN);
+  const [savingUser, setSavingUser] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(false);
@@ -285,6 +338,28 @@ export default function PhanQuyenTuyChinhPage() {
         })}
       </div>
 
+      {/* Tabs: Matrix | Users */}
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 w-fit">
+        {[
+          { key: "matrix", label: "🛡️ Ma trận 9×30", count: 30 },
+          { key: "users", label: "👥 Gán user cho role", count: 44 },
+        ].map((t: any) => (
+          <button
+            key={t.key}
+            onClick={() => setView(t.key as any)}
+            className={`text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 ${
+              view === t.key ? "bg-white dark:bg-slate-700 shadow" : "opacity-60"
+            }`}
+          >
+            {t.label} <span className="text-[10px] opacity-60">({t.count})</span>
+          </button>
+        ))}
+      </div>
+
+      {view === "users" && <UserRoleManager users={users} setUsers={setUsers} savingUser={savingUser} setSavingUser={setSavingUser} />}
+
+      {view === "matrix" && (
+        <>
       {/* Search */}
       <div className="card p-3">
         <div className="relative">
@@ -414,6 +489,162 @@ export default function PhanQuyenTuyChinhPage() {
         <p className="text-[10px] opacity-60 mt-2">
           💡 Click <b>R/C/U/D</b> ở header cột để toggle action đó cho <b>tất cả module</b> của 1 role · Click <b>✦</b> ở cuối row để toggle tất cả action cho 1 cell
         </p>
+      </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============== USER ROLE MANAGER ==============
+function UserRoleManager({ users, setUsers, savingUser, setSavingUser }: {
+  users: typeof USERS_MIMIN_VN;
+  setUsers: (u: typeof USERS_MIMIN_VN) => void;
+  savingUser: string | null;
+  setSavingUser: (s: string | null) => void;
+}) {
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterPB, setFilterPB] = useState<string>("all");
+  const [search, setSearch] = useState("");
+
+  const filtered = users.filter((u) => {
+    if (filterRole !== "all" && u.role !== filterRole) return false;
+    if (filterPB !== "all" && u.phongBan !== filterPB) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      if (!u.name.toLowerCase().includes(s) && !u.email.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+
+  // Group theo role
+  const byRole: Record<string, typeof users> = {};
+  filtered.forEach((u) => {
+    if (!byRole[u.role]) byRole[u.role] = [];
+    byRole[u.role].push(u);
+  });
+
+  // Lay unique phong ban
+  const allPB = Array.from(new Set(users.map((u) => u.phongBan))).sort();
+
+  const handleChangeRole = async (email: string, newRole: Role) => {
+    setSavingUser(email);
+    try {
+      if (isSupabaseEnabled && supabase) {
+        const { data: existing } = await supabase.from("users").select("id").eq("email", email).single();
+        if (existing) {
+          await supabase.from("users").update({ role: newRole }).eq("email", email);
+        }
+      }
+      setUsers(users.map((u) => (u.email === email ? { ...u, role: newRole } : u)));
+      toast.success(`Đã đổi role ${email} → ${newRole}`);
+    } catch (e) {
+      toast.error(`Lỗi: ${(e as Error).message}`);
+    } finally {
+      setSavingUser(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="card p-3">
+        <h3 className="font-bold text-sm mb-2">👥 Gán role cho 44 user @mimin.vn</h3>
+        <p className="text-xs opacity-70 mb-3">
+          Chỉnh role bằng dropdown → tự động lưu vào bảng <code>users</code> trong Supabase.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div>
+            <label className="block text-xs font-medium mb-1">🔍 Tìm</label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tên hoặc email..."
+              className="w-full px-3 py-1.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">🎭 Lọc role</label>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            >
+              <option value="all">Tất cả role</option>
+              {ALL_ROLES.map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r]} ({users.filter((u) => u.role === r).length})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">🏢 Lọc phòng ban</label>
+            <select
+              value={filterPB}
+              onChange={(e) => setFilterPB(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            >
+              <option value="all">Tất cả phòng ban</option>
+              {allPB.map((pb) => (
+                <option key={pb} value={pb}>{pb} ({users.filter((u) => u.phongBan === pb).length})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-2 text-[10px] opacity-60">
+          Hiển thị: {filtered.length} / {users.length} user
+        </div>
+      </div>
+
+      {Object.entries(byRole).map(([role, list]) => (
+        <div key={role} className="card p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold uppercase bg-gradient-to-r ${ROLE_COLORS[role as Role]}`}>
+              {role}
+            </span>
+            <span className="text-xs opacity-70">{ROLE_LABELS[role as Role]} · {list.length} user</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+            {list.map((u) => (
+              <div key={u.email} className="flex items-center gap-2 p-2 rounded border border-slate-100 dark:border-slate-700 hover:border-blue-400 transition-colors">
+                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${ROLE_COLORS[u.role]} text-white flex items-center justify-center font-bold text-xs shrink-0`}>
+                  {u.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold truncate">{u.name}</div>
+                  <div className="text-[10px] opacity-60 truncate">{u.email}</div>
+                  <div className="text-[10px] opacity-50">🏢 {u.phongBan}</div>
+                </div>
+                <select
+                  value={u.role}
+                  onChange={(e) => handleChangeRole(u.email, e.target.value as Role)}
+                  disabled={savingUser === u.email}
+                  className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-50"
+                >
+                  {ALL_ROLES.map((r) => (
+                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  ))}
+                </select>
+                {savingUser === u.email && <span className="text-[10px] opacity-60">💾</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {filtered.length === 0 && (
+        <div className="card p-6 text-center opacity-60 text-sm">
+          Không tìm thấy user nào khớp bộ lọc
+        </div>
+      )}
+
+      <div className="card p-3 bg-amber-500/5 border-amber-500/20 text-xs">
+        <b>💡 Lưu ý:</b> Thay đổi role sẽ:
+        <ul className="list-disc ml-5 mt-1 space-y-0.5 opacity-80">
+          <li>Cập nhật bảng <code>users</code> trong Supabase (cột <code>role</code>)</li>
+          <li>User cần <b>đăng xuất + đăng nhập lại</b> để áp dụng quyền mới</li>
+          <li>Nếu user NCC (partner) → redirect sang <code>/trang-chu-gia-cong</code> thay vì <code>/dashboard</code></li>
+          <li>Permission matrix lưu localStorage (client-side), KHÔNG liên quan đến thay đổi role ở đây</li>
+        </ul>
       </div>
     </div>
   );
