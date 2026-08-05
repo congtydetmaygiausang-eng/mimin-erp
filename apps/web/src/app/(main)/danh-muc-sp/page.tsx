@@ -10,7 +10,7 @@ import BangSizeManagerModal from "@/components/BangSizeManagerModal";
 import { toast } from "sonner";
 
 export default function DanhMucSanPhamPage() {
-  const { dsSanPham, xoaSP } = useDanhMucSP();
+  const { dsSanPham, xoaSP, loading } = useDanhMucSP();
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -92,7 +92,13 @@ export default function DanhMucSanPhamPage() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white/50 rounded-2xl border border-white/20 shadow-sm backdrop-blur-sm">
+          <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
+          <div className="text-slate-500 font-medium">Đang đồng bộ dữ liệu từ Supabase...</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((sp) => (
           <div key={sp.id} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow flex flex-col">
             <div className="h-48 bg-slate-100 relative overflow-hidden group border-b">
@@ -173,8 +179,9 @@ export default function DanhMucSanPhamPage() {
           </div>
         ))}
       </div>
+      )}
 
-      {filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="text-center py-20 text-slate-500">
           <Shirt className="w-16 h-16 mx-auto opacity-20 mb-4" />
           <p>Không tìm thấy sản phẩm nào</p>

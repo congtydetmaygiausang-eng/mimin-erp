@@ -78,6 +78,7 @@ interface DanhMucSPContextType {
   themSP: (sp: SanPham) => void;
   suaSP: (id: string, data: Partial<SanPham>) => void;
   xoaSP: (id: string) => void;
+  loading: boolean;
 }
 
 const DanhMucSPContext = createContext<DanhMucSPContextType | undefined>(undefined);
@@ -197,7 +198,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <DanhMucSPContext.Provider value={{ dsSanPham, themSP, suaSP, xoaSP }}>
+    <DanhMucSPContext.Provider value={{ dsSanPham, themSP, suaSP, xoaSP, loading }}>
       {children}
     </DanhMucSPContext.Provider>
   );
