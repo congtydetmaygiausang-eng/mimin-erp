@@ -41,6 +41,55 @@ export function RoleDashboard() {
         </div>
       </div>
 
+      {/* 2 PREMIUM CARDS (THÊM MẪU MỚI & TẠO LỆNH CẮT) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card 1: Thêm Mẫu Mới */}
+        <Link href="/danh-muc-sp" className="block relative w-full h-40 rounded-3xl overflow-hidden shadow-xl border border-white/20 group hover:shadow-2xl transition-all duration-300">
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat group-hover:scale-105 transition-transform duration-700" 
+            style={{ backgroundImage: "url('/bg/sky-soft.jpg')" }}
+          ></div>
+          <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-900/80 via-teal-800/40 to-transparent"></div>
+          
+          <div className="relative z-10 p-6 flex flex-col h-full justify-center">
+            <h2 className="text-2xl font-extrabold text-white flex items-center gap-3 drop-shadow-md">
+              <Shirt className="w-7 h-7 text-cyan-300" />
+              Thêm Mẫu Mới
+            </h2>
+            <p className="mt-2 text-cyan-50 opacity-90 text-sm max-w-[80%] line-clamp-2">
+              Quản lý sản phẩm gốc, cấu hình bảng size và định mức màu sắc.
+            </p>
+            <div className="absolute right-6 bottom-6 flex items-center justify-center w-12 h-12 rounded-full bg-white/20 border border-white/40 backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.3)] group-hover:shadow-[0_0_25px_rgba(34,211,238,0.6)] group-hover:bg-white/30 transition-all">
+               <ArrowRight className="w-5 h-5 text-white group-hover:-rotate-45 transition-transform" />
+            </div>
+          </div>
+        </Link>
+
+        {/* Card 2: Tạo Lệnh Cắt */}
+        <Link href="/lenh-cat" className="block relative w-full h-40 rounded-3xl overflow-hidden shadow-xl border border-white/20 group hover:shadow-2xl transition-all duration-300">
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat group-hover:scale-105 transition-transform duration-700" 
+            style={{ backgroundImage: "url('/bg/sky-soft.jpg')" }}
+          ></div>
+          <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-900/80 via-teal-800/40 to-transparent"></div>
+          
+          <div className="relative z-10 p-6 flex flex-col h-full justify-center">
+            <h2 className="text-2xl font-extrabold text-white flex items-center gap-3 drop-shadow-md">
+              <Scissors className="w-7 h-7 text-cyan-300" />
+              Tạo Lệnh Cắt
+            </h2>
+            <p className="mt-2 text-cyan-50 opacity-90 text-sm max-w-[80%] line-clamp-2">
+              Lên lệnh cắt mới, tự động tính toán định mức vải và giá vốn (COGS).
+            </p>
+            <div className="absolute right-6 bottom-6 flex items-center justify-center w-12 h-12 rounded-full bg-white/20 border border-white/40 backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.3)] group-hover:shadow-[0_0_25px_rgba(34,211,238,0.6)] group-hover:bg-white/30 transition-all">
+               <ArrowRight className="w-5 h-5 text-white group-hover:-rotate-45 transition-transform" />
+            </div>
+          </div>
+        </Link>
+      </div>
+
       {/* Stats theo role */}
       {role === "admin" && <AdminStats />}
       {role === "planner" && <PlannerStats />}

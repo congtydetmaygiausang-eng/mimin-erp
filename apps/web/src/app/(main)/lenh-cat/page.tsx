@@ -117,31 +117,47 @@ export default function LenhCatPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Scissors className="w-7 h-7 text-violet-500" />
-            Lệnh cắt
-          </h1>
-          <p className="opacity-70 mt-1 text-sm">
-            Tạo lệnh cắt mới, phân bổ size, tính giá vốn tự động (COGS)
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleReset}
-            className="px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            Reset
-          </button>
-          <button
-            onClick={handleCreate}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-semibold hover:from-violet-700 hover:to-fuchsia-700 flex items-center gap-1.5 shadow-lg shadow-violet-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            Tạo lệnh cắt
-          </button>
+      {/* Premium Header Banner */}
+      <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl mb-8 border border-white/20">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+          style={{ backgroundImage: "url('/bg/sky-soft.jpg')" }}
+        ></div>
+        
+        {/* Overlay / Glassmorphism */}
+        <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-900/70 via-teal-800/40 to-transparent"></div>
+
+        {/* Content */}
+        <div className="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="text-white drop-shadow-md">
+            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-3 tracking-tight">
+              <Scissors className="w-9 h-9 text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+              Lệnh Cắt Sản Xuất
+            </h1>
+            <p className="mt-3 text-cyan-50 opacity-90 max-w-lg text-sm md:text-base leading-relaxed font-medium">
+              Tạo lệnh cắt mới, phân bổ size, tự động tính toán định mức vải và giá vốn dự kiến (COGS).
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleReset}
+              className="px-5 py-3 rounded-xl bg-black/20 hover:bg-black/40 border border-white/20 backdrop-blur-md text-white font-semibold text-sm transition-all flex items-center gap-2"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleCreate}
+              className="group relative px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/40 backdrop-blur-lg text-white font-bold text-base shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_35px_rgba(34,211,238,0.6)] transition-all overflow-hidden flex items-center gap-2"
+            >
+              {/* Animated Glow Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-teal-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
+              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300 drop-shadow-md relative z-10" />
+              <span className="relative z-10 drop-shadow-lg tracking-wide uppercase">Tạo lệnh cắt</span>
+            </button>
+          </div>
         </div>
       </div>
 

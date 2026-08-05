@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { type LoaiSP, type MauVai } from "./lenh-cat-store";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { useSupabaseSync, supabaseUpsert, supabaseDelete } from "@/lib/supabase/client";
 
 export interface MauTieuChuan {
   ten: string;
@@ -21,7 +21,8 @@ export interface BangSize {
 }
 
 export interface SanPham {
-  id: string; // e.g. M001
+  id: string; // Map to ma_sp in DB
+  maSP?: string; // Add optional maSP mapping
   tenSP: string;
   loaiSP: LoaiSP;
   giaBanDuKien: number;
@@ -83,67 +84,115 @@ const DanhMucSPContext = createContext<DanhMucSPContextType | undefined>(undefin
 
 export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   const [dsSanPham, setDsSanPham] = useState<SanPham[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Load from Supabase on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("mimin_danh_muc_sp");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setDsSanPham(parsed);
+    let mounted = true;
+    const load = async () => {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        const client = supabase;
+        if (client) {
+          const { data, error } = await client.from("san_pham").select("*").order("ma_sp", { ascending: true });
+          if (error) throw error;
+          
+          if (data && data.length > 0 && mounted) {
+            // Map snake_case from DB back to camelCase for frontend, and map ma_sp -> id
+            const mapped = data.map(item => ({
+              id: item.ma_sp, // Map ma_sp to id so frontend doesn't break
+              dbId: item.id, // Keep the UUID just in case
+              tenSP: item.ten_sp || "",
+              loaiSP: item.loai_sp as LoaiSP || "BoTru",
+              giaBanDuKien: item.gia_ban_du_kien || 0,
+              giaVonDuKien: item.gia_von_du_kien || 0,
+              tiLeSize: item.ti_le_size || "",
+              bangSize: item.bang_size || DEFAULT_BANGSIZE_5SIZE,
+              dsMau: item.ds_mau || [],
+              ghiChu: item.ghi_chu || "",
+              ngayTao: item.ngay_tao || item.created_at || ""
+            }));
+            setDsSanPham(mapped as SanPham[]);
+          } else if (mounted) {
+             setDsSanPham(MOCK_DANH_MUC);
+          }
         } else {
-          setDsSanPham(MOCK_DANH_MUC);
+           setDsSanPham(MOCK_DANH_MUC);
         }
-      } else {
-        setDsSanPham(MOCK_DANH_MUC);
-        localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(MOCK_DANH_MUC));
+      } catch (e) {
+        console.error("Lỗi fetch Sản phẩm", e);
+        if (mounted) setDsSanPham(MOCK_DANH_MUC);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } catch (e) {
-      setDsSanPham(MOCK_DANH_MUC);
+    };
+    
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  const themSP = useCallback(async (sp: SanPham) => {
+    setDsSanPham(prev => [...prev, sp]); // Optimistic update
+    
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      const client = supabase;
+      if (client) {
+        const dbPayload = {
+          ma_sp: sp.id,
+          ma_dm: `DM-${sp.loaiSP}`,
+          ten_sp: sp.tenSP,
+          loai_sp: sp.loaiSP,
+          gia_ban_du_kien: sp.giaBanDuKien,
+          gia_von_du_kien: sp.giaVonDuKien,
+          ti_le_size: sp.tiLeSize,
+          bang_size: sp.bangSize,
+          ds_mau: sp.dsMau,
+          ghi_chu: sp.ghiChu,
+          ngay_tao: sp.ngayTao
+        };
+        await client.from("san_pham").insert(dbPayload);
+      }
+    } catch(e) {
+      console.error(e);
     }
   }, []);
 
-  const themSP = useCallback((sp: SanPham) => {
-    setDsSanPham(prev => {
-      const next = [...prev, sp];
-      localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(next));
-      return next;
-    });
-    if (isSupabaseEnabled) {
-      supabaseUpsert("danh_muc_sp", sp as any).catch((err) =>
-        console.error("[DanhMucSPStore] Supabase upsert error:", err)
-      );
+  const suaSP = useCallback(async (id: string, data: Partial<SanPham>) => {
+    setDsSanPham(prev => prev.map(p => p.id === id ? { ...p, ...data } : p)); // Optimistic update
+    
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      const client = supabase;
+      if (client) {
+         const snakeData: any = {};
+         if (data.tenSP !== undefined) snakeData.ten_sp = data.tenSP;
+         if (data.loaiSP !== undefined) snakeData.loai_sp = data.loaiSP;
+         if (data.giaBanDuKien !== undefined) snakeData.gia_ban_du_kien = data.giaBanDuKien;
+         if (data.giaVonDuKien !== undefined) snakeData.gia_von_du_kien = data.giaVonDuKien;
+         if (data.tiLeSize !== undefined) snakeData.ti_le_size = data.tiLeSize;
+         if (data.bangSize !== undefined) snakeData.bang_size = data.bangSize;
+         if (data.dsMau !== undefined) snakeData.ds_mau = data.dsMau;
+         if (data.ghiChu !== undefined) snakeData.ghi_chu = data.ghiChu;
+         if (data.ngayTao !== undefined) snakeData.ngay_tao = data.ngayTao;
+         
+         await client.from("san_pham").update(snakeData).eq("ma_sp", id);
+      }
+    } catch(e) {
+      console.error(e);
     }
   }, []);
 
-  const suaSP = useCallback((id: string, data: Partial<SanPham>) => {
-    let updated: SanPham | null = null;
-    setDsSanPham(prev => {
-      const next = prev.map(p => {
-        if (p.id !== id) return p;
-        updated = { ...p, ...data };
-        return updated;
-      });
-      localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(next));
-      return next;
-    });
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsert("danh_muc_sp", updated as any).catch((err) =>
-        console.error("[DanhMucSPStore] Supabase upsert error:", err)
-      );
-    }
-  }, []);
-
-  const xoaSP = useCallback((id: string) => {
-    setDsSanPham(prev => {
-      const next = prev.filter(p => p.id !== id);
-      localStorage.setItem("mimin_danh_muc_sp", JSON.stringify(next));
-      return next;
-    });
-    if (isSupabaseEnabled) {
-      supabaseDelete("danh_muc_sp", id).catch((err) =>
-        console.error("[DanhMucSPStore] Supabase delete error:", err)
-      );
+  const xoaSP = useCallback(async (id: string) => {
+    setDsSanPham(prev => prev.filter(p => p.id !== id)); // Optimistic update
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      const client = supabase;
+      if (client) {
+         await client.from("san_pham").delete().eq("ma_sp", id);
+      }
+    } catch(e) {
+      console.error(e);
     }
   }, []);
 

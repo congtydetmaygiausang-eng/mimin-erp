@@ -18,36 +18,8 @@ const BACKGROUNDS = [
   { id: "teal-cyan", src: "/bg/teal-cyan.jpg", label: "Teal-Cyan" },
 ];
 
-// 19 user nội bộ + 13 CN = 32 tài khoản (theo bảng chốt a Cường)
-// Tất cả password = 123 (trừ một số theo role riêng)
-const DEMO_ACCOUNTS = [
-  // 6 nhóm quản lý
-  { email: "sang@mimin.vn", password: "sang123", name: "Anh Sang (Admin)", role: "Quản trị" },
-  { email: "giau@mimin.vn", password: "giau123", name: "Chị Giàu", role: "Điều hành" },
-  { email: "thanh@mimin.vn", password: "thanh123", name: "Bùi Thị Thanh", role: "Kế toán + Điều phối" },
-  { email: "huyen@mimin.vn", password: "huyen123", name: "Đỗ Thị Huyền", role: "Bán sỉ" },
-  { email: "vy@mimin.vn", password: "vy123", name: "Cẩm Vy", role: "Content - Media" },
-  { email: "hau@mimin.vn", password: "hau123", name: "Quốc Hậu", role: "Thủ kho trưởng" },
-  // 3 nhóm Cắt
-  { email: "giang@mimin.vn", password: "giang123", name: "Giang (Cắt)", role: "Tổ trưởng Cắt" },
-  { email: "de@mimin.vn", password: "de123", name: "Đệ (Cắt)", role: "CN Cắt" },
-  { email: "phu@mimin.vn", password: "phu123", name: "Phú (Cắt)", role: "CN Cắt hỗ trợ" },
-  // 2 nhóm Khuy nút
-  { email: "ruong@mimin.vn", password: "ruong123", name: "Ruộng (KN)", role: "Tổ trưởng Khuy nút" },
-  { email: "khoi@mimin.vn", password: "khoi123", name: "Khôi (KN)", role: "CN Khuy nút" },
-  // 4 nhóm Ủi
-  { email: "tuyen@mimin.vn", password: "tuyen123", name: "Tuyền (Ủi)", role: "Tổ trưởng Ủi" },
-  { email: "huynh@mimin.vn", password: "huynh123", name: "Huynh (Ủi)", role: "CN Ủi" },
-  { email: "thuy@mimin.vn", password: "thuy123", name: "Thủy (Ủi)", role: "CN Ủi" },
-  { email: "anhui@mimin.vn", password: "anhui123", name: "Anh (Ủi)", role: "CN Ủi" },
-  // 4 nhóm Đóng gói
-  { email: "nhi@mimin.vn", password: "nhi123", name: "Mỹ Nhi (ĐG)", role: "Tổ trưởng ĐG" },
-  { email: "phuong@mimin.vn", password: "phuong123", name: "Phương (ĐG)", role: "CN ĐG" },
-  { email: "tim@mimin.vn", password: "tim123", name: "Tím (ĐG)", role: "CN ĐG" },
-  { email: "phien@mimin.vn", password: "phien123", name: "Phiên (ĐG)", role: "CN ĐG" },
-  // Đã xoá 7 tài khoản test (admin/planner/...) ngày 2026-08-01 theo yêu cầu anh Sang
-  // Chỉ giữ 19 tài khoản nội bộ thật
-];
+// Đã xoá các tài khoản test theo yêu cầu (2026-08-05)
+const DEMO_ACCOUNTS: Array<{email: string; password: string; name: string; role: string}> = [];
 
 export default function LoginPage() {
   const { signIn, user, loading: sessionLoading } = useSession();
@@ -95,10 +67,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemo = (acc: { email: string; password: string }) => {
-    setEmail(acc.email);
-    setPassword(acc.password);
-  };
 
   const bg = BACKGROUNDS[bgIndex];
 
@@ -198,22 +166,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-5 pt-5 border-t" style={{ borderColor: "var(--border)" }}>
-              <div className="text-xs font-medium mb-2 opacity-70">32 tài khoản (click để điền nhanh):</div>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {DEMO_ACCOUNTS.map((acc) => (
-                  <button
-                    key={acc.email}
-                    onClick={() => handleDemo(acc)}
-                    className="w-full text-left p-2 rounded-lg hover:bg-white/40 dark:hover:bg-white/5 transition text-xs"
-                    type="button"
-                  >
-                    <div className="font-semibold">{acc.name}</div>
-                    <div className="opacity-70">{acc.role} · {acc.email}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
+
           </div>
         </div>
       </div>

@@ -56,7 +56,7 @@ export const USERS: UserAccount[] = [
     donGia: 1400, donVi: "cái", sdt: "0834033992",
   },
   {
-    id: "nhi", maNV: "NV009", email: "Nguyennhi192145@gmail.com", password: "nhi123", passwordHash: "",
+    id: "nhi", maNV: "NV009", email: "nguyennhi192145@gmail.com", password: "nhi123", passwordHash: "",
     name: "NGUYỄN THỊ MỸ NHI", role: "finishing", chucVu: "Gấp xếp - Bộ Thường: 1.300đ, Áo Thường: 800đ, Bộ Trắng: 1.500đ, Áo Trắng: 1.000đ",
     phongBan: "to-may", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",
     donGia: 1300, donVi: "cái", sdt: "0901207771",
@@ -122,7 +122,7 @@ export const USERS: UserAccount[] = [
     donGia: 1400, donVi: "cái", sdt: "0392123831",
   },
   {
-    id: "minh1", maNV: "NV025", email: "An Thạnh, An Phú, An Giang", password: "minh1123", passwordHash: "",
+    id: "minh1", maNV: "NV025", email: "gs013@mimin-erp.local", password: "minh1123", passwordHash: "",
     name: "NGUYỄN QUỐC MINH", role: "sewing", chucVu: "Cắt - Áo trụ: 1.400đ, Áo tròn: 1.200đ, Quần: 900đ",
     phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",
     donGia: 1400, donVi: "cái", sdt: "0332026731",
@@ -134,7 +134,7 @@ export const USERS: UserAccount[] = [
     donGia: 1400, donVi: "cái", sdt: "0345141953",
   },
   {
-    id: "hau", maNV: "NV005", email: "Beo26032019@gmail.com", password: "hau123", passwordHash: "",
+    id: "hau", maNV: "NV005", email: "beo26032019@gmail.com", password: "hau123", passwordHash: "",
     name: "NGUYỄN QUỐC HẬU", role: "warehouse", chucVu: "Nhân viên Kho - Lương CB: 7,000,000đ",
     phongBan: "kho", nhom: "kho", laCongNhan: false, module: "cat",
     donGia: 0, donVi: "cái", sdt: "0386231456",
@@ -150,6 +150,22 @@ export const USERS: UserAccount[] = [
     name: "NGUYỄN VĂN RUỘNG", role: "sewing", chucVu: "Khuy nút - Chung: 750đ",
     phongBan: "to-may", nhom: "khuy-nut", laCongNhan: true, module: "khuy-nut",
     donGia: 750, donVi: "cái", sdt: "0339724459",
+  },
+  // Các tài khoản ảo/admin trên Supabase
+  {
+    id: "admin", maNV: "ADMIN", email: "admin@mimin.com", password: "admin", passwordHash: "",
+    name: "Administrator", role: "admin", chucVu: "Administrator",
+    phongBan: "ban-giam-doc", nhom: "quan-tri", laCongNhan: false,
+  },
+  {
+    id: "gs018", maNV: "NV018", email: "gs018@mimin-erp.local", password: "123", passwordHash: "",
+    name: "MIMIN USER 18", role: "sewing", chucVu: "Công nhân",
+    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",
+  },
+  {
+    id: "gs019", maNV: "NV019-2", email: "gs019@mimin-erp.local", password: "123", passwordHash: "",
+    name: "MIMIN USER 19", role: "sewing", chucVu: "Công nhân",
+    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",
   },
 ];
 

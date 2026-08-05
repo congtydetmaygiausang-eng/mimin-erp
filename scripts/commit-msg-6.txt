@@ -1,0 +1,25 @@
+chore(cleanup): xoa 84 file test/tam cu o local - giam 15.67 MB
+
+Phase A4 - Don dep workspace local
+
+File da xoa (84 files, 15.67 MB):
+- 5 file Excel/CSV goc da import (Công việc, NCC, NV, gia cong, Lenh_cat)
+- 30 file SQL cu (001_init, 002_seed, CAI-DAT, RUN-ME, CAP-NHAT, CHUAN-HOA, GIA-CO, KHOI-TAO, NAP-DU-LIEU, TAO-BANG, TAO-MAU, all-schemas)
+- 18 file mjs cu (apply-camelcase, apply-doi-tac, apply-lenh-cat, apply-schema, apply-supabase-auto, apply-users-table, check-old-pat, full-sync-users, migrate-users, move-file, seed-*, test-*, verify-supabase)
+- 425 file trong apps/web/out/ (Next.js build output)
+
+File con giu (da committed/su dung):
+- 5 audit scripts (apply-missing-tables-auto, audit-schema, audit-schema-detail, audit-stores, verify-supabase)
+- 5 commit-msg scripts
+- 5 file SQL chinh (APPLY-*)
+- 3 file docs (HUONG-DAN-TEST-E2E, AUDIT-*)
+- Code src/
+
+Luu y:
+- File Novatune-Windows-control-center-v1.6.f.rar (59MB) KHONG xoa (khong biet la gi)
+- File inspect_excel.py KHONG xoa (khong biet la gi)
+- File MIMIN-AGENTS-9-NHANVIEN/ KHONG xoa (folder tham khao)
+
+Build: TypeScript clean, 104/104 routes
+Supabase: 30 bang + 418 rows
+Git: Working tree clean sau commit nay

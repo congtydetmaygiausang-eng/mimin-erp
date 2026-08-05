@@ -31,32 +31,51 @@ export default function DanhMucSanPhamPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-800">
-            <Shirt className="w-8 h-8 text-[#2B4C3E]" />
-            Danh Mục Sản Phẩm
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">Quản lý Master Data (Thông tin gốc) của các sản phẩm</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setShowBangSize(true)}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
-          >
-            <Ruler className="w-5 h-5" />
-            Bảng Size ({dsSanPham?.length || 0})
-          </button>
-          <button
-            onClick={() => {
-              setEditId(null);
-              setShowModal(true);
-            }}
-            className="bg-[#2B4C3E] text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-[#1A3329] transition-colors shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-            Thêm Mẫu Mới
-          </button>
+      {/* Premium Header Banner */}
+      <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl mb-8 border border-white/20">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+          style={{ backgroundImage: "url('/bg/sky-soft.jpg')" }}
+        ></div>
+        
+        {/* Overlay / Glassmorphism */}
+        <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-900/70 via-teal-800/40 to-transparent"></div>
+
+        {/* Content */}
+        <div className="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="text-white drop-shadow-md">
+            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-3 tracking-tight">
+              <Shirt className="w-9 h-9 text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+              Danh mục Sản phẩm
+            </h1>
+            <p className="mt-3 text-cyan-50 opacity-90 max-w-lg text-sm md:text-base leading-relaxed font-medium">
+              Quản lý Master Data (Thông tin gốc) của các sản phẩm. Thêm mẫu mới, cấu hình bảng size và định mức màu sắc.
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setShowBangSize(true)}
+              className="px-5 py-3 rounded-xl bg-black/20 hover:bg-black/40 border border-white/20 backdrop-blur-md text-white font-semibold text-sm transition-all flex items-center gap-2"
+            >
+              <Ruler className="w-4 h-4" />
+              Bảng Size ({dsSanPham?.length || 0})
+            </button>
+            <button
+              onClick={() => {
+                setEditId(null);
+                setShowModal(true);
+              }}
+              className="group relative px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/40 backdrop-blur-lg text-white font-bold text-base shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_35px_rgba(34,211,238,0.6)] transition-all overflow-hidden flex items-center gap-2"
+            >
+              {/* Animated Glow Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-teal-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
+              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300 drop-shadow-md relative z-10" />
+              <span className="relative z-10 drop-shadow-lg tracking-wide uppercase">Thêm Mẫu Mới</span>
+            </button>
+          </div>
         </div>
       </div>
 
