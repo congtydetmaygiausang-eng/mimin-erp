@@ -1,0 +1,28 @@
+docs(audit): them huong dan test E2E + script auto-apply SQL
+
+Phase A3 - Track audit scripts + E2E testing guide
+
+File moi:
+- HUONG-DAN-TEST-E2E.md (5.8KB) - 8 buoc test E2E cho sep Sang
+  + Login Supabase Auth + auto-sync profile
+  + Tao KHSX + verify sync len Supabase
+  + Test bang luong fetch tu Supabase
+  + Test 27 cong nhan gia cong du phong
+  + Test multi-device sync realtime
+  + Checklist 8 buoc + troubleshooting
+- apps/web/apply-missing-tables-auto.mjs (3.7KB) - Script tu dong apply SQL
+  + Dung Management API + PAT (env var)
+  + Doc APPLY-MISSING-TABLES.sql + apply
+  + Verify 30 bang + 27 CN da insert
+  + Da chay thanh cong ngay 2026-08-05
+
+Audit scripts da co (committed o cac dot truoc):
+- audit-schema.mjs: list 19 bang + row count + RLS + indexes
+- audit-schema-detail.mjs: schema chi tiet 20 bang
+- audit-stores.mjs: check 12 store localStorage + Supabase sync
+
+Luu y bao mat: PAT duoc truyen qua env var SUPABASE_PAT, KHONG hardcode trong code.
+PAT moi da duoc test thanh cong (verified 2026-08-05). PAT cu da xoa khoi memory.
+
+Build: TypeScript clean, 104/104 routes
+Supabase: 30 bang + 418 rows (verified 2026-08-05)
