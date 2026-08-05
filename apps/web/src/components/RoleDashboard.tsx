@@ -98,6 +98,7 @@ export function RoleDashboard() {
       {role === "qc" && <QCStats />}
       {role === "finishing" && <FinishingStats />}
       {role === "accountant" && <AccountantStats />}
+      {(role === "content" || role === "partner") && <PartnerDashboard />}
 
       {/* My Queue + Quick actions */}
       <div className="grid md:grid-cols-3 gap-5">
@@ -115,7 +116,7 @@ export function RoleDashboard() {
 function getGreeting(role: Role): string {
   const hour = new Date().getHours();
   const time = hour < 12 ? "buổi sáng" : hour < 18 ? "buổi chiều" : "buổi tối";
-  const lastName = { admin: "An", planner: "Bình", warehouse: "Cường", sewing: "Dung", qc: "Đức", finishing: "Hương", accountant: "Hùng" }[role];
+  const lastName = { admin: "An", planner: "Bình", warehouse: "Cường", sewing: "Dung", qc: "Đức", finishing: "Hương", accountant: "Hùng", content: "Vy", partner: "đối tác" }[role] || "bạn";
   return `Chào ${time}, ${lastName}!`;
 }
 
@@ -353,3 +354,65 @@ function QuickActions({ role }: { role: Role }) {
 
 // Helper import for Settings (used in admin actions)
 import { Settings } from "lucide-react";
+
+// ================ PARTNER / CONTENT (Dashboard riêng) ================
+function PartnerDashboard() {
+  const { user } = useSession();
+  const isPartner = user?.role === "partner";
+  return (
+    <div className="space-y-4">
+      <div className={`card p-5 bg-gradient-to-br ${isPartner ? "from-purple-500/10 via-fuchsia-500/10 to-pink-500/10 border-purple-500/20" : "from-pink-500/10 via-rose-500/10 to-orange-500/10 border-pink-500/20"}`}>
+        <h2 className="font-bold text-lg mb-1">
+          {isPartner ? "🤝 Trang đối tác gia công" : "🎨 Trang Content / Media"}
+        </h2>
+        <p className="text-sm opacity-70">
+          {isPartner
+            ? "Xem công việc được giao, báo cáo sản lượng, đối soát tiền công."
+            : "Quản lý danh mục sản phẩm + xem đơn hàng để chụp ảnh marketing."}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {isPartner ? (
+          <>
+            <PartnerTile href="/trang-chu-gia-cong" icon="🏠" title="Trang chủ gia công" desc="Tổng quan" color="purple" />
+            <PartnerTile href="/cong-viec" icon="📋" title="Công việc của tôi" desc="Phiếu được giao" color="blue" />
+            <PartnerTile href="/ban-giao" icon="🤝" title="Bàn giao" desc="Nhận hàng" color="emerald" />
+            <PartnerTile href="/san-luong" icon="📊" title="Sản lượng" desc="Báo cáo SL" color="amber" />
+            <PartnerTile href="/tien-cong" icon="💵" title="Tiền công" desc="Đối soát" color="rose" />
+          </>
+        ) : (
+          <>
+            <PartnerTile href="/danh-muc-sp" icon="👕" title="Danh mục SP" desc="CRUD sản phẩm" color="pink" />
+            <PartnerTile href="/don-hang" icon="🛒" title="Đơn hàng" desc="Xem để chụp ảnh" color="blue" />
+            <PartnerTile href="/ke-hoach-san-xuat" icon="📅" title="Kế hoạch SX" desc="Xem sản xuất" color="emerald" />
+            <PartnerTile href="/bao-cao" icon="📈" title="Báo cáo" desc="Marketing" color="amber" />
+          </>
+        )}
+      </div>
+
+      <div className="card p-4 bg-amber-500/5 border-amber-500/20 text-sm">
+        <b>💡 Lưu ý:</b> Tài khoản {isPartner ? "đối tác" : "content"} chỉ thấy các module phù hợp với vai trò.
+        Liên hệ admin nếu cần thêm quyền.
+      </div>
+    </div>
+  );
+}
+
+function PartnerTile({ href, icon, title, desc, color }: { href: string; icon: string; title: string; desc: string; color: string }) {
+  const colorMap: Record<string, string> = {
+    purple: "from-purple-500/15 to-fuchsia-500/15 hover:from-purple-500/25",
+    blue: "from-blue-500/15 to-cyan-500/15 hover:from-blue-500/25",
+    emerald: "from-emerald-500/15 to-green-500/15 hover:from-emerald-500/25",
+    amber: "from-amber-500/15 to-yellow-500/15 hover:from-amber-500/25",
+    rose: "from-rose-500/15 to-pink-500/15 hover:from-rose-500/25",
+    pink: "from-pink-500/15 to-rose-500/15 hover:from-pink-500/25",
+  };
+  return (
+    <Link href={href} className={`card p-4 bg-gradient-to-br ${colorMap[color] || colorMap.blue} hover:shadow-lg transition-all hover:scale-[1.02]`}>
+      <div className="text-3xl mb-2">{icon}</div>
+      <div className="font-bold text-sm">{title}</div>
+      <div className="text-[10px] opacity-60 mt-0.5">{desc}</div>
+    </Link>
+  );
+}

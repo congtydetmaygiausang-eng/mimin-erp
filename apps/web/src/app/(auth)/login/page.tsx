@@ -98,7 +98,11 @@ export default function LoginPage() {
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
-    if (!sessionLoading && user) router.replace("/dashboard");
+    if (!sessionLoading && user) {
+      // NCC partner → trang chu gia cong; cac role khac → dashboard
+      const target = user.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
+      router.replace(target);
+    }
   }, [user, sessionLoading, router]);
 
   const handleQuickLogin = async (q: typeof QUICK_LOGIN[number]) => {
@@ -116,7 +120,9 @@ export default function LoginPage() {
         success: true,
       });
       toast.success(`Đăng nhập nhanh: ${q.name}`);
-      router.replace("/dashboard");
+      // NCC partner → trang chu gia cong; cac role khac → dashboard
+      const target = q.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
+      router.replace(target);
     } else {
       toast.error(res.error || "Đăng nhập thất bại");
     }
@@ -145,7 +151,9 @@ export default function LoginPage() {
         success: true,
       });
       toast.success("Đăng nhập thành công");
-      router.replace("/dashboard");
+      // NCC partner → trang chu gia cong; cac role khac → dashboard
+      const target = (user?.role || "admin") === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
+      router.replace(target);
     } else {
       logAudit({
         user: { id: email, email, name: email, role: "guest", title: "Khách", source: "demo" },

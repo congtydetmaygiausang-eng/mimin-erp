@@ -326,6 +326,54 @@ export function getPersonalTasks(role: Role | string, userName: string): Task[] 
         }
       );
       break;
+
+    case "content":
+      tasks.push(
+        {
+          id: "t-ct-1",
+          kind: "system",
+          title: "Cập nhật danh mục sản phẩm",
+          description: "Thêm mẫu mới + ảnh marketing",
+          priority: "high",
+          module: "danh-muc-sp",
+          link: "/danh-muc-sp",
+        },
+        {
+          id: "t-ct-2",
+          kind: "don-hang",
+          title: "Chụp ảnh 5 đơn hàng mới",
+          description: "Sản phẩm hot trong tuần",
+          priority: "medium",
+          module: "don-hang",
+          link: "/don-hang",
+          meta: { count: 5 },
+        }
+      );
+      break;
+
+    case "partner":
+      // NCC gia công - tasks riêng (sẽ fetch từ phiếu giao cho NCC)
+      tasks.push(
+        {
+          id: "t-pt-1",
+          kind: "lenh-cat",
+          title: "Xem công việc được giao",
+          description: "Phiếu gia công mới nhất",
+          priority: "high",
+          module: "trang-chu-gia-cong",
+          link: "/trang-chu-gia-cong",
+        },
+        {
+          id: "t-pt-2",
+          kind: "system",
+          title: "Báo cáo sản lượng",
+          description: "Cập nhật SL sau khi may xong",
+          priority: "medium",
+          module: "san-luong-gia-cong",
+          link: "/san-luong",
+        }
+      );
+      break;
   }
 
   // Sort theo priority
