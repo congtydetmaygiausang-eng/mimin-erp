@@ -1,0 +1,10 @@
+perf(role-workspaces): B.6 - Tach page 42KB thanh 3 file, route 41.6KB -> 10.1kB
+
+- Tao data.ts (1.2KB) - Role type + ROLES array 7 role
+- Tao components/ui-blocks.tsx (3.1KB) - WorkspaceHeader, Stat, TimelineRow, LinkToMeSoi, F
+- Tao components/Workspaces.tsx (35KB) - 7 workspace: KhoSoi/XuongDet/XuongNhuom/KhoTP/QC/KeToan/Admin
+- Sua page.tsx (42KB -> 2.4KB) - chi role switcher + 7 conditional render
+
+Tong: route giam 75.7% (41.6KB -> 10.1kB first load)
+Build OK, TypeScript clean (loi pre-existing don-hang/session-provider khong lien quan)
+Tiep theo B.7 (lenh-cat 34.3KB)
