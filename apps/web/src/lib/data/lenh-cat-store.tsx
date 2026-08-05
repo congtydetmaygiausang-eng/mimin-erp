@@ -222,6 +222,7 @@ interface LenhCatStore {
   xoaMauChiPhi: (id: string) => void;
   capNhatTrangThai: (id: string, tt: TrangThaiLenhCat, u: any) => void;
   reset: () => void;
+  loading: boolean;
 }
 
 const LenhCatContext = createContext<LenhCatStore | null>(null);
@@ -234,20 +235,61 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  const [loading, setLoading] = useState(true);
+
+  // Load Lệnh Cắt từ Supabase
+  useEffect(() => {
+    let mounted = true;
+    const loadData = async () => {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        if (supabase) {
+          const { data, error } = await supabase.from("lenh_cat").select("*").order("created_at", { ascending: false });
+          if (error) throw error;
+          
+          if (data && mounted) {
+            const mapped = data.map(item => ({
+              id: item.id,
+              loaiLenh: item.loai_lenh,
+              khachHang: item.khach_hang,
+              loaiSP: item.loai_sp,
+              maSP: item.ma_sp,
+              tenSP: item.ten_sp,
+              tongSL: item.tong_sl,
+              tongSLThucTe: item.tong_sl_thuc_te,
+              hanHoanThanh: item.han_hoan_thanh,
+              tiLeSize: item.ti_le_size,
+              dsMau: item.ds_mau || [],
+              dsPhuLieu: item.ds_phu_lieu || [],
+              mauCongDoan: item.mau_cong_doan,
+              phanCong: item.phan_cong || [],
+              mauChiPhi: item.mau_chi_phi,
+              chiPhiCoDinh: item.chi_phi_co_dinh || {},
+              bangCOGS: item.bang_cogs,
+              phuTrachCat: item.phu_trach_cat,
+              phuTrachSX: item.phu_trach_sx,
+              ghiChu: item.ghi_chu,
+              trangThai: item.trang_thai,
+              phienBanDinhMuc: item.phien_ban_dinh_muc,
+              ngayTao: item.ngay_tao,
+              nguoiTao: item.nguoi_tao
+            }));
+            setDsLenhCat(mapped as LenhCat[]);
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi fetch Lệnh cắt", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    loadData();
+    return () => { mounted = false; };
+  }, []);
+
+  // Load Mẫu từ localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setDsLenhCat(JSON.parse(stored));
-      } else {
-
-        setDsLenhCat(DUMMY_DATA);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DUMMY_DATA));
-      }
-    } catch (err) {
-      console.error(err);
-    }
-    
       const storedMCD = localStorage.getItem(STORAGE_KEY_MCD);
       if (storedMCD) {
         try {
@@ -285,60 +327,72 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(DEFAULT_MAU_CHI_PHI));
       }
 
-
+    } catch (err) {
+      console.error(err);
+    }
     setIsLoaded(true);
   }, []);
 
-  const themLenhCat = useCallback((lenh: LenhCat, u: AppUser) => {
-    setDsLenhCat((prev) => {
-      const next = [lenh, ...prev];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
+  const themLenhCat = useCallback(async (lenh: LenhCat, u: AppUser) => {
+    setDsLenhCat((prev) => [lenh, ...prev]); // Optimistic
     logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
-    // Sync Supabase (background, không block UI)
-    if (isSupabaseEnabled) {
-      supabaseUpsert("lenh_cat", lenh as any).catch((err) =>
-        console.error("[LenhCatStore] Supabase upsert error:", err)
-      );
-    }
+    const { supabase } = await import("@/lib/supabase/client");
+    if (!supabase) throw new Error("Supabase chưa kết nối");
+    const { error } = await supabase.from("lenh_cat").upsert({
+      id: lenh.id, loai_lenh: lenh.loaiLenh, khach_hang: lenh.khachHang, loai_sp: lenh.loaiSP, ma_sp: lenh.maSP,
+      ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe, han_hoan_thanh: lenh.hanHoanThanh,
+      ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu, mau_cong_doan: lenh.mauCongDoan,
+      phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi, chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS,
+      phu_trach_cat: lenh.phuTrachCat, phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
+      phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao
+    });
+    if (error) throw error;
   }, []);
 
-  const suaLenhCat = useCallback((id: string, lenh: Partial<LenhCat>, u: AppUser) => {
-    let updated: LenhCat | null = null;
-    setDsLenhCat((prev) => {
-      const next = prev.map((item) => {
-        if (item.id === id) {
-          updated = { ...item, ...lenh };
-          return updated;
-        }
-        return item;
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
+  const suaLenhCat = useCallback(async (id: string, lenh: Partial<LenhCat>, u: AppUser) => {
+    setDsLenhCat((prev) => prev.map((item) => item.id === id ? { ...item, ...lenh } : item));
     logWorkflow(u, "update", `Cập nhật lệnh cắt ${id}`, id, { module: "lenh-cat" });
-    // Sync Supabase
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsert("lenh_cat", updated as any).catch((err) =>
-        console.error("[LenhCatStore] Supabase upsert error:", err)
-      );
+    const { supabase } = await import("@/lib/supabase/client");
+    if (supabase) {
+      const updateData: any = {};
+      if (lenh.loaiLenh !== undefined)         updateData.loai_lenh = lenh.loaiLenh;
+      if (lenh.khachHang !== undefined)         updateData.khach_hang = lenh.khachHang;
+      if (lenh.loaiSP !== undefined)            updateData.loai_sp = lenh.loaiSP;
+      if (lenh.maSP !== undefined)              updateData.ma_sp = lenh.maSP;
+      if (lenh.tenSP !== undefined)             updateData.ten_sp = lenh.tenSP;
+      if (lenh.tongSL !== undefined)            updateData.tong_sl = lenh.tongSL;
+      if (lenh.tongSLThucTe !== undefined)      updateData.tong_sl_thuc_te = lenh.tongSLThucTe;
+      if (lenh.hanHoanThanh !== undefined)      updateData.han_hoan_thanh = lenh.hanHoanThanh;
+      if (lenh.tiLeSize !== undefined)          updateData.ti_le_size = lenh.tiLeSize;
+      if (lenh.dsMau !== undefined)             updateData.ds_mau = lenh.dsMau;
+      if (lenh.dsPhuLieu !== undefined)         updateData.ds_phu_lieu = lenh.dsPhuLieu;
+      if (lenh.mauCongDoan !== undefined)       updateData.mau_cong_doan = lenh.mauCongDoan;
+      if (lenh.phanCong !== undefined)          updateData.phan_cong = lenh.phanCong;
+      if (lenh.chiPhiCoDinh !== undefined)      updateData.chi_phi_co_dinh = lenh.chiPhiCoDinh;
+      if (lenh.bangCOGS !== undefined)          updateData.bang_cogs = lenh.bangCOGS;
+      if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
+      if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
+      if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
+      if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;
+      if (lenh.phienBanDinhMuc !== undefined)   updateData.phien_ban_dinh_muc = lenh.phienBanDinhMuc;
+      if (lenh.ngayTao !== undefined)           updateData.ngay_tao = lenh.ngayTao;
+
+      if (Object.keys(updateData).length > 0) {
+        const { error } = await supabase.from("lenh_cat").update(updateData).eq("id", id);
+        if (error) throw error;
+      }
+    } else {
+      throw new Error("Supabase chưa kết nối");
     }
   }, []);
 
-  const xoaLenhCat = useCallback((id: string, u: AppUser) => {
-    setDsLenhCat((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
+  const xoaLenhCat = useCallback(async (id: string, u: AppUser) => {
+    setDsLenhCat((prev) => prev.filter((item) => item.id !== id));
     logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat" });
-    // Sync Supabase
-    if (isSupabaseEnabled) {
-      supabaseDelete("lenh_cat", id).catch((err) =>
-        console.error("[LenhCatStore] Supabase delete error:", err)
-      );
-    }
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      if (supabase) await supabase.from("lenh_cat").delete().eq("id", id);
+    } catch(e) { console.error(e); }
   }, []);
   
   const themMauCongDoan = useCallback((mau: MauCongDoanItem) => {
@@ -363,8 +417,12 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const xoaMauChiPhi = useCallback((id: string) => {
     setDsMauChiPhi(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
   }, []);
-  const capNhatTrangThai = useCallback((id: string, tt: TrangThaiLenhCat, u: any) => {
-    setDsLenhCat(prev => { const next = prev.map(x => x.id === id ? { ...x, trangThai: tt } : x); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); return next; });
+  const capNhatTrangThai = useCallback(async (id: string, tt: TrangThaiLenhCat, u: any) => {
+    setDsLenhCat(prev => prev.map(x => x.id === id ? { ...x, trangThai: tt } : x));
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      if (supabase) await supabase.from("lenh_cat").update({ trang_thai: tt }).eq("id", id);
+    } catch(e) { console.error(e); }
   }, []);
   const reset = useCallback(() => {
     setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
@@ -375,7 +433,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   if (!isLoaded) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, reset }}>
+    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, reset, loading }}>
       {children}
     </LenhCatContext.Provider>
   );
