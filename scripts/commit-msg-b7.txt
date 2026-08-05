@@ -1,0 +1,12 @@
+perf(lenh-cat): B.7 - Tach page 35.5KB thanh 5 file, page.tsx -> 7.5KB
+
+- Tao data.ts (0.3KB) - FILTER_STATUSES
+- Tao components/Header.tsx (3.8KB) - Premium header banner + 4 stat cards
+- Tao components/FilterBar.tsx (9.5KB) - Filter chips + MauSection (CD + CP list)
+- Tao components/LCard.tsx (5.7KB) - LenhCatCard + StatCard
+- Tao components/MauModals.tsx (10KB) - MauCDModal + MauCPModal
+- Sua page.tsx (35.5KB -> 7.5KB) - chi state + handlers + render 5 component
+
+Tong: page.tsx giam 78.9%, route 20.1 kB
+Build OK, TypeScript clean
+Tiep theo B.8 (kho-phu-lieu 33KB) - cuoi cung dot B
