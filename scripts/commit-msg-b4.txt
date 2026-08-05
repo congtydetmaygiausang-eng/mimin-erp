@@ -1,0 +1,13 @@
+perf(san-xuat-erp): B.4 - Tach page 48KB thanh 8 file gon, page.tsx 48KB -> 2.6KB
+
+- Tao data.ts (1.7KB) - Tab/FlowStep + TABS array
+- Tao components/ui-blocks.tsx (4.3KB) - Stat, Card, Row, KPICard, F, Modal
+- Tao components/Dashboard.tsx (3.3KB) - Dashboard chinh
+- Tao components/MasterData.tsx (11.4KB) - MasterData + NCCList/XuongList + 2 form
+- Tao components/LenhTongForm.tsx (10.6KB) - Form lenh tong 4 buoc
+- Tao components/FlowQuick.tsx (8.1KB) - FlowQuick + 6 step con
+- Tao components/Views.tsx (7.2KB) - CongNoView + BaoCaoView
+- Sua page.tsx (48KB -> 2.6KB) - chi header + tab bar + router
+
+Tong: page.tsx giam 94.5% (48KB -> 2.6KB), route 14 kB
+Build OK, TypeScript clean. Tiep theo B.5 (cong-no 49.7KB)
