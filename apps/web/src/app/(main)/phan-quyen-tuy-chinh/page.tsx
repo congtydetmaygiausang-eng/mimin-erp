@@ -32,6 +32,7 @@ const USERS_MIMIN_VN: Array<{ email: string; name: string; role: Role; phongBan:
   { email: "thanh2@mimin.vn", name: "Thanh 2", role: "accountant", phongBan: "Kế toán" },
   { email: "vy@mimin.vn", name: "Cẩm Vy", role: "content", phongBan: "Marketing", chucVu: "Content - Media" },
   { email: "hau@mimin.vn", name: "Quốc Hậu", role: "warehouse", phongBan: "Kho vải", chucVu: "Thủ kho trưởng" },
+  { email: "khoi@mimin.vn", name: "Nguyễn Văn Khôi", role: "qc", phongBan: "QC", chucVu: "Kiểm tra chất lượng (QC)" },
   { email: "giang@mimin.vn", name: "Phan Văn Giang", role: "sewing", phongBan: "Tổ cắt", chucVu: "Tổ trưởng Cắt" },
   { email: "de@mimin.vn", name: "Phạm Văn Đệ", role: "sewing", phongBan: "Tổ cắt", chucVu: "CN Cắt" },
   { email: "phu@mimin.vn", name: "Nguyễn Văn Phú", role: "sewing", phongBan: "Tổ cắt", chucVu: "CN Cắt hỗ trợ" },
