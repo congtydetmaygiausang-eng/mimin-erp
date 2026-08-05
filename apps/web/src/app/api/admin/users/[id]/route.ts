@@ -6,12 +6,12 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 // PATCH /api/admin/users/[id] - cap nhat user
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase Admin chua cau hinh" }, { status: 500 });
   }
 
-  const userId = params.id;
+  const { id: userId } = await params;
   try {
     const body = await req.json();
     const updateData: any = {};
@@ -44,12 +44,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/admin/users/[id] - xoa user
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase Admin chua cau hinh" }, { status: 500 });
   }
 
-  const userId = params.id;
+  const { id: userId } = await params;
 
   // Khong cho xoa chinh minh
   // (Caller phai check truoc)

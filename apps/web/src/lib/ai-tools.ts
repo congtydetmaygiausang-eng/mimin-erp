@@ -3,11 +3,24 @@ import { z } from "zod";
 import { KHO_VAI, KHO_VAT_TU, NHAN_SU, DOI_TAC } from "./data/real-data";
 import { PHAN_CONG } from "./data/cong-no";
 import { AGENT_PERSONAS } from "./agent-personas";
-import { ALL_MODULES, ROLE_LABELS, getFullMatrix } from "./permissions";
+import { ALL_MODULES, ROLE_LABELS, getFullMatrix, canCreate, canEdit, canDelete, type Role, type Module } from "./permissions";
 
 // Hàm helper định dạng tiền VND
 function formatVND(amount: number) {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+}
+
+// HITL helper: tra ve yeu cau xac nhan thay vi thuc thi ngay
+// UI se hien ActionConfirmModal, user bam Confirm moi goi lai thuc thi
+function requiresConfirmation(action: string, description: string, payload: any, warning?: string) {
+  return {
+    requires_confirmation: true,
+    action,
+    description,
+    payload,
+    warning: warning || "Hành động này sẽ thay đổi dữ liệu. Vui lòng xác nhận.",
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export const getInventoryStatus = tool({
@@ -179,5 +192,150 @@ export const getAllTools = () => {
     getDebtStatus,
     getStaffList,
     getSystemConfig,
+    // 4 Action tools với HITL (Human-in-the-Loop) - 2026-08-05
+    createLenhCat,
+    updateCongDoan,
+    deletePhieu,
+    approvePhieu,
   };
 };
+
+// ============================================
+// 4 ACTION TOOLS với HITL (Human-in-the-Loop)
+// Mỗi tool: check permission → return confirmation request
+// UI sẽ hiện ActionConfirmModal → user bấm Confirm → gọi lại qua API
+// ============================================
+
+/** Helper: check role có quyền không, throw error nếu không */
+function checkPermission(role: string | undefined, mod: Module, action: "create" | "edit" | "delete") {
+  if (!role) throw new Error("Chưa đăng nhập");
+  if (action === "create" && !canCreate(role as Role, mod)) {
+    throw new Error(`Role "${role}" KHÔNG có quyền TẠO trong module "${mod}"`);
+  }
+  if (action === "edit" && !canEdit(role as Role, mod)) {
+    throw new Error(`Role "${role}" KHÔNG có quyền SỬA trong module "${mod}"`);
+  }
+  if (action === "delete" && !canDelete(role as Role, mod)) {
+    throw new Error(`Role "${role}" KHÔNG có quyền XÓA trong module "${mod}"`);
+  }
+}
+
+// 1. TẠO LỆNH CẮT - admin/planner only
+export const createLenhCat = tool({
+  description: "Tạo lệnh cắt mới (chỉ admin/planner). Trả về yêu cầu xác nhận trước khi thực thi (HITL).",
+  inputSchema: z.object({
+    role: z.string().describe("Role của user hiện tại"),
+    maKH: z.string().describe("Mã khách hàng"),
+    tenSP: z.string().describe("Tên sản phẩm"),
+    tongSL: z.number().int().positive().describe("Tổng số lượng"),
+    hanHoanThanh: z.string().describe("Hạn hoàn thành (YYYY-MM-DD)"),
+    ghiChu: z.string().optional().describe("Ghi chú (optional)"),
+  }),
+  execute: async ({ role, maKH, tenSP, tongSL, hanHoanThanh, ghiChu }) => {
+    try {
+      checkPermission(role, "lenh-cat", "create");
+    } catch (e) {
+      return `❌ LỖI PHÂN QUYỀN: ${(e as Error).message}`;
+    }
+
+    // KHÔNG thực thi ngay - trả về yêu cầu HITL
+    return JSON.stringify(requiresConfirmation(
+      "createLenhCat",
+      `Tạo lệnh cắt mới: ${tenSP} - ${tongSL} cái - KH ${maKH}`,
+      { role, maKH, tenSP, tongSL, hanHoanThanh, ghiChu },
+      `Lệnh cắt mới sẽ được tạo với số lượng ${tongSL} cái. Admin/planner sau khi duyệt sẽ cấp phát vải.`
+    ));
+  },
+});
+
+// 2. SỬA CÔNG ĐOẠN - admin/planner/sewing
+export const updateCongDoan = tool({
+  description: "Cập nhật trạng thái công đoạn (cắt/may/ủi/đóng gói). Trả về yêu cầu xác nhận (HITL).",
+  inputSchema: z.object({
+    role: z.string().describe("Role của user hiện tại"),
+    phanCongId: z.string().describe("ID phân công cần cập nhật"),
+    trangThai: z.enum(["Mới giao", "Đang làm", "Hoàn thành", "Tạm dừng", "Đã thanh toán"])
+      .describe("Trạng thái mới"),
+    ghiChu: z.string().optional().describe("Ghi chú (optional)"),
+  }),
+  execute: async ({ role, phanCongId, trangThai, ghiChu }) => {
+    try {
+      checkPermission(role, "lenh-cat", "edit");
+    } catch (e) {
+      return `❌ LỖI PHÂN QUYỀN: ${(e as Error).message}`;
+    }
+
+    return JSON.stringify(requiresConfirmation(
+      "updateCongDoan",
+      `Cập nhật công đoạn ${phanCongId} → ${trangThai}`,
+      { role, phanCongId, trangThai, ghiChu }
+    ));
+  },
+});
+
+// 3. XÓA PHIẾU - admin only
+export const deletePhieu = tool({
+  description: "Xóa phiếu (lệnh cắt, phân công, NCC...). CHỈ admin. CẢNH BÁO: không thể hoàn tác. Trả về yêu cầu xác nhận (HITL).",
+  inputSchema: z.object({
+    role: z.string().describe("Role của user hiện tại"),
+    loaiPhieu: z.enum(["lenh-cat", "phan-cong", "khach-hang", "nha-cung-cap"]).describe("Loại phiếu cần xóa"),
+    phieuId: z.string().describe("ID phiếu cần xóa"),
+    lyDo: z.string().describe("Lý do xóa (bắt buộc, để audit)"),
+  }),
+  execute: async ({ role, loaiPhieu, phieuId, lyDo }) => {
+    try {
+      const modMap: Record<string, Module> = {
+        "lenh-cat": "lenh-cat",
+        "phan-cong": "lenh-cat",
+        "khach-hang": "khach-hang",
+        "nha-cung-cap": "nha-cung-cap",
+      };
+      checkPermission(role, modMap[loaiPhieu], "delete");
+    } catch (e) {
+      return `❌ LỖI PHÂN QUYỀN: ${(e as Error).message}`;
+    }
+
+    return JSON.stringify(requiresConfirmation(
+      "deletePhieu",
+      `⚠️ XÓA ${loaiPhieu}: ${phieuId}`,
+      { role, loaiPhieu, phieuId, lyDo },
+      `⚠️ CẢNH BÁO: Hành động này XÓA VĨNH VIỄN phiếu ${loaiPhieu} (${phieuId}). Lý do: "${lyDo}". Không thể hoàn tác!`
+    ));
+  },
+});
+
+// 4. DUYỆT PHIẾU - admin/planner
+export const approvePhieu = tool({
+  description: "Duyệt phiếu (lệnh cắt, NCC, bảng lương). Trả về yêu cầu xác nhận (HITL).",
+  inputSchema: z.object({
+    role: z.string().describe("Role của user hiện tại"),
+    loaiPhieu: z.enum(["lenh-cat", "nha-cung-cap", "bang-luong", "cong-no"]).describe("Loại phiếu cần duyệt"),
+    phieuId: z.string().describe("ID phiếu cần duyệt"),
+    hanhDong: z.enum(["duyet", "tu-choi"]).describe("Hành động: duyệt hoặc từ chối"),
+    lyDo: z.string().optional().describe("Lý do (bắt buộc nếu từ chối)"),
+  }),
+  execute: async ({ role, loaiPhieu, phieuId, hanhDong, lyDo }) => {
+    try {
+      const modMap: Record<string, Module> = {
+        "lenh-cat": "lenh-cat",
+        "nha-cung-cap": "nha-cung-cap",
+        "bang-luong": "bang-luong",
+        "cong-no": "cong-no-cong-doan",
+      };
+      // Duyệt cần quyền edit
+      checkPermission(role, modMap[loaiPhieu], "edit");
+    } catch (e) {
+      return `❌ LỖI PHÂN QUYỀN: ${(e as Error).message}`;
+    }
+
+    if (hanhDong === "tu-choi" && !lyDo) {
+      return `❌ LỖI: Bắt buộc phải có lý do khi từ chối phiếu.`;
+    }
+
+    return JSON.stringify(requiresConfirmation(
+      "approvePhieu",
+      `${hanhDong === "duyet" ? "✅ DUYỆT" : "❌ TỪ CHỐI"} ${loaiPhieu}: ${phieuId}`,
+      { role, loaiPhieu, phieuId, hanhDong, lyDo }
+    ));
+  },
+});
