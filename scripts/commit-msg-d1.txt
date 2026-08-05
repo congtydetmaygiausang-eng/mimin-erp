@@ -1,0 +1,37 @@
+feat(supabase): D1 - Them 13 FK constraints giua cac bang (data integrity)
+
+Audit: 0 orphans -> safe to add FK
+Strategy:
+- Workflow tables (phan_cong, qc, khsx, giao_hang, hoan_thien, cong_no, gia_cong):
+  ON DELETE CASCADE (xoa lenh_cat -> xoa het workflow con)
+- User-related tables (audit_logs, push_subs, notifications):
+  ON DELETE SET NULL (xoa user -> giu log/sub/notif)
+- Master reference (doi_soat -> nha_cung_cap, phan_cong -> nhan_su, bang_luong -> nhan_su):
+  ON DELETE RESTRICT (khong cho xoa parent neu con child)
+
+FK them moi (13):
+- fk_phan_cong_lenh_cat (CASCADE)
+- fk_phan_cong_nhan_su (RESTRICT)
+- fk_qc_records_lenh_cat (CASCADE)
+- fk_khsx_lenh_cat (CASCADE)
+- fk_giao_hang_lenh_cat (CASCADE)
+- fk_hoan_thien_lenh_cat (CASCADE)
+- fk_cong_no_lenh_cat (CASCADE)
+- fk_gia_cong_lenh_cat (CASCADE)
+- fk_doi_soat_ncc (RESTRICT)
+- fk_bang_luong_nhan_su (RESTRICT)
+- fk_audit_logs_users (SET NULL)
+- fk_push_subs_users (SET NULL)
+- fk_notifications_users (SET NULL)
+
+Tong FK constraints: 14 (13 moi + 1 co san fk_giao_dich_kho_vat_tu)
+Data integrity: production-ready
+Rui ro: thap (audit 0 orphans truoc khi apply)
+Rollback: DROP CONSTRAINT neu can
+
+Files:
+- APPLY-FK-CONSTRAINTS.sql (4.2KB - SQL migration)
+- apps/web/audit-fk.mjs (schema dump tool)
+- apps/web/audit-fk-orphans.mjs (orphan check tool)
+- apps/web/apply-fk.mjs (auto-apply script)
+- apps/web/verify-fk.mjs (FK list tool)
