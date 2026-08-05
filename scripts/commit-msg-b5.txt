@@ -1,0 +1,11 @@
+perf(cong-no): B.5 - Tach page 50.9KB thanh 4 file, route 49.7KB -> 12.2kB
+
+- Tao data.ts (1KB) - TabKey + StatusFilter + STATUS_STYLE + CONG_DOAN_OPTIONS
+- Tao components/AllTable.tsx (8.5KB) - Bang chinh + filter (status/nguoi/search)
+- Tao components/Tables.tsx (14.6KB) - 4 bang: BangTheoNguoi/CongDoan/LenhCat/TreHan
+- Tao components/Modals.tsx (18.8KB) - 3 modal: ThanhToan/PhanCongMoi/LenhCat
+- Sua page.tsx (50.9KB -> 9.3KB) - chi state + handlers + render 4 component
+
+Tong: route giam 75.5% (49.7KB -> 12.2kB first load)
+Build OK, TypeScript clean (loi don-hang pre-existing khong lien quan)
+Tiep theo B.6 (role-workspaces 41.6KB)
