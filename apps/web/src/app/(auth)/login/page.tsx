@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/session-provider";
 import { useTheme } from "next-themes";
-import { Sun, Moon, Shirt, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Sun, Moon, Shirt, Eye, EyeOff, Sparkles, Zap, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit-log";
 import { DEMO_USERS } from "@/lib/supabase/client";
@@ -18,8 +18,71 @@ const BACKGROUNDS = [
   { id: "teal-cyan", src: "/bg/teal-cyan.jpg", label: "Teal-Cyan" },
 ];
 
-// Đã xoá các tài khoản test theo yêu cầu (2026-08-05)
-const DEMO_ACCOUNTS: Array<{email: string; password: string; name: string; role: string}> = [];
+// 6 user nhanh pho bien nhat (hien thi duoi dang chip)
+const QUICK_LOGIN = [
+  { email: "sang@mimin.vn",   password: "sang123",   name: "Anh Sang",   role: "admin",     icon: "👑", color: "bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30" },
+  { email: "giau@mimin.vn",   password: "Mimin@123", name: "Chị Giàu",   role: "planner",   icon: "📋", color: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30" },
+  { email: "vy@mimin.vn",     password: "Mimin@123", name: "Cẩm Vy",     role: "content",   icon: "🎨", color: "bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-500/30" },
+  { email: "hau@mimin.vn",    password: "Mimin@123", name: "Quốc Hậu",   role: "warehouse", icon: "📦", color: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  { email: "giang@mimin.vn",  password: "Mimin@123", name: "Giang",      role: "sewing",    icon: "✂️", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  { email: "nhi@mimin.vn",    password: "Mimin@123", name: "Mỹ Nhi",     role: "finishing", icon: "🧵", color: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30" },
+];
+
+// Tat ca 44 user @mimin.vn (dropdown) - phan theo role
+const ALL_USERS = [
+  // Admin
+  { email: "sang@mimin.vn",   name: "Hồ Minh Sang (Admin)",     role: "admin" },
+  { email: "hoa@mimin.vn",    name: "Huỳnh Xuân Hòa",           role: "admin" },
+  { email: "phi@mimin.vn",    name: "Lương Hoàng Phi",          role: "admin" },
+  { email: "vy2@mimin.vn",    name: "Vy (Kho)",                 role: "admin" },
+  // Planner
+  { email: "giau@mimin.vn",   name: "Nguyễn Thị Giàu",          role: "planner" },
+  { email: "huyen@mimin.vn",  name: "Đỗ Thị Huyền",            role: "planner" },
+  { email: "huyen2@mimin.vn", name: "Huyền 2 (Bán sỉ)",        role: "planner" },
+  // Accountant
+  { email: "thanh@mimin.vn",  name: "Bùi Thị Thanh",            role: "accountant" },
+  { email: "thanh2@mimin.vn", name: "Thanh 2 (Kế toán)",        role: "accountant" },
+  // Content
+  { email: "vy@mimin.vn",     name: "Nguyễn Ngọc Cẩm Vy",      role: "content" },
+  // Warehouse
+  { email: "hau@mimin.vn",    name: "Nguyễn Quốc Hậu",          role: "warehouse" },
+  // Sewing (Cắt)
+  { email: "giang@mimin.vn",  name: "Phan Văn Giang",           role: "sewing" },
+  { email: "de@mimin.vn",     name: "Phạm Văn Đệ",             role: "sewing" },
+  { email: "phu@mimin.vn",    name: "Nguyễn Văn Phú",          role: "sewing" },
+  { email: "vinh@mimin.vn",   name: "Dương Tấn Vĩnh",          role: "sewing" },
+  { email: "minh1@mimin.vn",  name: "Nguyễn Quốc Minh",        role: "sewing" },
+  { email: "nhan@mimin.vn",   name: "Trương Văn Nhẫn",         role: "sewing" },
+  // Finishing (Hoàn thiện)
+  { email: "nhi@mimin.vn",    name: "Nguyễn Thị Mỹ Nhi",       role: "finishing" },
+  { email: "phuong@mimin.vn", name: "Võ Thị Phượng",           role: "finishing" },
+  { email: "be@mimin.vn",     name: "Nguyễn Thị Bé",           role: "finishing" },
+  { email: "duc1@mimin.vn",   name: "Nguyễn Minh Đức",         role: "finishing" },
+  { email: "tam@mimin.vn",    name: "Trương Minh Tâm",         role: "finishing" },
+  { email: "dinh@mimin.vn",   name: "Lê Đỉnh",                 role: "finishing" },
+  { email: "ruong@mimin.vn",  name: "Nguyễn Văn Ruộng",        role: "sewing" },
+  // Partner (NCC gia công)
+  { email: "gc-gc-in-001@mimin.vn",  name: "Bảo Ngân (IN-001)",     role: "partner" },
+  { email: "gc-gc-in-002@mimin.vn",  name: "Hạnh (IN-002)",         role: "partner" },
+  { email: "gc-gc-in-003@mimin.vn",  name: "Thanh Sơn (IN-003)",    role: "partner" },
+  { email: "gc-gc-in-004@mimin.vn",  name: "Tiến Đạt (IN-004)",     role: "partner" },
+  { email: "gc-gc-in-006@mimin.vn",  name: "Anh Vui (IN-006)",      role: "partner" },
+  { email: "gc-gc-quan-001@mimin.vn", name: "Chị Dung (QUAN-001)", role: "partner" },
+  { email: "gc-gc-quan-002@mimin.vn", name: "Minh Vy (QUAN-002)",  role: "partner" },
+  { email: "gc-gc-quan-003@mimin.vn", name: "Anh Thơ (QUAN-003)",  role: "partner" },
+  { email: "gc-gc-quan-004@mimin.vn", name: "Chị Hương (QUAN-004)", role: "partner" },
+  { email: "gc-gc-tron-001@mimin.vn", name: "Anh Trai (TRON-001)", role: "partner" },
+  { email: "gc-gc-tron-002@mimin.vn", name: "Chị Hằng (TRON-002)", role: "partner" },
+  { email: "gc-gc-tron-003@mimin.vn", name: "Anh Chiến (TRON-003)", role: "partner" },
+  { email: "gc-gc-tron-004@mimin.vn", name: "Anh Thuận (TRON-004)", role: "partner" },
+  { email: "gc-gc-tron-005@mimin.vn", name: "Anh Quang (TRON-005)", role: "partner" },
+  { email: "gc-gc-tru-001@mimin.vn",  name: "Chị Liễu (TRU-001)",  role: "partner" },
+  { email: "gc-gc-tru-002@mimin.vn",  name: "Tý Sơn (TRU-002)",    role: "partner" },
+  { email: "gc-gc-tru-003@mimin.vn",  name: "Anh Duẩn (TRU-003)",  role: "partner" },
+  { email: "gc-gc-tru-005@mimin.vn",  name: "Anh Thông (TRU-005)", role: "partner" },
+  { email: "gc-gc-tru-006@mimin.vn",  name: "Cô Cúc (TRU-006)",    role: "partner" },
+  { email: "gc-gc-tru-007@mimin.vn",  name: "Anh Sản (TRU-007)",   role: "partner" },
+];
 
 export default function LoginPage() {
   const { signIn, user, loading: sessionLoading } = useSession();
@@ -31,11 +94,40 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
+  const [showAllUsers, setShowAllUsers] = useState(false);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!sessionLoading && user) router.replace("/dashboard");
   }, [user, sessionLoading, router]);
+
+  const handleQuickLogin = async (q: typeof QUICK_LOGIN[number]) => {
+    setEmail(q.email);
+    setPassword(q.password);
+    setLoading(true);
+    const res = await signIn(q.email, q.password);
+    setLoading(false);
+    if (res.ok) {
+      logAudit({
+        user: { id: q.email, email: q.email, name: q.name, role: q.role, title: q.role, source: "supabase" },
+        action: "login",
+        module: "auth",
+        description: `Đăng nhập nhanh: ${q.email} (${q.role})`,
+        success: true,
+      });
+      toast.success(`Đăng nhập nhanh: ${q.name}`);
+      router.replace("/dashboard");
+    } else {
+      toast.error(res.error || "Đăng nhập thất bại");
+    }
+  };
+
+  const handleSelectAllUser = (u: typeof ALL_USERS[number]) => {
+    setEmail(u.email);
+    setPassword("Mimin@123");
+    setShowAllUsers(false);
+    toast.info(`Đã điền ${u.email} - bấm "Đăng nhập" để vào`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,6 +257,74 @@ export default function LoginPage() {
                 {loading ? "Đang đăng nhập…" : "Đăng nhập"}
               </button>
             </form>
+
+            {/* Quick Login - 6 user pho bien */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-semibold text-muted-foreground">Đăng nhập nhanh (click để vào luôn)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {QUICK_LOGIN.map((q) => (
+                  <button
+                    key={q.email}
+                    type="button"
+                    onClick={() => handleQuickLogin(q)}
+                    disabled={loading}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 ${q.color}`}
+                    title={`${q.email} (${q.role})`}
+                  >
+                    <span className="text-base">{q.icon}</span>
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="truncate font-bold">{q.name}</div>
+                      <div className="text-[10px] opacity-70 uppercase">{q.role}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Dropdown 44 user */}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAllUsers((s) => !s)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs"
+                >
+                  <span className="flex items-center gap-2">
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllUsers ? "rotate-180" : ""}`} />
+                    Hoặc chọn từ {ALL_USERS.length} user @mimin.vn
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">click → điền form</span>
+                </button>
+                {showAllUsers && (
+                  <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-white/10 bg-white/5 backdrop-blur p-1.5 space-y-0.5">
+                    {ALL_USERS.map((u) => (
+                      <button
+                        key={u.email}
+                        type="button"
+                        onClick={() => handleSelectAllUser(u)}
+                        className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs hover:bg-white/10 text-left"
+                      >
+                        <span className="flex-1 min-w-0">
+                          <span className="font-medium truncate block">{u.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate block">{u.email}</span>
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
+                          u.role === "admin" ? "bg-red-500/20 text-red-600 dark:text-red-400" :
+                          u.role === "planner" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" :
+                          u.role === "accountant" ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400" :
+                          u.role === "content" ? "bg-pink-500/20 text-pink-600 dark:text-pink-400" :
+                          u.role === "warehouse" ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" :
+                          u.role === "sewing" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
+                          u.role === "finishing" ? "bg-cyan-500/20 text-cyan-600 dark:text-cyan-400" :
+                          "bg-purple-500/20 text-purple-600 dark:text-purple-400"
+                        }`}>{u.role}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
 
           </div>
