@@ -1,0 +1,13 @@
+perf(kho-thanh-pham): B.2 - Tach page 54KB thanh 7 file gon, route 52.9KB -> 12.3kB
+
+- Tao data.ts (2.5KB) - SanPhamTP type + ALL_PHIEU + DS_TI_LE_SIZE + helpers
+- Tao components/StatsPanel.tsx (3.7KB) - StatsHeader + StatsByType
+- Tao components/FilterBar.tsx (5.6KB) - FilterBar + SortBar
+- Tao components/ProductGrid.tsx (14.6KB) - Grid view + VariantCard
+- Tao components/ProductTable.tsx (3.8KB) - Table view
+- Tao components/ProductFormModal.tsx (9.5KB) - Add/Edit form
+- Tao components/MasterDetailsModal.tsx (5.9KB) - Master details modal
+- Sua page.tsx (54KB -> 10.7KB) - chi state + handlers + render 7 component
+
+Tong: route giam 76.7% (52.9KB -> 12.3kB first load)
+Build OK, TypeScript clean. Tiep theo B.3 (nhan-su 52KB)

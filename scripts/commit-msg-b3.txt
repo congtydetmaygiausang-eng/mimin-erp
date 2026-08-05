@@ -1,0 +1,14 @@
+perf(nhan-su): B.3 - Tach page 53KB thanh 7 file gon, page.tsx 53KB -> 6.5KB
+
+- Tao components/Header.tsx (3.9KB) - HeaderBanner + KpiCards
+- Tao components/Filters.tsx (1.6KB) - BP filter + search
+- Tao components/TableView.tsx (5.2KB) - Table view
+- Tao components/CardView.tsx (4.4KB) - Card view + List view
+- Tao components/NVFormModal.tsx (20KB) - Add/Edit form (file lon nhat)
+- Tao components/DetailModal.tsx (8.5KB) - Chi tiet modal
+- Tao components/LuongModal.tsx (5.6KB) - Bang luong NV modal
+- Tao components/ImagePreviewModal.tsx (0.8KB) - Preview anh
+- Sua page.tsx (53KB -> 6.5KB) - chi state + handlers + render 8 component
+
+Tong: page.tsx giam 87.7% (53KB -> 6.5KB), route 16.6 kB
+Build OK, TypeScript clean. Tiep theo B.4 (san-xuat-erp 46.8KB)
