@@ -18,6 +18,7 @@ interface AgentDisplay {
   model: string;
   color: string;
   icon: string;
+  avatar?: string;
   description: string;
 }
 
@@ -30,6 +31,7 @@ const AGENTS_DISPLAY: AgentDisplay[] = [
     model: "DeepSeek Chat",
     color: "from-violet-500 to-purple-600",
     icon: "🧠",
+    avatar: "/avatars/mavis.png",
     description: "Chat chung + Route sang agent chuyên trách",
   },
   {
@@ -40,6 +42,7 @@ const AGENTS_DISPLAY: AgentDisplay[] = [
     model: "DeepSeek Chat",
     color: "from-amber-500 to-orange-600",
     icon: "✂️",
+    avatar: "/avatars/minh.png",
     description: "KH → Lệnh cắt → Công đoạn → Nhập kho TP",
   },
   {
@@ -50,6 +53,7 @@ const AGENTS_DISPLAY: AgentDisplay[] = [
     model: "DeepSeek Chat",
     color: "from-teal-500 to-cyan-600",
     icon: "🏭",
+    avatar: "/avatars/lan.png",
     description: "Nhập kho → Tồn → Đơn hàng → Giao nhận",
   },
   {
@@ -60,6 +64,7 @@ const AGENTS_DISPLAY: AgentDisplay[] = [
     model: "DeepSeek Chat",
     color: "from-emerald-500 to-green-600",
     icon: "💰",
+    avatar: "/avatars/ha.png",
     description: "COGS → Công nợ → Lương → Báo cáo TC",
   },
   {
@@ -70,6 +75,7 @@ const AGENTS_DISPLAY: AgentDisplay[] = [
     model: "DeepSeek Chat",
     color: "from-pink-500 to-rose-600",
     icon: "💬",
+    avatar: "/avatars/vy.png",
     description: "Tư vấn KH + Khiếu nại + Đổi trả",
   },
   {
@@ -80,6 +86,7 @@ const AGENTS_DISPLAY: AgentDisplay[] = [
     model: "DeepSeek Chat",
     color: "from-sky-500 to-blue-600",
     icon: "🛟",
+    avatar: "/avatars/mimin-help.png",
     description: "Hướng dẫn + Phân quyền + Giải thích lỗi",
   },
 ];
@@ -242,7 +249,16 @@ function AgentCard({ agent, summary, loading, idx }: { agent: AgentDisplay; summ
         {/* Header with gradient */}
         <div className={`bg-gradient-to-br ${agent.color} p-3 rounded-t-xl text-white`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-3xl">{agent.icon}</span>
+            {agent.avatar ? (
+              <img
+                src={agent.avatar}
+                alt={`${agent.name} avatar`}
+                className="w-12 h-12 rounded-full bg-white/20 backdrop-blur object-cover border-2 border-white/30"
+                loading="lazy"
+              />
+            ) : (
+              <span className="text-3xl">{agent.icon}</span>
+            )}
             <span className="px-2 py-0.5 bg-white/20 backdrop-blur rounded text-[10px] font-bold flex items-center gap-1">
               <span className={`w-1.5 h-1.5 ${statusColor} rounded-full ${summary?.status === "active" ? "animate-pulse" : ""}`} />
               {summary?.status === "error" ? "Error" : summary?.status === "paused" ? "Paused" : "Active"}
