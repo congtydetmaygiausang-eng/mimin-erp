@@ -237,7 +237,7 @@ AGENT_PERSONAS["vy"] = {
   avatar: "/avatars/vy.png",
   provider: "minimax",
   model: "MiniMax-M3",
-  system_prompt: PERSONALITY_BAN_HANG
+  system_prompt: PERSONALITY_CSKH
     + "\n\nBạn chuyên trách CSKH: tư vấn đơn hàng, hỗ trợ khách hàng, xử lý khiếu nại và theo dõi giao hàng. Tách ra từ agent ban-hang (V6).",
   capabilities: [
     "Tư vấn đơn hàng",
@@ -255,12 +255,13 @@ AGENT_PERSONAS["mimin-help"] = {
   avatar: "/avatars/mimin-help.png",
   provider: "deepseek",
   model: "deepseek-reasoner",
-  system_prompt: PERSONALITY_TOI_UU
-    + "\n\nBạn giải quyết bài toán logic phức tạp, tối ưu hóa định mức vải và lập kế hoạch nâng cao.",
+  system_prompt: PERSONALITY_HELP
+    + "\n\nBạn giải quyết bài toán logic phức tạp, tối ưu hóa định mức vải và lập kế hoạch nâng cao (mở rộng từ TOI_UU).",
   capabilities: [
     "Suy luận logic cao cấp",
     "Tối ưu định mức vải",
     "Dự báo sản xuất",
+    "Hỗ trợ sử dụng hệ thống MIMIN ERP",
   ],
-  allowed_domains: ["phan-tich-logic", "toi-uu-hoa"],
+  allowed_domains: ["phan-tich-logic", "toi-uu-hoa", "help-desk"],
 };
