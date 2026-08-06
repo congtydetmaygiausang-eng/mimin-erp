@@ -225,12 +225,40 @@ Password: admin123
 ## 🎯 Khi AI agent nhận task
 
 1. **Đọc file liên quan** trước khi sửa
-2. **Check existing patterns** trong code xung quanh
-3. **Tái sử dụng** components có sẵn
-4. **Test bằng cách** build + chạy thử
-5. **Không phá vỡ** các module đang hoạt động
-6. **Update** README.md nếu thay đổi setup
-7. **Báo cáo** kết quả bằng tiếng Việt a-e style
+2. **Đọc [AGENT-WORKFLOW.md](AGENT-WORKFLOW.md)** để chọn agent phù hợp cho từng loại task
+3. **Check existing patterns** trong code xung quanh
+4. **Tái sử dụng** components có sẵn
+5. **Test bằng cách** build + chạy thử
+6. **Không phá vỡ** các module đang hoạt động
+7. **Update** README.md nếu thay đổi setup
+8. **Báo cáo** kết quả bằng tiếng Việt a-e style
+
+---
+
+## 🤖 Workflow chọn Agent (hướng dẫn mặc định)
+
+Khi nhận task, agent phải tự phân loại trước rồi chọn agent phù hợp nhất:
+
+- **General specialist**: dùng cho feature mới, chỉnh module chính, hoặc task nghiệp vụ chung
+- **UI/UX specialist**: dùng cho giao diện, layout, responsive, form UX, trải nghiệm người dùng
+- **Data/SQL specialist**: dùng cho SQL, schema, migration, seed data, dữ liệu và consistency
+- **Bug fixing specialist**: dùng cho lỗi render, logic sai, regression, hành vi không đúng như mong đợi
+- **Finance specialist**: dùng cho phân tích tài chính, công nợ, bảng lương, chi phí, và báo cáo tài chính
+- **Operations/Production specialist**: dùng cho vận hành hệ thống, readiness, triển khai production, và quy trình vận hành
+- **QA/Test specialist**: dùng cho test case, regression testing, và kiểm tra chất lượng trước release
+- **Reporting/BI specialist**: dùng cho báo cáo, dashboard, phân tích dữ liệu và insight kinh doanh
+
+### Quy tắc chọn agent
+1. Nếu task là feature hoặc task chung → dùng **General specialist**
+2. Nếu task liên quan đến giao diện/UX → dùng **UI/UX specialist**
+3. Nếu task liên quan đến dữ liệu/SQL/schema → dùng **Data/SQL specialist**
+4. Nếu task là debug lỗi hoặc sửa regression → dùng **Bug fixing specialist**
+5. Nếu task có nhiều khía cạnh, bắt đầu bằng **General specialist** rồi chuyển sang specialist phù hợp cho phần con cần sửa
+
+### Mục tiêu
+- Giảm thời gian tìm hiểu lại context
+- Đảm bảo từng task được xử lý bởi agent đúng chuyên môn
+- Giữ consistency với quy chuẩn project và style hiện có
 
 ---
 

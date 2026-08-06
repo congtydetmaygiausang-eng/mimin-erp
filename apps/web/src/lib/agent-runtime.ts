@@ -5,6 +5,7 @@
 // ============================================
 
 import { logAudit } from "./audit-log";
+import { trackUsage } from "./agent-usage-tracker";
 
 export interface AgentConfig {
   agent_id: string;
@@ -82,6 +83,21 @@ export async function callAgent(req: AgentCallRequest): Promise<AgentCallRespons
   } else {
     response = await realAgentCall(config, req);
   }
+
+  // Track usage vao Supabase de /agents page hien thi data that
+  // Silent fail - khong break main flow neu Supabase loi
+  await trackUsage({
+    agent_id: response.agent_id,
+    user_id: req.user_id,
+    latency_ms: response.latency_ms,
+    cost_usd: response.tokens_used ? response.tokens_used * 0.000002 : 0, // ~$2/1M tokens
+    is_error: !response.success,
+    error_message: response.error,
+    prompt_tokens: 0,
+    completion_tokens: response.tokens_used || 0,
+    total_tokens: response.tokens_used || 0,
+    model: config.model,
+  });
 
   // Audit log
   logAudit({

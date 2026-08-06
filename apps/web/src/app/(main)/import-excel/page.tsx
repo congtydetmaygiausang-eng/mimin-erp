@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner";
 
 // ─── Định nghĩa các module import ────────────────────────────────────────────
-const IMPORT_MODULES = [
+const MODULES = [
   {
     id: "nhan-su",
     name: "Nhân sự",
@@ -155,20 +155,23 @@ const IMPORT_MODULES = [
       return errors;
     },
   },
-];
+] as const;
+
+type ModuleDefinition = (typeof MODULES)[number];
+type ModuleColor = ModuleDefinition["color"];
 
 // ─── Màu sắc theo module ──────────────────────────────────────────────────────
-const COLOR_MAP: Record<string, { bg: string; text: string; border: string; light: string; btn: string }> = {
+const COLOR_STYLES: Record<ModuleColor, { bg: string; text: string; border: string; light: string; btn: string }> = {
   violet:  { bg: "bg-violet-500",  text: "text-violet-700",  border: "border-violet-300",  light: "bg-violet-50 dark:bg-violet-950/30",  btn: "bg-violet-600 hover:bg-violet-700" },
   sky:     { bg: "bg-sky-500",     text: "text-sky-700",     border: "border-sky-300",     light: "bg-sky-50 dark:bg-sky-950/30",         btn: "bg-sky-600 hover:bg-sky-700" },
   emerald: { bg: "bg-emerald-500", text: "text-emerald-700", border: "border-emerald-300", light: "bg-emerald-50 dark:bg-emerald-950/30", btn: "bg-emerald-600 hover:bg-emerald-700" },
   amber:   { bg: "bg-amber-500",   text: "text-amber-700",   border: "border-amber-300",   light: "bg-amber-50 dark:bg-amber-950/30",     btn: "bg-amber-600 hover:bg-amber-700" },
   rose:    { bg: "bg-rose-500",    text: "text-rose-700",    border: "border-rose-300",    light: "bg-rose-50 dark:bg-rose-950/30",       btn: "bg-rose-600 hover:bg-rose-700" },
   fuchsia: { bg: "bg-fuchsia-500", text: "text-fuchsia-700", border: "border-fuchsia-300", light: "bg-fuchsia-50 dark:bg-fuchsia-950/30", btn: "bg-fuchsia-600 hover:bg-fuchsia-700" },
-};
+} as const;
 
 // ─── Hàm tạo và tải file CSV mẫu ─────────────────────────────────────────────
-function downloadTemplate(module: (typeof IMPORT_MODULES)[0]) {
+function downloadTemplate(module: ModuleDefinition) {
   const rows = [module.templateCols, ...module.sampleData];
   const csv = rows.map((r) => r.map((cell) => `"${cell}"`).join(",")).join("\n");
   const bom = "\uFEFF";
@@ -210,7 +213,7 @@ interface ParsedRow {
 
 export default function ImportExcelPage() {
   const [step, setStep] = useState<ImportStep>("select");
-  const [selectedModule, setSelectedModule] = useState<(typeof IMPORT_MODULES)[0] | null>(null);
+  const [selectedModule, setSelectedModule] = useState<ModuleDefinition | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [headerRow, setHeaderRow] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -219,7 +222,7 @@ export default function ImportExcelPage() {
   const [importedCount, setImportedCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleSelectModule = (mod: (typeof IMPORT_MODULES)[0]) => {
+  const handleSelectModule = (mod: ModuleDefinition) => {
     setSelectedModule(mod);
     setStep("upload");
     setParsedRows([]);
@@ -344,7 +347,7 @@ export default function ImportExcelPage() {
 
   const okCount = parsedRows.filter((r) => r.status === "ok").length;
   const errCount = parsedRows.filter((r) => r.status === "error").length;
-  const colors = selectedModule ? COLOR_MAP[selectedModule.color] : null;
+  const colors = selectedModule ? COLOR_STYLES[selectedModule.color] : null;
 
   const handleClearExisting = async () => {
     try {
@@ -390,8 +393,8 @@ export default function ImportExcelPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {IMPORT_MODULES.map((mod) => {
-              const c = COLOR_MAP[mod.color];
+            {MODULES.map((mod) => {
+              const c = COLOR_STYLES[mod.color];
               const Icon = mod.icon;
               return (
                 <button

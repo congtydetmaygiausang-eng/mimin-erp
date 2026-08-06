@@ -53,7 +53,7 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/bao-cao",         module: "bao-cao" },
   { match: "/realtime",        module: "realtime" },
   { match: "/audit-log",       module: "cai-dat" },
-  { match: "/phan-quen-cua-toi", module: "cai-dat" },
+  { match: "/phan-quyen-cua-toi", module: "cai-dat" },
   { match: "/quan-ly-tai-khoan", module: "cai-dat" },
   { match: "/mohinh-phan-quyen-chuan", module: "cai-dat" },
   { match: "/kien-truc-phan-quyen", module: "cai-dat" },

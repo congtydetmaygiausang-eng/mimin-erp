@@ -14,6 +14,7 @@ import { useSession } from "@/components/session-provider";
 import { getLarkConfig } from "@/lib/lark";
 import { pushRecordToLark, pullFromLark } from "@/lib/lark-helpers";
 import { hasUserToken, getUserAccessToken } from "@/lib/lark-user-token";
+import { AdminOnly } from "@/components/AdminOnly";
 
 const LS_KEY = "mimin_real_workflow_data";
 
@@ -129,6 +130,7 @@ export default function TestRealDataPage() {
   };
 
   return (
+    <AdminOnly>
     <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
@@ -252,6 +254,7 @@ export default function TestRealDataPage() {
         </div>
       </div>
     </div>
+    </AdminOnly>
   );
 }
 

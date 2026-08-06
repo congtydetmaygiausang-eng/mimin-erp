@@ -4,6 +4,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Play, RefreshCw, FileText,
   Database, ChevronRight, Activity, Layers, Sparkles, BarChart3,
 } from "lucide-react";
+import { AdminOnly } from "@/components/AdminOnly";
 
 const TEST_CASES = [
   // 1. Master Data
@@ -49,7 +50,7 @@ const TEST_CASES = [
   // 7. Nhân sự - Phân quyền
   { id: "29", group: "Nhân sự", name: "Nhân viên (18 NV thật)", url: "/nhan-su/", check: ["NV001", "NV018", "Chị Giàu"] },
   { id: "30", group: "Nhân sự", name: "Quản lý tài khoản", url: "/quan-ly-tai-khoan/", check: ["tài khoản"] },
-  { id: "31", group: "Nhân sự", name: "Phân quyền của tôi", url: "/phan-quen-cua-toi/", check: ["phân quyền"] },
+  { id: "31", group: "Nhân sự", name: "Phân quyền của tôi", url: "/phan-quyen-cua-toi/", check: ["phân quyền"] },
   { id: "32", group: "Nhân sự", name: "Kiến trúc phân quyền", url: "/kien-truc-phan-quyen/", check: ["kiến trúc"] },
   { id: "33", group: "Nhân sự", name: "Mô hình chuẩn MIMIN OS", url: "/mohinh-phan-quyen-chuan/", check: ["vai trò", "data scope"] },
   { id: "34", group: "Nhân sự", name: "Chấm công", url: "/cham-cong/", check: ["chấm công"] },
@@ -125,6 +126,7 @@ export default function TestKiemThuPage() {
   const total = TEST_CASES.length;
 
   return (
+    <AdminOnly>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 p-3 md:p-5">
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
@@ -218,5 +220,6 @@ export default function TestKiemThuPage() {
         })}
       </div>
     </div>
+    </AdminOnly>
   );
 }

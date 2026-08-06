@@ -8,7 +8,7 @@ import {
   Minimize2, Maximize2, ArrowUpRight, Warehouse
 } from "lucide-react";
 import { toast } from "sonner";
-import { getQuickPrompts, detectContext, getContextLabel } from "@/lib/ai-quick-prompts";
+import { getQuickPrompts, detectContext, getContextLabel, type QuickContext } from "@/lib/ai-quick-prompts";
 
 // Icon mapper cho quick prompts (emoji → lucide icon)
 const ICON_MAP: Record<string, any> = {
@@ -53,6 +53,22 @@ export function FloatingAI() {
   }, [pathname]);
 
   const contextLabel = useMemo(() => getContextLabel(detectContext(pathname)), [pathname]);
+  const currentContext = useMemo(() => detectContext(pathname), [pathname]);
+
+  const contextAgentId = useMemo(() => {
+    const contextToAgent: Partial<Record<QuickContext, string>> = {
+      kho: "agent-kho",
+      "san-xuat": "agent-san-xuat",
+      "gia-cong": "agent-ban-hang",
+      "nhan-su": "agent-nhan-su",
+      "ke-toan": "agent-ke-toan",
+      "ban-hang": "agent-ban-hang",
+      qc: "agent-theo-doi-cd",
+      "tai-chinh": "agent-tai-chinh",
+    };
+
+    return contextToAgent[currentContext];
+  }, [currentContext]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +106,8 @@ export function FloatingAI() {
         body: JSON.stringify({
           user_id: "sang@mimin.vn",
           messages: [{ role: "user", content: text }],
-          hint_agent: isKhoRoute ? "agent-kho" : undefined,
+          agent_id: contextAgentId,
+          hint_agent: contextAgentId || (isKhoRoute ? "agent-kho" : undefined),
         }),
       });
 
