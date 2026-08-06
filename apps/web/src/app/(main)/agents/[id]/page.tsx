@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter, notFound } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -28,13 +28,7 @@ export default function AgentDetailPage() {
   const router = useRouter();
   const agentId = params?.id as string;
 
-  // 404 neu agentId khong co trong 6 personas V6 (sep Sang chot 2026-08-05)
-  const KNOWN_AGENT_IDS = ["mavis", "minh", "lan", "ha", "vy", "mimin-help"];
-  if (agentId && !KNOWN_AGENT_IDS.includes(agentId)) {
-    notFound();
-  }
-
-  // Fallback visual neu agentId co trong list nhung AGENT_PERSONAS chua co data
+  // Fallback visual neu agentId khong co trong persona
   const persona = AGENT_PERSONAS[agentId] || {
     id: agentId,
     name: agentId,
