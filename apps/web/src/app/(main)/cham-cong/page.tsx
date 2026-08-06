@@ -28,10 +28,17 @@ const CC_DATA: ChamCong[] = [
 export default function ChamCongPage() {
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2"><Calendar className="w-7 h-7 text-emerald-500" /> Chấm công tháng 7/2026</h1>
-          <p className="opacity-70 mt-1 text-sm">{CC_DATA.length} NV · Tổng giờ làm <b className="text-emerald-600">{CC_DATA.reduce((s, c) => s + c.tongGio, 0).toLocaleString()}h</b></p>
+      <div className="rounded-2xl overflow-hidden shadow-xl" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
+        <div className="p-5 md:p-7 text-white">
+          <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" /> MIMIN ERP · Kế toán & Mua bán
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5">
+            <Calendar className="w-7 h-7" /> Chấm công tháng 7/2026
+          </h1>
+          <p className="text-sm opacity-95 mt-1.5">
+            {CC_DATA.length} NV · Tổng giờ làm <b className="text-white">{CC_DATA.reduce((s, c) => s + c.tongGio, 0).toLocaleString()}h</b>
+          </p>
         </div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

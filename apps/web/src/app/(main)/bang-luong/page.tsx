@@ -66,7 +66,7 @@ export default function BangLuongPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/30 p-3 md:p-6">
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header */}
-        <div className="rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white p-5 md:p-7 shadow-xl">
+        <div className="rounded-2xl bg-gradient-to-br from-teal-600 via-cyan-600 to-cyan-500 text-white p-5 md:p-7 shadow-xl">
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
               <div className="text-xs font-medium opacity-90 mb-1 flex items-center gap-2">

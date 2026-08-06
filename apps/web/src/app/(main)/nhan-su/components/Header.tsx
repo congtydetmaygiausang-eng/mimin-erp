@@ -9,9 +9,9 @@ import type { NhanSuExt } from "../data";
 export function HeaderBanner({ tongNV, tongLuongCung, onAdd }: { tongNV: number; tongLuongCung: number; onAdd: () => void }) {
   const perm = usePermission();
   return (
-    <div className="relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(160deg, #006d8f 0%, #0a9ebd 20%, #3dba7a 55%, #2d6a4f 80%, #1b3a2e 100%)" }}>
-      <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #7fffd4 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
-      <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #00bcd4 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
+    <div className="relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
+      <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #5eead4 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
+      <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #67e8f9 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-5">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-white drop-shadow">

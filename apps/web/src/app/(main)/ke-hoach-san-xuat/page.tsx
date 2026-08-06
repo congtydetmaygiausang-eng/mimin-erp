@@ -52,15 +52,24 @@ export default function KeHoachSXPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Calendar className="w-7 h-7 text-brand-500" />
-            Kế hoạch sản xuất
-          </h1>
-          <p className="opacity-70 mt-1 text-sm">{tongKH} KH · Tổng SL <b className="text-brand-600">{tongSL.toLocaleString()}</b> · Hoàn thành <b className="text-emerald-600">{daHoanThanh.toLocaleString()}</b> · Tiến độ <b className="text-amber-600">{tienDoChung.toFixed(1)}%</b></p>
+      <div className="rounded-2xl overflow-hidden shadow-xl" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
+        <div className="p-5 md:p-7 text-white flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" /> MIMIN ERP · Sản xuất & Kế hoạch
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5">
+              <Calendar className="w-7 h-7" />
+              Kế hoạch sản xuất
+            </h1>
+            <p className="text-sm opacity-95 mt-1.5">
+              {tongKH} KH · Tổng SL <b className="text-white">{tongSL.toLocaleString()}</b> · Hoàn thành <b className="text-white">{daHoanThanh.toLocaleString()}</b> · Tiến độ <b className="text-white">{tienDoChung.toFixed(1)}%</b>
+            </p>
+          </div>
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition">
+            <Plus className="w-4 h-4" /> Tạo KHSX
+          </button>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Tạo KHSX</button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
