@@ -111,7 +111,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { href: "/san-xuat-erp", label: "🏭 Sản Xuất ERP (Tổng hợp)", iconName: "Factory", module: "ke-hoach-sx" },
 
   // === Phân quyền ===
-  { href: "/phan-quen-cua-toi", label: "🛡️ Phân quyền của tôi", iconName: "ShieldCheck", module: "cai-dat" },
+  { href: "/phan-quyen-cua-toi", label: "🛡️ Phân quyền của tôi", iconName: "ShieldCheck", module: "cai-dat" },
 
   // === BỘ 2: QUẢN LÝ SẢN XUẤT (Đợt 3 - QLSX dashboard) ===
   { href: "/bang-dieu-hanh-sx", label: "🏭 Bảng điều hành SX", iconName: "Factory", module: "ke-hoach-sx", allowedRoles: ["DIEU_PHOI_SX", "GIAM_DOC", "QUAN_TRI_HE_THONG"] },

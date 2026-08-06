@@ -129,7 +129,7 @@ const PATHNAME_PATTERNS: Array<{ pattern: RegExp | string; context: QuickContext
   { pattern: /\/nhan-su/, context: "nhan-su" },
   { pattern: /\/profile/, context: "nhan-su" },
   { pattern: /\/cham-cong/, context: "nhan-su" },
-  { pattern: /\/phan-quen-cua-toi/, context: "nhan-su" },
+  { pattern: /\/phan-quyen-cua-toi/, context: "nhan-su" },
   { pattern: /\/phan-quyen-tuy-chinh/, context: "nhan-su" },
   { pattern: /\/quan-ly-tai-khoan/, context: "nhan-su" },
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { USERS, type UserAccount } from "@/lib/users";
 import { CONG_NHAN_13 } from "@/lib/congnhan-13";
 import { USER_ACCOUNTS_SECURE } from "@/lib/user-accounts-secure";
+import { AdminOnly } from "@/components/AdminOnly";
 
 // 44 user @mimin.vn (sync tu Supabase 2026-08-05) - phan theo role
 const USERS_MIMIN_VN = [
@@ -106,6 +107,7 @@ export default function TestPhanQuyenPage() {
   };
 
   return (
+    <AdminOnly>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-purple-50/30 p-3 md:p-5">
       <div className="max-w-5xl mx-auto space-y-4">
         <div className="rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-700 text-white p-5 md:p-7 shadow-xl">
@@ -155,6 +157,7 @@ export default function TestPhanQuyenPage() {
         </Link>
       </div>
     </div>
+    </AdminOnly>
   );
 }
 
