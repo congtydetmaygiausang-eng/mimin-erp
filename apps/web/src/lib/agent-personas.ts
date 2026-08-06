@@ -139,3 +139,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
     allowed_domains: ["thiet-bi-may", "dinh-muc-ky-thuat"],
   },
 };
+
+// 6 agents V6 (theo chốt 2026-08-05)
+export const AGENT_IDS_V6 = ["mavis", "minh", "lan", "ha", "vy", "mimin-help"] as const;
+export type AgentIdV6 = typeof AGENT_IDS_V6[number];

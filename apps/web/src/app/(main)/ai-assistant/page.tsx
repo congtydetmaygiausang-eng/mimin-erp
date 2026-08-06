@@ -62,7 +62,7 @@ export default function AIAssistantPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: "sang@mimin.vn",
-          query: content,
+          messages: [{ role: "user", content }],
         }),
       });
 

@@ -124,7 +124,7 @@ async function callOpenAICompatible(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { user_id, messages = [], agent_id: requestedAgentId } = body;
+    const { user_id, messages = [], agent_id: requestedAgentId, hint_agent: hintAgentId } = body;
 
     if (!user_id || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
     // ============================================
     // 1. ROUTING - Phân loại task → agent phù hợp
     // ============================================
-    let agentId = requestedAgentId;
+    let agentId = requestedAgentId || hintAgentId;
     let routeResult = null;
 
     if (!agentId) {
