@@ -78,6 +78,48 @@
     background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 40%, #f0fdfa 100%);
   }
 
+  /* ============================================
+   * MODULE BACKGROUNDS DUNG ANH THAT (sep Sang gui 2026-08-06)
+   * 6 anh trong /public/bg/ - moi anh cho 1 module
+   * Layer them: cover + fixed de hien thi dep khi scroll
+   * ============================================ */
+  .bg-module-img-nhan-su {
+    background-image: url('/bg/bg-1-pink-cyan.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .bg-module-img-khach-hang {
+    background-image: url('/bg/bg-2-blue-green.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .bg-module-img-lenh-cat {
+    background-image: url('/bg/bg-6-yellow-teal.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .bg-module-img-ke-hoach {
+    background-image: url('/bg/bg-4-mint.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .bg-module-img-kho {
+    background-image: url('/bg/bg-3-white.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .bg-module-img-don-hang {
+    background-image: url('/bg/bg-5-teal.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
   .bg-module-nha-cung-cap {
     background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #f8fafc 100%);
   }
