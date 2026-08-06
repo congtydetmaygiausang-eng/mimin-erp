@@ -26,9 +26,11 @@ import { OrderHeader } from "@/components/order-detail/OrderHeader";
 import { OrderItemsTable } from "@/components/order-detail/OrderItemsTable";
 import { OrderSummary } from "@/components/order-detail/OrderSummary";
 import { OrderTimeline } from "@/components/order-detail/OrderTimeline";
-import type { Order, OrderStatus } from "@/components/order-detail/types";
+import OrderFormModal from "@/components/order-detail/OrderFormModal";
+import type { Order, OrderItem, OrderPayment, OrderShipping } from "@/components/order-detail/types";
+import { calcOrderTotal, calcPaidTotal } from "@/components/order-detail/helpers";
 
-type TrangThaiDH = OrderStatus;
+type TrangThaiDH = Order["trangThai"];
 type DonHang = Order;
 
 const { data: DON_HANG_KHOI_DAU } = useSupabaseSync<DonHang>("mimin_don_hang", "don_hang");
@@ -41,6 +43,71 @@ const TRANG_THAI_STYLE: Record<TrangThaiDH, { color: string; bg: string; icon: a
   "Đã giao": { color: "text-green-700", bg: "bg-green-500/15", icon: CheckCircle2 },
   "Hủy": { color: "text-red-700", bg: "bg-red-500/15", icon: X },
 };
+
+/**
+ * Migration: convert Order cu (khong co items[]) sang Order moi
+ * - Tao items[] fake tu sanPham/soLuong/donGia
+ * - Tao shipping default
+ * - Tao payments[] fake tu tienCoc
+ */
+function migrateOldOrder(oldOrder: any): Order {
+  const items: OrderItem[] = oldOrder.sanPham
+    ? [{
+        id: oldOrder.id + "-item-1",
+        spId: oldOrder.sanPham,
+        spTen: oldOrder.sanPham,
+        soLuong: oldOrder.soLuong || 1,
+        donGia: oldOrder.donGia || 0,
+        thanhTien: (oldOrder.soLuong || 1) * (oldOrder.donGia || 0),
+      }]
+    : [];
+
+  const tienCoc = oldOrder.tienCoc || 0;
+  const payments: OrderPayment[] = tienCoc > 0
+    ? [{
+        id: oldOrder.id + "-pay-1",
+        phuongThuc: "tien-mat" as const,
+        soTien: tienCoc,
+        ngayThanhToan: oldOrder.ngayDat || new Date().toISOString().slice(0, 10),
+      }]
+    : [];
+
+  const shipping: OrderShipping = {
+    phuongThuc: "tu-giao",
+    phiVanChuyen: 0,
+    trangThai: "cho-xu-ly",
+  };
+
+  return {
+    ...oldOrder,
+    loaiDonHang: oldOrder.loaiDonHang || "ban-le",
+    items,
+    payments,
+    shipping,
+    trangThaiThanhToan: tienCoc > 0 ? "thanh-toan-mot-phan" : "chua-thanh-toan",
+  };
+}
+
+/**
+ * Convert Order moi -> format luu tru (giu backward compat voi schema cu)
+ * - sanPham: ten SP dau tien
+ * - soLuong: tong so luong
+ * - donGia: don gia SP dau tien
+ * - tienCoc: tong payments
+ */
+function toLegacyFormat(order: Order): any {
+  const tongSL = order.items.reduce((s, i) => s + (i.soLuong || 0), 0);
+  const tongTienCoc = order.payments.reduce((s, p) => s + (p.soTien || 0), 0);
+  const firstItem = order.items[0];
+  return {
+    ...order,
+    sanPham: firstItem?.spTen || order.sanPham || "",
+    loai: order.loai || "Bộ",
+    soLuong: tongSL || order.soLuong || 0,
+    donGia: firstItem?.donGia || order.donGia || 0,
+    tienCoc: tongTienCoc || order.tienCoc || 0,
+  };
+}
 
 export default function DonHangPage() {
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
@@ -71,13 +138,24 @@ export default function DonHangPage() {
     return matchSearch && matchFilter;
   });
 
-  const handleSave = async (dh: DonHang) => {
+  // Open form (cho OrderFormModal) - migrate order cu neu can
+  const openForm = (mode: "add" | "edit", dh?: DonHang) => {
+    if (mode === "edit" && dh) {
+      const migrated = (!dh.items || dh.items.length === 0) ? migrateOldOrder(dh) : dh;
+      setShowForm({ mode, dh: migrated });
+    } else {
+      setShowForm({ mode });
+    }
+  };
+
+  const handleSave = async (order: Order) => {
+    const legacyFormat = toLegacyFormat(order);
     if (showForm?.mode === "add") {
-      await addRecord(dh);
-      toast.success(`Đã tạo đơn hàng: ${dh.maDH}`);
+      await addRecord(legacyFormat);
+      toast.success(`Đã tạo đơn hàng: ${order.maDH}`);
     } else if (showForm?.mode === "edit") {
-      await updateRecord(dh.id, dh);
-      toast.success(`Đã cập nhật: ${dh.maDH}`);
+      await updateRecord(order.id, legacyFormat);
+      toast.success(`Đã cập nhật: ${order.maDH}`);
     }
     setShowForm(null);
   };
@@ -114,7 +192,7 @@ export default function DonHangPage() {
             {tongDH} đơn · Tổng DT <b className="text-emerald-600">{formatVNDShort(tongDoanhThu)}</b> · Đã cọc <b className="text-sky-600">{formatVNDShort(tongCoc)}</b> · Còn lại <b className="text-amber-600">{formatVNDShort(conLai)}</b>
           </p>
         </div>
-        <button onClick={() => setShowForm({ mode: "add" })} className="btn-primary flex items-center gap-2">
+        <button onClick={() => openForm("add")} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Tạo đơn hàng
         </button>
       </div>
@@ -241,7 +319,7 @@ export default function DonHangPage() {
                             <ChevronRight className="w-3 h-3" />
                           </button>
                         )}
-                        <button onClick={() => setShowForm({ mode: "edit", dh: d })} className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 hover:bg-sky-500/25">
+                        <button onClick={() => openForm("edit", d)} className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 hover:bg-sky-500/25">
                           <Edit2 className="w-3 h-3" />
                         </button>
                         <button onClick={() => handleDelete(d)} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-700 hover:bg-red-500/25">
@@ -267,136 +345,15 @@ export default function DonHangPage() {
         </div>
       </div>
 
-      {showForm && <DonHangForm mode={showForm.mode} dh={showForm.dh} existingCount={list.length} khachHangs={khachHangs} onClose={() => setShowForm(null)} onSave={handleSave} />}
+      {showForm && (
+        <OrderFormModal
+          open={!!showForm}
+          initial={showForm.dh || null}
+          onClose={() => setShowForm(null)}
+          onSave={handleSave}
+        />
+      )}
       {showDetail && <DHDetailModal dh={showDetail} onClose={() => setShowDetail(null)} />}
-    </div>
-  );
-}
-
-function DonHangForm({ mode, dh, existingCount, onClose, onSave, khachHangs }: any) {
-  const [form, setForm] = useState<DonHang>(dh || {
-    id: `DH-${(existingCount + 1).toString().padStart(3, "0")}`,
-    maDH: `DH-2026-${(existingCount + 1).toString().padStart(3, "0")}`,
-    ngayDat: new Date().toISOString().split("T")[0],
-    ngayGiao: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    khachHang: khachHangs?.[0]?.ten_kh || "",
-    sdt: "",
-    sanPham: "",
-    loai: "Bộ",
-    soLuong: 0,
-    donGia: 0,
-    thanhTien: 0,
-    trangThai: "Mới",
-    tienCoc: 0,
-    ghiChu: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.khachHang || !form.sanPham) {
-      toast.error("Vui lòng nhập KH và sản phẩm");
-      return;
-    }
-    onSave({ ...form, thanhTien: form.soLuong * form.donGia });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            {mode === "add" ? <Plus className="w-5 h-5 text-brand-500" /> : <Edit2 className="w-5 h-5 text-sky-600" />}
-            {mode === "add" ? "Tạo đơn hàng mới" : `Sửa: ${dh?.maDH}`}
-          </h3>
-          <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Mã ĐH *</label>
-              <input required className="input w-full" value={form.maDH} onChange={(e) => setForm({ ...form, maDH: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Ngày đặt *</label>
-              <input type="date" required className="input w-full" value={form.ngayDat} onChange={(e) => setForm({ ...form, ngayDat: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Ngày giao DK *</label>
-              <input type="date" required className="input w-full" value={form.ngayGiao} onChange={(e) => setForm({ ...form, ngayGiao: e.target.value })} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Khách hàng *</label>
-              <select required className="input w-full" value={form.khachHang} onChange={(e) => setForm({ ...form, khachHang: e.target.value })}>
-                <option value="">-- Chọn KH --</option>
-                {khachHangs.map((k: any) => <option key={k.ma_kh} value={k.ten_kh}>{k.ten_kh}</option>)}
-                <option value="__khac__">+ Khác (tự nhập)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">SĐT KH</label>
-              <input className="input w-full" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} placeholder="0901234567" />
-            </div>
-          </div>
-          {form.khachHang === "__khac__" && (
-            <div>
-              <label className="text-xs font-medium block mb-1">Tên KH mới</label>
-              <input className="input w-full" onChange={(e) => setForm({ ...form, khachHang: e.target.value })} placeholder="Tên công ty/cá nhân" />
-            </div>
-          )}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="col-span-2">
-              <label className="text-xs font-medium block mb-1">Sản phẩm *</label>
-              <input required className="input w-full" value={form.sanPham} onChange={(e) => setForm({ ...form, sanPham: e.target.value })} placeholder="VD: Bộ trụ trơn" />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Loại</label>
-              <select className="input w-full" value={form.loai} onChange={(e) => setForm({ ...form, loai: e.target.value as "Áo" | "Bộ" })}>
-                <option>Bộ</option>
-                <option>Áo</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Số lượng *</label>
-              <input type="number" required min={1} className="input w-full" value={form.soLuong || ""} onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })} />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Đơn giá (đ) *</label>
-              <input type="number" required min={0} className="input w-full" value={form.donGia || ""} onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })} />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Tiền cọc (đ)</label>
-              <input type="number" min={0} className="input w-full" value={form.tienCoc || ""} onChange={(e) => setForm({ ...form, tienCoc: Number(e.target.value) })} />
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Thành tiền</label>
-              <div className="input w-full bg-emerald-500/10 text-emerald-700 font-bold flex items-center">{(form.soLuong * form.donGia).toLocaleString()}đ</div>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium block mb-1">Trạng thái</label>
-            <select className="input w-full" value={form.trangThai} onChange={(e) => setForm({ ...form, trangThai: e.target.value as TrangThaiDH })}>
-              <option>Mới</option>
-              <option>Đã duyệt</option>
-              <option>Đang SX</option>
-              <option>Hoàn thành</option>
-              <option>Đã giao</option>
-              <option>Hủy</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium block mb-1">Ghi chú</label>
-            <textarea className="input w-full min-h-[50px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} />
-          </div>
-          <div className="flex gap-2 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-            <button type="submit" className="btn-primary flex-1">{mode === "add" ? "Tạo đơn hàng" : "Lưu thay đổi"}</button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }
