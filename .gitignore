@@ -41,3 +41,14 @@ check-sync.ps1
 sync-2ai.ps1
 CHANGELOG-Antigravity.md
 .env*
+
+# Temporary files (khong commit)
+del.mjs
+patches/
+patches2/
+screenshots/
+screenshots-old/
+screenshots-new/
+
+# Commit message drafts (khong commit)
+scripts/commit-msg-*.txt
