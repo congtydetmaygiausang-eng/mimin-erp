@@ -139,7 +139,7 @@ export default function Page() {
                     {MODULE_LABELS[m]}
                   </td>
                   {ALL_ROLES.map((r) => {
-                    const perms = matrix[r][m];
+                    const perms = matrix[r][m] || "";
                     return (
                       <td key={r} className="p-2 text-center">
                         <div className="flex gap-0.5 justify-center flex-wrap">

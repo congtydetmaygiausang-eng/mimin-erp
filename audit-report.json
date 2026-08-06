@@ -1,0 +1,417 @@
+{
+  "routes": [
+    {
+      "group": "Tong-Quan",
+      "path": "dashboard",
+      "status": "ok",
+      "duration": 2782,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Tong-Quan",
+      "path": "bang-dieu-hanh-sx",
+      "status": "ok",
+      "duration": 2666,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Tong-Quan",
+      "path": "realtime",
+      "status": "warn",
+      "duration": 2943,
+      "error": "3 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "[Supabase] fetchAll(khach_hang) error: [object Object]"
+      ],
+      "consoleErrorCount": 3
+    },
+    {
+      "group": "Tong-Quan",
+      "path": "canh-bao",
+      "status": "warn",
+      "duration": 2696,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "San-Xuat",
+      "path": "ke-hoach-san-xuat",
+      "status": "warn",
+      "duration": 2703,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "San-Xuat",
+      "path": "lenh-cat",
+      "status": "warn",
+      "duration": 2837,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "San-Xuat",
+      "path": "may",
+      "status": "warn",
+      "duration": 2689,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "San-Xuat",
+      "path": "hoan-thien",
+      "status": "warn",
+      "duration": 2697,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "San-Xuat",
+      "path": "qc",
+      "status": "warn",
+      "duration": 2689,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "San-Xuat",
+      "path": "gia-cong-ngoai",
+      "status": "warn",
+      "duration": 2759,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "San-Xuat",
+      "path": "lsx-m758-demo",
+      "status": "ok",
+      "duration": 2722,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "San-Xuat",
+      "path": "ban-giao-hoan-thien",
+      "status": "ok",
+      "duration": 2653,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Kho",
+      "path": "kho-vai-tinhmann",
+      "status": "warn",
+      "duration": 2719,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "Kho",
+      "path": "kho-phu-lieu",
+      "status": "warn",
+      "duration": 2931,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "Kho",
+      "path": "kho-thanh-pham",
+      "status": "warn",
+      "duration": 2715,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "Kho",
+      "path": "giao-hang",
+      "status": "warn",
+      "duration": 2680,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "Kho",
+      "path": "van-chuyen",
+      "status": "warn",
+      "duration": 2711,
+      "error": "4 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "[Supabase] fetchAll(don_hang) error: [object Object]",
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "[Supabase] fetchAll(khach_hang) error: [object Object]"
+      ],
+      "consoleErrorCount": 4
+    },
+    {
+      "group": "Ke-Toan",
+      "path": "cham-cong",
+      "status": "warn",
+      "duration": 2728,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "Ke-Toan",
+      "path": "bang-luong",
+      "status": "warn",
+      "duration": 2824,
+      "error": "11 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "[Supabase] fetchAll(khsx) error: [object Object]",
+        "Failed to load resource: the server responded with a status of 400 ()",
+        "[Supabase] fetchAll(doi_soat) error: [object Object]",
+        "Failed to load resource: the server responded with a status of 400 ()"
+      ],
+      "consoleErrorCount": 11
+    },
+    {
+      "group": "Ke-Toan",
+      "path": "doi-soat-tien-cong",
+      "status": "ok",
+      "duration": 2644,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Ke-Toan",
+      "path": "cong-no",
+      "status": "warn",
+      "duration": 2688,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "Ke-Toan",
+      "path": "don-hang",
+      "status": "warn",
+      "duration": 2629,
+      "error": "5 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "[Supabase] fetchAll(don_hang) error: [object Object]",
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "[Supabase] fetchAll(khach_hang) error: [object Object]"
+      ],
+      "consoleErrorCount": 5
+    },
+    {
+      "group": "Danh-Muc",
+      "path": "danh-muc-sp",
+      "status": "ok",
+      "duration": 2721,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Danh-Muc",
+      "path": "nhan-su",
+      "status": "warn",
+      "duration": 2728,
+      "error": "3 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "load employees failed Error: Không thể tải danh sách nhân sự từ Supabase"
+      ],
+      "consoleErrorCount": 3
+    },
+    {
+      "group": "Danh-Muc",
+      "path": "khach-hang",
+      "status": "warn",
+      "duration": 2922,
+      "error": "2 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 2
+    },
+    {
+      "group": "Danh-Muc",
+      "path": "nha-cung-cap",
+      "status": "warn",
+      "duration": 2719,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "Danh-Muc",
+      "path": "doi-tac-gia-cong",
+      "status": "ok",
+      "duration": 2686,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Danh-Muc",
+      "path": "cong-nhan-gia-cong",
+      "status": "ok",
+      "duration": 2772,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Danh-Muc",
+      "path": "master-data",
+      "status": "ok",
+      "duration": 2700,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "He-Thong",
+      "path": "quan-ly-tai-khoan",
+      "status": "warn",
+      "duration": 3398,
+      "error": "2 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "consoleErrorCount": 2
+    },
+    {
+      "group": "He-Thong",
+      "path": "phan-quyen-tuy-chinh",
+      "status": "ok",
+      "duration": 3209,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "He-Thong",
+      "path": "ai-assistant",
+      "status": "ok",
+      "duration": 3203,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "He-Thong",
+      "path": "agents",
+      "status": "ok",
+      "duration": 4120,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "He-Thong",
+      "path": "audit-log",
+      "status": "ok",
+      "duration": 3148,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "He-Thong",
+      "path": "cai-dat",
+      "status": "warn",
+      "duration": 3190,
+      "error": "1 console error(s)",
+      "consoleErrors": [
+        "TypeError: Cannot read properties of undefined (reading 'split')"
+      ],
+      "consoleErrorCount": 1
+    },
+    {
+      "group": "He-Thong",
+      "path": "backup-restore",
+      "status": "ok",
+      "duration": 3184,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Test",
+      "path": "test-kiem-thu",
+      "status": "ok",
+      "duration": 3313,
+      "error": "",
+      "consoleErrors": [],
+      "consoleErrorCount": 0
+    },
+    {
+      "group": "Test",
+      "path": "supabase-status",
+      "status": "warn",
+      "duration": 3201,
+      "error": "2 console error(s)",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 403 ()"
+      ],
+      "consoleErrorCount": 2
+    }
+  ],
+  "summary": {
+    "total": 38,
+    "ok": 15,
+    "fail": 0,
+    "warn": 23,
+    "totalErrors": 47
+  }
+}
