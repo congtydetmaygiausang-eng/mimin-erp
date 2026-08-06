@@ -58,7 +58,7 @@ export default function KeHoachSXPage() {
             <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" /> MIMIN ERP · Sản xuất & Kế hoạch
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5">
+            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5">
               <Calendar className="w-7 h-7" />
               Kế hoạch sản xuất
             </h1>

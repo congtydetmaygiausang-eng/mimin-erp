@@ -33,7 +33,7 @@ export default function ChamCongPage() {
           <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5" /> MIMIN ERP · Kế toán & Mua bán
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5">
+          <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5">
             <Calendar className="w-7 h-7" /> Chấm công tháng 7/2026
           </h1>
           <p className="text-sm opacity-95 mt-1.5">

@@ -164,7 +164,7 @@ export function HorizontalNav() {
                   // Click vao group -> navigate den item dau tien
                   if (g.items[0]) router.push(g.items[0].href);
                 }}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl font-semibold text-xs whitespace-nowrap transition shrink-0 ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition shrink-0 ${
                   active
                     ? `bg-gradient-to-r ${g.color} text-white shadow-md`
                     : "text-slate-600 hover:bg-slate-100"
@@ -219,9 +219,9 @@ export function HorizontalNav() {
 
       {/* === HANG 2: Sub-menu cua nhom active === */}
       <div className={`bg-gradient-to-r ${activeGroup.color} text-white`}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
           <div className="flex items-center gap-2 h-10 overflow-x-auto">
-            <span className="text-[10px] uppercase font-bold opacity-80 mr-1 shrink-0">
+            <span className="text-[11px] uppercase font-extrabold opacity-80 mr-1 shrink-0">
               {activeGroup.label}:
             </span>
             {activeGroup.items.map((it) => {
@@ -230,7 +230,7 @@ export function HorizontalNav() {
                 <Link
                   key={it.href}
                   href={it.href}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition shrink-0 flex items-center gap-1 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition shrink-0 flex items-center gap-1 ${
                     active
                       ? "bg-white text-slate-800 shadow-md"
                       : "text-white/90 hover:bg-white/20"

@@ -54,7 +54,7 @@ export default function DoiTacGiaCongPage() {
         <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #67e8f9 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-5">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-white drop-shadow">
+            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5 text-white drop-shadow">
               <Users className="w-7 h-7 text-white/90" />
               Đối tác Gia công Outside
             </h1>

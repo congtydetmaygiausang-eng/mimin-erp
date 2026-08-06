@@ -123,14 +123,14 @@ export default function KhoVaiPage() {
   const lenhSXVailable = Array.from(new Set(ALL_REAL_PHIEU.map((p) => p.lenhSX)));
 
   return (
-    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
+    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800">
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
       <div className="rounded-3xl overflow-hidden shadow-xl mb-6" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
         <div className="p-5 md:p-6 text-white">
           <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
             <Package className="w-3.5 h-3.5" /> MIMIN ERP · Kho & Giao hàng
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5">
+          <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5">
             <Package className="w-7 h-7" /> Kho Vải & Định Mức Vải
           </h1>
           <p className="text-sm opacity-95 mt-1.5">

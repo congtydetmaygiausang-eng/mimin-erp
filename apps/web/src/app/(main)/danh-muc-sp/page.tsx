@@ -53,7 +53,7 @@ export default function DanhMucSanPhamPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800 -m-4 md:-m-6 p-4 md:p-6">
       {/* === HEADER: Trắng trên CYAN === */}
-      <div className="max-w-7xl mx-auto mb-6">
+      <div className="max-w-[1600px] mx-auto mb-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg flex items-center gap-3">
@@ -107,17 +107,17 @@ export default function DanhMucSanPhamPage() {
 
       {/* === GRID CARDS (horizontal layout) === */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white/10 backdrop-blur rounded-3xl max-w-7xl mx-auto">
+        <div className="flex flex-col items-center justify-center py-20 bg-white/10 backdrop-blur rounded-3xl max-w-[1600px] mx-auto">
           <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4"></div>
           <div className="text-white font-semibold">Đang đồng bộ dữ liệu từ Supabase...</div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white/10 backdrop-blur rounded-3xl max-w-7xl mx-auto">
+        <div className="text-center py-20 bg-white/10 backdrop-blur rounded-3xl max-w-[1600px] mx-auto">
           <Shirt className="w-16 h-16 mx-auto text-white/40 mb-4" />
           <p className="text-white font-semibold">Không tìm thấy sản phẩm nào</p>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto space-y-4">
+        <div className="max-w-[1600px] mx-auto space-y-4">
           {filtered.map((sp) => (
             <HorizontalProductCard key={sp.id} sp={sp} />
           ))}

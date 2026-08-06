@@ -76,7 +76,7 @@ export default function PageHeader({
                 {moduleLabel}
               </div>
             )}
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5 leading-tight">
+            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5 leading-tight">
               {icon && !moduleLabel && (
                 <span className="w-9 h-9 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
                   {icon}

@@ -26,7 +26,7 @@ export function Header({ inventoryCount, tongGiaTri, dsCanhBao, dsCanhBaoDetails
         </div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5">
+            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5">
               <Boxes className="w-7 h-7" />
               Kho Phụ Liệu
             </h1>

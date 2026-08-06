@@ -71,7 +71,7 @@ export default function KhoPhuLieuPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
+    <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800">
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
         <Header
           inventoryCount={inventory.length}
