@@ -17,6 +17,9 @@ import {
   DollarSign,
   User as UserIcon,
   ChevronRight,
+  Printer,
+  Wallet,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { NCCS, formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -27,7 +30,12 @@ import { OrderItemsTable } from "@/components/order-detail/OrderItemsTable";
 import { OrderSummary } from "@/components/order-detail/OrderSummary";
 import { OrderTimeline } from "@/components/order-detail/OrderTimeline";
 import OrderFormModal from "@/components/order-detail/OrderFormModal";
+import InvoicePrint from "@/components/order-detail/InvoicePrint";
 import type { Order, OrderItem, OrderPayment, OrderShipping } from "@/components/order-detail/types";
+import {
+  PHUONG_THUC_THANH_TOAN_LABELS, PHUONG_THUC_VAN_CHUYEN_LABELS, TRANG_THAI_VAN_CHUYEN_LABELS,
+  LOAI_DON_HANG_LABELS,
+} from "@/components/order-detail/types";
 import { calcOrderTotal, calcPaidTotal } from "@/components/order-detail/helpers";
 
 type TrangThaiDH = Order["trangThai"];
@@ -353,44 +361,138 @@ export default function DonHangPage() {
           onSave={handleSave}
         />
       )}
-      {showDetail && <DHDetailModal dh={showDetail} onClose={() => setShowDetail(null)} />}
+      {showDetail && (
+        <DHDetailModal
+          dh={showDetail}
+          onClose={() => setShowDetail(null)}
+          onEdit={(dh) => openForm("edit", dh)}
+        />
+      )}
     </div>
   );
 }
 
-function DHDetailModal({ dh, onClose }: { dh: DonHang; onClose: () => void }) {
-  const items = [
-    {
-      id: `${dh.id}-1`,
-      sku: dh.maDH,
-      name: dh.sanPham,
-      type: dh.loai,
-      quantity: dh.soLuong,
-      unitPrice: dh.donGia,
-      total: dh.thanhTien,
-    },
-  ];
+function DHDetailModal({ dh, onClose, onEdit }: { dh: DonHang; onClose: () => void; onEdit?: (dh: DonHang) => void }) {
+  const [printing, setPrinting] = useState(false);
+  // Migrate neu order cu (khong co items)
+  const dhMigrated = (!dh.items || dh.items.length === 0) ? migrateOldOrder(dh) : dh;
+  const items = dhMigrated.items.map((it) => ({
+    id: it.id,
+    sku: it.sku || it.spId,
+    name: it.spTen,
+    type: dh.loai,
+    quantity: it.soLuong,
+    unitPrice: it.donGia,
+    total: it.thanhTien,
+  }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="card max-w-5xl w-full p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <OrderHeader order={dh} onClose={onClose} />
-        <div className="space-y-4 text-sm">
-          <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
-            <OrderItemsTable items={items} />
-            <OrderCustomer order={dh} />
-          </div>
-          <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-4">
-            <OrderTimeline order={dh} />
-            <OrderSummary order={dh} />
-          </div>
-          <div className="bg-brand-500/10 rounded p-3 text-xs">
-            <div className="font-semibold mb-1">Workflow hiện tại: {dh.trangThai}</div>
-            <div className="opacity-70">Luồng chuẩn: Mới → Đã duyệt → Đang SX → Hoàn thành → Đã giao</div>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+        <div className="card max-w-5xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <OrderHeader order={dhMigrated} onClose={onClose} />
+          <div className="space-y-4 text-sm">
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setPrinting(true)}
+                className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-semibold flex items-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                In hóa đơn A4
+              </button>
+              {onEdit && (
+                <button
+                  onClick={() => { onEdit(dhMigrated); onClose(); }}
+                  className="px-3 py-1.5 rounded-lg bg-sky-500/15 text-sky-700 hover:bg-sky-500/25 text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Sửa đơn
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
+              <OrderItemsTable items={items} />
+              <OrderCustomer order={dhMigrated} />
+            </div>
+
+            {/* Thanh toán multi-method */}
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <Wallet className="w-4 h-4" />
+                  Thanh toán ({dhMigrated.payments.length} lần)
+                </h3>
+                <div className="text-xs">
+                  <span className="opacity-70">Trạng thái: </span>
+                  <span className={`font-bold ${
+                    dhMigrated.trangThaiThanhToan === "thanh-toan-du" ? "text-emerald-600" :
+                    dhMigrated.trangThaiThanhToan === "thanh-toan-mot-phan" ? "text-amber-600" :
+                    "text-rose-600"
+                  }`}>
+                    {dhMigrated.trangThaiThanhToan === "thanh-toan-du" ? "Đã thanh toán đủ" :
+                     dhMigrated.trangThaiThanhToan === "thanh-toan-mot-phan" ? "Thanh toán một phần" :
+                     "Chưa thanh toán"}
+                  </span>
+                </div>
+              </div>
+              {dhMigrated.payments.length === 0 ? (
+                <div className="text-xs text-slate-500 italic">Chưa có thanh toán nào</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {dhMigrated.payments.map((p) => (
+                    <div key={p.id} className="flex items-center gap-2 text-xs bg-white dark:bg-slate-800 px-3 py-1.5 rounded">
+                      <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-700 rounded font-semibold">
+                        {PHUONG_THUC_THANH_TOAN_LABELS[p.phuongThuc]}
+                      </span>
+                      <span className="opacity-70">{p.ngayThanhToan}</span>
+                      {p.nganHang && <span className="opacity-70">· {p.nganHang}</span>}
+                      {p.maGiaoDich && <code className="text-[10px] bg-slate-100 dark:bg-slate-700 px-1 rounded">{p.maGiaoDich}</code>}
+                      <span className="ml-auto font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatVND(p.soTien)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Vận chuyển */}
+            <div className="p-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-lg">
+              <h3 className="font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5 mb-2">
+                <Truck className="w-4 h-4" />
+                Vận chuyển
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div><span className="opacity-70">Phương thức:</span> <b>{PHUONG_THUC_VAN_CHUYEN_LABELS[dhMigrated.shipping.phuongThuc]}</b></div>
+                <div><span className="opacity-70">Phí:</span> <b>{formatVND(dhMigrated.shipping.phiVanChuyen || 0)}</b></div>
+                <div><span className="opacity-70">Trạng thái:</span> <b>{TRANG_THAI_VAN_CHUYEN_LABELS[dhMigrated.shipping.trangThai]}</b></div>
+                {dhMigrated.shipping.maVanDon && <div><span className="opacity-70">Mã vận đơn:</span> <code className="bg-white dark:bg-slate-800 px-1 rounded">{dhMigrated.shipping.maVanDon}</code></div>}
+                {dhMigrated.shipping.diaChiGiao && <div className="col-span-2"><span className="opacity-70">Địa chỉ:</span> {dhMigrated.shipping.diaChiGiao}</div>}
+                {dhMigrated.shipping.ghiChu && <div className="col-span-2 italic opacity-80">{dhMigrated.shipping.ghiChu}</div>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-4">
+              <OrderTimeline order={dhMigrated} />
+              <OrderSummary order={dhMigrated} />
+            </div>
+            <div className="bg-brand-500/10 rounded p-3 text-xs">
+              <div className="font-semibold mb-1">Workflow hiện tại: {dh.trangThai}</div>
+              <div className="opacity-70">Luồng chuẩn: Mới → Đã duyệt → Đang SX → Hoàn thành → Đã giao</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {printing && (
+        <InvoicePrint
+          order={dhMigrated}
+          onClose={() => setPrinting(false)}
+        />
+      )}
+    </>
   );
 }
 
