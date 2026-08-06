@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo } from "react";
 import {
@@ -16,42 +16,22 @@ import {
   TrendingUp,
   DollarSign,
   User as UserIcon,
-  FileText,
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { NCCS, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { useSupabaseSync } from "@/lib/supabase/client";
+import { OrderCustomer } from "@/components/order-detail/OrderCustomer";
+import { OrderHeader } from "@/components/order-detail/OrderHeader";
+import { OrderItemsTable } from "@/components/order-detail/OrderItemsTable";
+import { OrderSummary } from "@/components/order-detail/OrderSummary";
+import { OrderTimeline } from "@/components/order-detail/OrderTimeline";
+import type { Order, OrderStatus } from "@/components/order-detail/types";
 
-type TrangThaiDH = "Mới" | "Đã duyệt" | "Đang SX" | "Hoàn thành" | "Đã giao" | "Hủy";
+type TrangThaiDH = OrderStatus;
+type DonHang = Order;
 
-type DonHang = {
-  id: string;
-  maDH: string;
-  ngayDat: string;
-  ngayGiao: string;
-  khachHang: string;
-  sdt: string;
-  sanPham: string;
-  loai: "Áo" | "Bộ";
-  soLuong: number;
-  donGia: number;
-  thanhTien: number;
-  trangThai: TrangThaiDH;
-  ghiChu?: string;
-  tienCoc: number;
-};
-
-const DON_HANG_KHOI_DAU: DonHang[] = [
-  { id: "DH-001", maDH: "DH-2026-001", ngayDat: "2026-07-10", ngayGiao: "2026-08-05", khachHang: "Cty May Hà Nội", sdt: "0912345678", sanPham: "Bộ trụ trơn", loai: "Bộ", soLuong: 500, donGia: 145000, thanhTien: 72500000, trangThai: "Đang SX", tienCoc: 20000000, ghiChu: "Đơn hàng ưu tiên" },
-  { id: "DH-002", maDH: "DH-2026-002", ngayDat: "2026-07-12", ngayGiao: "2026-08-10", khachHang: "Shop Thời Trang Sài Gòn", sdt: "0987654321", sanPham: "Áo Polo cao cấp", loai: "Áo", soLuong: 300, donGia: 95000, thanhTien: 28500000, trangThai: "Đang SX", tienCoc: 10000000 },
-  { id: "DH-003", maDH: "DH-2026-003", ngayDat: "2026-07-15", ngayGiao: "2026-08-15", khachHang: "Xưởng may Minh Tâm", sdt: "0901234567", sanPham: "Bộ thể thao", loai: "Bộ", soLuong: 200, donGia: 165000, thanhTien: 33000000, trangThai: "Đã duyệt", tienCoc: 5000000 },
-  { id: "DH-004", maDH: "DH-2026-004", ngayDat: "2026-07-18", ngayGiao: "2026-08-20", khachHang: "Cty Dệt Phong Phú", sdt: "0934567890", sanPham: "Áo thun cotton", loai: "Áo", soLuong: 1000, donGia: 65000, thanhTien: 65000000, trangThai: "Mới", tienCoc: 0, ghiChu: "Chờ xác nhận KH" },
-  { id: "DH-005", maDH: "DH-2026-005", ngayDat: "2026-06-15", ngayGiao: "2026-07-10", khachHang: "Shop Thời Trang Sài Gòn", sdt: "0987654321", sanPham: "Bộ vest công sở", loai: "Bộ", soLuong: 100, donGia: 285000, thanhTien: 28500000, trangThai: "Đã giao", tienCoc: 15000000 },
-  { id: "DH-006", maDH: "DH-2026-006", ngayDat: "2026-06-20", ngayGiao: "2026-07-15", khachHang: "Cty May Hà Nội", sdt: "0912345678", sanPham: "Áo sơ mi", loai: "Áo", soLuong: 500, donGia: 85000, thanhTien: 42500000, trangThai: "Hoàn thành", tienCoc: 20000000 },
-  { id: "DH-007", maDH: "DH-2026-007", ngayDat: "2026-06-25", ngayGiao: "2026-07-20", khachHang: "Xưởng may Hoàng Long", sdt: "0945678901", sanPham: "Bộ đồng phục", loai: "Bộ", soLuong: 300, donGia: 155000, thanhTien: 46500000, trangThai: "Đã giao", tienCoc: 25000000 },
-  { id: "DH-008", maDH: "DH-2026-008", ngayDat: "2026-05-15", ngayGiao: "2026-06-10", khachHang: "Cty May Việt Hưng", sdt: "0923456789", sanPham: "Áo khoác", loai: "Áo", soLuong: 200, donGia: 145000, thanhTien: 29000000, trangThai: "Hủy", tienCoc: 5000000, ghiChu: "KH hủy do thay đổi thiết kế" },
-];
+const { data: DON_HANG_KHOI_DAU } = useSupabaseSync<DonHang>("mimin_don_hang", "don_hang");
 
 const TRANG_THAI_STYLE: Record<TrangThaiDH, { color: string; bg: string; icon: any }> = {
   "Mới": { color: "text-sky-700", bg: "bg-sky-500/15", icon: Plus },
@@ -64,7 +44,7 @@ const TRANG_THAI_STYLE: Record<TrangThaiDH, { color: string; bg: string; icon: a
 
 export default function DonHangPage() {
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
-  const [list, setList] = useState<DonHang[]>(DON_HANG_KHOI_DAU);
+  const { data: list, addRecord, updateRecord, deleteRecord, isLoading } = useSupabaseSync<DonHang>("mimin_don_hang", "don_hang", DON_HANG_KHOI_DAU);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | TrangThaiDH>("all");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; dh?: DonHang } | null>(null);
@@ -91,25 +71,25 @@ export default function DonHangPage() {
     return matchSearch && matchFilter;
   });
 
-  const handleSave = (dh: DonHang) => {
+  const handleSave = async (dh: DonHang) => {
     if (showForm?.mode === "add") {
-      setList([...list, dh]);
+      await addRecord(dh);
       toast.success(`Đã tạo đơn hàng: ${dh.maDH}`);
     } else if (showForm?.mode === "edit") {
-      setList(list.map((x) => (x.id === dh.id ? dh : x)));
+      await updateRecord(dh.id, dh);
       toast.success(`Đã cập nhật: ${dh.maDH}`);
     }
     setShowForm(null);
   };
 
-  const handleDelete = (dh: DonHang) => {
+  const handleDelete = async (dh: DonHang) => {
     if (confirm(`Xoá đơn hàng "${dh.maDH}"?`)) {
-      setList(list.filter((x) => x.id !== dh.id));
+      await deleteRecord(dh.id);
       toast.success(`Đã xoá: ${dh.maDH}`);
     }
   };
 
-  const handleAdvanceStatus = (dh: DonHang) => {
+  const handleAdvanceStatus = async (dh: DonHang) => {
     const flow: TrangThaiDH[] = ["Mới", "Đã duyệt", "Đang SX", "Hoàn thành", "Đã giao"];
     const idx = flow.indexOf(dh.trangThai);
     if (idx < 0 || idx >= flow.length - 1) {
@@ -117,7 +97,7 @@ export default function DonHangPage() {
       return;
     }
     const newTrangThai = flow[idx + 1];
-    setList(list.map((x) => (x.id === dh.id ? { ...x, trangThai: newTrangThai } : x)));
+    await updateRecord(dh.id, { trangThai: newTrangThai });
     toast.success(`Đã chuyển: ${dh.trangThai} → ${newTrangThai}`);
   };
 
@@ -128,6 +108,7 @@ export default function DonHangPage() {
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
             <ShoppingCart className="w-7 h-7 text-brand-500" />
             Đơn hàng
+            {isLoading && <span className="ml-3 w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></span>}
           </h1>
           <p className="opacity-70 mt-1 text-sm">
             {tongDH} đơn · Tổng DT <b className="text-emerald-600">{formatVNDShort(tongDoanhThu)}</b> · Đã cọc <b className="text-sky-600">{formatVNDShort(tongCoc)}</b> · Còn lại <b className="text-amber-600">{formatVNDShort(conLai)}</b>
@@ -421,62 +402,38 @@ function DonHangForm({ mode, dh, existingCount, onClose, onSave, khachHangs }: a
 }
 
 function DHDetailModal({ dh, onClose }: { dh: DonHang; onClose: () => void }) {
-  const conLai = dh.thanhTien - dh.tienCoc;
+  const items = [
+    {
+      id: `${dh.id}-1`,
+      sku: dh.maDH,
+      name: dh.sanPham,
+      type: dh.loai,
+      quantity: dh.soLuong,
+      unitPrice: dh.donGia,
+      total: dh.thanhTien,
+    },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="card max-w-2xl w-full p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <FileText className="w-5 h-5 text-brand-500" />
-            Chi tiết đơn hàng: {dh.maDH}
-          </h3>
-          <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/30 dark:bg-white/5 rounded p-3">
-              <div className="text-xs opacity-70 mb-1">Khách hàng</div>
-              <div className="font-semibold">{dh.khachHang}</div>
-              <div className="text-xs opacity-70 mt-1">📞 {dh.sdt}</div>
-            </div>
-            <div className="bg-white/30 dark:bg-white/5 rounded p-3">
-              <div className="text-xs opacity-70 mb-1">Sản phẩm</div>
-              <div className="font-semibold">{dh.sanPham}</div>
-              <div className="text-xs opacity-70 mt-1">{dh.loai} × {dh.soLuong.toLocaleString()}</div>
-            </div>
+      <div className="card max-w-5xl w-full p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <OrderHeader order={dh} onClose={onClose} />
+        <div className="space-y-4 text-sm">
+          <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
+            <OrderItemsTable items={items} />
+            <OrderCustomer order={dh} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-emerald-500/10 rounded p-3 text-center">
-              <div className="text-xs opacity-70">Thành tiền</div>
-              <div className="text-lg font-bold text-emerald-600">{formatVNDShort(dh.thanhTien)}</div>
-            </div>
-            <div className="bg-sky-500/10 rounded p-3 text-center">
-              <div className="text-xs opacity-70">Đã cọc</div>
-              <div className="text-lg font-bold text-sky-600">{formatVNDShort(dh.tienCoc)}</div>
-            </div>
-            <div className={`rounded p-3 text-center ${conLai > 0 ? "bg-amber-500/10" : "bg-emerald-500/10"}`}>
-              <div className="text-xs opacity-70">Còn lại</div>
-              <div className={`text-lg font-bold ${conLai > 0 ? "text-amber-600" : "text-emerald-600"}`}>{formatVNDShort(conLai)}</div>
-            </div>
+          <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-4">
+            <OrderTimeline order={dh} />
+            <OrderSummary order={dh} />
           </div>
-          <div className="bg-white/30 dark:bg-white/5 rounded p-3">
-            <div className="text-xs opacity-70 mb-2">Lịch trình</div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>📅 Ngày đặt: <b>{dh.ngayDat}</b></div>
-              <div>🚚 Ngày giao DK: <b>{dh.ngayGiao}</b></div>
-            </div>
-          </div>
-          {dh.ghiChu && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3 text-xs">
-              <b>Ghi chú:</b> {dh.ghiChu}
-            </div>
-          )}
           <div className="bg-brand-500/10 rounded p-3 text-xs">
-            <div className="font-semibold mb-1">Trạng thái: {dh.trangThai}</div>
-            <div className="opacity-70">Workflow: Mới → Đã duyệt → Đang SX → Hoàn thành → Đã giao</div>
+            <div className="font-semibold mb-1">Workflow hiện tại: {dh.trangThai}</div>
+            <div className="opacity-70">Luồng chuẩn: Mới → Đã duyệt → Đang SX → Hoàn thành → Đã giao</div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
