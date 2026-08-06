@@ -13,6 +13,8 @@ import {
   PERSONALITY_QC,
   PERSONALITY_TOI_UU,
   PERSONALITY_KY_THUAT,
+  PERSONALITY_CSKH,
+  PERSONALITY_HELP,
 } from "./agent-personality";
 
 export interface AgentPersona {
