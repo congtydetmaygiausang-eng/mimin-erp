@@ -6,38 +6,33 @@
 -- Apply: Paste vào Supabase Dashboard > SQL Editor > Run
 -- ===================================================================
 
--- 1. Grant SELECT cho anon + authenticated (cho publishable key + user login)
-GRANT SELECT ON public.cong_nhan_gia_cong TO anon, authenticated;
-GRANT SELECT ON public.lenh_cat             TO anon, authenticated;
-GRANT SELECT ON public.san_pham             TO anon, authenticated;
-GRANT SELECT ON public.nhan_su              TO anon, authenticated;
-GRANT SELECT ON public.cong_no              TO anon, authenticated;
+-- PHẦN 1: Verify RLS + policies hiện tại (đã chạy, kết quả ở dưới)
+-- SELECT schemaname, tablename, rowsecurity,
+--   (SELECT array_agg(policyname) FROM pg_policies WHERE tablename = t.tablename) AS policies
+-- FROM pg_tables t
+-- WHERE schemaname = 'public'
+--   AND tablename IN ('cong_nhan_gia_cong', 'lenh_cat', 'san_pham', 'nhan_su', 'cong_no')
+-- ORDER BY tablename;
+-- Kết quả: Tất cả 5 bảng có RLS=true, chỉ có 1 policy "Allow all for authenticated" → anon bị block.
 
--- 2. Nếu bảng có INSERT/UPDATE/DELETE cần cho user thật, bật thêm:
+-- PHẦN 2: Thêm policy cho phép anon (publishable key) đọc 5 bảng
+-- Đây là FIX chính - chạy đoạn này:
+CREATE POLICY "Allow read for anon" ON public.cong_nhan_gia_cong FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow read for anon" ON public.cong_no              FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow read for anon" ON public.lenh_cat             FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow read for anon" ON public.nhan_su              FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow read for anon" ON public.san_pham             FOR SELECT TO anon USING (true);
+
+-- PHẦN 3: Nếu muốn user thật (authenticated) được INSERT/UPDATE/DELETE thì bật thêm:
+/*
 GRANT INSERT, UPDATE, DELETE ON public.cong_nhan_gia_cong TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.lenh_cat             TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.san_pham             TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.nhan_su              TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.cong_no              TO authenticated;
-
--- 3. Nếu RLS đang ON nhưng KHÔNG có policy "USING (true)" thì cần tạo policy.
--- Chạy query này để xem RLS + policies hiện tại:
-SELECT
-  schemaname, tablename, rowsecurity,
-  (SELECT array_agg(policyname) FROM pg_policies WHERE tablename = t.tablename) AS policies
-FROM pg_tables t
-WHERE schemaname = 'public'
-  AND tablename IN ('cong_nhan_gia_cong', 'lenh_cat', 'san_pham', 'nhan_su', 'cong_no')
-ORDER BY tablename;
-
--- 4. Nếu rowsecurity = true mà policies rỗng, cần tạo policy:
-/*
-ALTER TABLE public.cong_nhan_gia_cong ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "allow_read" ON public.cong_nhan_gia_cong;
-CREATE POLICY "allow_read" ON public.cong_nhan_gia_cong FOR SELECT TO anon, authenticated USING (true);
--- Lặp lại cho 4 bảng còn lại
 */
 
 -- ===================================================================
 -- Verify sau khi apply: chạy script check-supabase.cjs, status phải 200
+-- Hoặc truy cập https://mimin-9tjkzr8mr-mimin-erp.vercel.app, F5 xem console
 -- ===================================================================
