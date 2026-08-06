@@ -14,7 +14,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { AGENT_PERSONAS } from "@/lib/agent-personas";
+import { AGENT_PERSONAS, AGENT_IDS_V6 } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
 
 // ============================================
@@ -27,6 +27,45 @@ export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const agentId = params?.id as string;
+
+  // Fix #3.5: Validate agentId thuoc 6 V6 personas, neu sai -> redirect /agents
+  // Dung client-side check de tranh prerender bug (notFound() server-side gay loi)
+  const isValidId = agentId ? (AGENT_IDS_V6 as readonly string[]).includes(agentId) : false;
+
+  useEffect(() => {
+    if (agentId && !isValidId) {
+      // Redirect ve danh sach agents sau 1.2s (de user thay thong bao)
+      const t = setTimeout(() => router.replace("/agents"), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [agentId, isValidId, router]);
+
+  if (agentId && !isValidId) {
+    return (
+      <div className="mx-auto max-w-2xl p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="text-6xl mb-4">🤖</div>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+          Khong tim thay agent
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
+          ID: <code className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">{agentId}</code>
+        </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+          Chi ho tro 6 agents V6: mavis, minh, lan, ha, vy, mimin-help
+        </p>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">
+          Dang chuyen huong ve danh sach agents...
+        </p>
+        <Link
+          href="/agents"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Quay lai ngay
+        </Link>
+      </div>
+    );
+  }
 
   // Fallback visual neu agentId khong co trong persona
   const persona = AGENT_PERSONAS[agentId] || {
