@@ -81,6 +81,14 @@ ALTER TABLE public.agent_usage_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_execution_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_tool_logs ENABLE ROW LEVEL SECURITY;
 
+-- 5a. GRANT table-level privileges (can co ca GRANT va POLICY moi query duoc)
+GRANT SELECT ON public.agent_usage_logs      TO anon, authenticated;
+GRANT SELECT ON public.agent_execution_logs  TO anon, authenticated;
+GRANT SELECT ON public.agent_tool_logs       TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.agent_usage_logs     TO service_role;
+GRANT INSERT, UPDATE, DELETE ON public.agent_execution_logs TO service_role;
+GRANT INSERT, UPDATE, DELETE ON public.agent_tool_logs      TO service_role;
+
 -- Drop existing policies neu co (truong hop apply nhieu lan)
 DROP POLICY IF EXISTS "Users view own usage" ON public.agent_usage_logs;
 DROP POLICY IF EXISTS "Admins view all usage" ON public.agent_usage_logs;
