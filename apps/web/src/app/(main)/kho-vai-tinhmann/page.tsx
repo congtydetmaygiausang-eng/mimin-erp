@@ -125,44 +125,59 @@ export default function KhoVaiPage() {
   return (
     <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-400/20 via-teal-200/10 to-transparent dark:from-teal-900/30 dark:via-slate-900 dark:to-slate-900">
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
-      <div className="bg-[#134e5e] p-5 md:p-6 rounded-3xl shadow-lg border border-teal-800/30 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-white">
-            <Package className="w-7 h-7 text-teal-300" /> Kho Vải & Định Mức Vải
+      <div className="rounded-3xl overflow-hidden shadow-xl mb-6" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
+        <div className="p-5 md:p-6 text-white">
+          <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
+            <Package className="w-3.5 h-3.5" /> MIMIN ERP · Kho & Giao hàng
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2.5">
+            <Package className="w-7 h-7" /> Kho Vải & Định Mức Vải
           </h1>
-          <p className="opacity-90 mt-1 text-sm text-teal-100">
+          <p className="text-sm opacity-95 mt-1.5">
             Quản lý tồn kho 29 loại vải · Tính định mức vải theo sản phẩm + size · Trừ kho tự động khi cắt
           </p>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-          <Stat icon={<Package className="w-4 h-4" />} label="Tổng tồn" value={`${(totalTonKho / 1000).toFixed(1)} tấn`} color="blue" />
-          <Stat icon={<TrendingUp className="w-4 h-4" />} label="Giá trị tồn" value={`${(totalDonGia / 1_000_000).toFixed(1)}tr`} color="emerald" />
-          <Stat icon={<AlertCircle className="w-4 h-4" />} label="Sắp hết (<50kg)" value={vaiSapHet} color="rose" />
-          <Stat icon={<CheckCircle2 className="w-4 h-4" />} label="Nhiều (>400kg)" value={vaiNhieu} color="violet" />
-        </div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+              <div className="text-xs opacity-90 flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> Tổng tồn</div>
+              <div className="text-xl md:text-2xl font-bold mt-1">{(totalTonKho / 1000).toFixed(1)} tấn</div>
+            </div>
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+              <div className="text-xs opacity-90 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Giá trị tồn</div>
+              <div className="text-xl md:text-2xl font-bold mt-1">{(totalDonGia / 1_000_000).toFixed(1)}tr</div>
+            </div>
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+              <div className="text-xs opacity-90 flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Sắp hết (&lt;50kg)</div>
+              <div className="text-xl md:text-2xl font-bold mt-1">{vaiSapHet}</div>
+            </div>
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+              <div className="text-xs opacity-90 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Nhiều (&gt;400kg)</div>
+              <div className="text-xl md:text-2xl font-bold mt-1">{vaiNhieu}</div>
+            </div>
+          </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 bg-black/20 rounded-xl p-1.5 w-fit mt-5">
-          {[
-            { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
-            { key: "tinhman", label: "Định mức vải", icon: <Calculator className="w-4 h-4" /> },
-            { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
-            { key: "danhmuc", label: "Quản lý danh mục", icon: <Plus className="w-4 h-4" /> },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key as any)}
-              className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all ${
-                tab === t.key 
-                  ? "bg-teal-500 shadow-md font-bold text-white" 
-                  : "font-medium text-teal-100 hover:bg-black/20 hover:text-white"
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
+          {/* Tabs (inline trong header gradient) */}
+          <div className="flex gap-2 bg-white/15 backdrop-blur-sm rounded-xl p-1.5 w-fit mt-5 border border-white/20">
+            {[
+              { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
+              { key: "tinhman", label: "Định mức vải", icon: <Calculator className="w-4 h-4" /> },
+              { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
+              { key: "danhmuc", label: "Quản lý danh mục", icon: <Plus className="w-4 h-4" /> },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key as any)}
+                className={`px-4 py-2 text-sm rounded-lg flex items-center gap-2 transition-all ${
+                  tab === t.key
+                    ? "bg-white text-teal-700 shadow-md font-bold"
+                    : "font-medium text-white/85 hover:bg-white/15 hover:text-white"
+                }`}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
