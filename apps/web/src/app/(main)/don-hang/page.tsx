@@ -41,8 +41,6 @@ import { calcOrderTotal, calcPaidTotal } from "@/components/order-detail/helpers
 type TrangThaiDH = Order["trangThai"];
 type DonHang = Order;
 
-const { data: DON_HANG_KHOI_DAU } = useSupabaseSync<DonHang>("mimin_don_hang", "don_hang");
-
 const TRANG_THAI_STYLE: Record<TrangThaiDH, { color: string; bg: string; icon: any }> = {
   "Mới": { color: "text-sky-700", bg: "bg-sky-500/15", icon: Plus },
   "Đã duyệt": { color: "text-violet-700", bg: "bg-violet-500/15", icon: CheckCircle2 },
@@ -119,7 +117,7 @@ function toLegacyFormat(order: Order): any {
 
 export default function DonHangPage() {
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
-  const { data: list, addRecord, updateRecord, deleteRecord, isLoading } = useSupabaseSync<DonHang>("mimin_don_hang", "don_hang", DON_HANG_KHOI_DAU);
+  const { data: list, addRecord, updateRecord, deleteRecord, isLoading } = useSupabaseSync<DonHang>("mimin_don_hang", "don_hang", []);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | TrangThaiDH>("all");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; dh?: DonHang } | null>(null);
