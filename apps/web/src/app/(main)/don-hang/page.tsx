@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   ShoppingCart,
   Plus,
@@ -374,8 +374,11 @@ export default function DonHangPage() {
 
 function DHDetailModal({ dh, onClose, onEdit }: { dh: DonHang; onClose: () => void; onEdit?: (dh: DonHang) => void }) {
   const [printing, setPrinting] = useState(false);
-  // Migrate neu order cu (khong co items)
-  const dhMigrated = (!dh.items || dh.items.length === 0) ? migrateOldOrder(dh) : dh;
+  // Migrate neu order cu (khong co items) - dung useMemo de tranh tao object moi moi render (gây React #321)
+  const dhMigrated = useMemo(
+    () => (!dh.items || dh.items.length === 0) ? migrateOldOrder(dh) : dh,
+    [dh]
+  );
   const items = dhMigrated.items.map((it) => ({
     id: it.id,
     sku: it.sku || it.spId,

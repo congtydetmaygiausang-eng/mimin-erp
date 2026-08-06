@@ -6,7 +6,7 @@
 // 2026-08-06
 // ============================================
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   X, Plus, Trash2, Save, ShoppingCart, User, Phone, Calendar,
   Package, Wallet, Truck, CreditCard, AlertCircle, Box, Grid3x3
@@ -40,13 +40,22 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
   const [order, setOrder] = useState<Order>(createEmptyOrder());
   const [activeTab, setActiveTab] = useState<"info" | "items" | "payment" | "shipping">("info");
 
-  // Init khi mo modal
+  // Track last initialId da init để tránh init lặp
+  const lastInitialIdRef = useRef<string | null>(null);
+
+  // Init khi mo modal HOẶC khi initial.id đổi (sang đơn khác)
   useEffect(() => {
-    if (open) {
+    if (!open) {
+      lastInitialIdRef.current = null;
+      return;
+    }
+    const newId = initial?.id || null;
+    if (lastInitialIdRef.current !== newId) {
       setOrder(initial || createEmptyOrder());
       setActiveTab("info");
+      lastInitialIdRef.current = newId;
     }
-  }, [open, initial]);
+  }, [open, initial?.id]);
 
   const tongTien = calcOrderTotal(order.items);
   const tongSL = calcOrderQty(order.items);
