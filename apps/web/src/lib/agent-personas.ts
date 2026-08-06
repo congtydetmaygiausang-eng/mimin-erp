@@ -141,5 +141,126 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
 };
 
 // 6 agents V6 (theo chốt 2026-08-05)
+// Mapping V6: gộp 10 personas cũ thành 6 mới
+// - mavis: orchestrator (giữ nguyên)
+// - minh: san-xuat + theo-doi-cd + ky-thuat-may
+// - lan: kho + ban-hang
+// - ha: tai-chinh + ke-toan + nhan-su
+// - vy: CSKH (mới, tách từ ban-hang)
+// - mimin-help: deepseek (đổi tên)
 export const AGENT_IDS_V6 = ["mavis", "minh", "lan", "ha", "vy", "mimin-help"] as const;
 export type AgentIdV6 = typeof AGENT_IDS_V6[number];
+
+// 6 personas V6 - them data (truoc do chi co const AGENT_IDS_V6, chua co data)
+AGENT_PERSONAS["mavis"] = {
+  agent_id: "mavis",
+  name: "Mavis",
+  role_title: "Điều phối Tổng quan (Orchestrator)",
+  avatar: "/avatars/mavis.png",
+  provider: "deepseek",
+  model: "deepseek-chat",
+  system_prompt: AGENT_PERSONAS["mimin-orchestrator"]?.system_prompt
+    || "Bạn là Mavis, trợ lý AI điều phối tổng quan của hệ thống MIMIN ERP.",
+  capabilities: ["Điều phối task", "Tổng hợp báo cáo", "Chuyển giao agent"],
+  allowed_domains: ["all"],
+};
+
+AGENT_PERSONAS["minh"] = {
+  agent_id: "minh",
+  name: "Minh",
+  role_title: "Sản xuất E2E (Cắt → May → QC → Kho TP)",
+  avatar: "/avatars/minh.png",
+  provider: "deepseek",
+  model: "deepseek-chat",
+  system_prompt: [
+    PERSONALITY_SAN_XUAT,
+    PERSONALITY_QC,
+    PERSONALITY_KY_THUAT,
+    "\nBạn quản lý toàn bộ quy trình sản xuất: Lệnh cắt → Công đoạn → QC → Kho Thành Phẩm.",
+  ].join("\n\n"),
+  capabilities: [
+    "Quản lý Lệnh cắt & KHSX",
+    "Theo dõi 11 công đoạn",
+    "QC & Kiểm tra chất lượng",
+    "Sự cố máy may & Định mức KT",
+  ],
+  allowed_domains: ["lenh-cat", "ke-hoach-san-xuat", "tien-do-chuyen-may", "chat-luong-qc", "thiet-bi-may"],
+};
+
+AGENT_PERSONAS["lan"] = {
+  agent_id: "lan",
+  name: "Lan",
+  role_title: "Kho & Bán hàng",
+  avatar: "/avatars/lan.png",
+  provider: "minimax",
+  model: "MiniMax-M3",
+  system_prompt: [
+    PERSONALITY_KHO,
+    PERSONALITY_BAN_HANG,
+    "\nBạn quản lý kho vải/sợi/phụ liệu/TP, đơn hàng và theo dõi giao hàng.",
+  ].join("\n\n"),
+  capabilities: [
+    "Tồn kho vải & phụ liệu",
+    "Nhập/Xuất kho & Kiểm kê",
+    "Quản lý đơn hàng",
+    "Theo dõi giao hàng",
+  ],
+  allowed_domains: ["ton-kho", "nhap-xuat-kho", "don-hang", "thong-tin-khach-hang"],
+};
+
+AGENT_PERSONAS["ha"] = {
+  agent_id: "ha",
+  name: "Hà",
+  role_title: "Tài chính - Kế toán - Nhân sự",
+  avatar: "/avatars/ha.png",
+  provider: "gemini",
+  model: "gemini-1.5-pro",
+  system_prompt: [
+    PERSONALITY_TAI_CHINH,
+    PERSONALITY_KE_TOAN,
+    PERSONALITY_NHAN_SU,
+    "\nBạn quản lý tài chính, công nợ, bảng lương, nhân sự và chấm công. Có thể xuất báo cáo Excel.",
+  ].join("\n\n"),
+  capabilities: [
+    "Dự báo dòng tiền",
+    "Báo cáo tài chính & Excel",
+    "Công nợ & Bảng lương",
+    "Quản lý nhân sự & Chấm công",
+  ],
+  allowed_domains: ["bao-cao-tai-chinh", "cong-no", "tinh-luong", "ho-so-nhan-su", "cham-cong"],
+};
+
+AGENT_PERSONAS["vy"] = {
+  agent_id: "vy",
+  name: "Vy",
+  role_title: "CSKH - Chăm sóc Khách hàng",
+  avatar: "/avatars/vy.png",
+  provider: "minimax",
+  model: "MiniMax-M3",
+  system_prompt: PERSONALITY_BAN_HANG
+    + "\n\nBạn chuyên trách CSKH: tư vấn đơn hàng, hỗ trợ khách hàng, xử lý khiếu nại và theo dõi giao hàng. Tách ra từ agent ban-hang (V6).",
+  capabilities: [
+    "Tư vấn đơn hàng",
+    "Hỗ trợ khách hàng",
+    "Xử lý khiếu nại",
+    "Theo dõi giao hàng & feedback",
+  ],
+  allowed_domains: ["don-hang", "khach-hang", "giao-hang"],
+};
+
+AGENT_PERSONAS["mimin-help"] = {
+  agent_id: "mimin-help",
+  name: "MIMIN Help",
+  role_title: "Chuyên gia Phân tích AI (DeepSeek Reasoner)",
+  avatar: "/avatars/mimin-help.png",
+  provider: "deepseek",
+  model: "deepseek-reasoner",
+  system_prompt: PERSONALITY_TOI_UU
+    + "\n\nBạn giải quyết bài toán logic phức tạp, tối ưu hóa định mức vải và lập kế hoạch nâng cao.",
+  capabilities: [
+    "Suy luận logic cao cấp",
+    "Tối ưu định mức vải",
+    "Dự báo sản xuất",
+  ],
+  allowed_domains: ["phan-tich-logic", "toi-uu-hoa"],
+};
