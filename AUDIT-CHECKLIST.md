@@ -1,13 +1,14 @@
-# MIMIN ERP - AUDIT CHECKLIST 4 FORMS
+# MIMIN ERP - AUDIT CHECKLIST 10 FORMS
 
 > **Ngày tạo**: 2026-08-06
+> **Cập nhật**: 2026-08-06 (thêm Form 7-12)
 > **Tác giả**: Mavis (mavis-agent)
-> **Yêu cầu**: Sếp Sang muốn làm hết 4 forms trong nhiều session
+> **Yêu cầu**: Sếp Sang muốn làm hết trong nhiều session
 > **Mục tiêu**: Đánh giá chất lượng toàn diện hệ thống MIMIN ERP
 
 ---
 
-## 🎯 Tổng quan 4 Forms
+## 🎯 Tổng quan 10 Forms
 
 | # | Form | Scope | Số checks | Thời gian | Phase |
 |---|---|---|---|---|---|
@@ -15,8 +16,14 @@
 | 2 | **#4 Role × Module × Action × Data Scope** | Phân quyền 4D | 11 actions × 5 scopes × 30 modules | 1-2 ngày | 4 |
 | 3 | **#5 Login & Session** | Auth, token, multi-tab | 10 | 1-2 giờ | 2 |
 | 4 | **#6 Buttons & Forms** | Mỗi nút 10 checks | ~50 nút × 10 | 1-2 ngày | 5 |
+| 5 | **#7 Luồng nghiệp vụ E2E** | 8 bước: Tạo → Duyệt → Phân công → Thực hiện → Kiểm tra → Hoàn thành → Ghi nhận TC → Khóa | 8 bước × 20 luồng | 2-3 ngày | 6 |
+| 6 | **#8 Liên kết dữ liệu** | FK, orphan, sync FE/API/DB | 8 | 1-2 ngày | 7 |
+| 7 | **#9 Số lượng & công thức** | Tồn kho, doanh thu, vượt nguồn | 9 | 1-2 ngày | 8 |
+| 8 | **#10 API/Console/Network** | F12 errors, status codes, payloads | 12 | 1-2 ngày | 9 |
+| 9 | **#11 Hiệu năng & đồng thời** | Tải trang, multi-tab, race condition | 15 | 1-2 ngày | 10 |
+| 10 | **#12 Báo cáo tổng hợp** | P0/P1/P2/P3 + kế hoạch fix | Output | 1 ngày | 11 |
 
-**Tổng thời gian ước tính**: 3-5 ngày, 4 specialists (general, qa-test, bug-fix, data-sql)
+**Tổng thời gian ước tính**: 2-3 tuần, 4 specialists (general, qa-test, bug-fix, data-sql)
 
 ---
 
@@ -121,6 +128,134 @@ Mỗi nút cần verify:
 
 ---
 
+## 📋 Form #8 - Luồng nghiệp vụ E2E (8 bước × 20 luồng)
+
+Mỗi luồng kiểm tra 8 bước: `Khởi tạo → Duyệt → Phân công → Thực hiện → Kiểm tra → Hoàn thành → Ghi nhận tài chính → Khóa`
+
+Sau từng bước phải kiểm tra:
+- Trạng thái trước và sau
+- Người được phép thực hiện
+- Dữ liệu đầu vào
+- Bảng/store được cập nhật
+- Module tiếp theo có nhận dữ liệu không
+- Có tạo dữ liệu trùng không
+- Có cho phép bỏ qua bước không
+- Hủy thao tác có hoàn nguyên không
+
+### Top 20 luồng cần check
+1. Lệnh cắt: KH tạo → Kế hoạch duyệt → Phân công chuyền → May thực hiện → QC kiểm → Hoàn thành → Tính tiền công → Khóa LSX
+2. Kho: Nhập vải → Duyệt phiếu nhập → Phân bổ tồn → Xuất kho SX → Kiểm kê → Đối chiếu → Cập nhật giá vốn → Khóa kỳ
+3. Đơn hàng: KH đặt → Duyệt đơn → Phân công SX → Sản xuất → QC → Giao hàng → Thu tiền → Khóa đơn
+4. Bảng lương: Chấm công → Tính lương → Duyệt lương → Phát lương → Khóa kỳ lương
+5. Gia công ngoài: Tạo đơn GC → Duyệt → Giao hàng → Nhận hàng GC → QC → Thanh toán → Khóa
+6-20. Các luồng khác (công nợ, nhân sự, etc)
+
+| # | Check | Status | Notes |
+|---|---|---|---|
+| 8.1 | 8 bước có đầy đủ cho 20 luồng chính | ⏸ | Sample test 3-5 luồng |
+| 8.2 | Trạng thái trước/sau mỗi bước | ⏸ | Compare state |
+| 8.3 | Phân quyền theo bước | ⏸ | Phụ thuộc Form #4 |
+| 8.4 | Data flow giữa modules | ⏸ | Sample |
+| 8.5 | Không cho bỏ qua bước | ⏸ | Test 5 luồng |
+| 8.6 | Hủy thao tác có rollback | ⏸ | Test 3 luồng |
+
+---
+
+## 📋 Form #9 - Liên kết dữ liệu (8 checks)
+
+| # | Check | Status | Notes |
+|---|---|---|---|
+| 9.1 | Một bản ghi nguồn tạo ra những bản ghi nào | ⏸ | Trace FK chain |
+| 9.2 | Sửa nguồn có cập nhật dữ liệu phụ thuộc không | ⏸ | Test cascade update |
+| 9.3 | Xóa nguồn có tạo orphan không | ⏸ | Test FK constraint |
+| 9.4 | Dữ liệu lưu ở nhiều nơi? | ⏸ | Check duplicate storage |
+| 9.5 | Single source of truth | ⏸ | Check master table |
+| 9.6 | Trùng ID, mã, trạng thái | ⏸ | Sample check |
+| 9.7 | LocalStorage vs API vs DB lệch nhau | ⏸ | Compare 3 layer |
+| 9.8 | Data mẫu trộn với data thật | ⏸ | Production check |
+
+---
+
+## 📋 Form #10 - Số lượng & công thức (9 checks)
+
+| # | Check | Status | Notes |
+|---|---|---|---|
+| 10.1 | Tổng chi tiết = tổng đầu | ⏸ | Test 5 phiếu |
+| 10.2 | SL công đoạn sau không vượt trước | ⏸ | Test workflow |
+| 10.3 | Nhập không vượt nguồn | ⏸ | Test kho |
+| 10.4 | Xuất không vượt tồn | ⏸ | Test kho |
+| 10.5 | Đạt + lỗi + thiếu = tổng kiểm | ⏸ | Test QC |
+| 10.6 | Hàng sửa không tính 2 lần | ⏸ | Test workflow |
+| 10.7 | Hủy phiếu hoàn lại SL | ⏸ | Test rollback |
+| 10.8 | Số tiền không làm tròn sai | ⏸ | Test 0.1 + 0.2 |
+| 10.9 | Đơn giá đổi không ảnh hưởng CT đã khóa | ⏸ | Test lock |
+
+---
+
+## 📋 Form #11 - API/Console/Network (12 checks - F12)
+
+| # | Check | Status | Notes |
+|---|---|---|---|
+| 11.1 | Lỗi JavaScript | ⏸ | Console errors |
+| 11.2 | Lỗi React | ⏸ | Error boundary |
+| 11.3 | Request 400/401/403/404/409/422/500 | ⏸ | Check status codes |
+| 11.4 | API gọi sai URL | ⏸ | URL audit |
+| 11.5 | Request sai payload | ⏸ | Schema check |
+| 11.6 | Response thiếu field | ⏸ | Type check |
+| 11.7 | Token không được gửi | ⏸ | Header check |
+| 11.8 | API lặp vô hạn | ⏸ | useEffect dep |
+| 11.9 | Nút bấm không tạo request | ⏸ | Dead button check |
+| 11.10 | Success 200 nhưng UI không update | ⏸ | State sync |
+| 11.11 | API trả success giả | ⏸ | Toast success nhưng fail |
+| 11.12 | File ảnh/asset lỗi | ⏸ | 404 check |
+
+---
+
+## 📋 Form #12 - Hiệu năng & đồng thời (15 checks)
+
+| # | Check | Status | Notes |
+|---|---|---|---|
+| 12.1 | Thời gian tải trang | ⏸ | Lighthouse |
+| 12.2 | Trang nhiều bản ghi (>1000) | ⏸ | Pagination |
+| 12.3 | Tìm kiếm nhanh | ⏸ | Debounce |
+| 12.4 | Lọc nhanh | ⏸ | Index check |
+| 12.5 | Phân trang | ⏸ | Page size |
+| 12.6 | Scroll mượt | ⏸ | Virtual list |
+| 12.7 | Import/Export | ⏸ | Large file |
+| 12.8 | 2 người cùng sửa 1 record | ⏸ | Optimistic lock |
+| 12.9 | Bấm lưu liên tục | ⏸ | Debounce |
+| 12.10 | Mở nhiều tab | ⏸ | Sync |
+| 12.11 | Mạng chậm | ⏸ | Loading state |
+| 12.12 | Mất mạng | ⏸ | Offline |
+| 12.13 | Retry | ⏸ | Exponential backoff |
+| 12.14 | Data cũ ghi đè data mới | ⏸ | Stale data |
+| 12.15 | Memory leak + API lặp | ⏸ | Cleanup useEffect |
+
+---
+
+## 📋 Form #13 - Báo cáo tổng hợp P0/P1/P2/P3 (cuối cùng)
+
+Mỗi vấn đề phải có:
+- Mã lỗi
+- Module
+- Mô tả
+- Cách tái hiện
+- Kết quả hiện tại vs mong đợi
+- Nguyên nhân dự đoán
+- File liên quan
+- Phần cần sửa/bổ sung
+- Mức độ ảnh hưởng
+- Cách kiểm tra lại
+
+| Mức | Ý nghĩa |
+|-----|---------|
+| **P0** | Lỗi làm hệ thống không dùng được, mất dữ liệu hoặc vượt quyền |
+| **P1** | Lỗi nghiệp vụ chính, sai số liệu hoặc sai luồng |
+| **P2** | Thiếu chức năng, UX chưa hoàn chỉnh hoặc hiệu năng chưa tốt |
+| **P3** | Tối ưu, chuẩn hóa và nâng cấp |
+
+---
+
 ## 🗓 Phases thực hiện
 
 ### Phase 1: Setup (session này, 30-60 phút)
@@ -157,7 +292,7 @@ Mỗi nút cần verify:
 
 ---
 
-## 📊 Status Summary
+## 📊 Status Summary (cập nhật 2026-08-06 - 10 forms)
 
 | Form | Total | Tested | Pass | Fail | N/A | % Done |
 |---|---|---|---|---|---|---|
@@ -166,7 +301,13 @@ Mỗi nút cần verify:
 | #5 Login | 10 | 0 | 0 | 0 | 0 | 0% |
 | #6 Buttons | 500 | 0 | 0 | 0 | 0 | 0% |
 | #7 Validation | 13 | 0 | 0 | 0 | 0 | 0% |
-| **Tổng** | **2180** | **2** | **0** | **2** | **0** | **0.1%** |
+| #8 Luồng E2E | 8 bước × 20 luồng | 0 | 0 | 0 | 0 | 0% |
+| #9 Liên kết data | 8 | 0 | 0 | 0 | 0 | 0% |
+| #10 Số lượng | 9 | 0 | 0 | 0 | 0 | 0% |
+| #11 API/Console | 12 | 0 | 0 | 0 | 0 | 0% |
+| #12 Hiệu năng | 15 | 0 | 0 | 0 | 0 | 0% |
+| #13 Báo cáo P0/P1 | Output | 0 | 0 | 0 | 0 | 0% |
+| **Tổng** | **~2240** | **2** | **0** | **2** | **0** | **0.1%** |
 
 ---
 
