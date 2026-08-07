@@ -62,6 +62,14 @@ export default function ProductLibraryCard({
         <div className="absolute inset-0 flex items-center justify-center">
           <Shirt className="w-20 h-20 md:w-24 md:h-24 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-500" />
         </div>
+        {/* Hình ảnh thật */}
+        {sp.hinhAnh && (
+          <img
+            src={sp.hinhAnh}
+            alt={sp.tenSP}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        )}
 
         {/* === BADGES GOC TREN TRAI === */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
