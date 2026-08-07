@@ -15,6 +15,10 @@ import { GiaoHangProvider } from "@/lib/data/giao-hang-store";
 import { DoiSoatProvider } from "@/lib/data/doi-soat-store";
 import { HoanThienProvider } from "@/lib/data/hoan-thien-store";
 import { KhoMobileProvider } from "@/lib/data/kho-mobile-store";
+import { NhanSuProvider } from "@/lib/data/nhan-su-store";
+import { NhaCungCapProvider } from "@/lib/data/nha-cung-cap-store";
+import { DoiTacProvider } from "@/lib/data/doi-tac-store";
+import { KhachHangProvider } from "@/lib/data/khach-hang-store";
 import { QCProvider } from "@/lib/data/qc-store";
 import { LenhCatProvider } from "@/lib/data/lenh-cat-store";
 import { DanhMucSPProvider } from "@/lib/data/danh-muc-sp-store";
@@ -46,28 +50,36 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     <DoiSoatProvider>
                       <HoanThienProvider>
                         <KhoMobileProvider>
-                          <QCProvider>
-                            <LenhCatProvider>
-                              <DanhMucSPProvider>
-                                <CongNhanGiaCongProvider>
-                                  <NotificationProvider>
-                                    <ErrorBoundary>
-                                      {children}
-                                      <PWAInstallPrompt />
-                                      <Toaster
-                                        position="top-right"
-                                        richColors
-                                        closeButton
-                                        toastOptions={{
-                                          duration: 3000,
-                                        }}
-                                      />
-                                    </ErrorBoundary>
-                                  </NotificationProvider>
-                                </CongNhanGiaCongProvider>
-                              </DanhMucSPProvider>
-                            </LenhCatProvider>
-                          </QCProvider>
+                          <NhanSuProvider>
+                            <NhaCungCapProvider>
+                              <KhachHangProvider>
+                                <DoiTacProvider>
+                                  <QCProvider>
+                                    <LenhCatProvider>
+                                      <DanhMucSPProvider>
+                                        <CongNhanGiaCongProvider>
+                                          <NotificationProvider>
+                                            <ErrorBoundary>
+                                              {children}
+                                              <PWAInstallPrompt />
+                                              <Toaster
+                                                position="top-right"
+                                                richColors
+                                                closeButton
+                                                toastOptions={{
+                                                  duration: 3000,
+                                                }}
+                                              />
+                                            </ErrorBoundary>
+                                          </NotificationProvider>
+                                        </CongNhanGiaCongProvider>
+                                      </DanhMucSPProvider>
+                                    </LenhCatProvider>
+                                  </QCProvider>
+                                </DoiTacProvider>
+                              </KhachHangProvider>
+                            </NhaCungCapProvider>
+                          </NhanSuProvider>
                         </KhoMobileProvider>
                       </HoanThienProvider>
                     </DoiSoatProvider>

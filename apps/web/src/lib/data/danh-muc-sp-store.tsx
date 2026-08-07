@@ -56,16 +56,15 @@ export interface MauTieuChuan {
 }
 
 export interface BangSize {
-  // 5 size: M, L, XL, 2XL, 3XL (5 so tuong ung)
-  // 0 = khong lay size do
-  // VD: [1, 2, 2, 2, 1] = ratio 1:2:2:2:1 (Ri8)
-  sizes: ["M", "L", "XL", "2XL", "3XL"];
-  ratios: [number, number, number, number, number];
+  // VD: ["M", "L", "XL", "2XL", "3XL"] or ["S", "M", "L", "XL"]
+  sizes: string[];
+  ratios: number[];
   riSo: number; // Tong 1 ri = sum(ratios)
 }
 
 export interface SanPham {
   id: string; // Map to ma_sp in DB
+  dbId?: string; // UUID gốc trong database
   maSP?: string; // Add optional maSP mapping
   tenSP: string;
   loaiSP: LoaiSP;
@@ -496,20 +495,43 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
 
           if (data && data.length > 0 && mounted) {
             // Map snake_case from DB back to camelCase for frontend
-            // 2026-08-07 - load data THAT tu Supabase, KHONG fallback mock
             const mapped = data.map(item => mapSanPhamFromDB(item));
             setDsSanPham(mapped);
           } else if (mounted) {
-            console.warn("⚠️ san_pham table empty - chua co data that");
-            setDsSanPham([]);
+            console.warn("⚠️ san_pham table empty - seeding MOCK_DANH_MUC");
+            setDsSanPham(MOCK_DANH_MUC);
+            // Auto seed
+            Promise.all(MOCK_DANH_MUC.map(async sp => {
+              const dbPayload = {
+                ma_sp: sp.id,
+                ma_dm: `DM-${sp.loaiSP}`,
+                ten_sp: sp.tenSP,
+                loai_sp: sp.loaiSP,
+                gia_ban_du_kien: sp.giaBanDuKien,
+                gia_von_du_kien: sp.giaVonDuKien,
+                ti_le_size: sp.tiLeSize,
+                bang_size: sp.bangSize,
+                ds_mau: sp.dsMau,
+                ghi_chu: sp.ghiChu,
+                ngay_tao: sp.ngayTao,
+                trang_thai: sp.trangThai || "con-hang",
+                da_ban: sp.daBan || 0,
+                ncc: sp.ncc || "",
+                chat_lieu: sp.chatLieu || "",
+                luot_xem: sp.luotXem || 0,
+                rating: sp.rating || 0,
+                hinh_anh: sp.hinhAnh || "",
+              };
+              await client.from("san_pham").insert(dbPayload);
+            })).catch(() => {});
           }
         } else {
           console.warn("⚠️ Supabase chua cau hinh");
-          setDsSanPham([]);
+          setDsSanPham(MOCK_DANH_MUC);
         }
       } catch (e) {
         console.error("Lỗi fetch Sản phẩm", e);
-        if (mounted) setDsSanPham([]);
+        if (mounted) setDsSanPham(MOCK_DANH_MUC);
       } finally {
         if (mounted) setLoading(false);
       }

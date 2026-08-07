@@ -28,8 +28,10 @@ import { NCCS, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityCard";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
+import { useNhaCungCap, type NhaCungCapModel } from "@/lib/data/nha-cung-cap-store";
 import { useKho } from "@/lib/data/kho-store";
 
+// Map UI type to Store type for compatibility
 type NCC = {
   stt: number;
   ten: string;
@@ -43,21 +45,52 @@ type NCC = {
   ghiChu?: string;
   rating?: number;
   avatar?: string;
+  ma_ncc: string;
+  // === P1 - 2026-08-07 - Han muc no NCC ===
+  hanMucNo?: number;
 };
 
-// Khởi tạo NCC data + thêm rating + MST
-const NCC_KHOI_DAU: NCC[] = NCCS.map((n, i) => ({
-  ...n,
-  sdt: `090${(1000000 + i * 12345).toString().slice(0, 7)}`,
-  mail: `ncc${i + 1}@${n.ten.toLowerCase().split(" ")[0] || "vendor"}.vn`,
-  diaChi: i % 2 === 0 ? "Quận 12, TP.HCM" : "Hóc Môn, TP.HCM",
-  maSoThue: `0312${String(456789 + i * 13).slice(0, 6)}`,
-  ghiChu: i % 3 === 0 ? "Giao hàng đúng hẹn, chất lượng ổn định" : i % 3 === 1 ? "Hợp tác từ 2020" : "Cần theo dõi thêm",
-  rating: 4 + (i % 2) * 0.5,
-}));
+function mapToUI(db: NhaCungCapModel, index: number): NCC {
+  return {
+    stt: index + 1,
+    ma_ncc: db.ma_ncc,
+    ten: db.ten_ncc,
+    vaiTro: db.loai,
+    sdt: db.sdt || "",
+    mail: db.email || "",
+    diaChi: db.dia_chi || "",
+    congNo: db.cong_no || 0,
+    donGia: db.don_gia || "",
+    maSoThue: db.mst || "",
+    ghiChu: db.ghi_chu || "",
+    rating: db.rating || 4,
+    avatar: "",
+    hanMucNo: db.han_muc || 0, // P1 - 2026-08-07
+  };
+}
+
+function mapToDB(ui: NCC): NhaCungCapModel {
+  return {
+    ma_ncc: ui.ma_ncc || `NCC-${Date.now()}`, // Temporary fallback if new
+    ten_ncc: ui.ten,
+    loai: ui.vaiTro,
+    sdt: ui.sdt,
+    email: ui.mail,
+    dia_chi: ui.diaChi,
+    cong_no: ui.congNo,
+    don_gia: ui.donGia,
+    mst: ui.maSoThue,
+    ghi_chu: ui.ghiChu,
+    rating: ui.rating,
+    han_muc: ui.hanMucNo || 0, // P1 - 2026-08-07
+  };
+}
 
 export default function NhaCungCapPage() {
-  const [list, setList] = useState<NCC[]>(NCC_KHOI_DAU);
+  const { list: rawList, themNCC, suaNCC, xoaNCC } = useNhaCungCap();
+  
+  const list = useMemo(() => rawList.map((item, index) => mapToUI(item, index)), [rawList]);
+  
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "co_no" | "bo_co" | "det" | "nhuom" | "khac">("all");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; ncc?: NCC } | null>(null);
@@ -99,22 +132,25 @@ export default function NhaCungCapPage() {
     return matchSearch && matchFilter;
   });
 
-  const handleSave = (ncc: NCC) => {
+  const handleSave = async (ncc: NCC) => {
+    const dbNCC = mapToDB(ncc);
     if (showForm?.mode === "add") {
-      setList([...list, ncc]);
-      toast.success(`Đã thêm NCC: ${ncc.ten}`);
-    } else if (showForm?.mode === "edit") {
-      setList(list.map((x) => (x.stt === ncc.stt ? ncc : x)));
-      toast.success(`Đã cập nhật: ${ncc.ten}`);
+      const ok = await themNCC(dbNCC);
+      if (ok) toast.success(`Đã thêm NCC: ${ncc.ten}`);
+      else toast.error(`Lỗi khi thêm NCC: ${ncc.ten}`);
+    } else {
+      const ok = await suaNCC(dbNCC);
+      if (ok) toast.success(`Đã cập nhật NCC: ${ncc.ten}`);
+      else toast.error(`Lỗi khi cập nhật NCC: ${ncc.ten}`);
     }
     setShowForm(null);
   };
 
-  const handleDelete = (ncc: NCC) => {
-    if (confirm(`Xoá NCC "${ncc.ten}"?`)) {
-      setList(list.filter((x) => x.stt !== ncc.stt));
-      toast.success(`Đã xoá: ${ncc.ten}`);
-    }
+  const handleDelete = async (ncc: NCC) => {
+    if (!confirm(`Xoá nhà cung cấp "${ncc.ten}"?`)) return;
+    const ok = await xoaNCC(ncc.ma_ncc);
+    if (ok) toast.success(`Đã xoá NCC: ${ncc.ten}`);
+    else toast.error(`Lỗi khi xoá NCC: ${ncc.ten}`);
   };
 
   return (
@@ -363,6 +399,7 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
     diaChi: "",
     maSoThue: "",
     congNo: 0,
+    hanMucNo: 0, // P1 - 2026-08-07
     rating: 4,
     ghiChu: "",
     avatar: "",
@@ -473,6 +510,13 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Công nợ đầu kỳ (đ)</label>
               <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-amber-500" value={form.congNo} onChange={(e) => setForm({ ...form, congNo: Number(e.target.value) })} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Hạn mức cho nợ (đ) <span className="text-amber-500">*</span></label>
+              <input type="number" min={0} step={1000000} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-amber-500" value={form.hanMucNo || 0} onChange={(e) => setForm({ ...form, hanMucNo: Number(e.target.value) })} placeholder="VD: 50000000" />
+              {(form.hanMucNo || 0) > 0 && (form.congNo || 0) > (form.hanMucNo || 0) && (
+                <p className="text-[10px] text-rose-600 mt-1 font-semibold">⚠️ Vượt hạn mức {(form.hanMucNo || 0).toLocaleString("vi-VN")} ₫</p>
+              )}
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Đánh giá (1-5 sao)</label>

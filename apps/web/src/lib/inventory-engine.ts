@@ -123,9 +123,11 @@ export interface TruTonKhoResult {
   message: string;
 }
 
+import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
+
 const TON_KHO_KEY = "mimin_kho_vai_inventory";
 
-function getInventory(): Record<string, KhoVai> {
+export function getInventory(): Record<string, KhoVai> {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(TON_KHO_KEY);
@@ -139,8 +141,46 @@ function getInventory(): Record<string, KhoVai> {
   return init;
 }
 
-function saveInventory(inv: Record<string, KhoVai>) {
+export function saveInventory(inv: Record<string, KhoVai>) {
   localStorage.setItem(TON_KHO_KEY, JSON.stringify(inv));
+  
+  // Async fire-and-forget sync to Supabase
+  if (isSupabaseEnabled && supabase) {
+    Promise.all(Object.values(inv).map(async (v) => {
+      const payload = {
+        sku: v.maVT,
+        ten: v.tenVT,
+        sl: v.tonKho,
+        don_vi: v.dvt || "kg",
+        don_gia: v.donGia || 0,
+        loai: "vai",
+      };
+      await supabase.from("kho").upsert(payload, { onConflict: "sku" });
+    })).catch(console.error);
+  }
+}
+
+export async function syncInventoryWithSupabase(): Promise<void> {
+  if (!isSupabaseEnabled || !supabase) return;
+  try {
+    const { data, error } = await supabase!.from("kho").select("*").eq("loai", "vai");
+    if (error) throw error;
+    if (data && data.length > 0) {
+      const current = getInventory();
+      let changed = false;
+      data.forEach((d: any) => {
+        if (current[d.sku]) {
+          current[d.sku].tonKho = d.sl;
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(TON_KHO_KEY, JSON.stringify(current));
+      }
+    }
+  } catch (err) {
+    console.error("Failed to sync inventory with Supabase", err);
+  }
 }
 
 export function getAllInventory(): KhoVai[] {

@@ -23,24 +23,9 @@ import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityCard";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
-import { supabase } from "@/lib/supabase/client";
+import { useKhachHang, type KhachHangUI } from "@/lib/data/khach-hang-store";
 import { useEffect } from "react";
 import PageHeader from "@/components/ui/PageHeader";
-
-type KH = {
-  id?: string;
-  maKH: string;
-  ten: string;
-  sdt: string;
-  email: string;
-  diaChi: string;
-  mst?: string;
-  congNo: number;
-  rating: number;
-  ghiChu: string;
-  loai?: string;
-  avatar?: string;
-};
 
 // Tính từ đơn hàng (mock data)
 const DOANH_THU_KH: Record<string, number> = {
@@ -61,49 +46,21 @@ const SO_DON_KH: Record<string, number> = {
 };
 
 export default function KhachHangPage() {
-  const [list, setList] = useState<KH[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { list, themKhachHang, suaKhachHang, xoaKhachHang, loading } = useKhachHang();
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KH } | null>(null);
+  const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KhachHangUI } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
 
-  useEffect(() => {
-    fetchKhachHang();
-  }, []);
-
-  const fetchKhachHang = async () => {
-    if (!supabase) return;
-    setLoading(true);
-    const { data, error } = await supabase.from('khach_hang').select('*').order('created_at', { ascending: false });
-    if (!error && data) {
-      const mapped = data.map((d: any) => {
-        let r = 4;
-        const match = d.ghi_chu?.match(/Đánh giá:\s*(\d)/);
-        if (match) r = parseInt(match[1], 10);
-        
-        let mst = "";
-        const mstMatch = d.ghi_chu?.match(/MST:\s*([\d\-]+)/);
-        if (mstMatch) mst = mstMatch[1];
-
-        return {
-          id: d.id,
-          maKH: d.ma_kh,
-          ten: d.ten_kh,
-          sdt: d.sdt || "",
-          email: d.email || "",
-          diaChi: d.dia_chi || "",
-          loai: d.loai || "",
-          congNo: d.cong_no || 0,
-          ghiChu: d.ghi_chu || "",
-          trangThai: d.trang_thai || "",
-          rating: r,
-          mst: mst
-        };
-      });
-      setList(mapped);
-    }
-    setLoading(false);
-  };
+  const filtered = useMemo(() => {
+    return list.filter((k: KhachHangUI) => {
+      const s = search.toLowerCase();
+      return (
+        k.ten.toLowerCase().includes(s) ||
+        (k.sdt || "").includes(s) ||
+        (k.maKH || "").toLowerCase().includes(s)
+      );
+    });
+  }, [list, search]);
 
   const tongKH = list.length;
   const dsVIP = list.filter((k) => (k.rating || 0) >= 4.5);
@@ -114,46 +71,25 @@ export default function KhachHangPage() {
     return [...list].sort((a, b) => (DOANH_THU_KH[b.ten] || 0) - (DOANH_THU_KH[a.ten] || 0)).slice(0, 3);
   }, [list]);
 
-  const filtered = list.filter((k) => {
-    const matchSearch = [k.ten, k.sdt, k.email, k.diaChi, k.maKH].some((x) => (x || "").toLowerCase().includes(search.toLowerCase()));
-    return matchSearch;
-  });
-
-  const handleSave = async (kh: KH) => {
-    if (!supabase) return;
+  const handleSave = async (kh: KhachHangUI) => {
     const isEdit = showForm?.mode === "edit";
-    const payload = {
-      ma_kh: kh.maKH,
-      ten_kh: kh.ten,
-      sdt: kh.sdt,
-      email: kh.email,
-      dia_chi: kh.diaChi,
-      cong_no: kh.congNo,
-      loai: kh.loai || "",
-      ghi_chu: kh.mst ? `MST: ${kh.mst}. Đánh giá: ${kh.rating} sao. ${kh.ghiChu}` : `Đánh giá: ${kh.rating} sao. ${kh.ghiChu}`,
-    };
-
-    if (isEdit && kh.id) {
-      const { error } = await supabase.from("khach_hang").update(payload).eq("id", kh.id);
-      if (error) { toast.error("Lỗi khi cập nhật"); return; }
-      setList(list.map((x) => (x.id === kh.id ? { ...kh, id: kh.id } : x)));
-      toast.success(`Đã cập nhật: ${kh.ten}`);
+    if (isEdit) {
+      const ok = await suaKhachHang(kh);
+      if (ok) toast.success(`Đã cập nhật: ${kh.ten}`);
+      else toast.error("Lỗi khi cập nhật");
     } else {
-      const { data, error } = await supabase.from("khach_hang").insert([payload]).select().single();
-      if (error) { toast.error("Lỗi khi thêm mới"); return; }
-      setList([{ ...kh, id: data.id }, ...list]);
-      toast.success(`Đã thêm KH: ${kh.ten}`);
+      const ok = await themKhachHang(kh);
+      if (ok) toast.success(`Đã thêm KH: ${kh.ten}`);
+      else toast.error("Lỗi khi thêm mới");
     }
     setShowForm(null);
   };
 
-  const handleDelete = async (kh: KH) => {
-    if (!supabase || !kh.id) return;
+  const handleDelete = async (kh: KhachHangUI) => {
     if (confirm(`Xoá KH "${kh.ten}"?`)) {
-      const { error } = await supabase.from("khach_hang").delete().eq("id", kh.id);
-      if (error) { toast.error("Lỗi khi xoá"); return; }
-      setList(list.filter((x) => x.id !== kh.id));
-      toast.success(`Đã xoá: ${kh.ten}`);
+      const ok = await xoaKhachHang(kh.maKH);
+      if (ok) toast.success(`Đã xoá: ${kh.ten}`);
+      else toast.error("Lỗi khi xoá");
     }
   };
 
@@ -459,6 +395,17 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Tên Khách Hàng / Shop *</label>
               <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.ten} onChange={(e) => setForm({ ...form, ten: e.target.value })} placeholder="VD: Shop Mẹ Bé Xinh..." />
             </div>
+            {/* P1 - 2026-08-07 - Phan loai KH enum */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Phân loại khách hàng *</label>
+              <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.loai || "Cá nhân"} onChange={(e) => setForm({ ...form, loai: e.target.value })}>
+                <option value="Đại lý cấp 1">🏆 Đại lý cấp 1 (Mua sỉ SL lớn)</option>
+                <option value="Đại lý cấp 2">🥈 Đại lý cấp 2 (Mua sỉ SL vừa)</option>
+                <option value="Công ty">🏢 Công ty (Có MST)</option>
+                <option value="Shop">🛍️ Shop (Bán lẻ)</option>
+                <option value="Cá nhân">👤 Cá nhân</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -485,6 +432,14 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Công nợ đầu kỳ (đ)</label>
               <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.congNo} onChange={(e) => setForm({ ...form, congNo: Number(e.target.value) })} />
+            </div>
+            {/* P1 - 2026-08-07 - Han muc no KH */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Hạn mức cho nợ (đ) <span className="text-amber-500">*</span></label>
+              <input type="number" min={0} step={1000000} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={(form as any).hanMucNo || 0} onChange={(e) => setForm({ ...form, hanMucNo: Number(e.target.value) } as any)} placeholder="VD: 30000000" />
+              {((form as any).hanMucNo || 0) > 0 && (form.congNo || 0) > ((form as any).hanMucNo || 0) && (
+                <p className="text-[10px] text-rose-600 mt-1 font-semibold">⚠️ Vượt hạn mức {((form as any).hanMucNo || 0).toLocaleString("vi-VN")} ₫</p>
+              )}
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Đánh giá (1-5 sao)</label>

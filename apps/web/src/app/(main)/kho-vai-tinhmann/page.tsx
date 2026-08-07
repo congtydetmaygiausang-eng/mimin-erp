@@ -10,7 +10,7 @@ import { useSession } from "@/components/session-provider";
 import { logAudit } from "@/lib/audit-log";
 import {
   getAllInventory, truTonKho, nhapKho, resetInventory, resetInventoryToZero, updateVaiInfo,
-  tinhMan, parseSize, goiYVai,
+  tinhMan, parseSize, goiYVai, syncInventoryWithSupabase,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
@@ -61,6 +61,9 @@ export default function KhoVaiPage() {
 
   useEffect(() => {
     setInventory(getAllInventory());
+    syncInventoryWithSupabase().then(() => {
+      setInventory(getAllInventory());
+    });
   }, []);
 
   const refresh = () => {

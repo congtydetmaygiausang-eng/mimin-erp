@@ -101,7 +101,7 @@ export const MODULE_LABELS: Record<Module, string> = {
 // Permission Matrix: 7 role × 21 module × 4 action
 // 'r' = view, 'c' = create, 'u' = edit (update), 'd' = delete
 // Empty string = no access
-const PERMISSIONS: Record<Role, Record<Module, string>> = {
+const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
   // Admin: toàn quyền tất cả
   admin: {
     "dashboard": "rcud",

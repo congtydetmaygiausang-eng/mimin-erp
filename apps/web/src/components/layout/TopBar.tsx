@@ -17,23 +17,23 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="sticky top-0 z-30 mobile-nav-gradient shadow-[0_2px_12px_rgba(14,165,233,0.06)] md:glass md:border-b" style={{ borderColor: "var(--border)" }}>
+    <header className="sticky top-0 z-30 bg-white/70 dark:bg-[#0b0f19]/70 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80">
       <DemoBanner user={user} />
       <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 h-14">
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-white/40 dark:hover:bg-white/10 transition"
+            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
             aria-label="Mở menu"
           >
-            <Menu className="w-5 h-5 text-slate-700" />
+            <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </button>
         )}
-        <div className="md:hidden mobile-nav-text text-sky-700">MIMIN</div>
+        <div className="md:hidden font-semibold text-lg tracking-tight text-slate-700 dark:text-slate-200">MIMIN</div>
         <GlobalSearch />
         <div className="flex-1 sm:flex-none" />
         <button
-          className="p-2 rounded-lg hover:bg-white/30 dark:hover:bg-white/5 transition"
+          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors text-slate-600 dark:text-slate-400"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label="Đổi theme"
         >
@@ -41,20 +41,20 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
         </button>
         <RoleSwitcher />
         <NotificationBell />
-        <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l" style={{ borderColor: "var(--border)" }}>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white text-sm font-semibold">
+        <div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-slate-200 dark:border-slate-800">
+          <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 text-sm font-medium border border-slate-200/50 dark:border-slate-700/50">
             {user.name?.charAt(0) || "U"}
           </div>
           <div className="hidden lg:block leading-tight">
-            <div className="text-sm font-medium">{user.name}</div>
-            <div className="text-xs" style={{ color: "var(--text-muted)" }}>{user.title}</div>
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{user.title}</div>
           </div>
           <button
             onClick={async () => {
               await onSignOut();
               router.replace("/login");
             }}
-            className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-600 transition"
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-500 hover:text-red-600 transition-colors ml-1"
             aria-label="Đăng xuất"
             title="Đăng xuất"
           >

@@ -1,6 +1,7 @@
 function normalizeEmployeeRecord(record) {
   return {
     ...record,
+    id: record.id,
     stt: Number(record.stt || 0),
     maNV: record.ma_nv || record.maNV,
     hoTen: record.ho_ten || record.hoTen,
@@ -26,6 +27,7 @@ function normalizeEmployeeRecord(record) {
 
 function toSupabaseEmployeeRecord(payload) {
   return {
+    id: payload.id,
     stt: Number(payload.stt || 0),
     ma_nv: payload.maNV,
     ho_ten: payload.hoTen,

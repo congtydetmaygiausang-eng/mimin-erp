@@ -7,7 +7,7 @@ import { useState, useMemo } from "react";
 import {
   Users, Search, Phone, MapPin, Building2, CreditCard, FileText,
   CheckCircle2, XCircle, Briefcase, Filter, Scissors, Shirt,
-  Hash, Banknote, Shield, AlertTriangle, X, Plus, Edit2, Trash2
+  Hash, Banknote, Shield, AlertTriangle, X, Plus, Edit2, Trash2, Star
 } from "lucide-react";
 import { DOI_TAC_GIA_CONG, thongKeDoiTac, type DoiTacGiaCong, type LoaiDoiTac } from "@/lib/doi-tac-gia-cong";
 import { usePermission } from "@/components/PermissionGuard";
@@ -15,6 +15,8 @@ import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid } from "@/components/EntityCard";
 import { toast } from "sonner";
+
+import { useDoiTac } from "@/lib/data/doi-tac-store";
 
 const LOAI_TABS: { key: LoaiDoiTac | "ALL"; label: string; icon: any; color: string }[] = [
   { key: "ALL", label: "Tất cả", icon: Users, color: "bg-slate-500" },
@@ -25,6 +27,7 @@ const LOAI_TABS: { key: LoaiDoiTac | "ALL"; label: string; icon: any; color: str
 ];
 
 export default function DoiTacGiaCongPage() {
+  const { list, themDoiTac, suaDoiTac, xoaDoiTac, loading } = useDoiTac();
   const [search, setSearch] = useState("");
   const [loaiFilter, setLoaiFilter] = useState<LoaiDoiTac | "ALL">("ALL");
   const [trangThaiFilter, setTrangThaiFilter] = useState<"ALL" | "dang_hop_tac" | "ngung_hop_tac">("ALL");
@@ -33,10 +36,20 @@ export default function DoiTacGiaCongPage() {
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; dt?: DoiTacGiaCong } | null>(null);
   const perm = usePermission();
 
-  const stats = thongKeDoiTac();
+  const stats = useMemo(() => {
+    return {
+      tong: list.length,
+      inTheuDap: list.filter(d => d.ma.startsWith("GC-IN-")).length,
+      mayQuan: list.filter(d => d.ma.startsWith("GC-QUAN-")).length,
+      mayTron: list.filter(d => d.ma.startsWith("GC-TRON-")).length,
+      mayTru: list.filter(d => d.ma.startsWith("GC-TRU-")).length,
+      dangHopTac: list.filter(d => d.trangThai === "dang_hop_tac").length,
+      ngungHopTac: list.filter(d => d.trangThai === "ngung_hop_tac").length,
+    }
+  }, [list]);
 
   const filtered = useMemo(() => {
-    return DOI_TAC_GIA_CONG.filter((d) => {
+    return list.filter((d) => {
       const matchSearch = [d.tenDonVi, d.nguoiLienHe, d.sdt, d.diaChi, d.ma, d.maSoThue].some(
         (y) => (y || "").toLowerCase().includes(search.toLowerCase())
       );
@@ -44,7 +57,7 @@ export default function DoiTacGiaCongPage() {
       const matchTrangThai = trangThaiFilter === "ALL" || d.trangThai === trangThaiFilter;
       return matchSearch && matchLoai && matchTrangThai;
     });
-  }, [search, loaiFilter, trangThaiFilter]);
+  }, [list, search, loaiFilter, trangThaiFilter]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -250,14 +263,22 @@ export default function DoiTacGiaCongPage() {
       )}
 
       {/* Detail Modal */}
-      {selected && <DoiTacDetail dt={selected} onClose={() => setSelected(null)} />}
+      {selected && <DoiTacDetail dt={selected} onClose={() => setSelected(null)} onEdit={(dt) => { setSelected(null); setShowForm({ mode: "edit", dt }); }} onDelete={async (dt) => { if(confirm(`Xoá đối tác ${dt.tenDonVi}?`)) { const ok = await xoaDoiTac(dt.ma); if(ok) { toast.success(`Đã xoá ${dt.tenDonVi}`); setSelected(null); } else toast.error("Lỗi khi xoá"); } }} />}
       {showForm && (
         <DoiTacFormModal
           mode={showForm.mode}
           dt={showForm.dt}
           onClose={() => setShowForm(null)}
-          onSave={(newDt) => {
-            toast.success(showForm.mode === "add" ? "Thêm đối tác gia công mới thành công" : "Cập nhật thành công");
+          onSave={async (newDt) => {
+            if (showForm.mode === "add") {
+              const ok = await themDoiTac(newDt);
+              if (ok) toast.success("Thêm đối tác gia công mới thành công");
+              else toast.error("Lỗi khi thêm đối tác");
+            } else {
+              const ok = await suaDoiTac(newDt);
+              if (ok) toast.success("Cập nhật thành công");
+              else toast.error("Lỗi khi cập nhật đối tác");
+            }
             setShowForm(null);
           }}
         />
@@ -271,7 +292,7 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
     ma: `GC-${Date.now().toString().slice(-4)}`,
     tenDonVi: "",
     nguoiLienHe: "",
-    chuyenMon: "In / Thêu / Dập",
+    chuyenMon: "In-Thêu",
     sdt: "",
     email: "",
     diaChi: "",
@@ -281,6 +302,15 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
     trangThai: "dang_hop_tac",
     ghiChu: "",
     avatar: "",
+    // === P0/P1 - 2026-08-07 - Cong no gia cong ===
+    congNo: 0,
+    daThanhToan: 0,
+    conLai: 0,
+    hanMucNo: 0,
+    ngayHopTac: new Date().toISOString().substring(0, 10),
+    thoiHanThanhToan: 30,
+    phuongThucTT: "Chuyển khoản",
+    rating: 4.0,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -364,11 +394,14 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Loại gia công *</label>
               <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-violet-500" value={form.chuyenMon} onChange={(e) => setForm({ ...form, chuyenMon: e.target.value })}>
-                <option>In / Thêu / Dập</option>
-                <option>May quần</option>
-                <option>May áo tròn</option>
-                <option>May áo trụ</option>
-                <option>Giặt nhuộm / Khác</option>
+                <option value="In">In</option>
+                <option value="Thêu">Thêu</option>
+                <option value="Wash">Wash (Giặt)</option>
+                <option value="May">May</option>
+                <option value="In-Thêu">In + Thêu</option>
+                <option value="In-Thêu-May">In + Thêu + May</option>
+                <option value="Wash-May">Wash + May</option>
+                <option value="Khác">Khác</option>
               </select>
             </div>
           </div>
@@ -409,6 +442,77 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
             <textarea className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-violet-500 min-h-[70px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} placeholder="Ghi chú thêm về đơn giá thêu/in, thời gian giao trả hàng..." />
           </div>
 
+          {/* === P0/P1 - 2026-08-07 - Cong no & Thanh toan === */}
+          <div className="rounded-2xl border-2 border-rose-200 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-950/20 p-4 space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-rose-200 dark:border-rose-800/50">
+              <Banknote className="w-4 h-4 text-rose-600" />
+              <h4 className="text-sm font-bold text-rose-700 dark:text-rose-300">Công nợ gia công & Thanh toán</h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Công nợ hiện tại (₫)</label>
+                <input type="number" min="0" step="1000" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-rose-500" value={form.congNo || 0} onChange={(e) => setForm({ ...form, congNo: Number(e.target.value), conLai: Number(e.target.value) - (form.daThanhToan || 0) })} placeholder="0" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Đã thanh toán (₫)</label>
+                <input type="number" min="0" step="1000" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-rose-500" value={form.daThanhToan || 0} onChange={(e) => setForm({ ...form, daThanhToan: Number(e.target.value), conLai: (form.congNo || 0) - Number(e.target.value) })} placeholder="0" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Còn lại (₫)</label>
+                <div className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800/50 text-sm font-bold ${(form.conLai || 0) > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                  {(form.conLai || 0).toLocaleString("vi-VN")} ₫
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Hạn mức cho nợ (₫)</label>
+                <input type="number" min="0" step="10000" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-rose-500" value={form.hanMucNo || 0} onChange={(e) => setForm({ ...form, hanMucNo: Number(e.target.value) })} placeholder="VD: 50000000" />
+                {(form.hanMucNo || 0) > 0 && (form.congNo || 0) > (form.hanMucNo || 0) && (
+                  <p className="text-[10px] text-rose-600 mt-1 font-semibold">⚠️ Vượt hạn mức {(form.hanMucNo || 0).toLocaleString("vi-VN")} ₫</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Phương thức thanh toán</label>
+                <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-rose-500" value={form.phuongThucTT || "Chuyển khoản"} onChange={(e) => setForm({ ...form, phuongThucTT: e.target.value })}>
+                  <option value="Chuyển khoản">Chuyển khoản</option>
+                  <option value="Tiền mặt">Tiền mặt</option>
+                  <option value="Cả hai">Cả hai</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày bắt đầu hợp tác</label>
+                <input type="date" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-rose-500" value={form.ngayHopTac || ""} onChange={(e) => setForm({ ...form, ngayHopTac: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Thời hạn thanh toán (ngày)</label>
+                <input type="number" min="0" max="180" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-rose-500" value={form.thoiHanThanhToan || 30} onChange={(e) => setForm({ ...form, thoiHanThanhToan: Number(e.target.value) })} placeholder="30" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Đánh giá xưởng (1-5 ⭐)</label>
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setForm({ ...form, rating: s })}
+                    className="p-1 hover:scale-110 transition"
+                  >
+                    <Star className={`w-6 h-6 ${s <= (form.rating || 0) ? "fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                  </button>
+                ))}
+                <span className="ml-2 text-sm font-bold text-amber-600">{(form.rating || 0).toFixed(1)}/5</span>
+              </div>
+            </div>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
             <button
@@ -432,7 +536,7 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
   );
 }
 
-function DoiTacDetail({ dt, onClose }: { dt: DoiTacGiaCong; onClose: () => void }) {
+function DoiTacDetail({ dt, onClose, onEdit, onDelete }: { dt: DoiTacGiaCong; onClose: () => void; onEdit?: (dt: DoiTacGiaCong) => void; onDelete?: (dt: DoiTacGiaCong) => void }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
       <div className="w-full sm:w-[96%] sm:max-w-2xl rounded-t-3xl sm:rounded-3xl p-6 min-h-[85vh] sm:min-h-0 max-h-[97vh] sm:max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -442,7 +546,19 @@ function DoiTacDetail({ dt, onClose }: { dt: DoiTacGiaCong; onClose: () => void 
             <h3 className="text-lg font-bold">{dt.tenDonVi}</h3>
             <p className="text-sm text-slate-500 mt-0.5">Người liên hệ: <b className="text-slate-700">{dt.nguoiLienHe}</b></p>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button onClick={() => onEdit(dt)} className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors">
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={() => onDelete(dt)} className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+          </div>
         </div>
 
         <div className="space-y-3 text-sm">
@@ -463,6 +579,30 @@ function DoiTacDetail({ dt, onClose }: { dt: DoiTacGiaCong; onClose: () => void 
             <Field icon={CreditCard} label="Số tài khoản" value={dt.soTaiKhoan || "—"} mono />
             <Field icon={Banknote} label="Ngân hàng" value={dt.nganHang || "—"} />
             <Field icon={Hash} label="Mã số thuế" value={dt.maSoThue || "—"} mono />
+          </Section>
+
+          {/* === P0/P1 - 2026-08-07 - Cong no gia cong === */}
+          <Section title="💰 Công nợ gia công">
+            <Field icon={Banknote} label="Công nợ hiện tại" value={`${(dt.congNo || 0).toLocaleString("vi-VN")} ₫`} mono valueClass={dt.congNo && dt.congNo > 0 ? "text-rose-600 font-bold" : "text-slate-600"} />
+            <Field icon={CheckCircle2} label="Đã thanh toán" value={`${(dt.daThanhToan || 0).toLocaleString("vi-VN")} ₫`} mono valueClass="text-emerald-600" />
+            <Field icon={AlertTriangle} label="Còn lại" value={`${(dt.conLai ?? ((dt.congNo || 0) - (dt.daThanhToan || 0))).toLocaleString("vi-VN")} ₫`} mono valueClass={(dt.conLai || 0) > 0 ? "text-rose-700 font-extrabold" : "text-emerald-600 font-bold"} />
+            {dt.hanMucNo !== undefined && dt.hanMucNo > 0 && (
+              <Field icon={Shield} label="Hạn mức cho nợ" value={`${dt.hanMucNo.toLocaleString("vi-VN")} ₫`} mono valueClass={(dt.congNo || 0) > dt.hanMucNo ? "text-rose-600 font-bold" : "text-slate-700"} />
+            )}
+            {dt.phuongThucTT && <Field icon={CreditCard} label="Phương thức TT" value={dt.phuongThucTT} />}
+            {dt.thoiHanThanhToan !== undefined && <Field icon={FileText} label="Thời hạn thanh toán" value={`${dt.thoiHanThanhToan} ngày`} />}
+            {dt.ngayHopTac && <Field icon={FileText} label="Bắt đầu hợp tác" value={dt.ngayHopTac} />}
+            {dt.rating !== undefined && (
+              <div className="flex items-center gap-2 pl-2">
+                <span className="text-[10px] text-slate-500">Đánh giá:</span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(dt.rating || 0) ? "fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                  ))}
+                </div>
+                <span className="text-sm font-bold text-amber-600">{(dt.rating || 0).toFixed(1)}/5</span>
+              </div>
+            )}
           </Section>
 
           {dt.cccd && (

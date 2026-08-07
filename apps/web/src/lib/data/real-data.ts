@@ -260,6 +260,8 @@ export type KhoVai = {
   donGia: number; tonKho: number; tonToiThieu: number;
   kho: string; mauSac: string; ghiChu: string;
   soCayNhap: number; tonCay: number;
+  // === P2 - 2026-08-07 - Hao hut mac dinh theo vai ===
+  tyLeHaoHut?: number; // % (VD: 3 = 3%)
 };
 
 export const KHO_VAI: KhoVai[] = [

@@ -7,6 +7,23 @@ export type LoaiDoiTac = "GC-IN" | "GC-QUAN" | "GC-TRON" | "GC-TRU";
 
 export type TrangThaiHopTac = "dang_hop_tac" | "ngung_hop_tac";
 
+// Enum chuẩn cho chuyên môn xưởng (P1 - 2026-08-07)
+export type ChuyenMonXuong = "In" | "Thêu" | "Wash" | "May" | "In-Thêu" | "In-Thêu-May" | "Wash-May" | "Khác";
+
+export const CHUYEN_MON_LABELS: Record<ChuyenMonXuong, string> = {
+  "In": "In",
+  "Thêu": "Thêu",
+  "Wash": "Wash (Giặt)",
+  "May": "May",
+  "In-Thêu": "In + Thêu",
+  "In-Thêu-May": "In + Thêu + May",
+  "Wash-May": "Wash + May",
+  "Khác": "Khác",
+};
+
+export const PHUONG_THUC_TT_OPTIONS = ["Chuyển khoản", "Tiền mặt", "Cả hai"] as const;
+export type PhuongThucTT = typeof PHUONG_THUC_TT_OPTIONS[number];
+
 export type DoiTacGiaCong = {
   stt: number;
   ma: string;                  // GC-IN-001, GC-QUAN-001, ...
@@ -25,8 +42,17 @@ export type DoiTacGiaCong = {
   cccd?: string;               // parse từ ghiChú
   cccdNgayCap?: string;
   ghiChu?: string;
-  // Field tương thích ngược với code cũ
-  chuyenMon: "In" | "Thêu" | "In – Dập" | "May quần" | "May áo tròn" | "May áo trụ";
+  // Field tương thích ngược với code cũ (giữ cũ để không break)
+  chuyenMon: ChuyenMonXuong | "In – Dập" | "May quần" | "May áo tròn" | "May áo trụ"; // union để back-compat
+  // === P0/P1 - 2026-08-07 - Cong no gia cong ===
+  congNo?: number;            // Tổng nợ hiện tại (VND)
+  daThanhToan?: number;       // Đã thanh toán (VND)
+  conLai?: number;            // Còn lại = congNo - daThanhToan
+  hanMucNo?: number;          // Hạn mức cho nợ (VND)
+  ngayHopTac?: string;        // Ngày bắt đầu hợp tác (YYYY-MM-DD)
+  thoiHanThanhToan?: number;  // Số ngày thanh toán (mặc định 30)
+  phuongThucTT?: PhuongThucTT;
+  rating?: number;            // 1-5 sao
 };
 
 // ============ HELPER: Parse CCCD từ ghiChú ============
