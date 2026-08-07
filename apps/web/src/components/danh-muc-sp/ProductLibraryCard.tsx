@@ -23,9 +23,11 @@ const TRANG_THAI_LABELS: Record<NonNullable<SanPham["trangThai"]>, { label: stri
 
 // Helper: loai SP label
 const LOAI_SP_LABELS: Record<string, { label: string; icon: string; color: string }> = {
-  AoTru: { label: "Áo", icon: "👕", color: "bg-cyan-500/15 text-cyan-700" },
+  AoTru: { label: "Áo Trụ", icon: "👕", color: "bg-cyan-500/15 text-cyan-700" },
+  AoCoTron: { label: "Áo Cổ Tròn", icon: "👕", color: "bg-cyan-500/15 text-cyan-700" },
   AoPolo: { label: "Polo", icon: "👔", color: "bg-teal-500/15 text-teal-700" },
-  BoTru: { label: "Bộ", icon: "👗", color: "bg-blue-500/15 text-blue-700" },
+  BoTru: { label: "Bộ Trụ", icon: "👔", color: "bg-blue-500/15 text-blue-700" },
+  BoCoTron: { label: "Bộ Cổ Tròn", icon: "👕", color: "bg-blue-500/15 text-blue-700" },
   PhuKien: { label: "Phụ kiện", icon: "🧢", color: "bg-violet-500/15 text-violet-700" },
 };
 
@@ -227,20 +229,31 @@ export default function ProductLibraryCard({
 
         {/* === Gia ban + Gia von === */}
         <div className="mt-auto mb-3 pt-2 border-t border-slate-100">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
-              {formatVNDShort(sp.giaBanDuKien || 0)}
-            </span>
-            <span className="text-[10px] text-slate-400">VNĐ</span>
-          </div>
-          {sp.giaVonDuKien > 0 && (
-            <div className="text-[10px] text-slate-400 line-through opacity-70">
-              Vốn: {formatVNDShort(sp.giaVonDuKien)}
-              {sp.giaBanDuKien > 0 && sp.giaVonDuKien > 0 && (
-                <span className="ml-1.5 text-emerald-600 font-bold">
-                  +{Math.round(((sp.giaBanDuKien - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
+          {sp.giaBanDuKien > 0 ? (
+            <>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
+                  {formatVNDShort(sp.giaBanDuKien)}
                 </span>
+                <span className="text-[10px] text-slate-400">VNĐ</span>
+              </div>
+              {sp.giaVonDuKien > 0 && (
+                <div className="text-[10px] text-slate-400 line-through opacity-70">
+                  Vốn: {formatVNDShort(sp.giaVonDuKien)}
+                  {sp.giaBanDuKien > 0 && sp.giaVonDuKien > 0 && (
+                    <span className="ml-1.5 text-emerald-600 font-bold">
+                      +{Math.round(((sp.giaBanDuKien - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
+                    </span>
+                  )}
+                </div>
               )}
+            </>
+          ) : (
+            // Chua co gia - hien thi "Lien he"
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">
+                📞 Liên hệ báo giá
+              </span>
             </div>
           )}
         </div>

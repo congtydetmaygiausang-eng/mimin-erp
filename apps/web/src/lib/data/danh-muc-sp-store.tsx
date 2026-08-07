@@ -4,6 +4,50 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { type LoaiSP, type MauVai } from "./lenh-cat-store";
 import { useSupabaseSync, supabaseUpsert, supabaseDelete } from "@/lib/supabase/client";
 
+// ============================================
+// 2026-08-07 - Map data tu Supabase DB
+// DB columns: id, ma_sp, loai_sp, ma_dm, ten_sp, dinh_muc, created_at
+// Mapping: loai_sp (text tieng Viet) -> LoaiSP enum
+// ============================================
+
+const LOAI_SP_MAP: Record<string, LoaiSP> = {
+  "Áo trụ": "AoTru",
+  "Áo cổ tròn": "AoCoTron",
+  "Bộ trụ": "BoTru",
+  "Bộ tròn": "BoCoTron",
+};
+
+function mapLoaiSPFromText(loaiSPText: string | null | undefined): LoaiSP {
+  if (!loaiSPText) return "BoTru";
+  return LOAI_SP_MAP[loaiSPText] || (loaiSPText as LoaiSP) || "BoTru";
+}
+
+// Map 1 record DB -> SanPham (graceful voi columns chua co)
+function mapSanPhamFromDB(item: any): SanPham {
+  return {
+    id: item.ma_sp || item.id || "", // ma_sp làm primary
+    dbId: item.id, // UUID gốc
+    tenSP: item.ten_sp || "",
+    loaiSP: mapLoaiSPFromText(item.loai_sp),
+    // === Fields chua co trong DB -> gia tri mac dinh (se update sau) ===
+    giaBanDuKien: item.gia_ban_du_kien || 0,
+    giaVonDuKien: item.gia_von_du_kien || 0,
+    tiLeSize: item.ti_le_size || "",
+    bangSize: item.bang_size || DEFAULT_BANGSIZE_5SIZE,
+    dsMau: item.ds_mau || [],
+    ghiChu: item.ghi_chu || `Mã DM: ${item.ma_dm || "N/A"} | Định mức: ${item.dinh_muc || 0}`,
+    ngayTao: item.ngay_tao || item.created_at || new Date().toISOString().substring(0, 10),
+    // === Fields moi 2026-08-07 (chua co trong DB schema hien tai) ===
+    trangThai: item.trang_thai || "con-hang",
+    daBan: item.da_ban || 0,
+    ncc: item.ncc || "",
+    chatLieu: item.chat_lieu || "",
+    luotXem: item.luot_xem || 0,
+    rating: item.rating || 0,
+    hinhAnh: item.hinh_anh || "",
+  };
+}
+
 export interface MauTieuChuan {
   ten: string;
   maSKU: string;
@@ -449,45 +493,28 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         if (client) {
           const { data, error } = await client.from("san_pham").select("*").order("ma_sp", { ascending: true });
           if (error) throw error;
-          
+
           if (data && data.length > 0 && mounted) {
-            // Map snake_case from DB back to camelCase for frontend, and map ma_sp -> id
-            const mapped = data.map(item => ({
-              id: item.ma_sp, // Map ma_sp to id so frontend doesn't break
-              dbId: item.id, // Keep the UUID just in case
-              tenSP: item.ten_sp || "",
-              loaiSP: item.loai_sp as LoaiSP || "BoTru",
-              giaBanDuKien: item.gia_ban_du_kien || 0,
-              giaVonDuKien: item.gia_von_du_kien || 0,
-              tiLeSize: item.ti_le_size || "",
-              bangSize: item.bang_size || DEFAULT_BANGSIZE_5SIZE,
-              dsMau: item.ds_mau || [],
-              ghiChu: item.ghi_chu || "",
-              ngayTao: item.ngay_tao || item.created_at || "",
-              // === Fields moi 2026-08-07 ===
-              trangThai: item.trang_thai || "con-hang",
-              daBan: item.da_ban || 0,
-              ncc: item.ncc || "",
-              chatLieu: item.chat_lieu || "",
-              luotXem: item.luot_xem || 0,
-              rating: item.rating || 0,
-              hinhAnh: item.hinh_anh || "",
-            }));
-            setDsSanPham(mapped as SanPham[]);
+            // Map snake_case from DB back to camelCase for frontend
+            // 2026-08-07 - load data THAT tu Supabase, KHONG fallback mock
+            const mapped = data.map(item => mapSanPhamFromDB(item));
+            setDsSanPham(mapped);
           } else if (mounted) {
-             setDsSanPham(MOCK_DANH_MUC);
+            console.warn("⚠️ san_pham table empty - chua co data that");
+            setDsSanPham([]);
           }
         } else {
-           setDsSanPham(MOCK_DANH_MUC);
+          console.warn("⚠️ Supabase chua cau hinh");
+          setDsSanPham([]);
         }
       } catch (e) {
         console.error("Lỗi fetch Sản phẩm", e);
-        if (mounted) setDsSanPham(MOCK_DANH_MUC);
+        if (mounted) setDsSanPham([]);
       } finally {
         if (mounted) setLoading(false);
       }
     };
-    
+
     load();
     return () => { mounted = false; };
   }, []);

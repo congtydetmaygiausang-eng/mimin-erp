@@ -41,8 +41,8 @@ export default function DanhMucSanPhamPage() {
     }
     if (activeFilter !== "all") {
       result = result.filter((sp) => {
-        if (activeFilter === "ao") return sp.loaiSP === "AoTru" || sp.loaiSP === "AoPolo";
-        if (activeFilter === "bo") return sp.loaiSP === "BoTru";
+        if (activeFilter === "ao") return sp.loaiSP === "AoTru" || sp.loaiSP === "AoCoTron" || sp.loaiSP === "AoPolo";
+        if (activeFilter === "bo") return sp.loaiSP === "BoTru" || sp.loaiSP === "BoCoTron";
         if (activeFilter === "phu-kien") return sp.loaiSP === "PhuKien";
         return true;
       });
@@ -81,9 +81,13 @@ export default function DanhMucSanPhamPage() {
                 ({filtered.length} sản phẩm)
               </span>
             </h1>
-            <p className="text-cyan-50 mt-2 text-sm md:text-base font-medium">
-              <Sparkles className="w-4 h-4 inline mr-1" />
+            <p className="text-cyan-50 mt-2 text-sm md:text-base font-medium flex flex-wrap items-center gap-2">
+              <Sparkles className="w-4 h-4 inline" />
               POLOMIMIN - Hơn 10.000+ khách hàng đã tin dùng
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/90 text-white text-[10px] font-bold rounded-md uppercase tracking-wider shadow">
+                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                Live data từ Supabase
+              </span>
             </p>
           </div>
 
@@ -141,7 +145,8 @@ export default function DanhMucSanPhamPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 bg-white/10 backdrop-blur rounded-3xl max-w-[1600px] mx-auto">
           <Shirt className="w-16 h-16 mx-auto text-white/40 mb-4" />
-          <p className="text-white font-semibold">Không tìm thấy sản phẩm nào</p>
+          <p className="text-white font-semibold text-lg">Không tìm thấy sản phẩm nào trong database</p>
+          <p className="text-cyan-100 text-sm mt-2">Vào Supabase Dashboard → SQL Editor → chạy file <code className="bg-white/20 px-2 py-0.5 rounded">fix-rls-and-add-columns.sql</code></p>
         </div>
       ) : (
         /* === GRID: thu vien the card (2/3/4/5 cols responsive) === */
