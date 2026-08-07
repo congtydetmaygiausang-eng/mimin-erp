@@ -2,13 +2,14 @@
 
 // ============================================
 // Danh muc san pham - POLOMIMIN
-// Redesign 2026-08-06: layout card NGANG + nen CYAN
+// Redesign 2026-08-07: thu vien the card (grid 4 cols)
 // ============================================
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Shirt, Sparkles, TrendingUp, X } from "lucide-react";
+import { Search, Shirt, Sparkles, TrendingUp, X, Plus } from "lucide-react";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
-import HorizontalProductCard from "@/components/danh-muc-sp/HorizontalProductCard";
+import { toast } from "sonner";
+import ProductLibraryCard from "@/components/danh-muc-sp/ProductLibraryCard";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
@@ -21,6 +22,7 @@ export default function DanhMucSanPhamPage() {
   const { dsSanPham, loading } = useDanhMucSP();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -48,12 +50,28 @@ export default function DanhMucSanPhamPage() {
     return result;
   }, [dsSanPham, search, activeFilter]);
 
+  // === HANDLERS (3 CTA buttons) ===
+  const handleAddToCart = (sp: any) => {
+    toast.success(`Đã thêm "${sp.tenSP}" vào giỏ`);
+  };
+  const handleCreateOrder = (sp: any) => {
+    toast.success(`Đang tạo đơn hàng từ "${sp.tenSP}"...`);
+    // TODO: Open OrderFormModal
+  };
+  const handleDirectOrder = (sp: any) => {
+    toast.success(`Đặt hàng nhanh "${sp.tenSP}"`);
+    // TODO: Open DirectOrderModal
+  };
+  const handleFavorite = (sp: any) => {
+    toast.success(`Đã thêm "${sp.tenSP}" vào yêu thích`);
+  };
+
   if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800 -m-4 md:-m-6 p-4 md:p-6">
-      {/* === HEADER: Trắng trên CYAN === */}
-      <div className="max-w-[1600px] mx-auto mb-6">
+      {/* === HEADER === */}
+      <div className="max-w-[1600px] mx-auto mb-5">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg flex items-center gap-3">
@@ -82,30 +100,39 @@ export default function DanhMucSanPhamPage() {
           </div>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {FILTER_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeFilter === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveFilter(tab.id)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap shadow-md ${
-                  active
-                    ? "bg-white text-cyan-700"
-                    : "bg-white/20 backdrop-blur text-white hover:bg-white/30"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+        {/* Filter tabs + view toggle */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 flex-1">
+            {FILTER_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveFilter(tab.id)}
+                  className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap shadow-md ${
+                    active
+                      ? "bg-white text-cyan-700"
+                      : "bg-white/20 backdrop-blur text-white hover:bg-white/30"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Stats badge */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-cyan-100 text-xs font-semibold whitespace-nowrap">
+              {filtered.length} sản phẩm
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* === GRID CARDS (horizontal layout) === */}
+      {/* === LOADING / EMPTY === */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white/10 backdrop-blur rounded-3xl max-w-[1600px] mx-auto">
           <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4"></div>
@@ -117,10 +144,20 @@ export default function DanhMucSanPhamPage() {
           <p className="text-white font-semibold">Không tìm thấy sản phẩm nào</p>
         </div>
       ) : (
-        <div className="max-w-[1600px] mx-auto space-y-4">
-          {filtered.map((sp) => (
-            <HorizontalProductCard key={sp.id} sp={sp} />
-          ))}
+        /* === GRID: thu vien the card (2/3/4/5 cols responsive) === */
+        <div className="max-w-[1600px] mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
+            {filtered.map((sp) => (
+              <ProductLibraryCard
+                key={sp.id}
+                sp={sp}
+                onAddToCart={handleAddToCart}
+                onCreateOrder={handleCreateOrder}
+                onDirectOrder={handleDirectOrder}
+                onFavorite={handleFavorite}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
