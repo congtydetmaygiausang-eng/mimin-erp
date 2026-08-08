@@ -62,11 +62,11 @@
 @layer components {
   /* GPU-Accelerated Smooth Background Gradients - POLOMIMIN teal/cyan brand */
   .bg-module-login {
-    background: radial-gradient(circle at 50% 0%, #0891b2 0%, #134e4a 100%);
+    background: #0a3a46;
   }
 
   .bg-module-dashboard {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%);
+    background: #0a3a46;
   }
 
   /* Tat ca module list dung teal/cyan dam (sep Sang yeu cau) - nen CYAN dam giong danh-muc-sp */
@@ -77,7 +77,7 @@
   .bg-module-nha-cung-cap,
   .bg-module-kho,
   .bg-module-bang-luong {
-    background: linear-gradient(135deg, #0891b2 0%, #0e7490 50%, #155e75 100%);
+    background: #0a3a46;
   }
 
   /* PageHeader gradient - dam hon de noi bat */
@@ -117,15 +117,11 @@
   }
 
   .bg-module-doi-tac-gia-cong {
-    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 40%, #f8fafc 100%);
-  }
-
-  .bg-module-kho {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%);
+    background: #0a3a46;
   }
 
   .bg-module-default {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: #0a3a46;
   }
 
   /* Ultra Smooth Glassmorphic Cards */

@@ -28,6 +28,7 @@ type NavGroup = {
   label: string;
   icon: any;
   color: string; // gradient
+  iconColor: string; // icon color
   items: SubItem[];
 };
 
@@ -37,6 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Tổng Quan",
     icon: LayoutDashboard,
     color: "from-cyan-500 to-blue-600",
+    iconColor: "text-blue-500",
     items: [
       { href: "/dashboard", label: "Dashboard" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX" },
@@ -49,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Sản Xuất & Kế hoạch",
     icon: Factory,
     color: "from-teal-500 to-emerald-600",
+    iconColor: "text-teal-600",
     items: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX" },
       { href: "/lenh-cat", label: "Lệnh cắt" },
@@ -64,6 +67,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Kho & Giao Hàng",
     icon: Boxes,
     color: "from-sky-500 to-cyan-600",
+    iconColor: "text-sky-500",
     items: [
       { href: "/kho-vai-tinhmann", label: "Kho vải" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu" },
@@ -77,6 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Kế Toán & Mua Bán",
     icon: Wallet,
     color: "from-emerald-500 to-green-600",
+    iconColor: "text-emerald-500",
     items: [
       { href: "/cham-cong", label: "Chấm công" },
       { href: "/bang-luong", label: "Bảng lương" },
@@ -90,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Danh Mục Dữ Liệu",
     icon: Database,
     color: "from-blue-500 to-indigo-600",
+    iconColor: "text-indigo-500",
     items: [
       { href: "/danh-muc-sp", label: "Danh mục sản phẩm" },
       { href: "/nhan-su", label: "Nhân sự" },
@@ -105,6 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Hệ Thống (Dev)",
     icon: Boxes,
     color: "from-slate-500 to-slate-700",
+    iconColor: "text-slate-500",
     items: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh" },
@@ -206,7 +213,7 @@ export function HorizontalNav() {
               }`}
               title={g.label}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className={`w-4 h-4 ${active ? "" : g.iconColor}`} />
               <span>{g.label}</span>
             </button>
           );
