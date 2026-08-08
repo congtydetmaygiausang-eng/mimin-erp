@@ -71,6 +71,12 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       { ten: "Đen", maSKU: "", dinhMuc: 0.25, img: "", video: "" },
     ]
   );
+  
+  const [chatLieu, setChatLieu] = useState(initialData?.chatLieu || "");
+  const [ncc, setNcc] = useState(initialData?.ncc || "");
+  const [ghiChu, setGhiChu] = useState(initialData?.ghiChu || "");
+  const [giaBanDuKien, setGiaBanDuKien] = useState(initialData?.giaBanDuKien || 0);
+  const [giaVonDuKien, setGiaVonDuKien] = useState(initialData?.giaVonDuKien || 0);
 
   const handleSave = () => {
     if (!maSP || !tenSP) {
@@ -111,11 +117,13 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       })),
       hinhAnh: dsMau[0]?.img || "",
       bangSize,
-      giaBanDuKien: 0,
-      giaVonDuKien: 0,
-      trangThai: "con-hang",
-      ngayTao: new Date().toISOString().substring(0, 10),
-      ghiChu: "Tạo mới từ form"
+      giaBanDuKien,
+      giaVonDuKien,
+      chatLieu,
+      ncc,
+      ghiChu: ghiChu || (initialData ? initialData.ghiChu : ""),
+      trangThai: initialData?.trangThai || "con-hang",
+      ngayTao: initialData?.ngayTao || new Date().toISOString().substring(0, 10),
     };
 
     onSave(newProduct);
@@ -204,6 +212,55 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Giá bán dự kiến (VNĐ)</label>
+              <input 
+                type="number"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 font-mono" 
+                placeholder="VD: 150000"
+                value={giaBanDuKien || ""} onChange={e => setGiaBanDuKien(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Giá vốn dự kiến (VNĐ)</label>
+              <input 
+                type="number"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 font-mono" 
+                placeholder="VD: 85000"
+                value={giaVonDuKien || ""} onChange={e => setGiaVonDuKien(Number(e.target.value))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Chất liệu vải</label>
+              <input 
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500" 
+                placeholder="VD: Cotton 100%, Cá sấu..."
+                value={chatLieu} onChange={e => setChatLieu(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Nhà cung cấp (Gia công)</label>
+              <input 
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500" 
+                placeholder="VD: Xưởng A..."
+                value={ncc} onChange={e => setNcc(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Mô tả ngắn / Ghi chú</label>
+            <input 
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500" 
+              placeholder="VD: Mã DM: DM-BTR | Hàng xuất dư..."
+              value={ghiChu} onChange={e => setGhiChu(e.target.value)}
+            />
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mt-2">
