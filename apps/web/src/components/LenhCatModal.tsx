@@ -972,16 +972,32 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       />
                     </div>
 
-                    <div className="bg-slate-50 p-2 rounded border border-slate-200 mt-2">
-                      <div className="text-[10px] font-bold text-slate-500 mb-2">Tự động bung size theo tỉ lệ:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {mau.phanBoSize && mau.phanBoSize.map(pb => (
-                           <div key={pb.size} className="flex flex-col items-center bg-white border rounded p-1 w-12">
-                             <span className="text-[10px] font-bold text-slate-400">{pb.size}</span>
-                             <span className="text-sm font-bold text-slate-700">{pb.sl}</span>
-                           </div>
-                        ))}
-                        {(!mau.phanBoSize || mau.phanBoSize.length === 0) && <span className="text-xs text-slate-400">Nhập SL Dự kiến để chia size...</span>}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
+                      <div className="bg-slate-50 p-2 rounded border border-slate-200">
+                        <div className="text-[10px] font-bold text-slate-500 mb-2">Tự động bung size theo tỉ lệ:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {mau.phanBoSize && mau.phanBoSize.map(pb => (
+                             <div key={pb.size} className="flex flex-col items-center bg-white border rounded p-1 w-12">
+                               <span className="text-[10px] font-bold text-slate-400">{pb.size}</span>
+                               <span className="text-sm font-bold text-slate-700">{pb.sl}</span>
+                             </div>
+                          ))}
+                          {(!mau.phanBoSize || mau.phanBoSize.length === 0) && <span className="text-xs text-slate-400">Nhập SL Dự kiến để chia size...</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col bg-amber-50/50 p-2 rounded border border-amber-200/50">
+                        <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
+                        <textarea 
+                          className="w-full flex-1 px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
+                          placeholder="Nhập ghi chú kỹ thuật riêng cho màu này..."
+                          value={mau.ghiChu || ""}
+                          onChange={(e) => {
+                            const next = [...dsMau]; 
+                            next[idx].ghiChu = e.target.value; 
+                            setDsMau(next);
+                          }}
+                        />
                       </div>
                     </div>
                     
