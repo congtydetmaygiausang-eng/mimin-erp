@@ -146,7 +146,11 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
             .map((pc, idx) => (
             <div key={idx} className="inline-flex items-center gap-1.5 text-[11px] bg-white text-slate-500 px-2.5 py-1.5 rounded border border-slate-200">
               <span className="font-black text-slate-800">{pc.tenCongDoan}:</span>
-              <span className="truncate max-w-[120px] font-medium">{pc.nguoiTen}</span>
+              {pc.nguoiTen ? (
+                <span className="truncate max-w-[120px] font-medium">{pc.nguoiTen}</span>
+              ) : (
+                <span className="italic text-slate-400">Chưa giao</span>
+              )}
             </div>
           ))}
         </div>
