@@ -136,15 +136,15 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
               {dsMau.map((m, i) => (
                 <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex gap-6 items-start relative shadow-sm">
                   {/* Media Area (Left side) */}
-                  <div className="w-1/3 shrink-0 flex flex-col gap-2">
+                  <div className="w-2/5 shrink-0 grid grid-cols-2 gap-2">
                     {/* Image Upload */}
-                    <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-white relative overflow-hidden group">
+                    <div className="aspect-[9/16] flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-white relative overflow-hidden group">
                       {m.img ? (
                         <img src={m.img} alt={m.ten} className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
                       ) : (
                         <div className="text-center text-slate-400">
-                          <Plus className="w-6 h-6 mx-auto mb-1 text-slate-300" />
-                          <span className="text-[10px] font-bold uppercase">Tải ảnh</span>
+                          <Plus className="w-5 h-5 mx-auto mb-1 text-slate-300" />
+                          <span className="text-[9px] font-bold uppercase">Ảnh</span>
                         </div>
                       )}
                       <input 
@@ -164,13 +164,13 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                       />
                     </div>
                     {/* Video Upload */}
-                    <div className="aspect-video flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 relative overflow-hidden group">
+                    <div className="aspect-[9/16] flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 relative overflow-hidden group">
                       {m.video ? (
                         <video src={m.video} className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
                       ) : (
                         <div className="text-center text-slate-400">
                           <Plus className="w-5 h-5 mx-auto mb-1 text-slate-300" />
-                          <span className="text-[9px] font-bold uppercase">Video (16:9)</span>
+                          <span className="text-[9px] font-bold uppercase text-center leading-tight">Video<br/>(Dọc)</span>
                         </div>
                       )}
                       <input 
@@ -192,7 +192,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                   </div>
                   
                   {/* Inputs (Right side) */}
-                  <div className="w-2/3 flex flex-col gap-4 py-2">
+                  <div className="w-3/5 flex flex-col gap-3 py-1">
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block mb-1">Tên màu</label>
                       <input 
@@ -209,21 +209,22 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                         value={m.maSKU} onChange={e => { const n = [...dsMau]; n[i].maSKU = e.target.value.toUpperCase(); setDsMau(n); }}
                       />
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức vải (kg/sp)</label>
-                      <input 
-                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-emerald-500" 
-                        placeholder="VD: 0.25" type="number" step="0.01"
-                        value={m.dinhMuc || ""} onChange={e => { const n = [...dsMau]; n[i].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(n); }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức vải (kg/sp)</label>
-                      <input 
-                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-emerald-500" 
-                        placeholder="VD: 0.25" type="number" step="0.01"
-                        value={m.dinhMuc || ""} onChange={e => { const n = [...dsMau]; n[i].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(n); }}
-                      />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức vải (kg/sp)</label>
+                        <input 
+                          className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-emerald-500" 
+                          placeholder="VD: 0.25" type="number" step="0.01"
+                          value={m.dinhMuc || ""} onChange={e => { const n = [...dsMau]; n[i].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(n); }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức bo (kg/sp)</label>
+                        <input 
+                          className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-emerald-500" 
+                          placeholder="VD: 0.05" type="number" step="0.01"
+                        />
+                      </div>
                     </div>
                   </div>
                   
