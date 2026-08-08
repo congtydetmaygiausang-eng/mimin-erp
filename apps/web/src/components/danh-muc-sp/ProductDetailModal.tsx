@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle, Plus, Image as ImageIcon } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
@@ -36,12 +36,17 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
   const [selectedVideo, setSelectedVideo] = useState(sp.dsMau?.find(m => m.img === selectedImage)?.video || sp.dsMau?.[0]?.video || "");
   const [viewingMode, setViewingMode] = useState<"video" | "image">(selectedVideo ? "video" : "image");
   const [showFullScreen, setShowFullScreen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fsVideoRef = useRef<HTMLVideoElement>(null);
 
   if (!mounted) return null;
 
   return createPortal(
     <>
-    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 md:p-8 md:pt-20 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 md:p-8 md:pt-20 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={(e) => {
+      if (videoRef.current) { videoRef.current.pause(); }
+      onClose();
+    }}>
       <div 
         className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full flex flex-col md:flex-row animate-slide-up my-auto"
         onClick={e => e.stopPropagation()}
@@ -61,7 +66,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
           
           {viewingMode === "video" && selectedVideo ? (
             <div className="w-full h-full flex-1 group relative overflow-hidden bg-black flex items-center justify-center">
-              <video src={selectedVideo} autoPlay loop muted playsInline controls className="w-full h-full object-contain absolute inset-0" />
+              <video ref={videoRef} src={selectedVideo} autoPlay loop muted playsInline controls className="w-full h-full object-contain absolute inset-0" />
             </div>
           ) : selectedImage ? (
             <div className="w-full h-full flex-1 group relative cursor-pointer overflow-hidden bg-slate-100" onClick={() => setShowFullScreen(true)}>
@@ -79,6 +84,9 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
              <button 
                 onClick={(e) => {
                    e.stopPropagation();
+                   if (viewingMode === "video" && videoRef.current) {
+                       videoRef.current.pause();
+                   }
                    setViewingMode(prev => prev === "video" ? "image" : "video");
                 }}
                 className="absolute top-4 right-4 z-20 px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-full shadow hover:bg-white text-sm font-semibold flex items-center gap-1.5 text-cyan-700 transition-colors"
@@ -94,6 +102,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                   key={i} 
                   onClick={() => {
                     if (m.img) setSelectedImage(m.img);
+                    if (videoRef.current) videoRef.current.pause();
                     setSelectedVideo(m.video || "");
                     setViewingMode(m.video ? "video" : "image");
                   }}
@@ -116,7 +125,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
               </div>
               <h2 className="text-2xl font-extrabold text-slate-800 leading-tight">{sp.tenSP}</h2>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+            <button onClick={() => { if (videoRef.current) videoRef.current.pause(); onClose(); }} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -271,13 +280,19 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
     
     {/* Full Screen Viewer */}
     {showFullScreen && (
-      <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center animate-fade-in" onClick={() => setShowFullScreen(false)}>
-        <button className="absolute top-6 right-6 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10" onClick={() => setShowFullScreen(false)}>
+      <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center animate-fade-in" onClick={() => {
+        if (fsVideoRef.current) fsVideoRef.current.pause();
+        setShowFullScreen(false);
+      }}>
+        <button className="absolute top-6 right-6 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10" onClick={() => {
+          if (fsVideoRef.current) fsVideoRef.current.pause();
+          setShowFullScreen(false);
+        }}>
           <X className="w-8 h-8" />
         </button>
         <div className="w-full h-full max-w-6xl max-h-screen p-8 flex flex-col items-center justify-center gap-4" onClick={e => e.stopPropagation()}>
           {selectedVideo ? (
-            <video src={selectedVideo} controls autoPlay className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain bg-black" />
+            <video ref={fsVideoRef} src={selectedVideo} controls autoPlay className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain bg-black" />
           ) : (
             <img src={selectedImage} alt="Full view" className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain" />
           )}
