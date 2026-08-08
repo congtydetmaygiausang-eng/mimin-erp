@@ -62,22 +62,66 @@
 @layer components {
   /* GPU-Accelerated Smooth Background Gradients - POLOMIMIN teal/cyan brand */
   .bg-module-login {
-    background: #0a3a46;
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
   }
 
   .bg-module-dashboard {
-    background: #0a3a46;
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
   }
 
-  /* Tat ca module list dung teal/cyan dam (sep Sang yeu cau) - nen CYAN dam giong danh-muc-sp */
-  .bg-module-lenh-cat,
-  .bg-module-khach-hang,
-  .bg-module-ke-hoach,
-  .bg-module-nhan-su,
-  .bg-module-nha-cung-cap,
-  .bg-module-kho,
+  /* Tat ca module list dung teal/cyan dam (sep Sang yeu cau 2026-08-05) */
+  .bg-module-lenh-cat { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-khach-hang { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-ke-hoach { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-nhan-su { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-kho { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  
+  .bg-module-default {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-gia-cong {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-cong-no {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-tong-hop {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-hoan-thien {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-qc {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-cai-dat {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-soi-det-nhuom {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-phu-lieu {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-thanh-pham {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
+  .bg-module-nha-cung-cap {
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
+  }
+
   .bg-module-bang-luong {
-    background: #0a3a46;
+    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
   }
 
   /* PageHeader gradient - dam hon de noi bat */
