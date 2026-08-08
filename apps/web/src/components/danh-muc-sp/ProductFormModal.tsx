@@ -4,6 +4,7 @@ import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { type LoaiSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 interface ProductFormModalProps {
   onClose: () => void;
@@ -119,11 +120,16 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Tỉ lệ Size (M:L:XL:2XL:3XL) *</label>
-              <input 
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500" 
-                placeholder="1:2:2:2:1"
+              <select 
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 bg-white"
                 value={tiLeSize} onChange={e => setTiLeSize(e.target.value)}
-              />
+              >
+                {SIZE_RATIO_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
