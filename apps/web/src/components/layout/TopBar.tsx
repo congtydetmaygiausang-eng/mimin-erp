@@ -31,21 +31,28 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
         )}
         <div className="md:hidden font-black text-xl tracking-tight text-brand-700 dark:text-brand-400">MIMIN</div>
         <GlobalSearch />
-        <div className="flex-1 sm:flex-none" />
-        <button
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Đổi theme"
-        >
-          {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
-        <RoleSwitcher />
-        <NotificationBell />
-        <div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-slate-200 dark:border-slate-700">
-          <div className="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-brand-100 dark:ring-brand-900">
-            {user.name?.charAt(0) || "U"}
-          </div>
-          <div className="hidden lg:block leading-tight">
+        
+        {/* Đẩy các nút sang phải */}
+        <div className="flex-1" />
+        
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Đổi theme"
+          >
+            {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+          
+          <NotificationBell />
+          
+          {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
+          
+          <div className="flex items-center gap-3 pl-2 sm:pl-3 border-l border-slate-200 dark:border-slate-700">
+            <div className="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-brand-100 dark:ring-brand-900">
+              {user.name?.charAt(0) || "U"}
+            </div>
+            <div className="hidden lg:block leading-tight">
             <div className="text-sm font-bold text-slate-900 dark:text-white">{user.name}</div>
             <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{user.title}</div>
           </div>
@@ -60,6 +67,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
           >
             <LogOut className="w-5 h-5" />
           </button>
+        </div>
         </div>
       </div>
     </header>
