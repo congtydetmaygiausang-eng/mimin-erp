@@ -62,6 +62,10 @@ export type MauVai = {
   ghiChu: string;
   img: string;
   phanBoSize: { size: string; sl: number }[];
+  
+  // NẾU LÀ BỘ THÌ CÓ THÊM QUẦN
+  maVaiQuan?: string;
+  dinhMucQuan?: number;
 };
 
 export type LenhCatPhuLieu = {

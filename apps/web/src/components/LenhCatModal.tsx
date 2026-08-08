@@ -509,11 +509,18 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const validTongSL = (tongSL || 1) as number;
   
   let tongTienVai = 0;
+  const isBo = loaiSP?.toLowerCase().includes("bo");
   dsMau.forEach(m => {
     if (m.maVai && m.slDuKien && m.dinhMuc) {
       const v = KHO_VAI.find(x => x.maVT === m.maVai);
       if (v) {
         tongTienVai += m.slDuKien * m.dinhMuc * (v.donGia || 0);
+      }
+    }
+    if (isBo && m.maVaiQuan && m.slDuKien && m.dinhMucQuan) {
+      const vQuan = KHO_VAI.find(x => x.maVT === m.maVaiQuan);
+      if (vQuan) {
+        tongTienVai += m.slDuKien * m.dinhMucQuan * (vQuan.donGia || 0);
       }
     }
   });
@@ -802,8 +809,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
             {/* Grid Thẻ Màu Sắc */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {dsMau.map((mau, idx) => (
-                <div key={idx} className="bg-white rounded-lg shadow-md p-4 flex gap-4">
+              {dsMau.map((mau, idx) => {
+                const isBo = loaiSP?.toLowerCase().includes("bo");
+                return (
+                <div key={idx} className={`bg-white rounded-lg shadow-md p-4 flex gap-4 ${isBo ? "md:col-span-2" : ""}`}>
                   
                   {/* Left: Image */}
                   <div className="w-1/3 flex flex-col gap-2">
@@ -858,46 +867,107 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         />
                       </div>
                     </div>
+                    {isBo ? (
+                      <div className="flex gap-2">
+                        <div className="w-1/2 p-2 bg-blue-50/50 rounded border border-blue-100 flex flex-col gap-2">
+                          <div>
+                            <div className="text-[10px] font-bold text-blue-700 mb-1">ÁO - Kho Vải</div>
+                            <select 
+                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                              value={mau.maVai}
+                              onChange={(e) => {
+                                const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
+                              }}
+                            >
+                              <option value="">-- Chọn vải --</option>
+                              {KHO_VAI.map((kv) => (
+                                <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/áo):</div>
+                            <input 
+                              type="number" step="0.01"
+                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                              value={mau.dinhMuc}
+                              onChange={(e) => {
+                                const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div className="w-1/2 p-2 bg-rose-50/50 rounded border border-rose-100 flex flex-col gap-2">
+                          <div>
+                            <div className="text-[10px] font-bold text-rose-700 mb-1">QUẦN - Kho Vải</div>
+                            <select 
+                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                              value={mau.maVaiQuan || ""}
+                              onChange={(e) => {
+                                const next = [...dsMau]; next[idx].maVaiQuan = e.target.value; setDsMau(next);
+                              }}
+                            >
+                              <option value="">-- Chọn vải --</option>
+                              {KHO_VAI.map((kv) => (
+                                <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/quần):</div>
+                            <input 
+                              type="number" step="0.01"
+                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                              value={mau.dinhMucQuan || ""}
+                              onChange={(e) => {
+                                const next = [...dsMau]; next[idx].dinhMucQuan = parseFloat(e.target.value) || 0; setDsMau(next);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 mb-1 block">Kho Vải Chính</label>
+                          <select 
+                            className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                            value={mau.maVai}
+                            onChange={(e) => {
+                              const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
+                            }}
+                          >
+                            <option value="">-- Chọn vải --</option>
+                            {KHO_VAI.map((kv) => (
+                              <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/sp):</label>
+                          <input 
+                            type="number" step="0.01"
+                            className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                            value={mau.dinhMuc}
+                            onChange={(e) => {
+                              const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 mb-1 block">Kho Vải Chính</label>
-                      <select 
-                        className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                        value={mau.maVai}
+                      <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
+                      <input 
+                        type="number" 
+                        className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800" 
+                        value={mau.slDuKien || ""}
+                        placeholder="VD: 125"
                         onChange={(e) => {
-                          const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
+                          const next = [...dsMau]; next[idx].slDuKien = parseInt(e.target.value) || 0; setDsMau(next);
                         }}
-                      >
-                        <option value="">-- Chọn vải --</option>
-                        {KHO_VAI.map((kv) => (
-                          <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <div className="w-1/2">
-                        <label className="text-[10px] font-bold text-slate-500 block">Định mức (kg/sp):</label>
-                        <input 
-                          type="number" step="0.01"
-                          className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                          value={mau.dinhMuc}
-                          onChange={(e) => {
-                            const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
-                          }}
-                        />
-                      </div>
-                      <div className="w-1/2">
-                        <label className="text-[10px] font-bold text-slate-500 block text-blue-700">SL Dự kiến cắt (Màu này):</label>
-                        <input 
-                          type="number" 
-                          className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800" 
-                          value={mau.slDuKien || ""}
-                          placeholder="VD: 125"
-                          onChange={(e) => {
-                            const next = [...dsMau]; next[idx].slDuKien = parseInt(e.target.value) || 0; setDsMau(next);
-                          }}
-                        />
-                      </div>
+                      />
                     </div>
 
                     <div className="bg-slate-50 p-2 rounded border border-slate-200 mt-2">
@@ -913,16 +983,24 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       </div>
                     </div>
                     
-                                        {/* BỔ SUNG GIÁ TIỀN VẢI MÀU NÀY */}
+                    {/* BỔ SUNG GIÁ TIỀN VẢI MÀU NÀY */}
                     {(() => {
                       const v = KHO_VAI.find(x => x.maVT === mau.maVai);
                       const donGia = v ? (v.donGia || 0) : 0;
-                      const tienVai1SP = mau.dinhMuc * donGia;
+                      let tienVai1SP = mau.dinhMuc * donGia;
+                      
+                      let vQuan = null;
+                      if (isBo && mau.maVaiQuan) {
+                        vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
+                        const donGiaQuan = vQuan ? (vQuan.donGia || 0) : 0;
+                        tienVai1SP += (mau.dinhMucQuan || 0) * donGiaQuan;
+                      }
+                      
                       const tongTienVaiMau = tienVai1SP * (mau.slDuKien || 0);
                       return (
                         <div className="flex gap-2 mt-1">
                           <div className="w-1/2 bg-amber-50 p-2 rounded border border-amber-200">
-                            <div className="text-[10px] font-bold text-amber-700">Giá vải / 1 SP</div>
+                            <div className="text-[10px] font-bold text-amber-700">Giá vải / 1 SP {isBo ? "(Áo+Quần)" : ""}</div>
                             <div className="text-sm font-bold text-amber-900">{formatVND(tienVai1SP)}</div>
                           </div>
                           <div className="w-1/2 bg-emerald-50 p-2 rounded border border-emerald-200">
@@ -935,7 +1013,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Nguyên Phụ Liệu */}
