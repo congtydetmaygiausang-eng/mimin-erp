@@ -117,20 +117,75 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
         </div>
         
         {cogs && (
-          <div className="border-t border-slate-100 pt-3 mt-3">
-            <div className="flex items-center justify-between text-sm mb-1">
-              <span className="font-bold text-slate-500 flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-slate-400" /> Giá vốn / SP
-              </span>
-              <span className="font-black text-violet-600 tabular-nums text-sm">
-                {formatVND(cogs.giaVon1SP ?? cogs.giaVonBinhQuan)}
-              </span>
+          <div className="border-t border-slate-100 pt-3 mt-3 space-y-1.5">
+            <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Calculator className="w-3 h-3" /> Bảng giá vốn
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-bold text-slate-500 pl-6">Tổng lô:</span>
-              <span className="font-black text-emerald-600 tabular-nums text-sm">
-                {formatVND(cogs.tongGiaVon ?? cogs.giaVonBinhQuan)}
-              </span>
+
+            {/* Vải */}
+            {cogs.tongTienVai != null && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-sky-400 inline-block shrink-0" /> Vải
+                </span>
+                <span className="font-bold text-slate-700 tabular-nums">
+                  {formatVND(cogs.tongTienVai / Math.max(1, lc.tongSL || 1))}/SP
+                </span>
+              </div>
+            )}
+
+            {/* Phụ liệu */}
+            {cogs.tongTienPhuLieu != null && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-violet-400 inline-block shrink-0" /> Phụ liệu
+                </span>
+                <span className="font-bold text-slate-700 tabular-nums">
+                  {formatVND(cogs.tongTienPhuLieu / Math.max(1, lc.tongSL || 1))}/SP
+                </span>
+              </div>
+            )}
+
+            {/* Gia công */}
+            {cogs.giaCong1SP != null && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block shrink-0" /> Gia công
+                </span>
+                <span className="font-bold text-slate-700 tabular-nums">
+                  {formatVND(cogs.giaCong1SP)}/SP
+                </span>
+              </div>
+            )}
+
+            {/* Chi phí cố định */}
+            {cogs.tongChiPhiCoDinh != null && cogs.tongChiPhiCoDinh > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-400 inline-block shrink-0" /> Chi phí cố định
+                </span>
+                <span className="font-bold text-slate-700 tabular-nums">
+                  {formatVND(cogs.tongChiPhiCoDinh)}/SP
+                </span>
+              </div>
+            )}
+
+            {/* Divider + Tổng */}
+            <div className="border-t border-dashed border-slate-200 pt-2 mt-1 space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-black text-slate-600 flex items-center gap-1.5">
+                  <Calculator className="w-3.5 h-3.5 text-violet-500" /> Giá vốn / SP
+                </span>
+                <span className="font-black text-violet-600 tabular-nums">
+                  {formatVND(cogs.giaVon1SP ?? cogs.giaVonBinhQuan)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-500 pl-5">Tổng lô ({lc.tongSL?.toLocaleString()} SP):</span>
+                <span className="font-black text-emerald-600 tabular-nums text-sm">
+                  {formatVND(cogs.tongGiaVon ?? cogs.giaVonBinhQuan)}
+                </span>
+              </div>
             </div>
           </div>
         )}
