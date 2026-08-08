@@ -477,6 +477,7 @@ interface DanhMucSPContextType {
   loading: boolean;
 }
 
+const STORAGE_KEY = "mimin_danh_muc_sp";
 const DanhMucSPContext = createContext<DanhMucSPContextType | undefined>(undefined);
 
 export function DanhMucSPProvider({ children }: { children: ReactNode }) {
@@ -498,10 +499,20 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
             // Map snake_case from DB back to camelCase for frontend
             const mapped = data.map(item => mapSanPhamFromDB(item));
             setDsSanPham(mapped);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
           } else if (mounted) {
-            console.warn("⚠️ san_pham table empty - seeding MOCK_DANH_MUC");
-            setDsSanPham(MOCK_DANH_MUC);
-            // Auto seed
+            console.warn("⚠️ san_pham table empty - checking localStorage or seeding");
+            const cached = localStorage.getItem(STORAGE_KEY);
+            if (cached) {
+               try {
+                 setDsSanPham(JSON.parse(cached));
+               } catch(e) {
+                 setDsSanPham(MOCK_DANH_MUC);
+               }
+            } else {
+               setDsSanPham(MOCK_DANH_MUC);
+               // Auto seed
+
             Promise.all(MOCK_DANH_MUC.map(async sp => {
               const dbPayload = {
                 ma_sp: sp.id,
@@ -528,7 +539,16 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           }
         } else {
           console.warn("⚠️ Supabase chua cau hinh");
-          setDsSanPham(MOCK_DANH_MUC);
+          const cached = localStorage.getItem(STORAGE_KEY);
+          if (cached) {
+            try {
+              setDsSanPham(JSON.parse(cached));
+            } catch(e) {
+              setDsSanPham(MOCK_DANH_MUC);
+            }
+          } else {
+            setDsSanPham(MOCK_DANH_MUC);
+          }
         }
       } catch (e) {
         console.error("Lỗi fetch Sản phẩm", e);
@@ -543,7 +563,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const themSP = useCallback(async (sp: SanPham) => {
-    setDsSanPham(prev => [...prev, sp]); // Optimistic update
+    setDsSanPham(prev => {
+      const newList = [...prev, sp];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+      return newList;
+    }); // Optimistic update
     
     try {
       const { supabase } = await import("@/lib/supabase/client");
@@ -570,7 +594,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const suaSP = useCallback(async (id: string, data: Partial<SanPham>) => {
-    setDsSanPham(prev => prev.map(p => p.id === id ? { ...p, ...data } : p)); // Optimistic update
+    setDsSanPham(prev => {
+      const newList = prev.map(p => p.id === id ? { ...p, ...data } : p);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+      return newList;
+    }); // Optimistic update
     
     try {
       const { supabase } = await import("@/lib/supabase/client");
@@ -595,7 +623,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const xoaSP = useCallback(async (id: string) => {
-    setDsSanPham(prev => prev.filter(p => p.id !== id)); // Optimistic update
+    setDsSanPham(prev => {
+      const newList = prev.filter(p => p.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+      return newList;
+    }); // Optimistic update
     try {
       const { supabase } = await import("@/lib/supabase/client");
       const client = supabase;
