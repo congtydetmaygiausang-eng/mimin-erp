@@ -82,9 +82,13 @@ const NAV: NavItem[] = [
     label: "🏭 Sản Xuất & Kế hoạch", icon: Factory, isGroup: true, subItems: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, permModule: "ke-hoach-sx" },
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, permModule: "lenh-cat" },
+      { href: "/ui-cat", label: "✂️ Tổ Cắt – Việc của tôi", icon: Scissors, permModule: "lenh-cat" },
       { href: "/may", label: "Tổ may", icon: Shirt, permModule: "to-may" },
-      { href: "/hoan-thien", label: "Hoàn thiện", icon: ClipboardList, permModule: "hoan-thien" },
-      { href: "/qc", label: "Kiểm tra chất lượng", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
+      { href: "/ui-may-to", label: "👕 Tổ May – Việc của tôi", icon: Shirt, permModule: "to-may" },
+      { href: "/ui-qc", label: "🔍 QC – Kiểm tra chất lượng", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
+      { href: "/ui-hoan-thien", label: "🧺 Hoàn Thiện – Việc của tôi", icon: ClipboardList, permModule: "hoan-thien" },
+      { href: "/hoan-thien", label: "Hoàn thiện (cũ)", icon: ClipboardList, permModule: "hoan-thien" },
+      { href: "/qc", label: "QC (cũ)", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
       { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, permModule: "gia-cong-ngoai" },
       { href: "/trang-chu-gia-cong", label: "Trang chủ gia công", icon: Shirt, permModule: "trang-chu-gia-cong" },
     ]

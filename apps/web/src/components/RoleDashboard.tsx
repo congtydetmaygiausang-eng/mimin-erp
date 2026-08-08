@@ -156,33 +156,66 @@ function WarehouseStats() {
 
 function SewingStats() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <KPI label="Tiến độ hôm nay" value="62.5%" trend="M758 Bộ trơn" up icon={Scissors} color="emerald" />
-      <KPI label="Công nhân" value="11" trend="9 đi làm" icon={Users} color="sky" />
-      <KPI label="SP hoàn thành" value="750" trend="/1200 target" up icon={CheckCircle2} color="emerald" />
-      <KPI label="Lệnh chờ" value="1" trend="M873 Cotton" icon={Clock} color="amber" />
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPI label="Tiến độ hôm nay" value="62.5%" trend="M758 Bộ trơn" up icon={Scissors} color="emerald" />
+        <KPI label="Công nhân" value="11" trend="9 đi làm" icon={Users} color="sky" />
+        <KPI label="SP hoàn thành" value="750" trend="/1200 target" up icon={CheckCircle2} color="emerald" />
+        <KPI label="Lệnh chờ" value="1" trend="M873 Cotton" icon={Clock} color="amber" />
+      </div>
+      <div className="flex gap-3 flex-wrap">
+        <Link href="/ui-cat" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
+          <Scissors className="w-4 h-4" /> ✂️ Việc cắt của tôi
+        </Link>
+        <Link href="/ui-may-to" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition-colors shadow-sm">
+          <Shirt className="w-4 h-4" /> 👕 Việc may của tôi
+        </Link>
+        <Link href="/bang-dieu-hanh-sx" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-50 text-teal-700 font-bold text-sm hover:bg-teal-100 border border-teal-200 transition-colors">
+          Bảng điều hành →
+        </Link>
+      </div>
     </div>
   );
 }
 
 function QCStats() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <KPI label="SP đã kiểm" value="4,200" trend="Tuần 30" up icon={ShieldCheck} color="emerald" />
-      <KPI label="Tỷ lệ lỗi" value="1.2%" trend="-0.3% vs tuần trước" up icon={TrendingDown} color="emerald" />
-      <KPI label="Cần kiểm hôm nay" value="800" trend="Lệnh M758" icon={Clock} color="amber" />
-      <KPI label="Lô vải mới" value="2,400 m" trend="Chờ kiểm" icon={Package} color="sky" />
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPI label="SP đã kiểm" value="4,200" trend="Tuần 30" up icon={ShieldCheck} color="emerald" />
+        <KPI label="Tỷ lệ lỗi" value="1.2%" trend="-0.3% vs tuần trước" up icon={TrendingDown} color="emerald" />
+        <KPI label="Cần kiểm hôm nay" value="800" trend="Lệnh M758" icon={Clock} color="amber" />
+        <KPI label="Lô vải mới" value="2,400 m" trend="Chờ kiểm" icon={Package} color="sky" />
+      </div>
+      <div className="flex gap-3 flex-wrap">
+        <Link href="/ui-qc" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors shadow-sm">
+          <ShieldCheck className="w-4 h-4" /> 🔍 Kiểm tra chất lượng
+        </Link>
+        <Link href="/kiem-tra-cl" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm hover:bg-emerald-100 border border-emerald-200">
+          Chi tiết QC →
+        </Link>
+      </div>
     </div>
   );
 }
 
 function FinishingStats() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <KPI label="SP đã ủi" value="580" trend="/800 (72.5%)" up icon={Shirt} color="emerald" />
-      <KPI label="Giao hôm nay" value="1,500" trend="Shop TT SG" icon={Truck} color="amber" />
-      <KPI label="Kho thành phẩm" value="3,200" trend="Sẵn sàng" icon={Boxes} color="sky" />
-      <KPI label="Đơn chờ giao" value="3" trend="2 deadline tuần này" icon={Clock} color="orange" />
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPI label="SP đã ủi" value="580" trend="/800 (72.5%)" up icon={Shirt} color="emerald" />
+        <KPI label="Giao hôm nay" value="1,500" trend="Shop TT SG" icon={Truck} color="amber" />
+        <KPI label="Kho thành phẩm" value="3,200" trend="Sẵn sàng" icon={Boxes} color="sky" />
+        <KPI label="Đơn chờ giao" value="3" trend="2 deadline tuần này" icon={Clock} color="orange" />
+      </div>
+      <div className="flex gap-3 flex-wrap">
+        <Link href="/ui-hoan-thien" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
+          <ClipboardList className="w-4 h-4" /> 🧺 Việc hoàn thiện của tôi
+        </Link>
+        <Link href="/kho-thanh-pham" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-50 text-sky-700 font-bold text-sm hover:bg-sky-100 border border-sky-200">
+          Kho thành phẩm →
+        </Link>
+      </div>
     </div>
   );
 }

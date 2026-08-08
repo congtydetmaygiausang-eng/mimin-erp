@@ -9,7 +9,7 @@ import { useState, useMemo, Suspense } from "react";
 import {
   Factory, Send, RefreshCw, Calendar, AlertCircle, CheckCircle2, X,
   ChevronRight, MoreVertical, BarChart3, Clock, Wallet,
-  TrendingUp, Package, AlertTriangle, Eye, ArrowRight,
+  TrendingUp, Package, AlertTriangle, Eye, ArrowRight, GitBranch,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
@@ -24,8 +24,9 @@ import { DateDisplay, EmptyState, MobileCard } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { BangDieuHanhActions } from "@/components/qlsx/BangDieuHanhActions";
+import { LenhCatFlowBoard } from "./LeNhCatFlow";
 
-type ViewMode = "lsx" | "phieu";
+type ViewMode = "lsx" | "phieu" | "lenh-cat-flow";
 type StatusFilter = "all" | "tre-han" | "dang-sx" | "hoan-thanh" | "moi";
 
 export default function BangDieuHanhSXPage() {
@@ -124,16 +125,20 @@ function BangDieuHanhContent() {
 
       {/* View + Filter */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="card p-1.5 inline-flex">
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto flex-1 min-w-0">
           {[
             { k: "lsx" as ViewMode, l: "Theo LSX" },
             { k: "phieu" as ViewMode, l: "Theo phiếu" },
+            { k: "lenh-cat-flow" as ViewMode, l: "🔀 Luồng LC", highlight: true },
           ].map((v) => (
             <button
               key={v.k}
               onClick={() => setView(v.k)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                view === v.k ? "bg-brand-500 text-white shadow" : "hover:bg-white/40"
+                view === v.k
+                  ? v.highlight ? "bg-teal-500 text-white shadow" : "bg-brand-500 text-white shadow"
+                  : v.highlight ? "bg-teal-500/10 text-teal-700 hover:bg-teal-100" : "hover:bg-white/40"
               }`}
             >
               {v.l}
@@ -173,6 +178,11 @@ function BangDieuHanhContent() {
           className="input w-full"
         />
       </div>
+
+      {/* Luồng Lệnh Cắt */}
+      {view === "lenh-cat-flow" && (
+        <LenhCatFlowBoard />
+      )}
 
       {/* Table view: Theo LSX */}
       {view === "lsx" && (

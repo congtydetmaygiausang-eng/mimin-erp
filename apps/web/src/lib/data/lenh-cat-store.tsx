@@ -81,6 +81,22 @@ export type LenhCatPhuLieu = {
 export type TrangThaiThanhToan = "chua_tra" | "tra_mot_phan" | "da_tra_du";
 
 // Type chung cho moi cong doan
+export type TrangThaiCongDoan = "cho_giao" | "dang_lam" | "hoan_thanh" | "co_loi";
+
+export const TRANG_THAI_CD_LABELS: Record<TrangThaiCongDoan, string> = {
+  "cho_giao":    "Chờ giao",
+  "dang_lam":    "Đang làm",
+  "hoan_thanh":  "Hoàn thành",
+  "co_loi":      "Có lỗi",
+};
+
+export const TRANG_THAI_CD_STYLE: Record<TrangThaiCongDoan, { bg: string; text: string; dot: string }> = {
+  "cho_giao":   { bg: "bg-slate-100",   text: "text-slate-600",   dot: "bg-slate-400" },
+  "dang_lam":   { bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-400" },
+  "hoan_thanh": { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
+  "co_loi":     { bg: "bg-rose-100",    text: "text-rose-700",    dot: "bg-rose-500" },
+};
+
 type CongDoanBase = {
   id: string; // e.g. "cat", "mayAo", "in", "theu" or auto-generated
   tenCongDoan: string; // e.g. "Cắt", "May Áo", "In", "Thêu", "Ủi", "Đóng Gói", "In Chuyển Nhiệt"
@@ -93,7 +109,14 @@ type CongDoanBase = {
   trangThaiTT: TrangThaiThanhToan;
   ngayThanhToan?: string;   // Ngay thanh toan gan nhat
   ghiChu?: string;
+  // Workflow tracking (P1 - 2026-08-09)
+  trangThaiCD?: TrangThaiCongDoan; // Trạng thái công đoạn
+  soLuongHoanThanh?: number;       // SP đã làm xong
+  soLuongLoi?: number;             // SP lỗi
+  ngayNhanViec?: string;           // Ngày nhận việc
+  ngayHoanThanh?: string;          // Ngày hoàn thành thực tế
 };
+
 
 // NV noi bo (nhan vien trong nha may)
 export type PhanCongNoiBo = CongDoanBase & {
@@ -274,6 +297,11 @@ interface LenhCatStore {
   themMauChiPhi: (mau: MauChiPhiItem) => void;
   xoaMauChiPhi: (id: string) => void;
   capNhatTrangThai: (id: string, tt: TrangThaiLenhCat, u: any) => void;
+  capNhatCongDoan: (lenhId: string, congDoanId: string, data: {
+    trangThaiCD: TrangThaiCongDoan;
+    soLuongHoanThanh?: number;
+    soLuongLoi?: number;
+  }) => void;
   reset: () => void;
   loading: boolean;
 }
@@ -499,6 +527,38 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (supabase) await supabase!.from("lenh_cat").update({ trang_thai: tt }).eq("id", id);
     } catch(e) { console.error(e); }
   }, []);
+
+  const capNhatCongDoan = useCallback((lenhId: string, congDoanId: string, data: {
+    trangThaiCD: TrangThaiCongDoan;
+    soLuongHoanThanh?: number;
+    soLuongLoi?: number;
+  }) => {
+    setDsLenhCat(prev => {
+      const next = prev.map(lc => {
+        if (lc.id !== lenhId) return lc;
+        const newPhanCong = lc.phanCong.map((pc: any) =>
+          pc.id === congDoanId
+            ? {
+                ...pc,
+                trangThaiCD: data.trangThaiCD,
+                soLuongHoanThanh: data.soLuongHoanThanh ?? pc.soLuongHoanThanh,
+                soLuongLoi: data.soLuongLoi ?? pc.soLuongLoi,
+                ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
+                  ? new Date().toISOString().slice(0, 10)
+                  : pc.ngayNhanViec,
+                ngayHoanThanh: data.trangThaiCD === 'hoan_thanh'
+                  ? new Date().toISOString().slice(0, 10)
+                  : pc.ngayHoanThanh,
+              }
+            : pc
+        );
+        return { ...lc, phanCong: newPhanCong };
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const reset = useCallback(() => {
     setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
@@ -508,7 +568,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   if (!isLoaded) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, reset, loading }}>
+    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, capNhatCongDoan, reset, loading }}>
       {children}
     </LenhCatContext.Provider>
   );

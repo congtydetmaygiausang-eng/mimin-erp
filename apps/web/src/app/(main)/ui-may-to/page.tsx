@@ -1,0 +1,195 @@
+"use client";
+
+// ============ UI TỔ MAY (/ui-may-to) ============
+// Trang dành riêng cho tổ may áo + may quần
+// Nhận bán thành phẩm từ Cắt/In/Thêu, cập nhật tiến độ may
+
+import { useState } from "react";
+import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
+import { DateDisplay } from "@/components/ui";
+
+const MAY_KEYS = ["mayAo", "mayQuan", "may"];
+
+export default function UiMayPage() {
+  const { dsLenhCat, capNhatCongDoan } = useLenhCat();
+  const [slInput, setSlInput] = useState<Record<string, number>>({});
+  const [loiInput, setLoiInput] = useState<Record<string, number>>({});
+
+  // Lọc LC có công đoạn may và đã cắt xong (hoặc đang cắt)
+  const lcCoMay = dsLenhCat.filter(lc =>
+    ["DangCat", "HoanThanh", "ChuyenTiep"].includes(lc.trangThai)
+  ).filter(lc =>
+    lc.phanCong?.some((pc: any) =>
+      MAY_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("may"))
+    )
+  );
+
+  function getMayPC(lc: any) {
+    return lc.phanCong?.filter((pc: any) =>
+      MAY_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("may"))
+    ) || [];
+  }
+
+  function getCatTT(lc: any) {
+    const catPC = lc.phanCong?.find((pc: any) => pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt")) as any;
+    return catPC?.trangThaiCD ?? "cho_giao";
+  }
+
+  function handleNhanHang(lc: any, pc: any) {
+    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+    toast.success(`👕 Nhận hàng may: ${lc.id} – ${pc.tenCongDoan}`);
+  }
+
+  function handleHoanThanh(lc: any, pc: any) {
+    const key = `${lc.id}-${pc.id}`;
+    const sl = slInput[key] ?? pc.soLuong ?? lc.tongSL;
+    const loi = loiInput[key] ?? 0;
+    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl, soLuongLoi: loi });
+    toast.success(`✅ Hoàn thành ${pc.tenCongDoan}: ${sl} SP đạt, ${loi} SP lỗi`);
+  }
+
+  function handleGiaoQC(lc: any, pc: any) {
+    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh" });
+    toast.success(`➡️ Giao QC: ${lc.id}`);
+  }
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
+          <Shirt className="w-7 h-7 text-violet-500" /> Tổ May – Công việc
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">{lcCoMay.length} lệnh đang chờ / đang may</p>
+      </div>
+
+      {/* KPI */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Đang may", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
+          { label: "Chờ nhận", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600" },
+          { label: "Hoàn thành", value: lcCoMay.filter(lc => getMayPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-600" },
+          { label: "Có lỗi", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-600" },
+        ].map(k => (
+          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <div className="text-xs text-slate-500">{k.label}</div>
+            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {lcCoMay.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
+          <Shirt className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <div className="font-bold">Chưa có việc may nào</div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {lcCoMay.map(lc => {
+            const catTT = getCatTT(lc);
+            const mayPCs = getMayPC(lc);
+            const catDone = catTT === "hoan_thanh";
+
+            return (
+              <div key={lc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="font-black text-teal-700 font-mono">{lc.id}</span>
+                    <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
+                    <span className="ml-2 text-xs text-slate-400">{lc.maSP} · {lc.tongSL?.toLocaleString()} SP</span>
+                  </div>
+                  <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
+                </div>
+
+                {/* Trạng thái cắt */}
+                {!catDone && (
+                  <div className="px-5 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 font-bold flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" /> Đang chờ Tổ Cắt hoàn thành ({TRANG_THAI_CD_LABELS[catTT as TrangThaiCongDoan] || "Chờ giao"})
+                  </div>
+                )}
+
+                {/* May công đoạn */}
+                <div className="p-5 space-y-4">
+                  {mayPCs.map((pc: any) => {
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const key = `${lc.id}-${pc.id}`;
+
+                    return (
+                      <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="font-black text-slate-800">{pc.tenCongDoan}</div>
+                            <div className="text-xs text-slate-500">{pc.nguoiTen || "Chưa giao"} · {(pc.soLuong || lc.tongSL)?.toLocaleString()} SP</div>
+                          </div>
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${style.text} bg-white/70 border`}>
+                            {TRANG_THAI_CD_LABELS[tt]}
+                          </span>
+                        </div>
+
+                        {/* Input SL khi đang làm */}
+                        {tt === "dang_lam" && (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                              <div className="text-xs font-bold text-slate-600 mb-1">SP đã may xong:</div>
+                              <input type="number" value={slInput[key] ?? ""} onChange={e => setSlInput(p => ({ ...p, [key]: +e.target.value }))}
+                                placeholder={String(pc.soLuong || lc.tongSL)}
+                                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-slate-600 mb-1">SP lỗi:</div>
+                              <input type="number" value={loiInput[key] ?? ""} onChange={e => setLoiInput(p => ({ ...p, [key]: +e.target.value }))}
+                                placeholder="0"
+                                className="w-full px-3 py-1.5 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400/30" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Buttons */}
+                        <div className="flex gap-2">
+                          {tt === "cho_giao" && (
+                            <button onClick={() => handleNhanHang(lc, pc)}
+                              className="flex-1 py-2 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 flex items-center justify-center gap-1.5">
+                              <Package className="w-4 h-4" /> Nhận hàng may
+                            </button>
+                          )}
+                          {tt === "dang_lam" && (
+                            <>
+                              <button onClick={() => handleHoanThanh(lc, pc)}
+                                className="flex-1 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4" /> Hoàn thành may
+                              </button>
+                              <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}
+                                className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-bold text-sm">
+                                <AlertTriangle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {tt === "hoan_thanh" && (
+                            <div className="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Xong {pc.soLuongHoanThanh || pc.soLuong || lc.tongSL} SP
+                              {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                            </div>
+                          )}
+                          {tt === "co_loi" && (
+                            <button onClick={() => handleNhanHang(lc, pc)}
+                              className="flex-1 py-2 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 flex items-center justify-center gap-1.5">
+                              <Clock className="w-4 h-4" /> Làm lại
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
