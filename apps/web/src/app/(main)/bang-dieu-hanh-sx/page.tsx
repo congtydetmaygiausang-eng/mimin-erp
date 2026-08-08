@@ -125,20 +125,19 @@ function BangDieuHanhContent() {
 
       {/* View + Filter */}
       <div className="flex flex-wrap items-center gap-2">
-        </div>
-        <div className="flex gap-1.5 overflow-x-auto flex-1 min-w-0">
+        <div className="card p-1.5 inline-flex">
           {[
             { k: "lsx" as ViewMode, l: "Theo LSX" },
             { k: "phieu" as ViewMode, l: "Theo phiếu" },
-            { k: "lenh-cat-flow" as ViewMode, l: "🔀 Luồng LC", highlight: true },
+            { k: "lenh-cat-flow" as ViewMode, l: "🔀 Luồng LC" },
           ].map((v) => (
             <button
               key={v.k}
               onClick={() => setView(v.k)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 view === v.k
-                  ? v.highlight ? "bg-teal-500 text-white shadow" : "bg-brand-500 text-white shadow"
-                  : v.highlight ? "bg-teal-500/10 text-teal-700 hover:bg-teal-100" : "hover:bg-white/40"
+                  ? v.k === "lenh-cat-flow" ? "bg-teal-500 text-white shadow" : "bg-brand-500 text-white shadow"
+                  : v.k === "lenh-cat-flow" ? "text-teal-700 hover:bg-teal-50" : "hover:bg-white/40"
               }`}
             >
               {v.l}
@@ -167,6 +166,7 @@ function BangDieuHanhContent() {
           ))}
         </div>
       </div>
+
 
       {/* Search */}
       <div className="card p-3">

@@ -164,10 +164,10 @@ function SewingStats() {
         <KPI label="Lệnh chờ" value="1" trend="M873 Cotton" icon={Clock} color="amber" />
       </div>
       <div className="flex gap-3 flex-wrap">
-        <Link href="/ui-cat" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
+        <Link href="/to-cat-work" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
           <Scissors className="w-4 h-4" /> ✂️ Việc cắt của tôi
         </Link>
-        <Link href="/ui-may-to" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition-colors shadow-sm">
+        <Link href="/to-may-work" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 transition-colors shadow-sm">
           <Shirt className="w-4 h-4" /> 👕 Việc may của tôi
         </Link>
         <Link href="/bang-dieu-hanh-sx" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-50 text-teal-700 font-bold text-sm hover:bg-teal-100 border border-teal-200 transition-colors">
@@ -188,7 +188,7 @@ function QCStats() {
         <KPI label="Lô vải mới" value="2,400 m" trend="Chờ kiểm" icon={Package} color="sky" />
       </div>
       <div className="flex gap-3 flex-wrap">
-        <Link href="/ui-qc" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors shadow-sm">
+        <Link href="/to-qc-work" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors shadow-sm">
           <ShieldCheck className="w-4 h-4" /> 🔍 Kiểm tra chất lượng
         </Link>
         <Link href="/kiem-tra-cl" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm hover:bg-emerald-100 border border-emerald-200">
@@ -209,8 +209,8 @@ function FinishingStats() {
         <KPI label="Đơn chờ giao" value="3" trend="2 deadline tuần này" icon={Clock} color="orange" />
       </div>
       <div className="flex gap-3 flex-wrap">
-        <Link href="/ui-hoan-thien" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
-          <ClipboardList className="w-4 h-4" /> 🧺 Việc hoàn thiện của tôi
+        <Link href="/to-ht-work" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
+          <ClipboardList className="w-4 h-4" /> 🦺 Việc hoàn thiện của tôi
         </Link>
         <Link href="/kho-thanh-pham" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-50 text-sky-700 font-bold text-sm hover:bg-sky-100 border border-sky-200">
           Kho thành phẩm →
