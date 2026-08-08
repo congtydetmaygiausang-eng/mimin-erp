@@ -155,7 +155,11 @@ export type LenhCat = {
   bangCOGS?: BangCOGS;
   // Sơ đồ cắt
   soDoChinh?: string;
+  khoSoDoChinh?: string;
+  daiSoDoChinh?: string;
   soDoPhoi?: string;
+  khoSoDoPhoi?: string;
+  daiSoDoPhoi?: string;
   daCoSoDo?: boolean;
   
   // Meta

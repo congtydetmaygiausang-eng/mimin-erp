@@ -155,7 +155,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
       setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
       setSoDoChinh(editing.soDoChinh || "");
+      setKhoSoDoChinh(editing.khoSoDoChinh || "");
+      setDaiSoDoChinh(editing.daiSoDoChinh || "");
       setSoDoPhoi(editing.soDoPhoi || "");
+      setKhoSoDoPhoi(editing.khoSoDoPhoi || "");
+      setDaiSoDoPhoi(editing.daiSoDoPhoi || "");
       setDaCoSoDo(editing.daCoSoDo || false);
     }
   }, [editing]);
@@ -185,7 +189,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   // Sơ đồ cắt
   const [soDoChinh, setSoDoChinh] = useState("");
+  const [khoSoDoChinh, setKhoSoDoChinh] = useState("");
+  const [daiSoDoChinh, setDaiSoDoChinh] = useState("");
   const [soDoPhoi, setSoDoPhoi] = useState("");
+  const [khoSoDoPhoi, setKhoSoDoPhoi] = useState("");
+  const [daiSoDoPhoi, setDaiSoDoPhoi] = useState("");
   const [daCoSoDo, setDaCoSoDo] = useState(false);
   const fileChinhRef = useRef<HTMLInputElement>(null);
   const filePhoiRef = useRef<HTMLInputElement>(null);
@@ -372,7 +380,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
           if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
           if (parsed.soDoChinh) setSoDoChinh(parsed.soDoChinh);
+          if (parsed.khoSoDoChinh) setKhoSoDoChinh(parsed.khoSoDoChinh);
+          if (parsed.daiSoDoChinh) setDaiSoDoChinh(parsed.daiSoDoChinh);
           if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
+          if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
+          if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
           if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
         }
       } catch (e) {
@@ -384,15 +396,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   useEffect(() => {
     if (!editId && draftLoaded) {
-      const draft = {
+      localStorage.setItem("lenhCatDraft", JSON.stringify({
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
         ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
-        soDoChinh, soDoPhoi, daCoSoDo
-      };
-      localStorage.setItem("lenhCatDraft", JSON.stringify(draft));
+        soDoChinh, khoSoDoChinh, daiSoDoChinh,
+        soDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo
+      }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, soDoPhoi, daCoSoDo, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -527,7 +539,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         trangThai: status,
         ngayTao: ngayBatDau,
         soDoChinh,
+        khoSoDoChinh,
+        daiSoDoChinh,
         soDoPhoi,
+        khoSoDoPhoi,
+        daiSoDoPhoi,
         daCoSoDo,
       }, user || getFallbackUser());
       
@@ -558,7 +574,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         phienBanDinhMuc: 1,
         ngayTao: ngayBatDau,
         soDoChinh,
+        khoSoDoChinh,
+        daiSoDoChinh,
         soDoPhoi,
+        khoSoDoPhoi,
+        daiSoDoPhoi,
         daCoSoDo,
         nguoiTao: user?.name || "Nguyễn Thị Ngọc Giàu"
       }, user || getFallbackUser());
@@ -875,7 +895,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {/* Sơ đồ chính */}
                <div>
-                 <label className="text-sm font-bold text-slate-700 block mb-2">Sơ đồ vải chính</label>
+                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                   <label className="text-sm font-bold text-slate-700">Sơ đồ vải chính</label>
+                   <div className="flex gap-2">
+                     <input type="text" placeholder="Khổ..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={khoSoDoChinh} onChange={e => setKhoSoDoChinh(e.target.value)} />
+                     <input type="text" placeholder="Dài..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={daiSoDoChinh} onChange={e => setDaiSoDoChinh(e.target.value)} />
+                   </div>
+                 </div>
                  <input type="file" className="hidden" ref={fileChinhRef} onChange={(e) => handleUploadSoDo(e, "chinh")} />
                  <div 
                    className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
@@ -909,7 +935,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                
                {/* Sơ đồ phối */}
                <div>
-                 <label className="text-sm font-bold text-slate-700 block mb-2">Sơ đồ phối (nếu có)</label>
+                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                   <label className="text-sm font-bold text-slate-700">Sơ đồ phối (nếu có)</label>
+                   <div className="flex gap-2">
+                     <input type="text" placeholder="Khổ..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={khoSoDoPhoi} onChange={e => setKhoSoDoPhoi(e.target.value)} />
+                     <input type="text" placeholder="Dài..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={daiSoDoPhoi} onChange={e => setDaiSoDoPhoi(e.target.value)} />
+                   </div>
+                 </div>
                  <input type="file" className="hidden" ref={filePhoiRef} onChange={(e) => handleUploadSoDo(e, "phoi")} />
                  <div 
                    className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
