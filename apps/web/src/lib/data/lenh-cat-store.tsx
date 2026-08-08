@@ -162,6 +162,8 @@ export type LenhCat = {
   pdfSoDoPhoi?: string;
   khoSoDoPhoi?: string;
   daiSoDoPhoi?: string;
+  ghiChuSoDoChinh?: string;
+  ghiChuSoDoPhoi?: string;
   daCoSoDo?: boolean;
   ghiChuKyThuat?: string;
   

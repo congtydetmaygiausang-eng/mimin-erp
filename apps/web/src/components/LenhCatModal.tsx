@@ -199,6 +199,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [pdfSoDoPhoi, setPdfSoDoPhoi] = useState("");
   const [khoSoDoPhoi, setKhoSoDoPhoi] = useState("");
   const [daiSoDoPhoi, setDaiSoDoPhoi] = useState("");
+  const [ghiChuSoDoChinh, setGhiChuSoDoChinh] = useState("");
+  const [ghiChuSoDoPhoi, setGhiChuSoDoPhoi] = useState("");
   const [daCoSoDo, setDaCoSoDo] = useState(false);
   const fileChinhRef = useRef<HTMLInputElement>(null);
   const filePdfChinhRef = useRef<HTMLInputElement>(null);
@@ -425,6 +427,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.pdfSoDoPhoi) setPdfSoDoPhoi(parsed.pdfSoDoPhoi);
           if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
           if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
+          if (parsed.ghiChuSoDoChinh) setGhiChuSoDoChinh(parsed.ghiChuSoDoChinh);
+          if (parsed.ghiChuSoDoPhoi) setGhiChuSoDoPhoi(parsed.ghiChuSoDoPhoi);
           if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
         }
       } catch (e) {
@@ -441,10 +445,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
         soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh,
-        soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo
+        soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo
       }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -587,6 +591,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         pdfSoDoPhoi,
         khoSoDoPhoi,
         daiSoDoPhoi,
+        ghiChuSoDoChinh,
+        ghiChuSoDoPhoi,
         daCoSoDo,
       }, user || getFallbackUser());
       
@@ -625,6 +631,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         pdfSoDoPhoi,
         khoSoDoPhoi,
         daiSoDoPhoi,
+        ghiChuSoDoChinh,
+        ghiChuSoDoPhoi,
         daCoSoDo,
         nguoiTao: user?.name || "Nguyễn Thị Ngọc Giàu"
       }, user || getFallbackUser());
@@ -1027,6 +1035,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                      </div>
                    </div>
                  </div>
+                 <div className="mt-2">
+                    <input type="text" placeholder="Ghi chú sơ đồ chính (dành cho cắt may)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" value={ghiChuSoDoChinh} onChange={e => setGhiChuSoDoChinh(e.target.value)} />
+                  </div>
                </div>
                
                {/* Sơ đồ phối */}
@@ -1108,6 +1119,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                      </div>
                    </div>
                  </div>
+                 <div className="mt-2">
+                    <input type="text" placeholder="Ghi chú sơ đồ phối (dành cho cắt may)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" value={ghiChuSoDoPhoi} onChange={e => setGhiChuSoDoPhoi(e.target.value)} />
+                  </div>
                </div>
              </div>
           </div>
