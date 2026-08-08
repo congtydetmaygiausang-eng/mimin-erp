@@ -1036,7 +1036,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                    </div>
                  </div>
                  <div className="mt-2">
-                    <input type="text" placeholder="Ghi chú sơ đồ chính (dành cho cắt may)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" value={ghiChuSoDoChinh} onChange={e => setGhiChuSoDoChinh(e.target.value)} />
+                    <textarea rows={2} placeholder="Ghi chú sơ đồ chính (dành cho cắt may)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y" value={ghiChuSoDoChinh} onChange={e => setGhiChuSoDoChinh(e.target.value)} />
                   </div>
                </div>
                
@@ -1120,7 +1120,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                    </div>
                  </div>
                  <div className="mt-2">
-                    <input type="text" placeholder="Ghi chú sơ đồ phối (dành cho cắt may)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" value={ghiChuSoDoPhoi} onChange={e => setGhiChuSoDoPhoi(e.target.value)} />
+                    <textarea rows={2} placeholder="Ghi chú sơ đồ phối (dành cho cắt may)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y" value={ghiChuSoDoPhoi} onChange={e => setGhiChuSoDoPhoi(e.target.value)} />
                   </div>
                </div>
              </div>
