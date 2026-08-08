@@ -25,23 +25,50 @@ export type NhaCungCapModel = {
 
 // Convert UI model to DB model
 export function toDBNhaCungCap(ncc: NhaCungCapModel) {
-  // P2 - 2026-08-07 - Rating tach rieng, khong luu trong ghi_chu
+  const stt = parseInt(ncc.ma_ncc.replace(/\D/g, "")) || 0;
   return {
-    ...ncc,
-    ghi_chu: ncc.ghi_chu || "", // ghi_chu sach, khong kem "Rating:X" nua
+    id: ncc.id,
+    stt: stt,
+    ma_ncc: ncc.ma_ncc,
+    ten_ncc: ncc.ten_ncc,
+    loai: ncc.loai || "Khác",
+    chuyen_mon: ncc.loai || "Khác", // Bắt buộc trên DB
+    nguoi_lh: ncc.nguoi_lh || "",
+    sdt: ncc.sdt || "",
+    email: ncc.email || "",
+    dia_chi: ncc.dia_chi || "",
+    ma_so_thue: ncc.mst || "",
+    trang_thai: ncc.trang_thai || "Đang hợp tác",
+    ghi_chu: ncc.ghi_chu || "",
+    han_muc: ncc.han_muc || 0,
+    cong_no: ncc.cong_no || 0,
+    don_gia: ncc.don_gia || "",
+    rating: ncc.rating || 4,
   };
 }
 
 // Convert DB to UI
 export function fromDBNhaCungCap(row: any): NhaCungCapModel {
-  // P2 - 2026-08-07 - Lay rating tu column rieng, fallback tu ghi_chu neu chua migrate
   let rating = row.rating || 4;
   if (!row.rating) {
     const match = row.ghi_chu?.match(/Rating:\s*([\d.]+)/);
     if (match) rating = parseFloat(match[1]);
   }
   return {
-    ...row,
+    id: row.id,
+    ma_ncc: row.ma_ncc,
+    ten_ncc: row.ten_ncc,
+    han_muc: row.han_muc || 0,
+    loai: row.loai || row.chuyen_mon || "",
+    dia_chi: row.dia_chi || "",
+    sdt: row.sdt || "",
+    email: row.email || "",
+    mst: row.ma_so_thue || "",
+    nguoi_lh: row.nguoi_lh || "",
+    cong_no: row.cong_no || 0,
+    don_gia: row.don_gia || "",
+    ghi_chu: row.ghi_chu || "",
+    trang_thai: row.trang_thai || "",
     rating,
   };
 }

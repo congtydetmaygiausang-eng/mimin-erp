@@ -46,7 +46,7 @@ export type KhachHangUI = {
 export const LOAI_KH_OPTIONS = ["Đại lý cấp 1", "Đại lý cấp 2", "Công ty", "Shop", "Cá nhân"] as const;
 export type LoaiKH = typeof LOAI_KH_OPTIONS[number];
 
-function mapToDB(ui: KhachHangUI): KhachHangDBModel {
+function mapToDB(ui: KhachHangUI): any {
   return {
     id: ui.id,
     ma_kh: ui.maKH,
@@ -56,18 +56,15 @@ function mapToDB(ui: KhachHangUI): KhachHangDBModel {
     sdt: ui.sdt,
     email: ui.email,
     mst: ui.mst || "",
-    nguoi_lh: "", // Không có trong UI hiện tại
-    cong_no_hien_tai: ui.congNo || 0,
+    cong_no: ui.congNo || 0,
     han_muc_no: ui.hanMucNo || 0, // P1 - 2026-08-07
-    // P2 - 2026-08-07 - Rating tach rieng, khong luu trong ghi_chu
     rating: ui.rating || 4,
     ghi_chu: ui.ghiChu || "",
     trang_thai: ui.trangThai || "Thường",
   };
 }
 
-function mapToUI(db: KhachHangDBModel): KhachHangUI {
-  // P2 - 2026-08-07 - Lay rating tu column rieng, fallback tu ghi_chu neu chua migrate
+function mapToUI(db: any): KhachHangUI {
   let r = db.rating || 4;
   if (!db.rating) {
     const match = db.ghi_chu?.match(/Đánh giá:\s*(\d)/);
@@ -84,12 +81,12 @@ function mapToUI(db: KhachHangDBModel): KhachHangUI {
   return {
     id: db.id,
     maKH: db.ma_kh,
-    ten: db.ten_kh,
+    ten: db.ten_kh || db.ten, // Hỗ trợ cả ten_kh (cũ) và ten (mới trong bảng khach_hang)
     sdt: db.sdt || "",
     email: db.email || "",
     diaChi: db.dia_chi || "",
     loai: db.loai || "",
-    congNo: db.cong_no_hien_tai || 0,
+    congNo: db.cong_no || db.cong_no_hien_tai || 0,
     hanMucNo: db.han_muc_no || 0, // P1 - 2026-08-07
     ghiChu: ghiChu,
     trangThai: db.trang_thai || "",
@@ -139,7 +136,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const { data, error } = await supabase!.from("khach_hang_si").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supabase!.from("khach_hang").select("*").order("created_at", { ascending: false });
         if (error) throw error;
         
         if (mounted) {
@@ -151,7 +148,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
             setList(KHACH_HANG_MOCK);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(KHACH_HANG_MOCK));
             Promise.all(KHACH_HANG_MOCK.map(kh => 
-              supabaseUpsert("khach_hang_si", mapToDB(kh))
+              supabaseUpsert("khach_hang", mapToDB(kh))
             )).catch(() => {});
           }
         }
@@ -173,7 +170,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("khach_hang_si", mapToDB(kh));
+        await supabaseUpsert("khach_hang", mapToDB(kh));
         return true;
       } catch (err) { return false; }
     }
@@ -188,7 +185,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabase!.from("khach_hang_si").update(mapToDB(kh)).eq("ma_kh", kh.maKH);
+        await supabase!.from("khach_hang").update(mapToDB(kh)).eq("ma_kh", kh.maKH);
         return true;
       } catch (err) { return false; }
     }
@@ -203,7 +200,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabase!.from("khach_hang_si").delete().eq("ma_kh", maKH);
+        await supabase!.from("khach_hang").delete().eq("ma_kh", maKH);
         return true;
       } catch (err) { return false; }
     }
