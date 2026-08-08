@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
   Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-  Wand2, CheckCircle2, UploadCloud,
+  Wand2, CheckCircle2, UploadCloud, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -187,6 +187,52 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [soDoChinh, setSoDoChinh] = useState("");
   const [soDoPhoi, setSoDoPhoi] = useState("");
   const [daCoSoDo, setDaCoSoDo] = useState(false);
+  const fileChinhRef = useRef<HTMLInputElement>(null);
+  const filePhoiRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File quá lớn, vui lòng chọn file < 2MB (demo giới hạn localStorage)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const fileData = JSON.stringify({ name: file.name, type: file.type, url: dataUrl });
+      
+      if (type === "chinh") {
+        setSoDoChinh(fileData);
+        setDaCoSoDo(true);
+      } else {
+        setSoDoPhoi(fileData);
+        setDaCoSoDo(true);
+      }
+      toast.success("Đã tải lên " + file.name);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDownloadSoDo = (e: React.MouseEvent, fileDataStr: string) => {
+    e.stopPropagation();
+    try {
+      const fileData = JSON.parse(fileDataStr);
+      if (!fileData.url) return;
+      const a = document.createElement("a");
+      a.href = fileData.url;
+      a.download = fileData.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error(err);
+      // Fallback for old mock data
+      toast.error("Không thể tải file (dữ liệu mock cũ)");
+    }
+  };
   
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -830,15 +876,30 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                {/* Sơ đồ chính */}
                <div>
                  <label className="text-sm font-bold text-slate-700 block mb-2">Sơ đồ vải chính</label>
-                 <div className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center">
+                 <input type="file" className="hidden" ref={fileChinhRef} onChange={(e) => handleUploadSoDo(e, "chinh")} />
+                 <div 
+                   className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                   onClick={() => !soDoChinh && fileChinhRef.current?.click()}
+                 >
                    {soDoChinh ? (
-                     <div className="flex items-center gap-2">
-                       <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                       <span className="text-sm font-medium text-slate-700">Đã tải lên sơ đồ chính</span>
-                       <button onClick={(e) => { e.stopPropagation(); setSoDoChinh(""); }} className="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"><X size={16}/></button>
+                     <div className="flex flex-col items-center gap-2">
+                       <div className="flex items-center gap-2">
+                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                         <span className="text-sm font-medium text-slate-700 truncate max-w-[150px]">
+                           {(() => { try { return JSON.parse(soDoChinh).name; } catch { return "Sơ đồ chính"; } })()}
+                         </span>
+                       </div>
+                       <div className="flex gap-2">
+                         <button onClick={(e) => handleDownloadSoDo(e, soDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                           <Download size={14} /> Tải về
+                         </button>
+                         <button onClick={(e) => { e.stopPropagation(); setSoDoChinh(""); fileChinhRef.current && (fileChinhRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                           <X size={14} /> Xóa
+                         </button>
+                       </div>
                      </div>
                    ) : (
-                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500" onClick={() => { setSoDoChinh("uploaded_chinh.plt"); setDaCoSoDo(true); }}>
+                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
                        <UploadCloud className="w-8 h-8 mb-1" />
                        <span className="text-xs font-medium">Tải lên sơ đồ chính (PLT, PDF, Image)</span>
                      </div>
@@ -849,15 +910,30 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                {/* Sơ đồ phối */}
                <div>
                  <label className="text-sm font-bold text-slate-700 block mb-2">Sơ đồ phối (nếu có)</label>
-                 <div className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center">
+                 <input type="file" className="hidden" ref={filePhoiRef} onChange={(e) => handleUploadSoDo(e, "phoi")} />
+                 <div 
+                   className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                   onClick={() => !soDoPhoi && filePhoiRef.current?.click()}
+                 >
                    {soDoPhoi ? (
-                     <div className="flex items-center gap-2">
-                       <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                       <span className="text-sm font-medium text-slate-700">Đã tải lên sơ đồ phối</span>
-                       <button onClick={(e) => { e.stopPropagation(); setSoDoPhoi(""); }} className="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"><X size={16}/></button>
+                     <div className="flex flex-col items-center gap-2">
+                       <div className="flex items-center gap-2">
+                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                         <span className="text-sm font-medium text-slate-700 truncate max-w-[150px]">
+                           {(() => { try { return JSON.parse(soDoPhoi).name; } catch { return "Sơ đồ phối"; } })()}
+                         </span>
+                       </div>
+                       <div className="flex gap-2">
+                         <button onClick={(e) => handleDownloadSoDo(e, soDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                           <Download size={14} /> Tải về
+                         </button>
+                         <button onClick={(e) => { e.stopPropagation(); setSoDoPhoi(""); filePhoiRef.current && (filePhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                           <X size={14} /> Xóa
+                         </button>
+                       </div>
                      </div>
                    ) : (
-                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500" onClick={() => { setSoDoPhoi("uploaded_phoi.plt"); setDaCoSoDo(true); }}>
+                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
                        <UploadCloud className="w-8 h-8 mb-1" />
                        <span className="text-xs font-medium">Tải lên sơ đồ phối</span>
                      </div>
