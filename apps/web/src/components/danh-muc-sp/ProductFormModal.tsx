@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { type LoaiSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
@@ -11,6 +12,9 @@ interface ProductFormModalProps {
 }
 
 export default function ProductFormModal({ onClose, onSave, initialData }: ProductFormModalProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const [maSP, setMaSP] = useState(initialData?.id || "");
   const [tenSP, setTenSP] = useState(initialData?.tenSP || "");
   const [loaiSP, setLoaiSP] = useState<LoaiSP>(initialData?.loaiSP || "BoTru");
@@ -66,8 +70,10 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
     onSave(newProduct);
   };
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div 
         className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-slide-up"
         onClick={e => e.stopPropagation()}
@@ -251,6 +257,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
@@ -20,6 +21,9 @@ const TRANG_THAI_LABELS: Record<string, { label: string; className: string }> = 
 };
 
 export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, onDelete }: ProductDetailModalProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   if (!sp) return null;
 
   const soSize = (sp.bangSize?.sizes || []).length;
@@ -32,9 +36,11 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
   const [selectedVideo, setSelectedVideo] = useState(sp.dsMau?.find(m => m.img === selectedImage)?.video || sp.dsMau?.[0]?.video || "");
   const [showFullScreen, setShowFullScreen] = useState(false);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div 
         className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col md:flex-row animate-slide-up"
         onClick={e => e.stopPropagation()}
@@ -254,6 +260,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
         </div>
       </div>
     )}
-    </>
+    </>,
+    document.body
   );
 }
