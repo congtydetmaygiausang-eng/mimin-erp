@@ -34,14 +34,14 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
 
   return (
     <>
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div 
-        className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col md:flex-row animate-slide-up"
+        className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col md:flex-row animate-slide-up"
         onClick={e => e.stopPropagation()}
       >
         {/* Left: Image Panel */}
         <div className="w-full md:w-5/12 bg-gradient-to-br from-cyan-50 to-teal-50 relative flex flex-col justify-center items-center min-h-[300px] border-b md:border-b-0 md:border-r border-slate-200">
-          <div className="absolute top-4 left-4 flex flex-col gap-2">
+          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
             <span className={`px-3 py-1 text-xs font-bold rounded-lg shadow ${trangThaiInfo.className}`}>
               {trangThaiInfo.label}
             </span>
@@ -53,8 +53,8 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
           </div>
           
           {selectedImage ? (
-            <div className="w-full h-full group relative cursor-pointer" onClick={() => setShowFullScreen(true)}>
-              <img src={selectedImage} alt={sp.tenSP} className="w-full h-full object-cover object-top" />
+            <div className="w-full h-full flex-1 group relative cursor-pointer overflow-hidden bg-slate-100" onClick={() => setShowFullScreen(true)}>
+              <img src={selectedImage} alt={sp.tenSP} className="w-full h-full object-cover object-top absolute inset-0" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                 {selectedVideo ? (
                   <PlayCircle className="w-16 h-16 text-white opacity-0 group-hover:opacity-100 drop-shadow-lg transition-opacity" />
@@ -67,7 +67,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
             <Shirt className="w-40 h-40 text-cyan-200" />
           )}
 
-          <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 px-4">
+          <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 px-4 z-10">
              {sp.dsMau?.map((m, i) => (
                 <div 
                   key={i} 
@@ -84,7 +84,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
         </div>
 
         {/* Right: Info Panel */}
-        <div className="w-full md:w-7/12 flex flex-col max-h-[60vh] md:max-h-[90vh]">
+        <div className="w-full md:w-7/12 flex flex-col h-full max-h-[60vh] md:max-h-[85vh]">
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white shrink-0 z-10">
             <div>
