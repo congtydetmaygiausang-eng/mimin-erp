@@ -1411,27 +1411,27 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
               {/* BẢNG THỐNG KÊ VẢI VÀ PHỤ LIỆU */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white p-5 rounded-2xl shadow-xl shadow-slate-900/20 flex flex-col justify-center border border-slate-700/50 relative overflow-hidden group">
+                <div className="bg-[#103D4A] text-white p-5 rounded-2xl shadow-xl shadow-[#103D4A]/20 flex flex-col justify-center relative overflow-hidden group">
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="text-center text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Tổng chi phí vải / SP</div>
+                  <div className="text-center text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Tổng chi phí vải / SP</div>
                   <div className="text-3xl font-black text-center text-white drop-shadow-md">
                     {formatVND(tongTienVai / validTongSL)}
                   </div>
-                  <div className="mt-5 pt-4 border-t border-slate-700/50 text-xs font-medium text-slate-400 flex justify-between items-center relative z-10">
-                     <div><span className="opacity-70">Tổng tiền vải:</span> <span className="text-slate-200 ml-1">{formatVND(tongTienVai)}</span></div>
-                     <div><span className="opacity-70">Số màu:</span> <span className="text-slate-200 ml-1 font-bold">{dsMau.length}</span></div>
+                  <div className="mt-5 pt-4 border-t border-white/10 text-xs font-medium text-slate-300 flex justify-between items-center relative z-10">
+                     <div><span className="opacity-70">Tổng tiền vải:</span> <span className="text-slate-100 ml-1">{formatVND(tongTienVai)}</span></div>
+                     <div><span className="opacity-70">Số màu:</span> <span className="text-slate-100 ml-1 font-bold">{dsMau.length}</span></div>
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white p-5 rounded-2xl shadow-xl shadow-slate-900/20 flex flex-col justify-center border border-slate-700/50 relative overflow-hidden group">
+                <div className="bg-[#103D4A] text-white p-5 rounded-2xl shadow-xl shadow-[#103D4A]/20 flex flex-col justify-center relative overflow-hidden group">
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="text-center text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Tổng chi phí phụ liệu / SP</div>
+                  <div className="text-center text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Tổng chi phí phụ liệu / SP</div>
                   <div className="text-3xl font-black text-center text-white drop-shadow-md">
                     {formatVND(tongTienPhuLieu / validTongSL)}
                   </div>
-                  <div className="mt-5 pt-4 border-t border-slate-700/50 text-xs font-medium text-slate-400 flex justify-between items-center relative z-10">
-                     <div><span className="opacity-70">Tổng phụ liệu:</span> <span className="text-slate-200 ml-1">{formatVND(tongTienPhuLieu)}</span></div>
-                     <div><span className="opacity-70">Số khoản mục:</span> <span className="text-slate-200 ml-1 font-bold">{dsPhuLieu.length}</span></div>
+                  <div className="mt-5 pt-4 border-t border-white/10 text-xs font-medium text-slate-300 flex justify-between items-center relative z-10">
+                     <div><span className="opacity-70">Tổng phụ liệu:</span> <span className="text-slate-100 ml-1">{formatVND(tongTienPhuLieu)}</span></div>
+                     <div><span className="opacity-70">Số khoản mục:</span> <span className="text-slate-100 ml-1 font-bold">{dsPhuLieu.length}</span></div>
                   </div>
                 </div>
               </div>
@@ -1515,15 +1515,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 </div>
                 
                 {/* Summary block cho Gia công sản xuất */}
-                <div className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white p-5 rounded-2xl shadow-xl shadow-slate-900/20 mt-auto flex flex-col justify-center border border-slate-700/50 relative overflow-hidden group">
+                <div className="bg-[#103D4A] text-white p-5 rounded-2xl shadow-xl shadow-[#103D4A]/20 mt-auto flex flex-col justify-center relative overflow-hidden group">
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="text-center text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Tổng gia công sản xuất / SP</div>
+                  <div className="text-center text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Tổng gia công sản xuất / SP</div>
                   <div className="text-3xl font-black text-center text-white drop-shadow-md">
                     {formatVND(giaCong1SP)}
                   </div>
-                  <div className="mt-5 pt-4 border-t border-slate-700/50 text-xs font-medium text-slate-400 flex justify-between items-center relative z-10">
-                     <div><span className="opacity-70">Nội bộ:</span> <span className="text-slate-200 ml-1">{formatVND((Array.isArray(phanCong) ? phanCong : []).filter(kh => !isOutsourceStage(kh.tenCongDoan)).reduce((sum, kh) => sum + (kh.donGia || 0), 0))}</span></div>
-                     <div><span className="opacity-70">Gia công ngoài:</span> <span className="text-slate-200 ml-1">{formatVND((Array.isArray(phanCong) ? phanCong : []).filter(kh => isOutsourceStage(kh.tenCongDoan)).reduce((sum, kh) => sum + (kh.donGia || 0), 0))}</span></div>
+                  <div className="mt-5 pt-4 border-t border-white/10 text-xs font-medium text-slate-300 flex justify-between items-center relative z-10">
+                     <div><span className="opacity-70">Nội bộ:</span> <span className="text-slate-100 ml-1">{formatVND((Array.isArray(phanCong) ? phanCong : []).filter(kh => !isOutsourceStage(kh.tenCongDoan)).reduce((sum, kh) => sum + (kh.donGia || 0), 0))}</span></div>
+                     <div><span className="opacity-70">Gia công ngoài:</span> <span className="text-slate-100 ml-1">{formatVND((Array.isArray(phanCong) ? phanCong : []).filter(kh => isOutsourceStage(kh.tenCongDoan)).reduce((sum, kh) => sum + (kh.donGia || 0), 0))}</span></div>
                   </div>
                 </div>
               </div>
@@ -1558,32 +1558,32 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 </div>
 
                 {/* Summary block cho Chi phí cố định */}
-                <div className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white p-5 rounded-2xl shadow-xl shadow-slate-900/20 mt-auto flex flex-col justify-center border border-slate-700/50 relative overflow-hidden group">
+                <div className="bg-[#103D4A] text-white p-5 rounded-2xl shadow-xl shadow-[#103D4A]/20 mt-auto flex flex-col justify-center relative overflow-hidden group">
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="text-center text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Tổng chi phí cố định / SP</div>
+                  <div className="text-center text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">Tổng chi phí cố định / SP</div>
                   <div className="text-3xl font-black text-center text-white drop-shadow-md">
                     {formatVND(tongChiPhiCoDinh)}
                   </div>
-                  <div className="mt-5 pt-4 border-t border-slate-700/50 text-xs font-medium text-slate-400 flex justify-between items-center relative z-10">
-                     <div><span className="opacity-70">Số khoản mục:</span> <span className="text-slate-200 ml-1 font-bold">{Object.keys(chiPhiCoDinh).length}</span></div>
+                  <div className="mt-5 pt-4 border-t border-white/10 text-xs font-medium text-slate-300 flex justify-between items-center relative z-10">
+                     <div><span className="opacity-70">Số khoản mục:</span> <span className="text-slate-100 ml-1 font-bold">{Object.keys(chiPhiCoDinh).length}</span></div>
                   </div>
                 </div>
               </div>
             </div>
             
             {/* Overall Summary Box - span full width */}
-            <div className="bg-gradient-to-r from-[#0F766E] to-[#047857] text-white p-8 rounded-2xl shadow-2xl shadow-emerald-900/20 mt-8 flex flex-col justify-center border border-emerald-600/30 relative overflow-hidden group">
+            <div className="bg-[#103D4A] text-white p-8 rounded-2xl shadow-2xl shadow-[#103D4A]/20 mt-8 flex flex-col justify-center relative overflow-hidden group">
                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400"></div>
                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-               <div className="text-center text-sm font-bold text-emerald-100/80 mb-3 uppercase tracking-[0.2em] relative z-10">Tổng chi phí bình quân / SP</div>
+               <div className="text-center text-sm font-bold text-slate-300 mb-3 uppercase tracking-[0.2em] relative z-10">Tổng chi phí bình quân / SP</div>
                <div className="text-5xl font-black text-center text-yellow-300 drop-shadow-lg tracking-tight relative z-10">
                  {formatVND(giaVonBinhQuan)}
                </div>
                <div className="mt-8 pt-5 border-t border-white/20 flex flex-wrap justify-center gap-x-12 gap-y-6 relative z-10">
-                 <div className="flex flex-col items-center"><span className="text-emerald-100/60 text-xs uppercase tracking-wider mb-1 font-semibold">Giá vải</span><span className="text-lg font-bold drop-shadow-sm">{formatVND(tongTienVai / validTongSL)}</span></div>
-                 <div className="flex flex-col items-center"><span className="text-emerald-100/60 text-xs uppercase tracking-wider mb-1 font-semibold">Nguyên liệu</span><span className="text-lg font-bold drop-shadow-sm">{formatVND(tongTienPhuLieu / validTongSL)}</span></div>
-                 <div className="flex flex-col items-center"><span className="text-emerald-100/60 text-xs uppercase tracking-wider mb-1 font-semibold">Gia công</span><span className="text-lg font-bold drop-shadow-sm">{formatVND(giaCong1SP)}</span></div>
-                 <div className="flex flex-col items-center"><span className="text-emerald-100/60 text-xs uppercase tracking-wider mb-1 font-semibold">Cố định</span><span className="text-lg font-bold drop-shadow-sm">{formatVND(tongChiPhiCoDinh)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Giá vải</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(tongTienVai / validTongSL)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Nguyên liệu</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(tongTienPhuLieu / validTongSL)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Gia công</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(giaCong1SP)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Cố định</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(tongChiPhiCoDinh)}</span></div>
                </div>
             </div>
           </div>
