@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle, Plus } from "lucide-react";
+import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle, Plus, Image as ImageIcon } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
@@ -34,6 +34,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
 
   const [selectedImage, setSelectedImage] = useState(sp.hinhAnh || sp.dsMau?.[0]?.img || "");
   const [selectedVideo, setSelectedVideo] = useState(sp.dsMau?.find(m => m.img === selectedImage)?.video || sp.dsMau?.[0]?.video || "");
+  const [viewingMode, setViewingMode] = useState<"video" | "image">(selectedVideo ? "video" : "image");
   const [showFullScreen, setShowFullScreen] = useState(false);
 
   if (!mounted) return null;
@@ -58,7 +59,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
             )}
           </div>
           
-          {selectedVideo ? (
+          {viewingMode === "video" && selectedVideo ? (
             <div className="w-full h-full flex-1 group relative overflow-hidden bg-black flex items-center justify-center">
               <video src={selectedVideo} autoPlay loop muted playsInline controls className="w-full h-full object-contain absolute inset-0" />
             </div>
@@ -73,6 +74,20 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
             <Shirt className="w-40 h-40 text-cyan-200" />
           )}
 
+          {/* Toggle Button if both exist */}
+          {selectedVideo && selectedImage && (
+             <button 
+                onClick={(e) => {
+                   e.stopPropagation();
+                   setViewingMode(prev => prev === "video" ? "image" : "video");
+                }}
+                className="absolute top-4 right-4 z-20 px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-full shadow hover:bg-white text-sm font-semibold flex items-center gap-1.5 text-cyan-700 transition-colors"
+             >
+                {viewingMode === "video" ? <ImageIcon className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
+                {viewingMode === "video" ? "Xem Ảnh" : "Xem Video"}
+             </button>
+          )}
+
           <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 px-4 z-10">
              {sp.dsMau?.map((m, i) => (
                 <div 
@@ -80,6 +95,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                   onClick={() => {
                     if (m.img) setSelectedImage(m.img);
                     setSelectedVideo(m.video || "");
+                    setViewingMode(m.video ? "video" : "image");
                   }}
                   className={`w-6 h-6 rounded-full border-2 ${selectedImage === m.img ? "border-emerald-500 scale-125" : "border-white"} shadow-md cursor-pointer hover:scale-110 transition-transform`}
                   style={{ background: m.ten === "Đen" ? "#1f2937" : m.ten === "Trắng" ? "#f9fafb" : m.ten?.toLowerCase().includes("xanh") ? "#0891b2" : m.ten?.toLowerCase().includes("đỏ") || m.ten?.toLowerCase().includes("hồng") ? "#ec4899" : m.ten?.toLowerCase().includes("vàng") || m.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }}

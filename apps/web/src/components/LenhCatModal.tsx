@@ -599,45 +599,68 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               </div>
 
               {/* Row 2 */}
-              <div className="md:col-span-2">
-                <label className="text-sm font-bold text-blue-700 block mb-1 flex items-center gap-1">
+              {/* Row 2 */}
+              <div className="md:col-span-2 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                <label className="text-sm font-bold text-blue-800 block mb-2 flex items-center gap-1.5">
                   <Package className="w-4 h-4" />
                   Chọn nhanh từ danh mục SP ({dsSanPham.length} sản phẩm)
                 </label>
-                <select
-                  className="w-full px-3 py-2 bg-blue-50 border-2 border-blue-300 rounded focus:ring-2 focus:ring-blue-500 font-semibold text-blue-900"
-                  value=""
-                  onChange={(e) => {
-                    const sp = dsSanPham.find((s) => s.id === e.target.value);
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <select
+                      className="w-full px-3 py-2.5 bg-white border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-semibold text-blue-900 shadow-sm"
+                      value=""
+                      onChange={(e) => {
+                        const sp = dsSanPham.find((s) => s.id === e.target.value);
+                        if (sp) {
+                          setMaSP(sp.id);
+                          setTenSP(sp.tenSP);
+                          setLoaiSP(sp.loaiSP);
+                          if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
+                          if (sp.dsMau && sp.dsMau.length > 0) {
+                            setSoMau(sp.dsMau.length);
+                            setDsMau(sp.dsMau.map(m => ({
+                              ten: m.ten,
+                              maSKU: m.maSKU || "",
+                              dinhMuc: m.dinhMuc || 0.25,
+                              img: m.img || "",
+                              maVai: "",
+                              slDuKien: 0,
+                              ghiChu: "",
+                              phanBoSize: []
+                            })));
+                          }
+                          toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
+                        }
+                      }}
+                    >
+                      <option value="">-- Chọn sản phẩm có sẵn từ danh mục --</option>
+                      {dsSanPham.map((sp) => (
+                        <option key={sp.id} value={sp.id}>
+                          [{sp.id}] {sp.tenSP} - {LOAI_SP_LABELS[sp.loaiSP]} ({sp.dsMau?.length || 0} màu)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Selected Product Preview */}
+                  {maSP && (() => {
+                    const sp = dsSanPham.find(s => s.id === maSP);
                     if (sp) {
-                      setMaSP(sp.id);
-                      setTenSP(sp.tenSP);
-                      setLoaiSP(sp.loaiSP);
-                      if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
-                      if (sp.dsMau && sp.dsMau.length > 0) {
-                        setSoMau(sp.dsMau.length);
-                        setDsMau(sp.dsMau.map(m => ({
-                          ten: m.ten,
-                          maSKU: m.maSKU || "",
-                          dinhMuc: m.dinhMuc || 0.25,
-                          img: m.img || "",
-                          maVai: "",
-                          slDuKien: 0,
-                          ghiChu: "",
-                          phanBoSize: []
-                        })));
-                      }
-                      toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
+                      const spImg = sp.hinhAnh || sp.dsMau?.[0]?.img || "https://placehold.co/100x100/e2e8f0/64748b?text=No+Image";
+                      return (
+                        <div className="w-full md:w-64 shrink-0 flex items-center gap-3 p-2 bg-white rounded-lg border border-blue-100 shadow-sm">
+                          <img src={spImg} alt={sp.tenSP} className="w-12 h-12 rounded object-cover border border-slate-200" />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-sm text-slate-800 truncate">{sp.tenSP}</div>
+                            <div className="text-xs text-slate-500 font-mono mt-0.5">{sp.id} • {LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP}</div>
+                          </div>
+                        </div>
+                      );
                     }
-                  }}
-                >
-                  <option value="">-- Chọn sản phẩm có sẵn từ danh mục --</option>
-                  {dsSanPham.map((sp) => (
-                    <option key={sp.id} value={sp.id}>
-                      [{sp.id}] {sp.tenSP} - {LOAI_SP_LABELS[sp.loaiSP]} ({sp.dsMau.length} màu)
-                    </option>
-                  ))}
-                </select>
+                    return null;
+                  })()}
+                </div>
               </div>
 
               <div>
