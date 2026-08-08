@@ -38,7 +38,7 @@ interface Props {
 
 export default function OrderFormModal({ open, onClose, initial, onSave }: Props) {
   const { dsSanPham } = useDanhMucSP();
-  const { dsKhachHang } = useKhachHang();
+  const { list: dsKhachHang } = useKhachHang();
   const [order, setOrder] = useState<Order>(createEmptyOrder());
   const [activeTab, setActiveTab] = useState<"info" | "items" | "payment" | "shipping">("info");
 
