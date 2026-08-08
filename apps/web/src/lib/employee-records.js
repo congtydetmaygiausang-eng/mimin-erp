@@ -36,7 +36,7 @@ function toSupabaseEmployeeRecord(payload) {
     sdt: payload.sdt,
     email: payload.email || null,
     luong_cung: Number(payload.luongCung || 0),
-    rating: Number(payload.rating || 4),
+    rating: Math.round(Number(payload.rating || 4)),
     trang_thai: payload.trangThai || 'dang_lam',
     avatar_url: payload.avatar || null,
     cccd_front_url: payload.cccdFrontImage || null,
