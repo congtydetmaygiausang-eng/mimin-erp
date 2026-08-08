@@ -5,13 +5,13 @@
 @layer base {
   :root {
     --bg-primary: #f8fafc;
-    --bg-card: rgba(255, 255, 255, 0.88);
-    --bg-card-hover: rgba(255, 255, 255, 0.98);
+    --bg-card: #ffffff;
+    --bg-card-hover: #ffffff;
     --text-primary: #0f172a;
     --text-secondary: #334155;
     --text-muted: #64748b;
     --border: rgba(226, 232, 240, 0.8);
-    --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+    --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 
     /* POLOMIMIN Brand - Mau teal/cyan dam theo anh sep Sang */
     --brand-teal: #109090;
@@ -61,68 +61,26 @@
 
 @layer components {
   /* GPU-Accelerated Smooth Background Gradients - POLOMIMIN teal/cyan brand */
-  .bg-module-login {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-dashboard {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  /* Tat ca module list dung teal/cyan dam (sep Sang yeu cau 2026-08-05) */
+  .bg-module-login { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-dashboard { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-lenh-cat { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-khach-hang { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-ke-hoach { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-nhan-su { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-kho { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
-  
-  .bg-module-default {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-gia-cong {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-cong-no {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-tong-hop {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-hoan-thien {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-qc {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-cai-dat {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-soi-det-nhuom {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-phu-lieu {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-thanh-pham {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-nha-cung-cap {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
-
-  .bg-module-bang-luong {
-    background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%);
-  }
+  .bg-module-gia-cong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-cong-no { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-tong-hop { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-hoan-thien { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-qc { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-cai-dat { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-soi-det-nhuom { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-phu-lieu { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-thanh-pham { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-nha-cung-cap { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-bang-luong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-doi-tac-gia-cong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-default { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
 
   /* PageHeader gradient - dam hon de noi bat */
   .page-header-gradient {
@@ -158,14 +116,6 @@
     font-size: 12px;
     font-weight: 700;
     letter-spacing: -0.01em;
-  }
-
-  .bg-module-doi-tac-gia-cong {
-    background: #0a3a46;
-  }
-
-  .bg-module-default {
-    background: #0a3a46;
   }
 
   /* Ultra Smooth Glassmorphic Cards */

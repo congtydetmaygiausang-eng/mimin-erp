@@ -225,14 +225,14 @@ export function HorizontalNav() {
         <div className="max-w-full px-3 sm:px-4 md:px-6">
           <div className="flex items-center gap-2 h-12 overflow-x-auto">
             {activeGroup.items.map((it) => {
-              const active = pathname === it.href;
+              const active = pathname === it.href || pathname === `${it.href}/` || pathname?.startsWith(`${it.href}/`);
               return (
                 <Link
                   key={it.href}
                   href={it.href}
                   className={`px-4 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition shrink-0 flex items-center gap-1 border ${
                     active
-                      ? `bg-gradient-to-r ${activeGroup.color} text-white shadow-sm border-transparent`
+                      ? `bg-gradient-to-r ${activeGroup.color} text-white shadow-sm border-transparent border-b-4 border-b-white`
                       : "bg-transparent text-white/70 border-transparent hover:bg-white/10 hover:text-white"
                   }`}
                 >
