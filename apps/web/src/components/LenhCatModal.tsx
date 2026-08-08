@@ -34,7 +34,7 @@ import {
   useLenhCat,
 } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
-import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE } from "@/lib/size-ratio-presets";
+import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 
 const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string) => {
@@ -327,7 +327,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         
         let ratioParts = [1, 2, 2, 1];
         let sizes = ["S", "M", "L", "XL"];
-        if (tiLeSize === "0:1:2:2:1") {
+        
+        const preset = SIZE_RATIO_PRESETS.find(p => p.value === tiLeSize);
+        if (preset) {
+          ratioParts = preset.ratios;
+          sizes = preset.sizes;
+        } else if (tiLeSize === "0:1:2:2:1") {
           ratioParts = [1, 2, 2, 1];
           sizes = ["M", "L", "XL", "2XL"];
         } else if (tiLeSize === "1:2:2:2:1") {
