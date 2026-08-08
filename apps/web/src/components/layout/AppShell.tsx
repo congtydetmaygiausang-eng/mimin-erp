@@ -36,7 +36,7 @@ export function AppShell({ children, moduleClass = "bg-module-default" }: { chil
       {/* Top Navigation 2 hàng - thay thế Sidebar */}
       <HorizontalNav />
 
-      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-x-hidden animate-page-entry md:bg-transparent bg-gradient-to-b from-cyan-50/40 via-white/60 to-sky-50/30">
+      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-x-hidden animate-page-entry bg-transparent">
         {children}
       </main>
 

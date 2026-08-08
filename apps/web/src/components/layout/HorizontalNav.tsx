@@ -38,7 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Tổng Quan",
     icon: LayoutDashboard,
     color: "from-cyan-500 to-blue-600",
-    iconColor: "text-blue-500",
+    iconColor: "text-blue-400",
     items: [
       { href: "/dashboard", label: "Dashboard" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX" },
@@ -51,7 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Sản Xuất & Kế hoạch",
     icon: Factory,
     color: "from-teal-500 to-emerald-600",
-    iconColor: "text-teal-600",
+    iconColor: "text-teal-400",
     items: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX" },
       { href: "/lenh-cat", label: "Lệnh cắt" },
@@ -67,7 +67,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Kho & Giao Hàng",
     icon: Boxes,
     color: "from-sky-500 to-cyan-600",
-    iconColor: "text-sky-500",
+    iconColor: "text-sky-400",
     items: [
       { href: "/kho-vai-tinhmann", label: "Kho vải" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu" },
@@ -81,7 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Kế Toán & Mua Bán",
     icon: Wallet,
     color: "from-emerald-500 to-green-600",
-    iconColor: "text-emerald-500",
+    iconColor: "text-emerald-400",
     items: [
       { href: "/cham-cong", label: "Chấm công" },
       { href: "/bang-luong", label: "Bảng lương" },
@@ -95,7 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Danh Mục Dữ Liệu",
     icon: Database,
     color: "from-blue-500 to-indigo-600",
-    iconColor: "text-indigo-500",
+    iconColor: "text-indigo-400",
     items: [
       { href: "/danh-muc-sp", label: "Danh mục sản phẩm" },
       { href: "/nhan-su", label: "Nhân sự" },
@@ -111,7 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Hệ Thống (Dev)",
     icon: Boxes,
     color: "from-slate-500 to-slate-700",
-    iconColor: "text-slate-500",
+    iconColor: "text-slate-400",
     items: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh" },
@@ -143,18 +143,18 @@ export function HorizontalNav() {
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId) || NAV_GROUPS[0];
 
   return (
-    <header className="sticky top-0 z-30 shadow-md bg-white/95 backdrop-blur-md border-b border-slate-200 flex flex-col">
+    <header className="sticky top-0 z-30 shadow-md bg-[#0a3a46] border-b border-[#0d4a59] flex flex-col">
       {user && <DemoBanner user={user} />}
 
       {/* === HÀNG 1: Tìm kiếm, Thông báo, Theme, Avatar === */}
-      <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 h-14 border-b border-slate-100">
+      <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 h-14 border-b border-[#0d4a59]">
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
             M
           </div>
           <div className="hidden sm:block leading-tight">
-            <div className="text-sm font-extrabold text-slate-800">MIMIN ERP</div>
-            <div className="text-[10px] text-slate-500">Quản lý may mặc</div>
+            <div className="text-sm font-extrabold text-white">MIMIN ERP</div>
+            <div className="text-[10px] text-white/70">Quản lý may mặc</div>
           </div>
         </Link>
         <div className="flex items-center gap-2 shrink-0">
@@ -162,7 +162,7 @@ export function HorizontalNav() {
             <GlobalSearch />
           </div>
           <button
-            className="p-2 rounded-lg hover:bg-slate-100 transition"
+            className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Đổi theme"
           >
@@ -171,20 +171,20 @@ export function HorizontalNav() {
           <RoleSwitcher />
           <NotificationBell />
           {user && (
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+            <div className="flex items-center gap-2 pl-3 border-l border-[#0d4a59]">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
                 {user.name?.charAt(0) || "U"}
               </div>
               <div className="hidden xl:block leading-tight">
-                <div className="text-sm font-bold text-slate-800">{user.name}</div>
-                <div className="text-xs text-slate-500">{user.title}</div>
+                <div className="text-sm font-bold text-white">{user.name}</div>
+                <div className="text-xs text-white/70">{user.title}</div>
               </div>
               <button
                 onClick={async () => {
                   await signOut();
                   router.replace("/login");
                 }}
-                className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition ml-1"
+                className="p-1.5 rounded-lg hover:bg-white/10 text-red-400 hover:text-red-300 transition ml-1"
                 aria-label="Đăng xuất"
                 title="Đăng xuất"
               >
@@ -196,7 +196,7 @@ export function HorizontalNav() {
       </div>
 
       {/* === HÀNG 2: MODULES === */}
-      <div className="flex items-center gap-2 px-3 sm:px-4 md:px-6 h-14 overflow-x-auto border-b border-slate-100 bg-slate-50/50">
+      <div className="flex items-center gap-2 px-3 sm:px-4 md:px-6 h-14 overflow-x-auto border-b border-[#0d4a59] bg-[#0a3a46]">
         {NAV_GROUPS.map((g) => {
           const Icon = g.icon;
           const active = g.id === activeGroupId;
@@ -209,7 +209,7 @@ export function HorizontalNav() {
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition shrink-0 border ${
                 active
                   ? `bg-gradient-to-r ${g.color} text-white shadow-md border-transparent`
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-800"
+                  : "bg-white/5 text-white/80 border-white/10 hover:bg-white/15 hover:text-white"
               }`}
               title={g.label}
             >
@@ -221,7 +221,7 @@ export function HorizontalNav() {
       </div>
 
       {/* === HÀNG 3: TABS CỦA MODULE === */}
-      <div className="bg-slate-100/80 border-b border-slate-200">
+      <div className="bg-[#072f38] border-b border-[#0d4a59]">
         <div className="max-w-full px-3 sm:px-4 md:px-6">
           <div className="flex items-center gap-2 h-12 overflow-x-auto">
             {activeGroup.items.map((it) => {
@@ -233,7 +233,7 @@ export function HorizontalNav() {
                   className={`px-4 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition shrink-0 flex items-center gap-1 border ${
                     active
                       ? `bg-gradient-to-r ${activeGroup.color} text-white shadow-sm border-transparent`
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-200"
+                      : "bg-transparent text-white/70 border-transparent hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   {it.label}
