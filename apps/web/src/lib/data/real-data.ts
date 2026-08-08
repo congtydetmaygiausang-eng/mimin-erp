@@ -14,6 +14,7 @@ export type NhanSu = {
   noiCap: string;
   sdt: string;
   email: string;
+  facebookUrl?: string; // 2026-08-08 - them link FB
   diaChiTT: string;
   diaChiTamTru: string;
   viTri: string;

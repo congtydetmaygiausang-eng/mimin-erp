@@ -206,9 +206,22 @@ export default function KhachHangPage() {
                         </div>
                       </td>
                       <td className="p-3 text-xs">
-                        <a href={`tel:${k.sdt}`} className="flex items-center gap-1 text-brand-600 hover:underline">
-                          <Phone className="w-3 h-3" /> {k.sdt}
-                        </a>
+                        <div className="flex items-center gap-1">
+                          <a href={`tel:${k.sdt}`} className="flex items-center gap-1 text-brand-600 hover:underline">
+                            <Phone className="w-3 h-3" /> {k.sdt}
+                          </a>
+                          {k.facebookUrl && (
+                            <a
+                              href={k.facebookUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-0.5 p-1 rounded text-[#1877F2] hover:bg-blue-50"
+                              title="Mở Facebook"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                            </a>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3 text-xs">
                         {k.email && <a href={`mailto:${k.email}`} className="flex items-center gap-1 text-sky-600 hover:underline">
@@ -287,6 +300,17 @@ export default function KhachHangPage() {
                     <span className="font-mono">{k.maKH}</span>
                     <span>·</span>
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {k.sdt}</span>
+                    {k.facebookUrl && (
+                      <a
+                        href={k.facebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#1877F2] hover:scale-110 transition"
+                        title="Mở Facebook"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                      </a>
+                    )}
                     <span>·</span>
                     <span className="flex items-center gap-0.5">
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {k.rating}
@@ -322,6 +346,7 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
     rating: 4,
     ghiChu: "",
     avatar: "",
+    facebookUrl: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -332,7 +357,7 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
-      <div className="w-full sm:w-[96%] sm:max-w-2xl sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[97vh] sm:max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full sm:w-[96%] sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[97vh] sm:max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">
@@ -414,9 +439,17 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
               <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-indigo-500" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} placeholder="0901234567" />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email</label>
-              <input type="email" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="khachhang@example.com" />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                Facebook URL
+              </label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-[#1877F2]" value={form.facebookUrl || ""} onChange={(e) => setForm({ ...form, facebookUrl: e.target.value })} placeholder="https://facebook.com/shop-khach-hang" />
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email</label>
+            <input type="email" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="khachhang@example.com" />
           </div>
 
           <div>

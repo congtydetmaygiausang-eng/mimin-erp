@@ -22,6 +22,8 @@ export type KhachHangDBModel = {
   trang_thai: string;
   // === P2 - 2026-08-07 - Rating tach rieng ===
   rating?: number;
+  // === 2026-08-08 - Facebook URL ===
+  facebook_url?: string;
 };
 
 export type KhachHangUI = {
@@ -40,6 +42,8 @@ export type KhachHangUI = {
   avatar?: string;
   // === P1 - 2026-08-07 - Han muc no KH ===
   hanMucNo?: number;
+  // === 2026-08-08 - Facebook URL ===
+  facebookUrl?: string;
 };
 
 // P1 - 2026-08-07 - Enum phan loai KH
@@ -61,6 +65,7 @@ function mapToDB(ui: KhachHangUI): any {
     rating: ui.rating || 4,
     ghi_chu: ui.ghiChu || "",
     trang_thai: ui.trangThai || "Thường",
+    facebook_url: ui.facebookUrl || "", // 2026-08-08
   };
 }
 
@@ -91,7 +96,8 @@ function mapToUI(db: any): KhachHangUI {
     ghiChu: ghiChu,
     trangThai: db.trang_thai || "",
     rating: r,
-    mst: mst
+    mst: mst,
+    facebookUrl: db.facebook_url || "", // 2026-08-08
   };
 }
 

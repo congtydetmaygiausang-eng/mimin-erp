@@ -48,6 +48,8 @@ type NCC = {
   ma_ncc: string;
   // === P1 - 2026-08-07 - Han muc no NCC ===
   hanMucNo?: number;
+  // === 2026-08-08 - Facebook URL ===
+  facebookUrl?: string;
 };
 
 function mapToUI(db: NhaCungCapModel, index: number): NCC {
@@ -66,6 +68,7 @@ function mapToUI(db: NhaCungCapModel, index: number): NCC {
     rating: db.rating || 4,
     avatar: "",
     hanMucNo: db.han_muc || 0, // P1 - 2026-08-07
+    facebookUrl: db.facebook_url || "", // 2026-08-08
   };
 }
 
@@ -83,6 +86,7 @@ function mapToDB(ui: NCC): NhaCungCapModel {
     ghi_chu: ui.ghiChu,
     rating: ui.rating,
     han_muc: ui.hanMucNo || 0, // P1 - 2026-08-07
+    facebook_url: ui.facebookUrl || "", // 2026-08-08
   };
 }
 
@@ -272,9 +276,22 @@ export default function NhaCungCapPage() {
                         <span className="px-1.5 py-0.5 rounded bg-brand-500/15 text-brand-700 text-[10px]">{n.vaiTro}</span>
                       </td>
                       <td className="p-3 text-xs">
-                        <a href={`tel:${n.sdt}`} className="flex items-center gap-1 text-brand-600 hover:underline">
-                          <Phone className="w-3 h-3" /> {n.sdt}
-                        </a>
+                        <div className="flex items-center gap-1">
+                          <a href={`tel:${n.sdt}`} className="flex items-center gap-1 text-brand-600 hover:underline">
+                            <Phone className="w-3 h-3" /> {n.sdt}
+                          </a>
+                          {n.facebookUrl && (
+                            <a
+                              href={n.facebookUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-0.5 p-1 rounded text-[#1877F2] hover:bg-blue-50"
+                              title="Mở Facebook"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                            </a>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3 text-xs">
                         <a href={`mailto:${n.mail}`} className="flex items-center gap-1 text-sky-600 hover:underline">
@@ -362,6 +379,17 @@ export default function NhaCungCapPage() {
                     <span className="px-1.5 py-0.5 rounded bg-brand-500/15 text-brand-700 text-[10px]">{n.vaiTro}</span>
                     <span>·</span>
                     <span className="flex items-center gap-0.5"><Phone className="w-3 h-3" /> {n.sdt}</span>
+                    {n.facebookUrl && (
+                      <a
+                        href={n.facebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#1877F2] hover:scale-110 transition"
+                        title="Mở Facebook"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                      </a>
+                    )}
                     <span>·</span>
                     <span className="flex items-center gap-0.5">
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {n.rating}
@@ -403,6 +431,7 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
     rating: 4,
     ghiChu: "",
     avatar: "",
+    facebookUrl: "", // 2026-08-08
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -492,9 +521,17 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
               <input required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-amber-500" value={form.sdt} onChange={(e) => setForm({ ...form, sdt: e.target.value })} placeholder="0901234567" />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email</label>
-              <input type="email" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-amber-500" value={form.mail} onChange={(e) => setForm({ ...form, mail: e.target.value })} placeholder="ncc@example.com" />
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                Facebook URL
+              </label>
+              <input className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-[#1877F2]" value={form.facebookUrl || ""} onChange={(e) => setForm({ ...form, facebookUrl: e.target.value })} placeholder="https://facebook.com/ncc" />
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Email</label>
+            <input type="email" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-amber-500" value={form.mail} onChange={(e) => setForm({ ...form, mail: e.target.value })} placeholder="ncc@example.com" />
           </div>
 
           <div>

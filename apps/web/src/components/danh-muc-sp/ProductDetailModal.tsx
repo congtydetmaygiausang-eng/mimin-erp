@@ -202,6 +202,17 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                     )}
                   </div>
                 ))}
+                
+                {/* Nút thêm ô hình ảnh / màu sắc mới */}
+                {onEdit && (
+                  <div 
+                    onClick={() => onEdit(sp)}
+                    className="flex gap-4 p-3 border-2 border-dashed border-slate-200 rounded-xl items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 cursor-pointer transition-colors h-full min-h-[5.5rem]"
+                  >
+                    <Plus className="w-6 h-6 mb-0.5" />
+                    <span className="font-bold text-sm">Thêm ô hình ảnh</span>
+                  </div>
+                )}
               </div>
             </div>
 

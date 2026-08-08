@@ -21,6 +21,7 @@ export type NhaCungCapModel = {
   ghi_chu?: string;
   trang_thai?: string;
   rating?: number; // P2 - 2026-08-07 - tach ra column rieng (truoc day luu trong ghi_chu text)
+  facebook_url?: string; // 2026-08-08 - them link FB
 };
 
 // Convert UI model to DB model
@@ -44,6 +45,7 @@ export function toDBNhaCungCap(ncc: NhaCungCapModel) {
     cong_no: ncc.cong_no || 0,
     don_gia: ncc.don_gia || "",
     rating: ncc.rating || 4,
+    facebook_url: ncc.facebook_url || "", // 2026-08-08
   };
 }
 
@@ -70,6 +72,7 @@ export function fromDBNhaCungCap(row: any): NhaCungCapModel {
     ghi_chu: row.ghi_chu || "",
     trang_thai: row.trang_thai || "",
     rating,
+    facebook_url: row.facebook_url || "", // 2026-08-08
   };
 }
 
