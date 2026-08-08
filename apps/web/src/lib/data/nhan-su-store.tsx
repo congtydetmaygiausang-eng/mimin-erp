@@ -77,7 +77,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
             
             // Background seed
             Promise.all(NHAN_SU_KHOI_DAU.map(nv => 
-              supabaseUpsert("nhan_su", toSupabaseEmployeeRecord(nv))
+              supabaseUpsert("nhan_su", toSupabaseEmployeeRecord(nv), "ma_nv")
             )).catch(err => console.error("Seed error", err));
           }
         }
@@ -109,7 +109,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
     if (isSupabaseEnabled) {
       try {
         const record = toSupabaseEmployeeRecord(nv);
-        await supabaseUpsert("nhan_su", record);
+        await supabaseUpsert("nhan_su", record, "ma_nv");
         return true;
       } catch (err) {
         console.error("Supabase upsert error:", err);
@@ -129,7 +129,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
     if (isSupabaseEnabled) {
       try {
         const record = toSupabaseEmployeeRecord(nv);
-        await supabaseUpsert("nhan_su", record);
+        await supabaseUpsert("nhan_su", record, "ma_nv");
         return true;
       } catch (err) {
         console.error("Supabase update error:", err);

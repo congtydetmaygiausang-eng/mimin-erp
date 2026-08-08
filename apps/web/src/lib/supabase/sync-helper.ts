@@ -97,13 +97,14 @@ export async function supabaseFetchAll<T = any>(
  */
 export async function supabaseUpsert<T extends { id: string }>(
   table: string,
-  row: T
+  row: T,
+  onConflict: string = "id"
 ): Promise<T | null> {
   if (!checkSupabase()) return null;
   const snakeRow = camelToSnake(row);
   const { data, error } = await supabase!
     .from(table)
-    .upsert(snakeRow, { onConflict: "id" })
+    .upsert(snakeRow, { onConflict })
     .select()
     .single();
   if (error) {
