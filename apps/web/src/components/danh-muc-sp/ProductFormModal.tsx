@@ -138,7 +138,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                   {/* Media Area (Left side) */}
                   <div className="w-2/5 shrink-0 grid grid-cols-2 gap-2">
                     {/* Image Upload */}
-                    <div className="aspect-[9/16] flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-white relative overflow-hidden group">
+                    <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-white relative overflow-hidden group">
                       {m.img ? (
                         <img src={m.img} alt={m.ten} className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
                       ) : (
