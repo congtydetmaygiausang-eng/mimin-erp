@@ -1010,6 +1010,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                              <button onClick={(e) => handlePreviewPDF(e, pdfSoDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
                                <Download size={14} /> Xem
                              </button>
+                             <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoChinh)} className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
+                               <Download size={14} /> Tải
+                             </button>
                              <button onClick={(e) => { e.stopPropagation(); setPdfSoDoChinh(""); filePdfChinhRef.current && (filePdfChinhRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
                                <X size={14} /> Xóa
                              </button>
@@ -1087,6 +1090,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                            <div className="flex gap-2">
                              <button onClick={(e) => handlePreviewPDF(e, pdfSoDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
                                <Download size={14} /> Xem
+                             </button>
+                             <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoPhoi)} className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
+                               <Download size={14} /> Tải
                              </button>
                              <button onClick={(e) => { e.stopPropagation(); setPdfSoDoPhoi(""); filePdfPhoiRef.current && (filePdfPhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
                                <X size={14} /> Xóa
