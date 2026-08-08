@@ -26,8 +26,8 @@ export function FilterBar({ filterTrangThai, setFilterTrangThai, totalCount, cou
           <button
             key={tt}
             onClick={() => setFilterTrangThai(tt)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
-              active ? "bg-violet-500 text-white shadow" : "bg-white/40 dark:bg-white/5 hover:bg-white/60"
+            className={`px-4 py-1.5 rounded-full text-xs transition ${
+              active ? "bg-white text-teal-700 shadow-md font-bold" : "bg-white/10 text-white/90 border border-white/20 hover:bg-white/20 font-medium"
             }`}
           >
             {tt === "ALL" ? "Tất cả" : TRANG_THAI_LC_LABELS[tt as TrangThaiLenhCat]} ({count})
@@ -35,11 +35,11 @@ export function FilterBar({ filterTrangThai, setFilterTrangThai, totalCount, cou
         );
       })}
 
-      <div className="w-px h-6 bg-slate-300 mx-2 self-center"></div>
-      <button onClick={onCreateCD} className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-violet-100 text-violet-700 hover:bg-violet-200 border border-violet-200 shadow-sm">
+      <div className="w-px h-6 bg-white/20 mx-2 self-center"></div>
+      <button onClick={onCreateCD} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-white text-violet-700 hover:bg-slate-50 shadow-sm">
         + Tạo mẫu công đoạn
       </button>
-      <button onClick={onCreateCP} className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-200 shadow-sm">
+      <button onClick={onCreateCP} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-white text-emerald-700 hover:bg-slate-50 shadow-sm">
         + Tạo bảng chi phí
       </button>
     </div>
@@ -66,15 +66,15 @@ export function MauSection({ dsMauCongDoan, dsMauChiPhi, showDanhSachMau, setSho
   if (dsMauCongDoan.length === 0 && dsMauChiPhi.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 overflow-hidden">
+    <div className="card rounded-xl border-none shadow-md overflow-hidden mb-2">
       <button
         onClick={() => setShowDanhSachMau(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-slate-50 transition bg-white"
       >
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 text-slate-700">
           <span className="text-violet-600">📋</span>
           Danh sách mẫu đã lưu
-          <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-bold">
+          <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-xs font-bold ml-2">
             {dsMauCongDoan.length} công đoạn · {dsMauChiPhi.length} bảng chi phí
           </span>
         </span>
