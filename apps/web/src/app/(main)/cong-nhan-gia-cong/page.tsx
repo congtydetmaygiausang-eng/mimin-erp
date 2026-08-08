@@ -237,6 +237,17 @@ export default function CongNhanGiaCongPage() {
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
                         </a>
+                        {c.facebookUrl && (
+                          <a
+                            href={c.facebookUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-0.5 p-1 rounded text-[#1877F2] hover:bg-blue-50"
+                            title="Mở Facebook"
+                          >
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                          </a>
+                        )}
                       </div>
                     </td>
                     <td className="p-3 text-xs max-w-xs">
@@ -302,6 +313,7 @@ export default function CongNhanGiaCongPage() {
                 diaChi: newCn.diaChi || "",
                 ghiChu: newCn.ghiChu || "",
                 trangThai: newCn.trangThai || "san_sang",
+                facebookUrl: newCn.facebookUrl || "",
                 nguoiTao: user.name,
                 ngayTao: new Date().toISOString(),
               };
@@ -360,7 +372,7 @@ function CongNhanDetail({ cn, onClose, onEdit, onDelete }: { cn: CongNhanGiaCong
 
         {/* Thông tin liên hệ */}
         <div className="space-y-2.5">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm flex-wrap">
             <Phone className="w-4 h-4 text-slate-400" />
             <a href={`tel:${cn.sdt}`} className="text-brand-600 font-mono font-semibold hover:underline">{cn.sdt}</a>
             <a
@@ -371,6 +383,17 @@ function CongNhanDetail({ cn, onClose, onEdit, onDelete }: { cn: CongNhanGiaCong
             >
               <MessageCircle className="w-3 h-3" /> Zalo
             </a>
+            {cn.facebookUrl && (
+              <a
+                href={cn.facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold text-white bg-[#1877F2] hover:bg-[#145dbf]"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                Facebook
+              </a>
+            )}
           </div>
           {cn.diaChi && (
             <div className="flex items-start gap-2 text-sm">
@@ -470,15 +493,28 @@ function CongNhanFormModal({ mode, cn, onClose, onSave }: { mode: "add" | "edit"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Số thợ</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                Facebook URL
+              </label>
               <input
-                type="number"
-                min={0}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold focus:ring-2 focus:ring-cyan-500"
-                value={form.soTho || 0}
-                onChange={(e) => setForm({ ...form, soTho: parseInt(e.target.value) || 0 })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[#1877F2]"
+                value={form.facebookUrl || ""}
+                onChange={(e) => setForm({ ...form, facebookUrl: e.target.value })}
+                placeholder="https://facebook.com/ten-cua-hang"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Số thợ</label>
+            <input
+              type="number"
+              min={0}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold focus:ring-2 focus:ring-cyan-500"
+              value={form.soTho || 0}
+              onChange={(e) => setForm({ ...form, soTho: parseInt(e.target.value) || 0 })}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

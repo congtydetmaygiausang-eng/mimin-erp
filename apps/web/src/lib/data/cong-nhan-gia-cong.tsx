@@ -35,6 +35,7 @@ export type CongNhanGiaCong = {
   diaChi?: string;
   ghiChu?: string;
   trangThai: TrangThaiCongNhan;
+  facebookUrl?: string;    // Link Facebook (https://facebook.com/...)
   nguoiTao?: string;
   ngayTao?: string;
 };
