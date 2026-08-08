@@ -12,7 +12,7 @@
 // Giai doan 1: Focus Section 1 + 5 (form + COGS auto + luu DB)
 // Giai doan 2 (sau): Auto tru kho + Phan cong/Cong no
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
   Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
@@ -170,6 +170,29 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     d.setDate(d.getDate() + 14);
     return d.toISOString().split("T")[0];
   });
+  const [nguoiPhuTrachCat, setNguoiPhuTrachCat] = useState(editing?.phuTrachCat || "");
+  const [dienThoaiNguoiCac, setDienThoaiNguoiCac] = useState("");
+
+  // Custom Product Dropdown State
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowProductDropdown(false);
+      }
+    };
+    if (showProductDropdown) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showProductDropdown]);
+
+  const filteredProducts = dsSanPham.filter(sp => 
+    sp.id.toLowerCase().includes(productSearch.toLowerCase()) || 
+    sp.tenSP.toLowerCase().includes(productSearch.toLowerCase())
+  );
+  
   const [phuTrachCat, setPhuTrachCat] = useState("NV006");
   const [phuTrachSX, setPhuTrachSX] = useState("NV001");
   const [ghiChu, setGhiChu] = useState("");
@@ -606,41 +629,74 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   Chọn nhanh từ danh mục SP ({dsSanPham.length} sản phẩm)
                 </label>
                 <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2.5 bg-white border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-semibold text-blue-900 shadow-sm"
-                      value=""
-                      onChange={(e) => {
-                        const sp = dsSanPham.find((s) => s.id === e.target.value);
-                        if (sp) {
-                          setMaSP(sp.id);
-                          setTenSP(sp.tenSP);
-                          setLoaiSP(sp.loaiSP);
-                          if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
-                          if (sp.dsMau && sp.dsMau.length > 0) {
-                            setSoMau(sp.dsMau.length);
-                            setDsMau(sp.dsMau.map(m => ({
-                              ten: m.ten,
-                              maSKU: m.maSKU || "",
-                              dinhMuc: m.dinhMuc || 0.25,
-                              img: m.img || "",
-                              maVai: "",
-                              slDuKien: 0,
-                              ghiChu: "",
-                              phanBoSize: []
-                            })));
-                          }
-                          toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
-                        }
-                      }}
+                  <div className="flex-1 relative" ref={dropdownRef}>
+                    <div 
+                      className="w-full px-3 py-2.5 bg-white border-2 border-blue-200 rounded-lg cursor-pointer flex justify-between items-center hover:border-blue-400 focus:ring-2 focus:ring-blue-500 transition-colors font-semibold text-blue-900 shadow-sm"
+                      onClick={() => setShowProductDropdown(!showProductDropdown)}
                     >
-                      <option value="">-- Chọn sản phẩm có sẵn từ danh mục --</option>
-                      {dsSanPham.map((sp) => (
-                        <option key={sp.id} value={sp.id}>
-                          [{sp.id}] {sp.tenSP} - {LOAI_SP_LABELS[sp.loaiSP]} ({sp.dsMau?.length || 0} màu)
-                        </option>
-                      ))}
-                    </select>
+                      <span className="truncate">
+                        {maSP ? `[${maSP}] ${tenSP}` : "-- Chọn sản phẩm có sẵn từ danh mục --"}
+                      </span>
+                      <ChevronDown className={`w-5 h-5 text-blue-500 transition-transform ${showProductDropdown ? 'rotate-180' : ''}`} />
+                    </div>
+
+                    {showProductDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-blue-200 rounded-lg shadow-xl z-[100] max-h-80 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        <div className="p-2 border-b bg-slate-50 shrink-0">
+                          <input 
+                            autoFocus
+                            type="text" 
+                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Tìm mã hoặc tên SP..."
+                            value={productSearch}
+                            onChange={(e) => setProductSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="overflow-y-auto flex-1">
+                          {filteredProducts.length === 0 ? (
+                            <div className="p-4 text-center text-slate-500 text-sm">Không tìm thấy sản phẩm.</div>
+                          ) : (
+                            filteredProducts.map(sp => {
+                              const imgUrl = sp.hinhAnh || sp.dsMau?.[0]?.img || "https://placehold.co/100x100/e2e8f0/64748b?text=No+Image";
+                              return (
+                                <div 
+                                  key={sp.id} 
+                                  className={`flex items-center gap-3 p-2.5 border-b border-slate-100 cursor-pointer transition-colors ${maSP === sp.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                                  onClick={() => {
+                                    setMaSP(sp.id);
+                                    setTenSP(sp.tenSP);
+                                    setLoaiSP(sp.loaiSP);
+                                    if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
+                                    if (sp.dsMau && sp.dsMau.length > 0) {
+                                      setSoMau(sp.dsMau.length);
+                                      setDsMau(sp.dsMau.map(m => ({
+                                        ten: m.ten,
+                                        maSKU: m.maSKU || "",
+                                        dinhMuc: m.dinhMuc || 0.25,
+                                        img: m.img || "",
+                                        maVai: "",
+                                        slDuKien: 0,
+                                        ghiChu: "",
+                                        phanBoSize: []
+                                      })));
+                                    }
+                                    toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
+                                    setShowProductDropdown(false);
+                                    setProductSearch("");
+                                  }}
+                                >
+                                  <img src={imgUrl} className="w-10 h-10 rounded object-cover border border-slate-200 shrink-0" />
+                                  <div className="flex flex-col overflow-hidden">
+                                    <span className="font-bold text-sm text-slate-800 truncate">[{sp.id}] {sp.tenSP}</span>
+                                    <span className="text-xs text-slate-500 truncate">{LOAI_SP_LABELS[sp.loaiSP]} • {sp.dsMau?.length || 0} màu</span>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Selected Product Preview */}
