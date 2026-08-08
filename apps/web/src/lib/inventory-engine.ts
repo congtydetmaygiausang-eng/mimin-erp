@@ -163,14 +163,22 @@ export function saveInventory(inv: Record<string, KhoVai>) {
 export async function syncInventoryWithSupabase(): Promise<void> {
   if (!isSupabaseEnabled || !supabase) return;
   try {
-    const { data, error } = await supabase!.from("kho").select("*").eq("loai", "vai");
-    if (error) throw error;
+    // 2026-08-08 - Fix 404: bang kho co the chua ton tai, query khong crash
+    const { data, error } = await supabase!.from("kho").select("sku, ton_kho").eq("loai", "vai");
+    if (error) {
+      // 404 = bang chua ton tai, 400 = schema chua co loai column
+      // Silent fail - van dung localStorage
+      if (error.code !== "PGRST116" && error.code !== "PGRST205") {
+        console.warn("[inventory] Supabase sync skipped:", error.message);
+      }
+      return;
+    }
     if (data && data.length > 0) {
       const current = getInventory();
       let changed = false;
       data.forEach((d: any) => {
         if (current[d.sku]) {
-          current[d.sku].tonKho = d.sl;
+          current[d.sku].tonKho = d.ton_kho ?? d.tonKho ?? 0;
           changed = true;
         }
       });
@@ -179,7 +187,7 @@ export async function syncInventoryWithSupabase(): Promise<void> {
       }
     }
   } catch (err) {
-    console.error("Failed to sync inventory with Supabase", err);
+    console.warn("[inventory] Sync error (silent):", err);
   }
 }
 

@@ -123,7 +123,7 @@ const getFallbackUser = (): AppUser => ({
 
 export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
-  const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan } = useLenhCat();
+  const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
@@ -250,23 +250,16 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [dsPhuLieu, setDsPhuLieu] = useState<LenhCatPhuLieu[]>([]);
   
   // Section 4 - Phân công
-  
-  const [showTaoMauCD, setShowTaoMauCD] = useState(false);
-  const [newMauCD, setNewMauCD] = useState<{ id: string; ten: string; giaCong: { id: string; tenCongDoan: string; nguoiMa: string; nguoiTen: string; donGia: number }[] }>({ 
-    id: "", ten: "", giaCong: [
-      { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 0 },
-      { id: "mayAo", tenCongDoan: "May Áo", nguoiMa: "", nguoiTen: "", donGia: 0 },
-      { id: "mayQuan", tenCongDoan: "May Quần", nguoiMa: "", nguoiTen: "", donGia: 0 },
-      { id: "in", tenCongDoan: "In", nguoiMa: "", nguoiTen: "", donGia: 0 },
-      { id: "theu", tenCongDoan: "Thêu", nguoiMa: "", nguoiTen: "", donGia: 0 },
-      { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 0 },
-      { id: "dongGoi", tenCongDoan: "Đóng Gói", nguoiMa: "", nguoiTen: "", donGia: 0 },
-    ] 
-  });
-  const [customStepName, setCustomStepName] = useState("");
-
   const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
   const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || []);
+  
+  const [showTaoMauCD, setShowTaoMauCD] = useState(false);
+  const [newMauCD, setNewMauCD] = useState<{ id: string, ten: string, giaCong: any[] }>({ id: "", ten: "", giaCong: [] });
+  const [customStepName, setCustomStepName] = useState("");
+
+  const [showTaoMauChiPhi, setShowTaoMauChiPhi] = useState(false);
+  const [newMauChiPhi, setNewMauChiPhi] = useState<{ id: string, ten: string, chiPhi: Record<string, number> }>({ id: "", ten: "", chiPhi: { "Cắt": 1600, "In/Thêu": 1500 } });
+  const [customChiPhiName, setCustomChiPhiName] = useState("");
   
   // Chi Phí Cố Định
   const [chiPhiCoDinh, setChiPhiCoDinh] = useState<ChiPhiCoDinh>({});
@@ -544,7 +537,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           )}
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
-          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm relative">
+          <div className="bg-slate-100 p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
             <button 
               onClick={onClose} 
               className="absolute -top-3 -right-3 p-2 bg-rose-500 text-white hover:bg-rose-600 rounded-full shadow-lg transition-transform hover:scale-110 z-10 flex items-center justify-center"
@@ -621,6 +614,19 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       setTenSP(sp.tenSP);
                       setLoaiSP(sp.loaiSP);
                       if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
+                      if (sp.dsMau && sp.dsMau.length > 0) {
+                        setSoMau(sp.dsMau.length);
+                        setDsMau(sp.dsMau.map(m => ({
+                          ten: m.ten,
+                          maSKU: m.maSKU || "",
+                          dinhMuc: m.dinhMuc || 0.25,
+                          img: m.img || "",
+                          maVai: "",
+                          slDuKien: 0,
+                          ghiChu: "",
+                          phanBoSize: []
+                        })));
+                      }
                       toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
                     }
                   }}
@@ -685,7 +691,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     {REAL_NHAN_VIEN.find(n => n.ma === phuTrachSX)?.ten?.substring(0,2) || "NV"}
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <select className="px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm" value={phuTrachSX} onChange={e => setPhuTrachSX(e.target.value)}>
+                    <select className="px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm" value={phuTrachSX} onChange={e => {
+                      const val = e.target.value;
+                      setPhuTrachSX(val);
+                      if (val) {
+                        const numericPart = val.replace(/\D/g, "");
+                        setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                      } else {
+                        setSdtLienHe("");
+                      }
+                    }}>
+                      <option value="">-- Chọn Người phụ trách --</option>
                       {REAL_NHAN_VIEN.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
                     </select>
                     <input className="px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#2B4C3E]" value={sdtLienHe} onChange={e => setSdtLienHe(e.target.value)} placeholder="SĐT liên hệ..." />
@@ -723,7 +739,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       }}
                     />
                     <div 
-                      className="relative w-full aspect-[4/5] bg-slate-100 border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-[#2B4C3E] transition-colors flex items-center justify-center"
+                      className="relative w-full aspect-square bg-slate-100 border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-[#2B4C3E] transition-colors flex items-center justify-center"
                       onClick={() => handleColorImageUpload(idx)}
                     >
                       {mau.img ? (
@@ -884,7 +900,33 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                  ))}
                </div>
             </div>
-          </div>
+
+              {/* BẢNG THỐNG KÊ VẢI VÀ PHỤ LIỆU */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg flex flex-col justify-center">
+                  <div className="text-center text-sm text-slate-300 mb-1">TỔNG CHI PHÍ VẢI / SP =</div>
+                  <div className="text-2xl font-bold text-center text-white">
+                    {formatVND(tongTienVai / validTongSL)}
+                  </div>
+                  <div className="mt-4 text-xs opacity-70 grid grid-cols-2 gap-x-4 gap-y-1">
+                     <div className="flex justify-between"><span>Tổng tiền vải:</span> <span>{formatVND(tongTienVai)}</span></div>
+                     <div className="flex justify-between"><span>Số màu:</span> <span>{dsMau.length}</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg flex flex-col justify-center">
+                  <div className="text-center text-sm text-slate-300 mb-1">TỔNG CHI PHÍ PHỤ LIỆU / SP =</div>
+                  <div className="text-2xl font-bold text-center text-white">
+                    {formatVND(tongTienPhuLieu / validTongSL)}
+                  </div>
+                  <div className="mt-4 text-xs opacity-70 grid grid-cols-2 gap-x-4 gap-y-1">
+                     <div className="flex justify-between"><span>Tổng tiền phụ liệu:</span> <span>{formatVND(tongTienPhuLieu)}</span></div>
+                     <div className="flex justify-between"><span>Số khoản mục:</span> <span>{dsPhuLieu.length}</span></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
 
           {/* KHỐI 3: GIA CÔNG VÀ ĐƠN GIÁ */}
           <div className="bg-[#FCF5E8] p-5 rounded-lg border border-amber-200/80 shadow-sm mb-2">
@@ -918,12 +960,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     return (
                       <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
                         <div className="col-span-3 font-semibold text-slate-700 text-sm truncate" title={kh.tenCongDoan}>{kh.tenCongDoan}</div>
-                        <div className="col-span-6 flex items-center gap-2">
+                        <div className="col-span-6 flex items-center gap-2 min-w-0">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold overflow-hidden border flex-shrink-0 text-[10px] ${isOutsourceStage(kh.tenCongDoan) ? "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
                             {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
                           <select 
-                          className="flex-1 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
+                          className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
                           value={kh.nguoiMa}
                           onChange={(e) => {
                             const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
@@ -961,6 +1003,18 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     );
                   })}
                 </div>
+                
+                {/* Summary block cho Gia công sản xuất */}
+                <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg mt-auto flex flex-col justify-center">
+                  <div className="text-center text-sm text-slate-300 mb-1">TỔNG GIA CÔNG SẢN XUẤT / SP =</div>
+                  <div className="text-2xl font-bold text-center text-white">
+                    {formatVND(giaCong1SP)}
+                  </div>
+                  <div className="mt-4 text-xs opacity-70 grid grid-cols-2 gap-x-4 gap-y-1">
+                     <div className="flex justify-between"><span>Nội bộ:</span> <span>{formatVND((Array.isArray(phanCong) ? phanCong : []).filter(kh => !isOutsourceStage(kh.tenCongDoan)).reduce((sum, kh) => sum + (kh.donGia || 0), 0))}</span></div>
+                     <div className="flex justify-between"><span>Gia công ngoài:</span> <span>{formatVND((Array.isArray(phanCong) ? phanCong : []).filter(kh => isOutsourceStage(kh.tenCongDoan)).reduce((sum, kh) => sum + (kh.donGia || 0), 0))}</span></div>
+                  </div>
+                </div>
               </div>
 
               {/* Chi Phí Cố Định */}
@@ -968,6 +1022,19 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 <div className="bg-white/20 p-4 rounded-xl">
                   <div className="flex justify-between items-center border-b border-black/10 pb-2 mb-3">
                     <h3 className="font-bold text-slate-800">2. CHI PHÍ CỐ ĐỊNH / SẢN PHẨM</h3>
+                    <div className="flex items-center gap-2">
+                      <select 
+                        className="px-2 py-1 text-xs border rounded shadow-sm bg-white font-bold text-[#2B4C3E]"
+                        onChange={(e) => {
+                          const m = dsMauChiPhi.find(x => x.id === e.target.value);
+                          if (m) setChiPhiCoDinh(m.chiPhi);
+                        }}
+                      >
+                        <option value="">-- Chọn mẫu --</option>
+                        {dsMauChiPhi.map(m => <option key={m.id} value={m.id}>Mẫu: {m.ten}</option>)}
+                      </select>
+                      <button type="button" onClick={() => setShowTaoMauChiPhi(true)} className="px-2 py-1 text-xs bg-violet-600 text-white rounded font-bold hover:bg-violet-700 whitespace-nowrap shadow-sm">+ Tạo mẫu</button>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     {Object.entries(chiPhiCoDinh).map(([key, val]) => (
@@ -979,19 +1046,31 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   </div>
                 </div>
 
-                <div className="bg-[#2B4C3E] text-white p-4 rounded-xl shadow-lg mt-auto flex flex-col justify-center">
-                  <div className="text-center text-sm text-emerald-200 mb-1">TỔNG CHI PHÍ BÌNH QUÂN / SP =</div>
-                  <div className="text-3xl font-bold text-center text-yellow-400">
-                    {formatVND(giaVonBinhQuan)}
+                {/* Summary block cho Chi phí cố định */}
+                <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg mt-auto flex flex-col justify-center">
+                  <div className="text-center text-sm text-slate-300 mb-1">TỔNG CHI PHÍ CỐ ĐỊNH / SP =</div>
+                  <div className="text-2xl font-bold text-center text-white">
+                    {formatVND(tongChiPhiCoDinh)}
                   </div>
                   <div className="mt-4 text-xs opacity-70 grid grid-cols-2 gap-x-4 gap-y-1">
-                    <div className="flex justify-between"><span>Giá vải:</span> <span>{formatVND(tongTienVai / validTongSL)}</span></div>
-                    <div className="flex justify-between"><span>Nguyên liệu:</span> <span>{formatVND(tongTienPhuLieu / validTongSL)}</span></div>
-                    <div className="flex justify-between"><span>Gia công:</span> <span>{formatVND(giaCong1SP)}</span></div>
-                    <div className="flex justify-between"><span>Cố định:</span> <span>{formatVND(tongChiPhiCoDinh)}</span></div>
+                     <div className="flex justify-between"><span>Số khoản mục:</span> <span>{Object.keys(chiPhiCoDinh).length}</span></div>
                   </div>
                 </div>
               </div>
+            </div>
+            
+            {/* Overall Summary Box - span full width */}
+            <div className="bg-[#2B4C3E] text-white p-6 rounded-xl shadow-lg mt-6 flex flex-col justify-center">
+               <div className="text-center text-sm text-emerald-200 mb-2">TỔNG CHI PHÍ BÌNH QUÂN / SP =</div>
+               <div className="text-4xl font-bold text-center text-yellow-400">
+                 {formatVND(giaVonBinhQuan)}
+               </div>
+               <div className="mt-6 text-sm opacity-90 flex flex-wrap justify-center gap-x-8 gap-y-4 border-t border-white/20 pt-4">
+                 <div className="flex flex-col items-center"><span className="text-emerald-200/70 text-xs mb-1">Giá vải</span><span className="font-bold">{formatVND(tongTienVai / validTongSL)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-emerald-200/70 text-xs mb-1">Nguyên liệu</span><span className="font-bold">{formatVND(tongTienPhuLieu / validTongSL)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-emerald-200/70 text-xs mb-1">Gia công</span><span className="font-bold">{formatVND(giaCong1SP)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-emerald-200/70 text-xs mb-1">Cố định</span><span className="font-bold">{formatVND(tongChiPhiCoDinh)}</span></div>
+               </div>
             </div>
           </div>
           
@@ -1029,39 +1108,39 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         </div>
 
         {/* Footer Buttons */}
-        <div className="bg-[#1A3329] p-4 flex items-center justify-between border-t border-white/10">
-          <div>
-            <button className="px-4 py-2 rounded font-bold text-slate-300 hover:bg-slate-800 transition-colors flex items-center gap-2 border border-slate-600">
+        <div className="bg-white p-6 flex items-center justify-between border-t border-slate-200 rounded-b-xl">
+          <div className="flex gap-4">
+            <button className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2 shadow-sm">
                In Phiếu / Xuất PDF
             </button>
             <button 
               onClick={onClose}
-              className="px-4 py-2 ml-2 rounded font-bold text-rose-300 hover:bg-rose-900/30 transition-colors border border-rose-800/50"
+              className="px-6 py-3 rounded-xl font-bold text-rose-500 bg-transparent border-2 border-rose-200 hover:bg-rose-50 hover:border-rose-300 transition-all shadow-sm"
             >
                Đóng
             </button>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <button 
-              className="px-6 py-2 rounded font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-600"
+              className="px-8 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
               onClick={() => handleSave("Nhap")}
             >
-              Lưu Nháp
+              LƯU NHÁP
             </button>
 
             <button 
-              className="px-6 py-2 rounded font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors shadow-lg"
+              className="px-8 py-3 rounded-xl font-bold text-blue-600 bg-transparent border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm hover:shadow-md hover:shadow-blue-500/10 hover:-translate-y-0.5"
               onClick={() => handleSave("DaTao")}
             >
-              Hoàn Tất Tạo Lệnh
+              HOÀN TẤT TẠO LỆNH
             </button>
 
             <button 
-              className="px-6 py-2 rounded font-bold text-slate-900 bg-[#F0A619] hover:bg-[#F0A619]/90 transition-colors shadow-lg flex items-center gap-2"
+              className="px-8 py-3 rounded-xl font-extrabold text-[#F0A619] bg-transparent border-2 border-[#F0A619] hover:bg-[#F0A619] hover:text-white transition-all shadow-md hover:shadow-lg hover:shadow-[#F0A619]/20 hover:-translate-y-0.5 flex items-center gap-2 uppercase tracking-wide"
               onClick={() => handleSave("ChuyenTiep")}
             >
-              <Send className="w-5 h-5" />
-              Chuyển Khâu Tiếp Nhận
+              <Send className="w-6 h-6" />
+              CHUYỂN KHÂU TIẾP NHẬN
             </button>
           </div>
         
@@ -1135,6 +1214,74 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             setMauCongDoan(newMauCD.id);
             setPhanCong(newMauCD.giaCong);
             toast.success("Đã lưu mẫu công đoạn");
+          }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Mẫu</button>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* Modal Tạo Mẫu Chi Phí Cố Định */}
+  {showTaoMauChiPhi && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Mới</h3>
+        <div className="space-y-3 mb-6">
+          <div>
+            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Chi Phí Hàng Thun" value={newMauChiPhi.ten} onChange={e => setNewMauChiPhi(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cp_" + Date.now() }))} />
+          </div>
+          {Object.entries(newMauChiPhi.chiPhi).map(([tenKhoan, donGia]) => (
+            <div key={tenKhoan} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1">
+                <button onClick={() => {
+                  const newChiPhi = { ...newMauChiPhi.chiPhi };
+                  delete newChiPhi[tenKhoan];
+                  setNewMauChiPhi(prev => ({ ...prev, chiPhi: newChiPhi }));
+                }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium flex-1">{tenKhoan}</span>
+              </div>
+              <div className="flex items-center gap-1 w-32 border rounded px-2">
+                <input type="number" className="w-full py-1 focus:outline-none bg-transparent" placeholder="Đơn giá" value={donGia || ""} onChange={e => {
+                  const newChiPhi = { ...newMauChiPhi.chiPhi };
+                  newChiPhi[tenKhoan] = parseInt(e.target.value) || 0;
+                  setNewMauChiPhi(prev => ({ ...prev, chiPhi: newChiPhi }));
+                }} />
+                <span className="text-xs text-slate-400">đ</span>
+              </div>
+            </div>
+          ))}
+          {/* Thêm khoản chi phí mới */}
+          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+            <input 
+              className="flex-1 px-3 py-1.5 border rounded text-sm" 
+              placeholder="Nhập khoản chi phí mới..." 
+              value={customChiPhiName} 
+              onChange={e => setCustomChiPhiName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && customChiPhiName.trim()) {
+                  setNewMauChiPhi(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [customChiPhiName.trim()]: 0 } }));
+                  setCustomChiPhiName("");
+                }
+              }}
+            />
+            <button onClick={() => {
+              if (customChiPhiName.trim()) {
+                setNewMauChiPhi(prev => ({ ...prev, chiPhi: { ...prev.chiPhi, [customChiPhiName.trim()]: 0 } }));
+                setCustomChiPhiName("");
+              }
+            }} className="px-3 py-1.5 bg-slate-100 text-slate-700 font-medium text-sm rounded hover:bg-slate-200 whitespace-nowrap">+ Thêm</button>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setShowTaoMauChiPhi(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => {
+            if (!newMauChiPhi.ten.trim()) { toast.error("Vui lòng nhập tên mẫu"); return; }
+            themMauChiPhi({ id: newMauChiPhi.id || "cp_" + Date.now(), ten: newMauChiPhi.ten, chiPhi: newMauChiPhi.chiPhi });
+            setShowTaoMauChiPhi(false);
+            setChiPhiCoDinh(newMauChiPhi.chiPhi);
+            toast.success("Đã lưu mẫu chi phí");
           }} className="px-4 py-2 bg-violet-600 text-white rounded font-bold">Lưu Mẫu</button>
         </div>
       </div>

@@ -1,0 +1,38 @@
+// Call /api/admin/run-sql de chay SQL migration
+async function callAPI(file) {
+  console.log(`\n=== Calling /api/admin/run-sql with file=${file || 'all'} ===`);
+  const r = await fetch('https://mimin-erp.vercel.app/api/admin/run-sql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file }),
+  });
+  const data = await r.json();
+  console.log('Status:', r.status);
+  console.log('Success:', data.success);
+  console.log('Timestamp:', data.timestamp);
+  if (data.error) {
+    console.log('Error:', data.error);
+    if (data.details) console.log('Details:', data.details);
+  }
+  if (data.results) {
+    console.log('\nResults:');
+    for (const r of data.results) {
+      console.log(` - [${r.success ? 'OK' : 'FAIL'}] ${r.file || r.step}: ${r.message || r.error || ''}`);
+      if (r.code) console.log(`     Code: ${r.code}`);
+      if (r.detail) console.log(`     Detail: ${r.detail}`);
+    }
+  }
+  if (data.verify) {
+    console.log('\nVerify:', JSON.stringify(data.verify, null, 2));
+  }
+  if (data.nextSteps) {
+    console.log('\nNext steps:');
+    for (const s of data.nextSteps) console.log(' -', s);
+  }
+  return data;
+}
+
+const file = process.argv[2] || 'all';
+callAPI(file).then(d => {
+  process.exit(d.success ? 0 : 1);
+}).catch(e => { console.error('FATAL:', e); process.exit(1); });

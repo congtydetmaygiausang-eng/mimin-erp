@@ -53,6 +53,7 @@ export interface MauTieuChuan {
   maSKU: string;
   dinhMuc: number;
   img: string;
+  video?: string;
 }
 
 export interface BangSize {

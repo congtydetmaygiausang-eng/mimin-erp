@@ -6,23 +6,30 @@
 // ============================================
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Shirt, Sparkles, TrendingUp, X, Plus } from "lucide-react";
-import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
+import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag } from "lucide-react";
+import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { toast } from "sonner";
 import ProductLibraryCard from "@/components/danh-muc-sp/ProductLibraryCard";
+import ProductDetailModal from "@/components/danh-muc-sp/ProductDetailModal";
+import ProductFormModal from "@/components/danh-muc-sp/ProductFormModal";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
   { id: "ao", label: "Áo", icon: Shirt },
   { id: "bo", label: "Bộ", icon: Shirt },
   { id: "phu-kien", label: "Phụ kiện", icon: Sparkles },
+  { id: "ban-san", label: "Bán Sàn", icon: Package },
+  { id: "ban-sale", label: "Bán Sale", icon: Tag },
 ];
 
 export default function DanhMucSanPhamPage() {
-  const { dsSanPham, loading } = useDanhMucSP();
+  const { dsSanPham, loading, themSP, suaSP, xoaSP } = useDanhMucSP();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedProduct, setSelectedProduct] = useState<SanPham | null>(null);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<SanPham | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -44,6 +51,8 @@ export default function DanhMucSanPhamPage() {
         if (activeFilter === "ao") return sp.loaiSP === "AoTru" || sp.loaiSP === "AoCoTron" || sp.loaiSP === "AoPolo";
         if (activeFilter === "bo") return sp.loaiSP === "BoTru" || sp.loaiSP === "BoCoTron";
         if (activeFilter === "phu-kien") return sp.loaiSP === "PhuKien";
+        if (activeFilter === "ban-san") return sp.ghiChu?.toLowerCase().includes("sàn") || sp.tenSP.toLowerCase().includes("sàn");
+        if (activeFilter === "ban-sale") return sp.ghiChu?.toLowerCase().includes("sale") || sp.tenSP.toLowerCase().includes("sale");
         return true;
       });
     }
@@ -64,6 +73,34 @@ export default function DanhMucSanPhamPage() {
   };
   const handleFavorite = (sp: any) => {
     toast.success(`Đã thêm "${sp.tenSP}" vào yêu thích`);
+  };
+
+  const handleEditProduct = (sp: SanPham) => {
+    setSelectedProduct(null);
+    setProductToEdit(sp);
+    setShowProductForm(true);
+  };
+
+  const handleDeleteProduct = (sp: SanPham) => {
+    if (confirm(`Bạn có chắc muốn xóa sản phẩm ${sp.tenSP}?`)) {
+      if (xoaSP) {
+        xoaSP(sp.id);
+        setSelectedProduct(null);
+        toast.success("Đã xóa sản phẩm thành công!");
+      }
+    }
+  };
+
+  const handleSaveProduct = async (sp: Partial<SanPham>) => {
+    if (productToEdit && suaSP) {
+      await suaSP(productToEdit.id, sp);
+      toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP}`);
+    } else if (themSP) {
+      await themSP(sp as SanPham);
+      toast.success(`Đã tạo sản phẩm mới: ${sp.tenSP}`);
+    }
+    setShowProductForm(false);
+    setProductToEdit(null);
   };
 
   if (!mounted) return null;
@@ -91,16 +128,24 @@ export default function DanhMucSanPhamPage() {
             </p>
           </div>
 
-          {/* Search bar - glassmorphism */}
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
-            <input
-              type="text"
-              placeholder="Tìm theo mã hoặc tên sản phẩm..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-white/30 bg-white/95 backdrop-blur-md text-sm focus:ring-2 focus:ring-white focus:border-white outline-none shadow-xl"
-            />
+          {/* Search bar & Add Button */}
+          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
+              <input
+                type="text"
+                placeholder="Tìm theo mã hoặc tên sản phẩm..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-white/30 bg-white/95 backdrop-blur-md text-sm focus:ring-2 focus:ring-white focus:border-white outline-none shadow-xl"
+              />
+            </div>
+            <button 
+              onClick={() => setShowProductForm(true)}
+              className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white text-cyan-700 font-extrabold rounded-2xl shadow-xl hover:bg-cyan-50 transition-colors whitespace-nowrap"
+            >
+              <Plus className="w-5 h-5"/> Tạo Mới
+            </button>
           </div>
         </div>
 
@@ -149,9 +194,9 @@ export default function DanhMucSanPhamPage() {
           <p className="text-cyan-100 text-sm mt-2">Vào Supabase Dashboard → SQL Editor → chạy file <code className="bg-white/20 px-2 py-0.5 rounded">fix-rls-and-add-columns.sql</code></p>
         </div>
       ) : (
-        /* === GRID: thu vien the card (2/3/4/5 cols responsive) === */
+        /* === GRID: thu vien the card (4 cols responsive cho the to) === */
         <div className="max-w-[1600px] mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
             {filtered.map((sp) => (
               <ProductLibraryCard
                 key={sp.id}
@@ -160,10 +205,32 @@ export default function DanhMucSanPhamPage() {
                 onCreateOrder={handleCreateOrder}
                 onDirectOrder={handleDirectOrder}
                 onFavorite={handleFavorite}
+                onClick={(product) => setSelectedProduct(product)}
               />
             ))}
           </div>
         </div>
+      )}
+
+      {selectedProduct && (
+        <ProductDetailModal
+          sp={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={handleAddToCart}
+          onEdit={handleEditProduct}
+          onDelete={handleDeleteProduct}
+        />
+      )}
+
+      {showProductForm && (
+        <ProductFormModal
+          initialData={productToEdit || undefined}
+          onClose={() => {
+            setShowProductForm(false);
+            setProductToEdit(null);
+          }}
+          onSave={handleSaveProduct}
+        />
       )}
     </div>
   );

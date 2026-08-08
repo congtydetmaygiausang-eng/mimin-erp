@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "next": "15.2.9",
+    "pg-mem": "^3.0.14",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },

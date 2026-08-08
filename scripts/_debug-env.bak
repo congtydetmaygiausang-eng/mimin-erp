@@ -1,0 +1,12 @@
+// Debug Vercel env
+async function main() {
+  const r = await fetch('https://mimin-erp.vercel.app/api/admin/run-sql?debug=1', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const data = await r.json();
+  console.log('Status:', r.status);
+  console.log('Response:', JSON.stringify(data, null, 2));
+}
+main();

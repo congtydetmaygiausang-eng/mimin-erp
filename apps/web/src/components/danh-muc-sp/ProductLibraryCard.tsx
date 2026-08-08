@@ -11,6 +11,7 @@ interface ProductLibraryCardProps {
   onCreateOrder?: (sp: SanPham) => void;
   onDirectOrder?: (sp: SanPham) => void;
   onFavorite?: (sp: SanPham) => void;
+  onClick?: (sp: SanPham) => void;
 }
 
 // Helper: render label trang thai
@@ -37,6 +38,7 @@ export default function ProductLibraryCard({
   onCreateOrder,
   onDirectOrder,
   onFavorite,
+  onClick,
 }: ProductLibraryCardProps) {
   const topColors = (sp.dsMau || []).slice(0, 3);
   const soSize = (sp.bangSize?.sizes || []).length;
@@ -57,7 +59,10 @@ export default function ProductLibraryCard({
   };
 
   return (
-    <div className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col">
+    <div 
+      onClick={() => onClick && onClick(sp)}
+      className={`group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
+    >
       {/* === ANH SAN PHAM === */}
       <div className="relative aspect-square bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden">
         {/* Placeholder icon */}
@@ -157,21 +162,18 @@ export default function ProductLibraryCard({
           </p>
         )}
 
-        {/* Bang size tags */}
-        <div className="flex flex-wrap gap-1 mb-2">
+        {/* Bang size tags & Ratio */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {(sp.bangSize?.sizes || []).slice(0, 5).map((s, i) => (
-            <span
-              key={i}
-              className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-            >
-              {s}
-            </span>
+            <div key={i} className="flex flex-col items-center">
+              <span className="min-w-[24px] px-1 py-0.5 text-[9px] font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">
+                {s}
+              </span>
+              <span className="min-w-[24px] px-1 py-0.5 text-[10px] font-extrabold bg-cyan-50 text-cyan-600 border border-slate-200 rounded-b text-center">
+                {sp.bangSize?.ratios[i] || sp.tiLeSize?.split(":")[i] || 0}
+              </span>
+            </div>
           ))}
-          {sp.tiLeSize && (
-            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-cyan-100 text-cyan-700 border border-cyan-200">
-              TL: {sp.tiLeSize}
-            </span>
-          )}
         </div>
 
         {/* === Row: Chat lieu + NCC (2 dong nho) === */}

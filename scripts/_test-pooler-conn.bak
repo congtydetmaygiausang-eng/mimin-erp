@@ -1,0 +1,41 @@
+// Test cac connection string khac nhau
+const path = require('path');
+const { Client } = require(path.join(__dirname, '..', 'apps', 'web', 'node_modules', 'pg'));
+
+const projectRef = 'ejcuqyaiwabfygyesvxj';
+const password = 'HtUkba9rRPdDmigJ';
+const region = 'aws-0-ap-southeast-1';
+
+const CONFIGS = [
+  { name: 'pooler-tx-6543 user=easy', url: `postgresql://postgres.ejcuqyaiwabfygyesvxj:${password}@${region}.pooler.supabase.com:6543/postgres` },
+  { name: 'pooler-sess-5432 user=easy', url: `postgresql://postgres.ejcuqyaiwabfygyesvxj:${password}@${region}.pooler.supabase.com:5432/postgres` },
+  { name: 'pooler-tx-6543 user=postgres', url: `postgresql://postgres:${password}@${region}.pooler.supabase.com:6543/postgres?options=reference%3D${projectRef}` },
+  { name: 'pooler-sess-5432 user=postgres options', url: `postgresql://postgres:${password}@${region}.pooler.supabase.com:5432/postgres?options=reference%3D${projectRef}` },
+];
+
+async function tryConn(name, url) {
+  console.log(`\n--- ${name} ---`);
+  console.log('URL:', url.replace(/:[^:@]+@/, ':***@'));
+  const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+  try {
+    await c.connect();
+    console.log('CONNECTED!');
+    const r = await c.query('SELECT current_user, current_database()');
+    console.log('User:', r.rows[0].current_user, '| DB:', r.rows[0].current_database);
+    await c.end();
+    return true;
+  } catch (e) {
+    console.log('FAIL:', e.message, '|', e.code);
+    return false;
+  }
+}
+
+async function main() {
+  for (const c of CONFIGS) {
+    if (await tryConn(c.name, c.url)) {
+      console.log('\n=== WORKING URL:', c.url.replace(/:[^:@]+@/, ':***@'), '===');
+      return;
+    }
+  }
+}
+main();
