@@ -24,12 +24,12 @@ export const LOAI_SP_LABELS: Record<LoaiSP, string> = {
 };
 
 export const BANG_CHI_PHI_CO_DINH: Record<LoaiSP, ChiPhiCoDinh> = {
-  "BoTru": { "Cắt": 1600, "EPKEOTRU": 300, "EPNHAN": 300, "Khuy nút": 750, "Ủi": 1500, "Đóng gói": 1200, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
-  "AoTru": { "Cắt": 900, "EPKEOTRU": 300, "EPNHAN": 300, "Khuy nút": 750, "Ủi": 900, "Đóng gói": 700, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
-  "BoCoTron": { "Cắt": 1600, "EPKEOTRU": 0, "EPNHAN": 300, "Khuy nút": 0, "Ủi": 1400, "Đóng gói": 700, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
-  "AoCoTron": { "Cắt": 800, "EPKEOTRU": 0, "EPNHAN": 300, "Khuy nút": 0, "Ủi": 800, "Đóng gói": 1300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
-  "AoPolo": { "Cắt": 900, "EPKEOTRU": 300, "EPNHAN": 300, "Khuy nút": 750, "Ủi": 900, "Đóng gói": 700, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
-  "PhuKien": { "Cắt": 0, "EPKEOTRU": 0, "EPNHAN": 0, "Khuy nút": 0, "Ủi": 0, "Đóng gói": 0, "BAOBI_GIAY": 0, "THEBAI": 0, "DAYKEO": 0, "THUNQUAN": 0 }
+  "BoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
+  "AoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
+  "BoCoTron": { "EPKEOTRU": 0, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
+  "AoCoTron": { "EPKEOTRU": 0, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
+  "AoPolo": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
+  "PhuKien": { "BAOBI_GIAY": 0, "THEBAI": 0 }
 };
 
 export type TrangThaiLenhCat = "Nhap" | "DaTao" | "DangCat" | "HoanThanh" | "ChuyenTiep";
