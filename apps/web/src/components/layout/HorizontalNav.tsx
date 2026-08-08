@@ -48,7 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
     id: "san-xuat",
     label: "Sản Xuất & Kế hoạch",
     icon: Factory,
-    color: "from-violet-500 to-purple-600",
+    color: "from-teal-500 to-emerald-600",
     items: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX" },
       { href: "/lenh-cat", label: "Lệnh cắt" },
@@ -63,7 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
     id: "kho",
     label: "Kho & Giao Hàng",
     icon: Boxes,
-    color: "from-amber-500 to-orange-600",
+    color: "from-sky-500 to-cyan-600",
     items: [
       { href: "/kho-vai-tinhmann", label: "Kho vải" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu" },
@@ -89,7 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
     id: "danh-muc",
     label: "Danh Mục Dữ Liệu",
     icon: Database,
-    color: "from-rose-500 to-pink-600",
+    color: "from-blue-500 to-indigo-600",
     items: [
       { href: "/danh-muc-sp", label: "Danh mục sản phẩm" },
       { href: "/nhan-su", label: "Nhân sự" },
@@ -136,13 +136,12 @@ export function HorizontalNav() {
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId) || NAV_GROUPS[0];
 
   return (
-    <header className="sticky top-0 z-30 shadow-md bg-white/95 backdrop-blur-md border-b border-slate-200">
+    <header className="sticky top-0 z-30 shadow-md bg-white/95 backdrop-blur-md border-b border-slate-200 flex flex-col">
       {user && <DemoBanner user={user} />}
 
-      {/* === HANG 1: Logo + Nhom menu + Search + User === */}
-      <div className="flex items-center gap-2 px-3 sm:px-4 md:px-6 h-14">
-        {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2 mr-3 shrink-0">
+      {/* === HÀNG 1: Tìm kiếm, Thông báo, Theme, Avatar === */}
+      <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 h-14 border-b border-slate-100">
+        <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
             M
           </div>
@@ -151,35 +150,7 @@ export function HorizontalNav() {
             <div className="text-[10px] text-slate-500">Quản lý may mặc</div>
           </div>
         </Link>
-
-        {/* 6 nhom menu chinh - ngang, scrollable */}
-        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-1">
-          {NAV_GROUPS.map((g) => {
-            const Icon = g.icon;
-            const active = g.id === activeGroupId;
-            return (
-              <button
-                key={g.id}
-                onClick={() => {
-                  // Click vao group -> navigate den item dau tien
-                  if (g.items[0]) router.push(g.items[0].href);
-                }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition shrink-0 ${
-                  active
-                    ? `bg-gradient-to-r ${g.color} text-white shadow-md`
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-                title={g.label}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden md:inline">{g.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right: Search + Theme + Role + Notif + User */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="hidden md:block">
             <GlobalSearch />
           </div>
@@ -188,55 +159,76 @@ export function HorizontalNav() {
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Đổi theme"
           >
-            {mounted && theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           <RoleSwitcher />
           <NotificationBell />
           {user && (
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white text-sm font-semibold">
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
                 {user.name?.charAt(0) || "U"}
               </div>
               <div className="hidden xl:block leading-tight">
-                <div className="text-xs font-semibold text-slate-800">{user.name}</div>
-                <div className="text-[10px] text-slate-500">{user.title}</div>
+                <div className="text-sm font-bold text-slate-800">{user.name}</div>
+                <div className="text-xs text-slate-500">{user.title}</div>
               </div>
               <button
                 onClick={async () => {
                   await signOut();
                   router.replace("/login");
                 }}
-                className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition"
+                className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition ml-1"
                 aria-label="Đăng xuất"
                 title="Đăng xuất"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* === HANG 2: Sub-menu cua nhom active === */}
-      <div className={`bg-gradient-to-r ${activeGroup.color} text-white`}>
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6">
-          <div className="flex items-center gap-2 h-10 overflow-x-auto">
-            <span className="text-[11px] uppercase font-extrabold opacity-80 mr-1 shrink-0">
-              {activeGroup.label}:
-            </span>
+      {/* === HÀNG 2: MODULES === */}
+      <div className="flex items-center gap-2 px-3 sm:px-4 md:px-6 h-14 overflow-x-auto border-b border-slate-100 bg-slate-50/50">
+        {NAV_GROUPS.map((g) => {
+          const Icon = g.icon;
+          const active = g.id === activeGroupId;
+          return (
+            <button
+              key={g.id}
+              onClick={() => {
+                if (g.items[0]) router.push(g.items[0].href);
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition shrink-0 border ${
+                active
+                  ? `bg-gradient-to-r ${g.color} text-white shadow-md border-transparent`
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-800"
+              }`}
+              title={g.label}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{g.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* === HÀNG 3: TABS CỦA MODULE === */}
+      <div className="bg-slate-100/80 border-b border-slate-200">
+        <div className="max-w-full px-3 sm:px-4 md:px-6">
+          <div className="flex items-center gap-2 h-12 overflow-x-auto">
             {activeGroup.items.map((it) => {
               const active = pathname === it.href;
               return (
                 <Link
                   key={it.href}
                   href={it.href}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition shrink-0 flex items-center gap-1 ${
+                  className={`px-4 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition shrink-0 flex items-center gap-1 border ${
                     active
-                      ? "bg-white text-slate-800 shadow-md"
-                      : "text-white/90 hover:bg-white/20"
+                      ? `bg-gradient-to-r ${activeGroup.color} text-white shadow-sm border-transparent`
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-200"
                   }`}
                 >
-                  {active && <ChevronRight className="w-3 h-3" />}
                   {it.label}
                 </Link>
               );
