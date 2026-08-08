@@ -48,7 +48,10 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
     <div className={`card p-4 hover:shadow-lg transition-shadow ${isLate ? "ring-1 ring-rose-500/40" : ""}`}>
       {/* Header */}
       <div className="flex gap-4 mb-4">
-        <div className="w-28 h-28 shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm">
+        <div 
+          className="w-28 h-28 shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={onEdit}
+        >
           {lc.dsMau?.[0]?.img ? (
             <img src={lc.dsMau[0].img} alt="SP" className="w-full h-full object-cover" />
           ) : (
@@ -68,7 +71,12 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
               </div>
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <h3 className="font-black text-xl text-slate-900 leading-tight truncate">{lc.tenSP}</h3>
+              <h3 
+                className="font-black text-xl text-slate-900 leading-tight truncate cursor-pointer hover:text-sky-600 transition-colors"
+                onClick={onEdit}
+              >
+                {lc.tenSP}
+              </h3>
               {lc.daCoSoDo && (
                 <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-black shrink-0 shadow-sm">
                   <CheckCircle2 className="w-3 h-3" />
@@ -126,6 +134,17 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
           </>
         )}
       </div>
+
+      {lc.phanCong && lc.phanCong.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+          {lc.phanCong.map((pc, idx) => (
+            <div key={idx} className="inline-flex items-center gap-1 text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-800 dark:text-slate-200">{pc.tenCongDoan}:</span>
+              <span className="truncate max-w-[100px]">{pc.nguoiTen}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-1 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
