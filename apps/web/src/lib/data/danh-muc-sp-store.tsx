@@ -536,6 +536,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
               };
               await client.from("san_pham").insert(dbPayload);
             })).catch(() => {});
+            }
           }
         } else {
           console.warn("⚠️ Supabase chua cau hinh");
