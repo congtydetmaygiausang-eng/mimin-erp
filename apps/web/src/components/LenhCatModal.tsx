@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
   Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-  Wand2,
+  Wand2, CheckCircle2, UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -154,6 +154,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       if (editing.phanCong) setPhanCong(editing.phanCong);
       setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
       setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
+      setSoDoChinh(editing.soDoChinh || "");
+      setSoDoPhoi(editing.soDoPhoi || "");
+      setDaCoSoDo(editing.daCoSoDo || false);
     }
   }, [editing]);
 
@@ -179,6 +182,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sơ đồ cắt
+  const [soDoChinh, setSoDoChinh] = useState("");
+  const [soDoPhoi, setSoDoPhoi] = useState("");
+  const [daCoSoDo, setDaCoSoDo] = useState(false);
   
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -317,6 +325,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.mauCongDoan) setMauCongDoan(parsed.mauCongDoan);
           if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
           if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
+          if (parsed.soDoChinh) setSoDoChinh(parsed.soDoChinh);
+          if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
+          if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
         }
       } catch (e) {
         console.error("Lỗi tải nháp", e);
@@ -330,11 +341,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       const draft = {
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
         ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu,
-        tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh
+        tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
+        soDoChinh, soDoPhoi, daCoSoDo
       };
       localStorage.setItem("lenhCatDraft", JSON.stringify(draft));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, soDoPhoi, daCoSoDo, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -468,6 +480,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ghiChu,
         trangThai: status,
         ngayTao: ngayBatDau,
+        soDoChinh,
+        soDoPhoi,
+        daCoSoDo,
       }, user || getFallbackUser());
       
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
@@ -496,6 +511,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         trangThai: status,
         phienBanDinhMuc: 1,
         ngayTao: ngayBatDau,
+        soDoChinh,
+        soDoPhoi,
+        daCoSoDo,
         nguoiTao: user?.name || "Nguyễn Thị Ngọc Giàu"
       }, user || getFallbackUser());
 
@@ -797,6 +815,56 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* SƠ ĐỒ CẮT (MARKER) */}
+          <div className="bg-[#F0F7FF] p-5 rounded-lg border border-blue-200/80 shadow-sm mt-6">
+             <div className="flex justify-between items-center mb-4">
+               <h2 className="text-xl font-bold text-[#1E3A8A] uppercase tracking-wide">SƠ ĐỒ CẮT (MARKER)</h2>
+               <div className="flex items-center gap-2 bg-blue-100/50 px-3 py-1.5 rounded-full">
+                 <input type="checkbox" id="daCoSoDo" className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 cursor-pointer" checked={daCoSoDo} onChange={e => setDaCoSoDo(e.target.checked)} />
+                 <label htmlFor="daCoSoDo" className="text-sm font-bold text-[#1E3A8A] cursor-pointer">Đã có sơ đồ</label>
+               </div>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {/* Sơ đồ chính */}
+               <div>
+                 <label className="text-sm font-bold text-slate-700 block mb-2">Sơ đồ vải chính</label>
+                 <div className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center">
+                   {soDoChinh ? (
+                     <div className="flex items-center gap-2">
+                       <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                       <span className="text-sm font-medium text-slate-700">Đã tải lên sơ đồ chính</span>
+                       <button onClick={(e) => { e.stopPropagation(); setSoDoChinh(""); }} className="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"><X size={16}/></button>
+                     </div>
+                   ) : (
+                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500" onClick={() => { setSoDoChinh("uploaded_chinh.plt"); setDaCoSoDo(true); }}>
+                       <UploadCloud className="w-8 h-8 mb-1" />
+                       <span className="text-xs font-medium">Tải lên sơ đồ chính (PLT, PDF, Image)</span>
+                     </div>
+                   )}
+                 </div>
+               </div>
+               
+               {/* Sơ đồ phối */}
+               <div>
+                 <label className="text-sm font-bold text-slate-700 block mb-2">Sơ đồ phối (nếu có)</label>
+                 <div className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center">
+                   {soDoPhoi ? (
+                     <div className="flex items-center gap-2">
+                       <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                       <span className="text-sm font-medium text-slate-700">Đã tải lên sơ đồ phối</span>
+                       <button onClick={(e) => { e.stopPropagation(); setSoDoPhoi(""); }} className="ml-2 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"><X size={16}/></button>
+                     </div>
+                   ) : (
+                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500" onClick={() => { setSoDoPhoi("uploaded_phoi.plt"); setDaCoSoDo(true); }}>
+                       <UploadCloud className="w-8 h-8 mb-1" />
+                       <span className="text-xs font-medium">Tải lên sơ đồ phối</span>
+                     </div>
+                   )}
+                 </div>
+               </div>
+             </div>
           </div>
 
           {/* KHỐI 2: MÀU SẮC, VẢI, NGUYÊN PHỤ LIỆU */}

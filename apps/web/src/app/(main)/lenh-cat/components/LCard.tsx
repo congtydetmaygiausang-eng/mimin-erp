@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
 import { ReactNode } from "react";
-import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2 } from "lucide-react";
+import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2 } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE, LOAI_SP_LABELS, type LenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
@@ -60,6 +60,12 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
             {LOAI_SP_LABELS[lc.loaiSP]} · Mã: <span className="font-mono">{lc.maSP}</span>
           </p>
         </div>
+        {lc.daCoSoDo && (
+          <div className="flex items-center gap-1 px-1.5 py-0.5 border border-emerald-500 bg-emerald-50 text-emerald-600 rounded shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-bold">Đã có sơ đồ</span>
+          </div>
+        )}
       </div>
 
       {/* Body - Stats */}

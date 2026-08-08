@@ -153,6 +153,11 @@ export type LenhCat = {
   chiPhiCoDinh: ChiPhiCoDinh;
   // Bảng tính
   bangCOGS?: BangCOGS;
+  // Sơ đồ cắt
+  soDoChinh?: string;
+  soDoPhoi?: string;
+  daCoSoDo?: boolean;
+  
   // Meta
   phuTrachCat: string;
   phuTrachSX?: string;
