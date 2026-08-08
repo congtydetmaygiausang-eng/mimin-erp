@@ -67,40 +67,41 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
                 </span>
               </div>
             </div>
-            <h3 className="font-black text-xl text-slate-800 leading-tight truncate">{lc.tenSP}</h3>
-            <p className="text-sm text-slate-500 mt-1.5 font-semibold">
-              {LOAI_SP_LABELS[lc.loaiSP]} · Mã: <span className="font-black text-slate-700">{lc.maSP}</span>
+            <div className="flex items-center gap-2 mt-1">
+              <h3 className="font-black text-xl text-slate-900 leading-tight truncate">{lc.tenSP}</h3>
+              {lc.daCoSoDo && (
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-black shrink-0 shadow-sm">
+                  <CheckCircle2 className="w-3 h-3" />
+                  ĐÃ CÓ SƠ ĐỒ
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-slate-600 mt-1.5 font-bold">
+              {LOAI_SP_LABELS[lc.loaiSP]} · Mã: <span className="font-black text-slate-800">{lc.maSP}</span>
             </p>
           </div>
-          
-          {lc.daCoSoDo && (
-            <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white rounded-md shadow-sm w-fit">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-[11px] font-bold uppercase tracking-wider">Đã có sơ đồ</span>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Body - Stats */}
-      <div className="space-y-1.5 mb-3">
+      <div className="space-y-2 mb-3">
         <div className="flex items-center justify-between text-xs">
-          <span className="opacity-60 flex items-center gap-1">
-            <Package className="w-3 h-3" /> Tổng SL
+          <span className="font-bold text-slate-600 flex items-center gap-1.5">
+            <Package className="w-4 h-4 text-slate-500" /> Tổng SL
           </span>
-          <span className="font-bold tabular-nums">{(lc.tongSL || 0).toLocaleString()}</span>
+          <span className="font-black text-slate-900 tabular-nums text-sm">{(lc.tongSL || 0).toLocaleString()}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="opacity-60 flex items-center gap-1">
-            <Shirt className="w-3 h-3" /> Tỉ lệ size
+          <span className="font-bold text-slate-600 flex items-center gap-1.5">
+            <Shirt className="w-4 h-4 text-slate-500" /> Tỉ lệ size
           </span>
-          <span className="font-mono text-[10px]">
+          <span className="font-mono font-bold text-slate-800 text-[11px]">
             {lc.tiLeSize || "--"}
           </span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="opacity-60 flex items-center gap-1">
-            <Calendar className="w-3 h-3" /> Hạn
+          <span className="font-bold text-slate-600 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-slate-500" /> Hạn
           </span>
           <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
         </div>
