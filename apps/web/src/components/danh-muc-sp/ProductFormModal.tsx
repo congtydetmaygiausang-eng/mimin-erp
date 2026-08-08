@@ -73,9 +73,9 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={onClose}>
       <div 
-        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-slide-up"
+        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col animate-slide-up my-auto"
         onClick={e => e.stopPropagation()}
       >
         <div className="p-4 bg-[#2B4C3E] text-white flex justify-between items-center rounded-t-2xl">
@@ -142,9 +142,9 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
               {dsMau.map((m, i) => (
                 <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex gap-6 items-start relative shadow-sm">
                   {/* Media Area (Left side) */}
-                  <div className="w-2/5 shrink-0 grid grid-cols-2 gap-2">
+                  <div className="w-2/5 shrink-0 flex items-end gap-2">
                     {/* Image Upload */}
-                    <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-white relative overflow-hidden group">
+                    <div className="w-24 aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-white relative overflow-hidden group shadow-sm">
                       {m.img ? (
                         <img src={m.img} alt={m.ten} className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
                       ) : (
@@ -170,7 +170,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                       />
                     </div>
                     {/* Video Upload */}
-                    <div className="aspect-[9/16] flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 relative overflow-hidden group">
+                    <div className="w-[5.25rem] aspect-[9/16] flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 relative overflow-hidden group shadow-sm">
                       {m.video ? (
                         <video src={m.video} className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
                       ) : (
@@ -192,7 +192,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                         }} 
                       />
                       {m.video && (
-                         <div className="absolute top-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded shadow">Đã tải video</div>
+                         <div className="absolute top-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded shadow">Video</div>
                       )}
                     </div>
                   </div>

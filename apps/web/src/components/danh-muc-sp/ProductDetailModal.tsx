@@ -40,9 +40,9 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
 
   return createPortal(
     <>
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 md:p-8 md:pt-20 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={onClose}>
       <div 
-        className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col md:flex-row animate-slide-up"
+        className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full flex flex-col md:flex-row animate-slide-up my-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Left: Image Panel */}
@@ -58,15 +58,15 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
             )}
           </div>
           
-          {selectedImage ? (
+          {selectedVideo ? (
+            <div className="w-full h-full flex-1 group relative overflow-hidden bg-black flex items-center justify-center">
+              <video src={selectedVideo} autoPlay loop muted playsInline controls className="w-full h-full object-contain absolute inset-0" />
+            </div>
+          ) : selectedImage ? (
             <div className="w-full h-full flex-1 group relative cursor-pointer overflow-hidden bg-slate-100" onClick={() => setShowFullScreen(true)}>
               <img src={selectedImage} alt={sp.tenSP} className="w-full h-full object-cover object-top absolute inset-0" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                {selectedVideo ? (
-                  <PlayCircle className="w-16 h-16 text-white opacity-0 group-hover:opacity-100 drop-shadow-lg transition-opacity" />
-                ) : (
                   <Maximize2 className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 drop-shadow-lg transition-opacity" />
-                )}
               </div>
             </div>
           ) : (
