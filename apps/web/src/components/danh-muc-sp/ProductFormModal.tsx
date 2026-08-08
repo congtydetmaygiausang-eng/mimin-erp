@@ -4,7 +4,7 @@ import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { type LoaiSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
-import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
+import { type SizeRatioPreset, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 interface ProductFormModalProps {
   onClose: () => void;
@@ -14,7 +14,47 @@ interface ProductFormModalProps {
 
 export default function ProductFormModal({ onClose, onSave, initialData }: ProductFormModalProps) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
+  const [isCreatingRatio, setIsCreatingRatio] = useState(false);
+  const [customSizes, setCustomSizes] = useState("S:M:L:XL");
+  const [customValues, setCustomValues] = useState("1:2:2:1");
+
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem('CUSTOM_SIZE_RATIOS');
+    if (saved) {
+      try { setCustomPresets(JSON.parse(saved)); } catch (e) {}
+    }
+  }, []);
+
+  const allPresets = [...SIZE_RATIO_PRESETS, ...customPresets];
+
+  const handleSaveNewRatio = () => {
+    const sList = customSizes.split(':').filter(Boolean);
+    const vList = customValues.split(':').map(Number).filter(n => !isNaN(n));
+    if (sList.length === 0 || vList.length === 0 || sList.length !== vList.length) {
+      toast.error("Định dạng không hợp lệ. Số lượng size và tỉ lệ phải bằng nhau!");
+      return;
+    }
+    const val = customValues;
+    const riSo = vList.reduce((a, b) => a + b, 0);
+    const label = `${customSizes} = ${customValues} (Ri${riSo})`;
+    const newPreset: SizeRatioPreset = {
+      id: `custom-${Date.now()}`,
+      label,
+      value: val,
+      sizes: sList,
+      ratios: vList,
+      riSo,
+      ghiChu: "Tùy chỉnh"
+    };
+    const updated = [...customPresets, newPreset];
+    setCustomPresets(updated);
+    localStorage.setItem('CUSTOM_SIZE_RATIOS', JSON.stringify(updated));
+    setTiLeSize(val);
+    setIsCreatingRatio(false);
+    toast.success("Đã lưu tỉ lệ size mới!");
+  };
 
   const [maSP, setMaSP] = useState(initialData?.id || "");
   const [tenSP, setTenSP] = useState(initialData?.tenSP || "");
@@ -38,13 +78,23 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       return;
     }
     
-    // Add default bangSize based on tiLeSize
-    const ratios = tiLeSize.split(":").map(Number);
-    const bangSize = {
-      sizes: ["M", "L", "XL", "2XL", "3XL"].slice(0, ratios.length),
-      ratios: ratios,
-      riSo: ratios.reduce((a, b) => a + b, 0)
-    };
+    // Match with selected preset or fallback
+    const preset = allPresets.find(p => p.value === tiLeSize);
+    let bangSize;
+    if (preset) {
+      bangSize = {
+        sizes: preset.sizes,
+        ratios: preset.ratios,
+        riSo: preset.riSo
+      };
+    } else {
+      const ratios = tiLeSize.split(":").map(Number);
+      bangSize = {
+        sizes: ["M", "L", "XL", "2XL", "3XL"].slice(0, ratios.length),
+        ratios: ratios,
+        riSo: ratios.reduce((a, b) => a + b, 0)
+      };
+    }
 
     const newProduct: Partial<SanPham> = {
       ...(initialData || {}),
@@ -119,17 +169,40 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
               </select>
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Tỉ lệ Size (M:L:XL:2XL:3XL) *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-bold text-slate-700">Tỉ lệ Size *</label>
+                <button onClick={() => setIsCreatingRatio(!isCreatingRatio)} className="text-xs text-cyan-700 font-bold hover:bg-cyan-100 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded transition-colors">
+                  + Tạo mới
+                </button>
+              </div>
               <select 
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 bg-white"
                 value={tiLeSize} onChange={e => setTiLeSize(e.target.value)}
               >
-                {SIZE_RATIO_PRESETS.map((preset) => (
+                {allPresets.map((preset) => (
                   <option key={preset.id} value={preset.value}>
                     {preset.label}
                   </option>
                 ))}
               </select>
+              
+              {isCreatingRatio && (
+                <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg shadow-inner space-y-3 relative">
+                   <div className="text-xs font-bold text-slate-700 border-b pb-1">TẠO TỈ LỆ SIZE MỚI</div>
+                   <div>
+                     <label className="text-xs font-semibold text-slate-600">Danh sách Size</label>
+                     <input className="w-full border p-1.5 rounded text-sm mt-1 focus:ring-1 focus:ring-cyan-500 outline-none uppercase font-mono" value={customSizes} onChange={e => setCustomSizes(e.target.value.toUpperCase())} placeholder="VD: S:M:L:XL" />
+                   </div>
+                   <div>
+                     <label className="text-xs font-semibold text-slate-600">Tỉ lệ tương ứng</label>
+                     <input className="w-full border p-1.5 rounded text-sm mt-1 focus:ring-1 focus:ring-cyan-500 outline-none font-mono" value={customValues} onChange={e => setCustomValues(e.target.value)} placeholder="VD: 1:2:2:1" />
+                   </div>
+                   <div className="flex gap-2 pt-1">
+                     <button className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded py-1.5 text-sm font-bold" onClick={handleSaveNewRatio}>Lưu tỉ lệ</button>
+                     <button className="px-3 bg-white border hover:bg-slate-50 rounded py-1.5 text-sm font-bold text-slate-600" onClick={() => setIsCreatingRatio(false)}>Hủy</button>
+                   </div>
+                </div>
+              )}
             </div>
           </div>
 
