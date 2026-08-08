@@ -80,11 +80,8 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                   title={m.ten}
                 />
              ))}
-          </div>
-        </div>
-
-        {/* Right: Info Panel */}
-        <div className="w-full md:w-7/12 flex flex-col h-full max-h-[60vh] md:max-h-[85vh]">
+                  {/* Right: Info Panel */}
+        <div className="w-full md:w-7/12 flex flex-col h-full md:max-h-[85vh] overflow-hidden">
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white shrink-0 z-10">
             <div>
@@ -100,7 +97,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
           </div>
 
           {/* Body Content */}
-          <div className="p-6 flex-1 space-y-6 overflow-y-auto">
+          <div className="p-6 flex-1 space-y-6 overflow-y-auto min-h-0">
             
             {/* Price & Stats Row */}
             <div className="flex flex-wrap gap-6 items-end">
@@ -123,34 +120,34 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
               </div>
             </div>
 
-            <div className="h-px bg-slate-100 w-full" />
+            <div className="h-px bg-slate-100 w-full shrink-0" />
 
             {/* Spec Grid */}
-            <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+            <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm shrink-0">
               <div className="flex items-center gap-2">
                 <Tag className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-500 w-24">Phân loại:</span>
-                <span className="font-semibold text-slate-800">{loaiInfoLabel}</span>
+                <span className="text-slate-500 w-24 shrink-0">Phân loại:</span>
+                <span className="font-semibold text-slate-800 truncate">{loaiInfoLabel}</span>
               </div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-500 w-24">Chất liệu:</span>
-                <span className="font-semibold text-slate-800">{sp.chatLieu || "Cotton cao cấp"}</span>
+                <span className="text-slate-500 w-24 shrink-0">Chất liệu:</span>
+                <span className="font-semibold text-slate-800 truncate">{sp.chatLieu || "Cotton cao cấp"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-500 w-24">Nhà cung cấp:</span>
-                <span className="font-semibold text-slate-800">{sp.ncc || "Nội bộ"}</span>
+                <span className="text-slate-500 w-24 shrink-0">Nhà cung cấp:</span>
+                <span className="font-semibold text-slate-800 truncate">{sp.ncc || "Nội bộ"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Package className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-500 w-24">Kho hàng:</span>
-                <span className="font-semibold text-slate-800">{sp.trangThai === "con-hang" ? "Sẵn kho" : "Hết"}</span>
+                <span className="text-slate-500 w-24 shrink-0">Kho hàng:</span>
+                <span className="font-semibold text-slate-800 truncate">{sp.trangThai === "con-hang" ? "Sẵn kho" : "Hết"}</span>
               </div>
             </div>
 
             {/* Sizes & Ratio */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 shrink-0">
               <div className="text-xs font-bold text-slate-500 uppercase mb-3">Thông số Size & Tỉ lệ cắt</div>
               <div className="flex items-center gap-4 flex-wrap">
                 {sp.bangSize?.sizes.map((s, idx) => (
@@ -163,7 +160,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
             </div>
 
             {/* Colors */}
-            <div>
+            <div className="shrink-0">
               <div className="text-xs font-bold text-slate-500 uppercase mb-3">Màu sắc tiêu chuẩn ({soMau})</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {sp.dsMau?.map((m, idx) => (
@@ -201,14 +198,14 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
 
             {/* Note */}
             {sp.ghiChu && (
-              <div className="bg-amber-50 text-amber-800 p-3 rounded-lg text-sm border border-amber-200">
+              <div className="bg-amber-50 text-amber-800 p-3 rounded-lg text-sm border border-amber-200 shrink-0">
                 <span className="font-bold">Ghi chú: </span> {sp.ghiChu}
               </div>
             )}
           </div>
 
           {/* Footer CTA */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3 shrink-0 z-10">
+          <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3 shrink-0 z-10 mt-auto">
             {onDelete && (
               <button 
                 onClick={() => onDelete(sp)}
@@ -232,7 +229,6 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
               <ShoppingCart className="w-5 h-5" /> Thêm vào Đơn Đặt Hàng
             </button>
           </div>
-
         </div>
       </div>
     </div>
