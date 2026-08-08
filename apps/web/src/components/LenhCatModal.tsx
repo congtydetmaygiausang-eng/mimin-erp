@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
   Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-  Wand2, CheckCircle2, UploadCloud, Download,
+  Wand2, CheckCircle2, UploadCloud, Download, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -1008,7 +1008,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                            </div>
                            <div className="flex gap-2">
                              <button onClick={(e) => handlePreviewPDF(e, pdfSoDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
-                               <Download size={14} /> Xem
+                               <Eye size={14} /> Xem
                              </button>
                              <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoChinh)} className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
                                <Download size={14} /> Tải
@@ -1089,7 +1089,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                            </div>
                            <div className="flex gap-2">
                              <button onClick={(e) => handlePreviewPDF(e, pdfSoDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
-                               <Download size={14} /> Xem
+                               <Eye size={14} /> Xem
                              </button>
                              <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoPhoi)} className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
                                <Download size={14} /> Tải
