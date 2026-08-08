@@ -37,7 +37,7 @@ import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE } from "@/lib/size-ratio-presets";
 
 
-const getDoiTuongOptions = (tenCongDoan: string) => {
+const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string) => {
   const cd = (tenCongDoan || "").toLowerCase();
   
   // 1. Cắt
@@ -65,11 +65,11 @@ const getDoiTuongOptions = (tenCongDoan: string) => {
   }
 
   // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
-  if (cd.includes("trụ") || cd.includes("tru")) {
+  if (cd.includes("trụ") || cd.includes("tru") || (cd.includes("may áo") && (loaiSP === "AoTru" || loaiSP === "BoTru" || loaiSP === "AoPolo"))) {
     return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Trụ)` }));
   }
-  if (cd.includes("tròn") || cd.includes("tron")) {
+  if (cd.includes("tròn") || cd.includes("tron") || (cd.includes("may áo") && (loaiSP === "AoCoTron" || loaiSP === "BoCoTron"))) {
     return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRON"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Tròn)` }));
   }
@@ -83,7 +83,9 @@ const getDoiTuongOptions = (tenCongDoan: string) => {
   }
 
   if (cd.includes("may") || cd.includes("gia công") || cd.includes("outsource")) {
-    return DOI_TAC_GIA_CONG.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
+    // Chỉ hiển thị các xưởng may nếu không phải in/thêu
+    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU") || dt.ma.startsWith("GC-TRON") || dt.ma.startsWith("GC-QUAN"))
+      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
   }
 
   return [
@@ -1137,7 +1139,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                           }}
                         >
                           <option value="">-- Chọn NV/Xưởng --</option>
-                          {getDoiTuongOptions(kh.tenCongDoan).map(opt => (
+                          {getDoiTuongOptions(kh.tenCongDoan, loaiSP).map(opt => (
                             <option key={opt.ma} value={opt.ma}>{opt.ten}</option>
                           ))}
                         </select>
