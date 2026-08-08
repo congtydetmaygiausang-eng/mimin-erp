@@ -163,6 +163,7 @@ export type LenhCat = {
   khoSoDoPhoi?: string;
   daiSoDoPhoi?: string;
   daCoSoDo?: boolean;
+  ghiChuKyThuat?: string;
   
   // Meta
   phuTrachCat: string;

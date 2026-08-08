@@ -143,8 +143,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       if (editing.ngayTao) setNgayBatDau(editing.ngayTao);
       setHanHoanThanh(editing.hanHoanThanh);
       setPhuTrachCat(editing.phuTrachCat || "NV006");
-      setPhuTrachSX(editing.phuTrachSX || "NV001");
+      setPhuTrachSX(editing.phuTrachSX || "");
       setGhiChu(editing.ghiChu || "");
+      setGhiChuKyThuat(editing.ghiChuKyThuat || "");
       setTrangThai(editing.trangThai || "Nhap");
       setTiLeSize(editing.tiLeSize || "1:2:2:1");
       setSoMau(editing.dsMau?.length || 4);
@@ -251,6 +252,31 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       toast.error("Không thể tải file (dữ liệu mock cũ)");
     }
   };
+
+  const handlePreviewPDF = (e: React.MouseEvent, fileDataStr: string) => {
+    e.stopPropagation();
+    try {
+      const fileData = JSON.parse(fileDataStr);
+      if (!fileData.url) return;
+      
+      const arr = fileData.url.split(',');
+      const match = arr[0].match(/:(.*?);/);
+      const mime = match ? match[1] : 'application/pdf';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while(n--){
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], {type: mime});
+      const blobUrl = URL.createObjectURL(blob);
+      
+      window.open(blobUrl, '_blank');
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể xem trước file PDF");
+    }
+  };
   
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -268,8 +294,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   );
   
   const [phuTrachCat, setPhuTrachCat] = useState("NV006");
-  const [phuTrachSX, setPhuTrachSX] = useState("NV001");
+  const [phuTrachSX, setPhuTrachSX] = useState("");
   const [ghiChu, setGhiChu] = useState("");
+  const [ghiChuKyThuat, setGhiChuKyThuat] = useState("");
   const [trangThai, setTrangThai] = useState<TrangThaiLenhCat>("Nhap");
   const [phienBanDinhMuc, setPhienBanDinhMuc] = useState(1);
 
@@ -382,6 +409,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
           if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
           if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
+          if (parsed.ghiChuKyThuat) setGhiChuKyThuat(parsed.ghiChuKyThuat);
           if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
           if (parsed.soMau) setSoMau(parsed.soMau);
           if (parsed.dsMau && parsed.dsMau.length > 0) setDsMau(parsed.dsMau);
@@ -410,13 +438,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     if (!editId && draftLoaded) {
       localStorage.setItem("lenhCatDraft", JSON.stringify({
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
-        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu,
+        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
         soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh,
         soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo
       }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -548,6 +576,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
         ghiChu,
+        ghiChuKyThuat,
         trangThai: status,
         ngayTao: ngayBatDau,
         soDoChinh,
@@ -584,6 +613,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
         ghiChu,
+        ghiChuKyThuat,
         trangThai: status,
         phienBanDinhMuc: 1,
         ngayTao: ngayBatDau,
@@ -731,7 +761,6 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               </div>
 
               {/* Row 2 */}
-              {/* Row 2 */}
               <div className="md:col-span-2 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
                 <label className="text-sm font-bold text-blue-800 block mb-2 flex items-center gap-1.5">
                   <Package className="w-4 h-4" />
@@ -860,8 +889,18 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-bold text-slate-700 block mb-1">Ghi chú sản xuất</label>
+                    <label className="text-sm font-bold text-slate-700 block mb-2">Ghi chú (chung)</label>
                     <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-bold text-slate-700 block mb-2">Ghi chú kỹ thuật cắt may</label>
+                    <textarea 
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" 
+                      rows={3}
+                      value={ghiChuKyThuat} 
+                      onChange={e => setGhiChuKyThuat(e.target.value)} 
+                      placeholder="Nhập thông tin ghi chú kỹ thuật cắt may..." 
+                    />
                   </div>
                 </>
               ) : (
@@ -968,8 +1007,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                              </span>
                            </div>
                            <div className="flex gap-2">
-                             <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
-                               <Download size={14} /> Xem/Tải
+                             <button onClick={(e) => handlePreviewPDF(e, pdfSoDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                               <Download size={14} /> Xem
                              </button>
                              <button onClick={(e) => { e.stopPropagation(); setPdfSoDoChinh(""); filePdfChinhRef.current && (filePdfChinhRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
                                <X size={14} /> Xóa
@@ -1046,8 +1085,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                              </span>
                            </div>
                            <div className="flex gap-2">
-                             <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
-                               <Download size={14} /> Xem/Tải
+                             <button onClick={(e) => handlePreviewPDF(e, pdfSoDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                               <Download size={14} /> Xem
                              </button>
                              <button onClick={(e) => { e.stopPropagation(); setPdfSoDoPhoi(""); filePdfPhoiRef.current && (filePdfPhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
                                <X size={14} /> Xóa
