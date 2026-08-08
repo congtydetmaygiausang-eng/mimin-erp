@@ -480,14 +480,51 @@ interface DanhMucSPContextType {
 const STORAGE_KEY = "mimin_danh_muc_sp";
 const DanhMucSPContext = createContext<DanhMucSPContextType | undefined>(undefined);
 
+/** Helper: build Supabase snake_case payload từ SanPham (camelCase) */
+function buildDBPayload(sp: SanPham) {
+  return {
+    ma_sp: sp.id,
+    ma_dm: `DM-${sp.loaiSP}`,
+    ten_sp: sp.tenSP,
+    loai_sp: sp.loaiSP,
+    gia_ban_du_kien: sp.giaBanDuKien,
+    gia_von_du_kien: sp.giaVonDuKien,
+    ti_le_size: sp.tiLeSize,
+    bang_size: sp.bangSize,
+    ds_mau: sp.dsMau,
+    ghi_chu: sp.ghiChu,
+    ngay_tao: sp.ngayTao,
+    trang_thai: sp.trangThai || "con-hang",
+    da_ban: sp.daBan || 0,
+    ncc: sp.ncc || "",
+    chat_lieu: sp.chatLieu || "",
+    luot_xem: sp.luotXem || 0,
+    rating: sp.rating || 0,
+    hinh_anh: sp.hinhAnh || "",
+  };
+}
+
 export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   const [dsSanPham, setDsSanPham] = useState<SanPham[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load from Supabase on mount
+  // Load tu Supabase, fallback localStorage, fallback MOCK
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      // B1: Luon doc localStorage cache truoc de khong blank
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached && mounted) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setDsSanPham(parsed);
+            setLoading(false); // Show cached ngay
+          }
+        }
+      } catch (_) {}
+
+      // B2: Fetch Supabase (override cache neu co data moi)
       try {
         const { supabase } = await import("@/lib/supabase/client");
         const client = supabase;
@@ -496,64 +533,34 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           if (error) throw error;
 
           if (data && data.length > 0 && mounted) {
-            // Map snake_case from DB back to camelCase for frontend
             const mapped = data.map(item => mapSanPhamFromDB(item));
             setDsSanPham(mapped);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
           } else if (mounted) {
-            console.warn("⚠️ san_pham table empty - checking localStorage or seeding");
             const cached = localStorage.getItem(STORAGE_KEY);
             if (cached) {
-               try {
-                 setDsSanPham(JSON.parse(cached));
-               } catch(e) {
-                 setDsSanPham(MOCK_DANH_MUC);
-               }
+               try { setDsSanPham(JSON.parse(cached)); } catch(e) { setDsSanPham(MOCK_DANH_MUC); }
             } else {
                setDsSanPham(MOCK_DANH_MUC);
-               // Auto seed
-
-            Promise.all(MOCK_DANH_MUC.map(async sp => {
-              const dbPayload = {
-                ma_sp: sp.id,
-                ma_dm: `DM-${sp.loaiSP}`,
-                ten_sp: sp.tenSP,
-                loai_sp: sp.loaiSP,
-                gia_ban_du_kien: sp.giaBanDuKien,
-                gia_von_du_kien: sp.giaVonDuKien,
-                ti_le_size: sp.tiLeSize,
-                bang_size: sp.bangSize,
-                ds_mau: sp.dsMau,
-                ghi_chu: sp.ghiChu,
-                ngay_tao: sp.ngayTao,
-                trang_thai: sp.trangThai || "con-hang",
-                da_ban: sp.daBan || 0,
-                ncc: sp.ncc || "",
-                chat_lieu: sp.chatLieu || "",
-                luot_xem: sp.luotXem || 0,
-                rating: sp.rating || 0,
-                hinh_anh: sp.hinhAnh || "",
-              };
-              await client.from("san_pham").insert(dbPayload);
-            })).catch(() => {});
+               // Auto seed MOCK vao DB
+               Promise.all(MOCK_DANH_MUC.map(async sp => {
+                 const dbPayload = buildDBPayload(sp);
+                 await client.from("san_pham").insert(dbPayload);
+               })).catch(() => {});
             }
           }
         } else {
-          console.warn("⚠️ Supabase chua cau hinh");
+          // Khong co Supabase - dung localStorage
           const cached = localStorage.getItem(STORAGE_KEY);
-          if (cached) {
-            try {
-              setDsSanPham(JSON.parse(cached));
-            } catch(e) {
-              setDsSanPham(MOCK_DANH_MUC);
-            }
-          } else {
+          if (cached && mounted) {
+            try { setDsSanPham(JSON.parse(cached)); } catch(e) { setDsSanPham(MOCK_DANH_MUC); }
+          } else if (mounted) {
             setDsSanPham(MOCK_DANH_MUC);
           }
         }
       } catch (e) {
-        console.error("Lỗi fetch Sản phẩm", e);
-        if (mounted) setDsSanPham(MOCK_DANH_MUC);
+        console.error("Loi fetch San pham", e);
+        // Fallback localStorage da duoc set o B1
       } finally {
         if (mounted) setLoading(false);
       }
@@ -568,26 +575,13 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       const newList = [...prev, sp];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
       return newList;
-    }); // Optimistic update
+    });
     
     try {
       const { supabase } = await import("@/lib/supabase/client");
       const client = supabase;
       if (client) {
-        const dbPayload = {
-          ma_sp: sp.id,
-          ma_dm: `DM-${sp.loaiSP}`,
-          ten_sp: sp.tenSP,
-          loai_sp: sp.loaiSP,
-          gia_ban_du_kien: sp.giaBanDuKien,
-          gia_von_du_kien: sp.giaVonDuKien,
-          ti_le_size: sp.tiLeSize,
-          bang_size: sp.bangSize,
-          ds_mau: sp.dsMau,
-          ghi_chu: sp.ghiChu,
-          ngay_tao: sp.ngayTao
-        };
-        await client.from("san_pham").insert(dbPayload);
+        await client.from("san_pham").insert(buildDBPayload(sp));
       }
     } catch(e) {
       console.error(e);
@@ -597,14 +591,15 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   const suaSP = useCallback(async (id: string, data: Partial<SanPham>) => {
     setDsSanPham(prev => {
       const newList = prev.map(p => p.id === id ? { ...p, ...data } : p);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList)); // LUON save full object
       return newList;
-    }); // Optimistic update
+    });
     
     try {
       const { supabase } = await import("@/lib/supabase/client");
       const client = supabase;
       if (client) {
+         // Build snake_case payload - BAO GOM TAT CA FIELDS
          const snakeData: any = {};
          if (data.tenSP !== undefined) snakeData.ten_sp = data.tenSP;
          if (data.loaiSP !== undefined) snakeData.loai_sp = data.loaiSP;
@@ -615,8 +610,18 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
          if (data.dsMau !== undefined) snakeData.ds_mau = data.dsMau;
          if (data.ghiChu !== undefined) snakeData.ghi_chu = data.ghiChu;
          if (data.ngayTao !== undefined) snakeData.ngay_tao = data.ngayTao;
+         // === FIELDS BI THIEU TRUOC DAY (FIX) ===
+         if (data.hinhAnh !== undefined) snakeData.hinh_anh = data.hinhAnh;
+         if (data.trangThai !== undefined) snakeData.trang_thai = data.trangThai;
+         if (data.chatLieu !== undefined) snakeData.chat_lieu = data.chatLieu;
+         if (data.ncc !== undefined) snakeData.ncc = data.ncc;
+         if (data.daBan !== undefined) snakeData.da_ban = data.daBan;
+         if (data.rating !== undefined) snakeData.rating = data.rating;
+         if (data.luotXem !== undefined) snakeData.luot_xem = data.luotXem;
          
-         await client.from("san_pham").update(snakeData).eq("ma_sp", id);
+         if (Object.keys(snakeData).length > 0) {
+           await client.from("san_pham").update(snakeData).eq("ma_sp", id);
+         }
       }
     } catch(e) {
       console.error(e);
