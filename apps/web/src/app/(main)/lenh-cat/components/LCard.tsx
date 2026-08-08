@@ -45,11 +45,11 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
   const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && lc.trangThai !== "HoanThanh";
 
   return (
-    <div className={`card p-4 hover:shadow-lg transition-shadow ${isLate ? "ring-1 ring-rose-500/40" : ""}`}>
+    <div className={`bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 ${isLate ? "ring-2 ring-rose-500/40" : ""}`}>
       {/* Header */}
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-4 mb-5">
         <div 
-          className="w-28 h-28 shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+          className="w-32 h-32 shrink-0 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
           onClick={onEdit}
         >
           {lc.dsMau?.[0]?.img ? (
@@ -59,32 +59,32 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
           )}
         </div>
         
-        <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
           <div>
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <span className="text-base font-black text-teal-700 font-mono tracking-tight">{lc.id}</span>
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-lg font-black text-teal-700 font-mono tracking-tight">{lc.id}</span>
+              <div className="flex items-center gap-1.5">
                 {isLate && <AlertCircle className="w-4 h-4 text-rose-600" />}
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.bg} ${s.color} font-bold shadow-sm`}>
+                <span className={`text-[11px] px-3 py-1 rounded-full ${s.bg} ${s.color} font-bold`}>
                   {TRANG_THAI_LC_LABELS[lc.trangThai]}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <h3 
-                className="font-black text-xl text-slate-900 leading-tight truncate cursor-pointer hover:text-sky-600 transition-colors"
+                className="font-black text-2xl text-slate-900 leading-tight truncate cursor-pointer hover:text-sky-600 transition-colors"
                 onClick={onEdit}
               >
                 {lc.tenSP}
               </h3>
               {lc.daCoSoDo && (
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-black shrink-0 shadow-sm">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-black shrink-0">
                   <CheckCircle2 className="w-3 h-3" />
                   ĐÃ CÓ SƠ ĐỒ
                 </div>
               )}
             </div>
-            <p className="text-sm text-slate-600 mt-1.5 font-bold">
+            <p className="text-[13px] text-slate-600 mt-2 font-bold">
               {LOAI_SP_LABELS[lc.loaiSP]} · Mã: <span className="font-black text-slate-800">{lc.maSP}</span>
             </p>
           </div>
@@ -92,72 +92,73 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
       </div>
 
       {/* Body - Stats */}
-      <div className="space-y-2 mb-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-bold text-slate-600 flex items-center gap-1.5">
-            <Package className="w-4 h-4 text-slate-500" /> Tổng SL
+      <div className="space-y-3 mb-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-bold text-slate-500 flex items-center gap-2">
+            <Package className="w-4 h-4 text-slate-400" /> Tổng SL
           </span>
-          <span className="font-black text-slate-900 tabular-nums text-sm">{(lc.tongSL || 0).toLocaleString()}</span>
+          <span className="font-black text-slate-900 tabular-nums text-base">{(lc.tongSL || 0).toLocaleString()}</span>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-bold text-slate-600 flex items-center gap-1.5">
-            <Shirt className="w-4 h-4 text-slate-500" /> Tỉ lệ size
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-bold text-slate-500 flex items-center gap-2">
+            <Shirt className="w-4 h-4 text-slate-400" /> Tỉ lệ size
           </span>
-          <span className="font-mono font-bold text-slate-800 text-[11px]">
+          <span className="font-black text-slate-800 tabular-nums text-sm">
             {lc.tiLeSize || "--"}
           </span>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-bold text-slate-600 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-slate-500" /> Hạn
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-bold text-slate-500 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-slate-400" /> Hạn
           </span>
-          <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
+          <div className="text-right">
+            <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
+          </div>
         </div>
+        
         {cogs && (
-          <>
-            <div className="border-t pt-1.5 mt-1.5" style={{ borderColor: "var(--border)" }}>
-              <div className="flex items-center justify-between text-xs">
-                <span className="opacity-60 flex items-center gap-1">
-                  <Calculator className="w-3 h-3" /> Giá vốn / SP
-                </span>
-                <span className="font-bold text-violet-600 tabular-nums">
-                  {formatVND(cogs.giaVon1SP ?? cogs.giaVonBinhQuan)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs mt-0.5">
-                <span className="opacity-60">Tổng lô:</span>
-                <span className="font-mono text-emerald-600 tabular-nums text-[11px]">
-                  {formatVND(cogs.tongGiaVon ?? cogs.giaVonBinhQuan)}
-                </span>
-              </div>
+          <div className="border-t border-slate-100 pt-3 mt-3">
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span className="font-bold text-slate-500 flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-slate-400" /> Giá vốn / SP
+              </span>
+              <span className="font-black text-violet-600 tabular-nums text-sm">
+                {formatVND(cogs.giaVon1SP ?? cogs.giaVonBinhQuan)}
+              </span>
             </div>
-          </>
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-bold text-slate-500 pl-6">Tổng lô:</span>
+              <span className="font-black text-emerald-600 tabular-nums text-sm">
+                {formatVND(cogs.tongGiaVon ?? cogs.giaVonBinhQuan)}
+              </span>
+            </div>
+          </div>
         )}
       </div>
 
       {lc.phanCong && lc.phanCong.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+        <div className="flex flex-wrap gap-2 mb-4 pt-3 border-t border-slate-100">
           {lc.phanCong.map((pc, idx) => (
-            <div key={idx} className="inline-flex items-center gap-1 text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
-              <span className="font-bold text-slate-800 dark:text-slate-200">{pc.tenCongDoan}:</span>
-              <span className="truncate max-w-[100px]">{pc.nguoiTen}</span>
+            <div key={idx} className="inline-flex items-center gap-1.5 text-[11px] bg-white text-slate-500 px-2.5 py-1.5 rounded border border-slate-200">
+              <span className="font-black text-slate-800">{pc.tenCongDoan}:</span>
+              <span className="truncate max-w-[120px] font-medium">{pc.nguoiTen}</span>
             </div>
           ))}
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-1 pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+      <div className="flex gap-2 pt-4 border-t border-slate-100">
         <button
           onClick={onEdit}
-          className="flex-1 text-[10px] px-2 py-1.5 rounded bg-sky-500/15 text-sky-700 hover:bg-sky-500/25 font-medium flex items-center justify-center gap-1"
+          className="flex-1 text-sm px-3 py-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 font-bold flex items-center justify-center gap-1.5 transition-colors"
         >
-          <Edit3 className="w-3 h-3" /> Sửa
+          <Edit3 className="w-4 h-4" /> Sửa
         </button>
         <select
           value={lc.trangThai}
           onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
-          className="text-[10px] px-1 py-1 rounded border" style={{ borderColor: "var(--border)" }}
+          className="text-xs px-2 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
         >
           {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
             <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
@@ -165,9 +166,9 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
         </select>
         <button
           onClick={onDelete}
-          className="text-[10px] px-2 py-1.5 rounded bg-rose-500/15 text-rose-700 hover:bg-rose-500/25 font-medium"
+          className="text-rose-500 hover:bg-rose-50 px-3 py-2 rounded-lg border border-transparent hover:border-rose-200 transition-colors bg-rose-50/50"
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>
