@@ -47,26 +47,39 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
   return (
     <div className={`card p-4 hover:shadow-lg transition-shadow ${isLate ? "ring-1 ring-rose-500/40" : ""}`}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-xs font-mono opacity-60">{lc.id}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.bg} ${s.color} font-semibold`}>
-              {TRANG_THAI_LC_LABELS[lc.trangThai]}
-            </span>
-            {isLate && <AlertCircle className="w-3.5 h-3.5 text-rose-600" />}
-          </div>
-          <h3 className="font-bold text-sm truncate">{lc.tenSP}</h3>
-          <p className="text-[10px] opacity-60 mt-0.5">
-            {LOAI_SP_LABELS[lc.loaiSP]} · Mã: <span className="font-mono">{lc.maSP}</span>
-          </p>
+      <div className="flex gap-3 mb-4">
+        <div className="w-20 h-20 shrink-0 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shadow-sm">
+          {lc.dsMau?.[0]?.img ? (
+            <img src={lc.dsMau[0].img} alt="SP" className="w-full h-full object-cover" />
+          ) : (
+            <Shirt className="w-8 h-8 text-slate-300" />
+          )}
         </div>
-        {lc.daCoSoDo && (
-          <div className="flex items-center gap-1 px-1.5 py-0.5 border border-emerald-500 bg-emerald-50 text-emerald-600 rounded shrink-0">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold">Đã có sơ đồ</span>
+        
+        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-sm font-extrabold text-teal-700 font-mono tracking-tight">{lc.id}</span>
+              <div className="flex items-center gap-1">
+                {isLate && <AlertCircle className="w-4 h-4 text-rose-600" />}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.bg} ${s.color} font-bold shadow-sm`}>
+                  {TRANG_THAI_LC_LABELS[lc.trangThai]}
+                </span>
+              </div>
+            </div>
+            <h3 className="font-extrabold text-lg text-slate-800 leading-tight truncate">{lc.tenSP}</h3>
+            <p className="text-xs text-slate-500 mt-1 font-medium">
+              {LOAI_SP_LABELS[lc.loaiSP]} · Mã: <span className="font-bold text-slate-700">{lc.maSP}</span>
+            </p>
           </div>
-        )}
+          
+          {lc.daCoSoDo && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-600 text-white rounded-md shadow-sm w-fit">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Đã có sơ đồ</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Body - Stats */}

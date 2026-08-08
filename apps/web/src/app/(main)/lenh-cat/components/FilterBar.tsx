@@ -26,8 +26,10 @@ export function FilterBar({ filterTrangThai, setFilterTrangThai, totalCount, cou
           <button
             key={tt}
             onClick={() => setFilterTrangThai(tt)}
-            className={`px-4 py-1.5 rounded-full text-xs transition ${
-              active ? "bg-white text-teal-700 shadow-md font-bold" : "bg-white/10 text-white/90 border border-white/20 hover:bg-white/20 font-medium"
+            className={`px-4 py-1.5 rounded-full text-xs transition border ${
+              active 
+                ? "bg-teal-600 border-teal-600 text-white shadow-md font-bold" 
+                : "bg-white border-white/40 text-slate-700 hover:bg-slate-50 font-medium shadow-sm"
             }`}
           >
             {tt === "ALL" ? "Tất cả" : TRANG_THAI_LC_LABELS[tt as TrangThaiLenhCat]} ({count})
@@ -36,10 +38,10 @@ export function FilterBar({ filterTrangThai, setFilterTrangThai, totalCount, cou
       })}
 
       <div className="w-px h-6 bg-white/20 mx-2 self-center"></div>
-      <button onClick={onCreateCD} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-white text-violet-700 hover:bg-slate-50 shadow-sm">
+      <button onClick={onCreateCD} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-violet-600 text-white hover:bg-violet-700 shadow-md">
         + Tạo mẫu công đoạn
       </button>
-      <button onClick={onCreateCP} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-white text-emerald-700 hover:bg-slate-50 shadow-sm">
+      <button onClick={onCreateCP} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
         + Tạo bảng chi phí
       </button>
     </div>
