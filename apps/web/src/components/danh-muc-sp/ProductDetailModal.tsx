@@ -80,7 +80,10 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                   title={m.ten}
                 />
              ))}
-                  {/* Right: Info Panel */}
+          </div>
+        </div>
+
+        {/* Right: Info Panel */}
         <div className="w-full md:w-7/12 flex flex-col h-full md:max-h-[85vh] overflow-hidden">
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white shrink-0 z-10">
