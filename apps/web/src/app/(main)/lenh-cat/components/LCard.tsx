@@ -78,7 +78,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
                 {lc.tenSP}
               </h3>
               {lc.daCoSoDo && (
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-black shrink-0">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-black shrink-0">
                   <CheckCircle2 className="w-3 h-3" />
                   ĐÃ CÓ SƠ ĐỒ
                 </div>
@@ -138,7 +138,12 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
 
       {lc.phanCong && lc.phanCong.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4 pt-3 border-t border-slate-100">
-          {lc.phanCong.map((pc, idx) => (
+          {lc.phanCong
+            .filter(pc => {
+              const name = pc.tenCongDoan.toLowerCase();
+              return name.includes('may') || name.includes('thêu') || name.includes('in');
+            })
+            .map((pc, idx) => (
             <div key={idx} className="inline-flex items-center gap-1.5 text-[11px] bg-white text-slate-500 px-2.5 py-1.5 rounded border border-slate-200">
               <span className="font-black text-slate-800">{pc.tenCongDoan}:</span>
               <span className="truncate max-w-[120px] font-medium">{pc.nguoiTen}</span>
@@ -153,7 +158,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
           onClick={onEdit}
           className="flex-1 text-sm px-3 py-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 font-bold flex items-center justify-center gap-1.5 transition-colors"
         >
-          <Edit3 className="w-4 h-4" /> Sửa
+          <Edit3 className="w-4 h-4" /> Xem & Sửa
         </button>
         <select
           value={lc.trangThai}
