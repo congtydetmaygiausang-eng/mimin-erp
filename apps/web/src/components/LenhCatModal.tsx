@@ -155,9 +155,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
       setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
       setSoDoChinh(editing.soDoChinh || "");
+      setPdfSoDoChinh(editing.pdfSoDoChinh || "");
       setKhoSoDoChinh(editing.khoSoDoChinh || "");
       setDaiSoDoChinh(editing.daiSoDoChinh || "");
       setSoDoPhoi(editing.soDoPhoi || "");
+      setPdfSoDoPhoi(editing.pdfSoDoPhoi || "");
       setKhoSoDoPhoi(editing.khoSoDoPhoi || "");
       setDaiSoDoPhoi(editing.daiSoDoPhoi || "");
       setDaCoSoDo(editing.daCoSoDo || false);
@@ -189,16 +191,20 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   // Sơ đồ cắt
   const [soDoChinh, setSoDoChinh] = useState("");
+  const [pdfSoDoChinh, setPdfSoDoChinh] = useState("");
   const [khoSoDoChinh, setKhoSoDoChinh] = useState("");
   const [daiSoDoChinh, setDaiSoDoChinh] = useState("");
   const [soDoPhoi, setSoDoPhoi] = useState("");
+  const [pdfSoDoPhoi, setPdfSoDoPhoi] = useState("");
   const [khoSoDoPhoi, setKhoSoDoPhoi] = useState("");
   const [daiSoDoPhoi, setDaiSoDoPhoi] = useState("");
   const [daCoSoDo, setDaCoSoDo] = useState(false);
   const fileChinhRef = useRef<HTMLInputElement>(null);
+  const filePdfChinhRef = useRef<HTMLInputElement>(null);
   const filePhoiRef = useRef<HTMLInputElement>(null);
+  const filePdfPhoiRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi") => {
+  const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi" | "pdf-chinh" | "pdf-phoi") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -215,9 +221,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       if (type === "chinh") {
         setSoDoChinh(fileData);
         setDaCoSoDo(true);
-      } else {
+      } else if (type === "phoi") {
         setSoDoPhoi(fileData);
         setDaCoSoDo(true);
+      } else if (type === "pdf-chinh") {
+        setPdfSoDoChinh(fileData);
+      } else if (type === "pdf-phoi") {
+        setPdfSoDoPhoi(fileData);
       }
       toast.success("Đã tải lên " + file.name);
     };
@@ -380,9 +390,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
           if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
           if (parsed.soDoChinh) setSoDoChinh(parsed.soDoChinh);
+          if (parsed.pdfSoDoChinh) setPdfSoDoChinh(parsed.pdfSoDoChinh);
           if (parsed.khoSoDoChinh) setKhoSoDoChinh(parsed.khoSoDoChinh);
           if (parsed.daiSoDoChinh) setDaiSoDoChinh(parsed.daiSoDoChinh);
           if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
+          if (parsed.pdfSoDoPhoi) setPdfSoDoPhoi(parsed.pdfSoDoPhoi);
           if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
           if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
           if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
@@ -400,11 +412,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
         ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
-        soDoChinh, khoSoDoChinh, daiSoDoChinh,
-        soDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo
+        soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh,
+        soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo
       }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, daCoSoDo, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -539,9 +551,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         trangThai: status,
         ngayTao: ngayBatDau,
         soDoChinh,
+        pdfSoDoChinh,
         khoSoDoChinh,
         daiSoDoChinh,
         soDoPhoi,
+        pdfSoDoPhoi,
         khoSoDoPhoi,
         daiSoDoPhoi,
         daCoSoDo,
@@ -574,9 +588,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         phienBanDinhMuc: 1,
         ngayTao: ngayBatDau,
         soDoChinh,
+        pdfSoDoChinh,
         khoSoDoChinh,
         daiSoDoChinh,
         soDoPhoi,
+        pdfSoDoPhoi,
         khoSoDoPhoi,
         daiSoDoPhoi,
         daCoSoDo,
@@ -902,34 +918,72 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                      <input type="text" placeholder="Dài..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={daiSoDoChinh} onChange={e => setDaiSoDoChinh(e.target.value)} />
                    </div>
                  </div>
-                 <input type="file" className="hidden" ref={fileChinhRef} onChange={(e) => handleUploadSoDo(e, "chinh")} />
-                 <div 
-                   className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
-                   onClick={() => !soDoChinh && fileChinhRef.current?.click()}
-                 >
-                   {soDoChinh ? (
-                     <div className="flex flex-col items-center gap-2">
-                       <div className="flex items-center gap-2">
-                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                         <span className="text-sm font-medium text-slate-700 truncate max-w-[150px]">
-                           {(() => { try { return JSON.parse(soDoChinh).name; } catch { return "Sơ đồ chính"; } })()}
-                         </span>
-                       </div>
-                       <div className="flex gap-2">
-                         <button onClick={(e) => handleDownloadSoDo(e, soDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
-                           <Download size={14} /> Tải về
-                         </button>
-                         <button onClick={(e) => { e.stopPropagation(); setSoDoChinh(""); fileChinhRef.current && (fileChinhRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
-                           <X size={14} /> Xóa
-                         </button>
-                       </div>
+                 <div className="grid grid-cols-2 gap-2 mt-2">
+                   {/* File Sơ đồ */}
+                   <div>
+                     <input type="file" className="hidden" ref={fileChinhRef} onChange={(e) => handleUploadSoDo(e, "chinh")} />
+                     <div 
+                       className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                       onClick={() => !soDoChinh && fileChinhRef.current?.click()}
+                     >
+                       {soDoChinh ? (
+                         <div className="flex flex-col items-center gap-2">
+                           <div className="flex items-center gap-2">
+                             <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                             <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">
+                               {(() => { try { return JSON.parse(soDoChinh).name; } catch { return "Sơ đồ"; } })()}
+                             </span>
+                           </div>
+                           <div className="flex gap-2">
+                             <button onClick={(e) => handleDownloadSoDo(e, soDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                               <Download size={14} /> Tải
+                             </button>
+                             <button onClick={(e) => { e.stopPropagation(); setSoDoChinh(""); fileChinhRef.current && (fileChinhRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                               <X size={14} /> Xóa
+                             </button>
+                           </div>
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
+                           <UploadCloud className="w-8 h-8 mb-1" />
+                           <span className="text-xs font-medium text-center">Tải lên file sơ đồ<br/>(PLT/ZIP)</span>
+                         </div>
+                       )}
                      </div>
-                   ) : (
-                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
-                       <UploadCloud className="w-8 h-8 mb-1" />
-                       <span className="text-xs font-medium">Tải lên sơ đồ chính (PLT, PDF, Image)</span>
+                   </div>
+                   
+                   {/* File PDF xem trước */}
+                   <div>
+                     <input type="file" accept=".pdf" className="hidden" ref={filePdfChinhRef} onChange={(e) => handleUploadSoDo(e, "pdf-chinh")} />
+                     <div 
+                       className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                       onClick={() => !pdfSoDoChinh && filePdfChinhRef.current?.click()}
+                     >
+                       {pdfSoDoChinh ? (
+                         <div className="flex flex-col items-center gap-2">
+                           <div className="flex items-center gap-2">
+                             <CheckCircle2 className="w-6 h-6 text-red-500" />
+                             <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">
+                               {(() => { try { return JSON.parse(pdfSoDoChinh).name; } catch { return "File PDF"; } })()}
+                             </span>
+                           </div>
+                           <div className="flex gap-2">
+                             <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoChinh)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                               <Download size={14} /> Xem/Tải
+                             </button>
+                             <button onClick={(e) => { e.stopPropagation(); setPdfSoDoChinh(""); filePdfChinhRef.current && (filePdfChinhRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                               <X size={14} /> Xóa
+                             </button>
+                           </div>
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
+                           <UploadCloud className="w-8 h-8 mb-1" />
+                           <span className="text-xs font-medium text-center">Upload PDF<br/>xem trước</span>
+                         </div>
+                       )}
                      </div>
-                   )}
+                   </div>
                  </div>
                </div>
                
@@ -942,34 +996,72 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                      <input type="text" placeholder="Dài..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={daiSoDoPhoi} onChange={e => setDaiSoDoPhoi(e.target.value)} />
                    </div>
                  </div>
-                 <input type="file" className="hidden" ref={filePhoiRef} onChange={(e) => handleUploadSoDo(e, "phoi")} />
-                 <div 
-                   className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
-                   onClick={() => !soDoPhoi && filePhoiRef.current?.click()}
-                 >
-                   {soDoPhoi ? (
-                     <div className="flex flex-col items-center gap-2">
-                       <div className="flex items-center gap-2">
-                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                         <span className="text-sm font-medium text-slate-700 truncate max-w-[150px]">
-                           {(() => { try { return JSON.parse(soDoPhoi).name; } catch { return "Sơ đồ phối"; } })()}
-                         </span>
-                       </div>
-                       <div className="flex gap-2">
-                         <button onClick={(e) => handleDownloadSoDo(e, soDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
-                           <Download size={14} /> Tải về
-                         </button>
-                         <button onClick={(e) => { e.stopPropagation(); setSoDoPhoi(""); filePhoiRef.current && (filePhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
-                           <X size={14} /> Xóa
-                         </button>
-                       </div>
+                 <div className="grid grid-cols-2 gap-2 mt-2">
+                   {/* File Sơ đồ phối */}
+                   <div>
+                     <input type="file" className="hidden" ref={filePhoiRef} onChange={(e) => handleUploadSoDo(e, "phoi")} />
+                     <div 
+                       className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                       onClick={() => !soDoPhoi && filePhoiRef.current?.click()}
+                     >
+                       {soDoPhoi ? (
+                         <div className="flex flex-col items-center gap-2">
+                           <div className="flex items-center gap-2">
+                             <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                             <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">
+                               {(() => { try { return JSON.parse(soDoPhoi).name; } catch { return "Sơ đồ phối"; } })()}
+                             </span>
+                           </div>
+                           <div className="flex gap-2">
+                             <button onClick={(e) => handleDownloadSoDo(e, soDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                               <Download size={14} /> Tải
+                             </button>
+                             <button onClick={(e) => { e.stopPropagation(); setSoDoPhoi(""); filePhoiRef.current && (filePhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                               <X size={14} /> Xóa
+                             </button>
+                           </div>
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
+                           <UploadCloud className="w-8 h-8 mb-1" />
+                           <span className="text-xs font-medium text-center">Tải lên file sơ đồ<br/>(PLT/ZIP)</span>
+                         </div>
+                       )}
                      </div>
-                   ) : (
-                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
-                       <UploadCloud className="w-8 h-8 mb-1" />
-                       <span className="text-xs font-medium">Tải lên sơ đồ phối</span>
+                   </div>
+
+                   {/* File PDF phối xem trước */}
+                   <div>
+                     <input type="file" accept=".pdf" className="hidden" ref={filePdfPhoiRef} onChange={(e) => handleUploadSoDo(e, "pdf-phoi")} />
+                     <div 
+                       className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                       onClick={() => !pdfSoDoPhoi && filePdfPhoiRef.current?.click()}
+                     >
+                       {pdfSoDoPhoi ? (
+                         <div className="flex flex-col items-center gap-2">
+                           <div className="flex items-center gap-2">
+                             <CheckCircle2 className="w-6 h-6 text-red-500" />
+                             <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">
+                               {(() => { try { return JSON.parse(pdfSoDoPhoi).name; } catch { return "File PDF"; } })()}
+                             </span>
+                           </div>
+                           <div className="flex gap-2">
+                             <button onClick={(e) => handleDownloadSoDo(e, pdfSoDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                               <Download size={14} /> Xem/Tải
+                             </button>
+                             <button onClick={(e) => { e.stopPropagation(); setPdfSoDoPhoi(""); filePdfPhoiRef.current && (filePdfPhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                               <X size={14} /> Xóa
+                             </button>
+                           </div>
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
+                           <UploadCloud className="w-8 h-8 mb-1" />
+                           <span className="text-xs font-medium text-center">Upload PDF<br/>xem trước</span>
+                         </div>
+                       )}
                      </div>
-                   )}
+                   </div>
                  </div>
                </div>
              </div>
