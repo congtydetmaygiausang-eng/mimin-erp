@@ -73,7 +73,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div 
         className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col animate-slide-up my-auto"
         onClick={e => e.stopPropagation()}
