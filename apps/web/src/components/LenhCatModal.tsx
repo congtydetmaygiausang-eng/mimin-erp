@@ -898,8 +898,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                    <label className="text-sm font-bold text-slate-700">Sơ đồ vải chính</label>
                    <div className="flex gap-2">
-                     <input type="text" placeholder="Khổ..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={khoSoDoChinh} onChange={e => setKhoSoDoChinh(e.target.value)} />
-                     <input type="text" placeholder="Dài..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={daiSoDoChinh} onChange={e => setDaiSoDoChinh(e.target.value)} />
+                     <input type="text" placeholder="Khổ..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={khoSoDoChinh} onChange={e => setKhoSoDoChinh(e.target.value)} />
+                     <input type="text" placeholder="Dài..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={daiSoDoChinh} onChange={e => setDaiSoDoChinh(e.target.value)} />
                    </div>
                  </div>
                  <input type="file" className="hidden" ref={fileChinhRef} onChange={(e) => handleUploadSoDo(e, "chinh")} />
@@ -938,8 +938,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                    <label className="text-sm font-bold text-slate-700">Sơ đồ phối (nếu có)</label>
                    <div className="flex gap-2">
-                     <input type="text" placeholder="Khổ..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={khoSoDoPhoi} onChange={e => setKhoSoDoPhoi(e.target.value)} />
-                     <input type="text" placeholder="Dài..." className="w-20 px-2 py-1 bg-white border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500" value={daiSoDoPhoi} onChange={e => setDaiSoDoPhoi(e.target.value)} />
+                     <input type="text" placeholder="Khổ..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={khoSoDoPhoi} onChange={e => setKhoSoDoPhoi(e.target.value)} />
+                     <input type="text" placeholder="Dài..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={daiSoDoPhoi} onChange={e => setDaiSoDoPhoi(e.target.value)} />
                    </div>
                  </div>
                  <input type="file" className="hidden" ref={filePhoiRef} onChange={(e) => handleUploadSoDo(e, "phoi")} />
