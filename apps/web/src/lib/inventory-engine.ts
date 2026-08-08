@@ -2,8 +2,9 @@
 // Phase 1: Hoàn tất logic cốt lõi
 
 import type { PhieuWorkflow } from "./workflow-data";
-import { KHO_VAI, type KhoVai } from "./data/real-data";
+import { KHO_VAI, KHO_VAT_TU, type KhoVai } from "./data/real-data";
 import { logAudit } from "./audit-log";
+
 
 // ============ ĐỊNH MỨC VẢI (m/cái) theo sản phẩm + size ============
 export const DINH_MUC_VAI: Record<string, Record<string, number>> = {
@@ -379,4 +380,148 @@ export function baoCaoVaiTheoLSX(phieus: PhieuWorkflow[], lenhSX: string): BaoCa
       ngayCat: p.ngayHoanThanh,
     };
   });
+}
+
+// ============ TỰ ĐỘNG XUẤT KHO KHI CHUYỂN TRẠNG THÁI LỆNH CẮT → ĐANG CẮT ============
+// Ghi 1 phiếu XUAT vào kho-store cho mỗi loại vải và phụ liệu trong Lệnh cắt
+// Hàm này ghi vào localStorage key "mimin_kho_vai_v2" (cùng storage với kho-store.tsx)
+
+const KHO_STORE_KEY = "mimin_kho_vai_v2";
+
+export type KetQuaXuatKho = {
+  ok: boolean;
+  maVT: string;
+  tenVT: string;
+  soLuong: number;
+  donVi: string;
+  message: string;
+};
+
+// Ghi 1 giao dịch XUAT vào kho-store
+function ghiXuatKho(
+  maVT: string,
+  tenVT: string,
+  soLuong: number,
+  donVi: string,
+  donGia: number,
+  lenhCatId: string,
+  nguoiThucHien: string,
+  ngay: string
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(KHO_STORE_KEY);
+    const dsGD = raw ? JSON.parse(raw) : [];
+    const nextNum = dsGD.length + 1;
+    const newGD = {
+      id: `GD-${String(nextNum).padStart(3, "0")}-${Date.now()}`,
+      ngay,
+      loai: "XUAT",
+      maVT,
+      tenVT,
+      soLuong,
+      donVi,
+      donGia,
+      thanhTien: soLuong * donGia,
+      nguonNhap: lenhCatId, // dùng nguonNhap để ghi lệnh cắt nguồn
+      nguoiThucHien,
+      ghiChu: `Tự động xuất kho theo ${lenhCatId}`,
+    };
+    dsGD.push(newGD);
+    localStorage.setItem(KHO_STORE_KEY, JSON.stringify(dsGD));
+  } catch (e) {
+    console.error("[inventory] ghiXuatKho error:", e);
+  }
+}
+
+export function xuatKhoChoLenhCat(
+  lenhCat: {
+    id: string;
+    tongSL: number;
+    dsMau: Array<{ maVai: string; dinhMuc: number; slDuKien: number; haoHut?: number; maVaiQuan?: string; dinhMucQuan?: number }>;
+    dsPhuLieu: Array<{ maPL: string; tenPL: string; soLuong: number; donGia: number; dvt: string }>;
+  },
+  user: { name?: string; email?: string }
+): KetQuaXuatKho[] {
+  const results: KetQuaXuatKho[] = [];
+  const ngay = new Date().toISOString().slice(0, 10);
+  const nguoiThucHien = user?.name || user?.email || "Hệ thống";
+
+  // ---- 1. Xuất kho VẢI ----
+  for (const mau of lenhCat.dsMau) {
+    if (!mau.maVai || !mau.dinhMuc || !mau.slDuKien) continue;
+
+    const haoHut = mau.haoHut ?? 5; // % hao hụt mặc định 5%
+    const soMetGoc = mau.dinhMuc * mau.slDuKien;
+    const soMetCan = round(soMetGoc * (1 + haoHut / 100), 2);
+
+    const vai = KHO_VAI.find((v) => v.maVT === mau.maVai);
+    const tenVai = vai?.tenVT || mau.maVai;
+    const donGia = vai?.donGia || 0;
+    const dvt = vai?.dvt || "kg";
+
+    ghiXuatKho(mau.maVai, tenVai, soMetCan, dvt, donGia, lenhCat.id, nguoiThucHien, ngay);
+
+    results.push({
+      ok: true,
+      maVT: mau.maVai,
+      tenVT: tenVai,
+      soLuong: soMetCan,
+      donVi: dvt,
+      message: `✅ Xuất vải ${tenVai}: -${soMetCan}${dvt} (${mau.slDuKien} SP × ${mau.dinhMuc}${dvt} + ${haoHut}% hao hụt)`,
+    });
+
+    // Nếu là bộ (áo + quần) → xuất thêm vải quần
+    if (mau.maVaiQuan && mau.dinhMucQuan) {
+      const soMetQuan = round(mau.dinhMucQuan * mau.slDuKien * (1 + haoHut / 100), 2);
+      const vaiQuan = KHO_VAI.find((v) => v.maVT === mau.maVaiQuan);
+      const tenVaiQuan = vaiQuan?.tenVT || mau.maVaiQuan;
+      const donGiaQuan = vaiQuan?.donGia || 0;
+      const dvtQuan = vaiQuan?.dvt || "kg";
+
+      ghiXuatKho(mau.maVaiQuan, tenVaiQuan, soMetQuan, dvtQuan, donGiaQuan, lenhCat.id, nguoiThucHien, ngay);
+
+      results.push({
+        ok: true,
+        maVT: mau.maVaiQuan,
+        tenVT: tenVaiQuan,
+        soLuong: soMetQuan,
+        donVi: dvtQuan,
+        message: `✅ Xuất vải quần ${tenVaiQuan}: -${soMetQuan}${dvtQuan}`,
+      });
+    }
+  }
+
+  // ---- 2. Xuất kho PHỤ LIỆU (bo cổ, chỉ, cúc...) ----
+  for (const pl of lenhCat.dsPhuLieu) {
+    if (!pl.maPL || !pl.soLuong) continue;
+
+    const vatTu = KHO_VAT_TU.find((v) => v.maVT === pl.maPL);
+    const donGia = vatTu?.donGia || pl.donGia || 0;
+    const dvt = vatTu?.dvt || pl.dvt || "cái";
+
+    ghiXuatKho(pl.maPL, pl.tenPL, pl.soLuong, dvt, donGia, lenhCat.id, nguoiThucHien, ngay);
+
+    results.push({
+      ok: true,
+      maVT: pl.maPL,
+      tenVT: pl.tenPL,
+      soLuong: pl.soLuong,
+      donVi: dvt,
+      message: `✅ Xuất phụ liệu ${pl.tenPL}: -${pl.soLuong} ${dvt}`,
+    });
+  }
+
+  // Ghi audit log tổng hợp
+  logAudit({
+    user,
+    action: "update",
+    module: "kho-vai",
+    description: `Tự động xuất kho theo ${lenhCat.id}: ${results.length} loại vật tư`,
+    resourceId: lenhCat.id,
+    resourceName: lenhCat.id,
+    success: true,
+  });
+
+  return results;
 }

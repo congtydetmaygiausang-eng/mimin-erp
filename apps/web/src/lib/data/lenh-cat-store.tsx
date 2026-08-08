@@ -10,6 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { logWorkflow } from "../audit-log";
 import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
 import type { AppUser } from "@/components/session-provider";
+import { xuatKhoChoLenhCat } from "@/lib/inventory-engine";
 
 export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron" | "AoPolo" | "PhuKien";
 export type LoaiLenh = "HangNha" | "HangDat";
@@ -470,7 +471,29 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     setDsMauChiPhi(prev => { const next = prev.filter(x => x.id !== id); localStorage.setItem(STORAGE_KEY_MCP, JSON.stringify(next)); return next; });
   }, []);
   const capNhatTrangThai = useCallback(async (id: string, tt: TrangThaiLenhCat, u: any) => {
-    setDsLenhCat(prev => prev.map(x => x.id === id ? { ...x, trangThai: tt } : x));
+    // Tìm lệnh cắt hiện tại để check trạng thái cũ
+    let lenhHienTai: LenhCat | undefined;
+    setDsLenhCat(prev => {
+      lenhHienTai = prev.find(x => x.id === id);
+      return prev.map(x => x.id === id ? { ...x, trangThai: tt } : x);
+    });
+
+    // 🔑 AUTO XUẤT KHO: khi chuyển sang Đang Cắt (từ bất kỳ trạng thái nào)
+    if (tt === "DangCat" && lenhHienTai && lenhHienTai.trangThai !== "DangCat") {
+      try {
+        const ketQua = xuatKhoChoLenhCat({
+          id: lenhHienTai.id,
+          tongSL: lenhHienTai.tongSL,
+          dsMau: lenhHienTai.dsMau,
+          dsPhuLieu: lenhHienTai.dsPhuLieu,
+        }, u);
+        const soLoai = ketQua.length;
+        console.info(`[LeHCat] Tự động xuất kho ${lenhHienTai.id}: ${soLoai} loại vật tư`);
+      } catch(e) {
+        console.error("[LenhCat] Auto xuất kho thất bại:", e);
+      }
+    }
+
     try {
       const { supabase } = await import("@/lib/supabase/client");
       if (supabase) await supabase!.from("lenh_cat").update({ trang_thai: tt }).eq("id", id);

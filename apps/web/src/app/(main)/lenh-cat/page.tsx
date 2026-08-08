@@ -131,7 +131,15 @@ export default function LenhCatPage() {
               lc={lc}
               onEdit={() => handleEdit(lc.id)}
               onDelete={() => handleDelete(lc.id)}
-              onChangeStatus={(tt) => capNhatTrangThai(lc.id, tt, null)}
+              onChangeStatus={async (tt) => {
+                await capNhatTrangThai(lc.id, tt, null);
+                if (tt === "DangCat") {
+                  toast.success(`✂️ Đang Cắt — Đã tự động xuất kho vải & phụ liệu cho ${lc.id}`, {
+                    description: "Vào Kho Vải / Kho Phụ Liệu để xem lịch sử giao dịch.",
+                    duration: 5000,
+                  });
+                }
+              }}
             />
           ))}
         </div>
