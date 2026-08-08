@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
+import { useKhachHang } from "@/lib/data/khach-hang-store";
 import {
   type Order, type OrderItem, type OrderPayment, type OrderShipping,
   type LoaiDonHang, type PhuongThucThanhToan, type PhuongThucVanChuyen,
@@ -37,6 +38,7 @@ interface Props {
 
 export default function OrderFormModal({ open, onClose, initial, onSave }: Props) {
   const { dsSanPham } = useDanhMucSP();
+  const { dsKhachHang } = useKhachHang();
   const [order, setOrder] = useState<Order>(createEmptyOrder());
   const [activeTab, setActiveTab] = useState<"info" | "items" | "payment" | "shipping">("info");
 
@@ -378,11 +380,24 @@ function InfoTab({ order, onChange }: { order: Order; onChange: (p: Partial<Orde
           </label>
           <input
             type="text"
+            list="khachhang-list"
             value={order.khachHang}
-            onChange={(e) => onChange({ khachHang: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value;
+              const kh = dsKhachHang.find(k => k.tenKH === val);
+              onChange({ 
+                khachHang: val, 
+                ...(kh && kh.sdt ? { sdt: kh.sdt } : {}) 
+              });
+            }}
             placeholder="Tên khách hàng"
             className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
           />
+          <datalist id="khachhang-list">
+            {dsKhachHang.map(kh => (
+              <option key={kh.id} value={kh.tenKH} />
+            ))}
+          </datalist>
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1.5 text-slate-700 dark:text-slate-200">
@@ -466,18 +481,8 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
 
   return (
     <div className="space-y-4">
-      {/* MODE BÁN SỈ - matrix size × màu */}
-      {isSi ? (
-        <BanSiMatrix
-          dsSanPham={dsSanPham}
-          pickerSP={pickerSP}
-          onPickSP={setPickerSP}
-          orderItems={order.items}
-          onUpdateCell={onUpdateSiCell}
-        />
-      ) : (
-        <>
-          {/* MODE BÁN LẺ / SÀN - danh sách items */}
+      <>
+        {/* DANH SÁCH ITEMS CHUNG CHO MỌI LOẠI ĐƠN */}
           {order.items.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
               <Box className="w-12 h-12 mx-auto text-slate-300 mb-3" />
@@ -560,125 +565,110 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
               search={pickerSearch}
               onSearch={setPickerSearch}
               onClose={() => setShowPicker(false)}
-              onPick={(sp) => {
-                onAddFromCatalog(sp);
-                setShowPicker(false);
-              }}
+              orderItems={order.items}
+              onUpdateCell={onUpdateSiCell}
             />
           )}
         </>
-      )}
     </div>
   );
 }
 
-// Picker chọn SP (cho bán lẻ)
+// Picker chọn SP đa năng (Hiển thị list, click mở rộng bảng Size x Màu)
 function CatalogPicker({
-  dsSanPham, search, onSearch, onClose, onPick,
+  dsSanPham, search, onSearch, onClose, orderItems, onUpdateCell
 }: {
   dsSanPham: SanPham[];
   search: string;
   onSearch: (s: string) => void;
   onClose: () => void;
-  onPick: (sp: SanPham) => void;
+  orderItems: OrderItem[];
+  onUpdateCell: (sp: SanPham, mauCode: string, size: string, soLuong: number) => void;
 }) {
+  const [expandedSP, setExpandedSP] = useState<string | null>(null);
+
   const filtered = dsSanPham.filter(
     (sp) => sp.id.toLowerCase().includes(search.toLowerCase()) || sp.tenSP.toLowerCase().includes(search.toLowerCase())
   );
   return (
-    <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col">
-        <div className="px-5 py-3 border-b flex items-center justify-between">
-          <h3 className="font-bold text-lg">Chọn sản phẩm</h3>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col animate-slide-up">
+        <div className="px-5 py-4 border-b dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-t-2xl">
+          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Package className="w-5 h-5 text-cyan-600" /> Chọn sản phẩm
+          </h3>
+          <button onClick={onClose} className="px-5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-bold transition-colors shadow-md shadow-cyan-600/20">
+            Xong
           </button>
         </div>
-        <div className="px-5 py-3 border-b">
+        <div className="px-5 py-4 border-b dark:border-slate-700">
           <input
             type="text"
             placeholder="Tìm theo mã hoặc tên SP..."
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+            className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-sm focus:bg-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
             autoFocus
           />
         </div>
-        <div className="flex-1 overflow-y-auto p-5">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {filtered.map((sp) => (
-              <button
-                key={sp.id}
-                onClick={() => onPick(sp)}
-                className="text-left p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-cyan-500 hover:shadow-md transition bg-white dark:bg-slate-800"
-              >
-                <div className="aspect-square bg-slate-100 dark:bg-slate-700 rounded mb-2 overflow-hidden">
-                  {sp.dsMau[0]?.img ? (
-                    <img src={sp.dsMau[0].img} alt={sp.tenSP} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400">
-                      <Box className="w-8 h-8" />
+        <div className="flex-1 overflow-y-auto p-5 bg-slate-100 dark:bg-slate-900/50">
+          <div className="flex flex-col gap-3">
+            {filtered.map((sp) => {
+              const isExpanded = expandedSP === sp.id;
+              const tongSL = orderItems.filter(it => it.spId === sp.id).reduce((s, it) => s + it.soLuong, 0);
+
+              return (
+                <div key={sp.id} className={`flex flex-col border rounded-xl overflow-hidden bg-white dark:bg-slate-800 transition-all ${isExpanded ? 'border-cyan-500 shadow-lg ring-1 ring-cyan-500' : 'border-slate-200 dark:border-slate-700 hover:border-cyan-300'}`}>
+                  <div 
+                    className="p-3 cursor-pointer flex items-center gap-4 select-none"
+                    onClick={() => setExpandedSP(isExpanded ? null : sp.id)}
+                  >
+                    <div className="w-16 h-16 shrink-0 bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden relative">
+                      {sp.dsMau[0]?.img ? (
+                        <img src={sp.dsMau[0].img} alt={sp.tenSP} className="w-full h-full object-cover" />
+                      ) : (
+                        <Box className="w-8 h-8 text-slate-300 m-auto mt-4" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{sp.tenSP}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{sp.id}</div>
+                      <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1">{formatVND(sp.giaBanDuKien)}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                       {tongSL > 0 ? (
+                         <span className="inline-flex items-center justify-center px-3 py-1 bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 font-bold rounded-full text-xs shadow-sm border border-cyan-200 dark:border-cyan-800">
+                           Đã chọn: {tongSL}
+                         </span>
+                       ) : (
+                         <span className="text-slate-400 dark:text-slate-500 text-xs font-medium px-3 py-1">Chưa chọn</span>
+                       )}
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 overflow-x-auto">
+                      <ProductMatrixTable sp={sp} orderItems={orderItems} onUpdateCell={onUpdateCell} />
                     </div>
                   )}
                 </div>
-                <div className="text-xs font-bold text-cyan-700 dark:text-cyan-300">{sp.id}</div>
-                <div className="text-sm font-semibold truncate">{sp.tenSP}</div>
-                <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  {formatVNDShort(sp.giaBanDuKien)}
-                </div>
-              </button>
-            ))}
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="text-center py-10 text-slate-400">Không tìm thấy SP phù hợp</div>
+            )}
           </div>
-          {filtered.length === 0 && (
-            <div className="text-center py-10 text-slate-400">Không tìm thấy SP phù hợp</div>
-          )}
         </div>
       </div>
     </div>
   );
 }
 
-// BÁN SỈ matrix: chọn 1 SP, hiển thị size × màu
-function BanSiMatrix({
-  dsSanPham, pickerSP, onPickSP, orderItems, onUpdateCell,
-}: {
-  dsSanPham: SanPham[];
-  pickerSP: SanPham | null;
-  onPickSP: (sp: SanPham | null) => void;
-  orderItems: OrderItem[];
-  onUpdateCell: (sp: SanPham, mauCode: string, size: string, soLuong: number) => void;
-}) {
-  if (!pickerSP) {
-    return (
-      <div className="space-y-3">
-        <div className="p-4 bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-900/20 dark:to-fuchsia-900/20 border border-violet-200 dark:border-violet-800 rounded-xl">
-          <div className="flex items-start gap-2 text-sm">
-            <Grid3x3 className="w-5 h-5 text-violet-600 dark:text-violet-400 mt-0.5 shrink-0" />
-            <div>
-              <div className="font-bold text-violet-900 dark:text-violet-200">Chế độ bán sỉ</div>
-              <div className="text-violet-700 dark:text-violet-300 text-xs mt-1">
-                Chọn 1 sản phẩm → nhập số lượng vào từng ô (size × màu). Đơn tự tạo items[].
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
-          <Grid3x3 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-500 mb-3">Chọn 1 sản phẩm để bán sỉ</p>
-          <SiPicker dsSanPham={dsSanPham} onPick={onPickSP} />
-        </div>
-      </div>
-    );
-  }
-
-  // Lay variants tu SP
-  const variants = generateVariants(pickerSP.id, pickerSP.dsMau, pickerSP.bangSize);
-  const sizes = pickerSP.bangSize?.sizes.filter((_, i) => (pickerSP.bangSize?.ratios[i] || 0) > 0) || [];
-  const mauList = pickerSP.dsMau;
+function ProductMatrixTable({ sp, orderItems, onUpdateCell }: { sp: SanPham, orderItems: OrderItem[], onUpdateCell: any }) {
+  const sizes = sp.bangSize?.sizes.filter((_, i) => (sp.bangSize?.ratios[i] || 0) > 0) || [];
+  const mauList = sp.dsMau;
   const itemsByKey = new Map<string, number>();
   orderItems.forEach((it) => {
-    if (it.spId === pickerSP.id && it.sku) {
-      // Lay mau + size tu SKU: "{maSP}-{MAU}-{SIZE}"
+    if (it.spId === sp.id && it.sku) {
       const parts = it.sku.split("-");
       if (parts.length >= 3) {
         const mau = parts[parts.length - 2];
@@ -689,167 +679,81 @@ function BanSiMatrix({
   });
 
   const tongSL = Array.from(itemsByKey.values()).reduce((s, n) => s + n, 0);
-  const tongTien = tongSL * pickerSP.giaBanDuKien;
 
   return (
-    <div className="space-y-3">
-      {/* Header SP đang chọn */}
-      <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-900/20 dark:to-fuchsia-900/20 border border-violet-200 dark:border-violet-800 rounded-xl">
-        {pickerSP.dsMau[0]?.img ? (
-          <img src={pickerSP.dsMau[0].img} alt={pickerSP.tenSP} className="w-12 h-12 rounded object-cover" />
-        ) : (
-          <div className="w-12 h-12 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-            <Box className="w-6 h-6 text-slate-400" />
-          </div>
-        )}
-        <div className="flex-1">
-          <div className="font-bold text-violet-900 dark:text-violet-200">{pickerSP.tenSP}</div>
-          <div className="text-xs text-violet-700 dark:text-violet-300">
-            {pickerSP.id} · {formatVND(pickerSP.giaBanDuKien)}/SP · {tongSL} SP = <b className="text-base">{formatVND(tongTien)}</b>
-          </div>
-        </div>
-        <button
-          onClick={() => onPickSP(null)}
-          className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
-        >
-          Chọn SP khác
-        </button>
-      </div>
-
-      {/* Matrix size (cột) × màu (hàng) */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="p-2 border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-left text-xs">
-                Màu \ Size
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            <th className="p-2 border-b border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-left text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+              Màu \ Size
+            </th>
+            {sizes.map((s) => (
+              <th key={s} className="p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
+                {s}
               </th>
-              {sizes.map((s) => (
-                <th
-                  key={s}
-                  className="p-2 border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold"
-                >
-                  {s}
-                </th>
-              ))}
-              <th className="p-2 border border-slate-300 dark:border-slate-700 bg-cyan-100 dark:bg-cyan-900/30 text-center text-xs font-bold">
-                Tổng
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {mauList.map((mau) => {
-              const mauCode = (mau.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
-              const rowTotal = sizes.reduce((sum, s) => sum + (itemsByKey.get(`${mauCode}-${s}`) || 0), 0);
+            ))}
+            <th className="p-2 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-900/20 text-center text-xs font-bold text-cyan-800 dark:text-cyan-400">
+              Tổng
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {mauList.map((mau) => {
+            const mauCode = (mau.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
+            const rowTotal = sizes.reduce((sum, s) => sum + (itemsByKey.get(`${mauCode}-${s}`) || 0), 0);
+            return (
+              <tr key={mau.ten} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <td className="p-2 border-b border-r border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 whitespace-nowrap">
+                  {mau.img ? <img src={mau.img} className="w-6 h-6 rounded object-cover shadow-sm" /> : <div className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-700"></div>}
+                  {mau.ten}
+                </td>
+                {sizes.map((s) => {
+                  const val = itemsByKey.get(`${mauCode}-${s}`) || 0;
+                  return (
+                    <td key={s} className={`p-1 border-b border-slate-200 dark:border-slate-700 text-center ${val > 0 ? "bg-cyan-50/50 dark:bg-cyan-900/10" : ""}`}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={val || ""}
+                        placeholder="0"
+                        onChange={(e) => onUpdateCell(sp, mauCode, s, Math.max(0, +e.target.value || 0))}
+                        className="w-14 px-1 py-1 rounded text-center text-sm border border-slate-300 dark:border-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white dark:bg-slate-800 transition-all"
+                      />
+                    </td>
+                  );
+                })}
+                <td className="p-2 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50/50 dark:bg-cyan-900/10 text-center text-xs font-bold text-cyan-800 dark:text-cyan-400">
+                  {rowTotal}
+                </td>
+              </tr>
+            );
+          })}
+          <tr>
+            <td className="p-2 border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 text-right">
+              Tổng cộng
+            </td>
+            {sizes.map((s) => {
+              const colTotal = mauList.reduce((sum, m) => {
+                const mauCode = (m.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
+                return sum + (itemsByKey.get(`${mauCode}-${s}`) || 0);
+              }, 0);
               return (
-                <tr key={mau.ten}>
-                  <td className="p-2 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-xs font-semibold">
-                    {mau.ten}
-                  </td>
-                  {sizes.map((s) => {
-                    const val = itemsByKey.get(`${mauCode}-${s}`) || 0;
-                    return (
-                      <td
-                        key={s}
-                        className={`p-1 border border-slate-300 dark:border-slate-700 text-center ${
-                          val > 0 ? "bg-cyan-50 dark:bg-cyan-900/20" : ""
-                        }`}
-                      >
-                        <input
-                          type="number"
-                          min={0}
-                          value={val || ""}
-                          placeholder="0"
-                          onChange={(e) => onUpdateCell(pickerSP, mauCode, s, Math.max(0, +e.target.value || 0))}
-                          className="w-16 px-1.5 py-1 rounded text-center text-sm border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 focus:ring-1 focus:ring-cyan-500 outline-none"
-                        />
-                      </td>
-                    );
-                  })}
-                  <td className="p-2 border border-slate-300 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-900/30 text-center text-xs font-bold">
-                    {rowTotal}
-                  </td>
-                </tr>
+                <td key={s} className="p-2 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {colTotal}
+                </td>
               );
             })}
-            {/* Row tổng */}
-            <tr>
-              <td className="p-2 border border-slate-300 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-900/30 text-xs font-bold">
-                Tổng
-              </td>
-              {sizes.map((s) => {
-                const colTotal = mauList.reduce((sum, m) => {
-                  const mauCode = (m.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
-                  return sum + (itemsByKey.get(`${mauCode}-${s}`) || 0);
-                }, 0);
-                return (
-                  <td key={s} className="p-2 border border-slate-300 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-900/30 text-center text-xs font-bold">
-                    {colTotal}
-                  </td>
-                );
-              })}
-              <td className="p-2 border-2 border-cyan-500 bg-cyan-100 dark:bg-cyan-900/40 text-center font-bold text-cyan-700 dark:text-cyan-300">
-                {tongSL}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
-        <span className="font-bold text-slate-700 dark:text-slate-200">
-          {tongSL} sản phẩm × {formatVND(pickerSP.giaBanDuKien)}
-        </span>
-        <span className="font-bold text-lg text-cyan-700 dark:text-cyan-300">{formatVND(tongTien)}</span>
-      </div>
+            <td className="p-2 border-l border-slate-200 dark:border-slate-700 bg-cyan-100 dark:bg-cyan-900/30 text-center text-sm font-extrabold text-cyan-700 dark:text-cyan-400">
+              {tongSL}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
 
-// Picker nhỏ cho chế độ bán sỉ
-function SiPicker({ dsSanPham, onPick }: { dsSanPham: SanPham[]; onPick: (sp: SanPham) => void }) {
-  const [search, setSearch] = useState(false);
-  const [keyword, setKeyword] = useState("");
-  const filtered = dsSanPham.filter((sp) => sp.id.toLowerCase().includes(keyword.toLowerCase()) || sp.tenSP.toLowerCase().includes(keyword.toLowerCase()));
-
-  if (!search) {
-    return (
-      <button
-        onClick={() => setSearch(true)}
-        className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm flex items-center gap-2 mx-auto"
-      >
-        <Plus className="w-4 h-4" />
-        Chọn sản phẩm
-      </button>
-    );
-  }
-
-  return (
-    <div className="border border-violet-200 dark:border-violet-800 rounded-xl p-4 max-w-2xl mx-auto">
-      <input
-        type="text"
-        placeholder="Tìm sản phẩm..."
-        value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
-        autoFocus
-        className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm mb-3"
-      />
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-        {filtered.map((sp) => (
-          <button
-            key={sp.id}
-            onClick={() => { onPick(sp); setSearch(false); }}
-            className="text-left p-2 rounded border border-slate-200 dark:border-slate-700 hover:border-violet-500 transition"
-          >
-            <div className="text-xs font-bold text-cyan-700 dark:text-cyan-300">{sp.id}</div>
-            <div className="text-sm font-semibold truncate">{sp.tenSP}</div>
-            <div className="text-xs text-emerald-600">{formatVNDShort(sp.giaBanDuKien)}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ============================================
 // TAB 3: THANH TOAN - multi-method
