@@ -99,6 +99,15 @@ export const TRANG_THAI_CD_STYLE: Record<TrangThaiCongDoan, { bg: string; text: 
   "co_loi":     { bg: "bg-rose-100",    text: "text-rose-700",    dot: "bg-rose-500" },
 };
 
+export type CatChiTietTrangThai = "cho_lam" | "hoan_thanh" | "khong_can";
+
+export type CatChiTiet = {
+  traiVai: CatChiTietTrangThai;
+  catHang: CatChiTietTrangThai;
+  epNhan: CatChiTietTrangThai;
+  epKeo: CatChiTietTrangThai;
+};
+
 type CongDoanBase = {
   id: string; // e.g. "cat", "mayAo", "in", "theu" or auto-generated
   tenCongDoan: string; // e.g. "Cắt", "May Áo", "In", "Thêu", "Ủi", "Đóng Gói", "In Chuyển Nhiệt"
@@ -118,6 +127,8 @@ type CongDoanBase = {
   lyDoLoi?: string;                // Lý do lỗi
   ngayNhanViec?: string;           // Ngày nhận việc
   ngayHoanThanh?: string;          // Ngày hoàn thành thực tế
+  // Chi tiết 4 bước dành riêng cho khâu Cắt
+  catChiTiet?: CatChiTiet;
 };
 
 
@@ -222,7 +233,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-AO-TRON",
     ten: "Áo tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -233,7 +244,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-AO-TRU",
     ten: "Áo trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -245,7 +256,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-BO-TRON",
     ten: "Bộ tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -257,7 +268,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-BO-TRU",
     ten: "Bộ trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -301,9 +312,10 @@ interface LenhCatStore {
   xoaMauChiPhi: (id: string) => void;
   capNhatTrangThai: (id: string, tt: TrangThaiLenhCat, u: any) => void;
   capNhatCongDoan: (lenhId: string, congDoanId: string, data: {
-    trangThaiCD: TrangThaiCongDoan;
+    trangThaiCD?: TrangThaiCongDoan;
     soLuongHoanThanh?: number;
     soLuongLoi?: number;
+    catChiTiet?: CatChiTiet;
   }) => void;
   reset: () => void;
   loading: boolean;
@@ -532,9 +544,10 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const capNhatCongDoan = useCallback((lenhId: string, congDoanId: string, data: {
-    trangThaiCD: TrangThaiCongDoan;
+    trangThaiCD?: TrangThaiCongDoan;
     soLuongHoanThanh?: number;
     soLuongLoi?: number;
+    catChiTiet?: CatChiTiet;
   }) => {
     setDsLenhCat(prev => {
       const next = prev.map(lc => {
@@ -543,9 +556,10 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
           pc.id === congDoanId
             ? {
                 ...pc,
-                trangThaiCD: data.trangThaiCD,
+                trangThaiCD: data.trangThaiCD ?? pc.trangThaiCD,
                 soLuongHoanThanh: data.soLuongHoanThanh ?? pc.soLuongHoanThanh,
                 soLuongLoi: data.soLuongLoi ?? pc.soLuongLoi,
+                catChiTiet: data.catChiTiet ?? pc.catChiTiet,
                 ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
                   ? new Date().toISOString().slice(0, 10)
                   : pc.ngayNhanViec,
