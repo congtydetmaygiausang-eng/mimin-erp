@@ -3,7 +3,7 @@
 // 2026-08-05: thêm 2 role content + partner (cho 44 user @mimin.vn)
 // 2026-08-05: thêm 4 module gia-cong-mobile (trang-chu-gia-cong, cong-viec, san-luong, tien-cong)
 
-export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner";
+export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging";
 export type Action = "view" | "create" | "edit" | "delete";
 
 export type Module =
@@ -36,9 +36,14 @@ export type Module =
   | "danh-muc-sp"
   // Modules gia cong mobile (cho NCC + cong nhan)
   | "cong-viec-gia-cong"
-  | "ban-giao-gia-cong"
   | "san-luong-gia-cong"
-  | "tien-cong-gia-cong";
+  | "tien-cong-gia-cong"
+  // Modules chi tiết sản xuất
+  | "to-cat"
+  | "to-in-theu"
+  | "to-khuy-nut"
+  | "to-ui"
+  | "to-dong-goi";
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Quản trị viên",
@@ -50,6 +55,11 @@ export const ROLE_LABELS: Record<Role, string> = {
   accountant: "Kế toán",
   content: "Content / Media",
   partner: "Đối tác gia công",
+  cutting: "Tổ trưởng cắt",
+  printing: "Tổ trưởng in thêu",
+  buttoning: "Tổ trưởng khuy nút",
+  ironing: "Tổ trưởng ủi",
+  packaging: "Tổ trưởng đóng gói",
 };
 
 export const ROLE_COLORS: Record<Role, string> = {
@@ -62,6 +72,11 @@ export const ROLE_COLORS: Record<Role, string> = {
   accountant: "from-blue-500 to-indigo-500",
   content: "from-pink-500 to-rose-500",
   partner: "from-purple-500 to-fuchsia-500",
+  cutting: "from-red-500 to-orange-500",
+  printing: "from-indigo-500 to-blue-500",
+  buttoning: "from-teal-500 to-emerald-500",
+  ironing: "from-orange-500 to-yellow-500",
+  packaging: "from-stone-500 to-neutral-500",
 };
 
 export const MODULE_LABELS: Record<Module, string> = {
@@ -96,6 +111,11 @@ export const MODULE_LABELS: Record<Module, string> = {
   "ban-giao-gia-cong": "Bàn giao gia công",
   "san-luong-gia-cong": "Sản lượng gia công",
   "tien-cong-gia-cong": "Tiền công gia công",
+  "to-cat": "Tổ Cắt",
+  "to-in-theu": "Tổ In/Thêu",
+  "to-khuy-nut": "Tổ Khuy Nút",
+  "to-ui": "Tổ Ủi",
+  "to-dong-goi": "Tổ Đóng Gói",
 };
 
 // Permission Matrix: 7 role × 21 module × 4 action
@@ -135,6 +155,11 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "rcud",
     "san-luong-gia-cong": "rcud",
     "tien-cong-gia-cong": "rcud",
+    "to-cat": "rcud",
+    "to-in-theu": "rcud",
+    "to-khuy-nut": "rcud",
+    "to-ui": "rcud",
+    "to-dong-goi": "rcud",
   },
   // Planner (chuyên viên kế hoạch): tạo lệnh cắt, KH, đơn hàng, KHSX. Xem các phần liên quan
   planner: {
@@ -301,6 +326,32 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "rcu",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
+  },
+  // Các role sản xuất chi tiết mới thêm
+  cutting: {
+    "dashboard": "r",
+    "lenh-cat": "r",
+    "to-cat": "rcud",
+  },
+  printing: {
+    "dashboard": "r",
+    "lenh-cat": "r",
+    "to-in-theu": "rcud",
+  },
+  buttoning: {
+    "dashboard": "r",
+    "lenh-cat": "r",
+    "to-khuy-nut": "rcud",
+  },
+  ironing: {
+    "dashboard": "r",
+    "lenh-cat": "r",
+    "to-ui": "rcud",
+  },
+  packaging: {
+    "dashboard": "r",
+    "lenh-cat": "r",
+    "to-dong-goi": "rcud",
   },
   // Accountant (kế toán): CRUD bảng lương, công nợ, NCC, xem báo cáo
   accountant: {
