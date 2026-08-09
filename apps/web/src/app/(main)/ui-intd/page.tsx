@@ -5,7 +5,7 @@
 // Nhận bán thành phẩm từ Cắt, hoàn thành chuyển cho May
 
 import { useState } from "react";
-import { Palette, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
+import { Palette, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, Shirt } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "@/components/ui";
@@ -73,9 +73,9 @@ export default function UiInTheuPage() {
     <div className="space-y-5 animate-fade-in">
       <div>
         <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <Shirt className="w-7 h-7 text-violet-500" /> Tổ May – Công việc
+          <Palette className="w-7 h-7 text-violet-500" /> Tổ In / Thêu – Công việc
         </h1>
-        <p className="text-sm text-slate-500 mt-1">{lcCoMay.length} lệnh đang chờ / đang may</p>
+        <p className="text-sm text-slate-500 mt-1">{lcCoIntd.length} lệnh đang chờ / đang làm</p>
       </div>
 
       {/* KPI */}
