@@ -66,12 +66,17 @@ type NavItem = {
   icon: any;
   permModule?: Module;
   isGroup?: boolean;
+  color?: string;        // accent color per group
+  iconColor?: string;    // icon color per group
+  activeItemBg?: string; // active sub-item bg
   subItems?: SubItem[];
 };
 
 const NAV: NavItem[] = [
   {
-    label: "Tổng Quan", icon: LayoutDashboard, isGroup: true, subItems: [
+    label: "Tổng Quan", icon: LayoutDashboard, isGroup: true,
+    color: "border-cyan-400", iconColor: "text-cyan-400", activeItemBg: "bg-cyan-400/15 text-cyan-300",
+    subItems: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permModule: "dashboard" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX", icon: Factory, permModule: "bang-dieu-hanh-sx" },
       { href: "/realtime", label: "Real-time Dashboard", icon: BarChart3, permModule: "realtime" },
@@ -79,7 +84,9 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true, subItems: [
+    label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
+    color: "border-teal-400", iconColor: "text-teal-400", activeItemBg: "bg-teal-400/15 text-teal-300",
+    subItems: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, permModule: "ke-hoach-sx" },
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, permModule: "lenh-cat" },
       { href: "/to-cat-work", label: "Tổ Cắt – Việc của tôi", icon: Scissors, permModule: "to-cat" },
@@ -97,7 +104,9 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "Kho & Giao Hàng", icon: Boxes, isGroup: true, subItems: [
+    label: "Kho & Giao Hàng", icon: Boxes, isGroup: true,
+    color: "border-emerald-400", iconColor: "text-emerald-400", activeItemBg: "bg-emerald-400/15 text-emerald-300",
+    subItems: [
       { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, permModule: "kho-vai" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, permModule: "kho-phu-lieu" },
       { href: "/kho-thanh-pham", label: "Kho thành phẩm", icon: Boxes, permModule: "kho-thanh-pham" },
@@ -105,7 +114,9 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "Kế Toán & Mua Bán", icon: Wallet, isGroup: true, subItems: [
+    label: "Kế Toán & Mua Bán", icon: Wallet, isGroup: true,
+    color: "border-amber-400", iconColor: "text-amber-400", activeItemBg: "bg-amber-400/15 text-amber-300",
+    subItems: [
       { href: "/cham-cong", label: "Chấm công", icon: Calendar, permModule: "cham-cong" },
       { href: "/bang-luong", label: "Bảng lương", icon: Wallet, permModule: "bang-luong" },
       { href: "/doi-soat-tien-cong", label: "Đối soát tiền công", icon: Wallet2, permModule: "doi-soat-tien-cong" },
@@ -114,7 +125,9 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "Danh Mục Dữ Liệu", icon: Building2, isGroup: true, subItems: [
+    label: "Danh Mục Dữ Liệu", icon: Building2, isGroup: true,
+    color: "border-violet-400", iconColor: "text-violet-400", activeItemBg: "bg-violet-400/15 text-violet-300",
+    subItems: [
       { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, permModule: "danh-muc-sp" },
       { href: "/nhan-su", label: "Nhân sự", icon: Users, permModule: "nhan-su" },
       { href: "/khach-hang", label: "Khách hàng", icon: Users, permModule: "khach-hang" },
@@ -125,7 +138,9 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "Hệ Thống (Dev)", icon: Settings, isGroup: true, subItems: [
+    label: "Hệ Thống (Dev)", icon: Settings, isGroup: true,
+    color: "border-rose-400", iconColor: "text-rose-400", activeItemBg: "bg-rose-400/15 text-rose-300",
+    subItems: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản", icon: Users, permModule: "cai-dat" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh", icon: Sliders, permModule: "cai-dat" },
       { href: "/ai-assistant", label: "AI Assistant", icon: Bot, permModule: "cai-dat" },
@@ -171,9 +186,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
     }
   };
 
-  // Filter menu theo permission
   const visibleNav = useMemo(() => {
-    // Nếu là công nhân, ghi đè toàn bộ menu thành 1 mục duy nhất dựa trên user.module
     if (user?.laCongNhan) {
       if (user.module === "cat") {
         return [{ href: "/to-cat-work", label: "✂️ Việc của tôi (Cắt)", icon: Scissors }];
@@ -205,15 +218,15 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
 
   return (
     <>
-      <div className={clsx("p-5 border-b border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
-        <Link href="/dashboard" className="flex items-center gap-2 min-w-0" onClick={onItemClick}>
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold shadow-lg">
+      <div className={clsx("p-4 border-b border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
+        <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0" onClick={onItemClick}>
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-black text-base shadow-lg shadow-teal-900/40">
             M
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <div className="font-bold text-sm truncate text-white">MIMIN ERP</div>
-              <div className="text-xs truncate text-slate-300">Quản lý may mặc</div>
+              <div className="font-black text-sm truncate text-white tracking-wide">MIMIN ERP</div>
+              <div className="text-[10px] truncate text-slate-400">Quản lý may mặc</div>
             </div>
           )}
         </Link>
@@ -221,7 +234,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         {toggleCollapse && (
           <button
             onClick={toggleCollapse}
-            className="hidden md:inline-flex ml-2 shrink-0 rounded-lg border border-white/10 p-1.5 transition-colors hover:bg-white/10 text-white"
+            className="hidden md:inline-flex ml-2 shrink-0 rounded-lg border border-white/10 p-1.5 transition-colors hover:bg-white/10 text-slate-400 hover:text-white"
             aria-label={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
             title={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
           >
@@ -239,7 +252,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
           </button>
         )}
       </div>
-      <nav className="flex-1 overflow-y-auto p-3 space-y-2">
+      <nav className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {visibleNav.length === 0 ? (
           <div className="p-4 text-center text-xs opacity-60">
             <Lock className="w-6 h-6 mx-auto mb-2 opacity-40" />
@@ -249,6 +262,9 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         ) : (
           visibleNav.map((item) => {
             const Icon = item.icon;
+            const groupIconColor = item.iconColor || "text-slate-300";
+            const groupBorderColor = item.color || "border-slate-500";
+            const activeItemBg = item.activeItemBg || "bg-white/15 text-white";
             
             // Render group
             if (item.isGroup && item.subItems) {
@@ -256,24 +272,24 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
               const isGroupActive = item.subItems.some((s) => pathname?.startsWith(s.href));
               
               return (
-                <div key={item.label} className="mb-1">
+                <div key={item.label} className="mb-0.5">
                   <button
                     onClick={() => toggleGroup(item.label)}
                     aria-expanded={isOpen}
                     className={clsx(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-all border border-transparent",
+                      "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all border-l-2",
                       isGroupActive && !isOpen
-                        ? "bg-white/10 text-white border-white/10 shadow-sm"
-                        : "hover:bg-white/10 text-slate-300 hover:text-white",
+                        ? `${groupBorderColor} bg-white/8 text-white`
+                        : `border-transparent hover:bg-white/8 text-slate-400 hover:text-white`,
                       isCollapsed && "justify-center px-2"
                     )}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon className="w-5 h-5 shrink-0" />
+                    <Icon className={clsx("w-[18px] h-[18px] shrink-0", isGroupActive ? groupIconColor : "text-slate-400 group-hover:text-slate-200")} />
                     {!isCollapsed && (
                       <>
-                        <span className="flex-1 text-left">{item.label}</span>
-                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
+                        <span className="flex-1 text-left tracking-wide">{item.label}</span>
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-40" /> : <ChevronRight className="w-3.5 h-3.5 opacity-40" />}
                       </>
                     )}
                   </button>
@@ -281,37 +297,39 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                   {!isCollapsed && (
                     <div
                       className={clsx(
-                        "ml-3 mt-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 px-2 py-1 transition-all duration-200",
+                        "ml-2 mt-0.5 overflow-hidden transition-all duration-200",
                         isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
                       )}
                     >
-                      {item.subItems.map((sub) => {
-                        const SubIcon = sub.icon;
-                        const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
-                        return (
-                          <Link
-                            key={sub.href}
-                            href={sub.href}
-                            onClick={onItemClick}
-                            className={clsx(
-                              "flex items-center gap-2 px-2.5 py-2 rounded-md text-[14px] font-medium transition-all",
-                              subActive
-                                ? "bg-white/20 text-white shadow-sm"
-                                : "hover:bg-white/10 text-slate-300 hover:text-white"
-                            )}
-                          >
-                            <SubIcon className="w-4 h-4 shrink-0" />
-                            <span className="flex-1">{sub.label}</span>
-                          </Link>
-                        );
-                      })}
+                      <div className={clsx("pl-3 border-l-2 border-dashed py-0.5 space-y-0.5", groupBorderColor, "border-opacity-30")}>
+                        {item.subItems.map((sub) => {
+                          const SubIcon = sub.icon;
+                          const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
+                          return (
+                            <Link
+                              key={sub.href}
+                              href={sub.href}
+                              onClick={onItemClick}
+                              className={clsx(
+                                "flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all",
+                                subActive
+                                  ? activeItemBg + " shadow-sm font-semibold"
+                                  : "hover:bg-white/8 text-slate-400 hover:text-slate-200"
+                              )}
+                            >
+                              <SubIcon className={clsx("w-3.5 h-3.5 shrink-0", subActive ? groupIconColor : "text-slate-500")} />
+                              <span className="flex-1 leading-tight">{sub.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
               );
             }
             
-            // Render item đơn lẻ (nếu có)
+            // Render item đơn lẻ
             const active = pathname?.startsWith(item.href || "");
             return (
               <Link
@@ -319,27 +337,27 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                 href={item.href || "#"}
                 onClick={onItemClick}
                 className={clsx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[17px] font-bold transition-all",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all border-l-2",
                   active
-                    ? "bg-white/20 text-white"
-                    : "hover:bg-white/10 text-slate-300 hover:text-white",
+                    ? `${groupBorderColor} bg-white/10 text-white`
+                    : "border-transparent hover:bg-white/8 text-slate-400 hover:text-white",
                   isCollapsed && "justify-center px-0"
                 )}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon className="w-5 h-5 shrink-0" />
+                <Icon className={clsx("w-[18px] h-[18px] shrink-0", active ? groupIconColor : "text-slate-400")} />
                 {!isCollapsed && <span className="flex-1">{item.label}</span>}
               </Link>
             );
           })
         )}
       </nav>
-      <div className={clsx("p-4 border-t border-white/10 text-xs text-slate-300 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
-        {!isCollapsed && <span>&copy; 2026 Polo Mimin</span>}
+      <div className={clsx("p-4 border-t border-white/10 text-xs text-slate-500 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
+        {!isCollapsed && <span>© 2026 Polo Mimin</span>}
         {toggleCollapse && (
           <button 
             onClick={toggleCollapse} 
-            className="p-1 hover:text-white transition-colors"
+            className="p-1 hover:text-slate-300 transition-colors"
             title={isCollapsed ? "Mở menu" : "Thu gọn menu"}
           >
             {isCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
