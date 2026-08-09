@@ -14,14 +14,26 @@ export default function UiHoanThienPage() {
   const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
-  // LC chờ hoàn thiện: công đoạn ủi/đóng gói còn chưa xong, nhưng may đã xong
-  const lcHT = dsLenhCat.filter(lc =>
-    lc.phanCong?.some((pc: any) =>
+  // LC chờ hoàn thiện: các công đoạn trước (May áo, May quần...) ĐÃ XONG (đủ bộ), chuẩn bị Ủy/Đóng gói
+  const lcHT = dsLenhCat.filter(lc => {
+    // 1. Phải có công đoạn HT
+    const hasHT = lc.phanCong?.some((pc: any) =>
       (pc.id === "ui" || pc.id === "dongGoi" ||
        pc.tenCongDoan?.toLowerCase().includes("ủi") ||
        pc.tenCongDoan?.toLowerCase().includes("đóng gói"))
-    )
-  );
+    );
+    if (!hasHT) return false;
+
+    // 2. Tất cả công đoạn gia công trước đó (Cắt, May, In...) phải hoàn thành thì mới "đủ bộ"
+    const prevPCs = lc.phanCong?.filter((pc: any) => 
+      !(pc.id === "ui" || pc.id === "dongGoi" ||
+        pc.tenCongDoan?.toLowerCase().includes("ủi") ||
+        pc.tenCongDoan?.toLowerCase().includes("đóng gói"))
+    ) || [];
+
+    // Nếu chưa hoàn thành tất cả công đoạn trước -> Chưa đủ bộ -> Không hiển thị ở Hoàn thiện
+    return prevPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+  });
 
   function getHTPC(lc: any) {
     return lc.phanCong?.filter((pc: any) =>
