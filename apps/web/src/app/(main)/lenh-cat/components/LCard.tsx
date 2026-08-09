@@ -183,7 +183,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-500 pl-5">Tổng lô ({lc.tongSL?.toLocaleString()} SP):</span>
                 <span className="font-black text-emerald-600 tabular-nums text-sm">
-                  {formatVND(cogs.tongGiaVon ?? cogs.giaVonBinhQuan)}
+                  {formatVND(cogs.tongGiaVon ?? ((cogs.giaVon1SP ?? cogs.giaVonBinhQuan) * (lc.tongSL || 1)))}
                 </span>
               </div>
             </div>
@@ -192,17 +192,17 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
       </div>
 
       {lc.phanCong && lc.phanCong.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4 pt-3 border-t border-slate-100">
+        <div className="flex flex-col gap-1.5 mb-4 pt-3 border-t border-slate-100">
           {lc.phanCong
             .filter(pc => {
               const name = pc.tenCongDoan.toLowerCase();
               return name.includes('may') || name.includes('thêu') || name.includes('in');
             })
             .map((pc, idx) => (
-            <div key={idx} className="inline-flex items-center gap-1.5 text-[11px] bg-white text-slate-500 px-2.5 py-1.5 rounded border border-slate-200">
-              <span className="font-black text-slate-800">{pc.tenCongDoan}:</span>
+            <div key={idx} className="flex items-start justify-between text-xs bg-slate-50/50 px-3 py-2 rounded-lg border border-slate-200/60 shadow-sm transition-colors hover:bg-slate-50">
+              <span className="font-bold text-slate-500 shrink-0 mr-3">{pc.tenCongDoan}</span>
               {pc.nguoiTen ? (
-                <span className="truncate max-w-[120px] font-medium">{pc.nguoiTen}</span>
+                <span className="font-bold text-slate-800 text-right leading-tight">{pc.nguoiTen}</span>
               ) : (
                 <span className="italic text-slate-400">Chưa giao</span>
               )}
