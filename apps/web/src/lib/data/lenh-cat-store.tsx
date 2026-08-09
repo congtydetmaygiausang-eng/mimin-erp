@@ -81,11 +81,12 @@ export type LenhCatPhuLieu = {
 export type TrangThaiThanhToan = "chua_tra" | "tra_mot_phan" | "da_tra_du";
 
 // Type chung cho moi cong doan
-export type TrangThaiCongDoan = "cho_giao" | "dang_lam" | "hoan_thanh" | "co_loi";
+export type TrangThaiCongDoan = "cho_giao" | "dang_lam" | "cho_qc" | "hoan_thanh" | "co_loi";
 
 export const TRANG_THAI_CD_LABELS: Record<TrangThaiCongDoan, string> = {
   "cho_giao":    "Chờ giao",
   "dang_lam":    "Đang làm",
+  "cho_qc":      "Chờ QC duyệt",
   "hoan_thanh":  "Hoàn thành",
   "co_loi":      "Có lỗi",
 };
@@ -93,6 +94,7 @@ export const TRANG_THAI_CD_LABELS: Record<TrangThaiCongDoan, string> = {
 export const TRANG_THAI_CD_STYLE: Record<TrangThaiCongDoan, { bg: string; text: string; dot: string }> = {
   "cho_giao":   { bg: "bg-slate-100",   text: "text-slate-600",   dot: "bg-slate-400" },
   "dang_lam":   { bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-400" },
+  "cho_qc":     { bg: "bg-sky-100",     text: "text-sky-700",     dot: "bg-sky-500" },
   "hoan_thanh": { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
   "co_loi":     { bg: "bg-rose-100",    text: "text-rose-700",    dot: "bg-rose-500" },
 };

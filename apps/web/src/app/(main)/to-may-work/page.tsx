@@ -67,8 +67,8 @@ export default function UiMayPage() {
     const key = `${lc.id}-${pc.id}`;
     const sl = slInput[key] ?? pc.soLuong ?? lc.tongSL;
     const loi = loiInput[key] ?? 0;
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl, soLuongLoi: loi });
-    toast.success(`✅ Chuyển tiếp thành công: ${sl} SP (Lỗi: ${loi})`);
+    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "cho_qc", soLuongHoanThanh: sl, soLuongLoi: loi });
+    toast.success(`✅ Đã giao QC: ${sl} SP (Lỗi: ${loi})`);
   }
 
   function handleGiaoQC(lc: any, pc: any) {
@@ -180,7 +180,7 @@ export default function UiMayPage() {
                             <>
                               <button onClick={() => handleHoanThanh(lc, pc)}
                                 className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm">
-                                <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển tiếp
+                                <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Giao QC
                               </button>
                               <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}
                                 className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-bold text-sm">

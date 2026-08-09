@@ -25,15 +25,14 @@ export default function UiQCPage() {
   const lcChoQC = dsLenhCat.filter(lc =>
     lc.phanCong?.some((pc: any) =>
       (pc.id === "mayAo" || pc.id === "mayQuan" || pc.tenCongDoan?.toLowerCase().includes("may")) &&
-      pc.trangThaiCD === "hoan_thanh"
+      pc.trangThaiCD === "cho_qc"
     )
   );
 
-  // Tất cả LC đang ở QC
   const lcQCData = lcChoQC.map(lc => {
     const mayPCs = lc.phanCong?.filter((pc: any) =>
       (pc.id === "mayAo" || pc.id === "mayQuan" || pc.tenCongDoan?.toLowerCase().includes("may")) &&
-      pc.trangThaiCD === "hoan_thanh"
+      pc.trangThaiCD === "cho_qc"
     ) || [];
     return { lc, mayPCs };
   });
@@ -44,15 +43,13 @@ export default function UiQCPage() {
   function handleDat(lc: any) {
     const slD = slDat[lc.id] ?? lc.tongSL;
     const slL = slLoi[lc.id] ?? 0;
-    // Cập nhật tất cả công đoạn may thành hoan_thanh QC pass
+    // Cập nhật tất cả công đoạn may thành hoan_thanh (QC pass)
     lc.phanCong?.filter((pc: any) =>
-      pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "hoan_thanh"
+      pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "cho_qc"
     ).forEach((pc: any) => {
       capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: slD, soLuongLoi: slL });
     });
-    // Cập nhật công đoạn UI (ủi/hoàn thiện) thành dang_lam nếu có
-    const uiPC = lc.phanCong?.find((pc: any) => pc.id === "ui" || pc.tenCongDoan?.toLowerCase().includes("ủi")) as any;
-    if (uiPC) capNhatCongDoan(lc.id, uiPC.id, { trangThaiCD: "dang_lam" });
+    // Không cần tự động kích hoạt Khuy/Ủi vì chúng tự hiển thị khi May hoàn thành
     toast.success(`✅ QC đạt: ${lc.id} – ${slD} SP đạt${slL > 0 ? `, ${slL} SP lỗi` : ""}`);
   }
 
@@ -60,7 +57,7 @@ export default function UiQCPage() {
     const slL = slLoi[lc.id] ?? 0;
     const ll = loaiLoi[lc.id] ?? "";
     lc.phanCong?.filter((pc: any) =>
-      pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "hoan_thanh"
+      pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "cho_qc"
     ).forEach((pc: any) => {
       capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi", soLuongLoi: slL });
     });
@@ -159,10 +156,10 @@ export default function UiQCPage() {
 
                 {/* Buttons */}
                 <div className="flex gap-3 pt-2 border-t border-slate-100">
-                  <button onClick={() => handleDat(lc)}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors">
-                    <CheckCircle2 className="w-4 h-4" /> Đạt – Chuyển Hoàn Thiện
-                  </button>
+                      <button onClick={() => handleDat(lc)}
+                        className="flex-1 px-3 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-1.5 transition-colors">
+                        <CheckCircle2 className="w-4 h-4" /> QC Đạt & Chuyển Khuy/Ủi
+                      </button>
                   <button onClick={() => handleTraLai(lc)}
                     className="flex-1 py-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-600 font-bold hover:bg-rose-100 flex items-center justify-center gap-2 transition-colors">
                     <XCircle className="w-4 h-4" /> Lỗi – Trả lại Tổ May
