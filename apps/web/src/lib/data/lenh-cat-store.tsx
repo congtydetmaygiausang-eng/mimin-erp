@@ -315,6 +315,9 @@ interface LenhCatStore {
     trangThaiCD?: TrangThaiCongDoan;
     soLuongHoanThanh?: number;
     soLuongLoi?: number;
+    lyDoLoi?: string;
+    thanhTien?: number;
+    conLai?: number;
     catChiTiet?: CatChiTiet;
   }) => void;
   reset: () => void;
