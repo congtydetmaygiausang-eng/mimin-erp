@@ -68,8 +68,27 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           if (data && data.length > 0) {
             const normalized = data.map((d: any) => normalizeEmployeeRecord(d) as NhanSuExt);
-            setList(normalized);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+            
+            // Nếu data trên DB bị thiếu (ít hơn 17 người ban đầu)
+            if (data.length < NHAN_SU_KHOI_DAU.length) {
+              const missing = NHAN_SU_KHOI_DAU.filter(k => !data.find(d => d.ma_nv === k.maNV));
+              if (missing.length > 0) {
+                const combined = [...normalized, ...missing].sort((a, b) => a.stt - b.stt);
+                setList(combined);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+                
+                // Background seed the missing ones
+                Promise.all(missing.map(nv => 
+                  supabaseUpsert("nhan_su", toSupabaseEmployeeRecord(nv), "ma_nv")
+                )).catch(err => console.error("Seed missing error", err));
+              } else {
+                setList(normalized);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+              }
+            } else {
+              setList(normalized);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+            }
           } else {
             // Seed data if empty
             setList(NHAN_SU_KHOI_DAU);
