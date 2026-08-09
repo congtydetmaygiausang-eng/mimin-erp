@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import {
   ShoppingCart, Plus, Edit2, Trash2, Search, X, Calendar, Package, CheckCircle2, Clock,
   AlertCircle, TrendingUp, DollarSign, User as UserIcon, ChevronRight, Printer, Wallet, Truck,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -12,6 +13,7 @@ import OrderFormModal from "@/components/order-detail/OrderFormModal";
 import InvoicePrint from "@/components/order-detail/InvoicePrint";
 import QuickPaymentModal from "@/components/order-detail/QuickPaymentModal";
 import ShippingModal from "@/components/order-detail/ShippingModal";
+import MeInvoicePublishModal from "@/components/order-detail/MeInvoicePublishModal";
 import type { Order, OrderPayment, OrderShipping } from "@/components/order-detail/types";
 
 type TrangThaiDH = Order["trangThai"];
@@ -35,6 +37,7 @@ export default function DonHangPage() {
   const [showPayment, setShowPayment] = useState<Order | null>(null);
   const [showShipping, setShowShipping] = useState<Order | null>(null);
   const [showInvoice, setShowInvoice] = useState<Order | null>(null);
+  const [showMeInvoice, setShowMeInvoice] = useState<Order | null>(null);
 
   // KPIs
   const tongDH = dsOrder.length;
@@ -233,6 +236,9 @@ export default function DonHangPage() {
                         <button onClick={() => setShowShipping(d)} className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded transition-colors" title="Vận chuyển">
                           <Truck className="w-4 h-4" />
                         </button>
+                        <button onClick={() => setShowMeInvoice(d)} className="p-1.5 text-slate-600 hover:text-cyan-600 hover:bg-cyan-50 rounded transition-colors" title="🧾 Phát hành HĐĐT MeInvoice">
+                          <FileText className="w-4 h-4" />
+                        </button>
                         <button onClick={() => setShowForm({ mode: "edit", dh: d })} className="p-1.5 text-slate-600 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors" title="Sửa đơn">
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -295,6 +301,16 @@ export default function DonHangPage() {
         <InvoicePrint
           order={showInvoice}
           onClose={() => setShowInvoice(null)}
+        />
+      )}
+
+      {showMeInvoice && (
+        <MeInvoicePublishModal
+          order={showMeInvoice}
+          onClose={() => setShowMeInvoice(null)}
+          onSuccess={() => {
+            // Optional: refresh data
+          }}
         />
       )}
     </div>
