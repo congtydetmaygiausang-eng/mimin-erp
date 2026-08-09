@@ -71,7 +71,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   {
-    label: "📊 Tổng Quan", icon: LayoutDashboard, isGroup: true, subItems: [
+    label: "Tổng Quan", icon: LayoutDashboard, isGroup: true, subItems: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permModule: "dashboard" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX", icon: Factory, permModule: "bang-dieu-hanh-sx" },
       { href: "/realtime", label: "Real-time Dashboard", icon: BarChart3, permModule: "realtime" },
@@ -79,25 +79,25 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "🏭 Sản Xuất & Kế hoạch", icon: Factory, isGroup: true, subItems: [
+    label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true, subItems: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, permModule: "ke-hoach-sx" },
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, permModule: "lenh-cat" },
-      { href: "/to-cat-work", label: "✂️ Tổ Cắt – Việc của tôi", icon: Scissors, permModule: "to-cat" },
+      { href: "/to-cat-work", label: "Tổ Cắt – Việc của tôi", icon: Scissors, permModule: "to-cat" },
       { href: "/may", label: "Tổ may", icon: Shirt, permModule: "to-may" },
-      { href: "/to-may-work", label: "👕 Tổ May – Việc của tôi", icon: Shirt, permModule: "to-may" },
-      { href: "/to-qc-work", label: "🔍 QC – Kiểm tra chất lượng", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
-      { href: "/ui-intd", label: "🎨 In / Thêu – Việc của tôi", icon: Palette, permModule: "to-in-theu" },
-      { href: "/ui-khuy-nut", label: "🔘 Khuy nút – Việc của tôi", icon: ClipboardList, permModule: "to-khuy-nut" },
-      { href: "/ui-ui", label: "💨 Tổ Ủi – Việc của tôi", icon: ClipboardList, permModule: "to-ui" },
-      { href: "/ui-dong-goi", label: "📦 Đóng gói nhập kho – Việc của tôi", icon: Package, permModule: "to-dong-goi" },
-      { href: "/to-ht-work", label: "🦺 Hoàn Thiện (Tổng hợp)", icon: ClipboardList, permModule: "hoan-thien" },
+      { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, permModule: "to-may" },
+      { href: "/to-qc-work", label: "QC – Kiểm tra chất lượng", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
+      { href: "/ui-intd", label: "In / Thêu – Việc của tôi", icon: Palette, permModule: "to-in-theu" },
+      { href: "/ui-khuy-nut", label: "Khuy nút – Việc của tôi", icon: ClipboardList, permModule: "to-khuy-nut" },
+      { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: ClipboardList, permModule: "to-ui" },
+      { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, permModule: "to-dong-goi" },
+      { href: "/to-ht-work", label: "Hoàn Thiện (Tổng hợp)", icon: ClipboardList, permModule: "hoan-thien" },
       { href: "/qc", label: "QC (cũ)", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
       { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, permModule: "gia-cong-ngoai" },
       { href: "/trang-chu-gia-cong", label: "Trang chủ gia công", icon: Shirt, permModule: "trang-chu-gia-cong" },
     ]
   },
   {
-    label: "📦 Kho & Giao Hàng", icon: Boxes, isGroup: true, subItems: [
+    label: "Kho & Giao Hàng", icon: Boxes, isGroup: true, subItems: [
       { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, permModule: "kho-vai" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, permModule: "kho-phu-lieu" },
       { href: "/kho-thanh-pham", label: "Kho thành phẩm", icon: Boxes, permModule: "kho-thanh-pham" },
@@ -105,7 +105,7 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "💵 Kế Toán & Mua Bán", icon: Wallet, isGroup: true, subItems: [
+    label: "Kế Toán & Mua Bán", icon: Wallet, isGroup: true, subItems: [
       { href: "/cham-cong", label: "Chấm công", icon: Calendar, permModule: "cham-cong" },
       { href: "/bang-luong", label: "Bảng lương", icon: Wallet, permModule: "bang-luong" },
       { href: "/doi-soat-tien-cong", label: "Đối soát tiền công", icon: Wallet2, permModule: "doi-soat-tien-cong" },
@@ -114,7 +114,7 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "📁 Danh Mục Dữ Liệu", icon: Building2, isGroup: true, subItems: [
+    label: "Danh Mục Dữ Liệu", icon: Building2, isGroup: true, subItems: [
       { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, permModule: "danh-muc-sp" },
       { href: "/nhan-su", label: "Nhân sự", icon: Users, permModule: "nhan-su" },
       { href: "/khach-hang", label: "Khách hàng", icon: Users, permModule: "khach-hang" },
@@ -125,7 +125,7 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    label: "⚙️ Hệ Thống (Dev)", icon: Settings, isGroup: true, subItems: [
+    label: "Hệ Thống (Dev)", icon: Settings, isGroup: true, subItems: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản", icon: Users, permModule: "cai-dat" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh", icon: Sliders, permModule: "cai-dat" },
       { href: "/ai-assistant", label: "AI Assistant", icon: Bot, permModule: "cai-dat" },
