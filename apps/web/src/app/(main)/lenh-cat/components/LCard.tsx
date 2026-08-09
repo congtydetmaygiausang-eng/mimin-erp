@@ -49,7 +49,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
       {/* Header */}
       <div className="flex gap-4 mb-5">
         <div 
-          className="w-32 h-32 shrink-0 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+          className="w-40 h-40 md:w-44 md:h-44 shrink-0 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
           onClick={onEdit}
         >
           {lc.dsMau?.[0]?.img ? (
