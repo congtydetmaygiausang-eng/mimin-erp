@@ -3,12 +3,12 @@
 import { useSession } from "@/components/session-provider";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MobileMenu as MobileSidebar } from "./Sidebar";
-import { HorizontalNav } from "./HorizontalNav";
+import { Sidebar, MobileMenu as MobileSidebar } from "./Sidebar";
+import { TopBar } from "./TopBar";
 import { FloatingAI } from "@/components/FloatingAI";
 
 export function AppShell({ children, moduleClass = "bg-module-default" }: { children: React.ReactNode; moduleClass?: string }) {
-  const { user, loading } = useSession();
+  const { user, loading, signOut } = useSession();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -29,16 +29,21 @@ export function AppShell({ children, moduleClass = "bg-module-default" }: { chil
   if (!user) return null;
 
   return (
-    <div className={`min-h-screen ${moduleClass}`}>
-      {/* Mobile menu (chỉ hiện trên mobile) */}
+    <div className={`min-h-screen flex ${moduleClass}`}>
+      {/* Sidebar for Desktop */}
+      <Sidebar />
+      
+      {/* Mobile Sidebar */}
       <MobileSidebar isOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
-      {/* Top Navigation 2 hàng - thay thế Sidebar */}
-      <HorizontalNav />
-
-      <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-x-hidden animate-page-entry bg-transparent">
-        {children}
-      </main>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <TopBar user={user} onSignOut={signOut} onMenuClick={() => setMobileOpen(true)} />
+        
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-x-hidden animate-page-entry bg-transparent">
+          {children}
+        </main>
+      </div>
 
       <FloatingAI />
     </div>
