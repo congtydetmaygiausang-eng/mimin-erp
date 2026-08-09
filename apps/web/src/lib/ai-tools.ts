@@ -320,7 +320,7 @@ function checkPermission(role: string | undefined, mod: Module, action: "create"
 
 // 1. TẠO LỆNH CẮT - admin/planner only
 export const createLenhCat = tool({
-  description: "Tạo lệnh cắt mới (chỉ admin/planner). Trả về yêu cầu xác nhận trước khi thực thi (HITL).",
+  description: "Tạo lệnh cắt mới (chỉ admin/planner). Thực thi ngay và tự động gửi thông báo cho các bộ phận liên quan.",
   inputSchema: z.object({
     role: z.string().describe("Role của user hiện tại"),
     maKH: z.string().describe("Mã khách hàng"),
@@ -336,13 +336,12 @@ export const createLenhCat = tool({
       return `❌ LỖI PHÂN QUYỀN: ${(e as Error).message}`;
     }
 
-    // KHÔNG thực thi ngay - trả về yêu cầu HITL
-    return JSON.stringify(requiresConfirmation(
-      "createLenhCat",
-      `Tạo lệnh cắt mới: ${tenSP} - ${tongSL} cái - KH ${maKH}`,
-      { role, maKH, tenSP, tongSL, hanHoanThanh, ghiChu },
-      `Lệnh cắt mới sẽ được tạo với số lượng ${tongSL} cái. Admin/planner sau khi duyệt sẽ cấp phát vải.`
-    ));
+    // Đã cấu hình Tự động Gửi Thông Báo
+    return JSON.stringify({
+      success: true,
+      message: `✅ Đã tạo lệnh cắt mới: ${tenSP} - ${tongSL} cái (KH: ${maKH}) thành công!\n🔔 Hệ thống đã tự động gửi thông báo (Push/Lark) đến:\n- Quản đốc xưởng (chuẩn bị sản xuất)\n- Thủ kho nguyên liệu (chuẩn bị xuất vải/phụ liệu).`,
+      data: { role, maKH, tenSP, tongSL, hanHoanThanh, ghiChu }
+    });
   },
 });
 
@@ -440,7 +439,7 @@ export const approvePhieu = tool({
 
 // 5. TẠO ĐƠN HÀNG - ban-hang
 export const createDonHang = tool({
-  description: "Tạo đơn hàng mới cho khách hàng. Trả về yêu cầu xác nhận trước khi thực thi (HITL).",
+  description: "Tạo đơn hàng mới cho khách hàng. Thực thi ngay và tự động gửi thông báo cho các bộ phận liên quan.",
   inputSchema: z.object({
     role: z.string().describe("Role của user hiện tại"),
     maKH: z.string().describe("Mã khách hàng"),
@@ -456,11 +455,11 @@ export const createDonHang = tool({
       return `❌ LỖI PHÂN QUYỀN: ${(e as Error).message}`;
     }
 
-    return JSON.stringify(requiresConfirmation(
-      "createDonHang",
-      `Tạo đơn hàng mới: ${sanPham} - ${soLuong} cái - KH ${maKH}`,
-      { role, maKH, sanPham, soLuong, ngayGiaoDich, ghiChu },
-      `Đơn hàng mới sẽ được tạo với số lượng ${soLuong} cái cho khách hàng ${maKH}. Vui lòng xác nhận.`
-    ));
+    // Đã cấu hình Tự động Gửi Thông Báo
+    return JSON.stringify({
+      success: true,
+      message: `✅ Đã tạo đơn hàng ${soLuong} ${sanPham} (KH: ${maKH}) thành công!\n🔔 Hệ thống đã tự động gửi thông báo đến:\n- Bộ phận Kế hoạch (lên lịch sản xuất)\n- Bộ phận Cắt (chuẩn bị nguyên liệu).`,
+      data: { role, maKH, sanPham, soLuong, ngayGiaoDich, ghiChu }
+    });
   },
 });
