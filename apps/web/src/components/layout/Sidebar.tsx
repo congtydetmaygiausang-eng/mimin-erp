@@ -95,14 +95,12 @@ const NAV: NavItem[] = [
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, iconColor: "text-cyan-400", permModule: "lenh-cat" },
       { href: "/to-cat-work", label: "Tổ Cắt – Việc của tôi", icon: Scissors, iconColor: "text-sky-400", permModule: "to-cat" },
       { href: "/ui-intd", label: "In / Thêu – Việc của tôi", icon: Palette, iconColor: "text-violet-400", permModule: "to-in-theu" },
-      { href: "/may", label: "Tổ may", icon: Shirt, iconColor: "text-emerald-400", permModule: "to-may" },
       { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, iconColor: "text-green-400", permModule: "to-may" },
       { href: "/to-qc-work", label: "QC – Kiểm tra chất lượng", icon: ShieldCheck, iconColor: "text-blue-400", permModule: "kiem-tra-chat-luong" },
       { href: "/ui-khuy-nut", label: "Khuy nút – Việc của tôi", icon: ClipboardList, iconColor: "text-amber-400", permModule: "to-khuy-nut" },
       { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: ClipboardList, iconColor: "text-orange-400", permModule: "to-ui" },
       { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, iconColor: "text-pink-400", permModule: "to-dong-goi" },
       { href: "/to-ht-work", label: "Hoàn Thiện (Tổng hợp)", icon: CheckCircle2, iconColor: "text-teal-300", permModule: "hoan-thien" },
-      { href: "/qc", label: "QC (cũ)", icon: ShieldCheck, iconColor: "text-slate-400", permModule: "kiem-tra-chat-luong" },
       { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, iconColor: "text-rose-400", permModule: "gia-cong-ngoai" },
       { href: "/trang-chu-gia-cong", label: "Trang chủ gia công", icon: Shirt, iconColor: "text-indigo-400", permModule: "trang-chu-gia-cong" },
     ]
@@ -196,15 +194,16 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
 
   const visibleNav = useMemo(() => {
     if (user?.laCongNhan) {
-      if (user.module === "cat") {
+      const boPhan = user.phongBan?.toLowerCase() || "";
+      if (boPhan.includes("cắt")) {
         return [{ href: "/to-cat-work", label: "✂️ Việc của tôi (Cắt)", icon: Scissors }];
-      } else if (user.module === "may") {
+      } else if (boPhan.includes("may")) {
         return [{ href: "/to-may-work", label: "👕 Việc của tôi (May)", icon: Shirt }];
-      } else if (user.module === "ui" || user.module === "dong-goi") {
+      } else if (boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) {
         return [{ href: "/to-ht-work", label: "🦺 Việc của tôi (Hoàn thiện)", icon: ClipboardList }];
-      } else if (user.module === "khuy-nut") {
+      } else if (boPhan.includes("khuy nút")) {
         return [{ href: "/ui-khuy-nut", label: "🔘 Việc của tôi (Khuy nút)", icon: CheckCircle2 }]; 
-      } else if (user.module === "intd") {
+      } else if (boPhan.includes("in") || boPhan.includes("thêu")) {
         return [{ href: "/ui-intd", label: "🎨 Việc của tôi (In/Thêu)", icon: Palette }];
       }
       return [];
