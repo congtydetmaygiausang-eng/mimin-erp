@@ -83,10 +83,10 @@ const NAV: NavItem[] = [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, permModule: "ke-hoach-sx" },
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, permModule: "lenh-cat" },
       { href: "/to-cat-work", label: "Tổ Cắt – Việc của tôi", icon: Scissors, permModule: "to-cat" },
+      { href: "/ui-intd", label: "In / Thêu – Việc của tôi", icon: Palette, permModule: "to-in-theu" },
       { href: "/may", label: "Tổ may", icon: Shirt, permModule: "to-may" },
       { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, permModule: "to-may" },
       { href: "/to-qc-work", label: "QC – Kiểm tra chất lượng", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
-      { href: "/ui-intd", label: "In / Thêu – Việc của tôi", icon: Palette, permModule: "to-in-theu" },
       { href: "/ui-khuy-nut", label: "Khuy nút – Việc của tôi", icon: ClipboardList, permModule: "to-khuy-nut" },
       { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: ClipboardList, permModule: "to-ui" },
       { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, permModule: "to-dong-goi" },
@@ -282,7 +282,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     <div
                       className={clsx(
                         "ml-3 mt-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 px-2 py-1 transition-all duration-200",
-                        isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                        isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
                       )}
                     >
                       {item.subItems.map((sub) => {
