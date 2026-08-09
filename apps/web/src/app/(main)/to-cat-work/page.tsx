@@ -201,18 +201,50 @@ export default function CongViecCatPage() {
                   {lc.daCoSoDo && (
                     <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
                       <FileText className="w-3 h-3" />
-                      <span className="font-bold">Đã có sơ đồ cắt</span>
-                      {lc.pdfSoDoChinh && (
-                        <a href={lc.pdfSoDoChinh} target="_blank" rel="noopener noreferrer"
-                           className="ml-auto flex items-center gap-1 text-sky-600 hover:underline">
-                          <Eye className="w-3 h-3" /> Xem PDF
-                        </a>
-                      )}
+                      <span className="font-bold">Sơ đồ cắt (Chính/Phối):</span>
+                      <div className="ml-auto flex items-center gap-3">
+                        {lc.pdfSoDoChinh && (
+                          <a href={lc.pdfSoDoChinh} target="_blank" rel="noopener noreferrer"
+                             className="flex items-center gap-1 text-sky-600 hover:underline font-bold bg-sky-100 px-2 py-1 rounded">
+                            <Eye className="w-3 h-3" /> PDF Chính
+                          </a>
+                        )}
+                        {lc.pdfSoDoPhoi && (
+                          <a href={lc.pdfSoDoPhoi} target="_blank" rel="noopener noreferrer"
+                             className="flex items-center gap-1 text-sky-600 hover:underline font-bold bg-sky-100 px-2 py-1 rounded">
+                            <Eye className="w-3 h-3" /> PDF Phối
+                          </a>
+                        )}
+                      </div>
                     </div>
                   )}
                   {lc.ghiChuKyThuat && (
                     <div className="text-xs bg-slate-50 rounded-lg px-3 py-2 text-slate-600 border border-slate-200">
-                      📝 {lc.ghiChuKyThuat}
+                      📝 <span className="font-bold">Ghi chú kỹ thuật:</span> {lc.ghiChuKyThuat}
+                    </div>
+                  )}
+
+                  {/* Màu sắc trải/phối */}
+                  {lc.dsMau && lc.dsMau.length > 0 && (
+                    <div className="border-t border-slate-100 pt-3 mt-3">
+                      <div className="text-xs font-bold text-slate-600 mb-2">🎨 Chi tiết màu sắc (Trải/Phối):</div>
+                      <div className="flex flex-col gap-2">
+                        {lc.dsMau.map((mau, idx) => (
+                          <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2 flex items-center gap-3">
+                            {mau.img && <img src={mau.img} alt={mau.ten} className="w-8 h-8 rounded object-cover border border-slate-200" />}
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[12px] font-black text-slate-700">{mau.ten}</span>
+                                <span className="text-[11px] font-bold text-emerald-600">SL: {mau.slDuKien} SP</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">Mã vải: {mau.maVai} • Định mức: {mau.dinhMuc} kg/SP</div>
+                              {mau.maVaiQuan && (
+                                <div className="text-[10px] text-slate-500 mt-0.5">Vải quần: {mau.maVaiQuan} • Định mức quần: {mau.dinhMucQuan} kg/SP</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
