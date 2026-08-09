@@ -219,15 +219,26 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
         >
           <Edit3 className="w-4 h-4" /> Xem & Sửa
         </button>
-        <select
-          value={lc.trangThai}
-          onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
-          className="text-xs px-2 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-        >
-          {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
-            <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
-          ))}
-        </select>
+        
+        {lc.trangThai === "DaTao" || lc.trangThai === "Nhap" ? (
+          <button
+            onClick={() => onChangeStatus("ChuyenTiep")}
+            className="flex-1 text-sm px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+          >
+            <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển tiếp
+          </button>
+        ) : (
+          <select
+            value={lc.trangThai}
+            onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
+            className="text-xs px-2 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+          >
+            {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
+              <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
+            ))}
+          </select>
+        )}
+
         <button
           onClick={onDelete}
           className="text-rose-500 hover:bg-rose-50 px-3 py-2 rounded-lg border border-transparent hover:border-rose-200 transition-colors bg-rose-50/50"
