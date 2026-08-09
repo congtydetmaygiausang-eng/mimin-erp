@@ -4,7 +4,7 @@
 // Nhận hàng từ Ủi đạt, Đóng gói, giao Kho Thành Phẩm
 
 import { useState } from "react";
-import { CheckCircle2, Package } from "lucide-react";
+import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "@/components/ui";
@@ -13,6 +13,7 @@ import { useSession } from "@/components/session-provider";
 export default function UiDongGoiPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
   const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
+  const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
 
@@ -228,7 +229,7 @@ export default function UiDongGoiPage() {
                         <label className="text-xs font-bold text-slate-600 block mb-1">Khu vực Nhập kho *</label>
                         <select
                           value={khuVuc[lc.id] || ""}
-                          onChange={e => setKhuVuc(p => ({ ...p, [lc.id]: e.target.value }))}
+                          onChange={e => setKhuVuc((p: Record<string, string>) => ({ ...p, [lc.id]: e.target.value }))}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30"
                         >
                           <option value="">-- Chọn khu vực lưu trữ --</option>

@@ -547,6 +547,9 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     trangThaiCD?: TrangThaiCongDoan;
     soLuongHoanThanh?: number;
     soLuongLoi?: number;
+    lyDoLoi?: string;
+    thanhTien?: number;
+    conLai?: number;
     catChiTiet?: CatChiTiet;
   }) => {
     setDsLenhCat(prev => {
@@ -559,6 +562,9 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 trangThaiCD: data.trangThaiCD ?? pc.trangThaiCD,
                 soLuongHoanThanh: data.soLuongHoanThanh ?? pc.soLuongHoanThanh,
                 soLuongLoi: data.soLuongLoi ?? pc.soLuongLoi,
+                lyDoLoi: data.lyDoLoi ?? pc.lyDoLoi,
+                thanhTien: data.thanhTien ?? pc.thanhTien,
+                conLai: data.conLai ?? pc.conLai,
                 catChiTiet: data.catChiTiet ?? pc.catChiTiet,
                 ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
                   ? new Date().toISOString().slice(0, 10)
