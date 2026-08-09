@@ -35,142 +35,84 @@ export interface RouteRule {
 }
 
 export const ROUTE_RULES: RouteRule[] = [
-  // ============ KHO - Minimax (Anh Kho) ============
+  // ============ SẢN XUẤT E2E (Minh) ============
   {
-    agentId: "agent-kho",
-    taskTypes: ["kho"],
+    agentId: "minh",
+    taskTypes: ["san-xuat", "qc", "ky-thuat"],
     keywords: {
-      high: ["kho", "tồn kho", "nhập kho", "xuất kho", "vải", "sợi", "phụ liệu", "thành phẩm", "kiểm kê", "tồn"],
-      medium: ["nhập", "xuất", "vật tư", "nguyên liệu", "kiểm"],
-      low: ["vải còn", "còn bao nhiêu", "bù vải"],
+      high: ["lệnh cắt", "khsx", "kế hoạch sản xuất", "chuyền may", "công đoạn", "may áo", "may quần", "qc", "kiểm tra chất lượng", "lỗi", "phế phẩm", "máy may", "sự cố máy", "hỏng máy"],
+      medium: ["sản xuất", "lsx", "cắt vải", "tiến độ may", "chuyền", "công đoạn", "hàng lỗi", "đạt chất lượng", "định mức", "kỹ thuật", "quy trình may"],
+      low: ["thợ may", "công nhân may", "lịch sản xuất", "hoàn thiện", "ủi", "gấp", "thiết bị", "sửa chữa"],
+    },
+    patterns: [
+      /lệnh cắt.*?(mới|tạo|thêm)/i,
+      /tiến độ.*?(chuyền may|may)/i,
+      /lỗi.*?(sản phẩm|may)/i,
+      /qc.*?(báo cáo|check)/i,
+      /máy may.*?(hỏng|trục trặc|sự cố)/i,
+    ],
+  },
+  // ============ KHO & BÁN HÀNG (Lan) ============
+  {
+    agentId: "lan",
+    taskTypes: ["kho", "ban-hang"],
+    keywords: {
+      high: ["kho", "tồn kho", "nhập kho", "xuất kho", "vải", "sợi", "phụ liệu", "đơn hàng", "khách hàng", "đặt hàng", "đơn mới"],
+      medium: ["nhập", "xuất", "vật tư", "nguyên liệu", "kiểm kê", "bán sỉ", "bán lẻ"],
+      low: ["vải còn", "còn bao nhiêu", "bù vải", "shop", "đại lý", "kênh bán"],
     },
     patterns: [
       /tồn kho.*?(vải|sợi|phụ liệu)/i,
       /nhập.*?kho/i,
       /xuất.*?kho/i,
-      /kiểm kê/i,
+      /đơn hàng.*?(mới|tạo|thêm)/i,
     ],
   },
-  // ============ SẢN XUẤT - DeepSeek (Anh Hùng) ============
+  // ============ TÀI CHÍNH - KẾ TOÁN - NHÂN SỰ (Hà) ============
   {
-    agentId: "agent-san-xuat",
-    taskTypes: ["san-xuat"],
+    agentId: "ha",
+    taskTypes: ["ke-toan", "tai-chinh", "nhan-su"],
     keywords: {
-      high: ["lệnh cắt", "khsx", "kế hoạch sản xuất", "chuyền may", "công đoạn", "may áo", "may quần"],
-      medium: ["sản xuất", "lsx", "cắt vải", "tiến độ may", "chuyền"],
-      low: ["thợ may", "công nhân may", "lịch sản xuất"],
-    },
-    patterns: [
-      /lệnh cắt.*?(mới|tạo|thêm)/i,
-      /khsx/i,
-      /tiến độ.*?(chuyền may|may)/i,
-    ],
-  },
-  // ============ KẾ TOÁN - Gemini (Anh Sơn) ============
-  {
-    agentId: "agent-ke-toan",
-    taskTypes: ["ke-toan"],
-    keywords: {
-      high: ["công nợ", "đối soát", "tính lương", "bảng lương", "tiền công", "phải thu", "phải trả"],
-      medium: ["lương", "thuế", "hóa đơn", "thanh toán", "công nhận"],
-      low: ["chốt sổ", "sổ sách", "kế toán"],
+      high: ["công nợ", "đối soát", "tính lương", "bảng lương", "tiền công", "phải thu", "phải trả", "báo cáo tài chính", "dòng tiền", "chi phí sản xuất", "lợi nhuận", "excel", "nhân viên", "nhân sự", "chấm công", "phân quyền"],
+      medium: ["lương", "thuế", "hóa đơn", "thanh toán", "tài chính", "chi phí", "doanh thu", "tuyển dụng", "nghỉ phép", "thưởng", "rủi ro"],
+      low: ["chốt sổ", "kế toán", "phân tích", "dự báo", "phòng ban"],
     },
     patterns: [
       /tính lương.*?(tháng|năm)/i,
       /đối soát.*?(sản lượng|tiền công)/i,
       /công nợ.*?(phải|thu|trả)/i,
-    ],
-    excludeKeywords: ["báo cáo tài chính", "dòng tiền", "chi phí sản xuất", "excel"],
-  },
-  // ============ NHÂN SỰ - DeepSeek (Chị Mai) ============
-  {
-    agentId: "agent-nhan-su",
-    taskTypes: ["nhan-su"],
-    keywords: {
-      high: ["nhân viên", "nhân sự", "hồ sơ", "chấm công", "phân quyền", "tài khoản"],
-      medium: ["tuyển dụng", "lương cứng", "phòng ban", "nghỉ phép", "thưởng"],
-      low: ["sang", "giau", "thanh", "huyen", "vy", "hau", "giang", "de", "phu", "nhi", "phuong", "tim", "phien", "tuyen", "huynh", "thuy", "anhui", "ruong", "khoi"],
-    },
-    patterns: [
+      /báo cáo.*?(tài chính|excel)/i,
+      /chi phí.*?(sản xuất|nguyên vật liệu)/i,
       /chấm công/i,
-      /phân quyền/i,
-      /nhân viên.*?(mới|thêm|tạo)/i,
     ],
-    excludeKeywords: ["tính lương", "bảng lương", "công nợ"],
   },
-  // ============ BÁN HÀNG - Minimax (Chị Hoa) ============
+  // ============ CSKH (Vy) ============
   {
-    agentId: "agent-ban-hang",
+    agentId: "vy",
     taskTypes: ["ban-hang"],
     keywords: {
-      high: ["đơn hàng", "khách hàng", "giao hàng", "đặt hàng", "đơn mới"],
-      medium: ["bán sỉ", "bán lẻ", "vận chuyển", "giao", "nhận hàng"],
-      low: ["shop", "đại lý", "kênh bán"],
+      high: ["giao hàng", "khiếu nại", "tư vấn", "hỗ trợ", "đổi trả", "thắc mắc"],
+      medium: ["vận chuyển", "nhận hàng", "phản hồi", "tracking", "chăm sóc khách hàng"],
+      low: ["hỏi", "đáp", "giúp"],
     },
     patterns: [
-      /đơn hàng.*?(mới|tạo|thêm)/i,
       /giao hàng/i,
-      /khách hàng.*?(mới|thêm)/i,
+      /đơn hàng.*?(đâu|chưa|khi nào)/i,
     ],
   },
-  // ============ TÀI CHÍNH - Gemini (Anh Quốc) - CFO ============
+  // ============ MIMIN HELP - LOGIC REASONING (Mimin-help) ============
   {
-    agentId: "agent-tai-chinh",
-    taskTypes: ["tai-chinh", "phan-tich"],
+    agentId: "mimin-help",
+    taskTypes: ["phan-tich", "general"],
     keywords: {
-      high: ["báo cáo tài chính", "dòng tiền", "chi phí sản xuất", "lợi nhuận", "excel", "doanh thu"],
-      medium: ["tài chính", "chi phí", "doanh thu", "lỗ", "lãi", "rủi ro", "ngân sách", "kế hoạch tài chính"],
-      low: ["phân tích", "dự báo", "tăng trưởng"],
-    },
-    patterns: [
-      /báo cáo.*?(tài chính|excel)/i,
-      /dòng tiền/i,
-      /chi phí.*?(sản xuất|nguyên vật liệu)/i,
-      /lợi nhuận/i,
-    ],
-  },
-  // ============ QC + THEO DÕI CÔNG ĐOẠN - DeepSeek (Chị Hạnh) ============
-  {
-    agentId: "agent-theo-doi-cd",
-    taskTypes: ["qc", "san-xuat"],
-    keywords: {
-      high: ["qc", "kiểm tra chất lượng", "lỗi", "phế phẩm", "bàn giao"],
-      medium: ["công đoạn", "hàng lỗi", "đạt chất lượng", "kiểm"],
-      low: ["hoàn thiện", "ủi", "gấp"],
-    },
-    patterns: [
-      /lỗi.*?(sản phẩm|may)/i,
-      /qc.*?(báo cáo|check)/i,
-      /bàn giao/i,
-    ],
-  },
-  // ============ KỸ THUẬT MÁY - DeepSeek (Anh Tuấn) ============
-  {
-    agentId: "agent-ky-thuat-may",
-    taskTypes: ["ky-thuat"],
-    keywords: {
-      high: ["máy may", "sự cố máy", "hỏng máy", "bảo trì máy"],
-      medium: ["định mức", "kỹ thuật", "quy trình may", "máy"],
-      low: ["thiết bị", "sửa chữa"],
-    },
-    patterns: [
-      /máy may.*?(hỏng|trục trặc|sự cố)/i,
-      /định mức.*?(thời gian|kỹ thuật)/i,
-    ],
-  },
-  // ============ DEEPSEEK REASONER (Anh Sâu) - Phân tích logic ============
-  {
-    agentId: "agent-deepseek",
-    taskTypes: ["phan-tich"],
-    keywords: {
-      high: ["tối ưu", "phân tích logic", "dự báo", "mô hình"],
-      medium: ["giải thích", "tại sao", "nguyên nhân", "đề xuất", "phân tích"],
-      low: ["phức tạp", "khó", "cần suy nghĩ"],
+      high: ["tối ưu", "phân tích logic", "dự báo", "mô hình", "hướng dẫn", "cách dùng", "help", "lỗi hệ thống"],
+      medium: ["giải thích", "tại sao", "nguyên nhân", "đề xuất", "phân tích", "tài liệu"],
+      low: ["phức tạp", "khó", "cần suy nghĩ", "làm sao"],
     },
     patterns: [
       /tối ưu/i,
       /phân tích.*?(định mức|quy trình|sản xuất|chi phí)/i,
-      /dự báo/i,
+      /hướng dẫn.*?(cách|sử dụng)/i,
     ],
   },
 ];

@@ -286,10 +286,10 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     onClick={() => toggleGroup(item.label)}
                     aria-expanded={isOpen}
                     className={clsx(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 border-l-2",
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 border-l-2",
                       isGroupActive || isOpen
                         ? `${groupBorderColor} ${activeBg} text-white`
-                        : `border-transparent hover:bg-white/5 text-slate-400 hover:text-white`,
+                        : `border-transparent hover:bg-white/5 text-slate-300 hover:text-white`,
                       isCollapsed && "justify-center px-2"
                     )}
                     title={isCollapsed ? item.label : undefined}
@@ -321,10 +321,10 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                               href={sub.href}
                               onClick={onItemClick}
                               className={clsx(
-                                "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150",
+                                "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
                                 subActive
                                   ? activeSubBg + " shadow-sm font-semibold"
-                                  : "hover:bg-white/8 text-slate-400 hover:text-slate-200"
+                                  : "hover:bg-white/8 text-slate-300 hover:text-white"
                               )}
                             >
                               <SubIcon className={clsx("w-4 h-4 shrink-0", sub.iconColor || "text-slate-500")} />
@@ -347,10 +347,10 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                 href={item.href || "#"}
                 onClick={onItemClick}
                 className={clsx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all border-l-2",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all border-l-2",
                   active
                     ? `${groupBorderColor} bg-white/10 text-white`
-                    : "border-transparent hover:bg-white/8 text-slate-400 hover:text-white",
+                    : "border-transparent hover:bg-white/8 text-slate-300 hover:text-white",
                   isCollapsed && "justify-center px-0"
                 )}
                 title={isCollapsed ? item.label : undefined}

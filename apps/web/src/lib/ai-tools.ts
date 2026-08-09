@@ -197,7 +197,105 @@ export const getAllTools = () => {
     updateCongDoan,
     deletePhieu,
     approvePhieu,
+    // Add missing createDonHang
+    createDonHang,
   };
+};
+
+export const getToolsForDomain = (domains: string[]) => {
+  // Trả về JSON definitions cho OpenAI compatible APIs (DeepSeek, MiniMax)
+  const tools = [];
+
+  // Kho domains
+  if (domains.includes("ton-kho") || domains.includes("all")) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "getInventoryStatus",
+        description: "Lấy thông tin tồn kho (vải, sợi, phụ liệu) từ hệ thống. Nếu người dùng hỏi về tồn kho, hãy dùng công cụ này.",
+        parameters: {
+          type: "object",
+          properties: {
+            category: { type: "string", enum: ["vai", "phu_lieu", "all"], description: "Loại vật tư cần xem" }
+          }
+        }
+      }
+    });
+  }
+
+  // Kế toán, Tài chính, Bán hàng domains
+  if (domains.includes("cong-no") || domains.includes("all")) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "getDebtStatus",
+        description: "Lấy thông tin công nợ (phải thu, phải trả, tiền công) của khách hàng, nhà cung cấp hoặc đối tác gia công.",
+        parameters: {
+          type: "object",
+          properties: {
+            entityType: { type: "string", enum: ["nha_cung_cap", "khach_hang", "gia_cong", "all"], description: "Loại đối tác cần xem công nợ" }
+          }
+        }
+      }
+    });
+  }
+
+  // Nhân sự domains
+  if (domains.includes("ho-so-nhan-su") || domains.includes("all")) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "getStaffList",
+        description: "Lấy danh sách và thông tin nhân sự trong công ty.",
+        parameters: {
+          type: "object",
+          properties: {
+            department: { type: "string", description: "Tên phòng ban cần lọc, ví dụ: 'Sản xuất', 'Kho', 'May'" }
+          }
+        }
+      }
+    });
+  }
+
+  // General tools
+  tools.push({
+    type: "function",
+    function: {
+      name: "getSystemConfig",
+      description: "Đọc cấu hình hệ thống MIMIN ERP hiện tại",
+      parameters: {
+        type: "object",
+        properties: {
+          section: { type: "string", enum: ["all", "version", "agents", "modules", "rbac", "supabase", "build"] }
+        }
+      }
+    }
+  });
+
+  // Action Tools (HITL)
+  if (domains.includes("don-hang") || domains.includes("all")) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "createDonHang",
+        description: "Tạo đơn hàng mới cho khách hàng. Trả về yêu cầu xác nhận trước khi thực thi (HITL).",
+        parameters: {
+          type: "object",
+          properties: {
+            role: { type: "string", description: "Role của user hiện tại" },
+            maKH: { type: "string", description: "Mã khách hàng" },
+            sanPham: { type: "string", description: "Tên hoặc mã sản phẩm" },
+            soLuong: { type: "number", description: "Số lượng sản phẩm" },
+            ngayGiaoDich: { type: "string", description: "Ngày giao dịch (YYYY-MM-DD)" },
+            ghiChu: { type: "string", description: "Ghi chú (optional)" }
+          },
+          required: ["role", "maKH", "sanPham", "soLuong", "ngayGiaoDich"]
+        }
+      }
+    });
+  }
+
+  return tools;
 };
 
 // ============================================
@@ -336,6 +434,33 @@ export const approvePhieu = tool({
       "approvePhieu",
       `${hanhDong === "duyet" ? "✅ DUYỆT" : "❌ TỪ CHỐI"} ${loaiPhieu}: ${phieuId}`,
       { role, loaiPhieu, phieuId, hanhDong, lyDo }
+    ));
+  },
+});
+
+// 5. TẠO ĐƠN HÀNG - ban-hang
+export const createDonHang = tool({
+  description: "Tạo đơn hàng mới cho khách hàng. Trả về yêu cầu xác nhận trước khi thực thi (HITL).",
+  inputSchema: z.object({
+    role: z.string().describe("Role của user hiện tại"),
+    maKH: z.string().describe("Mã khách hàng"),
+    sanPham: z.string().describe("Tên hoặc mã sản phẩm"),
+    soLuong: z.number().int().positive().describe("Số lượng sản phẩm"),
+    ngayGiaoDich: z.string().describe("Ngày giao dịch (YYYY-MM-DD)"),
+    ghiChu: z.string().optional().describe("Ghi chú (optional)"),
+  }),
+  execute: async ({ role, maKH, sanPham, soLuong, ngayGiaoDich, ghiChu }) => {
+    try {
+      checkPermission(role, "khach-hang", "create");
+    } catch (e) {
+      return `❌ LỖI PHÂN QUYỀN: ${(e as Error).message}`;
+    }
+
+    return JSON.stringify(requiresConfirmation(
+      "createDonHang",
+      `Tạo đơn hàng mới: ${sanPham} - ${soLuong} cái - KH ${maKH}`,
+      { role, maKH, sanPham, soLuong, ngayGiaoDich, ghiChu },
+      `Đơn hàng mới sẽ được tạo với số lượng ${soLuong} cái cho khách hàng ${maKH}. Vui lòng xác nhận.`
     ));
   },
 });
