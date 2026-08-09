@@ -1,55 +1,48 @@
 "use client";
 
-// ============ UI TỔ MAY (/ui-may-to) ============
-// Trang dành riêng cho tổ may áo + may quần
-// Nhận bán thành phẩm từ Cắt/In/Thêu, cập nhật tiến độ may
+// ============ UI GIA CÔNG IN THÊU (/ui-intd) ============
+// Trang dành riêng cho bộ phận In / Thêu
+// Nhận bán thành phẩm từ Cắt, hoàn thành chuyển cho May
 
 import { useState } from "react";
-import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
+import { Palette, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
-const MAY_KEYS = ["mayAo", "mayQuan", "may"];
+const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo"];
 
-export default function UiMayPage() {
+export default function UiInTheuPage() {
   const { dsLenhCat, capNhatCongDoan } = useLenhCat();
   const [slInput, setSlInput] = useState<Record<string, number>>({});
   const [loiInput, setLoiInput] = useState<Record<string, number>>({});
   const { user } = useSession();
 
-  function getMayPC(lc: any) {
+  function getIntdPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
-      const isMay = MAY_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("may"));
+      const isIntd = INTD_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("in") || pc.tenCongDoan?.toLowerCase().includes("thêu"));
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
-        return isMay && isMyTask;
+        return isIntd && isMyTask;
       }
-      return isMay;
+      return isIntd;
     }) || [];
   }
 
-  // Lọc LC có công đoạn may CỦA TÔI
-  // Ổ KHÓA: Cắt và In/Thêu (nếu có) phải XONG thì mới hiện ở May
-  const lcCoMay = dsLenhCat.filter(lc =>
+  // Ổ KHÓA: Chỉ hiển thị Lệnh cắt có In/Thêu, và Cắt ĐÃ XONG
+  const lcCoIntd = dsLenhCat.filter(lc =>
     ["DangCat", "HoanThanh", "ChuyenTiep"].includes(lc.trangThai)
   ).filter(lc => {
-    const mayPCs = getMayPC(lc);
-    if (mayPCs.length === 0) return false;
+    const intdPCs = getIntdPC(lc);
+    if (intdPCs.length === 0) return false;
 
-    // Check Cắt
+    // Kiểm tra Cắt đã xong chưa
     const catPCs = lc.phanCong?.filter((pc: any) => pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt")) || [];
+    // Nếu có Cắt, tất cả Cắt phải hoan_thanh
     if (catPCs.length > 0 && !catPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh")) {
       return false;
     }
-
-    // Check In/Thêu
-    const intdPCs = lc.phanCong?.filter((pc: any) => pc.id === "in" || pc.id === "theu" || pc.id === "dap" || pc.tenCongDoan?.toLowerCase().includes("in") || pc.tenCongDoan?.toLowerCase().includes("thêu")) || [];
-    if (intdPCs.length > 0 && !intdPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh")) {
-      return false;
-    }
-
     return true;
   });
 
@@ -60,7 +53,7 @@ export default function UiMayPage() {
 
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
-    toast.success(`👕 Nhận hàng may: ${lc.id} – ${pc.tenCongDoan}`);
+    toast.success(`🎨 Nhận hàng In/Thêu: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
   function handleHoanThanh(lc: any, pc: any) {
@@ -88,10 +81,10 @@ export default function UiMayPage() {
       {/* KPI */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Đang may", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
-          { label: "Chờ nhận", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600" },
-          { label: "Hoàn thành", value: lcCoMay.filter(lc => getMayPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-600" },
-          { label: "Có lỗi", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-600" },
+          { label: "Đang làm", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
+          { label: "Chờ nhận", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600" },
+          { label: "Hoàn thành", value: lcCoIntd.filter(lc => getIntdPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-600" },
+          { label: "Có lỗi", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-600" },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <div className="text-xs text-slate-500">{k.label}</div>
@@ -100,16 +93,18 @@ export default function UiMayPage() {
         ))}
       </div>
 
-      {lcCoMay.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
-          <Shirt className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Chưa có việc may nào</div>
+      {/* Danh sách lệnh cắt */}
+      {lcCoIntd.length === 0 ? (
+        <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
+          <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <div className="font-bold">Tuyệt vời! Bạn đã hoàn thành tất cả công việc</div>
+          <div className="text-sm mt-1">Đang chờ nhận thêm hàng từ Cắt...</div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {lcCoMay.map(lc => {
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {lcCoIntd.map(lc => {
+            const intdPCs = getIntdPC(lc);
             const catTT = getCatTT(lc);
-            const mayPCs = getMayPC(lc);
             const catDone = catTT === "hoan_thanh";
 
             return (
@@ -117,7 +112,7 @@ export default function UiMayPage() {
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="font-black text-teal-700 font-mono">{lc.id}</span>
+                    <span className="font-black text-purple-700 font-mono">{lc.id}</span>
                     <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
                     <span className="ml-2 text-xs text-slate-400">{lc.maSP} · {lc.tongSL?.toLocaleString()} SP</span>
                   </div>
@@ -131,9 +126,10 @@ export default function UiMayPage() {
                   </div>
                 )}
 
-                {/* May công đoạn */}
+                {/* In/Thêu công đoạn */}
                 <div className="p-5 space-y-4">
-                  {mayPCs.map((pc: any) => {
+                  {/* Các công đoạn In/Thêu của lô này */}
+                  {intdPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
                     const key = `${lc.id}-${pc.id}`;
@@ -154,10 +150,10 @@ export default function UiMayPage() {
                         {tt === "dang_lam" && (
                           <div className="grid grid-cols-2 gap-2 mb-3">
                             <div>
-                              <div className="text-xs font-bold text-slate-600 mb-1">SP đã may xong:</div>
+                              <div className="text-xs font-bold text-slate-600 mb-1">SP đã in/thêu xong:</div>
                               <input type="number" value={slInput[key] ?? ""} onChange={e => setSlInput(p => ({ ...p, [key]: +e.target.value }))}
                                 placeholder={String(pc.soLuong || lc.tongSL)}
-                                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30" />
+                                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400/30" />
                             </div>
                             <div>
                               <div className="text-xs font-bold text-slate-600 mb-1">SP lỗi:</div>
@@ -172,14 +168,16 @@ export default function UiMayPage() {
                         <div className="flex gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 flex items-center justify-center gap-1.5">
-                              <Package className="w-4 h-4" /> Nhận hàng may
+                              className="flex-1 py-2 rounded-xl bg-purple-600 text-white font-bold text-sm hover:bg-purple-700 flex items-center justify-center gap-1.5">
+                              <Package className="w-4 h-4" /> Nhận hàng In/Thêu
                             </button>
                           )}
                           {tt === "dang_lam" && (
                             <>
-                              <button onClick={() => handleHoanThanh(lc, pc)}
-                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm">
+                              <button
+                                onClick={() => handleHoanThanh(lc, pc)}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm"
+                              >
                                 <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển tiếp
                               </button>
                               <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}

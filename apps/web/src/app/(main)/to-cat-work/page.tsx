@@ -95,7 +95,7 @@ export default function CongViecCatPage() {
     if (!pc) return;
     const sl = slInput[lc.id] || lc.tongSL;
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });
-    toast.success(`✅ Hoàn thành cắt ${lc.id}: ${sl} SP`);
+    toast.success(`✅ Chuyển tiếp thành công: ${sl} SP`);
     setSelectedId(null);
   }
 
@@ -246,8 +246,7 @@ export default function CongViecCatPage() {
                           onClick={() => setSelectedId(isExpanded ? null : lc.id)}
                           className="flex-1 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
-                          {isExpanded ? "Xác nhận" : "Hoàn thành cắt"}
+                          {isExpanded ? "Xác nhận" : "Hoàn thành & Chuyển tiếp"}
                         </button>
                         {isExpanded && (
                           <button
