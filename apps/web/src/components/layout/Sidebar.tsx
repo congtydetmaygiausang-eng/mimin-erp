@@ -289,16 +289,16 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 border-l-2",
                       isGroupActive || isOpen
                         ? `${groupBorderColor} ${activeBg} text-white`
-                        : `border-transparent hover:bg-white/5 text-slate-300 hover:text-white`,
+                        : `border-transparent hover:bg-white/5 text-slate-200 hover:text-white`,
                       isCollapsed && "justify-center px-2"
                     )}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : "text-slate-500")} />
+                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : "text-slate-400")} />
                     {!isCollapsed && (
                       <>
                         <span className="flex-1 text-left tracking-wide">{item.label}</span>
-                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-40" />}
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
                       </>
                     )}
                   </button>
@@ -324,10 +324,10 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                                 "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
                                 subActive
                                   ? activeSubBg + " shadow-sm font-semibold"
-                                  : "hover:bg-white/8 text-slate-300 hover:text-white"
+                                  : "hover:bg-white/8 text-slate-200 hover:text-white"
                               )}
                             >
-                              <SubIcon className={clsx("w-4 h-4 shrink-0", sub.iconColor || "text-slate-500")} />
+                              <SubIcon className={clsx("w-4 h-4 shrink-0", sub.iconColor || "text-slate-400")} />
                               <span className="flex-1 leading-tight">{sub.label}</span>
                             </Link>
                           );
@@ -350,12 +350,12 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all border-l-2",
                   active
                     ? `${groupBorderColor} bg-white/10 text-white`
-                    : "border-transparent hover:bg-white/8 text-slate-300 hover:text-white",
+                    : "border-transparent hover:bg-white/8 text-slate-200 hover:text-white",
                   isCollapsed && "justify-center px-0"
                 )}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon className={clsx("w-[18px] h-[18px] shrink-0", active ? groupIconColor : "text-slate-400")} />
+                <Icon className={clsx("w-[18px] h-[18px] shrink-0", active ? groupIconColor : "text-slate-300")} />
                 {!isCollapsed && <span className="flex-1">{item.label}</span>}
               </Link>
             );
