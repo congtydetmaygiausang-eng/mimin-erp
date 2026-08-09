@@ -103,7 +103,7 @@ export function NotificationBell() {
 
             <div className="overflow-y-auto max-h-96">
               {notifications.length === 0 ? (
-                <div className="p-8 text-center text-sm opacity-60">
+                <div className="p-8 text-center text-sm opacity-50">
                   <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   Chưa có thông báo nào
                 </div>
@@ -121,7 +121,7 @@ export function NotificationBell() {
                           window.location.href = n.link;
                         }
                       }}
-                      className={`w-full text-left p-3 border-b flex items-start gap-2 hover:bg-white/30 dark:hover:bg-white/5 transition ${!n.read ? "bg-brand-500/5" : ""}`}
+                      className={`w-full text-left p-3 border-b flex items-start gap-2 hover:bg-black/5 dark:hover:bg-white/5 transition ${!n.read ? "bg-brand-500/5" : ""}`}
                       style={{ borderColor: "var(--border)" }}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${s.bg}`}>
@@ -129,11 +129,11 @@ export function NotificationBell() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <div className="font-semibold text-xs flex-1 truncate">{n.title}</div>
+                          <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 flex-1 truncate">{n.title}</div>
                           {!n.read && <div className="w-2 h-2 rounded-full bg-brand-500 shrink-0" />}
                         </div>
-                        <div className="text-xs opacity-70 truncate">{n.body}</div>
-                        <div className="text-[10px] opacity-50 mt-1">{new Date(n.createdAt).toLocaleString("vi-VN")}</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400 truncate">{n.body}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{new Date(n.createdAt).toLocaleString("vi-VN")}</div>
                       </div>
                     </button>
                   );
