@@ -57,6 +57,7 @@ type SubItem = {
   href: string;
   label: string;
   icon: any;
+  iconColor: string;  // per-item icon color
   permModule: Module;
 };
 
@@ -66,87 +67,94 @@ type NavItem = {
   icon: any;
   permModule?: Module;
   isGroup?: boolean;
-  color?: string;        // accent color per group
-  iconColor?: string;    // icon color per group
-  activeItemBg?: string; // active sub-item bg
+  color?: string;        // accent border color per group
+  iconColor?: string;    // group icon color
+  activeBg?: string;     // active group header bg
+  activeSubBg?: string;  // active sub-item bg
   subItems?: SubItem[];
 };
 
 const NAV: NavItem[] = [
   {
     label: "Tổng Quan", icon: LayoutDashboard, isGroup: true,
-    color: "border-cyan-400", iconColor: "text-cyan-400", activeItemBg: "bg-cyan-400/15 text-cyan-300",
+    color: "border-cyan-400", iconColor: "text-cyan-300",
+    activeBg: "bg-cyan-900/40", activeSubBg: "bg-cyan-400/20 text-white",
     subItems: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permModule: "dashboard" },
-      { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX", icon: Factory, permModule: "bang-dieu-hanh-sx" },
-      { href: "/realtime", label: "Real-time Dashboard", icon: BarChart3, permModule: "realtime" },
-      { href: "/canh-bao", label: "Cảnh báo real-time", icon: Bell, permModule: "bao-cao" },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, iconColor: "text-cyan-400", permModule: "dashboard" },
+      { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX", icon: Factory, iconColor: "text-sky-400", permModule: "bang-dieu-hanh-sx" },
+      { href: "/realtime", label: "Real-time Dashboard", icon: BarChart3, iconColor: "text-blue-400", permModule: "realtime" },
+      { href: "/canh-bao", label: "Cảnh báo real-time", icon: Bell, iconColor: "text-amber-400", permModule: "bao-cao" },
     ]
   },
   {
     label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
-    color: "border-teal-400", iconColor: "text-teal-400", activeItemBg: "bg-teal-400/15 text-teal-300",
+    color: "border-teal-400", iconColor: "text-teal-300",
+    activeBg: "bg-teal-900/40", activeSubBg: "bg-teal-400/20 text-white",
     subItems: [
-      { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, permModule: "ke-hoach-sx" },
-      { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, permModule: "lenh-cat" },
-      { href: "/to-cat-work", label: "Tổ Cắt – Việc của tôi", icon: Scissors, permModule: "to-cat" },
-      { href: "/ui-intd", label: "In / Thêu – Việc của tôi", icon: Palette, permModule: "to-in-theu" },
-      { href: "/may", label: "Tổ may", icon: Shirt, permModule: "to-may" },
-      { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, permModule: "to-may" },
-      { href: "/to-qc-work", label: "QC – Kiểm tra chất lượng", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
-      { href: "/ui-khuy-nut", label: "Khuy nút – Việc của tôi", icon: ClipboardList, permModule: "to-khuy-nut" },
-      { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: ClipboardList, permModule: "to-ui" },
-      { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, permModule: "to-dong-goi" },
-      { href: "/to-ht-work", label: "Hoàn Thiện (Tổng hợp)", icon: ClipboardList, permModule: "hoan-thien" },
-      { href: "/qc", label: "QC (cũ)", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
-      { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, permModule: "gia-cong-ngoai" },
-      { href: "/trang-chu-gia-cong", label: "Trang chủ gia công", icon: Shirt, permModule: "trang-chu-gia-cong" },
+      { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, iconColor: "text-teal-400", permModule: "ke-hoach-sx" },
+      { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, iconColor: "text-cyan-400", permModule: "lenh-cat" },
+      { href: "/to-cat-work", label: "Tổ Cắt – Việc của tôi", icon: Scissors, iconColor: "text-sky-400", permModule: "to-cat" },
+      { href: "/ui-intd", label: "In / Thêu – Việc của tôi", icon: Palette, iconColor: "text-violet-400", permModule: "to-in-theu" },
+      { href: "/may", label: "Tổ may", icon: Shirt, iconColor: "text-emerald-400", permModule: "to-may" },
+      { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, iconColor: "text-green-400", permModule: "to-may" },
+      { href: "/to-qc-work", label: "QC – Kiểm tra chất lượng", icon: ShieldCheck, iconColor: "text-blue-400", permModule: "kiem-tra-chat-luong" },
+      { href: "/ui-khuy-nut", label: "Khuy nút – Việc của tôi", icon: ClipboardList, iconColor: "text-amber-400", permModule: "to-khuy-nut" },
+      { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: ClipboardList, iconColor: "text-orange-400", permModule: "to-ui" },
+      { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, iconColor: "text-pink-400", permModule: "to-dong-goi" },
+      { href: "/to-ht-work", label: "Hoàn Thiện (Tổng hợp)", icon: CheckCircle2, iconColor: "text-teal-300", permModule: "hoan-thien" },
+      { href: "/qc", label: "QC (cũ)", icon: ShieldCheck, iconColor: "text-slate-400", permModule: "kiem-tra-chat-luong" },
+      { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, iconColor: "text-rose-400", permModule: "gia-cong-ngoai" },
+      { href: "/trang-chu-gia-cong", label: "Trang chủ gia công", icon: Shirt, iconColor: "text-indigo-400", permModule: "trang-chu-gia-cong" },
     ]
   },
   {
     label: "Kho & Giao Hàng", icon: Boxes, isGroup: true,
-    color: "border-emerald-400", iconColor: "text-emerald-400", activeItemBg: "bg-emerald-400/15 text-emerald-300",
+    color: "border-emerald-400", iconColor: "text-emerald-300",
+    activeBg: "bg-emerald-900/40", activeSubBg: "bg-emerald-400/20 text-white",
     subItems: [
-      { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, permModule: "kho-vai" },
-      { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, permModule: "kho-phu-lieu" },
-      { href: "/kho-thanh-pham", label: "Kho thành phẩm", icon: Boxes, permModule: "kho-thanh-pham" },
-      { href: "/giao-hang", label: "Giao hàng", icon: Truck, permModule: "giao-hang" },
+      { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, iconColor: "text-emerald-400", permModule: "kho-vai" },
+      { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, iconColor: "text-orange-400", permModule: "kho-phu-lieu" },
+      { href: "/kho-thanh-pham", label: "Kho thành phẩm", icon: Boxes, iconColor: "text-violet-400", permModule: "kho-thanh-pham" },
+      { href: "/giao-hang", label: "Giao hàng", icon: Truck, iconColor: "text-sky-400", permModule: "giao-hang" },
     ]
   },
   {
     label: "Kế Toán & Mua Bán", icon: Wallet, isGroup: true,
-    color: "border-amber-400", iconColor: "text-amber-400", activeItemBg: "bg-amber-400/15 text-amber-300",
+    color: "border-amber-400", iconColor: "text-amber-300",
+    activeBg: "bg-amber-900/30", activeSubBg: "bg-amber-400/20 text-white",
     subItems: [
-      { href: "/cham-cong", label: "Chấm công", icon: Calendar, permModule: "cham-cong" },
-      { href: "/bang-luong", label: "Bảng lương", icon: Wallet, permModule: "bang-luong" },
-      { href: "/doi-soat-tien-cong", label: "Đối soát tiền công", icon: Wallet2, permModule: "doi-soat-tien-cong" },
-      { href: "/cong-no", label: "Công nợ công đoạn", icon: Wallet2, permModule: "cong-no-cong-doan" },
-      { href: "/don-hang", label: "Đơn hàng", icon: ShoppingCart, permModule: "don-hang" },
+      { href: "/cham-cong", label: "Chấm công", icon: Calendar, iconColor: "text-amber-400", permModule: "cham-cong" },
+      { href: "/bang-luong", label: "Bảng lương", icon: Wallet, iconColor: "text-yellow-400", permModule: "bang-luong" },
+      { href: "/doi-soat-tien-cong", label: "Đối soát tiền công", icon: Wallet2, iconColor: "text-orange-400", permModule: "doi-soat-tien-cong" },
+      { href: "/cong-no", label: "Công nợ công đoạn", icon: Wallet2, iconColor: "text-red-400", permModule: "cong-no-cong-doan" },
+      { href: "/don-hang", label: "Đơn hàng", icon: ShoppingCart, iconColor: "text-pink-400", permModule: "don-hang" },
     ]
   },
   {
     label: "Danh Mục Dữ Liệu", icon: Building2, isGroup: true,
-    color: "border-violet-400", iconColor: "text-violet-400", activeItemBg: "bg-violet-400/15 text-violet-300",
+    color: "border-violet-400", iconColor: "text-violet-300",
+    activeBg: "bg-violet-900/40", activeSubBg: "bg-violet-400/20 text-white",
     subItems: [
-      { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, permModule: "danh-muc-sp" },
-      { href: "/nhan-su", label: "Nhân sự", icon: Users, permModule: "nhan-su" },
-      { href: "/khach-hang", label: "Khách hàng", icon: Users, permModule: "khach-hang" },
-      { href: "/nha-cung-cap", label: "Nhà cung cấp", icon: Building2, permModule: "nha-cung-cap" },
-      { href: "/doi-tac-gia-cong", label: "Đối tác gia công", icon: Users, permModule: "nha-cung-cap" },
-      { href: "/cong-nhan-gia-cong", label: "Công nhân gia công dự phòng", icon: Hammer, permModule: "nha-cung-cap" },
-      { href: "/master-data", label: "Master Data", icon: Database, permModule: "nha-cung-cap" },
+      { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, iconColor: "text-violet-400", permModule: "danh-muc-sp" },
+      { href: "/nhan-su", label: "Nhân sự", icon: Users, iconColor: "text-blue-400", permModule: "nhan-su" },
+      { href: "/khach-hang", label: "Khách hàng", icon: Users, iconColor: "text-emerald-400", permModule: "khach-hang" },
+      { href: "/nha-cung-cap", label: "Nhà cung cấp", icon: Building2, iconColor: "text-amber-400", permModule: "nha-cung-cap" },
+      { href: "/doi-tac-gia-cong", label: "Đối tác gia công", icon: Users, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
+      { href: "/cong-nhan-gia-cong", label: "Công nhân gia công dự phòng", icon: Hammer, iconColor: "text-orange-400", permModule: "nha-cung-cap" },
+      { href: "/master-data", label: "Master Data", icon: Database, iconColor: "text-slate-400", permModule: "nha-cung-cap" },
     ]
   },
   {
     label: "Hệ Thống (Dev)", icon: Settings, isGroup: true,
-    color: "border-rose-400", iconColor: "text-rose-400", activeItemBg: "bg-rose-400/15 text-rose-300",
+    color: "border-rose-400", iconColor: "text-rose-300",
+    activeBg: "bg-rose-900/40", activeSubBg: "bg-rose-400/20 text-white",
     subItems: [
-      { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản", icon: Users, permModule: "cai-dat" },
-      { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh", icon: Sliders, permModule: "cai-dat" },
-      { href: "/ai-assistant", label: "AI Assistant", icon: Bot, permModule: "cai-dat" },
-      { href: "/agents", label: "Agents Dashboard", icon: Cpu, permModule: "cai-dat" },
-      { href: "/audit-log", label: "Nhật ký hệ thống", icon: Activity, permModule: "cai-dat" },
-      { href: "/backup-restore", label: "Sao lưu dữ liệu", icon: Database, permModule: "cai-dat" },
+      { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản", icon: Users, iconColor: "text-rose-400", permModule: "cai-dat" },
+      { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh", icon: Sliders, iconColor: "text-orange-400", permModule: "cai-dat" },
+      { href: "/ai-assistant", label: "AI Assistant", icon: Bot, iconColor: "text-violet-400", permModule: "cai-dat" },
+      { href: "/agents", label: "Agents Dashboard", icon: Cpu, iconColor: "text-blue-400", permModule: "cai-dat" },
+      { href: "/audit-log", label: "Nhật ký hệ thống", icon: Activity, iconColor: "text-amber-400", permModule: "cai-dat" },
+      { href: "/backup-restore", label: "Sao lưu dữ liệu", icon: Database, iconColor: "text-slate-400", permModule: "cai-dat" },
     ]
   }
 ];
@@ -264,7 +272,8 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
             const Icon = item.icon;
             const groupIconColor = item.iconColor || "text-slate-300";
             const groupBorderColor = item.color || "border-slate-500";
-            const activeItemBg = item.activeItemBg || "bg-white/15 text-white";
+            const activeSubBg = item.activeSubBg || "bg-white/15 text-white";
+            const activeBg = item.activeBg || "bg-white/8";
             
             // Render group
             if (item.isGroup && item.subItems) {
@@ -272,24 +281,24 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
               const isGroupActive = item.subItems.some((s) => pathname?.startsWith(s.href));
               
               return (
-                <div key={item.label} className="mb-0.5">
+                <div key={item.label} className="mb-1">
                   <button
                     onClick={() => toggleGroup(item.label)}
                     aria-expanded={isOpen}
                     className={clsx(
-                      "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all border-l-2",
-                      isGroupActive && !isOpen
-                        ? `${groupBorderColor} bg-white/8 text-white`
-                        : `border-transparent hover:bg-white/8 text-slate-400 hover:text-white`,
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 border-l-2",
+                      isGroupActive || isOpen
+                        ? `${groupBorderColor} ${activeBg} text-white`
+                        : `border-transparent hover:bg-white/5 text-slate-400 hover:text-white`,
                       isCollapsed && "justify-center px-2"
                     )}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon className={clsx("w-[18px] h-[18px] shrink-0", isGroupActive ? groupIconColor : "text-slate-400 group-hover:text-slate-200")} />
+                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : "text-slate-500")} />
                     {!isCollapsed && (
                       <>
                         <span className="flex-1 text-left tracking-wide">{item.label}</span>
-                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-40" /> : <ChevronRight className="w-3.5 h-3.5 opacity-40" />}
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-40" />}
                       </>
                     )}
                   </button>
@@ -297,11 +306,12 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                   {!isCollapsed && (
                     <div
                       className={clsx(
-                        "ml-2 mt-0.5 overflow-hidden transition-all duration-200",
+                        "overflow-hidden transition-all duration-200",
                         isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
                       )}
                     >
-                      <div className={clsx("pl-3 border-l-2 border-dashed py-0.5 space-y-0.5", groupBorderColor, "border-opacity-30")}>
+                      {/* Dark card container for sub-items - matching reference design */}
+                      <div className="mt-1 mx-1 rounded-xl bg-black/20 border border-white/5 px-2 py-1.5 space-y-0.5">
                         {item.subItems.map((sub) => {
                           const SubIcon = sub.icon;
                           const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
@@ -311,13 +321,13 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                               href={sub.href}
                               onClick={onItemClick}
                               className={clsx(
-                                "flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all",
+                                "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150",
                                 subActive
-                                  ? activeItemBg + " shadow-sm font-semibold"
+                                  ? activeSubBg + " shadow-sm font-semibold"
                                   : "hover:bg-white/8 text-slate-400 hover:text-slate-200"
                               )}
                             >
-                              <SubIcon className={clsx("w-3.5 h-3.5 shrink-0", subActive ? groupIconColor : "text-slate-500")} />
+                              <SubIcon className={clsx("w-4 h-4 shrink-0", sub.iconColor || "text-slate-500")} />
                               <span className="flex-1 leading-tight">{sub.label}</span>
                             </Link>
                           );
