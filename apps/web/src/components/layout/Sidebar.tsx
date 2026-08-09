@@ -311,7 +311,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                       )}
                     >
                       {/* Dark card container for sub-items - matching reference design */}
-                      <div className="mt-1 mx-1 rounded-xl bg-black/20 border border-white/5 px-2 py-1.5 space-y-0.5">
+                      <div className="mt-1 mx-1 rounded-xl bg-black/20 px-2 py-1.5 space-y-0.5">
                         {item.subItems.map((sub) => {
                           const SubIcon = sub.icon;
                           const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
