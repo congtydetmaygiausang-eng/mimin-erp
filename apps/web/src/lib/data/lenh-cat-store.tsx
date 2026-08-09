@@ -113,6 +113,7 @@ type CongDoanBase = {
   trangThaiCD?: TrangThaiCongDoan; // Trạng thái công đoạn
   soLuongHoanThanh?: number;       // SP đã làm xong
   soLuongLoi?: number;             // SP lỗi
+  lyDoLoi?: string;                // Lý do lỗi
   ngayNhanViec?: string;           // Ngày nhận việc
   ngayHoanThanh?: string;          // Ngày hoàn thành thực tế
 };
