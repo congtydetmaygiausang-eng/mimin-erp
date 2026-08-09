@@ -49,6 +49,7 @@ import {
   MessageSquare,
   Webhook,
   Sliders,
+  Palette,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -86,9 +87,10 @@ const NAV: NavItem[] = [
       { href: "/may", label: "Tổ may", icon: Shirt, permModule: "to-may" },
       { href: "/to-may-work", label: "👕 Tổ May – Việc của tôi", icon: Shirt, permModule: "to-may" },
       { href: "/to-qc-work", label: "🔍 QC – Kiểm tra chất lượng", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
+      { href: "/ui-intd", label: "🎨 In / Thêu – Việc của tôi", icon: Palette, permModule: "hoan-thien" },
       { href: "/ui-khuy-nut", label: "🔘 Khuy nút – Việc của tôi", icon: ClipboardList, permModule: "hoan-thien" },
       { href: "/ui-ui", label: "💨 Tổ Ủi – Việc của tôi", icon: ClipboardList, permModule: "hoan-thien" },
-      { href: "/ui-dong-goi", label: "📦 Đóng gói – Việc của tôi", icon: Package, permModule: "hoan-thien" },
+      { href: "/ui-dong-goi", label: "📦 Đóng gói nhập kho – Việc của tôi", icon: Package, permModule: "hoan-thien" },
       { href: "/to-ht-work", label: "🦺 Hoàn Thiện (Tổng hợp)", icon: ClipboardList, permModule: "hoan-thien" },
       { href: "/qc", label: "QC (cũ)", icon: ShieldCheck, permModule: "kiem-tra-chat-luong" },
       { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, permModule: "gia-cong-ngoai" },

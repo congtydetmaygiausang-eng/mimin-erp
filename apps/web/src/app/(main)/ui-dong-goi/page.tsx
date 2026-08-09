@@ -86,9 +86,9 @@ export default function UiDongGoiPage() {
     <div className="space-y-5 animate-fade-in">
       <div>
         <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <Package className="w-7 h-7 text-amber-500" /> Tổ Đóng Gói – Việc của tôi
+          <Package className="w-7 h-7 text-amber-500" /> Đóng gói nhập kho – Việc của tôi
         </h1>
-        <p className="text-sm text-slate-500 mt-1">{lcHT.length} lô đang cần Đóng Gói</p>
+        <p className="text-sm text-slate-500 mt-1">{lcHT.length} lô đang cần Đóng gói & Nhập kho</p>
       </div>
 
       {/* KPI */}
@@ -110,7 +110,7 @@ export default function UiDongGoiPage() {
         <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
           <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
           <div className="font-bold">Không có việc Đóng Gói nào</div>
-          <div className="text-sm mt-1">Chờ Tổ Ủi hoàn thành công đoạn sẽ xuất hiện ở đây</div>
+          <div className="text-sm mt-1">Chờ Tổ Ủi hoàn thành sẽ xuất hiện ở đây để đóng gói & nhập kho</div>
         </div>
       ) : (
         <div className="space-y-4">
