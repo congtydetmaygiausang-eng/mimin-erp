@@ -257,7 +257,7 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
         {/* BODY */}
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === "info" && (
-            <InfoTab order={order} onChange={updateOrder} />
+            <InfoTab order={order} onChange={updateOrder} dsKhachHang={dsKhachHang} />
           )}
 
           {activeTab === "items" && (
@@ -325,7 +325,7 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
 // TAB 1: THONG TIN KHACH HANG + LOAI DON
 // ============================================
 
-function InfoTab({ order, onChange }: { order: Order; onChange: (p: Partial<Order>) => void }) {
+function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p: Partial<Order>) => void; dsKhachHang: any[] }) {
   return (
     <div className="space-y-4 max-w-2xl">
       {/* Loai don hang */}
@@ -384,7 +384,7 @@ function InfoTab({ order, onChange }: { order: Order; onChange: (p: Partial<Orde
             value={order.khachHang}
             onChange={(e) => {
               const val = e.target.value;
-              const kh = dsKhachHang.find(k => k.tenKH === val);
+              const kh = dsKhachHang.find((k: any) => k.tenKH === val);
               onChange({ 
                 khachHang: val, 
                 ...(kh && kh.sdt ? { sdt: kh.sdt } : {}) 
@@ -394,7 +394,7 @@ function InfoTab({ order, onChange }: { order: Order; onChange: (p: Partial<Orde
             className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
           />
           <datalist id="khachhang-list">
-            {dsKhachHang.map(kh => (
+            {dsKhachHang.map((kh: any) => (
               <option key={kh.id} value={kh.tenKH} />
             ))}
           </datalist>
