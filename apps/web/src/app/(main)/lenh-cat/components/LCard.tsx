@@ -15,20 +15,35 @@ export function StatCard({ icon, label, value, sub, color }: {
   sub?: string;
   color: "violet" | "amber" | "emerald" | "sky";
 }) {
-  const colorMap: Record<string, { bg: string, text: string, icon: string, value: string }> = {
-    violet: { bg: "bg-white", text: "text-slate-500", icon: "text-violet-500", value: "text-slate-800" },
-    amber: { bg: "bg-white", text: "text-slate-500", icon: "text-amber-500", value: "text-slate-800" },
-    emerald: { bg: "bg-white", text: "text-slate-500", icon: "text-emerald-500", value: "text-emerald-600" },
-    sky: { bg: "bg-white", text: "text-slate-500", icon: "text-sky-500", value: "text-sky-600" },
+  const colorMap: Record<string, { bg: string, text: string, icon: string, iconBg: string, value: string }> = {
+    violet: { bg: "bg-white", text: "text-slate-500", icon: "text-violet-600", iconBg: "bg-violet-100", value: "text-slate-800" },
+    amber: { bg: "bg-white", text: "text-slate-500", icon: "text-amber-600", iconBg: "bg-amber-100", value: "text-slate-800" },
+    emerald: { bg: "bg-white", text: "text-slate-500", icon: "text-emerald-600", iconBg: "bg-emerald-100", value: "text-emerald-700" },
+    sky: { bg: "bg-white", text: "text-slate-500", icon: "text-sky-600", iconBg: "bg-sky-100", value: "text-sky-700" },
   };
   const config = colorMap[color] || colorMap.sky;
+  
   return (
-    <div className={`rounded-xl p-4 shadow-sm ${config.bg}`}>
-      <div className={`flex items-center gap-1.5 text-xs font-semibold ${config.text} mb-1.5`}>
-        <span className={config.icon}>{icon}</span><span>{label}</span>
+    <div className={`rounded-[20px] p-5 shadow-sm border border-slate-200/60 ${config.bg} flex items-center gap-4 transition-all hover:shadow-md hover:border-slate-300`}>
+      <div className={`w-14 h-14 shrink-0 rounded-[14px] flex items-center justify-center ${config.iconBg} ${config.icon}`}>
+        {/* We assume the icon passed has w-4 h-4, but we can style the container to make it pop */}
+        <div className="[&>svg]:w-6 [&>svg]:h-6">
+          {icon}
+        </div>
       </div>
-      <div className={`text-2xl md:text-3xl font-bold tabular-nums ${config.value}`}>{value}</div>
-      {sub && <div className="text-[10px] text-slate-400 mt-1 font-medium">{sub}</div>}
+      <div className="min-w-0 flex-1">
+        <div className={`text-[11px] font-bold uppercase tracking-wider ${config.text} mb-1 truncate`}>
+          {label}
+        </div>
+        <div className={`text-2xl xl:text-3xl font-black tabular-nums ${config.value} leading-none`}>
+          {value}
+        </div>
+        {sub && (
+          <div className="text-xs text-slate-500 mt-1.5 font-medium truncate">
+            {sub}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
