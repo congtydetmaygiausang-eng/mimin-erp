@@ -49,7 +49,6 @@ import {
   MessageSquare,
   Webhook,
   Sliders,
-  Palette,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
