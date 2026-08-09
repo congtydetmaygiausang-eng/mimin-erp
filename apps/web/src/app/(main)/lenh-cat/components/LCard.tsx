@@ -24,22 +24,22 @@ export function StatCard({ icon, label, value, sub, color }: {
   const config = colorMap[color] || colorMap.sky;
   
   return (
-    <div className={`rounded-[20px] p-5 shadow-sm border border-slate-200/60 ${config.bg} flex items-center gap-4 transition-all hover:shadow-md hover:border-slate-300`}>
-      <div className={`w-14 h-14 shrink-0 rounded-[14px] flex items-center justify-center ${config.iconBg} ${config.icon}`}>
+    <div className={`rounded-2xl p-3.5 shadow-sm border border-slate-200/60 ${config.bg} flex items-center gap-3 transition-all hover:shadow-md hover:border-slate-300`}>
+      <div className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${config.iconBg} ${config.icon}`}>
         {/* We assume the icon passed has w-4 h-4, but we can style the container to make it pop */}
-        <div className="[&>svg]:w-6 [&>svg]:h-6">
+        <div className="[&>svg]:w-5 [&>svg]:h-5">
           {icon}
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className={`text-[11px] font-bold uppercase tracking-wider ${config.text} mb-1 truncate`}>
+        <div className={`text-[10px] font-bold uppercase tracking-wider ${config.text} mb-0.5 truncate`}>
           {label}
         </div>
-        <div className={`text-2xl xl:text-3xl font-black tabular-nums ${config.value} leading-none`}>
+        <div className={`text-xl xl:text-2xl font-black tabular-nums ${config.value} leading-none`}>
           {value}
         </div>
         {sub && (
-          <div className="text-xs text-slate-500 mt-1.5 font-medium truncate">
+          <div className="text-[10px] text-slate-500 mt-1 font-medium truncate">
             {sub}
           </div>
         )}
