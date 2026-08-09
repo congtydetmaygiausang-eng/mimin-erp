@@ -170,6 +170,22 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
 
   // Filter menu theo permission
   const visibleNav = useMemo(() => {
+    // Nếu là công nhân, ghi đè toàn bộ menu thành 1 mục duy nhất dựa trên user.module
+    if (user?.laCongNhan) {
+      if (user.module === "cat") {
+        return [{ href: "/to-cat-work", label: "✂️ Việc của tôi (Cắt)", icon: Scissors }];
+      } else if (user.module === "may") {
+        return [{ href: "/to-may-work", label: "👕 Việc của tôi (May)", icon: Shirt }];
+      } else if (user.module === "ui" || user.module === "dong-goi") {
+        return [{ href: "/to-ht-work", label: "🦺 Việc của tôi (Hoàn thiện)", icon: ClipboardList }];
+      } else if (user.module === "khuy-nut") {
+        return [{ href: "/ui-khuy-nut", label: "🔘 Việc của tôi (Khuy nút)", icon: CheckCircle2 }]; 
+      } else if (user.module === "intd") {
+        return [{ href: "/ui-intd", label: "🎨 Việc của tôi (In/Thêu)", icon: Palette }];
+      }
+      return [];
+    }
+
     const filtered: NavItem[] = [];
     for (const item of NAV) {
       if (item.isGroup && item.subItems) {
@@ -182,7 +198,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
       }
     }
     return filtered;
-  }, [role]);
+  }, [role, user]);
 
   return (
     <>

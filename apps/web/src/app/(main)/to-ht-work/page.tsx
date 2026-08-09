@@ -8,21 +8,34 @@ import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box } from "lucide-
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "@/components/ui";
+import { useSession } from "@/components/session-provider";
 
 export default function UiHoanThienPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
   const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
+  const { user } = useSession();
+
+  function getHTPC(lc: any) {
+    return lc.phanCong?.filter((pc: any) => {
+      const isHT = pc.id === "ui" || pc.id === "dongGoi" ||
+                   pc.tenCongDoan?.toLowerCase().includes("ủi") ||
+                   pc.tenCongDoan?.toLowerCase().includes("đóng gói");
+                   
+      if (user?.laCongNhan) {
+        const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
+        return isHT && isMyTask;
+      }
+      return isHT;
+    }) || [];
+  }
+
   // LC chờ hoàn thiện: các công đoạn trước (May áo, May quần...) ĐÃ XONG (đủ bộ), chuẩn bị Ủy/Đóng gói
   const lcHT = dsLenhCat.filter(lc => {
-    // 1. Phải có công đoạn HT
-    const hasHT = lc.phanCong?.some((pc: any) =>
-      (pc.id === "ui" || pc.id === "dongGoi" ||
-       pc.tenCongDoan?.toLowerCase().includes("ủi") ||
-       pc.tenCongDoan?.toLowerCase().includes("đóng gói"))
-    );
-    if (!hasHT) return false;
+    // 1. Phải có công đoạn HT của TÔI
+    const htPCs = getHTPC(lc);
+    if (htPCs.length === 0) return false;
 
     // 2. Tất cả công đoạn gia công trước đó (Cắt, May, In...) phải hoàn thành thì mới "đủ bộ"
     const prevPCs = lc.phanCong?.filter((pc: any) => 
@@ -34,14 +47,6 @@ export default function UiHoanThienPage() {
     // Nếu chưa hoàn thành tất cả công đoạn trước -> Chưa đủ bộ -> Không hiển thị ở Hoàn thiện
     return prevPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
   });
-
-  function getHTPC(lc: any) {
-    return lc.phanCong?.filter((pc: any) =>
-      pc.id === "ui" || pc.id === "dongGoi" ||
-      pc.tenCongDoan?.toLowerCase().includes("ủi") ||
-      pc.tenCongDoan?.toLowerCase().includes("đóng gói")
-    ) || [];
-  }
 
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });

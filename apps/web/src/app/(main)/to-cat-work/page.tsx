@@ -8,41 +8,86 @@ import { useState } from "react";
 import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriangle, ChevronDown, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
+import { useKho } from "@/lib/data/kho-store";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
+import { useSession } from "@/components/session-provider";
 
 export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
+  const { themGiaoDich } = useKho();
+  const { user } = useSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [slInput, setSlInput] = useState<Record<string, number>>({});
 
-  // Lọc LC có công đoạn cắt, đang cần xử lý
+  function getPhanCongCat(lc: any) {
+    return lc.phanCong?.find((pc: any) => {
+      const isCat = pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt");
+      if (user?.laCongNhan) {
+        const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
+        return isCat && isMyTask;
+      }
+      return isCat;
+    });
+  }
+
+  // Lọc LC có công đoạn cắt CỦA TÔI, đang cần xử lý
   const lcCoCat = dsLenhCat.filter(lc =>
     lc.trangThai === "DangCat" || lc.trangThai === "DaTao" || lc.trangThai === "Nhap"
-  ).filter(lc =>
-    lc.phanCong?.some((pc: any) =>
-      pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt")
-    )
-  );
+  ).filter(lc => getPhanCongCat(lc) !== undefined);
 
   const tongSLChuaCat = lcCoCat.reduce((s, lc) => {
-    const pc = lc.phanCong?.find((p: any) => p.id === "cat" || p.tenCongDoan?.toLowerCase().includes("cắt")) as any;
+    const pc = getPhanCongCat(lc);
     if (!pc || pc.trangThaiCD === "hoan_thanh") return s;
     return s + (lc.tongSL || 0);
   }, 0);
-
-  function getPhanCongCat(lc: any) {
-    return lc.phanCong?.find((pc: any) =>
-      pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt")
-    );
-  }
 
   function handleNhanViec(lc: any) {
     const pc = getPhanCongCat(lc);
     if (!pc) return;
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     capNhatTrangThai(lc.id, "DangCat", null);
-    toast.success(`✂️ Đã nhận việc: ${lc.id} - ${lc.tenSP}`);
+    
+    // Tự động xuất kho vải & phụ liệu
+    try {
+      const ngay = new Date().toISOString().split("T")[0];
+      
+      // 1. Xuất vải
+      lc.dsMau?.forEach((mau: any) => {
+        if (mau.maVai && mau.dinhMuc) {
+          themGiaoDich({
+            ngay, loai: "XUAT", maVT: mau.maVai, tenVT: `Vải ${mau.ten}`,
+            soLuong: mau.dinhMuc * (lc.tongSL || 0),
+            donVi: "kg", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động cho LC ${lc.id}`
+          });
+        }
+        if (mau.maVaiQuan && mau.dinhMucQuan) {
+          themGiaoDich({
+            ngay, loai: "XUAT", maVT: mau.maVaiQuan, tenVT: `Vải Quần ${mau.ten}`,
+            soLuong: mau.dinhMucQuan * (lc.tongSL || 0),
+            donVi: "kg", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động (Quần) cho LC ${lc.id}`
+          });
+        }
+      });
+
+      // 2. Xuất phụ liệu
+      lc.dsPhuLieu?.forEach((pl: any) => {
+        if (pl.maPL && pl.soLuong) {
+          themGiaoDich({
+            ngay, loai: "XUAT", maVT: pl.maPL, tenVT: pl.tenPL,
+            soLuong: pl.soLuong,
+            donVi: pl.dvt || "cái", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động cho LC ${lc.id}`
+          });
+        }
+      });
+      
+      toast.success(`✂️ Đã nhận việc và tự động xuất vật tư cho: ${lc.id}`);
+    } catch (e) {
+      toast.error(`⚠️ Có lỗi khi xuất kho tự động!`);
+    }
   }
 
   function handleHoanThanh(lc: any) {

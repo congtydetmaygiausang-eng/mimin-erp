@@ -9,6 +9,7 @@ import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "@/components/ui";
+import { useSession } from "@/components/session-provider";
 
 const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 
@@ -16,21 +17,23 @@ export default function UiMayPage() {
   const { dsLenhCat, capNhatCongDoan } = useLenhCat();
   const [slInput, setSlInput] = useState<Record<string, number>>({});
   const [loiInput, setLoiInput] = useState<Record<string, number>>({});
-
-  // Lọc LC có công đoạn may và đã cắt xong (hoặc đang cắt)
-  const lcCoMay = dsLenhCat.filter(lc =>
-    ["DangCat", "HoanThanh", "ChuyenTiep"].includes(lc.trangThai)
-  ).filter(lc =>
-    lc.phanCong?.some((pc: any) =>
-      MAY_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("may"))
-    )
-  );
+  const { user } = useSession();
 
   function getMayPC(lc: any) {
-    return lc.phanCong?.filter((pc: any) =>
-      MAY_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("may"))
-    ) || [];
+    return lc.phanCong?.filter((pc: any) => {
+      const isMay = MAY_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("may"));
+      if (user?.laCongNhan) {
+        const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
+        return isMay && isMyTask;
+      }
+      return isMay;
+    }) || [];
   }
+
+  // Lọc LC có công đoạn may CỦA TÔI và đã cắt xong (hoặc đang cắt)
+  const lcCoMay = dsLenhCat.filter(lc =>
+    ["DangCat", "HoanThanh", "ChuyenTiep"].includes(lc.trangThai)
+  ).filter(lc => getMayPC(lc).length > 0);
 
   function getCatTT(lc: any) {
     const catPC = lc.phanCong?.find((pc: any) => pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt")) as any;
