@@ -186,15 +186,15 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
 
   return (
     <>
-      <div className={clsx("p-5 border-b flex items-center", isCollapsed ? "justify-center" : "justify-between")} style={{ borderColor: "var(--border)" }}>
+      <div className={clsx("p-5 border-b border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
         <Link href="/dashboard" className="flex items-center gap-2 min-w-0" onClick={onItemClick}>
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold shadow-lg">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold shadow-lg">
             M
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <div className="font-bold text-sm truncate">MIMIN ERP</div>
-              <div className="text-xs truncate" style={{ color: "var(--text-muted)" }}>Quản lý may mặc</div>
+              <div className="font-bold text-sm truncate text-white">MIMIN ERP</div>
+              <div className="text-xs truncate text-slate-300">Quản lý may mặc</div>
             </div>
           )}
         </Link>
@@ -202,7 +202,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         {toggleCollapse && (
           <button
             onClick={toggleCollapse}
-            className="hidden md:inline-flex ml-2 shrink-0 rounded-lg border p-1.5 transition-colors hover:bg-brand-500/10 hover:text-brand-600"
+            className="hidden md:inline-flex ml-2 shrink-0 rounded-lg border border-white/10 p-1.5 transition-colors hover:bg-white/10 text-white"
             aria-label={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
             title={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
           >
@@ -213,7 +213,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         {onItemClick && (
           <button
             onClick={onItemClick}
-            className="md:hidden p-1.5 rounded-lg hover:bg-white/30"
+            className="md:hidden p-1.5 rounded-lg hover:bg-white/20 text-white"
             aria-label="Đóng menu"
           >
             <X className="w-4 h-4" />
@@ -244,11 +244,10 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     className={clsx(
                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-all border border-transparent",
                       isGroupActive && !isOpen
-                        ? "bg-brand-500/14 text-brand-700 dark:text-brand-300 border-brand-500/20 shadow-sm"
-                        : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300",
+                        ? "bg-white/10 text-white border-white/10 shadow-sm"
+                        : "hover:bg-white/10 text-slate-300 hover:text-white",
                       isCollapsed && "justify-center px-2"
                     )}
-                    style={(!isGroupActive && !isOpen) ? { color: "var(--text-secondary)" } : undefined}
                     title={isCollapsed ? item.label : undefined}
                   >
                     <Icon className="w-5 h-5 shrink-0" />
@@ -263,10 +262,9 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                   {!isCollapsed && (
                     <div
                       className={clsx(
-                        "ml-3 mt-1 overflow-hidden rounded-lg border border-slate-200/70 bg-slate-50/70 px-2 py-1 transition-all duration-200 dark:border-slate-700/70 dark:bg-slate-900/30",
+                        "ml-3 mt-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 px-2 py-1 transition-all duration-200",
                         isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
                       )}
-                      style={{ borderColor: "var(--border)" }}
                     >
                       {item.subItems.map((sub) => {
                         const SubIcon = sub.icon;
@@ -279,10 +277,9 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                             className={clsx(
                               "flex items-center gap-2 px-2.5 py-2 rounded-md text-[14px] font-medium transition-all",
                               subActive
-                                ? "bg-brand-500/15 text-brand-700 dark:text-brand-300 shadow-sm"
-                                : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
+                                ? "bg-white/20 text-white shadow-sm"
+                                : "hover:bg-white/10 text-slate-300 hover:text-white"
                             )}
-                            style={!subActive ? { color: "var(--text-muted)" } : undefined}
                           >
                             <SubIcon className="w-4 h-4 shrink-0" />
                             <span className="flex-1">{sub.label}</span>
@@ -305,11 +302,10 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                 className={clsx(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[17px] font-bold transition-all",
                   active
-                    ? "bg-brand-500/20 text-brand-700 dark:text-brand-300"
-                    : "hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300",
+                    ? "bg-white/20 text-white"
+                    : "hover:bg-white/10 text-slate-300 hover:text-white",
                   isCollapsed && "justify-center px-0"
                 )}
-                style={!active ? { color: "var(--text-secondary)" } : undefined}
                 title={isCollapsed ? item.label : undefined}
               >
                 <Icon className="w-5 h-5 shrink-0" />
@@ -319,12 +315,12 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
           })
         )}
       </nav>
-      <div className={clsx("p-4 border-t text-xs opacity-50 flex items-center", isCollapsed ? "justify-center" : "justify-between")} style={{ borderColor: "var(--border)" }}>
+      <div className={clsx("p-4 border-t border-white/10 text-xs text-slate-300 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
         {!isCollapsed && <span>&copy; 2026 Polo Mimin</span>}
         {toggleCollapse && (
           <button 
             onClick={toggleCollapse} 
-            className="p-1 hover:text-brand-600 transition-colors"
+            className="p-1 hover:text-white transition-colors"
             title={isCollapsed ? "Mở menu" : "Thu gọn menu"}
           >
             {isCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
@@ -359,9 +355,9 @@ export function Sidebar() {
 
   return (
     <aside className={clsx(
-      "hidden md:flex flex-col h-screen sticky top-0 glass border-r z-40 shadow-sm transition-all duration-300",
+      "hidden md:flex flex-col h-screen sticky top-0 bg-[#0B4D5D] text-white border-r border-white/10 z-40 shadow-sm transition-all duration-300",
       isCollapsed ? "w-20" : "w-64"
-    )} style={{ borderColor: "var(--border)" }}>
+    )}>
       <NavContent 
         pathname={pathname || ""} 
         isCollapsed={isCollapsed} 
@@ -379,7 +375,7 @@ export function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   return (
     <div className="fixed inset-0 z-50 md:hidden animate-fade-in">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute top-0 left-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-slide-in-right">
+      <div className="absolute top-0 left-0 bottom-0 w-[280px] bg-[#0B4D5D] text-white shadow-2xl flex flex-col animate-slide-in-right">
         <NavContent pathname={pathname || ""} onItemClick={onClose} />
       </div>
     </div>
