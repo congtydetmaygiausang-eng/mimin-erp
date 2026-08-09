@@ -31,7 +31,7 @@ const TRANG_THAI_VC_STYLE: Record<TrangThaiVanChuyen, { color: string; bg: strin
 };
 
 export default function VanChuyenPage() {
-  const { data: donHangs } = useSupabaseSync<Order>("mimin_don_hang", "don_hang");
+  const { data: donHangs, setData: setDonHangs } = useSupabaseSync<Order>("mimin_don_hang", "don_hang");
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { user } = useSession();
 
@@ -65,21 +65,12 @@ export default function VanChuyenPage() {
 
   // Update trang thai VC
   const updateTrangThaiVC = async (order: Order, newTrangThai: TrangThaiVanChuyen) => {
-    const { updateRecord } = (await import("@/lib/supabase/client")).useSupabaseSync<Order>("mimin_don_hang", "don_hang");
-    // ... su dung updateRecord truc tiep
-    // Tam thoi goi qua supabase
-    const { supabase } = await import("@/lib/supabase/client");
-    if (supabase) {
-      const newShipping = { ...order.shipping, trangThai: newTrangThai };
-      const { error } = await supabase.from("don_hang").update({ shipping: newShipping }).eq("id", order.id);
-      if (!error) {
-        toast.success(`Đã cập nhật: ${TRANG_THAI_VAN_CHUYEN_LABELS[newTrangThai]}`);
-        // Refresh page
-        setTimeout(() => window.location.reload(), 500);
-      } else {
-        toast.error("Lỗi cập nhật: " + error.message);
-      }
-    }
+    const newShipping = { ...order.shipping, trangThai: newTrangThai };
+    // Cập nhật state local (setDonHangs tự sync lên Supabase)
+    await setDonHangs((prev) =>
+      prev.map((d) => d.id === order.id ? { ...d, shipping: newShipping } : d)
+    );
+    toast.success(`Đã cập nhật: ${TRANG_THAI_VAN_CHUYEN_LABELS[newTrangThai]}`);
   };
 
   return (

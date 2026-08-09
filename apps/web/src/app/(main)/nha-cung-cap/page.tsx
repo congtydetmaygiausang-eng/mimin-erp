@@ -74,7 +74,8 @@ function mapToUI(db: NhaCungCapModel, index: number): NCC {
 
 function mapToDB(ui: NCC): NhaCungCapModel {
   return {
-    ma_ncc: ui.ma_ncc || `NCC-${Date.now()}`, // Temporary fallback if new
+    id: ui.ma_ncc || `NCC-${Date.now()}`, // id bắt buộc trong NhaCungCapModel
+    ma_ncc: ui.ma_ncc || `NCC-${Date.now()}`,
     ten_ncc: ui.ten,
     loai: ui.vaiTro,
     sdt: ui.sdt,
@@ -420,6 +421,7 @@ export default function NhaCungCapPage() {
 function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: NCC; onClose: () => void; onSave: (n: NCC) => void }) {
   const [form, setForm] = useState<NCC>(ncc || {
     stt: 99,
+    ma_ncc: "", // bắt buộc trong NCC type
     ten: "",
     vaiTro: "Dệt",
     sdt: "",

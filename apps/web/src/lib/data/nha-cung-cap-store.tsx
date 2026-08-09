@@ -89,6 +89,7 @@ const STORAGE_KEY = "mimin_nha_cung_cap_v1";
 
 // Default seed data
 const DEFAULT_SEED: NhaCungCapModel[] = NCCS.map((n, i) => ({
+  id: `NCC-${String(i + 1).padStart(3, "0")}`, // bắt buộc
   ma_ncc: `NCC-${String(i + 1).padStart(3, "0")}`,
   ten_ncc: n.ten,
   loai: n.vaiTro,

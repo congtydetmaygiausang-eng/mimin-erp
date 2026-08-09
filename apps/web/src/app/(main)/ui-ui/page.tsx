@@ -4,15 +4,16 @@
 // Nhận hàng từ Khuy nút (hoặc QC đạt), Ủi phẳng, giao Đóng gói
 
 import { useState } from "react";
-import { CheckCircle2, Wind } from "lucide-react";
+import { CheckCircle2, Wind, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 export default function UiUiPage() {
-  const { dsLenhCat, capNhatCongDoan } = useLenhCat();
+  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
   const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
+  const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
 
@@ -113,6 +114,8 @@ export default function UiUiPage() {
         <div className="space-y-4">
           {lcHT.map(lc => {
             const htPCs = getHTPC(lc);
+            const isAllDone = htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+            const isLCDone = lc.trangThai === "HoanThanh";
 
             return (
               <div key={lc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

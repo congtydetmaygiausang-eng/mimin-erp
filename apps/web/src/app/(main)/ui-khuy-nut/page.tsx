@@ -4,15 +4,16 @@
 // Nhận hàng từ QC đạt, Khuy nút, giao Ủi
 
 import { useState } from "react";
-import { CheckCircle2, Circle, Scissors } from "lucide-react";
+import { CheckCircle2, Circle, Scissors, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 export default function UiKhuyNutPage() {
-  const { dsLenhCat, capNhatCongDoan } = useLenhCat();
+  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
   const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
+  const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
 

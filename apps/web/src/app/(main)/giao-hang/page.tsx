@@ -17,7 +17,13 @@ const TT_STYLE: Record<string, { color: string; bg: string; icon: any }> = {
 };
 
 export default function GiaoHangPage() {
-  const { data: list, updateRecord, isLoading } = useSupabaseSync<Order>("mimin_don_hang", "don_hang", []);
+  const { data: list, setData, loading } = useSupabaseSync<Order>("mimin_don_hang", "don_hang", []);
+  const isLoading = loading;
+
+  // Wrapper updateRecord: cập nhật 1 record theo id
+  const updateRecord = async (id: string, patch: Partial<Order>) => {
+    await setData((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
+  };
   
   // Lọc danh sách giao hàng: Chỉ lấy những đơn hàng chưa bị Hủy. 
   // (Tùy logic doanh nghiệp có thể lọc thêm: đang có trạng thái Đã duyệt, Đang SX, Hoàn thành, Đã giao)
@@ -91,7 +97,7 @@ export default function GiaoHangPage() {
                   : "Chưa rõ";
                 
                 // Trạng thái (thay vì đang SX thì ghi Rõ ở góc độ giao hàng)
-                let displayStatus = g.trangThai;
+                let displayStatus: string = g.trangThai;
                 if (g.trangThai === "Hoàn thành") displayStatus = "Kho xuất - Chờ đi";
 
                 return (
@@ -111,7 +117,7 @@ export default function GiaoHangPage() {
                         <Phone className="w-3 h-3" /> {g.sdt || "—"}
                       </div>
                       <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                        <MapPin className="w-3 h-3" /> {g.diaChi || "—"}
+                        <MapPin className="w-3 h-3" /> {g.shipping?.diaChiGiao || "—"}
                       </div>
                     </td>
                     <td className="p-3 text-right font-mono font-bold text-slate-700">{tongSL.toLocaleString()}</td>

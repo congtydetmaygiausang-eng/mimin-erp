@@ -334,8 +334,8 @@ export default function KhachHangPage() {
   );
 }
 
-function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "edit"; kh?: KH; existingCount: number; onClose: () => void; onSave: (k: KH) => void }) {
-  const [form, setForm] = useState<KH>(kh || {
+function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "edit"; kh?: KhachHangUI; existingCount: number; onClose: () => void; onSave: (k: KhachHangUI) => void }) {
+  const [form, setForm] = useState<KhachHangUI>(kh || {
     maKH: `KH-${(existingCount + 1).toString().padStart(3, "0")}`,
     ten: "",
     sdt: "",
