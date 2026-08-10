@@ -42,7 +42,18 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const fetchSupabase = async () => {
       if (!isSupabaseEnabled) {
-        if (list.length === 0) setList(NHAN_SU_KHOI_DAU);
+        setList(prev => {
+          if (prev.length === 0) return NHAN_SU_KHOI_DAU;
+          if (prev.length < NHAN_SU_KHOI_DAU.length) {
+            const missing = NHAN_SU_KHOI_DAU.filter(k => !prev.find(p => p.maNV === k.maNV));
+            if (missing.length > 0) {
+              const combined = [...prev, ...missing].sort((a, b) => a.stt - b.stt);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+              return combined;
+            }
+          }
+          return prev;
+        });
         setLoading(false);
         return;
       }

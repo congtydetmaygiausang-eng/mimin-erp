@@ -1,7 +1,7 @@
 "use client";
 
 import { Package } from "lucide-react";
-import { formatVNDShort } from "@/lib/data/real-data";
+import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import type { OrderItem } from "./types";
 import { calcTotalQty } from "./types";
 
@@ -23,7 +23,6 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
             <tr className="border-b" style={{ borderColor: "var(--border)" }}>
               <th className="py-2 text-left text-xs opacity-70 font-medium">SKU</th>
               <th className="py-2 text-left text-xs opacity-70 font-medium">Sản phẩm</th>
-              <th className="py-2 text-left text-xs opacity-70 font-medium">Loại</th>
               <th className="py-2 text-right text-xs opacity-70 font-medium">SL</th>
               <th className="py-2 text-right text-xs opacity-70 font-medium">Đơn giá</th>
               <th className="py-2 text-right text-xs opacity-70 font-medium">Thành tiền</th>
@@ -33,15 +32,15 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
             {items.map((item) => (
               <tr key={item.id} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
                 <td className="py-3 font-mono text-xs text-brand-700">{item.sku}</td>
-                <td className="py-3 font-medium">{item.name}</td>
-                <td className="py-3">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${item.type === "Bộ" ? "bg-violet-500/15 text-violet-700" : "bg-sky-500/15 text-sky-700"}`}>
-                    {item.type}
-                  </span>
-                </td>
-                <td className="py-3 text-right font-mono">{item.quantity.toLocaleString()}</td>
-                <td className="py-3 text-right font-mono">{formatVNDShort(item.unitPrice)}</td>
-                <td className="py-3 text-right font-mono font-semibold text-emerald-600">{formatVNDShort(item.total)}</td>
+                <td className="p-3">
+                <div className="font-medium text-slate-800">{item.spTen}</div>
+                <div className="text-xs text-slate-500">
+                  {item.mauTen} {item.size ? `- Size ${item.size}` : ""} ({item.sku})
+                </div>
+              </td>
+              <td className="p-3 text-right">{item.soLuong}</td>
+              <td className="p-3 text-right text-slate-600">{formatVND(item.donGia)}</td>
+              <td className="p-3 text-right font-medium text-emerald-700">{formatVND(item.thanhTien)}</td>
               </tr>
             ))}
           </tbody>

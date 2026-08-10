@@ -5,7 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // URL mặc định cho project Pro mới (2026-08-03 chuyển từ Free sang Pro)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ejcuqyaiwabfygyesvxj.supabase.co";
 // Hỗ trợ cả anon key (cũ) và publishable key (Supabase 2024+)
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_jjxSsC-ADuxGWpWfH6KI5g_3EgU1ADd";
 
 // Re-export từ sync-helper để các store dùng tiện
 export { supabaseUpsert, supabaseDelete, supabaseFetchAll, useSupabaseSync, checkSupabase } from "./sync-helper";

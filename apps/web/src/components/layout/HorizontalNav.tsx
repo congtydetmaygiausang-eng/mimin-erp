@@ -55,9 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX" },
       { href: "/lenh-cat", label: "Lệnh cắt" },
-      { href: "/may", label: "Tổ may" },
       { href: "/hoan-thien", label: "Hoàn thiện" },
-      { href: "/qc", label: "Kiểm tra CL" },
       { href: "/gia-cong-ngoai", label: "Gia công ngoài" },
       { href: "/trang-chu-gia-cong", label: "Trang chủ gia công" },
     ],

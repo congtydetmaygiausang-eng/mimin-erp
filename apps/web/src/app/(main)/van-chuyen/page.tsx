@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useSupabaseSync } from "@/lib/supabase/client";
 import { useSession } from "@/components/session-provider";
 import { formatVNDShort } from "@/lib/data/real-data";
-import type { Order } from "@/components/order-detail/types";
+import type { Order, OrderShipping } from "@/components/order-detail/types";
 import {
   PHUONG_THUC_VAN_CHUYEN_LABELS, TRANG_THAI_VAN_CHUYEN_LABELS,
   type PhuongThucVanChuyen, type TrangThaiVanChuyen
@@ -38,12 +38,12 @@ export default function VanChuyenPage() {
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<TrangThaiVanChuyen | "all">("all");
   const [filterPhuongThuc, setFilterPhuongThuc] = useState<PhuongThucVanChuyen | "all">("all");
-  const [editingDH, setEditingDH] = useState<Order | null>(null);
+  const [editingDH, setEditingDH] = useState<(Order & { shipping: OrderShipping }) | null>(null);
 
   // Loc cac don co thong tin van chuyen
   const dsVanChuyen = useMemo(() => {
     return donHangs
-      .filter((d) => d.shipping && d.trangThai !== "Hủy")
+      .filter((d): d is Order & { shipping: OrderShipping } => !!d.shipping && d.trangThai !== "Hủy")
       .map((d) => {
         // Lookup ten KH tu bang khach_hang (neu co)
         const kh = khachHangs.find((k: any) => k.ten_kh === d.khachHang);
@@ -65,6 +65,7 @@ export default function VanChuyenPage() {
 
   // Update trang thai VC
   const updateTrangThaiVC = async (order: Order, newTrangThai: TrangThaiVanChuyen) => {
+    if (!order.shipping) return;
     const newShipping = { ...order.shipping, trangThai: newTrangThai };
     // Cập nhật state local (setDonHangs tự sync lên Supabase)
     await setDonHangs((prev) =>
@@ -290,8 +291,8 @@ function KpiCard({ label, value, icon: Icon, color }: { label: string; value: nu
   );
 }
 
-function EditVanChuyenModal({ order, onClose, onSaved }: { order: Order; onClose: () => void; onSaved: () => void }) {
-  const [shipping, setShipping] = useState(order.shipping);
+function EditVanChuyenModal({ order, onClose, onSaved }: { order: Order & { shipping: OrderShipping }; onClose: () => void; onSaved: () => void }) {
+  const [shipping, setShipping] = useState<OrderShipping>(order.shipping);
 
   const handleSave = async () => {
     const { supabase } = await import("@/lib/supabase/client");

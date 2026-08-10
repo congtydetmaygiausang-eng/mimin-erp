@@ -16,7 +16,7 @@ import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { useKhachHang } from "@/lib/data/khach-hang-store";
 import {
   type Order, type OrderItem, type OrderPayment, type OrderShipping,
-  type LoaiDonHang, type PhuongThucThanhToan, type PhuongThucVanChuyen,
+  type LoaiDonHang, type PhuongThucThanhToan, type PhuongThucVanChuyen, type TrangThaiVanChuyen,
   LOAI_DON_HANG_LABELS, PHUONG_THUC_THANH_TOAN_LABELS, PHUONG_THUC_VAN_CHUYEN_LABELS,
   KENH_BAN_SAN_OPTIONS, NGAN_HANG_OPTIONS,
 } from "./types";
@@ -72,7 +72,7 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
 
   const updateOrder = (patch: Partial<Order>) => setOrder((o) => ({ ...o, ...patch }));
   const updateShipping = (patch: Partial<OrderShipping>) =>
-    setOrder((o) => ({ ...o, shipping: { ...o.shipping, ...patch } }));
+    setOrder((o) => ({ ...o, shipping: { ...(o.shipping || { phuongThuc: "ghtk", phiVanChuyen: 0, trangThai: "cho-xu-ly" as TrangThaiVanChuyen }), ...patch } as OrderShipping }));
 
   const updateItem = (id: string, patch: Partial<OrderItem>) => {
     setOrder((o) => ({
@@ -285,7 +285,7 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
 
           {activeTab === "shipping" && (
             <ShippingTab
-              shipping={order.shipping}
+              shipping={order.shipping || { phuongThuc: "ghtk", phiVanChuyen: 0, trangThai: "cho-xu-ly" as TrangThaiVanChuyen } as OrderShipping}
               tongTien={tongTien}
               onChange={updateShipping}
             />

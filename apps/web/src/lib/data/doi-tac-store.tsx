@@ -110,7 +110,18 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const fetchSupabase = async () => {
       if (!isSupabaseEnabled) {
-        if (list.length === 0) setList(DOI_TAC_GIA_CONG);
+        setList(prev => {
+          if (prev.length === 0) return DOI_TAC_GIA_CONG;
+          if (prev.length < DOI_TAC_GIA_CONG.length) {
+            const missing = DOI_TAC_GIA_CONG.filter(k => !prev.find(p => p.ma === k.ma));
+            if (missing.length > 0) {
+              const combined = [...prev, ...missing].sort((a, b) => a.stt - b.stt);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+              return combined;
+            }
+          }
+          return prev;
+        });
         setLoading(false);
         return;
       }

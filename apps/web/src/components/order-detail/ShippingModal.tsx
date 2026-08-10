@@ -55,7 +55,7 @@ export default function ShippingModal({ order, onClose, onSave }: Props) {
                 className="w-full p-2.5 border rounded-xl"
               >
                 {Object.entries(PHUONG_THUC_VAN_CHUYEN_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
+                  <option key={k} value={k}>{v}</option>
                 ))}
               </select>
             </div>
@@ -67,7 +67,7 @@ export default function ShippingModal({ order, onClose, onSave }: Props) {
                 className="w-full p-2.5 border rounded-xl font-medium text-sky-700"
               >
                 {Object.entries(TRANG_THAI_VAN_CHUYEN_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
+                  <option key={k} value={k}>{v}</option>
                 ))}
               </select>
             </div>

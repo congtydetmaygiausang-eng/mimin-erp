@@ -78,8 +78,11 @@ export type Order = {
   ngayGiao: string;
   khachHang: string;
   sdt: string;
+  diaChi?: string;
+  email?: string;
   /** Loại đơn hàng - quyết định UI bán lẻ/sỉ/sàn */
-  loaiDonHang: LoaiDonHang;
+  loaiDonHang?: LoaiDonHang;
+  loaiDon?: LoaiDonHang; // alias for compatibility
   /** Kênh bán (nếu là bán sàn) - VD: "Shopee", "TikTok Shop", "Lazada" */
   kenhBan?: string;
   /** DEPRECATED: dùng items[] thay thế. Giữ để backward compat. */
@@ -90,22 +93,26 @@ export type Order = {
   donGia?: number;
   /** Tổng tiền đơn hàng (tính từ items[]) */
   thanhTien: number;
+  tongTien?: number;
+  tienCuoiKy?: number;
   trangThai: OrderStatus;
   ghiChu?: string;
   /** DEPRECATED: dùng payments[]. Giữ để backward compat. */
   tienCoc?: number;
+  giamGia?: number;
+  loHang?: string;
   /** Danh sách sản phẩm trong đơn (mới) */
   items: OrderItem[];
   /** Danh sách thanh toán (multi-method) */
   payments: OrderPayment[];
   /** Thông tin vận chuyển */
-  shipping: OrderShipping;
+  shipping?: OrderShipping;
   /** Trạng thái thanh toán tổng */
-  trangThaiThanhToan: TrangThaiThanhToan;
+  trangThaiThanhToan?: TrangThaiThanhToan;
 };
 
 export function calcTotalQty(items: OrderItem[]): number {
-  return items.reduce((sum, item) => sum + item.quantity, 0);
+  return items.reduce((sum, item) => sum + (item.soLuong || 0), 0);
 }
 
 // ============================================

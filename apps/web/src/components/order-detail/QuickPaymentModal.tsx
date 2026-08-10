@@ -76,7 +76,7 @@ export default function QuickPaymentModal({ order, onClose, onSave }: Props) {
               className="w-full p-2.5 border rounded-xl"
             >
               {Object.entries(PHUONG_THUC_THANH_TOAN_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v.label}</option>
+                <option key={k} value={k}>{v}</option>
               ))}
             </select>
           </div>
