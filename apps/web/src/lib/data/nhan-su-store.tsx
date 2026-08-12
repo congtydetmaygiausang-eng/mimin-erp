@@ -42,7 +42,18 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const fetchSupabase = async () => {
       if (!isSupabaseEnabled) {
-        if (list.length === 0) setList(NHAN_SU_KHOI_DAU);
+        setList(prev => {
+          if (prev.length === 0) return NHAN_SU_KHOI_DAU;
+          if (prev.length < NHAN_SU_KHOI_DAU.length) {
+            const missing = NHAN_SU_KHOI_DAU.filter(k => !prev.find(p => p.maNV === k.maNV));
+            if (missing.length > 0) {
+              const combined = [...prev, ...missing].sort((a, b) => a.stt - b.stt);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+              return combined;
+            }
+          }
+          return prev;
+        });
         setLoading(false);
         return;
       }
@@ -50,7 +61,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
       try {
         // 2026-08-08 - Select cu the (tranh loi schema cache voi column moi)
         // Dung wrapper "head" de check column ton tai truoc
-        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar, bhxh, mst, so_tk, ngan_hang").order("stt", { ascending: true });
+        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
         if (error) {
           console.warn("[nhan-su] Supabase fetch error:", error.message);
           // Fallback to localStorage
@@ -68,8 +79,19 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           if (data && data.length > 0) {
             const normalized = data.map((d: any) => normalizeEmployeeRecord(d) as NhanSuExt);
-            setList(normalized);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+            
+            // Lọc trùng lặp theo mã NV hoặc Tên NV (ưu tiên mã NV)
+            const uniqueMap = new Map<string, NhanSuExt>();
+            normalized.forEach(nv => {
+              const key = nv.maNV ? nv.maNV.toLowerCase().trim() : nv.hoTen.toLowerCase().trim();
+              if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, nv);
+              }
+            });
+            const uniqueList = Array.from(uniqueMap.values()).sort((a, b) => (a.stt || 0) - (b.stt || 0));
+            
+            setList(uniqueList);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(uniqueList));
           } else {
             // Seed data if empty
             setList(NHAN_SU_KHOI_DAU);

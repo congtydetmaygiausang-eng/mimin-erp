@@ -215,8 +215,10 @@ export function useSupabaseSync<T extends { id: string }>(
   // Subscribe realtime updates từ Supabase
   useEffect(() => {
     if (!checkSupabase()) return;
+    // Thêm random suffix để tránh lỗi trùng lặp channel khi nhiều component cùng mount
+    const channelName = `${table}-changes-${Math.random().toString(36).slice(2)}`;
     const channel = supabase!
-      .channel(`${table}-changes`)
+      .channel(channelName)
       .on("postgres_changes",
         { event: "*", schema: "public", table },
         (payload) => {

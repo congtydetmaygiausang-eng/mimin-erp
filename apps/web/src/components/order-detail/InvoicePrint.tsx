@@ -91,11 +91,11 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
         #invoice-print .iv-info-block { flex: 1; }
       `}</style>
 
-      {/* Modal overlay (no-print) */}
-      <div className="no-print fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4">
+      {/* Modal overlay */}
+      <div className="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
           {/* Toolbar */}
-          <div className="bg-gradient-to-r from-cyan-600 to-teal-600 text-white px-5 py-3 flex items-center justify-between">
+          <div className="no-print bg-gradient-to-r from-cyan-600 to-teal-600 text-white px-5 py-3 flex items-center justify-between">
             <div className="font-bold flex items-center gap-2">
               <Printer className="w-5 h-5" />
               Xem trước hóa đơn - {order.maDH}
@@ -124,8 +124,8 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
               {/* HEADER */}
               <div className="flex items-start justify-between border-b-2 border-cyan-600 pb-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center text-white font-bold text-2xl">
-                    P
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden">
+                    <img src="/logo.png" alt="POLOMIMIN Logo" className="w-full h-full object-cover" />
                   </div>
                   <div>
                     <div className="iv-title">POLOMIMIN</div>

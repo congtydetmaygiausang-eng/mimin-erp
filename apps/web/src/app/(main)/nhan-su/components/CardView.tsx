@@ -9,15 +9,17 @@ import type { NhanSuExt } from "../data";
 
 export function CardView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, onEdit, onDelete }: { filtered: NhanSuExt[]; luongSPTheoNV: Record<string, number>; onShowDetail: (n: NhanSuExt) => void; onShowLuong: (n: NhanSuExt) => void; onEdit: (n: NhanSuExt) => void; onDelete: (n: NhanSuExt) => void }) {
   return (
-    <EntityCardGrid cols={3}>
+    <EntityCardGrid cols={4}>
       {filtered.map((n) => {
         const luongSP = luongSPTheoNV[n.maNV] || 0;
         return (
           <EntityCard
             key={n.maNV}
+            onClick={() => onShowDetail(n)}
             name={n.hoTen}
             avatarUrl={n.avatar}
             avatarSize="xl"
+            contactPhone={n.sdt || undefined}
             rating={n.rating}
             badges={[
               { label: n.boPhan, bg: "bg-violet-500/15", color: "text-violet-700" },
@@ -27,8 +29,8 @@ export function CardView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, o
             stats={[
               { label: "SĐT", value: n.sdt, icon: Phone },
               { label: "Ngày vào", value: n.ngayVao, icon: Calendar },
-              { label: "Lương cứng", value: formatVNDShort(n.luongCung || 0), color: "text-sky-600" },
-              { label: "Lương SP", value: luongSP > 0 ? formatVNDShort(luongSP) : "—", color: "text-emerald-600" },
+              { label: "Lương cơ bản", value: formatVNDShort(n.luongCB || n.luongCung || 0), color: "text-sky-600" },
+              { label: "Lương SP", value: luongSP > 0 ? formatVNDShort(luongSP) : (n.donGiaSP ? "Có bảng giá" : "—"), color: "text-emerald-600" },
             ]}
             onView={() => onShowDetail(n)}
             onEdit={() => onEdit(n)}
@@ -46,9 +48,9 @@ export function ListView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, o
       {filtered.map((n) => {
         const luongSP = luongSPTheoNV[n.maNV] || 0;
         return (
-          <div key={n.maNV} className="card p-3 flex items-center gap-3">
+          <div key={n.maNV} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => onShowDetail(n)}>
             <Avatar name={n.hoTen} src={n.avatar} size="md" />
-            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onShowDetail(n)}>
+            <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm hover:text-teal-600 transition">{n.hoTen}</div>
               <div className="text-[10px] opacity-60 flex items-center gap-2">
                 <span className="font-mono">{n.maNV}</span>
@@ -70,8 +72,8 @@ export function ListView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, o
               </div>
             </div>
             <div className="text-right">
-              <div className="text-[10px] opacity-60">Cứng: {formatVNDShort(n.luongCung || 0)}</div>
-              <div className="text-[10px] text-emerald-600">SP: +{formatVNDShort(luongSP)}</div>
+              <div className="text-[10px] opacity-60">Cơ bản: {formatVNDShort(n.luongCB || n.luongCung || 0)}</div>
+              <div className="text-[10px] text-emerald-600">SP: {luongSP > 0 ? `+${formatVNDShort(luongSP)}` : (n.donGiaSP ? "Có bảng giá" : "—")}</div>
             </div>
             <div className="text-right border-l pl-3" style={{ borderColor: "var(--border)" }}>
               <div className="text-[10px] opacity-60">Đánh giá</div>

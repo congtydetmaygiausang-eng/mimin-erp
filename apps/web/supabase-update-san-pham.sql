@@ -1,0 +1,14 @@
+-- CẬP NHẬT BẢNG SẢN PHẨM (DANH MỤC SẢN PHẨM)
+-- Thêm các cột bị thiếu để lưu được dữ liệu khi sửa
+
+ALTER TABLE public.san_pham
+ADD COLUMN IF NOT EXISTS hinh_anh TEXT,
+ADD COLUMN IF NOT EXISTS trang_thai TEXT,
+ADD COLUMN IF NOT EXISTS chat_lieu TEXT,
+ADD COLUMN IF NOT EXISTS ncc TEXT,
+ADD COLUMN IF NOT EXISTS da_ban NUMERIC DEFAULT 0,
+ADD COLUMN IF NOT EXISTS rating NUMERIC DEFAULT 0,
+ADD COLUMN IF NOT EXISTS luot_xem NUMERIC DEFAULT 0;
+
+-- Cấp quyền (nếu chưa có)
+ALTER TABLE public.san_pham DISABLE ROW LEVEL SECURITY;

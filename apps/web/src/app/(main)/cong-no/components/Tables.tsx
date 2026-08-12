@@ -138,9 +138,15 @@ export function BangTheoLenhCat({ phanCong, onSelect }: { phanCong: PhanCongCong
                 <div className="text-xs text-brand-600 font-mono">{g.lenhCatId}</div>
                 <div className="text-sm font-semibold mt-0.5">{g.phanCong.length} công đoạn</div>
               </div>
-              <div className="text-right">
-                <div className="text-xs opacity-60">Tổng còn nợ</div>
-                <div className="text-lg font-bold text-red-600">{formatVND(t.tongConNo)}</div>
+              <div className="text-right flex items-center gap-6">
+                <div>
+                  <div className="text-xs opacity-60">Giá GC bình quân / SP</div>
+                  <div className="text-lg font-bold text-amber-600">{formatVND(g.phanCong.reduce((sum, p) => sum + p.donGiaGiao, 0))}</div>
+                </div>
+                <div>
+                  <div className="text-xs opacity-60">Tổng còn nợ</div>
+                  <div className="text-lg font-bold text-red-600">{formatVND(t.tongConNo)}</div>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto">

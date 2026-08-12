@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useCallback, ReactNode, useEffect } from "react";
 import { PHAN_CONG as PHAN_CONG_DEFAULT, type PhanCongCongDoan, type CongDoanKey, type NguoiPhuTrach } from "./cong-no";
 import { layDanhSachNguoiPT } from "./cong-no";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { useSupabaseSync } from "@/lib/supabase/client";
 
 // ============ STORE CONTEXT ============
 type StoreContext = {
@@ -19,108 +19,54 @@ type StoreContext = {
 
 const Ctx = createContext<StoreContext | null>(null);
 
-const STORAGE_KEY = "mimin_phan_cong_v1";
+const STORAGE_KEY = "mimin_phan_cong_v2";
 
 export function PhanCongProvider({ children }: { children: ReactNode }) {
-  const [phanCong, setPhanCong] = useState<PhanCongCongDoan[]>(PHAN_CONG_DEFAULT);
-  const [hydrated, setHydrated] = useState(false);
+  const { data: phanCong, setData: setPhanCong } = useSupabaseSync<PhanCongCongDoan>(STORAGE_KEY, "phan_cong");
 
-  // Load từ localStorage khi mount
+  // Load default data if empty
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as PhanCongCongDoan[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setPhanCong(parsed);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to load phanCong from localStorage", e);
+    if (phanCong.length === 0) {
+      setPhanCong(PHAN_CONG_DEFAULT);
     }
-    setHydrated(true);
-  }, []);
-
-  // Save khi state thay đổi
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(phanCong));
-    } catch (e) {
-      console.warn("Failed to save phanCong", e);
-    }
-  }, [phanCong, hydrated]);
+  }, [phanCong.length, setPhanCong]);
 
   const themThanhToan = useCallback((id: string, soTien: number, ghiChu?: string) => {
-    let updated: PhanCongCongDoan | null = null;
     setPhanCong((prev) =>
       prev.map((p) => {
         if (p.id !== id) return p;
         const newDaTT = p.daThanhToan + soTien;
         const thanhTien = p.donGiaGiao * p.soLuongGiao;
         const newTrangThai = newDaTT >= thanhTien ? "Đã thanh toán" : p.trangThai;
-        updated = {
+        return {
           ...p,
           daThanhToan: newDaTT,
           trangThai: newTrangThai,
           ghiChu: ghiChu ? `${p.ghiChu ? p.ghiChu + " | " : ""}${new Date().toLocaleDateString("vi-VN")}: +${soTien.toLocaleString()}đ ${ghiChu}` : p.ghiChu,
         };
-        return updated;
       })
     );
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsert("phan_cong", updated as any).catch((err) =>
-        console.error("[PhanCongStore] Supabase upsert error:", err)
-      );
-    }
-  }, []);
+  }, [setPhanCong]);
 
   const themPhanCong = useCallback((pc: Omit<PhanCongCongDoan, "id">) => {
-    let newRow: PhanCongCongDoan | null = null;
     setPhanCong((prev) => {
       const nextNum = prev.length + 1;
       const newId = `PC-${pc.lenhCatId.replace("LC-", "")}-${String(nextNum).padStart(2, "0")}`;
-      newRow = { ...pc, id: newId };
-      return [...prev, newRow];
+      return [...prev, { ...pc, id: newId }];
     });
-    if (isSupabaseEnabled && newRow) {
-      supabaseUpsert("phan_cong", newRow as any).catch((err) =>
-        console.error("[PhanCongStore] Supabase upsert error:", err)
-      );
-    }
-  }, []);
+  }, [setPhanCong]);
 
   const capNhatPhanCong = useCallback((id: string, patch: Partial<PhanCongCongDoan>) => {
-    let updated: PhanCongCongDoan | null = null;
-    setPhanCong((prev) => prev.map((p) => {
-      if (p.id === id) {
-        updated = { ...p, ...patch };
-        return updated;
-      }
-      return p;
-    }));
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsert("phan_cong", updated as any).catch((err) =>
-        console.error("[PhanCongStore] Supabase upsert error:", err)
-      );
-    }
-  }, []);
+    setPhanCong((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  }, [setPhanCong]);
 
   const xoaPhanCong = useCallback((id: string) => {
     setPhanCong((prev) => prev.filter((p) => p.id !== id));
-    if (isSupabaseEnabled) {
-      supabaseDelete("phan_cong", id).catch((err) =>
-        console.error("[PhanCongStore] Supabase delete error:", err)
-      );
-    }
-  }, []);
+  }, [setPhanCong]);
 
   const reset = useCallback(() => {
     setPhanCong(PHAN_CONG_DEFAULT);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {}
-  }, []);
+  }, [setPhanCong]);
 
   const layTheoLenh = useCallback(
     (lenhCatId: string) => phanCong.filter((p) => p.lenhCatId === lenhCatId),

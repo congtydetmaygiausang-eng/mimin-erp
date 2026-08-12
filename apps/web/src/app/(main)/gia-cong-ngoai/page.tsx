@@ -126,7 +126,7 @@ export default function GiaCongNgoaiPage() {
                 {filtered.map((d, i) => {
                   const pct = d.tong > 0 ? ((d.tong - d.conNo) / d.tong) * 100 : 0;
                   return (
-                    <tr key={d.ma} className={`border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5 ${d.conNo > 0 ? "bg-red-500/5" : ""}`} style={{ borderColor: "var(--border)" }}>
+                    <tr key={d.ma} className="border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
                       <td className="p-3 font-mono text-xs opacity-70">#{i + 1}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
@@ -156,15 +156,15 @@ export default function GiaCongNgoaiPage() {
       )}
 
       {viewMode === "card" && (
-        <EntityCardGrid cols={3}>
+        <EntityCardGrid cols={4}>
           {filtered.map((d) => {
             const pct = d.tong > 0 ? ((d.tong - d.conNo) / d.tong) * 100 : 0;
             return (
               <EntityCard
                 key={d.ma}
+                onClick={() => setShowForm(true)}
                 name={d.ten.split(" - ")[0]}
                 avatarSize="xl"
-                warning={d.conNo > d.tong * 0.5}
                 badges={[{ label: d.loai, bg: "bg-violet-500/15", color: "text-violet-700" }]}
                 subtitle={<span className="font-mono text-[10px]">{d.ma}</span>}
                 stats={[
@@ -189,7 +189,7 @@ export default function GiaCongNgoaiPage() {
           {filtered.map((d) => {
             const pct = d.tong > 0 ? ((d.tong - d.conNo) / d.tong) * 100 : 0;
             return (
-              <div key={d.ma} className={`card p-3 flex items-center gap-3 ${d.conNo > 0 ? "ring-1 ring-red-500/30 bg-red-500/5" : ""}`}>
+              <div key={d.ma} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => setShowForm(true)}>
                 <Avatar name={d.ten} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate">{d.ten.split(" - ")[0]}</div>

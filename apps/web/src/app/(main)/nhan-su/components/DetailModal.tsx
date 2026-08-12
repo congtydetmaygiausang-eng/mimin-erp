@@ -67,15 +67,18 @@ export function ChiTietNhanSuModal({ nv, luongSP, onClose, onEdit, onLuong }: { 
             <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Giới tính:</span> <span className="font-medium">{nv.gioiTinh || "Nam"}</span></div>
             <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Ngày sinh:</span> <span className="font-medium">{nv.ngaySinh || "—"}</span></div>
             <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Số CCCD:</span> <span className="font-mono font-medium">{nv.cccd || "—"}</span></div>
-            <div className="flex justify-between py-1"><span className="opacity-70">Địa chỉ:</span> <span className="font-medium text-right max-w-[200px] truncate">{nv.diaChiTT || "—"}</span></div>
+            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Thường trú:</span> <span className="font-medium text-right max-w-[200px] truncate" title={nv.diaChiTT}>{nv.diaChiTT || "—"}</span></div>
+            <div className="flex justify-between py-1"><span className="opacity-70">Tạm trú:</span> <span className="font-medium text-right max-w-[200px] truncate" title={nv.diaChiTamTru}>{nv.diaChiTamTru || "—"}</span></div>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-2.5">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Thu nhập & Đánh giá</div>
-            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Lương cứng:</span> <span className="font-bold text-sky-600">{formatVNDShort(nv.luongCung || 0)}</span></div>
+            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Lương cơ bản:</span> <span className="font-bold text-sky-600">{formatVNDShort(nv.luongCB || 0)}</span></div>
             <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Lương Sản phẩm:</span> <span className="font-bold text-emerald-600">{formatVNDShort(luongSP)}</span></div>
-            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Tài khoản NH:</span> <span className="font-mono font-medium">{nv.taiKhoan || "—"}</span></div>
-            <div className="flex justify-between py-1"><span className="opacity-70">Đánh giá sếp:</span> <span className="font-bold text-amber-500 flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-amber-400" /> {nv.rating || 4}/5</span></div>
+            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Đơn giá SP:</span> <span className="font-medium text-right max-w-[200px] truncate" title={nv.donGiaSP}>{nv.donGiaSP || "—"}</span></div>
+            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Tài khoản NH:</span> <span className="font-mono font-medium text-right max-w-[200px] truncate">{nv.soTK ? `${nv.soTK} - ${nv.nganHang}` : "—"}</span></div>
+            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-700/50"><span className="opacity-70">Đánh giá sếp:</span> <span className="font-bold text-amber-500 flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-amber-400" /> {nv.rating || 4}/5</span></div>
+            <div className="flex justify-between py-1"><span className="opacity-70">Ghi chú:</span> <span className="font-medium text-right max-w-[200px] truncate" title={nv.ghiChu}>{nv.ghiChu || "—"}</span></div>
           </div>
         </div>
 

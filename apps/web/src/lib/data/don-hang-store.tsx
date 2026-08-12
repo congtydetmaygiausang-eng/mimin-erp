@@ -9,7 +9,7 @@ import {
   createContext, useCallback, useContext,
   useEffect, useState, type ReactNode,
 } from "react";
-import type { Order, OrderItem, OrderPayment, OrderShipping } from "@/components/order-detail/types";
+import type { Order, OrderItem, OrderPayment, OrderShipping, TrangThaiVanChuyen } from "@/components/order-detail/types";
 
 const STORAGE_KEY = "mimin_don_hang_v3";
 
@@ -49,6 +49,7 @@ const SEED_ORDERS: Order[] = [
     soLuong: 200,
     donGia: 0,
     tienCoc: 7000000,
+    thanhTien: 12400000,
     tongTien: 12400000,
     tienCuoiKy: 5400000,
   },
@@ -84,6 +85,7 @@ const SEED_ORDERS: Order[] = [
     soLuong: 60,
     donGia: 52000,
     tienCoc: 1500000,
+    thanhTien: 3120000,
     tongTien: 3120000,
     tienCuoiKy: 1620000,
   },
@@ -118,6 +120,7 @@ const SEED_ORDERS: Order[] = [
     soLuong: 10,
     donGia: 0,
     tienCoc: 0,
+    thanhTien: 1650000,
     tongTien: 1650000,
     tienCuoiKy: 1650000,
   },
@@ -138,64 +141,60 @@ interface DonHangContextType {
 const DonHangContext = createContext<DonHangContextType | undefined>(undefined);
 
 // ─── Provider ──────────────────────────────────────────────────────────────────
+import { useSupabaseSync } from "@/lib/supabase/client";
+import { useKhachHang } from "./khach-hang-store";
+
+// ... [The context and interfaces remain unchanged above this block]
+
 export function DonHangProvider({ children }: { children: ReactNode }) {
-  const [dsOrder, setDsOrder] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Replace useState & localStorage with useSupabaseSync
+  const { data: dsOrder, setData: setDsOrder, loading } = useSupabaseSync<Order>(STORAGE_KEY, "don_hang", SEED_ORDERS);
+  
+  // Lấy dữ liệu khách hàng để đồng bộ công nợ
+  const { list: khList, suaKhachHang } = useKhachHang();
 
-  // Load từ localStorage on mount
-  useEffect(() => {
-    try {
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setDsOrder(parsed);
-        } else {
-          setDsOrder(SEED_ORDERS);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_ORDERS));
-        }
-      } else {
-        setDsOrder(SEED_ORDERS);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_ORDERS));
-      }
-    } catch (_) {
-      setDsOrder(SEED_ORDERS);
-    } finally {
-      setLoading(false);
+  // Helper sync công nợ
+  const syncCongNoKhachHang = useCallback((khTen: string, diff: number) => {
+    if (diff === 0) return;
+    const kh = khList.find(x => x.ten === khTen);
+    if (kh) {
+      suaKhachHang({ ...kh, congNo: (kh.congNo || 0) + diff });
     }
-  }, []);
-
-  // Helper: save to localStorage
-  const save = useCallback((orders: Order[]) => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(orders)); } catch (_) {}
-  }, []);
+  }, [khList, suaKhachHang]);
 
   const themOrder = useCallback((order: Order) => {
-    setDsOrder(prev => {
-      const newList = [order, ...prev];
-      save(newList);
-      return newList;
-    });
-  }, [save]);
+    setDsOrder(prev => [order, ...prev]);
+    const conNo = calcConLai(order);
+    syncCongNoKhachHang(order.khachHang, conNo);
+  }, [setDsOrder, syncCongNoKhachHang]);
 
   const suaOrder = useCallback((id: string, data: Partial<Order>) => {
     setDsOrder(prev => {
-      const newList = prev.map(o => o.id === id ? { ...o, ...data } : o);
-      save(newList);
-      return newList;
+      const oldOrder = prev.find(o => o.id === id);
+      if (!oldOrder) return prev;
+      
+      const newOrder = { ...oldOrder, ...data };
+      const diff = calcConLai(newOrder) - calcConLai(oldOrder);
+      
+      syncCongNoKhachHang(newOrder.khachHang, diff);
+      
+      return prev.map(o => o.id === id ? newOrder : o);
     });
-  }, [save]);
+  }, [setDsOrder, syncCongNoKhachHang]);
 
   const xoaOrder = useCallback((id: string) => {
     setDsOrder(prev => {
-      const newList = prev.filter(o => o.id !== id);
-      save(newList);
-      return newList;
+      const oldOrder = prev.find(o => o.id === id);
+      if (oldOrder) {
+         syncCongNoKhachHang(oldOrder.khachHang, -calcConLai(oldOrder));
+      }
+      return prev.filter(o => o.id !== id);
     });
-  }, [save]);
+  }, [setDsOrder, syncCongNoKhachHang]);
 
   const themThanhToan = useCallback((orderId: string, payment: OrderPayment) => {
     setDsOrder(prev => {
+      let updatedKhachHang = "";
       const newList = prev.map(o => {
         if (o.id !== orderId) return o;
         const payments = [...(o.payments || []), payment];
@@ -205,34 +204,34 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
           totalPaid >= tongTien ? "Hoàn thành" :
           totalPaid > 0 ? o.trangThai :
           o.trangThai;
+        
+        updatedKhachHang = o.khachHang;
         return { ...o, payments, tienCuoiKy: tongTien - totalPaid, trangThai: newTrangThai };
       });
-      save(newList);
+      
+      // Giảm công nợ của khách hàng bằng số tiền vừa thanh toán
+      if (updatedKhachHang) {
+        syncCongNoKhachHang(updatedKhachHang, -payment.soTien);
+      }
       return newList;
     });
-  }, [save]);
+  }, [setDsOrder, syncCongNoKhachHang]);
 
   const capNhatVanChuyen = useCallback((orderId: string, shipping: Partial<OrderShipping>) => {
-    setDsOrder(prev => {
-      const newList = prev.map(o => {
-        if (o.id !== orderId) return o;
-        const newShipping = { ...(o.shipping || {}), ...shipping } as OrderShipping;
-        const trangThai: Order["trangThai"] =
-          shipping.trangThai === "da-giao" ? "Đã giao" : o.trangThai;
-        return { ...o, shipping: newShipping, trangThai };
-      });
-      save(newList);
-      return newList;
-    });
-  }, [save]);
+    setDsOrder(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      const newShipping = { 
+        ...(o.shipping || { phuongThuc: "ghtk", phiVanChuyen: 0, trangThai: "cho-xu-ly" as TrangThaiVanChuyen }), 
+        ...shipping 
+      } as OrderShipping;
+      const trangThai: Order["trangThai"] = shipping.trangThai === "da-giao" ? "Đã giao" : o.trangThai;
+      return { ...o, shipping: newShipping, trangThai };
+    }));
+  }, [setDsOrder]);
 
   const doiTrangThai = useCallback((orderId: string, trangThai: Order["trangThai"]) => {
-    setDsOrder(prev => {
-      const newList = prev.map(o => o.id === orderId ? { ...o, trangThai } : o);
-      save(newList);
-      return newList;
-    });
-  }, [save]);
+    setDsOrder(prev => prev.map(o => o.id === orderId ? { ...o, trangThai } : o));
+  }, [setDsOrder]);
 
   return (
     <DonHangContext.Provider value={{

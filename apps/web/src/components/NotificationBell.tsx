@@ -69,7 +69,7 @@ export function NotificationBell() {
         </button>
 
         {open && (
-          <div className="absolute right-0 mt-2 w-96 max-h-[70vh] card shadow-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden z-50 animate-fade-in">
+          <div className="absolute right-0 mt-2 w-96 max-h-[70vh] bg-white dark:bg-slate-900 card shadow-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden z-50 animate-fade-in">
             <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <Bell className="w-4 h-4 text-brand-500" /> Thông báo

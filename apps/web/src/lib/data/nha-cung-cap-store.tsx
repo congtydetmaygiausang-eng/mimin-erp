@@ -89,6 +89,7 @@ const STORAGE_KEY = "mimin_nha_cung_cap_v1";
 
 // Default seed data
 const DEFAULT_SEED: NhaCungCapModel[] = NCCS.map((n, i) => ({
+  id: `NCC-${String(i + 1).padStart(3, "0")}`, // bắt buộc
   ma_ncc: `NCC-${String(i + 1).padStart(3, "0")}`,
   ten_ncc: n.ten,
   loai: n.vaiTro,
@@ -128,7 +129,7 @@ export function NhaCungCapProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const { data, error } = await supabase!.from("nha_cung_cap").select("*").order("created_at", { ascending: true });
+        const { data, error } = await supabase!.from("nha_cung_cap").select("*").neq("loai", "doi_tac_gia_cong").order("created_at", { ascending: true });
         if (error) throw error;
         
         if (mounted) {

@@ -90,7 +90,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { href: "/cham-cong", label: "Chấm công", iconName: "Calendar", module: "cham-cong" },
   { href: "/bang-luong", label: "Bảng lương", iconName: "Wallet", module: "bang-luong" },
   { href: "/nha-cung-cap", label: "Nhà cung cấp", iconName: "Building2", module: "nha-cung-cap" },
-  { href: "/gia-cong-ngoai", label: "Gia công ngoài", iconName: "Hammer", module: "gia-cong-ngoai" },
+  // Gia công ngoài (legacy) removed as requested
 
   // === Báo cáo ===
   { href: "/bao-cao", label: "Báo cáo", iconName: "FileText", module: "bao-cao" },

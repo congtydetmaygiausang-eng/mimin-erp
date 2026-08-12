@@ -258,15 +258,17 @@ export default function KhachHangPage() {
       )}
 
       {viewMode === "card" && (
-        <EntityCardGrid cols={3}>
+        <EntityCardGrid cols={4}>
           {filtered.map((k) => {
             const dt = DOANH_THU_KH[k.ten] || 0;
             const soDon = SO_DON_KH[k.ten] || 0;
             return (
               <EntityCard
                 key={k.maKH}
+                onClick={() => setShowForm({ mode: "edit", kh: k })}
                 name={k.ten}
                 avatarSize="xl"
+                contactPhone={k.sdt || undefined}
                 rating={k.rating}
                 highlight={k.rating >= 4.5}
                 badges={k.mst ? [{ label: `MST: ${k.mst}`, bg: "bg-slate-500/15", color: "text-slate-700" }] : []}
@@ -292,7 +294,7 @@ export default function KhachHangPage() {
             const dt = DOANH_THU_KH[k.ten] || 0;
             const soDon = SO_DON_KH[k.ten] || 0;
             return (
-              <div key={k.maKH} className="card p-3 flex items-center gap-3">
+              <div key={k.maKH} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => setShowForm({ mode: "edit", kh: k })}>
                 <Avatar name={k.ten} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate">{k.ten}</div>
@@ -334,8 +336,8 @@ export default function KhachHangPage() {
   );
 }
 
-function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "edit"; kh?: KH; existingCount: number; onClose: () => void; onSave: (k: KH) => void }) {
-  const [form, setForm] = useState<KH>(kh || {
+function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "edit"; kh?: KhachHangUI; existingCount: number; onClose: () => void; onSave: (k: KhachHangUI) => void }) {
+  const [form, setForm] = useState<KhachHangUI>(kh || {
     maKH: `KH-${(existingCount + 1).toString().padStart(3, "0")}`,
     ten: "",
     sdt: "",
@@ -357,9 +359,9 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
-      <div className="w-full sm:w-[96%] sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[97vh] sm:max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full sm:w-[96%] sm:max-w-3xl rounded-t-3xl sm:rounded-3xl flex flex-col min-h-[90vh] sm:min-h-0 max-h-[90vh] sm:max-h-[85vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex-none p-5 sm:p-7 pb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
               {mode === "add" ? <Plus className="w-6 h-6" /> : <Edit2 className="w-6 h-6" />}
@@ -376,7 +378,8 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-4">
           {/* Avatar Upload Header */}
           <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
             <div className="relative group cursor-pointer">
@@ -485,8 +488,9 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
             <textarea className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 min-h-[70px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} placeholder="Ghi chú sở thích đóng gói, chặng xe giao hàng..." />
           </div>
 
+          </div>
           {/* Action Buttons */}
-          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex-none p-5 sm:p-7 pt-4 flex flex-col-reverse sm:flex-row gap-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
             <button
               type="button"
               onClick={onClose}

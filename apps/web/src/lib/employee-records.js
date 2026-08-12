@@ -10,6 +10,7 @@ function normalizeEmployeeRecord(record) {
     sdt: record.sdt,
     email: record.email,
     luongCung: Number(record.luong_cung || record.luongCung || 0),
+    luongCB: Number(record.luong_cb || record.luongCB || 0),
     rating: Number(record.rating || 4),
     trangThai: record.trang_thai || record.trangThai || 'dang_lam',
     avatar: record.avatar_url || record.avatar,
@@ -22,6 +23,15 @@ function normalizeEmployeeRecord(record) {
     diaChiTamTru: record.dia_chi_tam_tru || record.diaChiTamTru,
     ngayVao: record.ngay_vao || record.ngayVao,
     taiKhoan: record.tai_khoan || record.taiKhoan,
+    bhxh: record.bhxh,
+    soTK: record.so_tk || record.soTK,
+    nganHang: record.ngan_hang || record.nganHang,
+    mst: record.mst,
+    loaiHD: record.loai_hd || record.loaiHD,
+    tinhTrangHN: record.tinh_trang_hn || record.tinhTrangHN,
+    loaiLuong: record.loai_luong || record.loaiLuong,
+    ghiChu: record.ghi_chu || record.ghiChu,
+    donGiaSP: record.don_gia_sp || record.donGiaSP,
   };
 }
 
@@ -48,6 +58,16 @@ function toSupabaseEmployeeRecord(payload) {
     dia_chi_tam_tru: payload.diaChiTamTru || null,
     ngay_vao: payload.ngayVao || null,
     tai_khoan: payload.taiKhoan || null,
+    bhxh: payload.bhxh || null,
+    so_tk: payload.soTK || null,
+    ngan_hang: payload.nganHang || null,
+    mst: payload.mst || null,
+    loai_hd: payload.loaiHD || null,
+    tinh_trang_hn: payload.tinhTrangHN || null,
+    loai_luong: payload.loaiLuong || null,
+    luong_cb: Number(payload.luongCB || 0),
+    ghi_chu: payload.ghiChu || null,
+    don_gia_sp: payload.donGiaSP || null,
   };
 }
 
