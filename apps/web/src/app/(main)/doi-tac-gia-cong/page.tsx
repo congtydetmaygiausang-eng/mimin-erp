@@ -7,7 +7,8 @@ import { useState, useMemo } from "react";
 import {
   Users, Search, Phone, MapPin, Building2, CreditCard, FileText,
   CheckCircle2, XCircle, Briefcase, Filter, Scissors, Shirt,
-  Hash, Banknote, Shield, AlertTriangle, X, Plus, Edit2, Trash2, Star
+  Hash, Banknote, Shield, AlertTriangle, X, Plus, Edit2, Trash2, Star,
+  Layers, Wallet
 } from "lucide-react";
 import { DOI_TAC_GIA_CONG, thongKeDoiTac, type DoiTacGiaCong, type LoaiDoiTac } from "@/lib/doi-tac-gia-cong";
 import { usePermission } from "@/components/PermissionGuard";
@@ -236,12 +237,13 @@ export default function DoiTacGiaCongPage() {
 
       {/* Card view */}
       {viewMode === "card" && (
-        <EntityCardGrid cols={3}>
+        <EntityCardGrid cols={4}>
           {filtered.map((d) => (
             <EntityCard
               key={d.ma}
               name={d.tenDonVi}
               avatarSize="lg"
+              contactPhone={d.sdt}
               badges={[
                 { label: d.chuyenMon, bg: "bg-violet-500/15", color: "text-violet-700" },
                 {
@@ -253,8 +255,10 @@ export default function DoiTacGiaCongPage() {
               subtitle={<span className="font-mono text-[10px]">{d.ma} · {d.nguoiLienHe}</span>}
               stats={[
                 { label: "SĐT", value: d.sdt || "—", icon: Phone },
-                { label: "MST", value: d.maSoThue || "—", icon: Hash },
+                { label: "MST", value: d.maSoThue && d.maSoThue !== "---" ? d.maSoThue : "—", icon: FileText },
                 { label: "NH", value: d.nganHang || "—", icon: Banknote },
+                { label: "Số lô đã làm", value: "—", icon: Layers },
+                { label: "Công nợ", value: d.congNo && d.congNo > 0 ? formatVNDShort(d.congNo) : "—", icon: Wallet },
               ]}
               onView={() => setSelected(d)}
             />
@@ -321,7 +325,7 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
-      <div className="w-full sm:w-[96%] sm:max-w-2xl sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[97vh] sm:max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full sm:w-[96%] sm:max-w-2xl sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">

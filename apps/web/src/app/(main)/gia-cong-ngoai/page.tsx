@@ -156,12 +156,13 @@ export default function GiaCongNgoaiPage() {
       )}
 
       {viewMode === "card" && (
-        <EntityCardGrid cols={3}>
+        <EntityCardGrid cols={4}>
           {filtered.map((d) => {
             const pct = d.tong > 0 ? ((d.tong - d.conNo) / d.tong) * 100 : 0;
             return (
               <EntityCard
                 key={d.ma}
+                onClick={() => setShowForm(true)}
                 name={d.ten.split(" - ")[0]}
                 avatarSize="xl"
                 badges={[{ label: d.loai, bg: "bg-violet-500/15", color: "text-violet-700" }]}
@@ -188,7 +189,7 @@ export default function GiaCongNgoaiPage() {
           {filtered.map((d) => {
             const pct = d.tong > 0 ? ((d.tong - d.conNo) / d.tong) * 100 : 0;
             return (
-              <div key={d.ma} className="card p-3 flex items-center gap-3">
+              <div key={d.ma} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => setShowForm(true)}>
                 <Avatar name={d.ten} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate">{d.ten.split(" - ")[0]}</div>

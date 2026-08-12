@@ -41,6 +41,7 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
   const { list: dsKhachHang } = useKhachHang();
   const [order, setOrder] = useState<Order>(createEmptyOrder());
   const [activeTab, setActiveTab] = useState<"info" | "items" | "payment" | "shipping">("info");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Track last initialId da init để tránh init lặp
   const lastInitialIdRef = useRef<string | null>(null);
@@ -49,12 +50,14 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
   useEffect(() => {
     if (!open) {
       lastInitialIdRef.current = null;
+      setShowConfirm(false);
       return;
     }
     const newId = initial?.id || null;
     if (lastInitialIdRef.current !== newId) {
       setOrder(initial || createEmptyOrder());
       setActiveTab("info");
+      setShowConfirm(false);
       lastInitialIdRef.current = newId;
     }
   }, [open, initial?.id]);
@@ -193,7 +196,11 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
       setActiveTab("items");
       return;
     }
-    // Tính lại tổng + trạng thái thanh toán
+    // Show confirm dialog instead of saving immediately
+    setShowConfirm(true);
+  };
+
+  const confirmSave = () => {
     const finalOrder: Order = {
       ...order,
       thanhTien: tongTien,
@@ -203,6 +210,7 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
     };
     onSave(finalOrder);
     toast.success(`Đã lưu đơn hàng: ${finalOrder.maDH}`);
+    setShowConfirm(false);
     onClose();
   };
 
@@ -210,7 +218,53 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col overflow-hidden">
+        
+        {/* CONFIRM OVERLAY */}
+        {showConfirm && (
+          <div className="absolute inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up border border-slate-200 dark:border-slate-700">
+              <div className="bg-gradient-to-r from-cyan-600 to-teal-600 px-5 py-4">
+                <h3 className="text-lg font-bold text-white text-center">Tổng Hóa Đơn</h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Khách hàng</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{order.khachHang}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Số lượng SP</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{tongSL} (Cái/Bộ)</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Tiền hàng</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{formatVND(tongTien)}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Phí vận chuyển</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{formatVND(phiVC)}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Đã thanh toán</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatVND(daThanhToan)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-lg font-bold text-slate-700 dark:text-slate-200">CÔNG NỢ (CẦN THU)</span>
+                  <span className="text-2xl font-black text-rose-600 dark:text-rose-400">{formatVND(conLai)}</span>
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 flex items-center gap-3">
+                <button onClick={() => setShowConfirm(false)} className="flex-1 px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                  Quay lại sửa
+                </button>
+                <button onClick={confirmSave} className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold hover:from-cyan-700 hover:to-teal-700 shadow-md shadow-cyan-500/30 transition">
+                  LƯU ĐƠN HÀNG
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* HEADER */}
         <div className="bg-gradient-to-r from-cyan-600 to-teal-600 text-white px-6 py-4 flex items-center justify-between">
           <div>
@@ -378,26 +432,25 @@ function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p:
             <User className="inline w-3.5 h-3.5 mr-1" />
             Khách hàng <span className="text-rose-500">*</span>
           </label>
-          <input
-            type="text"
-            list="khachhang-list"
-            value={order.khachHang}
+          <select
+            value={order.khachHang || ""}
             onChange={(e) => {
               const val = e.target.value;
-              const kh = dsKhachHang.find((k: any) => k.tenKH === val);
+              const kh = dsKhachHang.find((k: any) => k.ten === val);
               onChange({ 
                 khachHang: val, 
                 ...(kh && kh.sdt ? { sdt: kh.sdt } : {}) 
               });
             }}
-            placeholder="Tên khách hàng"
             className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-          />
-          <datalist id="khachhang-list">
+          >
+            <option value="">-- Chọn khách hàng --</option>
             {dsKhachHang.map((kh: any) => (
-              <option key={kh.id} value={kh.tenKH} />
+              <option key={kh.id} value={kh.ten}>
+                {kh.ten} {kh.sdt ? `(${kh.sdt})` : ""}
+              </option>
             ))}
-          </datalist>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1.5 text-slate-700 dark:text-slate-200">
@@ -567,6 +620,7 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
               onClose={() => setShowPicker(false)}
               orderItems={order.items}
               onUpdateCell={onUpdateSiCell}
+              isSi={isSi}
             />
           )}
         </>
@@ -576,7 +630,7 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
 
 // Picker chọn SP đa năng (Hiển thị list, click mở rộng bảng Size x Màu)
 function CatalogPicker({
-  dsSanPham, search, onSearch, onClose, orderItems, onUpdateCell
+  dsSanPham, search, onSearch, onClose, orderItems, onUpdateCell, isSi
 }: {
   dsSanPham: SanPham[];
   search: string;
@@ -584,6 +638,7 @@ function CatalogPicker({
   onClose: () => void;
   orderItems: OrderItem[];
   onUpdateCell: (sp: SanPham, mauCode: string, size: string, soLuong: number) => void;
+  isSi: boolean;
 }) {
   const [expandedSP, setExpandedSP] = useState<string | null>(null);
 
@@ -647,7 +702,7 @@ function CatalogPicker({
                   </div>
                   {isExpanded && (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 overflow-x-auto">
-                      <ProductMatrixTable sp={sp} orderItems={orderItems} onUpdateCell={onUpdateCell} />
+                      <ProductMatrixTable sp={sp} orderItems={orderItems} onUpdateCell={onUpdateCell} isSi={isSi} />
                     </div>
                   )}
                 </div>
@@ -663,7 +718,7 @@ function CatalogPicker({
   );
 }
 
-function ProductMatrixTable({ sp, orderItems, onUpdateCell }: { sp: SanPham, orderItems: OrderItem[], onUpdateCell: any }) {
+function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi }: { sp: SanPham, orderItems: OrderItem[], onUpdateCell: any, isSi?: boolean }) {
   const sizes = sp.bangSize?.sizes.filter((_, i) => (sp.bangSize?.ratios[i] || 0) > 0) || [];
   const mauList = sp.dsMau;
   const itemsByKey = new Map<string, number>();
@@ -680,21 +735,50 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell }: { sp: SanPham, ord
 
   const tongSL = Array.from(itemsByKey.values()).reduce((s, n) => s + n, 0);
 
+  const handleRiChange = (slRi: number) => {
+    const ratios = sp.bangSize?.ratios || [];
+    mauList.forEach(mau => {
+      const mauCode = (mau.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
+      sizes.forEach((s, idx) => {
+        const val = slRi * (ratios[idx] || 0);
+        onUpdateCell(sp, mauCode, s, val);
+      });
+    });
+  };
+
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
+      {isSi && (
+        <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 border-b border-cyan-100 dark:border-cyan-800 flex items-center justify-between">
+          <span className="text-sm font-bold text-cyan-800 dark:text-cyan-300">
+            ⚡ Bán theo Ri (Áp dụng cho TẤT CẢ màu)
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-400">Số Ri:</span>
+            <input
+              type="number"
+              min={0}
+              placeholder="0"
+              onChange={(e) => handleRiChange(Math.max(0, +e.target.value || 0))}
+              className="w-20 px-2 py-1.5 rounded-lg border border-cyan-300 dark:border-cyan-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white dark:bg-slate-800 text-center font-bold text-cyan-800 dark:text-cyan-300 shadow-inner"
+            />
+          </div>
+        </div>
+      )}
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
             <th className="p-2 border-b border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-left text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-              Màu \ Size
+              Màu \ Size <br/>
+              <span className="text-[10px] text-cyan-600 font-normal">Tỉ lệ: {sp.tiLeSize}</span>
             </th>
-            {sizes.map((s) => (
+            {sizes.map((s, i) => (
               <th key={s} className="p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
-                {s}
+                {s} <br/> <span className="text-[10px] font-normal text-slate-500">({sp.bangSize?.ratios[i]})</span>
               </th>
             ))}
             <th className="p-2 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-900/20 text-center text-xs font-bold text-cyan-800 dark:text-cyan-400">
-              Tổng
+              Tổng SL (Tự chia)
             </th>
           </tr>
         </thead>
@@ -702,6 +786,34 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell }: { sp: SanPham, ord
           {mauList.map((mau) => {
             const mauCode = (mau.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
             const rowTotal = sizes.reduce((sum, s) => sum + (itemsByKey.get(`${mauCode}-${s}`) || 0), 0);
+            
+            const handleTotalChange = (newTotal: number) => {
+              const ratios = sp.bangSize?.ratios || [];
+              const sumRatio = ratios.reduce((a, b) => a + b, 0);
+              if (sumRatio === 0 || newTotal <= 0) {
+                sizes.forEach(s => onUpdateCell(sp, mauCode, s, 0));
+                return;
+              }
+              
+              const result = ratios.map(r => Math.floor((newTotal * r) / sumRatio));
+              let currentTotal = result.reduce((a, b) => a + b, 0);
+              let remainder = newTotal - currentTotal;
+              
+              const indices = ratios.map((r, i) => i).sort((a, b) => ratios[b] - ratios[a]);
+              let i = 0;
+              while (remainder > 0 && i < indices.length) {
+                result[indices[i]]++;
+                remainder--;
+                i++;
+              }
+              
+              sizes.forEach((s, idx) => {
+                if (result[idx] !== (itemsByKey.get(`${mauCode}-${s}`) || 0)) {
+                  onUpdateCell(sp, mauCode, s, result[idx]);
+                }
+              });
+            };
+
             return (
               <tr key={mau.ten} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <td className="p-2 border-b border-r border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 whitespace-nowrap">
@@ -723,8 +835,15 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell }: { sp: SanPham, ord
                     </td>
                   );
                 })}
-                <td className="p-2 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50/50 dark:bg-cyan-900/10 text-center text-xs font-bold text-cyan-800 dark:text-cyan-400">
-                  {rowTotal}
+                <td className="p-1 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50/50 dark:bg-cyan-900/10 text-center">
+                  <input
+                    type="number"
+                    min={0}
+                    value={rowTotal || ""}
+                    placeholder="0"
+                    onChange={(e) => handleTotalChange(Math.max(0, +e.target.value || 0))}
+                    className="w-16 px-1 py-1 rounded text-center text-sm font-bold text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white dark:bg-slate-800 transition-all shadow-inner"
+                  />
                 </td>
               </tr>
             );

@@ -678,7 +678,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   });
 
   const tongChiPhiCoDinh = Object.values(chiPhiCoDinh).reduce((a, b) => a + b, 0);
-  const giaVonBinhQuan = (tongTienVai / validTongSL) + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
+  const validTongSL_Colors = Math.max(1, dsMau.reduce((s, m) => s + (m.slDuKien || 0), 0));
+  const binhQuanVai = tongTienVai / validTongSL_Colors;
+  const giaVonBinhQuan = binhQuanVai + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-2 md:p-6 animate-fade-in">
@@ -1580,7 +1582,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                  {formatVND(giaVonBinhQuan)}
                </div>
                <div className="mt-8 pt-5 border-t border-white/20 flex flex-wrap justify-center gap-x-12 gap-y-6 relative z-10">
-                 <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Giá vải</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(tongTienVai / validTongSL)}</span></div>
+                 <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Giá vải</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(binhQuanVai)}</span></div>
                  <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Nguyên liệu</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(tongTienPhuLieu / validTongSL)}</span></div>
                  <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Gia công</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(giaCong1SP)}</span></div>
                  <div className="flex flex-col items-center"><span className="text-slate-300/80 text-xs uppercase tracking-wider mb-1 font-semibold">Cố định</span><span className="text-lg font-bold text-white drop-shadow-sm">{formatVND(tongChiPhiCoDinh)}</span></div>

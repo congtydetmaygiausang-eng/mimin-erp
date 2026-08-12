@@ -1,0 +1,8 @@
+Vercel CLI 58.9.0 (Node.js 24.18.0)
+Deploying mimin-erp
+Uploading [--------------------] (0.0B/56B)
+Uploading [====================] (56.0B/56B)
+  Inspect         https://vercel.com/mimin-erp/mimin-erp/6cEWBEQbP1GKTFcghLDZvnLYPjnn
+  Production      https://mimin-orig9r54s-mimin-erp.vercel.app
+Building…
+Error: Deployment not found

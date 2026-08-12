@@ -1,0 +1,1 @@
+const { createClient } = require('@supabase/supabase-js'); const supabase = createClient('https://ejcuqyaiwabfygyesvxj.supabase.co', 'sb_publishable_jjxSsC-ADuxGWpWfH6KI5g_3EgU1ADd'); supabase.from('nhan_su').select('ma_nv, ho_ten').then(({data}) => console.log(data));

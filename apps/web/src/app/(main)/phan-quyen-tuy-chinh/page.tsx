@@ -69,10 +69,10 @@ const USERS_MIMIN_VN: Array<{ email: string; name: string; role: Role; phongBan:
 ];
 
 const ACTION_META = {
-  r: { label: "Xem", icon: Eye, color: "blue", letter: "R" },
-  c: { label: "Tạo", icon: Plus, color: "emerald", letter: "C" },
-  u: { label: "Sửa", icon: Edit, color: "amber", letter: "U" },
-  d: { label: "Xóa", icon: Trash2, color: "rose", letter: "D" },
+  r: { label: "Xem", icon: Eye, color: "blue", letter: "X" },
+  c: { label: "Tạo", icon: Plus, color: "emerald", letter: "T" },
+  u: { label: "Sửa", icon: Edit, color: "amber", letter: "S" },
+  d: { label: "Xóa", icon: Trash2, color: "rose", letter: "X" },
 } as const;
 
 const ACTIONS: ("r" | "c" | "u" | "d")[] = ["r", "c", "u", "d"];
@@ -386,9 +386,9 @@ export default function PhanQuyenTuyChinhPage() {
               {ALL_ROLES.map((role) => (
                 <th key={role} className="p-1.5 text-center min-w-[100px]" title={ROLE_LABELS[role]}>
                   <div className={`text-[10px] font-bold bg-gradient-to-br ${ROLE_COLORS[role] || "from-slate-500 to-slate-700"} bg-clip-text text-transparent`}>
-                    {role}
+                    {ROLE_LABELS[role]}
                   </div>
-                  <div className="text-[8px] opacity-60 font-normal mt-0.5">R C U D</div>
+                  <div className="text-[8px] opacity-60 font-normal mt-0.5">X T S X</div>
                   {/* Header buttons: toggle all per action cho cột */}
                   <div className="flex gap-0.5 mt-1 justify-center">
                     {ACTIONS.map((act) => (
@@ -488,7 +488,7 @@ export default function PhanQuyenTuyChinhPage() {
           </div>
         </div>
         <p className="text-[10px] opacity-60 mt-2">
-          💡 Click <b>R/C/U/D</b> ở header cột để toggle action đó cho <b>tất cả module</b> của 1 role · Click <b>✦</b> ở cuối row để toggle tất cả action cho 1 cell
+          💡 Click <b>X/T/S/X</b> ở header cột để toggle action đó cho <b>tất cả module</b> của 1 role · Click <b>✦</b> ở cuối row để toggle tất cả action cho 1 cell
         </p>
       </div>
         </>

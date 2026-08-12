@@ -100,14 +100,9 @@ export function RoleDashboard() {
       {role === "accountant" && <AccountantStats />}
       {(role === "content" || role === "partner") && <PartnerDashboard />}
 
-      {/* My Queue + Quick actions */}
-      <div className="grid md:grid-cols-3 gap-5">
-        <div className="md:col-span-2">
-          <MyQueue tasks={tasks} />
-        </div>
-        <div>
-          <QuickActions role={role} />
-        </div>
+      {/* My Queue */}
+      <div>
+        <MyQueue tasks={tasks} />
       </div>
     </div>
   );
@@ -263,7 +258,7 @@ function MyQueue({ tasks }: { tasks: Task[] }) {
       <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
         <div>
           <h3 className="font-semibold flex items-center gap-2">
-            <ListChecks className="w-4 h-4 text-brand-500" /> Việc của tôi
+            🔔 Trung tâm cảnh báo báo cáo thực tế
           </h3>
           <p className="text-xs opacity-60 mt-0.5">
             {tasks.length} công việc · {tasks.filter((t) => t.priority === "urgent").length} khẩn · {tasks.filter((t) => t.priority === "high").length} quan trọng
@@ -305,85 +300,7 @@ function MyQueue({ tasks }: { tasks: Task[] }) {
   );
 }
 
-// Quick Actions
-function QuickActions({ role }: { role: Role }) {
-  const actions = {
-    admin: [
-      { icon: Activity, label: "Xem Audit Log", href: "/audit-log", color: "violet" },
-      { icon: Users, label: "Quản lý User", href: "/cai-dat", color: "sky" },
-      { icon: Settings, label: "Phân quyền", href: "/cai-dat", color: "amber" },
-      { icon: BarChart3, label: "Real-time", href: "/realtime", color: "emerald" },
-    ],
-    planner: [
-      { icon: Plus, label: "Tạo KHSX", href: "/ke-hoach-san-xuat", color: "emerald" },
-      { icon: Plus, label: "Tạo lệnh cắt", href: "/lenh-cat", color: "sky" },
-      { icon: ShoppingCart, label: "Tạo đơn hàng", href: "/don-hang", color: "violet" },
-      { icon: FileText, label: "Báo cáo SX", href: "/bao-cao", color: "amber" },
-    ],
-    warehouse: [
-      { icon: Plus, label: "Nhập kho vải", href: "/kho-vai-tinhmann", color: "emerald" },
-      { icon: Truck, label: "Xuất kho", href: "/kho-vai-tinhmann", color: "sky" },
-      { icon: Plus, label: "Nhập phụ liệu", href: "/kho-phu-lieu", color: "violet" },
-      { icon: Building2, label: "Đặt hàng NCC", href: "/nha-cung-cap", color: "amber" },
-    ],
-    sewing: [
-      { icon: Scissors, label: "Bắt đầu cắt", href: "/lenh-cat", color: "emerald" },
-      { icon: ListChecks, label: "Chấm công tổ", href: "/cham-cong", color: "sky" },
-      { icon: Hammer, label: "Bàn giao tổ", href: "/may", color: "violet" },
-      { icon: FileText, label: "Báo cáo tổ", href: "/bao-cao", color: "amber" },
-    ],
-    qc: [
-      { icon: ShieldCheck, label: "Kiểm SP", href: "/qc", color: "emerald" },
-      { icon: Eye, label: "Kiểm vải", href: "/qc", color: "sky" },
-      { icon: FileText, label: "Báo cáo QC", href: "/bao-cao", color: "violet" },
-      { icon: AlertCircle, label: "SP lỗi", href: "/qc", color: "red" },
-    ],
-    finishing: [
-      { icon: Shirt, label: "Ủi SP", href: "/hoan-thien", color: "emerald" },
-      { icon: Truck, label: "Giao hàng", href: "/giao-hang", color: "sky" },
-      { icon: Boxes, label: "Kho thành phẩm", href: "/kho-thanh-pham", color: "violet" },
-      { icon: CheckCircle2, label: "Xác nhận HT", href: "/hoan-thien", color: "amber" },
-    ],
-    accountant: [
-      { icon: DollarSign, label: "Duyệt chi", href: "/cong-no", color: "emerald" },
-      { icon: Users, label: "Tính lương", href: "/bang-luong", color: "sky" },
-      { icon: FileText, label: "Báo cáo TC", href: "/bao-cao", color: "violet" },
-      { icon: Wallet, label: "Công nợ NCC", href: "/nha-cung-cap", color: "amber" },
-    ],
-  }[role] || [];
 
-  return (
-    <div className="card p-4">
-      <h3 className="font-semibold mb-3 flex items-center gap-2">
-        <Plus className="w-4 h-4 text-brand-500" /> Thao tác nhanh
-      </h3>
-      <div className="space-y-2">
-        {actions.map((a, i) => {
-          const colorMap: Record<string, string> = {
-            emerald: "bg-emerald-500/15 text-emerald-700",
-            sky: "bg-sky-500/15 text-sky-700",
-            violet: "bg-violet-500/15 text-violet-700",
-            amber: "bg-amber-500/15 text-amber-700",
-            red: "bg-red-500/15 text-red-700",
-          };
-          return (
-            <Link
-              key={i}
-              href={a.href}
-              className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/40 dark:hover:bg-white/5 transition"
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colorMap[a.color] || colorMap.sky}`}>
-                <a.icon className="w-4 h-4" />
-              </div>
-              <span className="text-sm font-medium">{a.label}</span>
-              <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-30" />
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // Helper import for Settings (used in admin actions)
 import { Settings } from "lucide-react";

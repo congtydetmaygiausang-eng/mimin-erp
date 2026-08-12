@@ -19,7 +19,7 @@ export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, 
               <th className="p-3">Chức vụ</th>
               <th className="p-3">SĐT</th>
               <th className="p-3">Ngày vào</th>
-              <th className="p-3 text-right">Lương cứng</th>
+              <th className="p-3 text-right">Lương cơ bản</th>
               <th className="p-3 text-right">Lương SP</th>
               <th className="p-3 text-center">Đánh giá</th>
               <th className="p-3 text-center">Thao tác</th>
@@ -69,9 +69,9 @@ export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, 
                       <Calendar className="w-3 h-3" /> {n.ngayVao}
                     </div>
                   </td>
-                  <td className="p-3 text-right font-mono">{formatVNDShort(n.luongCung || 0)}</td>
+                  <td className="p-3 text-right font-mono">{formatVNDShort(n.luongCB || n.luongCung || 0)}</td>
                   <td className="p-3 text-right font-mono font-semibold text-emerald-600">
-                    {luongSP > 0 ? formatVNDShort(luongSP) : "—"}
+                    {luongSP > 0 ? formatVNDShort(luongSP) : (n.donGiaSP ? "Có bảng giá" : "—")}
                   </td>
                   <td className="p-3 text-center">
                     <div className="flex items-center justify-center gap-0.5">

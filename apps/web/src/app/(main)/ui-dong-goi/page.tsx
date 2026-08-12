@@ -73,14 +73,10 @@ export default function UiDongGoiPage() {
       p.id === pc.id ? true : p.trangThaiCD === "hoan_thanh"
     );
     if (allDone) {
-      toast.success(`🎉 ${lc.id} hoàn thành toàn bộ – Đang chờ Nhập kho thành phẩm!`);
+      toast.success(`🎉 ${lc.id} đóng gói hoàn thành toàn bộ – Đang chờ Nhập kho thành phẩm!`);
     } else {
       toast.success(`✅ Hoàn thành: ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
     }
-    
-    // Đóng gói xong -> Đổi trạng thái Lệnh Cắt thành "HoanThanh" (Giao kho)
-    capNhatTrangThai(lc.id, "HoanThanh", null);
-    toast.info(`📦 Lô ${lc.id} đã Đóng Gói xong, sẵn sàng nhập kho!`);
   }
 
   return (
@@ -247,6 +243,32 @@ export default function UiDongGoiPage() {
                             return;
                           }
                           capNhatTrangThai(lc.id, "HoanThanh", null);
+                          
+                          // Thêm vào kho thành phẩm
+                          try {
+                            const khoKey = "mimin_kho_thanh_pham_v2";
+                            const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
+                            const newSP = {
+                              id: `SP-${Date.now()}`,
+                              maSP: lc.id,
+                              tenSP: lc.tenSP,
+                              phanLoai: "Áo",
+                              mau: "Nhiều màu",
+                              size: "Nhiều size",
+                              lsx: lc.id,
+                              ngayNhap: new Date().toISOString().split("T")[0],
+                              soLuong: lc.tongSL,
+                              donGia: 0,
+                              giaTri: 0,
+                              viTri: khuVuc[lc.id],
+                              trangThai: "con"
+                            };
+                            currentKho.push(newSP);
+                            localStorage.setItem(khoKey, JSON.stringify(currentKho));
+                          } catch (e) {
+                            console.error("Lỗi khi thêm vào kho thành phẩm", e);
+                          }
+
                           toast.success(`📦 Đã nhập kho ${lc.id} tại ${khuVuc[lc.id]}`);
                         }}
                         className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02]"

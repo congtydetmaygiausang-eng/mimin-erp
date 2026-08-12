@@ -32,20 +32,32 @@ export default function NhanSuPage() {
 
   const { phanCong } = usePhanCong();
 
+  // Deduplicate on the fly
+  const dedupedList = useMemo(() => {
+    const map = new Map<string, NhanSuExt>();
+    list.forEach(nv => {
+      const key = nv.maNV ? nv.maNV.toLowerCase().trim() : nv.hoTen.toLowerCase().trim();
+      if (!map.has(key)) {
+        map.set(key, nv);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => (a.stt || 0) - (b.stt || 0));
+  }, [list]);
+
   // KPIs (memoize)
   const kpis = useMemo(() => {
     const bp = new Set<string>();
     let tongLuongCung = 0;
     let dsSanXuat = 0, dsKho = 0, dsQC = 0;
-    for (const n of list) {
+    for (const n of dedupedList) {
       bp.add(n.boPhan);
       tongLuongCung += n.luongCung || 0;
       if (n.boPhan === "Sản xuất") dsSanXuat++;
       if (n.boPhan === "Kho vận") dsKho++;
       if (n.boPhan === "QC") dsQC++;
     }
-    return { tongNV: list.length, dsBP: Array.from(bp), tongLuongCung, dsSanXuat, dsKho, dsQC };
-  }, [list]);
+    return { tongNV: dedupedList.length, dsBP: Array.from(bp), tongLuongCung, dsSanXuat, dsKho, dsQC };
+  }, [dedupedList]);
 
   // Lương sản phẩm từ PHAN_CONG (memoize)
   const luongSPTheoNV = useMemo(() => {
@@ -61,14 +73,14 @@ export default function NhanSuPage() {
   // Filter (memoize)
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return list.filter((n) => {
+    return dedupedList.filter((n) => {
       const matchSearch = !q || [n.hoTen, n.maNV, n.sdt, n.email, n.chucVu, n.boPhan].some(
         (y) => (y || "").toLowerCase().includes(q)
       );
       const matchBP = filterBP === "all" || n.boPhan === filterBP;
       return matchSearch && matchBP;
     });
-  }, [list, search, filterBP]);
+  }, [dedupedList, search, filterBP]);
 
   const handleSave = useCallback(async (nv: NhanSuExt) => {
     if (showForm?.mode === "add") {

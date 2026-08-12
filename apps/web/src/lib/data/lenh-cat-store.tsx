@@ -581,6 +581,60 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
         return { ...lc, phanCong: newPhanCong };
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+
+      // ========== ĐỒNG BỘ CÔNG NỢ KHI HOÀN THÀNH ==========
+      if (data.trangThaiCD === 'hoan_thanh') {
+        try {
+          const pcKey = "mimin_phan_cong_v2";
+          let congNoArr = JSON.parse(localStorage.getItem(pcKey) || "[]");
+          
+          const lc = next.find(x => x.id === lenhId);
+          if (lc) {
+            const pc = lc.phanCong.find((x: any) => x.id === congDoanId);
+            if (pc && pc.nguoiMa) {
+              // Kiem tra xem da co trong cong no chua
+              const existingIndex = congNoArr.findIndex((c: any) => 
+                c.lenhCatId === lenhId && 
+                (c.congDoan === pc.tenCongDoan || c.nguoiPhuTrach?.ma === pc.nguoiMa)
+              );
+
+              const soLuongHT = data.soLuongHoanThanh ?? pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL;
+              
+              if (existingIndex >= 0) {
+                // Update trangThai
+                congNoArr[existingIndex].trangThai = "Hoàn thành";
+                congNoArr[existingIndex].soLuongGiao = soLuongHT;
+              } else {
+                // Add new
+                const nextNum = congNoArr.length + 1;
+                const newId = `PC-${lenhId.replace("LC-", "")}-${String(nextNum).padStart(2, "0")}`;
+                congNoArr.push({
+                  id: newId,
+                  lenhCatId: lenhId,
+                  congDoan: pc.tenCongDoan || "Gia công",
+                  nguoiPhuTrach: {
+                    loai: pc.nguoiMa.startsWith("GC") ? "Đối tác gia công" : "Nhân viên nội bộ",
+                    ma: pc.nguoiMa,
+                    ten: pc.nguoiTen || "Chưa rõ"
+                  },
+                  donGiaGiao: pc.donGia || 0,
+                  soLuongGiao: soLuongHT,
+                  donVi: "SP",
+                  ngayGiao: pc.ngayNhanViec || new Date().toISOString().slice(0, 10),
+                  ngayXongDuKien: new Date().toISOString().slice(0, 10),
+                  trangThai: "Hoàn thành",
+                  daThanhToan: pc.daThanhToan || 0,
+                  ghiChu: "Tự động đồng bộ từ Lệnh cắt"
+                });
+              }
+              localStorage.setItem(pcKey, JSON.stringify(congNoArr));
+            }
+          }
+        } catch(e) {
+          console.error("Lỗi đồng bộ công nợ:", e);
+        }
+      }
+      
       return next;
     });
   }, []);

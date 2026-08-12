@@ -22,6 +22,8 @@ import {
   ShoppingCart,
   Hash,
   Briefcase,
+  Wallet,
+  ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { NCCS, formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -337,14 +339,16 @@ export default function NhaCungCapPage() {
       )}
 
       {viewMode === "card" && (
-        <EntityCardGrid cols={3}>
+        <EntityCardGrid cols={4}>
           {filtered.map((n) => {
             const ls = lichSuMua[n.ten] || { gd: [], tongTien: 0, tongNhap: 0 };
             return (
               <EntityCard
                 key={n.stt}
+                onClick={() => setShowForm({ mode: "edit", ncc: n })}
                 name={n.ten}
                 avatarSize="xl"
+                contactPhone={n.sdt || undefined}
                 rating={n.rating}
                 highlight={(n.rating || 0) >= 4.5}
                 warning={n.congNo > 0}
@@ -352,9 +356,10 @@ export default function NhaCungCapPage() {
                 subtitle={<span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {n.diaChi?.slice(0, 30)}</span>}
                 status={n.congNo > 0 ? { label: `Còn nợ ${formatVNDShort(n.congNo)}`, color: "text-red-700", bg: "bg-red-500/15" } : { label: "Không nợ", color: "text-emerald-700", bg: "bg-emerald-500/15" }}
                 stats={[
-                  { label: "SĐT", value: n.sdt, icon: Phone },
-                  { label: "MST", value: n.maSoThue || "—", icon: Hash },
-                  { label: "Đã mua", value: formatVNDShort(ls.tongTien), color: "text-emerald-600" },
+                  { label: "SĐT", value: n.sdt || "thiếu", icon: Phone },
+                  { label: "MST", value: n.maSoThue || "thiếu", icon: FileText },
+                  { label: "Công nợ", value: n.congNo > 0 ? formatVNDShort(n.congNo) : "0 đ", icon: Wallet, color: n.congNo > 0 ? "text-red-600" : "text-emerald-600" },
+                  { label: "Đã mua", value: ls.tongTien > 0 ? formatVNDShort(ls.tongTien) : "0", icon: ShoppingBag, color: "text-emerald-600" },
                   { label: "Số GD", value: `${ls.tongNhap} lần`, icon: ShoppingCart },
                 ]}
                 onView={() => setShowHistory(n)}
@@ -372,7 +377,7 @@ export default function NhaCungCapPage() {
           {filtered.map((n) => {
             const ls = lichSuMua[n.ten] || { gd: [], tongTien: 0, tongNhap: 0 };
             return (
-              <div key={n.stt} className={`card p-3 flex items-center gap-3 ${n.congNo > 0 ? "ring-1 ring-red-500/30 bg-red-500/5" : ""}`}>
+              <div key={n.stt} className={`card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition ${n.congNo > 0 ? "ring-1 ring-red-500/30 bg-red-500/5" : ""}`} onClick={() => setShowForm({ mode: "edit", ncc: n })}>
                 <Avatar name={n.ten} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate">{n.ten}</div>
@@ -444,7 +449,7 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
-      <div className="w-full sm:w-[96%] sm:max-w-2xl sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[97vh] sm:max-h-[92vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full sm:w-[96%] sm:max-w-2xl sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">

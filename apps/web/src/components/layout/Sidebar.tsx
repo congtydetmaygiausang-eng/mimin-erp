@@ -227,8 +227,8 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
     <>
       <div className={clsx("p-4 border-b border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
         <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0" onClick={onItemClick}>
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-black text-base shadow-lg shadow-teal-900/40">
-            M
+          <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center overflow-hidden bg-white/5">
+            <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover" />
           </div>
           {!isCollapsed && (
             <div className="min-w-0">

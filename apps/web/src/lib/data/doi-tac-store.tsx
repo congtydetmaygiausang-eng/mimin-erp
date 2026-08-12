@@ -5,58 +5,45 @@ import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/l
 import { DOI_TAC_GIA_CONG, type DoiTacGiaCong } from "@/lib/doi-tac-gia-cong";
 
 export type DoiTacDBModel = {
-  id: string;
-  ma_xuong: string;
-  ten_xuong: string;
+  id?: string;
+  ma_ncc: string;
+  ten_ncc: string;
   loai: string;
-  dia_chi: string;
-  sdt: string;
-  email: string;
-  nguoi_lh: string;
-  cong_suat?: string;
-  don_gia_tb?: number;
-  don_vi?: string;
-  ghi_chu: string;
-  trang_thai: string;
-  // === P0/P1 - 2026-08-07 - Cong no + Thanh toan ===
+  chuyen_mon?: string;
+  dia_chi?: string;
+  sdt?: string;
+  email?: string;
+  nguoi_lh?: string;
+  ghi_chu?: string;
+  trang_thai?: string;
   cong_no?: number;
-  da_thanh_toan?: number;
-  con_lai?: number;
-  han_muc_no?: number;
-  ngay_hop_tac?: string;
-  thoi_han_thanh_toan?: number;
-  phuong_thuc_tt?: string;
+  han_muc?: number;
   rating?: number;
 };
 
 function mapToDB(ui: DoiTacGiaCong): DoiTacDBModel {
   return {
-    ma_xuong: ui.ma,
-    ten_xuong: ui.tenDonVi,
-    loai: ui.chuyenMon,
+    ma_ncc: ui.ma,
+    ten_ncc: ui.tenDonVi,
+    loai: "doi_tac_gia_cong",
+    chuyen_mon: ui.chuyenMon,
     dia_chi: ui.diaChi,
     sdt: ui.sdt,
     email: ui.email || "",
     nguoi_lh: ui.nguoiLienHe,
     ghi_chu: ui.ghiChu || "",
     trang_thai: ui.trangThai === "dang_hop_tac" ? "Đang hợp tác" : "Ngừng hợp tác",
-    // === P0/P1 - Cong no + Thanh toan ===
     cong_no: ui.congNo || 0,
-    da_thanh_toan: ui.daThanhToan || 0,
-    con_lai: ui.conLai ?? ((ui.congNo || 0) - (ui.daThanhToan || 0)),
-    han_muc_no: ui.hanMucNo || 0,
-    ngay_hop_tac: ui.ngayHopTac || null,
-    thoi_han_thanh_toan: ui.thoiHanThanhToan || 30,
-    phuong_thuc_tt: ui.phuongThucTT || "Chuyển khoản",
+    han_muc: ui.hanMucNo || 0,
     rating: ui.rating || 4.0,
   };
 }
 
-function mapToUI(db: DoiTacDBModel, index: number): DoiTacGiaCong {
+function mapToUI(db: any, index: number): DoiTacGiaCong {
   return {
     stt: index + 1,
-    ma: db.ma_xuong,
-    tenDonVi: db.ten_xuong,
+    ma: db.ma_ncc,
+    tenDonVi: db.ten_ncc,
     nguoiLienHe: db.nguoi_lh,
     sdt: db.sdt,
     email: db.email,
@@ -66,15 +53,14 @@ function mapToUI(db: DoiTacDBModel, index: number): DoiTacGiaCong {
     loaiDoiTuong: "doi_tac_gia_cong",
     trangThai: db.trang_thai === "Đang hợp tác" ? "dang_hop_tac" : "ngung_hop_tac",
     ghiChu: db.ghi_chu,
-    chuyenMon: db.loai as any,
-    // === P0/P1 - Cong no + Thanh toan ===
+    chuyenMon: (db.chuyen_mon || db.loai) as any,
     congNo: db.cong_no || 0,
-    daThanhToan: db.da_thanh_toan || 0,
-    conLai: db.con_lai ?? ((db.cong_no || 0) - (db.da_thanh_toan || 0)),
-    hanMucNo: db.han_muc_no || 0,
-    ngayHopTac: db.ngay_hop_tac || undefined,
-    thoiHanThanhToan: db.thoi_han_thanh_toan || 30,
-    phuongThucTT: (db.phuong_thuc_tt as any) || "Chuyển khoản",
+    daThanhToan: 0,
+    conLai: db.cong_no || 0,
+    hanMucNo: db.han_muc || 0,
+    ngayHopTac: undefined,
+    thoiHanThanhToan: 30,
+    phuongThucTT: "Chuyển khoản",
     rating: db.rating || 4.0,
   };
 }
@@ -126,7 +112,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const { data, error } = await supabase!.from("xuong_gia_cong").select("*").order("created_at", { ascending: true });
+        const { data, error } = await supabase!.from("nha_cung_cap").select("*").eq("loai", "doi_tac_gia_cong").order("created_at", { ascending: true });
         if (error) throw error;
         
         if (mounted) {
@@ -138,7 +124,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
             setList(DOI_TAC_GIA_CONG);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(DOI_TAC_GIA_CONG));
             Promise.all(DOI_TAC_GIA_CONG.map(dt => 
-              supabaseUpsert("xuong_gia_cong", mapToDB(dt))
+              supabaseUpsert("nha_cung_cap", mapToDB(dt))
             )).catch(() => {});
           }
         }
@@ -160,7 +146,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("xuong_gia_cong", mapToDB(dt));
+        await supabaseUpsert("nha_cung_cap", mapToDB(dt));
         return true;
       } catch (err) { return false; }
     }
@@ -175,7 +161,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("xuong_gia_cong", mapToDB(dt));
+        await supabaseUpsert("nha_cung_cap", mapToDB(dt));
         return true;
       } catch (err) { return false; }
     }
@@ -190,7 +176,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabase!.from("xuong_gia_cong").delete().eq("ma_xuong", ma);
+        await supabase!.from("nha_cung_cap").delete().eq("ma_ncc", ma);
         return true;
       } catch (err) { return false; }
     }

@@ -266,8 +266,8 @@ export default function DonHangPage() {
       {/* Modals */}
       {showForm && (
         <OrderFormModal
-          mode={showForm.mode}
-          initialData={showForm.dh}
+          open={!!showForm}
+          initial={showForm.dh}
           onClose={() => setShowForm(null)}
           onSave={handleSaveForm}
         />
