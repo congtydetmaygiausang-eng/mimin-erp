@@ -80,6 +80,8 @@
   .bg-module-nha-cung-cap { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-bang-luong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-doi-tac-gia-cong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  /* Nen trang-xam nhe rieng cho trang AI Tinh Gia Von (theo yeu cau, khac nen teal chung) */
+  .bg-module-slate { background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%); }
   .bg-module-default { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
 
   /* PageHeader gradient - dam hon de noi bat */

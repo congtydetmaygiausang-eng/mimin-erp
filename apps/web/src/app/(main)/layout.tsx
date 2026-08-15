@@ -15,6 +15,7 @@ const MODULE_CLASSES: Record<string, string> = {
   "/cong-nhan-gia-cong": "bg-module-doi-tac-gia-cong",
   "/kho-vai-tinhmann": "bg-module-kho",
   "/kho-phu-lieu": "bg-module-kho",
+  "/ai-tinh-gia": "bg-module-slate",
 };
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
