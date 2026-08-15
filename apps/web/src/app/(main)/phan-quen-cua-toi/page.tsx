@@ -33,6 +33,11 @@ const ROLE_DESCRIPTIONS: Record<Role, string> = {
   accountant: "Kế toán - Bảng lương, công nợ, NCC, báo cáo",
   content: "Content / Media - CRUD danh mục SP, xem marketing",
   partner: "Đối tác gia công - CHỈ thấy phiếu giao cho mình (20 NCC)",
+  cutting: "Tổ trưởng cắt - Quản lý tổ cắt",
+  printing: "Tổ trưởng in thêu - Quản lý tổ in/thêu",
+  buttoning: "Tổ trưởng khuy nút - Quản lý tổ khuy nút",
+  ironing: "Tổ trưởng ủi - Quản lý tổ ủi",
+  packaging: "Tổ trưởng đóng gói - Quản lý tổ đóng gói",
 };
 
 export default function PhanQuenCuaToiPage() {

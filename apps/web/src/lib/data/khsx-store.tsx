@@ -8,7 +8,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type TrangThaiKHSX = "Lên kế hoạch" | "Đang SX" | "Hoàn thành" | "Trễ hạn";
 
@@ -81,6 +81,25 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
+  // Đọc lại 2 chiều từ Supabase (nguồn chính). Bảng camelCase → đọc/ghi không convert key.
+  // Merge: ưu tiên bản ghi Supabase, giữ thêm bản chỉ có ở local (tạo offline).
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let mounted = true;
+    (async () => {
+      const remote = await supabaseFetchAllRaw<KHSX>("khsx", "created_at", false);
+      if (!mounted || remote.length === 0) return;
+      const ids = new Set(remote.map((r) => r.id));
+      setKHSX((prev) => {
+        const localOnly = prev.filter((x) => !ids.has(x.id));
+        const merged = [...remote, ...localOnly];
+        saveData(merged);
+        return merged;
+      });
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   useEffect(() => {
     if (hydrated) saveData(khsx);
   }, [khsx, hydrated]);
@@ -95,7 +114,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     setKHSX((prev) => [newKHSX, ...prev]);
     logWorkflow(user, "create", k.maKHSX, newKHSX.id);
     if (isSupabaseEnabled) {
-      supabaseUpsert("khsx", newKHSX as any).catch((err) =>
+      supabaseUpsertRaw("khsx", newKHSX as any).catch((err) =>
         console.error("[KHSXStore] Supabase upsert error:", err)
       );
     }
@@ -111,7 +130,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "update", `KHSX ${id}`, id, { newValue: patch });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("khsx", updated as any).catch((err) =>
+      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
         console.error("[KHSXStore] Supabase upsert error:", err)
       );
     }
@@ -148,7 +167,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     );
     logWorkflow(user, "update", `KHSX ${id}`, id, { newValue: { soLuongHT } });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("khsx", updated as any).catch((err) =>
+      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
         console.error("[KHSXStore] Supabase upsert error:", err)
       );
     }
@@ -163,7 +182,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "start", `KHSX ${id}`, id);
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("khsx", updated as any).catch((err) =>
+      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
         console.error("[KHSXStore] Supabase upsert error:", err)
       );
     }
@@ -180,7 +199,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     );
     logWorkflow(user, "approve", `KHSX ${id}`, id);
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("khsx", updated as any).catch((err) =>
+      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
         console.error("[KHSXStore] Supabase upsert error:", err)
       );
     }

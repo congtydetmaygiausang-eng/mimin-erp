@@ -19,7 +19,7 @@ import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
 import { ALL_REAL_PHIEU } from "../real-workflow-data";
 import type { PhieuWorkflow } from "../workflow-data";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type TrangThaiHoanThien =
   | "Chờ nhận"      // May xong, NV HT chưa nhận
@@ -175,6 +175,24 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
+  // Đọc lại 2 chiều từ Supabase (nguồn chính). Bảng camelCase → đọc/ghi không convert key.
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let mounted = true;
+    (async () => {
+      const remote = await supabaseFetchAllRaw<BanGhiHoanThien>("hoan_thien", "created_at", false);
+      if (!mounted || remote.length === 0) return;
+      const ids = new Set(remote.map((r) => r.id));
+      setBanGhi((prev) => {
+        const localOnly = prev.filter((x) => !ids.has(x.id));
+        const merged = [...remote, ...localOnly];
+        saveData(merged);
+        return merged;
+      });
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   useEffect(() => {
     if (hydrated) saveData(banGhi);
   }, [banGhi, hydrated]);
@@ -196,7 +214,7 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "update", `Hoàn thiện ${id} → ${trangThaiMoi}`, id, { newValue: { trangThaiMoi } });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+      supabaseUpsertRaw("hoan_thien", updated as any).catch((err) =>
         console.error("[HoanThienStore] Supabase upsert error:", err)
       );
     }
@@ -221,7 +239,7 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "report_progress", `Cập nhật SL ${id}`, id, { newValue: { slDat, slLoi } });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+      supabaseUpsertRaw("hoan_thien", updated as any).catch((err) =>
         console.error("[HoanThienStore] Supabase upsert error:", err)
       );
     }
@@ -253,7 +271,7 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "handover", `Bàn giao kho TP ${id}`, id);
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+      supabaseUpsertRaw("hoan_thien", updated as any).catch((err) =>
         console.error("[HoanThienStore] Supabase upsert error:", err)
       );
     }
@@ -275,7 +293,7 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "report_issue", `Báo lỗi ${id}`, id, { newValue: { noiDung } });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("hoan_thien", updated as any).catch((err) =>
+      supabaseUpsertRaw("hoan_thien", updated as any).catch((err) =>
         console.error("[HoanThienStore] Supabase upsert error:", err)
       );
     }

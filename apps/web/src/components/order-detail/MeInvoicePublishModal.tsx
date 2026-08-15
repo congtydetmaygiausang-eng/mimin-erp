@@ -64,11 +64,11 @@ export default function MeInvoicePublishModal({
   }, []);
 
   // Build payload preview
-  const buyer = order.shipping || {
-    tenNguoiNhan: order.tenKH,
-    sdtNguoiNhan: order.sdtNguoiNhan,
-    emailNguoiNhan: order.emailNguoiNhan,
-    diaChiGiao: order.diaChiGiao,
+  const buyer = {
+    tenNguoiNhan: order.khachHang,
+    sdtNguoiNhan: order.sdt,
+    emailNguoiNhan: order.email,
+    diaChiGiao: order.shipping?.diaChiGiao || order.diaChi,
   };
 
   const tongTien = calcOrderTotal(order.items);
@@ -90,16 +90,16 @@ export default function MeInvoicePublishModal({
       const refId = `${order.maDH}-${Date.now()}`;
       const donHang = {
         id: order.maDH,
-        maKH: order.maKH,
-        tenKH: order.tenKH,
-        sdtKH: order.sdtNguoiNhan,
-        emailKH: order.emailNguoiNhan,
-        diaChiKH: order.diaChiGiao,
+        maKH: order.id,
+        tenKH: order.khachHang,
+        sdtKH: order.sdt,
+        emailKH: order.email,
+        diaChiKH: buyer.diaChiGiao,
         mstKH: "",
         items: order.items.map((it) => ({
-          maSP: it.maSP,
-          tenSP: it.tenSP,
-          dvt: it.dvt || "Cai",
+          maSP: it.spId,
+          tenSP: it.spTen,
+          dvt: "Cai",
           soLuong: it.soLuong,
           donGia: it.donGia,
           thanhTien: it.thanhTien,
@@ -116,7 +116,7 @@ export default function MeInvoicePublishModal({
           invDate,
           refId,
           refIdDonHang: order.maDH,
-          refIdKhachHang: order.maKH,
+          refIdKhachHang: order.id,
           nguoiTao: "current_user@mimin.vn",
         }),
       });
@@ -297,7 +297,7 @@ export default function MeInvoicePublishModal({
             {/* Preview buyer */}
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200">
               <div className="text-xs font-bold text-slate-600 mb-1">NGƯỜI MUA</div>
-              <div className="font-semibold text-sm">{order.tenKH || buyer.tenNguoiNhan}</div>
+              <div className="font-semibold text-sm">{buyer.tenNguoiNhan}</div>
               <div className="text-xs text-slate-500">
                 {buyer.diaChiGiao || "—"} {buyer.sdtNguoiNhan ? `· ${buyer.sdtNguoiNhan}` : ""} {buyer.emailNguoiNhan ? `· ${buyer.emailNguoiNhan}` : ""}
               </div>
@@ -317,7 +317,7 @@ export default function MeInvoicePublishModal({
                 <tbody>
                   {order.items.map((it, idx) => (
                     <tr key={idx} className="border-t">
-                      <td className="p-2">{it.tenSP}</td>
+                      <td className="p-2">{it.spTen}</td>
                       <td className="p-2 text-right">{it.soLuong}</td>
                       <td className="p-2 text-right font-mono">{formatVND(it.donGia)}</td>
                       <td className="p-2 text-right font-mono font-semibold">{formatVND(it.thanhTien)}</td>

@@ -8,7 +8,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type TrangThaiGH = "Chờ giao" | "Đang giao" | "Đã giao" | "Trễ";
 
@@ -78,6 +78,24 @@ export function GiaoHangProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
+  // Đọc lại 2 chiều từ Supabase (nguồn chính). Bảng camelCase → đọc/ghi không convert key.
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let mounted = true;
+    (async () => {
+      const remote = await supabaseFetchAllRaw<GiaoHang>("giao_hang", "created_at", false);
+      if (!mounted || remote.length === 0) return;
+      const ids = new Set(remote.map((r) => r.id));
+      setGiaoHang((prev) => {
+        const localOnly = prev.filter((x) => !ids.has(x.id));
+        const merged = [...remote, ...localOnly];
+        saveData(merged);
+        return merged;
+      });
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   useEffect(() => {
     if (hydrated) saveData(giaoHang);
   }, [giaoHang, hydrated]);
@@ -92,7 +110,7 @@ export function GiaoHangProvider({ children }: { children: ReactNode }) {
     setGiaoHang((prev) => [newGH, ...prev]);
     logWorkflow(user, "create", g.maGH, newGH.id);
     if (isSupabaseEnabled) {
-      supabaseUpsert("giao_hang", newGH as any).catch((err) =>
+      supabaseUpsertRaw("giao_hang", newGH as any).catch((err) =>
         console.error("[GiaoHangStore] Supabase upsert error:", err)
       );
     }
@@ -108,7 +126,7 @@ export function GiaoHangProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "update", `Giao hàng ${id}`, id, { newValue: patch });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("giao_hang", updated as any).catch((err) =>
+      supabaseUpsertRaw("giao_hang", updated as any).catch((err) =>
         console.error("[GiaoHangStore] Supabase upsert error:", err)
       );
     }
@@ -134,7 +152,7 @@ export function GiaoHangProvider({ children }: { children: ReactNode }) {
     const action = status === "Đã giao" ? "approve" : status === "Trễ" ? "report_issue" : "update";
     logWorkflow(user, action, `Giao hàng ${id}`, id, { newValue: { trangThai: status } });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("giao_hang", updated as any).catch((err) =>
+      supabaseUpsertRaw("giao_hang", updated as any).catch((err) =>
         console.error("[GiaoHangStore] Supabase upsert error:", err)
       );
     }

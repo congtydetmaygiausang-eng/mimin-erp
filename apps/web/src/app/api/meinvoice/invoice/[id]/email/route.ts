@@ -6,10 +6,11 @@ import { sendInvoiceEmail } from "@/lib/meinvoice";
 
 const DEFAULT_ID = "default";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const start = Date.now();
   try {
-    const { id } = params;
+    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
+    const { id } = await params;
     const body = await req.json();
     const { email, nguoiTao } = body;
     if (!email) {

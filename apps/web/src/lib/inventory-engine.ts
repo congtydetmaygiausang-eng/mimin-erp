@@ -147,6 +147,7 @@ export function saveInventory(inv: Record<string, KhoVai>) {
   
   // Async fire-and-forget sync to Supabase
   if (isSupabaseEnabled && supabase) {
+    const db = supabase;
     Promise.all(Object.values(inv).map(async (v) => {
       const payload = {
         sku: v.maVT,
@@ -156,7 +157,7 @@ export function saveInventory(inv: Record<string, KhoVai>) {
         don_gia: v.donGia || 0,
         loai: "vai",
       };
-      await supabase!.from("kho").upsert(payload, { onConflict: "sku" });
+      await db.from("kho").upsert(payload, { onConflict: "sku" });
     })).catch(console.error);
   }
 }
@@ -514,7 +515,14 @@ export function xuatKhoChoLenhCat(
 
   // Ghi audit log tổng hợp
   logAudit({
-    user,
+    user: {
+      id: user?.email || "system",
+      email: user?.email || "",
+      name: user?.name || user?.email || "Hệ thống",
+      role: "system",
+      title: "",
+      source: "demo",
+    },
     action: "update",
     module: "kho-vai",
     description: `Tự động xuất kho theo ${lenhCat.id}: ${results.length} loại vật tư`,

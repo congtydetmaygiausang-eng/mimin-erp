@@ -8,7 +8,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ejcuqyaiwab
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_jjxSsC-ADuxGWpWfH6KI5g_3EgU1ADd";
 
 // Re-export từ sync-helper để các store dùng tiện
-export { supabaseUpsert, supabaseDelete, supabaseFetchAll, useSupabaseSync, checkSupabase } from "./sync-helper";
+export { supabaseUpsert, supabaseDelete, supabaseFetchAll, supabaseFetchAllRaw, supabaseUpsertRaw, useSupabaseSync, checkSupabase } from "./sync-helper";
 
 // Tạo client chỉ khi có config thật
 // 2026-08-03: BẬT lại sau khi sếp Sang apply schema (commit 9ae0b4b)

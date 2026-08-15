@@ -18,7 +18,7 @@ import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
 import { ALL_REAL_PHIEU } from "../real-workflow-data";
 import type { PhieuWorkflow } from "../workflow-data";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type TrangThaiQC =
   | "Chờ kiểm"      // Công đoạn trước xong, chờ QC nhận
@@ -144,6 +144,24 @@ export function QCProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
+  // Đọc lại 2 chiều từ Supabase (nguồn chính). Bảng camelCase → đọc/ghi không convert key.
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let mounted = true;
+    (async () => {
+      const remote = await supabaseFetchAllRaw<BanGhiQC>("qc_records", "created_at", false);
+      if (!mounted || remote.length === 0) return;
+      const ids = new Set(remote.map((r) => r.id));
+      setBanGhi((prev) => {
+        const localOnly = prev.filter((x) => !ids.has(x.id));
+        const merged = [...remote, ...localOnly];
+        saveData(merged);
+        return merged;
+      });
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   useEffect(() => {
     if (hydrated) saveData(banGhi);
   }, [banGhi, hydrated]);
@@ -170,7 +188,7 @@ export function QCProvider({ children }: { children: ReactNode }) {
       return updated;
     }));
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("qc_records", updated as any).catch((err) =>
+      supabaseUpsertRaw("qc_records", updated as any).catch((err) =>
         console.error("[QCStore] Supabase upsert error:", err)
       );
     }
@@ -208,7 +226,7 @@ export function QCProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "approve", `QC duyệt ${id}`, id, { newValue: { slDat, slLoi } });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("qc_records", updated as any).catch((err) =>
+      supabaseUpsertRaw("qc_records", updated as any).catch((err) =>
         console.error("[QCStore] Supabase upsert error:", err)
       );
     }
@@ -230,7 +248,7 @@ export function QCProvider({ children }: { children: ReactNode }) {
     }));
     logWorkflow(user, "report_issue", `QC báo lỗi ${id}`, id, { newValue: { soLoi: loi.length } });
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("qc_records", updated as any).catch((err) =>
+      supabaseUpsertRaw("qc_records", updated as any).catch((err) =>
         console.error("[QCStore] Supabase upsert error:", err)
       );
     }

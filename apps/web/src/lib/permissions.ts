@@ -470,7 +470,7 @@ export function getEffectivePermissions(): Record<Role, Partial<Record<Module, s
   try {
     const raw = localStorage.getItem(CUSTOM_MATRIX_KEY);
     if (raw) {
-      const custom = JSON.parse(raw) as Record<Role, Record<Module, string>>;
+      const custom = JSON.parse(raw) as Record<Role, Partial<Record<Module, string>>>;
       // Merge: ưu tiên custom nhưng fallback PERMISSIONS nếu thiếu key
       const merged: any = { ...PERMISSIONS };
       (Object.keys(PERMISSIONS) as Role[]).forEach((role) => {

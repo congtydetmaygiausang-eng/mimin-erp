@@ -72,6 +72,7 @@ export default function HoaDonDienTuPage() {
 
   const loadHoaDon = useCallback(async () => {
     try {
+      if (!supabase) return;
       const { data, error } = await supabase
         .from("hoa_don_dien_tu")
         .select("*")

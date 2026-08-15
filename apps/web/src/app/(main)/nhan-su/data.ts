@@ -14,6 +14,7 @@ export type NhanSuExt = NhanSu & {
   cccdFrontImage?: string;
   cccdBackImage?: string;
   donGiaSP?: string;
+  ghiChu?: string;
 };
 
 /**

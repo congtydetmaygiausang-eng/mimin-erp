@@ -6,10 +6,11 @@ import { getInvoiceStatus } from "@/lib/meinvoice";
 
 const DEFAULT_ID = "default";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const start = Date.now();
   try {
-    const { id } = params;
+    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
+    const { id } = await params;
     // Load from DB first
     const { data: hoaDon, error: dbErr } = await supabase
       .from("hoa_don_dien_tu")

@@ -125,7 +125,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
             setList(DOI_TAC_GIA_CONG);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(DOI_TAC_GIA_CONG));
             Promise.all(DOI_TAC_GIA_CONG.map(dt => 
-              supabaseUpsert("nha_cung_cap", mapToDB(dt))
+              supabaseUpsert("nha_cung_cap", mapToDB(dt), "ma_ncc")
             )).catch(() => {});
           }
         }
@@ -147,7 +147,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("nha_cung_cap", mapToDB(dt));
+        await supabaseUpsert("nha_cung_cap", mapToDB(dt), "ma_ncc");
         return true;
       } catch (err) { return false; }
     }
@@ -162,7 +162,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("nha_cung_cap", mapToDB(dt));
+        await supabaseUpsert("nha_cung_cap", mapToDB(dt), "ma_ncc");
         return true;
       } catch (err) { return false; }
     }

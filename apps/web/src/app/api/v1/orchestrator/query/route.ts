@@ -11,6 +11,22 @@ import { getAllTools, getToolsForDomain } from "@/lib/ai-tools";
 // Đảm bảo không bị timeout trên Vercel nếu request hơi lâu
 export const maxDuration = 60;
 
+// convertToModelMessages (AI SDK v5) bắt buộc mỗi message phải có `.parts`.
+// Nhiều client cũ (FloatingAI, ai-assistant page) vẫn gửi format cũ
+// { role, content: "string" } không có `.parts` -> convertToModelMessages
+// crash "Cannot read properties of undefined (reading 'map')". Chuẩn hoá
+// về UIMessage hợp lệ trước khi gọi convertToModelMessages.
+function toUIMessages(messages: any[]): UIMessage[] {
+  return (messages || []).map((m) => {
+    if (Array.isArray(m?.parts)) return m as UIMessage;
+    return {
+      ...m,
+      id: m?.id || `msg-${Math.random().toString(36).slice(2)}`,
+      parts: [{ type: "text", text: typeof m?.content === "string" ? m.content : "" }],
+    } as UIMessage;
+  });
+}
+
 // ============================================
 // PROVIDER MAPPING
 // ============================================
@@ -48,9 +64,11 @@ function buildConversationSummary(messages: any[]): string {
   
   for (const msg of oldMessages.slice(-5)) {
     const role = msg.role === "user" ? "User" : "AI";
-    const content = typeof msg.content === "string" 
-      ? msg.content.slice(0, 150) 
-      : msg.parts?.find((p: any) => p.type === "text")?.text?.slice(0, 150) || "";
+    // Backward-compat: msg.content (format cũ) hoặc msg.parts (AI SDK v5+)
+    const legacyContent = (msg as any).content;
+    const content = typeof legacyContent === "string"
+      ? legacyContent.slice(0, 150)
+      : (msg.parts?.find((p: any) => p.type === "text") as any)?.text?.slice(0, 150) || "";
     if (content) summaryLines.push(`${role}: ${content}${content.length >= 150 ? "..." : ""}`);
   }
   
@@ -243,12 +261,16 @@ function convertToSimpleMessages(
   
   return recentMessages
     .filter(m => m.role === "user" || m.role === "assistant")
-    .map(m => ({
-      role: m.role,
-      content: typeof m.content === "string"
-        ? m.content
-        : m.parts?.find((p: any) => p.type === "text")?.text || "",
-    }))
+    .map(m => {
+      // Backward-compat: m.content (format cũ) hoặc m.parts (AI SDK v5+)
+      const legacyContent = (m as any).content;
+      return {
+        role: m.role,
+        content: typeof legacyContent === "string"
+          ? legacyContent
+          : (m.parts?.find((p: any) => p.type === "text") as any)?.text || "",
+      };
+    })
     .filter(m => m.content); // loại bỏ message rỗng
 }
 
@@ -313,7 +335,7 @@ export async function POST(req: NextRequest) {
       const result = streamText({
         model: config.model,
         system: config.systemPromptBase,
-        messages: await convertToModelMessages(messages as UIMessage[]),
+        messages: await convertToModelMessages(toUIMessages(messages)),
         tools: getAllTools(),
       });
       return result.toUIMessageStreamResponse();
@@ -331,24 +353,30 @@ export async function POST(req: NextRequest) {
       
       // Fix 2: truyền FULL conversation history (tối đa 20 messages gần nhất)
       const fullMessages = convertToSimpleMessages(messages as UIMessage[], 20);
-      
+
       // Fix 1: gọi với tools support
-      const text = await callOpenAICompatibleWithTools(
-        "deepseek",
-        apiKey,
-        persona.model,
-        config.systemPromptBase,
-        fullMessages,
-        persona.allowed_domains
-      );
-      
-      return NextResponse.json({
-        agent: { id: agentId, name: persona.name, provider, model: persona.model },
-        routing: routeResult
-          ? { taskTypes: routeResult.taskTypes, isMultiAgent: routeResult.isMultiAgent, totalAgents: routeResult.totalAgents }
-          : null,
-        response: text,
-      });
+      try {
+        const text = await callOpenAICompatibleWithTools(
+          "deepseek",
+          apiKey,
+          persona.model,
+          config.systemPromptBase,
+          fullMessages,
+          persona.allowed_domains
+        );
+
+        return NextResponse.json({
+          agent: { id: agentId, name: persona.name, provider, model: persona.model },
+          routing: routeResult
+            ? { taskTypes: routeResult.taskTypes, isMultiAgent: routeResult.isMultiAgent, totalAgents: routeResult.totalAgents }
+            : null,
+          response: text,
+        });
+      } catch (err) {
+        // DeepSeek lỗi (hết quota, API down...) -> fallback sang Gemini thay vì trả 500
+        console.warn("[orchestrator] DeepSeek call failed, fallback to Gemini:", err);
+        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
+      }
     }
 
     // MINIMAX - Fix 1+2: có tools + full conversation history
@@ -362,23 +390,29 @@ export async function POST(req: NextRequest) {
       if (!config) return NextResponse.json({ error: "Config error" }, { status: 500 });
       
       const fullMessages = convertToSimpleMessages(messages as UIMessage[], 20);
-      
-      const text = await callOpenAICompatibleWithTools(
-        "minimax",
-        apiKey,
-        persona.model,
-        config.systemPromptBase,
-        fullMessages,
-        persona.allowed_domains
-      );
-      
-      return NextResponse.json({
-        agent: { id: agentId, name: persona.name, provider, model: persona.model },
-        routing: routeResult
-          ? { taskTypes: routeResult.taskTypes, isMultiAgent: routeResult.isMultiAgent, totalAgents: routeResult.totalAgents }
-          : null,
-        response: text,
-      });
+
+      try {
+        const text = await callOpenAICompatibleWithTools(
+          "minimax",
+          apiKey,
+          persona.model,
+          config.systemPromptBase,
+          fullMessages,
+          persona.allowed_domains
+        );
+
+        return NextResponse.json({
+          agent: { id: agentId, name: persona.name, provider, model: persona.model },
+          routing: routeResult
+            ? { taskTypes: routeResult.taskTypes, isMultiAgent: routeResult.isMultiAgent, totalAgents: routeResult.totalAgents }
+            : null,
+          response: text,
+        });
+      } catch (err) {
+        // MiniMax lỗi (hết quota, API down...) -> fallback sang Gemini thay vì trả 500
+        console.warn("[orchestrator] MiniMax call failed, fallback to Gemini:", err);
+        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
+      }
     }
 
     return NextResponse.json({ error: `Unknown provider: ${provider}` }, { status: 500 });
@@ -399,7 +433,7 @@ async function handleGeminiFallback(
   agentId: string,
   messages: any[],
   conversationSummary: string
-): Promise<any> {
+): Promise<Response> {
   const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
   if (!geminiKey) {
     return NextResponse.json(
@@ -416,9 +450,9 @@ async function handleGeminiFallback(
   const result = streamText({
     model: google("gemini-1.5-flash-latest"),
     system: config.systemPromptBase,
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(toUIMessages(messages)),
     tools: getAllTools(),
   });
-  
+
   return result.toUIMessageStreamResponse();
 }

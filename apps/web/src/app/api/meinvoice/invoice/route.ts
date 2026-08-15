@@ -9,6 +9,7 @@ const DEFAULT_ID = "default";
 export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
+    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
     const body = await req.json();
     const { donHang, invSeries, invDate, refId, refIdDonHang, refIdKhachHang, nguoiTao } = body;
 

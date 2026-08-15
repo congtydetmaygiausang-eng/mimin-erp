@@ -28,12 +28,19 @@ type WorkflowRow = {
 type PhanCongRow = {
   id: string;
   maLenhCat?: string;
-  nguoiPhuTrach?: string;
+  // nguoiPhuTrach là object { loai, ma, ten, sdt? } (xem lib/data/cong-no.ts NguoiPhuTrach)
+  nguoiPhuTrach?: { ma?: string; ten?: string } | string;
   soLuongGiao?: number;
   ngayGiao?: string;
   ngayXongDuKien?: string;
   donGiaGiao?: number;
 };
+
+/** Lấy mã NV/đối tác từ nguoiPhuTrach (object {ma,ten} hoặc string cũ) */
+function maFromNguoiPhuTrach(v: { ma?: string; ten?: string } | string | undefined): string {
+  if (!v) return "";
+  return typeof v === "string" ? v : v.ma || "";
+}
 
 type DoiSoatRow = {
   id: string;
@@ -77,7 +84,7 @@ function phanCongToWorkflow(r: PhanCongRow): WorkflowRow | null {
   if (!r.id) return null;
   return {
     id: `PC-${r.id}`,
-    nguoiNhan: r.nguoiPhuTrach || "",
+    nguoiNhan: maFromNguoiPhuTrach(r.nguoiPhuTrach),
     ngayGiao: r.ngayGiao,
     ngayHoanThanh: r.ngayXongDuKien,
     soLuongGiao: r.soLuongGiao || 0,

@@ -142,7 +142,7 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
                   <div className="text-xs text-slate-500 mt-0.5">Ngày: {fmtDate(ngayDat)}</div>
                   <div className="text-xs">
                     <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold ${order.loaiDonHang === "ban-si" ? "bg-violet-100 text-violet-700" : order.loaiDonHang === "ban-san" ? "bg-amber-100 text-amber-700" : "bg-cyan-100 text-cyan-700"}`}>
-                      {LOAI_DON_HANG_LABELS[order.loaiDonHang]}{order.kenhBan ? ` · ${order.kenhBan}` : ""}
+                      {LOAI_DON_HANG_LABELS[order.loaiDonHang || order.loaiDon || "ban-le"]}{order.kenhBan ? ` · ${order.kenhBan}` : ""}
                     </span>
                   </div>
                 </div>
