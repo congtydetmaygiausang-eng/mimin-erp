@@ -27,6 +27,7 @@ export type Module =
   | "gia-cong-ngoai"
   | "bao-cao"
   | "ai-tinh-gia"
+  | "khach-hang-tiem-nang"
   | "realtime"
   | "cai-dat"
   | "trang-chu-gia-cong"
@@ -102,6 +103,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   "gia-cong-ngoai": "Gia công ngoài",
   "bao-cao": "Báo cáo",
   "ai-tinh-gia": "AI Tính Giá Vốn",
+  "khach-hang-tiem-nang": "Khách Hàng Tiềm Năng",
   "realtime": "Real-time Dashboard",
   "cai-dat": "Cài đặt",
   "trang-chu-gia-cong": "Trang chủ gia công",
@@ -147,6 +149,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "gia-cong-ngoai": "rcud",
     "bao-cao": "rcud",
     "ai-tinh-gia": "rcud",
+    "khach-hang-tiem-nang": "rcud",
     "realtime": "rcud",
     "cai-dat": "rcud",
     "trang-chu-gia-cong": "rcud",
@@ -187,6 +190,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "gia-cong-ngoai": "rcu",
     "bao-cao": "r",
     "ai-tinh-gia": "r",
+    "khach-hang-tiem-nang": "ru",
     "realtime": "r",
     "cai-dat": "",
     "trang-chu-gia-cong": "r",
@@ -414,6 +418,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "nha-cung-cap": "r",
     "gia-cong-ngoai": "",
     "bao-cao": "r",
+    "khach-hang-tiem-nang": "ru",
     "realtime": "",
     "cai-dat": "",
     "trang-chu-gia-cong": "",

@@ -95,10 +95,12 @@ export const MENU_ITEMS: MenuItem[] = [
   // === Báo cáo ===
   { href: "/bao-cao", label: "Báo cáo", iconName: "FileText", module: "bao-cao" },
   { href: "/ai-tinh-gia", label: "✨ AI Tính Giá Vốn", iconName: "Sparkles", module: "ai-tinh-gia" },
+  { href: "/khach-hang-tiem-nang", label: "✨ Khách Hàng Tiềm Năng", iconName: "Users", module: "khach-hang-tiem-nang" },
   { href: "/realtime", label: "Real-time Dashboard", iconName: "BarChart3", module: "realtime" },
   { href: "/audit-log", label: "Audit Log", iconName: "Activity", module: "cai-dat", allowedRoles: ["GIAM_DOC", "QUAN_TRI_HE_THONG", "KE_TOAN"] },
   { href: "/workflow", label: "Workflow Công đoạn", iconName: "Scissors", module: "lenh-cat" },
   { href: "/tong-hop-cong-doan", label: "Tổng hợp công đoạn", iconName: "Grid3x3", module: "bao-cao" },
+  { href: "/so-do-chien-luoc", label: "🗺️ Sơ đồ chiến lược", iconName: "Palette", module: "dashboard" },
 
   // === Kho + Sợi/Dệt ===
   { href: "/so-det-nhuom", label: "Sợi - Dệt - Nhuộm", iconName: "Factory", module: "kho-vai" },
