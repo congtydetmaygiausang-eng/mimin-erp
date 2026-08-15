@@ -92,6 +92,51 @@ export async function supabaseFetchAll<T = any>(
 }
 
 /**
+ * Fetch tất cả rows từ 1 bảng camelCase (KHÔNG convert key).
+ * Dùng cho các bảng sync tạo bằng cột camelCase có dấu ngoặc kép
+ * (khsx, qc_records, giao_hang, hoan_thien, gia_cong, doi_soat, kho_mobile...).
+ * Tránh lỗi round-trip acronym (maKHSX -> ma_khsx -> maKhsx) của helper convert.
+ */
+export async function supabaseFetchAllRaw<T = any>(
+  table: string,
+  orderBy: string = "created_at",
+  ascending: boolean = false
+): Promise<T[]> {
+  if (!checkSupabase()) return [];
+  const { data, error } = await supabase!
+    .from(table)
+    .select("*")
+    .order(orderBy, { ascending });
+  if (error) {
+    console.warn(`[Supabase] fetchAllRaw(${table}) error:`, error.message);
+    return [];
+  }
+  return (data || []) as T[];
+}
+
+/**
+ * Insert hoặc update 1 row vào bảng camelCase (KHÔNG convert key).
+ * Cặp với supabaseFetchAllRaw cho các bảng sync camelCase.
+ */
+export async function supabaseUpsertRaw<T extends { id: string }>(
+  table: string,
+  row: T,
+  onConflict: string = "id"
+): Promise<T | null> {
+  if (!checkSupabase()) return null;
+  const { data, error } = await supabase!
+    .from(table)
+    .upsert(row, { onConflict })
+    .select()
+    .single();
+  if (error) {
+    console.warn(`[Supabase] upsertRaw(${table}) error:`, error.message, error.details);
+    return null;
+  }
+  return (data as T) ?? null;
+}
+
+/**
  * Insert hoặc update 1 row
  * Tự động convert camelCase → snake_case để khớp với schema Supabase
  */

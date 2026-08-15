@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { KHO_VAI as KHO_VAI_DEFAULT, KHO_VAT_TU as KHO_VAT_TU_DEFAULT, type KhoVai } from "./real-data";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 
 // ============ TYPES ============
 export type LoaiKho = "vai" | "phu-lieu";
@@ -49,6 +49,25 @@ const Ctx = createContext<StoreContext | null>(null);
 
 const STORAGE_KEY = "mimin_kho_vai_v2";
 
+// Map 1 row Supabase (snake_case) -> GiaoDichKho (camelCase app model).
+// Không dùng supabaseFetchAll vì nó biến ma_vt -> maVt (sai hoa/thường so với maVT).
+function fromSupabaseRow(r: any): GiaoDichKho {
+  return {
+    id: String(r.id),
+    ngay: String(r.ngay || r.created_at || "").slice(0, 10),
+    loai: r.loai === "XUAT" ? "XUAT" : "NHAP",
+    maVT: r.ma_vt ?? r.maVT ?? "",
+    tenVT: r.ten_vt ?? r.tenVT ?? "",
+    soLuong: Number(r.so_luong ?? r.soLuong) || 0,
+    donVi: r.don_vi ?? r.donVi ?? "",
+    donGia: Number(r.don_gia ?? r.donGia) || 0,
+    thanhTien: Number(r.thanh_tien ?? r.thanhTien) || 0,
+    nguonNhap: r.nguon_nhap ?? r.nguonNhap ?? undefined,
+    nguoiThucHien: r.nguoi_thuc_hien ?? r.nguoiThucHien ?? "",
+    ghiChu: r.ghi_chu ?? r.ghiChu ?? undefined,
+  };
+}
+
 // Đã xoá GIAO_DICH_DEFAULT ngày 2026-08-03 (sep Sang muon bat dau nhap moi tu dau)
 
 
@@ -69,6 +88,41 @@ export function KhoProvider({ children }: { children: ReactNode }) {
       }
     } catch {}
     setHydrated(true);
+  }, []);
+
+  // Đọc lại 2 chiều từ Supabase (nguồn chính). Merge: ưu tiên bản ghi Supabase,
+  // giữ thêm các giao dịch chỉ có ở local (tạo offline, chưa đồng bộ).
+  useEffect(() => {
+    if (!isSupabaseEnabled || !supabase) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("giao_dich_kho")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) {
+          console.warn("[KhoStore] Supabase fetch error:", error.message);
+          return;
+        }
+        if (!mounted || !data) return;
+        const remote = data.map(fromSupabaseRow);
+        const remoteIds = new Set(remote.map((g) => g.id));
+        setGiaoDich((prev) => {
+          const localOnly = prev.filter((g) => !remoteIds.has(g.id));
+          const merged = [...remote, ...localOnly];
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      } catch (err) {
+        console.error("[KhoStore] Supabase fetch exception:", err);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Save

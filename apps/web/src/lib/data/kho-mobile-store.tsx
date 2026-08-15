@@ -14,7 +14,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
 import { KHO_VAI, KHO_VAT_TU } from "./real-data";
-import { supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type LoaiKho = "vai" | "phu-lieu" | "thanh-pham";
 export type LoaiPhieu = "nhap" | "xuat" | "kiem-ke";
@@ -240,6 +240,24 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
+  // Đọc lại 2 chiều từ Supabase (nguồn chính). Bảng camelCase → đọc/ghi không convert key.
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let mounted = true;
+    (async () => {
+      const remote = await supabaseFetchAllRaw<PhieuKho>("kho_mobile", "created_at", false);
+      if (!mounted || remote.length === 0) return;
+      const ids = new Set(remote.map((r) => r.id));
+      setPhieu((prev) => {
+        const localOnly = prev.filter((x) => !ids.has(x.id));
+        const merged = [...remote, ...localOnly];
+        saveData(merged);
+        return merged;
+      });
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   useEffect(() => {
     if (hydrated) saveData(phieu);
   }, [phieu, hydrated]);
@@ -297,7 +315,7 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
       applyTonDelta(phieuCu, -1);
     }
     if (isSupabaseEnabled && updated) {
-      supabaseUpsert("kho_mobile", updated as any).catch((err) =>
+      supabaseUpsertRaw("kho_mobile", updated as any).catch((err) =>
         console.error("[KhoMobileStore] Supabase upsert error:", err)
       );
     }
@@ -321,7 +339,7 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
     setPhieu((prev) => [...prev, newPhieu]);
     logWorkflow(user, "create", `Tạo phiếu ${id}`, id);
     if (isSupabaseEnabled) {
-      supabaseUpsert("kho_mobile", newPhieu as any).catch((err) =>
+      supabaseUpsertRaw("kho_mobile", newPhieu as any).catch((err) =>
         console.error("[KhoMobileStore] Supabase upsert error:", err)
       );
     }
