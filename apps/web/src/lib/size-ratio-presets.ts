@@ -54,15 +54,6 @@ export const SIZE_RATIO_5SIZE: SizeRatioPreset[] = [
     riSo: 5,
     ghiChu: "Phân bổ đều 5 size",
   },
-  {
-    id: "5s-2-2-2-2-2-b",
-    label: "M:L:XL:2XL:3XL = 2:2:2:2:2 (Ri10 - ưu tiên SL lớn)",
-    value: "2:2:2:2:2",
-    sizes: ["M", "L", "XL", "2XL", "3XL"],
-    ratios: [2, 2, 2, 2, 2],
-    riSo: 10,
-    ghiChu: "Ưu tiên số lượng size lớn (2XL/3XL)",
-  },
 ];
 
 /**
