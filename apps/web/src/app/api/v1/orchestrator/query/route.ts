@@ -39,7 +39,7 @@ Giọng văn: chuyên nghiệp, ngắn gọn, thân thiện, phong cách "anh-em
 // ============================================
 // CONVERSATION SUMMARY (Fix 5: summarize sau 10 messages)
 // ============================================
-function buildConversationSummary(messages: UIMessage[]): string {
+function buildConversationSummary(messages: any[]): string {
   if (messages.length <= 10) return "";
   
   // Lấy 5 message đầu làm context lịch sử
@@ -235,7 +235,7 @@ async function executeToolByName(toolName: string, args: Record<string, any>): P
 // CONVERT UIMessages → simple messages array (Fix 2: full history)
 // ============================================
 function convertToSimpleMessages(
-  messages: UIMessage[],
+  messages: any[],
   maxHistory = 20
 ): Array<{ role: string; content: string }> {
   // Giữ tối đa maxHistory messages gần nhất để tránh quá dài
@@ -397,9 +397,9 @@ export async function POST(req: NextRequest) {
 // ============================================
 async function handleGeminiFallback(
   agentId: string,
-  messages: UIMessage[],
+  messages: any[],
   conversationSummary: string
-): Promise<NextResponse> {
+): Promise<any> {
   const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
   if (!geminiKey) {
     return NextResponse.json(

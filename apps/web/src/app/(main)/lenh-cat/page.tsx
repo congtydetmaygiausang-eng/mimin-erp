@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Scissors } from "lucide-react";
 import { toast } from "sonner";
 import { LenhCatModal } from "@/components/LenhCatModal";
@@ -22,6 +23,7 @@ const DEFAULT_GIA_CONG = [
 ];
 
 export default function LenhCatPage() {
+  const router = useRouter();
   const { dsLenhCat, xoaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi, dsMauCongDoan, dsMauChiPhi, xoaMauCongDoan, xoaMauChiPhi, loading } = useLenhCat();
 
   const [showTaoMauCD, setShowTaoMauCD] = useState(false);
@@ -65,7 +67,7 @@ export default function LenhCatPage() {
 
   // Handlers
   const handleEdit = (id: string) => { setEditId(id); setShowModal(true); };
-  const handleCreate = () => { setEditId(null); setShowModal(true); };
+  const handleCreate = () => { router.push("/lenh-cat/tao-moi"); };
   const handleDelete = (id: string) => {
     if (confirm(`Xoá ${id}? Hành động này không thể hoàn tác.`)) {
       xoaLenhCat(id, (typeof window !== 'undefined' && (window as any).__currentUser) || null as any);

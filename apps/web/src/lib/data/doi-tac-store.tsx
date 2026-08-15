@@ -5,7 +5,7 @@ import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/l
 import { DOI_TAC_GIA_CONG, type DoiTacGiaCong } from "@/lib/doi-tac-gia-cong";
 
 export type DoiTacDBModel = {
-  id?: string;
+  id: string;
   ma_ncc: string;
   ten_ncc: string;
   loai: string;
@@ -23,6 +23,7 @@ export type DoiTacDBModel = {
 
 function mapToDB(ui: DoiTacGiaCong): DoiTacDBModel {
   return {
+    id: ui.ma,
     ma_ncc: ui.ma,
     ten_ncc: ui.tenDonVi,
     loai: "doi_tac_gia_cong",

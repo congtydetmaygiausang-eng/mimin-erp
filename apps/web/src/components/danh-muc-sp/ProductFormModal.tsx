@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
-import { type LoaiSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
-import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import { type SanPham } from "@/lib/data/danh-muc-sp-store";
+import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { type SizeRatioPreset, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
 interface ProductFormModalProps {

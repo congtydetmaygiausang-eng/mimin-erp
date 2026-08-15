@@ -156,7 +156,7 @@ export function saveInventory(inv: Record<string, KhoVai>) {
         don_gia: v.donGia || 0,
         loai: "vai",
       };
-      await supabase.from("kho").upsert(payload, { onConflict: "sku" });
+      await supabase!.from("kho").upsert(payload, { onConflict: "sku" });
     })).catch(console.error);
   }
 }
@@ -441,7 +441,7 @@ export function xuatKhoChoLenhCat(
     dsMau: Array<{ maVai: string; dinhMuc: number; slDuKien: number; haoHut?: number; maVaiQuan?: string; dinhMucQuan?: number }>;
     dsPhuLieu: Array<{ maPL: string; tenPL: string; soLuong: number; donGia: number; dvt: string }>;
   },
-  user: { name?: string; email?: string }
+  user: any
 ): KetQuaXuatKho[] {
   const results: KetQuaXuatKho[] = [];
   const ngay = new Date().toISOString().slice(0, 10);

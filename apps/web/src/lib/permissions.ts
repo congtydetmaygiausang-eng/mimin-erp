@@ -36,6 +36,7 @@ export type Module =
   | "danh-muc-sp"
   // Modules gia cong mobile (cho NCC + cong nhan)
   | "cong-viec-gia-cong"
+  | "ban-giao-gia-cong"
   | "san-luong-gia-cong"
   | "tien-cong-gia-cong"
   // Modules chi tiết sản xuất
@@ -464,7 +465,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
 const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v2";
 
 /** Load matrix hiệu lực: ưu tiên localStorage (admin tùy chỉnh), fallback PERMISSIONS mặc định */
-export function getEffectivePermissions(): Record<Role, Record<Module, string>> {
+export function getEffectivePermissions(): Record<Role, Partial<Record<Module, string>>> {
   if (typeof window === "undefined") return PERMISSIONS;
   try {
     const raw = localStorage.getItem(CUSTOM_MATRIX_KEY);
@@ -484,7 +485,7 @@ export function getEffectivePermissions(): Record<Role, Record<Module, string>> 
 }
 
 /** Lưu matrix tùy chỉnh vào localStorage */
-export function saveCustomMatrix(matrix: Record<Role, Record<Module, string>>): void {
+export function saveCustomMatrix(matrix: Record<Role, Partial<Record<Module, string>>>): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(CUSTOM_MATRIX_KEY, JSON.stringify(matrix));
@@ -527,7 +528,7 @@ export function getAccessibleModules(role: Role | string | undefined): Module[] 
   return (Object.keys(r) as Module[]).filter((m) => can(role, m, "view"));
 }
 
-export function getFullMatrix(): Record<Role, Record<Module, string>> {
+export function getFullMatrix(): Record<Role, Partial<Record<Module, string>>> {
   return getEffectivePermissions();
 }
 
