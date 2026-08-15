@@ -82,6 +82,9 @@ export type LenhCatPhuLieu = {
   dvt: string;
   // Vật tư thuộc Áo hay Quần (hàng Bộ) - không set = dùng chung
   apDungCho?: "ao" | "quan";
+  // Index vào dsMau - vật tư này gắn với màu vải nào (để hiện ngay trong card màu đó
+  // cho bên gia công biết đúng màu). Không set = dùng chung mọi màu (dữ liệu cũ).
+  mauIdx?: number;
 };
 
 // P0 - 2026-08-07 - Tach ro NV noi bo vs Xuong ngoai (FK + tracking thanh toan)
