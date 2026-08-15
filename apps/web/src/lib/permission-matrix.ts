@@ -87,14 +87,14 @@ export type Module =
   | "kho-vai" | "kho-phu-lieu" | "kho-thanh-pham" | "don-hang"
   | "cong-no-cong-doan" | "kiem-tra-chat-luong" | "to-may" | "hoan-thien"
   | "giao-hang" | "cham-cong" | "bang-luong" | "nha-cung-cap"
-  | "gia-cong-ngoai" | "bao-cao" | "realtime" | "cai-dat";
+  | "gia-cong-ngoai" | "bao-cao" | "ai-tinh-gia" | "realtime" | "cai-dat";
 
 export const ALL_MODULES: Module[] = [
   "dashboard", "lenh-cat", "khach-hang", "ke-hoach-sx", "nhan-su",
   "kho-vai", "kho-phu-lieu", "kho-thanh-pham", "don-hang",
   "cong-no-cong-doan", "kiem-tra-chat-luong", "to-may", "hoan-thien",
   "giao-hang", "cham-cong", "bang-luong", "nha-cung-cap",
-  "gia-cong-ngoai", "bao-cao", "realtime", "cai-dat",
+  "gia-cong-ngoai", "bao-cao", "ai-tinh-gia", "realtime", "cai-dat",
 ];
 
 // ============ LEGACY ROLE MAPPING ============
@@ -186,6 +186,7 @@ const PERMISSIONS: Record<VaiTroChuan, Partial<Record<Module, PermSet>>> = {
     "nha-cung-cap": all(...ALL_ACTIONS),
     "gia-cong-ngoai": all(...ALL_ACTIONS),
     "bao-cao": all(...ALL_ACTIONS),
+    "ai-tinh-gia": all(...ALL_ACTIONS),
     realtime: all(...ALL_ACTIONS),
     "cai-dat": all(...ALL_ACTIONS),
   },
@@ -193,6 +194,7 @@ const PERMISSIONS: Record<VaiTroChuan, Partial<Record<Module, PermSet>>> = {
     dashboard: all("VIEW", "UPDATE"),
     "nhan-su": { ...CRUD, ASSIGN: true },
     "cai-dat": CRUD,
+    "ai-tinh-gia": all("VIEW"),
     audit_log: all("VIEW"),
   } as any,
   DIEU_PHOI_SX: {
@@ -214,6 +216,7 @@ const PERMISSIONS: Record<VaiTroChuan, Partial<Record<Module, PermSet>>> = {
     "nha-cung-cap": all("VIEW"),
     "gia-cong-ngoai": all("VIEW"),
     "bao-cao": all("VIEW"),
+    "ai-tinh-gia": all("VIEW"),
     realtime: all("VIEW"),
   },
   KE_TOAN: {
@@ -236,6 +239,7 @@ const PERMISSIONS: Record<VaiTroChuan, Partial<Record<Module, PermSet>>> = {
     "nha-cung-cap": all("VIEW", "CREATE", "UPDATE"),
     "gia-cong-ngoai": all("VIEW", "UPDATE"),
     "bao-cao": all("VIEW"),
+    "ai-tinh-gia": all("VIEW"),
     realtime: all("VIEW"),
   },
   // ============ KHO ============
