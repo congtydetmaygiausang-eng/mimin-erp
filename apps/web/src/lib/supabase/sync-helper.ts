@@ -184,8 +184,22 @@ export async function supabaseDelete(table: string, id: string): Promise<boolean
 export function useSupabaseSync<T extends { id: string }>(
   localStorageKey: string,
   table: string,
-  initialData: T[] = []
+  initialData: T[] = [],
+  options?: {
+    /**
+     * Map thủ công 1 row app → row snake_case gửi lên Supabase.
+     * Dùng khi camelToSnake không đủ: bảng có cột bắt buộc không nằm thẳng
+     * trong model app (VD phan_cong.nguoi_ma NOT NULL phải rút từ
+     * nguoiPhuTrach.ma). Trả về object snake_case hoàn chỉnh, kể cả `id`.
+     */
+    mapOut?: (row: T) => Record<string, any> & { id: string };
+  }
 ) {
+  const mapOut = options?.mapOut;
+  const upsertRow = useCallback(
+    (row: T) => (mapOut ? supabaseUpsertRaw(table, mapOut(row)) : supabaseUpsert(table, row)),
+    [table, mapOut]
+  );
   const [data, setDataState] = useState<T[]>(initialData);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<"local" | "supabase" | "merged">("local");
@@ -229,7 +243,7 @@ export function useSupabaseSync<T extends { id: string }>(
               if (local.length > 0) {
                 console.log(`[useSupabaseSync] ${table}: pushing ${local.length} rows to Supabase`);
                 for (const row of local) {
-                  await supabaseUpsert(table, row);
+                  await upsertRow(row);
                 }
                 setSource("merged");
               }
@@ -255,7 +269,7 @@ export function useSupabaseSync<T extends { id: string }>(
       }
     })();
     return () => { cancelled = true; };
-  }, [table, localStorageKey, loadLocal, saveLocal]);
+  }, [table, localStorageKey, loadLocal, saveLocal, upsertRow]);
 
   // Subscribe realtime updates từ Supabase
   useEffect(() => {
@@ -300,13 +314,13 @@ export function useSupabaseSync<T extends { id: string }>(
         const newIds = next.map((r) => r.id);
         const deletedIds = oldIds.filter((id) => !newIds.includes(id));
         Promise.all([
-          ...next.map((row) => supabaseUpsert(table, row)),
+          ...next.map((row) => upsertRow(row)),
           ...deletedIds.map((id) => supabaseDelete(table, id)),
         ]).catch((err) => console.error(`[Sync] ${table} setData error:`, err));
       }
       return next;
     });
-  }, [table, saveLocal]);
+  }, [table, saveLocal, upsertRow]);
 
   return { data, setData, loading, error, source };
 }

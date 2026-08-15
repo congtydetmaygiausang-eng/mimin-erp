@@ -3,7 +3,20 @@
 import { createContext, useContext, useCallback, ReactNode, useEffect } from "react";
 import { PHAN_CONG as PHAN_CONG_DEFAULT, type PhanCongCongDoan, type CongDoanKey, type NguoiPhuTrach } from "./cong-no";
 import { layDanhSachNguoiPT } from "./cong-no";
-import { useSupabaseSync } from "@/lib/supabase/client";
+import { useSupabaseSync, camelToSnake } from "@/lib/supabase/client";
+
+// Bảng phan_cong trên Supabase có 2 cột phẳng `nguoi_ma` (NOT NULL) + `nguoi_ten`
+// nằm ngoài model app (app chỉ có object `nguoiPhuTrach`). camelToSnake không tự
+// sinh được 2 cột này -> mọi upsert đều fail NOT NULL và chỉ báo ở console.
+// Rút thẳng từ nguoiPhuTrach khi ghi lên.
+function phanCongToRow(pc: PhanCongCongDoan) {
+  return {
+    ...camelToSnake(pc),
+    id: pc.id,
+    nguoi_ma: pc.nguoiPhuTrach?.ma || "",
+    nguoi_ten: pc.nguoiPhuTrach?.ten || "",
+  };
+}
 
 // ============ STORE CONTEXT ============
 type StoreContext = {
@@ -22,7 +35,12 @@ const Ctx = createContext<StoreContext | null>(null);
 const STORAGE_KEY = "mimin_phan_cong_v2";
 
 export function PhanCongProvider({ children }: { children: ReactNode }) {
-  const { data: phanCong, setData: setPhanCong } = useSupabaseSync<PhanCongCongDoan>(STORAGE_KEY, "phan_cong");
+  const { data: phanCong, setData: setPhanCong } = useSupabaseSync<PhanCongCongDoan>(
+    STORAGE_KEY,
+    "phan_cong",
+    [],
+    { mapOut: phanCongToRow }
+  );
 
   // Load default data if empty
   useEffect(() => {

@@ -389,7 +389,14 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
               ngayTao: item.ngay_tao,
               nguoiTao: item.nguoi_tao
             }));
-            setDsLenhCat(mapped as LenhCat[]);
+            // Merge thay vì ghi đè: ưu tiên bản ghi Supabase (nguồn sự thật),
+            // nhưng GIỮ lại lệnh cắt chỉ có ở local (tạo lúc mất mạng) - trước
+            // đây setDsLenhCat(mapped) thay sạch state nên các lệnh này bị xoá.
+            const remoteIds = new Set(mapped.map((r) => r.id));
+            setDsLenhCat((prev) => [
+              ...(mapped as LenhCat[]),
+              ...prev.filter((x) => !remoteIds.has(x.id)),
+            ]);
           }
         }
       } catch (err) {
