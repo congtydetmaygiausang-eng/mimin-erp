@@ -19,7 +19,6 @@ import { EntityCard, EntityCardGrid } from "@/components/EntityCard";
 import { toast } from "sonner";
 
 import { useDoiTac } from "@/lib/data/doi-tac-store";
-import { formatVNDShort } from "@/lib/data/real-data";
 
 const LOAI_TABS: { key: LoaiDoiTac | "ALL"; label: string; icon: any; color: string }[] = [
   { key: "ALL", label: "Tất cả", icon: Users, color: "bg-slate-500" },
