@@ -5,7 +5,7 @@ import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/l
 import { DOI_TAC_GIA_CONG, type DoiTacGiaCong } from "@/lib/doi-tac-gia-cong";
 
 export type DoiTacDBModel = {
-  id?: string;
+  id: string;
   ma_ncc: string;
   ten_ncc: string;
   loai: string;
@@ -23,6 +23,7 @@ export type DoiTacDBModel = {
 
 function mapToDB(ui: DoiTacGiaCong): DoiTacDBModel {
   return {
+    id: ui.ma,
     ma_ncc: ui.ma,
     ten_ncc: ui.tenDonVi,
     loai: "doi_tac_gia_cong",
@@ -124,7 +125,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
             setList(DOI_TAC_GIA_CONG);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(DOI_TAC_GIA_CONG));
             Promise.all(DOI_TAC_GIA_CONG.map(dt => 
-              supabaseUpsert("nha_cung_cap", mapToDB(dt))
+              supabaseUpsert("nha_cung_cap", mapToDB(dt), "ma_ncc")
             )).catch(() => {});
           }
         }
@@ -146,7 +147,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("nha_cung_cap", mapToDB(dt));
+        await supabaseUpsert("nha_cung_cap", mapToDB(dt), "ma_ncc");
         return true;
       } catch (err) { return false; }
     }
@@ -161,7 +162,7 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
     });
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("nha_cung_cap", mapToDB(dt));
+        await supabaseUpsert("nha_cung_cap", mapToDB(dt), "ma_ncc");
         return true;
       } catch (err) { return false; }
     }

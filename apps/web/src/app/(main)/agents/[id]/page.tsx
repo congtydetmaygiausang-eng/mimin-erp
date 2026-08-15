@@ -17,6 +17,17 @@ import {
 import { AGENT_PERSONAS, AGENT_IDS_V6 } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
 
+// AgentPersona (agent-personas.ts) khong co color/icon rieng cho 6 agent V6 -
+// map cuc bo o day de header hien thi dung, khong dung mac dinh chung chung.
+const V6_STYLE: Record<string, { color: string; icon: string }> = {
+  mavis: { color: "from-violet-500 to-purple-600", icon: "🧭" },
+  minh: { color: "from-sky-500 to-cyan-600", icon: "✂️" },
+  lan: { color: "from-emerald-500 to-teal-600", icon: "📦" },
+  ha: { color: "from-amber-500 to-orange-600", icon: "💰" },
+  vy: { color: "from-pink-500 to-rose-600", icon: "💬" },
+  "mimin-help": { color: "from-slate-500 to-slate-600", icon: "❓" },
+};
+
 // ============================================
 // /agents/[id] - Agent detail page
 // Hien thi chi tiet 1 agent V6 (mavis, minh, lan, ha, vy, mimin-help)
@@ -68,13 +79,15 @@ export default function AgentDetailPage() {
   }
 
   // Fallback visual neu agentId khong co trong persona
-  const persona = AGENT_PERSONAS[agentId] || {
-    id: agentId,
-    name: agentId,
-    role: "Unknown agent",
-    description: "Khong tim thay thong tin agent nay",
-    color: "from-slate-500 to-slate-600",
-    icon: "❓",
+  const basePersona = AGENT_PERSONAS[agentId];
+  const style = V6_STYLE[agentId] || { color: "from-slate-500 to-slate-600", icon: "❓" };
+  const persona = {
+    name: basePersona?.name || agentId,
+    role: basePersona?.role_title || "Unknown agent",
+    description: basePersona?.capabilities?.join(" · ") || "Khong tim thay thong tin agent nay",
+    color: style.color,
+    icon: style.icon,
+    capabilities: basePersona?.capabilities || [],
   };
 
   const [summary, setSummary] = useState<AgentSummary | undefined>(undefined);

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { type LoaiSP, type MauVai } from "./lenh-cat-store";
+export type { LoaiSP };
 import { useSupabaseSync, supabaseUpsert, supabaseDelete } from "@/lib/supabase/client";
 
 // ============================================

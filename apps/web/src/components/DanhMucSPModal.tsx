@@ -161,8 +161,8 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
         <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6">
           {/* BẢNG SIZE - Ở TRÊN CÙNG cho dễ thấy */}
           <div className="mb-2">
-             <BangSizeInput 
-                ratios={bangSize.ratios}
+             <BangSizeInput
+                ratios={bangSize.ratios as [number, number, number, number, number]}
                 onChange={(n) => {
                    const riSo = n.reduce((a, b) => a + b, 0);
                    setBangSize({ ...bangSize, ratios: n, riSo });

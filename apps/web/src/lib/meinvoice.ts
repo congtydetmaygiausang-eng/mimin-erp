@@ -439,8 +439,8 @@ export function buildInvoiceFromDonHang(
 
   return {
     RefID: refId,
-    InvSeries,
-    InvDate,
+    InvSeries: invSeries,
+    InvDate: invDate,
     CurrencyCode: "VND",
     ExchangeRate: 1,
     PaymentMethodName: "TM/CK",

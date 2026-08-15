@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
   Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-  Wand2, CheckCircle2, UploadCloud, Download, Eye,
+  Wand2, CheckCircle2, UploadCloud, Download, Eye, Printer, Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -35,6 +35,7 @@ import {
 } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
+import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 
 
 const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string) => {
@@ -163,7 +164,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setPdfSoDoPhoi(editing.pdfSoDoPhoi || "");
       setKhoSoDoPhoi(editing.khoSoDoPhoi || "");
       setDaiSoDoPhoi(editing.daiSoDoPhoi || "");
+      // FIX: 2 dòng dưới trước đây bị thiếu -> mở lại lệnh cắt để sửa sẽ mất ghi chú sơ đồ đã lưu
+      setGhiChuSoDoChinh(editing.ghiChuSoDoChinh || "");
+      setGhiChuSoDoPhoi(editing.ghiChuSoDoPhoi || "");
       setDaCoSoDo(editing.daCoSoDo || false);
+      setDaiSoDoAo(editing.daiSoDoAo || "");
+      setSoDoAo(editing.soDoAo || "");
+      setDaiSoDoQuan(editing.daiSoDoQuan || "");
+      setSoDoQuan(editing.soDoQuan || "");
+      setHinhMauInTheu(editing.hinhMauInTheu || "");
+      setFileGocInTheu(editing.fileGocInTheu || "");
+      setGhiChuInTheu(editing.ghiChuInTheu || "");
     }
   }, [editing]);
 
@@ -190,6 +201,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [productSearch, setProductSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Sơ đồ áo/quần (PLT) - dùng để tự tính định mức kg/SP
+  const [daiSoDoAo, setDaiSoDoAo] = useState("");
+  const [soDoAo, setSoDoAo] = useState("");
+  const [daiSoDoQuan, setDaiSoDoQuan] = useState("");
+  const [soDoQuan, setSoDoQuan] = useState("");
+  const fileAoRef = useRef<HTMLInputElement>(null);
+  const fileQuanRef = useRef<HTMLInputElement>(null);
+
   // Sơ đồ cắt
   const [soDoChinh, setSoDoChinh] = useState("");
   const [pdfSoDoChinh, setPdfSoDoChinh] = useState("");
@@ -207,7 +226,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const filePhoiRef = useRef<HTMLInputElement>(null);
   const filePdfPhoiRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi" | "pdf-chinh" | "pdf-phoi") => {
+  // Tài liệu In/Thêu (mẫu)
+  const [hinhMauInTheu, setHinhMauInTheu] = useState("");
+  const [fileGocInTheu, setFileGocInTheu] = useState("");
+  const [ghiChuInTheu, setGhiChuInTheu] = useState("");
+  const fileInTheuAnhRef = useRef<HTMLInputElement>(null);
+  const fileInTheuFileRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi" | "pdf-chinh" | "pdf-phoi" | "ao" | "quan" | "in-theu-anh" | "in-theu-file") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -220,7 +246,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     reader.onload = () => {
       const dataUrl = reader.result as string;
       const fileData = JSON.stringify({ name: file.name, type: file.type, url: dataUrl });
-      
+
       if (type === "chinh") {
         setSoDoChinh(fileData);
         setDaCoSoDo(true);
@@ -231,6 +257,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         setPdfSoDoChinh(fileData);
       } else if (type === "pdf-phoi") {
         setPdfSoDoPhoi(fileData);
+      } else if (type === "ao") {
+        setSoDoAo(fileData);
+      } else if (type === "quan") {
+        setSoDoQuan(fileData);
+      } else if (type === "in-theu-anh") {
+        setHinhMauInTheu(fileData);
+      } else if (type === "in-theu-file") {
+        setFileGocInTheu(fileData);
       }
       toast.success("Đã tải lên " + file.name);
     };
@@ -342,17 +376,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
         const totalRatio = ratioParts.reduce((a, b) => a + b, 0);
         const baseQty = Math.floor(mau.slDuKien / totalRatio);
-        
-        let newPhanBo = [];
-        let currentSum = 0;
-        
-        for (let i = 0; i < ratioParts.length - 1; i++) {
-          const qty = baseQty * ratioParts[i];
-          newPhanBo.push({ size: sizes[i], sl: qty });
-          currentSum += qty;
-        }
-        newPhanBo.push({ size: sizes[sizes.length - 1], sl: mau.slDuKien - currentSum });
-        
+
+        // Chia đúng theo tỉ lệ cho MỌI size (không dồn phần lẻ vào size cuối làm phá tỉ lệ).
+        // Nếu slDuKien không phải bội số của tổng tỉ lệ, phần lẻ hiển thị cảnh báo + gợi ý
+        // số gần nhất (xem soLuongGoiY bên dưới) thay vì tự ý phá tỉ lệ.
+        const newPhanBo = ratioParts.map((r, i) => ({ size: sizes[i], sl: baseQty * r }));
+
         // Kiểm tra xem phanBoSize có thay đổi không (để tránh infinite loop)
         const isSame = mau.phanBoSize && mau.phanBoSize.length === newPhanBo.length && mau.phanBoSize.every((p, idx) => p.sl === newPhanBo[idx].sl);
         if (!isSame) changed = true;
@@ -363,6 +392,58 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       return changed ? next : prev;
     });
   }, [tiLeSize, dsMau]);
+
+  // ============ Định mức áo/quần tự tính từ sơ đồ (PLT) ============
+  // Công thức (a Sang chốt): Định mức (kg/SP) = Chiều dài sơ đồ (cm) ÷ 190 (cm/kg) ÷ Tổng SP trong 1 sơ đồ
+  // Tổng SP trong 1 sơ đồ = tổng các phần của tỉ lệ size (VD 1:2:2:1 -> 6 SP/sơ đồ)
+  const soSpTrongSoDo = useMemo(() => {
+    const preset = SIZE_RATIO_PRESETS.find(p => p.value === tiLeSize);
+    if (preset) return preset.ratios.reduce((a, b) => a + b, 0);
+    const parts = tiLeSize.split(":").map(Number).filter((n) => Number.isFinite(n) && n >= 0);
+    return parts.length > 0 ? parts.reduce((a, b) => a + b, 0) : 0;
+  }, [tiLeSize]);
+
+  const dinhMucAoTuDong = useMemo(() => {
+    const dai = parseFloat(daiSoDoAo);
+    if (!dai || !soSpTrongSoDo) return 0;
+    return dai / 190 / soSpTrongSoDo;
+  }, [daiSoDoAo, soSpTrongSoDo]);
+
+  const dinhMucQuanTuDong = useMemo(() => {
+    const dai = parseFloat(daiSoDoQuan);
+    if (!dai || !soSpTrongSoDo) return 0;
+    return dai / 190 / soSpTrongSoDo;
+  }, [daiSoDoQuan, soSpTrongSoDo]);
+
+  // Tự áp định mức áo tính từ sơ đồ vào tất cả các màu (mỗi màu vẫn sửa tay được sau đó)
+  useEffect(() => {
+    if (!dinhMucAoTuDong) return;
+    const rounded = Math.round(dinhMucAoTuDong * 10000) / 10000;
+    setDsMau(prev => {
+      let changed = false;
+      const next = prev.map(mau => {
+        if (mau.dinhMuc === rounded) return mau;
+        changed = true;
+        return { ...mau, dinhMuc: rounded };
+      });
+      return changed ? next : prev;
+    });
+  }, [dinhMucAoTuDong]);
+
+  // Tự áp định mức quần tính từ sơ đồ vào tất cả các màu (Bộ)
+  useEffect(() => {
+    if (!dinhMucQuanTuDong) return;
+    const rounded = Math.round(dinhMucQuanTuDong * 10000) / 10000;
+    setDsMau(prev => {
+      let changed = false;
+      const next = prev.map(mau => {
+        if (mau.dinhMucQuan === rounded) return mau;
+        changed = true;
+        return { ...mau, dinhMucQuan: rounded };
+      });
+      return changed ? next : prev;
+    });
+  }, [dinhMucQuanTuDong]);
 
   // Adjust soMau length
   useEffect(() => {
@@ -435,6 +516,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.ghiChuSoDoChinh) setGhiChuSoDoChinh(parsed.ghiChuSoDoChinh);
           if (parsed.ghiChuSoDoPhoi) setGhiChuSoDoPhoi(parsed.ghiChuSoDoPhoi);
           if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
+          if (parsed.daiSoDoAo) setDaiSoDoAo(parsed.daiSoDoAo);
+          if (parsed.soDoAo) setSoDoAo(parsed.soDoAo);
+          if (parsed.daiSoDoQuan) setDaiSoDoQuan(parsed.daiSoDoQuan);
+          if (parsed.soDoQuan) setSoDoQuan(parsed.soDoQuan);
+          if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
+          if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
+          if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
         }
       } catch (e) {
         console.error("Lỗi tải nháp", e);
@@ -449,11 +537,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
         ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
+        daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan,
         soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh,
-        soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo
+        soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo,
+        hinhMauInTheu, fileGocInTheu, ghiChuInTheu,
       }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, hinhMauInTheu, fileGocInTheu, ghiChuInTheu, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -503,7 +593,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     setCanhBaoTonKho(alerts);
   }, [dsMau, dsPhuLieu]);
 
-  const handleColorImageUpload = (idx: number) => {
+  // Tải ảnh mẫu cho 1 màu. Hàng Bộ có 2 ảnh riêng: ÁO (img) và QUẦN (imgQuan).
+  const handleColorImageUpload = (idx: number, phan: "ao" | "quan" = "ao") => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -512,9 +603,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       if (file) {
         const reader = new FileReader();
         reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
           setDsMau(prev => {
             const next = [...prev];
-            next[idx] = { ...next[idx], img: ev.target?.result as string };
+            next[idx] = phan === "quan"
+              ? { ...next[idx], imgQuan: dataUrl }
+              : { ...next[idx], img: dataUrl };
             return next;
           });
         };
@@ -548,10 +642,35 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   };
 
 
+  // Checklist bắt buộc trước khi "Hoàn tất lệnh" (NHÁP -> ĐÃ TẠO LỆNH).
+  // Trả về danh sách các mục còn thiếu (rỗng = đủ điều kiện).
+  const validateLenhCatDayDu = (): string[] => {
+    const thieu: string[] = [];
+    if (!maSP || !tenSP) thieu.push("Sản phẩm (Mã SP/Tên SP - chọn từ Danh mục sản phẩm)");
+    if (!dsMau || dsMau.length === 0 || dsMau.every(m => !m.ten && !m.maSKU)) thieu.push("Màu (chưa nhập màu nào)");
+    if (!soSpTrongSoDo || soSpTrongSoDo <= 0) thieu.push("Tỉ lệ size");
+    if (!daiSoDoAo || (isBo && !daiSoDoQuan)) thieu.push(`Sơ đồ ${!daiSoDoAo ? "áo" : "quần"} (chưa nhập chiều dài sơ đồ)`);
+    if (dsMau.some(m => !m.dinhMuc || m.dinhMuc <= 0) || (isBo && dsMau.some(m => !m.dinhMucQuan || m.dinhMucQuan <= 0))) thieu.push("Định mức (còn màu chưa có định mức áo/quần)");
+    if (dsMau.some(m => !m.maVai) || (isBo && dsMau.some(m => !m.maVaiQuan))) thieu.push("Vải (còn màu chưa chọn mã vải áo/quần)");
+    if (!dsPhuLieu || dsPhuLieu.length === 0) thieu.push("Vật tư/phụ liệu (chưa thêm khoản mục nào)");
+    const tongSLMau = dsMau.reduce((s, m) => s + (m.slDuKien || 0), 0);
+    if (!tongSL || dsMau.some(m => !m.slDuKien || m.slDuKien <= 0) || tongSLMau !== Number(tongSL)) thieu.push(`Số lượng (tổng SL từng màu = ${tongSLMau}, chưa khớp Tổng SL dự kiến = ${tongSL || 0})`);
+    if (!phuTrachSX && !phuTrachCat) thieu.push("Người phụ trách sản xuất");
+    return thieu;
+  };
+
   const handleSave = (status: TrangThaiLenhCat) => {
     if (!maSP || !tenSP || !tongSL) {
       toast.error("Vui lòng điền đầy đủ Mã SP, Tên SP và Tổng SL!");
       return;
+    }
+
+    if (status === "DaTao") {
+      const thieu = validateLenhCatDayDu();
+      if (thieu.length > 0) {
+        toast.error(`Chưa đủ điều kiện hoàn tất lệnh, còn thiếu:\n• ${thieu.join("\n• ")}`);
+        return;
+      }
     }
 
     const cogsData = {
@@ -588,6 +707,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ghiChuKyThuat,
         trangThai: status,
         ngayTao: ngayBatDau,
+        daiSoDoAo,
+        soDoAo,
+        daiSoDoQuan,
+        soDoQuan,
         soDoChinh,
         pdfSoDoChinh,
         khoSoDoChinh,
@@ -599,8 +722,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ghiChuSoDoChinh,
         ghiChuSoDoPhoi,
         daCoSoDo,
+        hinhMauInTheu,
+        fileGocInTheu,
+        ghiChuInTheu,
       }, user || getFallbackUser());
-      
+
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
     } else {
       const newId = `LC-${new Date().getFullYear()}-${String(dsLenhCat.length + 1).padStart(4, "0")}`;
@@ -628,6 +754,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         trangThai: status,
         phienBanDinhMuc: 1,
         ngayTao: ngayBatDau,
+        daiSoDoAo,
+        soDoAo,
+        daiSoDoQuan,
+        soDoQuan,
         soDoChinh,
         pdfSoDoChinh,
         khoSoDoChinh,
@@ -639,6 +769,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ghiChuSoDoChinh,
         ghiChuSoDoPhoi,
         daCoSoDo,
+        hinhMauInTheu,
+        fileGocInTheu,
+        ghiChuInTheu,
         nguoiTao: user?.name || "Nguyễn Thị Ngọc Giàu"
       }, user || getFallbackUser());
 
@@ -655,6 +788,95 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   
   let tongTienVai = 0;
   const isBo = loaiSP?.toLowerCase().includes("bo");
+
+  // ============ IN PHIẾU GIA CÔNG (không hiển thị giá) ============
+  const handleInPhieuGiaCong = () => {
+    if (!maSP || !tenSP) {
+      toast.error("Vui lòng nhập Mã SP / Tên SP trước khi in phiếu");
+      return;
+    }
+    const maLenh = editing?.id || "(Chưa lưu lệnh)";
+    const rows = dsMau.map((m, i) => {
+      const sizeAo = (m.phanBoSize || []).map(pb => `<div class="sz"><b>${pb.size}</b><span>${pb.sl}</span></div>`).join("");
+      const mauPhoiText = (m.mauPhoi || []).join(", ");
+      return `
+        <div class="mau-block">
+          <div class="mau-title">${m.img ? `<img src="${m.img}" class="mau-img" title="Áo" />` : ""}${isBo && m.imgQuan ? `<img src="${m.imgQuan}" class="mau-img" title="Quần" />` : ""}Màu ${i + 1}${m.ten ? `: ${m.ten}` : ""}${m.maSKU ? ` <span class="sku">(${m.maSKU})</span>` : ""}</div>
+          <div class="sz-row"><span class="sz-label">${isBo ? "Áo" : "SP"} theo size:</span>${sizeAo || "<i>Chưa chia size</i>"}</div>
+          <div class="meta">SL màu này: <b>${m.slDuKien || 0}</b> &middot; Màu phối: <b>${mauPhoiText || "—"}</b>${m.ghiChu ? ` &middot; Ghi chú: ${m.ghiChu}` : ""}</div>
+        </div>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Phiếu gia công ${maSP}</title>
+      <style>
+        body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#1e293b;}
+        h1{font-size:20px;margin:0 0 4px;} .sub{color:#64748b;font-size:13px;margin-bottom:16px;}
+        table.info{width:100%;border-collapse:collapse;margin-bottom:16px;}
+        table.info td{border:1px solid #cbd5e1;padding:6px 10px;font-size:13px;}
+        table.info td.label{background:#f1f5f9;font-weight:bold;width:160px;}
+        .mau-block{border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px;margin-bottom:10px;}
+        .mau-title{font-weight:bold;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+        .mau-img{width:36px;height:36px;object-fit:cover;border-radius:4px;}
+        .sku{color:#64748b;font-weight:normal;}
+        .sz-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;}
+        .sz-label{font-weight:bold;color:#334155;margin-right:4px;}
+        .sz{border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;display:flex;flex-direction:column;align-items:center;min-width:36px;}
+        .sz b{font-size:11px;color:#64748b;} .sz span{font-weight:bold;}
+        .meta{font-size:12px;color:#475569;margin-top:6px;}
+        table.sign{width:100%;border-collapse:collapse;margin-top:28px;}
+        table.sign td{border:1px solid #94a3b8;text-align:center;padding:36px 8px 8px;font-size:12px;font-weight:bold;vertical-align:bottom;}
+        @media print{ button{display:none;} }
+      </style></head><body>
+      <h1>PHIẾU GIA CÔNG</h1>
+      <div class="sub">Mã lệnh: ${maLenh} &middot; Ngày in: ${new Date().toLocaleDateString("vi-VN")}</div>
+      <table class="info">
+        <tr><td class="label">Mã SP / Tên SP</td><td>${maSP} — ${tenSP}</td><td class="label">Tổng SL</td><td>${tongSL || 0}</td></tr>
+        <tr><td class="label">Tỉ lệ size</td><td>${tiLeSize}</td><td class="label">Hạn hoàn thành</td><td>${hanHoanThanh}</td></tr>
+        <tr><td class="label">Người phụ trách SX</td><td>${REAL_NHAN_VIEN.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX || "—"}</td><td class="label">Yêu cầu kỹ thuật</td><td>${ghiChuKyThuat || "—"}</td></tr>
+        ${ghiChuInTheu ? `<tr><td class="label">Ghi chú In/Thêu</td><td colspan="3">${ghiChuInTheu}</td></tr>` : ""}
+      </table>
+      ${rows}
+      <table class="sign">
+        <tr><td>Người giao</td><td>Người nhận GC</td><td>Phụ trách SX</td><td>QC/Kho</td></tr>
+      </table>
+      <script>window.onload = () => { window.print(); };</script>
+      </body></html>`;
+
+    const win = window.open("", "_blank", "width=900,height=1000");
+    if (!win) {
+      toast.error("Trình duyệt chặn cửa sổ in, vui lòng cho phép popup");
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+  };
+
+  // ============ CHIA SẺ ZALO (mỗi người chỉ thấy đơn giá của chính họ) ============
+  const [zaloPickerOpen, setZaloPickerOpen] = useState(false);
+  const handleShareZaloItem = async (item: PhanCongGiaCong[number]) => {
+    const lines = [
+      `📋 Phân công gia công - ${tenSP || maSP}`,
+      `Công đoạn: ${item.tenCongDoan}`,
+      `Số lượng: ${item.soLuong} × ${item.donGia.toLocaleString("vi-VN")}đ = ${item.thanhTien.toLocaleString("vi-VN")}đ`,
+      `Hạn giao: ${hanHoanThanh}`,
+      ghiChuKyThuat ? `Yêu cầu kỹ thuật: ${ghiChuKyThuat}` : "",
+    ].filter(Boolean).join("\n");
+
+    try {
+      await navigator.clipboard.writeText(lines);
+      toast.success(`Đã sao chép nội dung gửi cho ${item.nguoiTen}. Dán vào Zalo để gửi.`);
+    } catch {
+      toast.error("Không sao chép được, trình duyệt chặn clipboard");
+    }
+
+    const doiTac = item.loaiNguoi === "xuong_ngoai" ? DOI_TAC_GIA_CONG.find(d => d.ma === item.nguoiMa) : null;
+    const sdt = doiTac?.sdt;
+    if (sdt) {
+      window.open(`https://zalo.me/${sdt.replace(/\D/g, "")}`, "_blank");
+    }
+    setZaloPickerOpen(false);
+  };
+
   dsMau.forEach(m => {
     if (m.maVai && m.slDuKien && m.dinhMuc) {
       const v = KHO_VAI.find(x => x.maVT === m.maVai);
@@ -953,6 +1175,109 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
           </div>
 
+          {/* SƠ ĐỒ ÁO/QUẦN (PLT) - dùng chiều dài sơ đồ để tự tính định mức kg/SP */}
+          <div className="bg-[#F5F0FF] p-5 rounded-lg border border-violet-200/80 shadow-sm mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-violet-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
+              <div className="text-xs text-violet-700 font-medium">
+                Tổng SP/sơ đồ: <b>{soSpTrongSoDo || "—"}</b> (theo tỉ lệ size {tiLeSize})
+              </div>
+            </div>
+            <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>
+              {/* Sơ đồ áo */}
+              <div>
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4" /> Sơ đồ áo (PLT)</label>
+                  <div className="flex items-center gap-2">
+                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
+                    <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                      {dinhMucAoTuDong ? dinhMucAoTuDong.toFixed(4) : "0"} kg/áo
+                    </span>
+                  </div>
+                </div>
+                <input type="file" accept=".plt,.zip" className="hidden" ref={fileAoRef} onChange={(e) => handleUploadSoDo(e, "ao")} />
+                <div
+                  className="relative w-full h-24 bg-white border-2 border-dashed border-violet-300 rounded cursor-pointer overflow-hidden group hover:border-violet-500 transition-colors flex items-center justify-center"
+                  onClick={() => !soDoAo && fileAoRef.current?.click()}
+                >
+                  {soDoAo ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                        <span className="text-sm font-medium text-slate-700 truncate max-w-[180px]">
+                          {(() => { try { return JSON.parse(soDoAo).name; } catch { return "Sơ đồ áo"; } })()}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={(e) => handleDownloadSoDo(e, soDoAo)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                          <Download size={14} /> Tải
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setSoDoAo(""); fileAoRef.current && (fileAoRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                          <X size={14} /> Xóa
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
+                      <UploadCloud className="w-8 h-8 mb-1" />
+                      <span className="text-xs font-medium text-center">Tải PLT sơ đồ áo<br/>(.plt dùng để in sơ đồ)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sơ đồ quần - chỉ hiện khi loại SP là Bộ */}
+              {isBo && (
+                <div>
+                  <div className="flex items-center justify-between mb-2 gap-2">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4 rotate-180" /> Sơ đồ quần (PLT)</label>
+                    <div className="flex items-center gap-2">
+                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
+                      <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                        {dinhMucQuanTuDong ? dinhMucQuanTuDong.toFixed(4) : "0"} kg/quần
+                      </span>
+                    </div>
+                  </div>
+                  <input type="file" accept=".plt,.zip" className="hidden" ref={fileQuanRef} onChange={(e) => handleUploadSoDo(e, "quan")} />
+                  <div
+                    className="relative w-full h-24 bg-white border-2 border-dashed border-violet-300 rounded cursor-pointer overflow-hidden group hover:border-violet-500 transition-colors flex items-center justify-center"
+                    onClick={() => !soDoQuan && fileQuanRef.current?.click()}
+                  >
+                    {soDoQuan ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                          <span className="text-sm font-medium text-slate-700 truncate max-w-[180px]">
+                            {(() => { try { return JSON.parse(soDoQuan).name; } catch { return "Sơ đồ quần"; } })()}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={(e) => handleDownloadSoDo(e, soDoQuan)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                            <Download size={14} /> Tải
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); setSoDoQuan(""); fileQuanRef.current && (fileQuanRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                            <X size={14} /> Xóa
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
+                        <UploadCloud className="w-8 h-8 mb-1" />
+                        <span className="text-xs font-medium text-center">Tải PLT sơ đồ quần<br/>(.plt dùng để in sơ đồ)</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            {isBo && (dinhMucAoTuDong > 0 || dinhMucQuanTuDong > 0) && (
+              <div className="mt-4 px-4 py-2.5 rounded-lg bg-violet-900 text-white flex items-center justify-between">
+                <span className="text-sm font-bold uppercase tracking-wide">Định mức Bộ (kg/áo + kg/quần)</span>
+                <span className="text-lg font-extrabold">{(dinhMucAoTuDong + dinhMucQuanTuDong).toFixed(4)} kg/bộ</span>
+              </div>
+            )}
+          </div>
+
           {/* SƠ ĐỒ CẮT (MARKER) */}
           <div className="bg-[#F0F7FF] p-5 rounded-lg border border-blue-200/80 shadow-sm mt-6">
              <div className="flex justify-between items-center mb-4">
@@ -1133,6 +1458,83 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
              </div>
           </div>
 
+          {/* TÀI LIỆU IN/THÊU (MẪU) */}
+          <div className="bg-[#FFF7ED] p-5 rounded-lg border border-orange-200/80 shadow-sm mt-6">
+            <h2 className="text-xl font-bold text-orange-900 uppercase tracking-wide mb-4">Tài liệu In/Thêu (Mẫu)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Hình ảnh mẫu In/Thêu */}
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">🖼️ Hình ảnh mẫu In/Thêu</label>
+                <input type="file" accept=".jpg,.jpeg,.png" className="hidden" ref={fileInTheuAnhRef} onChange={(e) => handleUploadSoDo(e, "in-theu-anh")} />
+                <div
+                  className="relative w-full h-32 bg-orange-50/50 border-2 border-dashed border-orange-300 rounded cursor-pointer overflow-hidden group hover:border-orange-500 transition-colors flex items-center justify-center"
+                  onClick={() => !hinhMauInTheu && fileInTheuAnhRef.current?.click()}
+                >
+                  {hinhMauInTheu ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                        <span className="text-sm font-medium text-slate-700 truncate max-w-[220px]">
+                          {(() => { try { return JSON.parse(hinhMauInTheu).name; } catch { return "Hình mẫu In/Thêu"; } })()}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={(e) => handleDownloadSoDo(e, hinhMauInTheu)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                          <Download size={14} /> Tải
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setHinhMauInTheu(""); fileInTheuAnhRef.current && (fileInTheuAnhRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                          <X size={14} /> Xóa
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-orange-600">
+                      <UploadCloud className="w-8 h-8 mb-1" />
+                      <span className="text-xs font-medium text-center">Tải lên ảnh<br/>(.jpg, .png)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* File gốc In/Thêu */}
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">📄 File gốc In/Thêu</label>
+                <input type="file" accept=".pdf,.ai" className="hidden" ref={fileInTheuFileRef} onChange={(e) => handleUploadSoDo(e, "in-theu-file")} />
+                <div
+                  className="relative w-full h-32 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-orange-500 transition-colors flex items-center justify-center"
+                  onClick={() => !fileGocInTheu && fileInTheuFileRef.current?.click()}
+                >
+                  {fileGocInTheu ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-6 h-6 text-red-500" />
+                        <span className="text-sm font-medium text-slate-700 truncate max-w-[220px]">
+                          {(() => { try { return JSON.parse(fileGocInTheu).name; } catch { return "File gốc In/Thêu"; } })()}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={(e) => handleDownloadSoDo(e, fileGocInTheu)} className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
+                          <Download size={14} /> Tải
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setFileGocInTheu(""); fileInTheuFileRef.current && (fileInTheuFileRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                          <X size={14} /> Xóa
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
+                      <UploadCloud className="w-8 h-8 mb-1" />
+                      <span className="text-xs font-medium text-center">Tải lên file<br/>(.pdf, .ai)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3">
+              <textarea rows={2} placeholder="Nhập ghi chú cho bên in/thêu (vd: kích thước, vị trí in, màu in, chất liệu)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-y" value={ghiChuInTheu} onChange={e => setGhiChuInTheu(e.target.value)} />
+            </div>
+          </div>
+
           {/* KHỐI 2: MÀU SẮC, VẢI, NGUYÊN PHỤ LIỆU */}
           <div className="bg-[#E6F3EE] p-5 rounded-lg border border-emerald-200/80 shadow-sm">
             <div className="flex justify-between items-center mb-4">
@@ -1162,19 +1564,49 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         const next = [...dsMau]; next[idx].ten = e.target.value; setDsMau(next);
                       }}
                     />
-                    <div 
+                    {/* Ảnh mẫu ÁO (hàng Bộ hiện thêm ảnh QUẦN bên dưới) */}
+                    <div
                       className="relative w-full aspect-square bg-slate-100 border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-[#2B4C3E] transition-colors flex items-center justify-center"
-                      onClick={() => handleColorImageUpload(idx)}
+                      onClick={() => handleColorImageUpload(idx, "ao")}
                     >
                       {mau.img ? (
-                        <img src={mau.img} className="w-full h-full object-cover" />
+                        <>
+                          <img src={mau.img} className="w-full h-full object-cover" />
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[10px] font-bold">{isBo ? "ÁO" : "MẪU"}</span>
+                          <span className="absolute bottom-0 inset-x-0 py-1 bg-black/60 text-white text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            Bấm để thay ảnh {isBo ? "ÁO" : ""}
+                          </span>
+                        </>
                       ) : (
                         <div className="flex flex-col items-center opacity-50 group-hover:opacity-100 transition-opacity">
                           <Plus className="w-8 h-8 text-[#2B4C3E]" />
-                          <span className="text-xs mt-2 text-slate-600 font-medium">Tải ảnh</span>
+                          <span className="text-xs mt-2 text-slate-600 font-medium">Tải ảnh {isBo ? "ÁO" : ""}</span>
                         </div>
                       )}
                     </div>
+
+                    {/* Ảnh mẫu QUẦN - chỉ hàng Bộ */}
+                    {isBo && (
+                      <div
+                        className="relative w-full aspect-square bg-slate-100 border-2 border-dashed border-rose-300 rounded cursor-pointer overflow-hidden group hover:border-rose-500 transition-colors flex items-center justify-center"
+                        onClick={() => handleColorImageUpload(idx, "quan")}
+                      >
+                        {mau.imgQuan ? (
+                          <>
+                            <img src={mau.imgQuan} className="w-full h-full object-cover" />
+                            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-rose-600/90 text-white text-[10px] font-bold">QUẦN</span>
+                            <span className="absolute bottom-0 inset-x-0 py-1 bg-black/60 text-white text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              Bấm để thay ảnh QUẦN
+                            </span>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center opacity-50 group-hover:opacity-100 transition-opacity">
+                            <Plus className="w-8 h-8 text-rose-500" />
+                            <span className="text-xs mt-2 text-slate-600 font-medium">Tải ảnh QUẦN</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {/* Nút tạo mockup bằng AI - MiniMax image-01 */}
                     <button
                       type="button"
@@ -1217,7 +1649,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                             >
                               <option value="">-- Chọn vải --</option>
                               {KHO_VAI.map((kv) => (
-                                <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
+                                <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                               ))}
                             </select>
                           </div>
@@ -1245,7 +1677,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                             >
                               <option value="">-- Chọn vải --</option>
                               {KHO_VAI.map((kv) => (
-                                <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
+                                <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                               ))}
                             </select>
                           </div>
@@ -1293,22 +1725,90 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       </>
                     )}
 
+                    {/* Màu phối - chỉ TÊN MÀU (không gắn mã vải), tham khảo, KHÔNG tính định mức/tiền vải */}
+                    <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded p-2">
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <label className="text-[10px] font-bold text-fuchsia-700 whitespace-nowrap">Màu phối (tham khảo, không tính định mức)</label>
+                        <select
+                          className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white max-w-[160px]"
+                          value=""
+                          onChange={(e) => {
+                            const ten = e.target.value;
+                            if (!ten) return;
+                            const next = [...dsMau];
+                            const dsHienTai = next[idx].mauPhoi || [];
+                            if (!dsHienTai.includes(ten)) {
+                              next[idx].mauPhoi = [...dsHienTai, ten];
+                              setDsMau(next);
+                            }
+                            e.target.value = "";
+                          }}
+                        >
+                          <option value="">+ Thêm màu phối...</option>
+                          {NHOM_MAU.map((nhom) => (
+                            <optgroup key={nhom} label={nhom}>
+                              {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
+                        {(mau.mauPhoi || []).map((ten, mpIdx) => (
+                          <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                            {ten}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = [...dsMau];
+                                next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
+                                setDsMau(next);
+                              }}
+                              className="hover:text-fuchsia-950"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
-                      <input 
-                        type="number" 
-                        className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800" 
+                      <input
+                        type="number"
+                        className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800"
                         value={mau.slDuKien || ""}
                         placeholder="VD: 125"
                         onChange={(e) => {
                           const next = [...dsMau]; next[idx].slDuKien = parseInt(e.target.value) || 0; setDsMau(next);
                         }}
                       />
+                      {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
+                        const duoi = Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo;
+                        const tren = duoi + soSpTrongSoDo;
+                        return (
+                          <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
+                            <span>⚠️ {mau.slDuKien} chưa khớp bội số tỉ lệ ({soSpTrongSoDo}/lượt), hệ thống sẽ không tự phá tỉ lệ. Chọn số gần nhất:</span>
+                            <button type="button" onClick={() => { const next = [...dsMau]; next[idx].slDuKien = duoi; setDsMau(next); }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{duoi}</button>
+                            <button type="button" onClick={() => { const next = [...dsMau]; next[idx].slDuKien = tren; setDsMau(next); }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{tren}</button>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
                       <div className="bg-slate-50 p-2 rounded border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 mb-2">Tự động bung size theo tỉ lệ:</div>
+                        <div className="text-[10px] font-bold text-slate-500 mb-2 flex items-center justify-between">
+                          <span>Tự động bung size theo tỉ lệ:</span>
+                          {mau.phanBoSize && mau.phanBoSize.length > 0 && (
+                            <span className={`font-bold ${(mau.phanBoSize.reduce((s, p) => s + p.sl, 0)) !== (mau.slDuKien || 0) ? "text-amber-600" : "text-emerald-600"}`}>
+                              Tổng đã chia: {mau.phanBoSize.reduce((s, p) => s + p.sl, 0)}/{mau.slDuKien || 0}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-2">
                           {mau.phanBoSize && mau.phanBoSize.map(pb => (
                              <div key={pb.size} className="flex flex-col items-center bg-white border rounded p-1 w-12">
@@ -1369,46 +1869,83 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               })}
             </div>
 
-            {/* Nguyên Phụ Liệu */}
-            <div className="bg-white/40 p-4 rounded-lg">
-               <div className="flex items-center justify-between mb-3">
-                 <h3 className="font-bold text-slate-800 text-sm">Nguyên Phụ Liệu (Từ Kho Vật Tư)</h3>
-                 <button 
-                  onClick={() => {
-                    const p = KHO_VAT_TU[0];
-                    setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái" }]);
-                  }}
-                  className="px-3 py-1 bg-[#2B4C3E] text-white text-xs rounded hover:bg-[#2B4C3E]/80 transition flex items-center gap-1"
-                 >
-                   <Plus className="w-3 h-3"/> Thêm phụ liệu
-                 </button>
-               </div>
-               
-               <div className="space-y-2">
-                 {dsPhuLieu.map((p, idx) => (
-                   <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
-                     <select className="col-span-4 text-sm p-1.5 border rounded" value={p.maPL} onChange={e => {
-                       const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
-                       if(v) {
-                         const next = [...dsPhuLieu];
-                         next[idx] = { ...next[idx], maPL: v.maVT, tenPL: v.tenVT, donGia: v.donGia || 0, dvt: v.dvt || "cái" };
-                         setDsPhuLieu(next);
-                       }
-                     }}>
-                       {KHO_VAT_TU.map(v => <option key={v.maVT} value={v.maVT}>{v.tenVT}</option>)}
-                     </select>
-                     <input type="number" className="col-span-2 text-sm p-1.5 border rounded" value={p.soLuong} onChange={e => {
-                       const next = [...dsPhuLieu]; next[idx].soLuong = parseInt(e.target.value) || 0; setDsPhuLieu(next);
-                     }} placeholder="Số lượng..." />
-                     <div className="col-span-1 text-xs text-center text-slate-500">{p.dvt}</div>
-                     <input type="number" className="col-span-2 text-sm p-1.5 border rounded" value={p.donGia} onChange={e => {
-                       const next = [...dsPhuLieu]; next[idx].donGia = parseInt(e.target.value) || 0; setDsPhuLieu(next);
-                     }} placeholder="Đơn giá..." />
-                     <div className="col-span-2 text-right text-sm font-bold text-emerald-600">{formatVNDShort(p.soLuong * p.donGia)}</div>
-                     <button onClick={() => setDsPhuLieu(prev => prev.filter((_, i) => i !== idx))} className="col-span-1 text-rose-500 p-1 flex justify-center"><Trash2 className="w-4 h-4"/></button>
-                   </div>
-                 ))}
-               </div>
+            {/* Nguyên Phụ Liệu - tách theo Áo/Quần, không còn là 1 bảng gộp chung */}
+            <div className="bg-white/40 p-4 rounded-lg space-y-4">
+              {([["ao", "👕 Vật tư ÁO (bo cổ, bo tay, nút, nhãn...)"], ...(isBo ? [["quan", "👖 Vật tư QUẦN (thun/dây rút, nhãn...)"]] as const : [])] as const).map(([nhom, tieuDe]) => {
+                const dsNhom = dsPhuLieu.filter(p => (nhom === "ao" ? (p.apDungCho || "ao") === "ao" : p.apDungCho === "quan"));
+                return (
+                  <div key={nhom}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-bold text-slate-800 text-sm">{tieuDe}</h3>
+                      <button
+                        onClick={() => {
+                          const p = KHO_VAT_TU[0];
+                          setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: nhom }]);
+                        }}
+                        className="px-3 py-1 bg-[#2B4C3E] text-white text-xs rounded hover:bg-[#2B4C3E]/80 transition flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3"/> Thêm vật tư {nhom === "ao" ? "áo" : "quần"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDsPhuLieu(prev => [...prev, { maPL: `PL-MOI-${Date.now()}`, tenPL: "", soLuong: (tongSL as number) || 500, donGia: 0, dvt: "cái", apDungCho: nhom }]);
+                        }}
+                        className="px-3 py-1 bg-white border-2 border-[#2B4C3E] text-[#2B4C3E] text-xs rounded hover:bg-[#2B4C3E]/10 transition flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3"/> Nguyên liệu mới
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {dsNhom.length === 0 && <div className="text-xs text-slate-400 italic px-1">Chưa có vật tư nào</div>}
+                      {dsNhom.map((p) => {
+                        const idx = dsPhuLieu.indexOf(p);
+                        const laNguyenLieuMoi = !KHO_VAT_TU.some(v => v.maVT === p.maPL);
+                        return (
+                          <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
+                            {laNguyenLieuMoi ? (
+                              <input
+                                className="col-span-4 text-sm p-1.5 border-2 border-amber-300 rounded"
+                                placeholder="Tên nguyên liệu mới..."
+                                value={p.tenPL}
+                                onChange={e => {
+                                  const next = [...dsPhuLieu]; next[idx].tenPL = e.target.value; setDsPhuLieu(next);
+                                }}
+                              />
+                            ) : (
+                              <select className="col-span-4 text-sm p-1.5 border rounded" value={p.maPL} onChange={e => {
+                                const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
+                                if(v) {
+                                  const next = [...dsPhuLieu];
+                                  next[idx] = { ...next[idx], maPL: v.maVT, tenPL: v.tenVT, donGia: v.donGia || 0, dvt: v.dvt || "cái" };
+                                  setDsPhuLieu(next);
+                                }
+                              }}>
+                                {KHO_VAT_TU.map(v => <option key={v.maVT} value={v.maVT}>{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
+                              </select>
+                            )}
+                            <input type="number" className="col-span-2 text-sm p-1.5 border rounded" value={p.soLuong} onChange={e => {
+                              const next = [...dsPhuLieu]; next[idx].soLuong = parseInt(e.target.value) || 0; setDsPhuLieu(next);
+                            }} placeholder="Số lượng..." />
+                            {laNguyenLieuMoi ? (
+                              <input className="col-span-1 text-xs p-1 border rounded text-center" value={p.dvt} placeholder="ĐVT" onChange={e => {
+                                const next = [...dsPhuLieu]; next[idx].dvt = e.target.value; setDsPhuLieu(next);
+                              }} />
+                            ) : (
+                              <div className="col-span-1 text-xs text-center text-slate-500">{p.dvt}</div>
+                            )}
+                            <input type="number" className="col-span-2 text-sm p-1.5 border rounded" value={p.donGia} onChange={e => {
+                              const next = [...dsPhuLieu]; next[idx].donGia = parseInt(e.target.value) || 0; setDsPhuLieu(next);
+                            }} placeholder="Đơn giá..." />
+                            <div className="col-span-2 text-right text-sm font-bold text-emerald-600">{formatVNDShort(p.soLuong * p.donGia)}</div>
+                            <button onClick={() => setDsPhuLieu(prev => prev.filter((_, i) => i !== idx))} className="col-span-1 text-rose-500 p-1 flex justify-center"><Trash2 className="w-4 h-4"/></button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
               {/* BẢNG THỐNG KÊ VẢI VÀ PHỤ LIỆU */}
@@ -1623,43 +2160,74 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
         </div>
 
-        {/* Footer Buttons */}
-        <div className="bg-white p-6 flex items-center justify-between border-t border-slate-200 rounded-b-xl">
-          <div className="flex gap-4">
-            <button className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2 shadow-sm">
-               In Phiếu / Xuất PDF
-            </button>
-            <button 
+        {/* Footer Buttons - chuẩn 5 nút: In phiếu gia công | Chia sẻ Zalo | Lưu nháp | Hoàn tất lệnh | Chuyển khâu */}
+        <div className="bg-white p-6 flex items-center justify-between border-t border-slate-200 rounded-b-xl relative">
+          <div className="flex items-center gap-3">
+            <button
               onClick={onClose}
-              className="px-6 py-3 rounded-xl font-bold text-rose-500 bg-transparent border-2 border-rose-200 hover:bg-rose-50 hover:border-rose-300 transition-all shadow-sm"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 bg-transparent border border-slate-200 hover:bg-slate-50 hover:text-slate-600 transition-all"
             >
-               Đóng
+              Đóng
             </button>
+            <button
+              onClick={handleInPhieuGiaCong}
+              className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2 shadow-sm"
+            >
+              <Printer className="w-4 h-4" /> In phiếu gia công
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setZaloPickerOpen(v => !v)}
+                className="px-6 py-3 rounded-xl font-bold text-sky-600 bg-transparent border-2 border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center gap-2 shadow-sm"
+              >
+                <Share2 className="w-4 h-4" /> Chia sẻ Zalo
+              </button>
+              {zaloPickerOpen && (
+                <div className="absolute bottom-full mb-2 left-0 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-50 border-b border-slate-200">
+                    Chọn người nhận - họ chỉ thấy giá của chính mình
+                  </div>
+                  {phanCong.length === 0 && (
+                    <div className="px-3 py-3 text-xs text-slate-400">Chưa có phân công gia công nào</div>
+                  )}
+                  {phanCong.map((item, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleShareZaloItem(item)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-sky-50 border-b border-slate-100 last:border-0 flex items-center justify-between"
+                    >
+                      <span className="font-medium text-slate-700">{item.tenCongDoan} · {item.nguoiTen}</span>
+                      <span className="text-xs text-slate-400">{item.soLuong}×{item.donGia.toLocaleString("vi-VN")}đ</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex gap-4">
-            <button 
+            <button
               className="px-8 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
               onClick={() => handleSave("Nhap")}
             >
-              LƯU NHÁP
+              Lưu nháp
             </button>
 
-            <button 
+            <button
               className="px-8 py-3 rounded-xl font-bold text-blue-600 bg-transparent border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm hover:shadow-md hover:shadow-blue-500/10 hover:-translate-y-0.5"
               onClick={() => handleSave("DaTao")}
             >
-              HOÀN TẤT TẠO LỆNH
+              Hoàn tất lệnh
             </button>
 
-            <button 
+            <button
               className="px-8 py-3 rounded-xl font-extrabold text-[#F0A619] bg-transparent border-2 border-[#F0A619] hover:bg-[#F0A619] hover:text-white transition-all shadow-md hover:shadow-lg hover:shadow-[#F0A619]/20 hover:-translate-y-0.5 flex items-center gap-2 uppercase tracking-wide"
               onClick={() => handleSave("ChuyenTiep")}
             >
               <Send className="w-6 h-6" />
-              CHUYỂN KHÂU TIẾP NHẬN
+              Chuyển khâu
             </button>
           </div>
-        
+
 
   {/* Modal Tạo Mẫu Công Đoạn */}
   {showTaoMauCD && (

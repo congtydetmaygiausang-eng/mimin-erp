@@ -67,6 +67,11 @@ export type MauVai = {
   // NẾU LÀ BỘ THÌ CÓ THÊM QUẦN
   maVaiQuan?: string;
   dinhMucQuan?: number;
+  imgQuan?: string;    // Ảnh mẫu QUẦN (hàng Bộ) - img ở trên là ảnh ÁO
+
+  // Màu phối - danh sách TÊN MÀU dùng để phối (viền, phối màu...), không gắn mã vải trong kho.
+  // CHỈ mang tính tham khảo, KHÔNG tính vào định mức/tiền vải (chỉ vải chính maVai/maVaiQuan mới tính).
+  mauPhoi?: string[];
 };
 
 export type LenhCatPhuLieu = {
@@ -75,6 +80,8 @@ export type LenhCatPhuLieu = {
   soLuong: number;
   donGia: number;
   dvt: string;
+  // Vật tư thuộc Áo hay Quần (hàng Bộ) - không set = dùng chung
+  apDungCho?: "ao" | "quan";
 };
 
 // P0 - 2026-08-07 - Tach ro NV noi bo vs Xuong ngoai (FK + tracking thanh toan)
@@ -191,6 +198,11 @@ export type LenhCat = {
   chiPhiCoDinh: ChiPhiCoDinh;
   // Bảng tính
   bangCOGS?: BangCOGS;
+  // Sơ đồ áo/quần (PLT) - dùng để tự tính định mức kg/SP
+  daiSoDoAo?: string;
+  soDoAo?: string;
+  daiSoDoQuan?: string;
+  soDoQuan?: string;
   // Sơ đồ cắt
   soDoChinh?: string;
   pdfSoDoChinh?: string;
@@ -204,6 +216,10 @@ export type LenhCat = {
   ghiChuSoDoPhoi?: string;
   daCoSoDo?: boolean;
   ghiChuKyThuat?: string;
+  // Tài liệu In/Thêu (mẫu)
+  hinhMauInTheu?: string;
+  fileGocInTheu?: string;
+  ghiChuInTheu?: string;
   
   // Meta
   phuTrachCat: string;

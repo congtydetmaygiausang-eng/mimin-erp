@@ -111,7 +111,7 @@ export function RoleDashboard() {
 function getGreeting(role: Role): string {
   const hour = new Date().getHours();
   const time = hour < 12 ? "buổi sáng" : hour < 18 ? "buổi chiều" : "buổi tối";
-  const lastName = { admin: "An", planner: "Bình", warehouse: "Cường", sewing: "Dung", qc: "Đức", finishing: "Hương", accountant: "Hùng", content: "Vy", partner: "đối tác" }[role] || "bạn";
+  const lastName = ({ admin: "An", planner: "Bình", warehouse: "Cường", sewing: "Dung", qc: "Đức", finishing: "Hương", accountant: "Hùng", content: "Vy", partner: "đối tác" } as Partial<Record<Role, string>>)[role] || "bạn";
   return `Chào ${time}, ${lastName}!`;
 }
 

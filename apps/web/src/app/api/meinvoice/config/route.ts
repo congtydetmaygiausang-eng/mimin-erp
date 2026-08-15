@@ -7,6 +7,7 @@ const DEFAULT_ID = "default";
 
 export async function GET() {
   try {
+    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
     const { data, error } = await supabase
       .from("meinvoice_config")
       .select("*")
@@ -33,6 +34,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
+    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
     const body = await req.json();
     const { app_id, tax_code, username, password, env, sign_type } = body;
     if (!app_id || !tax_code || !username || !password) {

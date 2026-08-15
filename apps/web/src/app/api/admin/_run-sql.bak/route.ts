@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   if (req.nextUrl.searchParams.get("debug") === "1") {
     // Test DNS resolve
     const dns = await import("dns/promises");
-    let dnsTest = {};
+    const dnsTest: Record<string, unknown> = {};
     try {
       dnsTest.pooler = await dns.resolve4("aws-0-ap-southeast-1.pooler.supabase.com");
     } catch (e: any) { dnsTest.pooler = `ERR: ${e.message}`; }
