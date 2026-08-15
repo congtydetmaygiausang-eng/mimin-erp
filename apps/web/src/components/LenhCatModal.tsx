@@ -1617,6 +1617,32 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       <Wand2 className="w-3.5 h-3.5" />
                       Tạo mockup bằng AI
                     </button>
+
+                    {/* Thêm vật tư nhanh ngay tại card màu này (trước đây chỉ có 1 nút chung ở cuối form, phải cuộn xa) */}
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const p = KHO_VAT_TU[0];
+                          setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "ao" }]);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-[#2B4C3E] text-white text-xs font-bold rounded hover:bg-[#2B4C3E]/80 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Vật tư áo
+                      </button>
+                      {isBo && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const p = KHO_VAT_TU[0];
+                            setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "quan" }]);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-rose-600 text-white text-xs font-bold rounded hover:bg-rose-600/80 transition"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Vật tư quần
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Right: Details & Sizes */}
@@ -1877,15 +1903,6 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   <div key={nhom}>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-bold text-slate-800 text-sm">{tieuDe}</h3>
-                      <button
-                        onClick={() => {
-                          const p = KHO_VAT_TU[0];
-                          setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: nhom }]);
-                        }}
-                        className="px-3 py-1 bg-[#2B4C3E] text-white text-xs rounded hover:bg-[#2B4C3E]/80 transition flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3"/> Thêm vật tư {nhom === "ao" ? "áo" : "quần"}
-                      </button>
                       <button
                         onClick={() => {
                           setDsPhuLieu(prev => [...prev, { maPL: `PL-MOI-${Date.now()}`, tenPL: "", soLuong: (tongSL as number) || 500, donGia: 0, dvt: "cái", apDungCho: nhom }]);
