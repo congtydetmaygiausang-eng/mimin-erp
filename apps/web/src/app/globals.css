@@ -80,8 +80,9 @@
   .bg-module-nha-cung-cap { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-bang-luong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
   .bg-module-doi-tac-gia-cong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
-  /* Nen trang-xam nhe rieng cho trang AI Tinh Gia Von (theo yeu cau, khac nen teal chung) */
-  .bg-module-slate { background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%); }
+  /* Nen trang-xam nhe rieng cho trang AI Tinh Gia Von (theo yeu cau, khac nen teal chung).
+     Ton hoi lanh + dam hon mot chut de cac the card mau trang noi len ro. */
+  .bg-module-slate { background: linear-gradient(180deg, #e7eef3 0%, #f4f8fa 45%, #edf2f6 100%); }
   .bg-module-default { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
 
   /* PageHeader gradient - dam hon de noi bat */
