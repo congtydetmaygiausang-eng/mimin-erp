@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-16 17:30 | Codex | mang-luoi-san-xuat | Giai đoạn 1: 4 danh mục, hồ sơ nhiều vai trò, CRUD, chống trùng, Supabase RLS | codex/production-network-foundation | 🟢 DONE |
 | 2026-08-01 01:55 | Mavis | ai-tools | Fix Vercel AI SDK v7 compat: parameters → inputSchema, bỏ _options param. Build 89 routes OK. (Antigravity pause - Mavis fix) | feature/ai-agents | 🟢 DONE |
 | 2026-08-01 01:50 | Mavis | workflow | Antigravity PAUSE: user yêu cầu Mavis làm 1 mình, Mavis tự review+fix code Antigravity | - | ⏸️ PAUSE |
 | 2026-08-01 01:45 | Mavis | ai-agents | Pull feature/ai-agents về local, review code Antigravity (3 lỗi TS: parameters, ToolExecutionOptions, useChat API) | feature/ai-agents | 🟢 DONE |
