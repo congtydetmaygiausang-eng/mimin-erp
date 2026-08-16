@@ -5,7 +5,8 @@ import { Check, ExternalLink, MapPin, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
-import { approveDiscoveryCandidate, discoverOpenStreetMap, importAICandidates, loadDiscoveryCandidates, setDiscoveryStatus, type DiscoveryCandidate } from "@/lib/production-discovery";
+import { approveDiscoveryCandidate, importAICandidates, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
+import { supabase } from "@/lib/supabase/client";
 
 export default function TimKiemDoiTacPage() {
   const [query, setQuery] = useState("");
@@ -13,6 +14,8 @@ export default function TimKiemDoiTacPage() {
   const [role, setRole] = useState<ProductionPartnerRole>("MATERIAL_SUPPLIER");
   const [items, setItems] = useState<DiscoveryCandidate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [directResults, setDirectResults] = useState<DirectSearchCandidate[]>([]);
+  const [directProvider, setDirectProvider] = useState("");
   const [aiText, setAiText] = useState("");
   const [aiProvider, setAiProvider] = useState("AI_IMPORT");
   const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
@@ -35,7 +38,15 @@ export default function TimKiemDoiTacPage() {
   const search = async () => {
     if (!query.trim() || !location.trim()) return toast.error("Nhập nội dung và khu vực cần tìm");
     setLoading(true);
-    try { setItems(await discoverOpenStreetMap(query.trim(), location.trim(), role)); toast.success("Đã lưu kết quả vào vùng chờ duyệt"); }
+    try {
+      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+      if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
+      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role}) });
+      const data = await response.json() as {error?:string;provider?:string;candidates?:DirectSearchCandidate[]};
+      if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
+      setDirectResults(data.candidates??[]); setDirectProvider(data.provider??"");
+      toast.success(`DeepSeek đã chuẩn hóa ${data.candidates?.length??0} kết quả`);
+    }
     catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); }
     finally { setLoading(false); }
   };
@@ -50,6 +61,7 @@ export default function TimKiemDoiTacPage() {
     catch (error) { toast.error(error instanceof Error ? error.message : "Không nhập được dữ liệu AI"); }
     finally { setLoading(false); }
   };
+  const saveDirectResults = async()=>{try{await saveDirectSearchCandidates(directResults,role,`${query} | ${location}`,directProvider);setDirectResults([]);await refresh();toast.success("Đã lưu kết quả vào vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
 
   return <div className="space-y-5 animate-fade-in">
     <PageHeader moduleLabel="MIMIN ERP — Mạng lưới sản xuất" title="Tìm kiếm ứng viên tự động"
@@ -61,6 +73,7 @@ export default function TimKiemDoiTacPage() {
       <label className="text-xs font-medium">Khu vực<input className="input mt-1" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Thủ Đức, TP.HCM" /></label>
       <div className="flex items-end"><button className="btn-primary w-full inline-flex justify-center gap-2" disabled={loading} onClick={() => void search()}><Search className="w-4 h-4" />{loading ? "Đang tìm..." : "Tìm tự động"}</button></div>
     </div>
+    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Agent DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Kiểm tra trước khi lưu</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=><article key={`${item.sourceUrl}-${index}`} className="rounded-xl border p-4" style={{borderColor:"var(--border)"}}><div className="flex justify-between gap-2"><b>{item.legalName}</b><span className="text-xs text-brand-700">{item.confidence}% tin cậy</span></div><p className="text-xs mt-2 opacity-70">{item.address}</p><div className="mt-2 flex gap-3 text-xs"><a className="text-brand-700" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Kiểm tra nguồn</a>{item.phone&&<a href={`tel:${item.phone}`}>{item.phone}</a>}</div></article>)}</div></div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />
