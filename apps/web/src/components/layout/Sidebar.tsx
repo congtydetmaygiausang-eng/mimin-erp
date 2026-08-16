@@ -72,6 +72,16 @@ type NavItem = {
   activeBg?: string;     // active group header bg
   activeSubBg?: string;  // active sub-item bg
   subItems?: SubItem[];
+  // === Ghi đè màu cho group dùng tông SÁNG trên nền sidebar tối ===
+  // Mặc định mọi group là tông tối (chữ trắng, khối con nền đen mờ). Group nào
+  // muốn nền xám/trắng phải khai báo thêm màu chữ tối, nếu không chữ trắng sẽ
+  // nằm trên nền sáng và không đọc được.
+  activeText?: string;   // màu chữ header khi group đang mở/active (mặc định text-white)
+  idleBg?: string;       // nền header khi group đang đóng (mặc định trong suốt)
+  idleText?: string;     // màu chữ header khi đóng
+  idleIcon?: string;     // màu icon header khi đóng
+  subBg?: string;        // nền khối chứa các mục con (mặc định bg-black/20)
+  subIdleText?: string;  // class chữ/hover của mục con khi chưa active
 };
 
 const NAV: NavItem[] = [
@@ -143,13 +153,19 @@ const NAV: NavItem[] = [
     ]
   },
   {
+    // Nhóm tính năng mới - dùng tông XÁM TRẮNG để nổi bật trên nền sidebar tối.
+    // Vì nền sáng nên phải khai báo chữ/icon tông tối, không dùng mặc định chữ trắng.
     label: "MIMIN Group", icon: Sparkles, isGroup: true,
-    color: "border-fuchsia-400", iconColor: "text-fuchsia-300",
-    activeBg: "bg-fuchsia-900/40", activeSubBg: "bg-fuchsia-400/20 text-white",
+    color: "border-slate-300", iconColor: "text-slate-700",
+    activeBg: "bg-slate-100", activeText: "text-slate-900",
+    activeSubBg: "bg-white text-slate-900",
+    idleBg: "bg-slate-200/90 hover:bg-slate-100", idleText: "text-slate-800", idleIcon: "text-slate-600",
+    subBg: "bg-slate-100/95",
+    subIdleText: "text-slate-600 hover:bg-slate-200 hover:text-slate-900",
     subItems: [
-      { href: "/ai-tinh-gia", label: "AI Tính Giá Vốn", icon: Sparkles, iconColor: "text-fuchsia-400", permModule: "ai-tinh-gia" },
-      { href: "/khach-hang-tiem-nang", label: "Khách Hàng Tiềm Năng", icon: Users, iconColor: "text-pink-400", permModule: "khach-hang-tiem-nang" },
-      { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-purple-400", permModule: "so-do-chien-luoc" },
+      { href: "/ai-tinh-gia", label: "AI Tính Giá Vốn", icon: Sparkles, iconColor: "text-slate-500", permModule: "ai-tinh-gia" },
+      { href: "/khach-hang-tiem-nang", label: "Khách Hàng Tiềm Năng", icon: Users, iconColor: "text-slate-500", permModule: "khach-hang-tiem-nang" },
+      { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-slate-500", permModule: "so-do-chien-luoc" },
     ]
   },
   {
@@ -283,6 +299,11 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
             const groupBorderColor = item.color || "border-slate-500";
             const activeSubBg = item.activeSubBg || "bg-white/15 text-white";
             const activeBg = item.activeBg || "bg-white/8";
+            const activeText = item.activeText || "text-white";
+            // Group tông sáng khai báo idleBg -> giữ viền + nền sáng cả khi đóng.
+            const idleHeaderClasses = item.idleBg
+              ? `${groupBorderColor} ${item.idleBg} ${item.idleText || "text-slate-800"}`
+              : "border-transparent hover:bg-white/5 text-slate-200 hover:text-white";
             
             // Render group
             if (item.isGroup && item.subItems) {
@@ -297,13 +318,13 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     className={clsx(
                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 border-l-2",
                       isGroupActive || isOpen
-                        ? `${groupBorderColor} ${activeBg} text-white`
-                        : `border-transparent hover:bg-white/5 text-slate-200 hover:text-white`,
+                        ? `${groupBorderColor} ${activeBg} ${activeText}`
+                        : idleHeaderClasses,
                       isCollapsed && "justify-center px-2"
                     )}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : "text-slate-400")} />
+                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : (item.idleIcon || "text-slate-400"))} />
                     {!isCollapsed && (
                       <>
                         <span className="flex-1 text-left tracking-wide">{item.label}</span>
@@ -319,8 +340,8 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                         isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
                       )}
                     >
-                      {/* Dark card container for sub-items - matching reference design */}
-                      <div className="mt-1 mx-1 rounded-xl bg-black/20 px-2 py-1.5 space-y-0.5">
+                      {/* Card container for sub-items - mặc định nền tối, group tông sáng ghi đè bằng subBg */}
+                      <div className={clsx("mt-1 mx-1 rounded-xl px-2 py-1.5 space-y-0.5", item.subBg || "bg-black/20")}>
                         {item.subItems.map((sub) => {
                           const SubIcon = sub.icon;
                           const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
@@ -333,7 +354,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                                 "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
                                 subActive
                                   ? activeSubBg + " shadow-sm font-semibold"
-                                  : "hover:bg-white/8 text-slate-200 hover:text-white"
+                                  : (item.subIdleText || "hover:bg-white/8 text-slate-200 hover:text-white")
                               )}
                             >
                               <SubIcon className={clsx("w-4 h-4 shrink-0", sub.iconColor || "text-slate-400")} />
