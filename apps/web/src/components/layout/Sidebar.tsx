@@ -143,6 +143,16 @@ const NAV: NavItem[] = [
     ]
   },
   {
+    label: "MIMIN Group", icon: Sparkles, isGroup: true,
+    color: "border-fuchsia-400", iconColor: "text-fuchsia-300",
+    activeBg: "bg-fuchsia-900/40", activeSubBg: "bg-fuchsia-400/20 text-white",
+    subItems: [
+      { href: "/ai-tinh-gia", label: "AI Tính Giá Vốn", icon: Sparkles, iconColor: "text-fuchsia-400", permModule: "ai-tinh-gia" },
+      { href: "/khach-hang-tiem-nang", label: "Khách Hàng Tiềm Năng", icon: Users, iconColor: "text-pink-400", permModule: "khach-hang-tiem-nang" },
+      { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-purple-400", permModule: "so-do-chien-luoc" },
+    ]
+  },
+  {
     label: "Hệ Thống (Dev)", icon: Settings, isGroup: true,
     color: "border-rose-400", iconColor: "text-rose-300",
     activeBg: "bg-rose-900/40", activeSubBg: "bg-rose-400/20 text-white",
