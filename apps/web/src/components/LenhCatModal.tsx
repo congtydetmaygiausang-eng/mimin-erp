@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import {
   X, Plus, Trash2, AlertTriangle, Sparkles, Shirt, Package, Scissors,
   Calculator, TrendingUp, Save, Send, ChevronDown, ChevronUp, Info,
-  Wand2, CheckCircle2, UploadCloud, Download, Eye,
+  Wand2, CheckCircle2, UploadCloud, Download, Eye, Image, FileText, Printer, Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -164,6 +164,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setKhoSoDoPhoi(editing.khoSoDoPhoi || "");
       setDaiSoDoPhoi(editing.daiSoDoPhoi || "");
       setDaCoSoDo(editing.daCoSoDo || false);
+      setSoDoAo(editing.soDoAo || "");
+      setDaiSoDoAo(editing.daiSoDoAo || "");
+      setSoDoQuan(editing.soDoQuan || "");
+      setDaiSoDoQuan(editing.daiSoDoQuan || "");
+      setHinhInTheu(editing.hinhInTheu || "");
+      setFileInTheu(editing.fileInTheu || "");
+      setGhiChuInTheu(editing.ghiChuInTheu || "");
     }
   }, [editing]);
 
@@ -202,10 +209,34 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [ghiChuSoDoChinh, setGhiChuSoDoChinh] = useState("");
   const [ghiChuSoDoPhoi, setGhiChuSoDoPhoi] = useState("");
   const [daCoSoDo, setDaCoSoDo] = useState(false);
+  const [soDoAo, setSoDoAo] = useState("");
+  const [daiSoDoAo, setDaiSoDoAo] = useState("");
+  const [soDoQuan, setSoDoQuan] = useState("");
+  const [daiSoDoQuan, setDaiSoDoQuan] = useState("");
+  const [hinhInTheu, setHinhInTheu] = useState("");
+  const [fileInTheu, setFileInTheu] = useState("");
+  const [ghiChuInTheu, setGhiChuInTheu] = useState("");
   const fileChinhRef = useRef<HTMLInputElement>(null);
   const filePdfChinhRef = useRef<HTMLInputElement>(null);
   const filePhoiRef = useRef<HTMLInputElement>(null);
   const filePdfPhoiRef = useRef<HTMLInputElement>(null);
+
+  const uploadTaiLieu = (file: File, setter: (value: string) => void) => {
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File quá lớn, vui lòng chọn file dưới 2MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setter(JSON.stringify({ name: file.name, type: file.type, url: String(reader.result) }));
+      toast.success(`Đã tải lên ${file.name}`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const tenTaiLieu = (value: string, fallback: string) => {
+    try { return JSON.parse(value).name as string; } catch { return fallback; }
+  };
 
   const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi" | "pdf-chinh" | "pdf-phoi") => {
     const file = e.target.files?.[0];
@@ -503,7 +534,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     setCanhBaoTonKho(alerts);
   }, [dsMau, dsPhuLieu]);
 
-  const handleColorImageUpload = (idx: number) => {
+  const handleColorImageUpload = (idx: number, target: "ao" | "quan" = "ao") => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -514,7 +545,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         reader.onload = (ev) => {
           setDsMau(prev => {
             const next = [...prev];
-            next[idx] = { ...next[idx], img: ev.target?.result as string };
+            next[idx] = target === "quan"
+              ? { ...next[idx], imgQuan: ev.target?.result as string }
+              : { ...next[idx], img: ev.target?.result as string };
             return next;
           });
         };
@@ -599,6 +632,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ghiChuSoDoChinh,
         ghiChuSoDoPhoi,
         daCoSoDo,
+        soDoAo,
+        daiSoDoAo,
+        soDoQuan,
+        daiSoDoQuan,
+        hinhInTheu,
+        fileInTheu,
+        ghiChuInTheu,
       }, user || getFallbackUser());
       
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
@@ -639,6 +679,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ghiChuSoDoChinh,
         ghiChuSoDoPhoi,
         daCoSoDo,
+        soDoAo,
+        daiSoDoAo,
+        soDoQuan,
+        daiSoDoQuan,
+        hinhInTheu,
+        fileInTheu,
+        ghiChuInTheu,
         nguoiTao: user?.name || "Nguyễn Thị Ngọc Giàu"
       }, user || getFallbackUser());
 
@@ -954,6 +1001,52 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
 
           {/* SƠ ĐỒ CẮT (MARKER) */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mt-6">
+            <h2 className="text-xl font-bold text-[#2B4C3E] uppercase tracking-wide mb-4">Sơ đồ sản phẩm (PLT)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { label: "Sơ đồ áo (PLT)", unit: "kg/áo", value: soDoAo, setValue: setSoDoAo, length: daiSoDoAo, setLength: setDaiSoDoAo, icon: Shirt },
+                { label: "Sơ đồ quần (PLT)", unit: "kg/quần", value: soDoQuan, setValue: setSoDoQuan, length: daiSoDoQuan, setLength: setDaiSoDoQuan, icon: Scissors },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center gap-2 font-black text-slate-800 mb-3"><Icon className="w-5 h-5 text-sky-600" />{item.label}</div>
+                    <div className="flex gap-2 mb-3">
+                      <input value={item.length} onChange={(e) => item.setLength(e.target.value)} placeholder="Dài sơ đồ (cm)..." className="min-w-0 flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg" />
+                      <div className="px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 font-bold whitespace-nowrap">0 {item.unit}</div>
+                    </div>
+                    <label className="h-28 rounded-xl border-2 border-dashed border-indigo-300 bg-white flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors">
+                      <input type="file" accept=".plt,.zip" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadTaiLieu(file, item.setValue); }} />
+                      {item.value ? <><CheckCircle2 className="w-8 h-8 text-emerald-500" /><span className="mt-1 text-sm font-bold text-slate-700">{tenTaiLieu(item.value, "Đã tải sơ đồ")}</span></> : <><UploadCloud className="w-9 h-9 text-indigo-400" /><span className="mt-1 text-sm font-bold text-indigo-600">Tải PLT {item.label.toLowerCase()}</span><span className="text-xs text-slate-400">(.plt dùng để in sơ đồ)</span></>}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-[#FFF8E8] p-5 rounded-2xl border border-amber-200 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 mb-4">TÀI LIỆU IN/THÊU (MẪU)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="rounded-xl bg-white p-4 border border-amber-100 cursor-pointer">
+                <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadTaiLieu(file, setHinhInTheu); }} />
+                <div className="font-bold text-amber-800 flex items-center gap-2 mb-3"><Image className="w-5 h-5" />Hình ảnh mẫu In/Thêu</div>
+                <div className="h-32 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50 flex flex-col items-center justify-center">
+                  {hinhInTheu ? <><CheckCircle2 className="w-8 h-8 text-emerald-500" /><span className="text-sm font-bold">{tenTaiLieu(hinhInTheu, "Đã tải ảnh")}</span></> : <><UploadCloud className="w-9 h-9 text-orange-500" /><span className="font-bold text-orange-700">Tải lên ảnh</span><span className="text-xs text-orange-500">(.jpg, .png)</span></>}
+                </div>
+              </label>
+              <label className="rounded-xl bg-white p-4 border border-amber-100 cursor-pointer">
+                <input type="file" accept=".pdf,.ai" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadTaiLieu(file, setFileInTheu); }} />
+                <div className="font-bold text-amber-800 flex items-center gap-2 mb-3"><FileText className="w-5 h-5" />File gốc In/Thêu</div>
+                <div className="h-32 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50 flex flex-col items-center justify-center">
+                  {fileInTheu ? <><CheckCircle2 className="w-8 h-8 text-emerald-500" /><span className="text-sm font-bold">{tenTaiLieu(fileInTheu, "Đã tải file")}</span></> : <><UploadCloud className="w-9 h-9 text-orange-500" /><span className="font-bold text-orange-700">Tải lên file</span><span className="text-xs text-orange-500">(.pdf, .ai)</span></>}
+                </div>
+              </label>
+            </div>
+            <textarea value={ghiChuInTheu} onChange={(e) => setGhiChuInTheu(e.target.value)} rows={3} placeholder="Nhập ghi chú cho bên in/thêu (kích thước, vị trí in, màu in, chất liệu)..." className="w-full mt-4 px-3 py-2 bg-white border border-amber-200 rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-amber-300" />
+          </div>
+
           <div className="bg-[#F0F7FF] p-5 rounded-lg border border-blue-200/80 shadow-sm mt-6">
              <div className="flex justify-between items-center mb-4">
                <h2 className="text-xl font-bold text-[#1E3A8A] uppercase tracking-wide">SƠ ĐỒ CẮT (MARKER)</h2>
@@ -1175,6 +1268,21 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         </div>
                       )}
                     </div>
+                    {isBo && (
+                      <div
+                        className="relative w-full aspect-square bg-rose-50 border-2 border-dashed border-rose-300 rounded cursor-pointer overflow-hidden group hover:border-rose-500 transition-colors flex items-center justify-center"
+                        onClick={() => handleColorImageUpload(idx, "quan")}
+                      >
+                        {mau.imgQuan ? (
+                          <img src={mau.imgQuan} alt={`Quần ${mau.ten}`} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex flex-col items-center text-rose-600">
+                            <Plus className="w-8 h-8" />
+                            <span className="text-xs mt-1 font-bold">Thay ảnh QUẦN</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {/* Nút tạo mockup bằng AI - MiniMax image-01 */}
                     <button
                       type="button"
@@ -1624,10 +1732,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         </div>
 
         {/* Footer Buttons */}
-        <div className="bg-white p-6 flex items-center justify-between border-t border-slate-200 rounded-b-xl">
-          <div className="flex gap-4">
-            <button className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2 shadow-sm">
-               In Phiếu / Xuất PDF
+        <div className="bg-white p-4 md:p-6 flex flex-col xl:flex-row gap-3 items-stretch xl:items-center justify-between border-t border-slate-200 rounded-b-xl">
+          <div className="flex flex-wrap gap-2 md:gap-4">
+            <button onClick={() => window.print()} className="px-4 md:px-6 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2 shadow-sm">
+               <Printer className="w-5 h-5" /> In phiếu gia công
+            </button>
+            <button onClick={() => window.open(`https://zalo.me/share?url=${encodeURIComponent(window.location.href)}`, "_blank", "noopener,noreferrer")} className="px-4 md:px-6 py-3 rounded-xl font-bold text-sky-700 bg-transparent border-2 border-sky-200 hover:bg-sky-50 transition-all flex items-center gap-2 shadow-sm">
+               <Share2 className="w-5 h-5" /> Chia sẻ Zalo
             </button>
             <button 
               onClick={onClose}
@@ -1636,7 +1747,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                Đóng
             </button>
           </div>
-          <div className="flex gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-4">
             <button 
               className="px-8 py-3 rounded-xl font-bold text-slate-600 bg-transparent border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
               onClick={() => handleSave("Nhap")}

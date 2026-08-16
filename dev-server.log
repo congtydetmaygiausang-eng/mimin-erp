@@ -1,0 +1,58 @@
+
+> mimin-erp@89.6.9 dev
+> cd apps/web && npm run dev
+
+
+> mimin-erp-web@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.2.9
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.10:3001
+
+ ✓ Starting...
+ ✓ Ready in 1983ms
+ ○ Compiling /lenh-cat ...
+ ✓ Compiled /lenh-cat in 3.7s (1281 modules)
+ GET /lenh-cat/ 200 in 4126ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1010ms (1292 modules)
+ GET /login/ 200 in 1117ms
+ GET /login/ 200 in 31ms
+ GET /lenh-cat/ 200 in 228ms
+ GET /login/ 200 in 23ms
+ GET /login/ 200 in 24ms
+ ✓ Compiled /dashboard in 300ms (1299 modules)
+ GET /dashboard/ 200 in 375ms
+ GET /dashboard/ 200 in 22ms
+ ✓ Compiled /_not-found in 373ms (1303 modules)
+ GET /dev-sw.js?dev-sw 404 in 351ms
+ GET /logo.png 404 in 576ms
+ GET /logo.png 404 in 25ms
+ GET /lenh-cat/ 200 in 35ms
+ GET /dev-sw.js?dev-sw 404 in 38ms
+ ✓ Compiled /_not-found in 1277ms (1303 modules)
+ GET /logo.png 404 in 675ms
+ GET /login/ 200 in 775ms
+ GET /login/ 200 in 60ms
+ GET /lenh-cat/ 200 in 290ms
+ ✓ Compiled in 485ms (1317 modules)
+ GET /login/ 200 in 123ms
+ GET /lenh-cat/ 200 in 124ms
+ GET /dev-sw.js?dev-sw 404 in 165ms
+ GET /dev-sw.js?dev-sw 404 in 25ms
+ GET /lenh-cat/ 200 in 139ms
+ GET /logo.png 404 in 38ms
+ GET /dev-sw.js?dev-sw 404 in 23ms
+ GET /@vite/client/ 404 in 63ms
+ GET /src/main.tsx?t=1784654830142 404 in 65ms
+ GET /@react-refresh/ 404 in 104ms
+ GET /@vite-plugin-pwa/pwa-entry-point-loaded/ 404 in 100ms
+ GET /manifest.webmanifest 404 in 105ms
+ GET /dev-sw.js?dev-sw 404 in 29ms
+ GET /src/main.tsx?t=1784654830142 404 in 98ms
+ GET /@vite/client/ 404 in 101ms
+ GET /@react-refresh/ 404 in 99ms
+ GET /@vite-plugin-pwa/pwa-entry-point-loaded/ 404 in 125ms
+ GET /manifest.webmanifest 404 in 130ms
+ GET /dev-sw.js?dev-sw 404 in 25ms

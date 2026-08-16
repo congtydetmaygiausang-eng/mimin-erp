@@ -62,7 +62,10 @@ export type MauVai = {
   haoHut?: number;
   ghiChu: string;
   img: string;
+  imgQuan?: string;
   phanBoSize: { size: string; sl: number }[];
+  mauPhoiAo?: string[];
+  mauPhoiQuan?: string[];
   
   // NẾU LÀ BỘ THÌ CÓ THÊM QUẦN
   maVaiQuan?: string;
@@ -203,6 +206,13 @@ export type LenhCat = {
   ghiChuSoDoChinh?: string;
   ghiChuSoDoPhoi?: string;
   daCoSoDo?: boolean;
+  soDoAo?: string;
+  daiSoDoAo?: string;
+  soDoQuan?: string;
+  daiSoDoQuan?: string;
+  hinhInTheu?: string;
+  fileInTheu?: string;
+  ghiChuInTheu?: string;
   ghiChuKyThuat?: string;
   
   // Meta
