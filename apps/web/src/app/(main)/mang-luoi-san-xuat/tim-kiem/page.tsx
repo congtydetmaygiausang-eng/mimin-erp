@@ -1,12 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BadgeCheck, Check, ExternalLink, Globe2, Hash, Mail, MapPin, Navigation, Phone, Search, Sparkles, X } from "lucide-react";
+import { BadgeCheck, Building2, Check, ExternalLink, Globe2, Hash, Mail, MapPin, Navigation, Phone, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import { approveDiscoveryCandidate, importAICandidates, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
 import { supabase } from "@/lib/supabase/client";
+
+function contactDetails(item: DirectSearchCandidate) {
+  const sourceText = item.address ?? "";
+  const email = item.email || sourceText.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] || "";
+  const phone = item.phone || sourceText.match(/(?:điện thoại|hotline|phone|liên hệ)\s*:?[\s-]*([+()\d][\d().\s-]{7,20})/i)?.[1]?.trim() || "";
+  const website = item.website || sourceText.match(/(?:https?:\/\/|www\.)[^\s,;]+/i)?.[0]?.replace(/[.)]+$/, "") || "";
+  const taxCode = item.taxCode || sourceText.match(/(?:mã số thuế|mst)\s*:?[\s-]*(\d{8,14})/i)?.[1] || "";
+  return { email, phone, website, taxCode };
+}
+
+function SupplierResultCard({ item }: { item: DirectSearchCandidate }) {
+  const contact = contactDetails(item);
+  const sources = item.sources?.length ? item.sources : [{ url: item.sourceUrl, title: item.sourceTitle }];
+  return <article className="rounded-xl border p-4 space-y-3" style={{borderColor:"var(--border)"}}>
+    <div className="flex justify-between gap-3">
+      <div className="min-w-0"><div className="flex items-start gap-2"><Building2 className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600"/><b className="leading-snug">{item.legalName}</b></div><div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>{item.verificationStatus==="VERIFIED"?"Đã đối chiếu nhiều nguồn":item.verificationStatus==="PARTIAL"?"Đã đối chiếu một phần":"Chưa đủ bằng chứng"}</div></div>
+      <span className="text-xs text-brand-700 shrink-0">{item.confidence}% phù hợp</span>
+    </div>
+    <div className="rounded-lg border px-3 py-2.5" style={{borderColor:"var(--border)"}}><div className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-600"><MapPin className="w-3.5 h-3.5"/>Địa chỉ / thông tin nguồn</div><p className="text-xs mt-1 opacity-75 leading-relaxed line-clamp-3" title={item.address}>{item.address || "Chưa có địa chỉ"}</p></div>
+    <div className="grid grid-cols-1 gap-2 text-xs">
+      <div className="flex items-start gap-2"><Phone className="w-4 h-4 shrink-0 text-emerald-600"/><span className="w-20 shrink-0 font-medium">Điện thoại</span>{contact.phone?<a className="break-all" href={`tel:${contact.phone}`}>{contact.phone}</a>:<span className="opacity-50">Chưa có</span>}</div>
+      <div className="flex items-start gap-2"><Mail className="w-4 h-4 shrink-0 text-violet-600"/><span className="w-20 shrink-0 font-medium">Email</span>{contact.email?<a className="break-all text-brand-700" href={`mailto:${contact.email}`}>{contact.email}</a>:<span className="opacity-50">Chưa có</span>}</div>
+      <div className="flex items-start gap-2"><Globe2 className="w-4 h-4 shrink-0 text-sky-600"/><span className="w-20 shrink-0 font-medium">Website</span>{contact.website?<a className="break-all text-brand-700" href={contact.website.startsWith("http")?contact.website:`https://${contact.website}`} target="_blank" rel="noopener noreferrer">{contact.website}</a>:<span className="opacity-50">Chưa có</span>}</div>
+      <div className="flex items-start gap-2"><Hash className="w-4 h-4 shrink-0 text-amber-600"/><span className="w-20 shrink-0 font-medium">Mã số thuế</span>{contact.taxCode?<span>{contact.taxCode}</span>:<span className="opacity-50">Chưa xác minh</span>}</div>
+    </div>
+    <div className="flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div>
+    <div className="flex flex-wrap gap-3 text-xs">{sources.slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div>
+  </article>;
+}
 
 export default function TimKiemDoiTacPage() {
   const [query, setQuery] = useState("");
@@ -81,7 +110,7 @@ export default function TimKiemDoiTacPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3"><label className="text-xs font-medium md:col-span-2">Vị trí trung tâm<input className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null)}} placeholder="VD: Hóc Môn, TP.HCM" /></label><label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Ưu tiên gần</option><option value="STRICT">Chỉ trong bán kính</option></select></label><div className="flex items-end"><button type="button" className="btn-secondary w-full inline-flex justify-center gap-2" onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:"Nếu không dùng GPS, hệ thống sẽ xác định tâm từ địa chỉ đã nhập."}</p><button className="btn-primary md:min-w-56 inline-flex justify-center gap-2" disabled={loading} onClick={() => void search()}><Search className="w-4 h-4" />{loading ? "Đang tìm..." : "Tìm tự động"}</button></div>
     </div>
-    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=><article key={`${item.sourceUrl}-${index}`} className="rounded-xl border p-4" style={{borderColor:"var(--border)"}}><div className="flex justify-between gap-2"><div><b>{item.legalName}</b><div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>{item.verificationStatus==="VERIFIED"?"Đã đối chiếu nhiều nguồn":item.verificationStatus==="PARTIAL"?"Đã đối chiếu một phần":"Chưa đủ bằng chứng"}</div></div><span className="text-xs text-brand-700">{item.confidence}% phù hợp</span></div><p className="text-xs mt-2 opacity-70 flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5"/>{item.address}</p><div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">{item.phone&&<a className="inline-flex items-center gap-1.5" href={`tel:${item.phone}`}><Phone className="w-3.5 h-3.5 shrink-0"/>{item.phone}</a>}{item.email&&<a className="inline-flex items-center gap-1.5 truncate" href={`mailto:${item.email}`}><Mail className="w-3.5 h-3.5 shrink-0"/>{item.email}</a>}{item.taxCode&&<span className="inline-flex items-center gap-1.5"><Hash className="w-3.5 h-3.5 shrink-0"/>{item.taxCode}</span>}{item.website&&<a className="text-brand-700 truncate inline-flex items-center gap-1.5" href={item.website.startsWith("http")?item.website:`https://${item.website}`} target="_blank" rel="noopener noreferrer"><Globe2 className="w-3.5 h-3.5 shrink-0"/>{item.website}</a>}</div><div className="mt-2 flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div><div className="mt-3 flex flex-wrap gap-3 text-xs">{(item.sources?.length?item.sources:[{url:item.sourceUrl,title:item.sourceTitle}]).slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div></article>)}</div></div>}
+    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=><SupplierResultCard key={`${item.sourceUrl}-${index}`} item={item}/>)}</div></div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />
