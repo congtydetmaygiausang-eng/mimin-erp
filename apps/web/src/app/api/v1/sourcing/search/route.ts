@@ -12,7 +12,88 @@ const ROLE_SEARCH_TERMS: Record<string, string[]> = {
 };
 
 interface SourceResult { title: string; url: string; content: string; latitude?: number; longitude?: number }
-interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number }
+interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[] }
+
+function normalized(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(cong ty|tnhh|co phan|cp|mot thanh vien|mtv|san xuat|thuong mai|dich vu)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function domainOf(value: string): string {
+  if (!value) return "";
+  try { return new URL(value.startsWith("http") ? value : `https://${value}`).hostname.replace(/^www\./, ""); }
+  catch { return ""; }
+}
+
+function digits(value: string): string { return value.replace(/\D/g, ""); }
+
+function tokenSet(value: string): Set<string> {
+  return new Set(normalized(value).split(" ").filter((token) => token.length > 2));
+}
+
+function overlapRatio(needle: Set<string>, haystack: Set<string>): number {
+  if (!needle.size) return 0;
+  let matches = 0;
+  needle.forEach((token) => { if (haystack.has(token)) matches += 1; });
+  return matches / needle.size;
+}
+
+function sameEntity(left: Candidate, right: Candidate): boolean {
+  const leftPhone = digits(left.phone), rightPhone = digits(right.phone);
+  if (leftPhone.length >= 8 && leftPhone === rightPhone) return true;
+  const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
+  if (leftDomain && leftDomain === rightDomain) return true;
+  const leftName = normalized(left.legalName), rightName = normalized(right.legalName);
+  if (leftName.length >= 5 && leftName === rightName) return true;
+  const names = overlapRatio(tokenSet(leftName), tokenSet(rightName));
+  const addresses = overlapRatio(tokenSet(left.address), tokenSet(right.address));
+  return names >= 0.8 && addresses >= 0.5;
+}
+
+function mergeText(left: string, right: string): string { return right.length > left.length ? right : left; }
+
+function postProcessCandidates(candidates: Candidate[], query: string, location: string): Candidate[] {
+  const clusters: Candidate[] = [];
+  for (const item of candidates) {
+    const existing = clusters.find((candidate) => sameEntity(candidate, item));
+    const source = { url: item.sourceUrl, title: item.sourceTitle };
+    if (!existing) {
+      clusters.push({ ...item, sources: [source] });
+      continue;
+    }
+    existing.legalName = mergeText(existing.legalName, item.legalName);
+    existing.address = mergeText(existing.address, item.address);
+    existing.province = mergeText(existing.province, item.province);
+    existing.district = mergeText(existing.district, item.district);
+    existing.phone = mergeText(existing.phone, item.phone);
+    existing.website = mergeText(existing.website, item.website);
+    existing.latitude ??= item.latitude;
+    existing.longitude ??= item.longitude;
+    existing.capabilities = Array.from(new Set([...existing.capabilities, ...item.capabilities])).slice(0, 20);
+    existing.confidence = Math.max(existing.confidence, item.confidence);
+    if (!existing.sources?.some((entry) => entry.url === source.url)) existing.sources?.push(source);
+  }
+
+  const queryTokens = tokenSet(query);
+  const locationTokens = tokenSet(location);
+  return clusters.map((item) => {
+    const searchable = tokenSet(`${item.legalName} ${item.address} ${item.capabilities.join(" ")}`);
+    const relevance = Math.round(overlapRatio(queryTokens, searchable) * 35);
+    const locationScore = Math.round(overlapRatio(locationTokens, tokenSet(`${item.address} ${item.province} ${item.district}`)) * 15);
+    const contact = (item.phone ? 7 : 0) + (item.website ? 5 : 0) + (item.address ? 3 : 0);
+    const sourceCount = item.sources?.length ?? 1;
+    const evidence = Math.min(15, sourceCount * 5);
+    const completeness = Math.min(10, [item.province, item.district, item.capabilities.length ? "yes" : "", item.latitude !== null ? "yes" : ""].filter(Boolean).length * 2.5);
+    const aiScore = Math.round(Math.max(0, Math.min(100, item.confidence)) / 10);
+    const confidence = Math.max(0, Math.min(100, Math.round(relevance + locationScore + contact + evidence + completeness + aiScore)));
+    const matchReasons = [
+      relevance >= 20 ? "Phù hợp nhu cầu" : "Cần kiểm tra thêm năng lực",
+      locationScore >= 8 ? "Đúng khu vực tìm kiếm" : "Vị trí cần xác minh",
+      sourceCount >= 2 ? `${sourceCount} nguồn xác nhận` : "1 nguồn tham khảo",
+      item.phone || item.website ? "Có thông tin liên hệ" : "Thiếu thông tin liên hệ",
+    ];
+    return { ...item, confidence, sourceCount, matchReasons };
+  }).sort((left, right) => right.confidence - left.confidence || (right.sourceCount ?? 0) - (left.sourceCount ?? 0)).slice(0, 30);
+}
 
 function fallbackQueryPlan(query: string, location: string, role: string): string[] {
   const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
@@ -200,7 +281,8 @@ export async function POST(req: NextRequest) {
     if (!query || !location || !body.role || !ROLES.has(body.role)) return NextResponse.json({ error: "Tiêu chí không hợp lệ" }, { status: 400 });
     const searchQueries = await buildQueryPlan(query, location, body.role);
     const source = await searchSources(query, location, searchQueries);
-    const candidates = await normalizeWithDeepSeek(query, location, source.items);
+    const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
+    const candidates = postProcessCandidates(normalizedCandidates, query, location);
     return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, candidates });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Tìm kiếm thất bại" }, { status: 502 });
