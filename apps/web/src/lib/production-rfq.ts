@@ -1,0 +1,10 @@
+import { supabase } from "@/lib/supabase/client";
+import { PRODUCTION_ORGANIZATION_ID } from "@/lib/production-network";
+
+export type RfqStatus = "DRAFT"|"SENT"|"RESPONDED"|"SELECTED"|"REJECTED"|"CANCELLED";
+export interface PartnerRfq { id:string; partnerId:string; subject:string; requirement:string; quantity:number|null; responseDeadline:string; status:RfqStatus; quotedPrice:number|null; responseNotes:string; createdAt:string }
+interface RfqRow { id:string;partner_id:string;subject:string;requirement:string;quantity:number|null;response_deadline:string|null;status:RfqStatus;quoted_price:number|null;response_notes:string|null;created_at:string }
+const mapRow=(r:RfqRow):PartnerRfq=>({id:r.id,partnerId:r.partner_id,subject:r.subject,requirement:r.requirement,quantity:r.quantity,responseDeadline:r.response_deadline??"",status:r.status,quotedPrice:r.quoted_price,responseNotes:r.response_notes??"",createdAt:r.created_at});
+export async function loadRfqs():Promise<PartnerRfq[]>{if(!supabase)return[];const{data,error}=await supabase.from("production_partner_rfqs").select("*").eq("organization_id",PRODUCTION_ORGANIZATION_ID).order("created_at",{ascending:false});if(error)throw error;return(data??[]).map(r=>mapRow(r as RfqRow))}
+export async function createRfq(input:{partnerId:string;subject:string;requirement:string;quantity:number|null;responseDeadline:string}):Promise<void>{if(!supabase)throw new Error("Chưa kết nối Supabase");const{error}=await supabase.from("production_partner_rfqs").insert({organization_id:PRODUCTION_ORGANIZATION_ID,partner_id:input.partnerId,subject:input.subject.trim(),requirement:input.requirement.trim(),quantity:input.quantity,response_deadline:input.responseDeadline||null});if(error)throw error}
+export async function updateRfqStatus(id:string,status:RfqStatus):Promise<void>{if(!supabase)throw new Error("Chưa kết nối Supabase");const{error}=await supabase.from("production_partner_rfqs").update({status,updated_at:new Date().toISOString()}).eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("id",id);if(error)throw error}
