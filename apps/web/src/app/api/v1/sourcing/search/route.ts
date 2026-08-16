@@ -96,7 +96,7 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
 
   const queryTokens = tokenSet(query);
   const locationTokens = tokenSet(location);
-  return clusters.map((item) => {
+  const ranked = clusters.map((item) => {
     const searchable = tokenSet(`${item.legalName} ${item.address} ${item.capabilities.join(" ")}`);
     const relevance = Math.round(overlapRatio(queryTokens, searchable) * 35);
     const measuredDistance = center && item.latitude !== null && item.longitude !== null ? distanceKm(center, item.latitude, item.longitude) : null;
@@ -124,7 +124,15 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
       ...(learningAdjustment >= 2 ? ["Phù hợp lịch sử lựa chọn"] : learningAdjustment <= -2 ? ["Khác mẫu thường ưu tiên"] : []),
     ];
     return { ...item, confidence, sourceCount, matchReasons, verifiedFields, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus };
-  }).filter((item) => locationMode !== "STRICT" || item.locationStatus === "INSIDE").sort((left, right) => right.confidence - left.confidence || (left.distanceKm ?? Number.MAX_VALUE) - (right.distanceKm ?? Number.MAX_VALUE) || (right.sourceCount ?? 0) - (left.sourceCount ?? 0)).slice(0, 30);
+  }).sort((left, right) => right.confidence - left.confidence || (left.distanceKm ?? Number.MAX_VALUE) - (right.distanceKm ?? Number.MAX_VALUE) || (right.sourceCount ?? 0) - (left.sourceCount ?? 0));
+
+  if (locationMode !== "STRICT") return ranked.slice(0, 30);
+  const insideRadius = ranked.filter((item) => item.locationStatus === "INSIDE");
+  if (insideRadius.length) return insideRadius.slice(0, 30);
+  return ranked.filter((item) => item.locationStatus === "UNKNOWN").map((item) => ({
+    ...item,
+    matchReasons: ["Chưa xác minh trong bán kính · cần bổ sung tọa độ", ...(item.matchReasons ?? [])],
+  })).slice(0, 30);
 }
 
 async function resolveCenter(location: string, provided?: { latitude?: unknown; longitude?: unknown; accuracy?: unknown }): Promise<SearchCenter | null> {
@@ -258,10 +266,7 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
   return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
 }
 
-async function searchGemini(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!key) return [];
-  const model = process.env.GEMINI_SEARCH_MODEL || "gemini-2.5-flash";
+async function requestGeminiSearch(key: string, model: string, query: string, location: string, queries: string[], timeoutMs: number): Promise<SourceResult[]> {
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
@@ -275,9 +280,9 @@ async function searchGemini(query: string, location: string, queries: string[]):
         "Không bịa dữ liệu; chỉ đưa doanh nghiệp có nguồn web kiểm chứng được.",
       ].join("\n") }] }],
       tools: [{ google_search: {} }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2500 },
     }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
   const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> } }> };
@@ -289,6 +294,26 @@ async function searchGemini(query: string, location: string, queries: string[]):
   }).slice(0, 10);
 }
 
+async function searchGemini(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!key) return [];
+  const primaryModel = process.env.GEMINI_SEARCH_MODEL || "gemini-2.5-flash";
+  const fallbackModel = "gemini-2.5-flash-lite";
+  let primaryError: unknown = null;
+  try {
+    const primary = await requestGeminiSearch(key, primaryModel, query, location, queries, 18_000);
+    if (primary.length || primaryModel === fallbackModel) return primary;
+  } catch (error) {
+    primaryError = error;
+    if (error instanceof Error && /HTTP (401|403)/.test(error.message)) throw error;
+  }
+  try {
+    return await requestGeminiSearch(key, fallbackModel, query, location, queries, 14_000);
+  } catch (fallbackError) {
+    throw fallbackError ?? primaryError ?? new Error("Gemini REQUEST_FAILED");
+  }
+}
+
 async function searchOpenStreetMap(query: string, location: string): Promise<SourceResult[]> {
   const params = new URLSearchParams({ q: `${query}, ${location}, Việt Nam`, format: "jsonv2", addressdetails: "1", limit: "15", countrycodes: "vn" });
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": "MIMIN-ERP-Sourcing/1.0", "Accept-Language": "vi" }, signal: AbortSignal.timeout(15_000) });
@@ -297,7 +322,16 @@ async function searchOpenStreetMap(query: string, location: string): Promise<Sou
   return data.map((item) => ({ title: item.display_name.split(",")[0], url: `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`, content: item.display_name, latitude: Number(item.lat), longitude: Number(item.lon) }));
 }
 
-async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[]; providerHealth: Array<{ name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED"; count: number }> }> {
+function providerErrorCode(reason: unknown): string {
+  if (reason instanceof Error) {
+    const httpStatus = reason.message.match(/HTTP (\d{3})/)?.[1];
+    if (httpStatus) return `HTTP ${httpStatus}`;
+    if (reason.name === "TimeoutError" || /timeout/i.test(reason.message)) return "TIMEOUT";
+  }
+  return "REQUEST_FAILED";
+}
+
+async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[]; providerHealth: Array<{ name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED"; count: number; code?: string }> }> {
   const [tavily, gemini] = await Promise.allSettled([searchTavily(queries), searchGemini(query, location, queries)]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
@@ -309,8 +343,8 @@ async function searchSources(query: string, location: string, queries: string[])
     gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
   ].filter(Boolean);
   const providerHealth = [
-    { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" as const : tavily.status === "rejected" ? "ERROR" as const : tavily.value.length ? "OK" as const : "EMPTY" as const, count: tavily.status === "fulfilled" ? tavily.value.length : 0 },
-    { name: "Gemini", status: !(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0 },
+    { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" as const : tavily.status === "rejected" ? "ERROR" as const : tavily.value.length ? "OK" as const : "EMPTY" as const, count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
+    { name: "Gemini", status: !(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
   ];
   if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 40), providerHealth };
   const fallback = await searchOpenStreetMap(query, location);
@@ -397,6 +431,7 @@ export async function POST(req: NextRequest) {
       partial: candidates.filter((item) => item.verificationStatus === "PARTIAL").length,
       insideRadius: candidates.filter((item) => item.locationStatus === "INSIDE").length,
       unknownCoordinates: candidates.filter((item) => item.locationStatus === "UNKNOWN").length,
+      strictLocationFallback: locationMode === "STRICT" && candidates.length > 0 && candidates.every((item) => item.locationStatus === "UNKNOWN"),
       providers: source.providerHealth,
     };
     return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, diagnostics, candidates });
