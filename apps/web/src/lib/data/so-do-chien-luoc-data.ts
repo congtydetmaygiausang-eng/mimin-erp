@@ -1,3 +1,21 @@
+// ============ BẢNG MÀU CHO KHỐI (Ô) TRÊN SƠ ĐỒ ============
+// Dùng chung giữa thanh công cụ (nút chọn màu) và component vẽ khối, để 2 nơi
+// không bị lệch màu nhau.
+export type MauKhoi = "teal" | "xanh" | "tim" | "hong" | "cam" | "vang" | "do" | "xam";
+
+export const MAU_KHOI: Record<MauKhoi, { ten: string; khoi: string; cham: string }> = {
+  teal: { ten: "Xanh ngọc", khoi: "bg-teal-500 text-white border-teal-600", cham: "bg-teal-500" },
+  xanh: { ten: "Xanh dương", khoi: "bg-blue-500 text-white border-blue-600", cham: "bg-blue-500" },
+  tim: { ten: "Tím", khoi: "bg-violet-500 text-white border-violet-600", cham: "bg-violet-500" },
+  hong: { ten: "Hồng", khoi: "bg-pink-500 text-white border-pink-600", cham: "bg-pink-500" },
+  cam: { ten: "Cam", khoi: "bg-orange-500 text-white border-orange-600", cham: "bg-orange-500" },
+  vang: { ten: "Vàng", khoi: "bg-amber-400 text-amber-950 border-amber-500", cham: "bg-amber-400" },
+  do: { ten: "Đỏ", khoi: "bg-rose-500 text-white border-rose-600", cham: "bg-rose-500" },
+  xam: { ten: "Trắng xám", khoi: "bg-white text-slate-800 border-slate-300", cham: "bg-slate-200 ring-1 ring-slate-300" },
+};
+
+export const DS_MAU_KHOI = Object.keys(MAU_KHOI) as MauKhoi[];
+
 export type MindMapProject = {
   id: string;
   name: string;
