@@ -141,6 +141,15 @@ const NAV: NavItem[] = [
     ]
   },
   {
+    // @codex Phân hệ mới dùng quyền NCC sẵn có để không sửa permission matrix của Mavis.
+    label: "Mạng Lưới Sản Xuất", icon: Link2, isGroup: true,
+    color: "border-cyan-400", iconColor: "text-cyan-300",
+    activeBg: "bg-cyan-900/40", activeSubBg: "bg-cyan-400/20 text-white",
+    subItems: [
+      { href: "/mang-luoi-san-xuat", label: "Trang chủ sản xuất", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
+    ]
+  },
+  {
     label: "Danh Mục Dữ Liệu", icon: Building2, isGroup: true,
     color: "border-violet-400", iconColor: "text-violet-300",
     activeBg: "bg-violet-900/40", activeSubBg: "bg-violet-400/20 text-white",

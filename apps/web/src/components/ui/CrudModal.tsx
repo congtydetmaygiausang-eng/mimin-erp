@@ -10,7 +10,8 @@ export type FieldDef =
   | { name: string; label: string; type: "number"; required?: boolean; placeholder?: string; min?: number; max?: number }
   | { name: string; label: string; type: "date"; required?: boolean }
   | { name: string; label: string; type: "textarea"; required?: boolean; placeholder?: string; rows?: number }
-  | { name: string; label: string; type: "select"; required?: boolean; options: { value: string; label: string }[] };
+  | { name: string; label: string; type: "select"; required?: boolean; options: { value: string; label: string }[] }
+  | { name: string; label: string; type: "checkbox-group"; required?: boolean; options: { value: string; label: string }[] };
 
 export function CrudModal({
   open,
@@ -114,6 +115,29 @@ export function CrudModal({
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
+              ) : f.type === "checkbox-group" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
+                  {f.options.map((option) => {
+                    const selected = (values[f.name] || "").split(",").filter(Boolean);
+                    const checked = selected.includes(option.value);
+                    return (
+                      <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            const next = checked
+                              ? selected.filter((value) => value !== option.value)
+                              : [...selected, option.value];
+                            setValues({ ...values, [f.name]: next.join(",") });
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               ) : (
                 <input
                   className="input"
