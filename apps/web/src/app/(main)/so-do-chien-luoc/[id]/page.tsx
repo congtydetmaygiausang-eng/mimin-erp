@@ -6,7 +6,7 @@ import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge, u
 import "@xyflow/react/dist/style.css";
 import { MiminNode, MiminImageNode } from "@/components/mindmap/CustomNodes";
 import { MOCK_PROJECTS, MAU_KHOI, DS_MAU_KHOI, type MauKhoi } from "@/lib/data/so-do-chien-luoc-data";
-import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette } from "lucide-react";
+import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Undo2, Copy, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -65,6 +65,10 @@ function SoDoCanvasInner() {
   const [projName, setProjName] = useState("Sơ đồ không tên");
   const [isReady, setIsReady] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [hienPhimTat, setHienPhimTat] = useState(false);
+  // Lịch sử để Hoàn tác (Ctrl+Z). Dùng ref chứ không dùng state: chỉ cần đọc/ghi
+  // khi có thao tác, không cần render lại mỗi lần đẩy snapshot.
+  const lichSuRef = useRef<{ nodes: any[]; edges: any[] }[]>([]);
 
   // Khởi tạo data: ưu tiên bản đã lưu của người dùng, chưa có mới lấy mẫu sẵn
   useEffect(() => {
@@ -98,6 +102,7 @@ function SoDoCanvasInner() {
 
   // Thêm khối Text
   const addTextNode = () => {
+    luuLichSu();
     const newNode = {
       id: `node_${Date.now()}`,
       position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
@@ -117,6 +122,7 @@ function SoDoCanvasInner() {
       return;
     }
 
+    luuLichSu();
     const nodesMoi: any[] = [];
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
@@ -141,6 +147,7 @@ function SoDoCanvasInner() {
   const addImageTuLink = () => {
     const url = prompt("Dán đường link ảnh (URL):");
     if (!url) return;
+    luuLichSu();
     setNodes((nds) => [
       ...nds,
       {
@@ -160,6 +167,7 @@ function SoDoCanvasInner() {
       toast.error("Hãy bấm chọn 1 khối chữ trên sơ đồ trước, rồi mới chọn màu.");
       return;
     }
+    luuLichSu();
     setNodes((nds: any[]) =>
       nds.map((n) => (n.selected && n.type === "miminNode" ? { ...n, data: { ...n.data, color: mau } } : n))
     );
@@ -176,6 +184,97 @@ function SoDoCanvasInner() {
       toast.error("Bộ nhớ trình duyệt đã đầy - hãy bớt ảnh trong sơ đồ rồi lưu lại.");
     }
   };
+
+  // ============ THAO TÁC CHỈNH SỬA CƠ BẢN + PHÍM TẮT ============
+
+  /** Chụp lại trạng thái hiện tại trước khi sửa, để Ctrl+Z quay lại được */
+  const luuLichSu = () => {
+    lichSuRef.current.push({ nodes: [...nodes], edges: [...edges] });
+    if (lichSuRef.current.length > 30) lichSuRef.current.shift();
+  };
+
+  const hoanTac = () => {
+    const truoc = lichSuRef.current.pop();
+    if (!truoc) {
+      toast.error("Không còn thao tác nào để hoàn tác");
+      return;
+    }
+    setNodes(truoc.nodes);
+    setEdges(truoc.edges);
+    toast.success("Đã hoàn tác");
+  };
+
+  const xoaDangChon = () => {
+    const nodeChon = nodes.filter((n: any) => n.selected);
+    const edgeChon = edges.filter((e: any) => e.selected);
+    if (nodeChon.length === 0 && edgeChon.length === 0) {
+      toast.error("Chưa chọn khối hoặc dây nối nào để xoá");
+      return;
+    }
+    luuLichSu();
+    const idXoa = new Set(nodeChon.map((n: any) => n.id));
+    setNodes((nds: any[]) => nds.filter((n) => !n.selected));
+    // Xoá luôn dây nối dính tới khối vừa xoá, tránh để lại dây "mồ côi"
+    setEdges((eds: any[]) => eds.filter((e) => !e.selected && !idXoa.has(e.source) && !idXoa.has(e.target)));
+    toast.success(`Đã xoá ${nodeChon.length} khối, ${edgeChon.length} dây nối`);
+  };
+
+  const nhanDoiDangChon = () => {
+    const chon = nodes.filter((n: any) => n.selected);
+    if (chon.length === 0) {
+      toast.error("Chưa chọn khối nào để nhân đôi");
+      return;
+    }
+    luuLichSu();
+    const ban = chon.map((n: any, i: number) => ({
+      ...n,
+      id: `${n.id}_copy_${Date.now()}_${i}`,
+      position: { x: n.position.x + 40, y: n.position.y + 40 },
+      selected: false,
+    }));
+    setNodes((nds: any[]) => [...nds, ...ban]);
+    toast.success(`Đã nhân đôi ${ban.length} khối`);
+  };
+
+  const doiTenDangChon = () => {
+    const chon = nodes.filter((n: any) => n.selected);
+    if (chon.length !== 1) {
+      toast.error("Hãy chọn đúng 1 khối để đổi tên");
+      return;
+    }
+    const ten = prompt("Nhập nội dung mới cho khối:", chon[0].data?.label || "");
+    if (ten === null) return;
+    luuLichSu();
+    setNodes((nds: any[]) =>
+      nds.map((n) => (n.selected ? { ...n, data: { ...n.data, label: ten } } : n))
+    );
+    toast.success("Đã đổi nội dung khối");
+  };
+
+  const boChon = () => {
+    setNodes((nds: any[]) => nds.map((n) => ({ ...n, selected: false })));
+    setEdges((eds: any[]) => eds.map((e) => ({ ...e, selected: false })));
+  };
+
+  // Bắt phím tắt. Bỏ qua khi đang gõ trong ô nhập liệu để không cướp phím.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const dangGo = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      if (ctrl && e.key.toLowerCase() === "s") { e.preventDefault(); handleSave(); return; }
+      if (dangGo) return;
+
+      if (ctrl && e.key.toLowerCase() === "z") { e.preventDefault(); hoanTac(); return; }
+      if (ctrl && e.key.toLowerCase() === "d") { e.preventDefault(); nhanDoiDangChon(); return; }
+      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); xoaDangChon(); return; }
+      if (e.key === "F2") { e.preventDefault(); doiTenDangChon(); return; }
+      if (e.key === "Escape") { boChon(); setHienPhimTat(false); return; }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   if (!isReady) return null;
 
@@ -247,7 +346,62 @@ function SoDoCanvasInner() {
 
           <div className="w-px h-6 bg-black/10 dark:bg-white/10 mx-2"></div>
 
-          <button 
+          {/* Thao tác chỉnh sửa cơ bản - đều có phím tắt tương ứng */}
+          {([
+            [Undo2, "Hoàn tác (Ctrl+Z)", hoanTac],
+            [Copy, "Nhân đôi khối đang chọn (Ctrl+D)", nhanDoiDangChon],
+            [Pencil, "Đổi nội dung khối đang chọn (F2)", doiTenDangChon],
+            [Trash2, "Xoá khối/dây đang chọn (Delete)", xoaDangChon],
+          ] as [any, string, () => void][]).map(([Icon, title, fn], i) => (
+            <button
+              key={i}
+              onClick={fn}
+              title={title}
+              className="p-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
+            >
+              <Icon className="w-4 h-4" />
+            </button>
+          ))}
+
+          {/* Bảng liệt kê phím tắt */}
+          <div className="relative">
+            <button
+              onClick={() => setHienPhimTat((v) => !v)}
+              title="Xem danh sách phím tắt"
+              className="p-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
+            >
+              <Keyboard className="w-4 h-4" />
+            </button>
+            {hienPhimTat && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl ring-1 ring-slate-200 dark:ring-white/10 shadow-xl p-3 z-50 text-left">
+                <div className="font-bold text-sm mb-2 text-slate-700 dark:text-slate-200">Phím tắt chỉnh sửa</div>
+                <div className="space-y-1.5">
+                  {[
+                    ["Ctrl + S", "Lưu sơ đồ"],
+                    ["Ctrl + Z", "Hoàn tác thao tác vừa rồi"],
+                    ["Ctrl + D", "Nhân đôi khối đang chọn"],
+                    ["F2", "Đổi nội dung khối đang chọn"],
+                    ["Delete", "Xoá khối / dây nối đang chọn"],
+                    ["Esc", "Bỏ chọn tất cả"],
+                  ].map(([phim, mo]) => (
+                    <div key={phim} className="flex items-center justify-between gap-3 text-xs">
+                      <kbd className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-white/10 font-mono font-semibold text-slate-700 dark:text-slate-200 shrink-0">
+                        {phim}
+                      </kbd>
+                      <span className="text-slate-500 text-right">{mo}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2.5 pt-2 border-t border-slate-100 dark:border-white/10">
+                  Bấm vào khối trên sơ đồ để chọn (giữ Shift để chọn nhiều khối).
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-6 bg-black/10 dark:bg-white/10 mx-2"></div>
+
+          <button
             onClick={handleSave}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition"
           >
@@ -266,6 +420,10 @@ function SoDoCanvasInner() {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           fitView
+          // Tự xử lý phím Delete ở trên để còn lưu lịch sử cho Ctrl+Z và xoá
+          // kèm dây nối mồ côi; tắt cơ chế xoá mặc định để không chạy 2 lần.
+          deleteKeyCode={null}
+          onNodeDragStart={luuLichSu}
           className="touch-none"
         >
           <Background color="#ccc" gap={16} />
