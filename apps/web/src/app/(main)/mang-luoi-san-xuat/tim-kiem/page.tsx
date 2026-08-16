@@ -20,6 +20,7 @@ export default function TimKiemDoiTacPage() {
   const [locationMode, setLocationMode] = useState<"PREFER"|"STRICT">("PREFER");
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
   const [resolvedCenter, setResolvedCenter] = useState<{label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null>(null);
+  const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [aiText, setAiText] = useState("");
   const [aiProvider, setAiProvider] = useState("AI_IMPORT");
   const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
@@ -46,9 +47,9 @@ export default function TimKiemDoiTacPage() {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
       const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
-      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:{label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null;candidates?:DirectSearchCandidate[]};
+      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:{label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
-      setDirectResults(data.candidates??[]); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null);
+      setDirectResults(data.candidates??[]); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null);
       toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${data.candidates?.length??0} kết quả`);
     }
     catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); }
@@ -72,6 +73,7 @@ export default function TimKiemDoiTacPage() {
     <PageHeader moduleLabel="MIMIN ERP — Mạng lưới sản xuất" title="Tìm kiếm ứng viên tự động"
       subtitle="Kết quả từ nguồn mở được lưu vào vùng chờ; chưa tự động ghi vào danh mục đối tác chính thức."
       icon={<Search className="w-5 h-5" />} />
+    {learningSummary&&<div className="text-xs px-1 opacity-70">{learningSummary.applied?`AI đang học từ ${learningSummary.approvedCount} kết quả đã duyệt và ${learningSummary.rejectedCount} kết quả đã loại.`:`Cần ít nhất 3 quyết định duyệt/loại để AI bắt đầu học. Hiện có ${learningSummary.approvedCount+learningSummary.rejectedCount}.`}</div>}
     <div className="card p-5 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><label className="text-xs font-medium">Danh mục<select className="input mt-1" value={role} onChange={(e) => setRole(e.target.value as ProductionPartnerRole)}>{PARTNER_ROLES.map((item) => <option key={item} value={item}>{ROLE_LABELS[item]}</option>)}</select></label><label className="text-xs font-medium">Cần tìm<input className="input mt-1" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="VD: xưởng dệt, vải cotton" /></label></div>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3"><label className="text-xs font-medium md:col-span-2">Vị trí trung tâm<input className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null)}} placeholder="VD: Hóc Môn, TP.HCM" /></label><label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Ưu tiên gần</option><option value="STRICT">Chỉ trong bán kính</option></select></label><div className="flex items-end"><button type="button" className="btn-secondary w-full inline-flex justify-center gap-2" onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPLIER", "PACKAGING_FINISHER"]);
 const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
@@ -14,6 +14,7 @@ const ROLE_SEARCH_TERMS: Record<string, string[]> = {
 interface SourceResult { title: string; url: string; content: string; latitude?: number; longitude?: number }
 interface SearchCenter { latitude: number; longitude: number; label: string; source: "GPS" | "ADDRESS"; accuracy?: number }
 interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN"; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string }
+interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 
 function normalized(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(cong ty|tnhh|co phan|cp|mot thanh vien|mtv|san xuat|thuong mai|dich vu)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
@@ -68,7 +69,7 @@ function distanceKm(center: SearchCenter, latitude: number, longitude: number): 
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter | null, radiusKm: number, locationMode: "PREFER" | "STRICT"): Candidate[] {
+function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter | null, radiusKm: number, locationMode: "PREFER" | "STRICT", learning: LearningProfile): Candidate[] {
   const clusters: Candidate[] = [];
   for (const item of candidates) {
     const existing = clusters.find((candidate) => sameEntity(candidate, item));
@@ -109,13 +110,18 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const evidence = Math.min(15, sourceCount * 5);
     const completeness = Math.min(10, [item.province, item.district, item.capabilities.length ? "yes" : "", item.latitude !== null ? "yes" : ""].filter(Boolean).length * 2.5);
     const aiScore = Math.round(Math.max(0, Math.min(100, item.confidence)) / 10);
-    const confidence = Math.max(0, Math.min(100, Math.round(relevance + locationScore + contact + evidence + completeness + aiScore)));
+    const learnedText = tokenSet(`${item.address} ${item.province} ${item.district} ${item.capabilities.join(" ")}`);
+    const preferredMatches = learning.applied ? learning.preferredTerms.filter((term) => learnedText.has(term)).length : 0;
+    const avoidedMatches = learning.applied ? learning.avoidedTerms.filter((term) => learnedText.has(term)).length : 0;
+    const learningAdjustment = Math.max(-8, Math.min(8, preferredMatches * 2 - avoidedMatches * 2));
+    const confidence = Math.max(0, Math.min(100, Math.round(relevance + locationScore + contact + evidence + completeness + aiScore + learningAdjustment)));
     const matchReasons = [
       relevance >= 20 ? "Phù hợp nhu cầu" : "Cần kiểm tra thêm năng lực",
       measuredDistance !== null ? `${measuredDistance.toFixed(1)} km · ${locationStatus === "INSIDE" ? "Trong bán kính" : "Ngoài bán kính"}` : locationScore >= 8 ? "Đúng khu vực theo địa chỉ" : "Chưa có tọa độ để tính km",
       sourceCount >= 2 ? `${sourceCount} nguồn xác nhận` : "1 nguồn tham khảo",
       item.phone || item.website ? "Có thông tin liên hệ" : "Thiếu thông tin liên hệ",
       verifiedStatus === "VERIFIED" ? "Đã đối chiếu nhiều nguồn" : verifiedStatus === "PARTIAL" ? "Đã đối chiếu một phần" : "Chưa đủ bằng chứng",
+      ...(learningAdjustment >= 2 ? ["Phù hợp lịch sử lựa chọn"] : learningAdjustment <= -2 ? ["Khác mẫu thường ưu tiên"] : []),
     ];
     return { ...item, confidence, sourceCount, matchReasons, verifiedFields, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus };
   }).filter((item) => locationMode !== "STRICT" || item.locationStatus === "INSIDE").sort((left, right) => right.confidence - left.confidence || (left.distanceKm ?? Number.MAX_VALUE) - (right.distanceKm ?? Number.MAX_VALUE) || (right.sourceCount ?? 0) - (left.sourceCount ?? 0)).slice(0, 30);
@@ -151,8 +157,9 @@ function fallbackQueryPlan(query: string, location: string, role: string): strin
   ])).slice(0, 8);
 }
 
-async function buildQueryPlan(query: string, location: string, role: string): Promise<string[]> {
-  const fallback = fallbackQueryPlan(query, location, role);
+async function buildQueryPlan(query: string, location: string, role: string, learning: LearningProfile): Promise<string[]> {
+  const learnedQueries = learning.applied ? learning.preferredTerms.slice(0, 3).map((term) => `${query} ${term} ${location}`) : [];
+  const fallback = Array.from(new Set([...learnedQueries, ...fallbackQueryPlan(query, location, role)])).slice(0, 10);
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return fallback;
   try {
@@ -166,7 +173,7 @@ async function buildQueryPlan(query: string, location: string, role: string): Pr
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8 truy vấn tìm kiếm khác nhau, ngắn và cụ thể. Bao phủ tên ngành, sản phẩm/dịch vụ, loại hình công ty/xưởng, từ đồng nghĩa, địa phương lân cận hợp lý và tối đa 2 truy vấn tiếng Anh. Luôn giữ đúng ý định, danh mục và khu vực; không thêm yêu cầu ngoài phạm vi. Không dùng toán tử tìm kiếm khó hiểu." },
-          { role: "user", content: JSON.stringify({ query, location, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [] }) },
+          { role: "user", content: JSON.stringify({ query, location, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
         ],
       }),
       signal: AbortSignal.timeout(10_000),
@@ -203,7 +210,35 @@ async function verify(req: NextRequest) {
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
-  return ALLOWED_APP_ROLES.has(String(data.user.app_metadata?.role ?? "")) ? data.user : null;
+  return ALLOWED_APP_ROLES.has(String(data.user.app_metadata?.role ?? "")) ? { user: data.user, client } : null;
+}
+
+async function loadLearningProfile(client: SupabaseClient, role: string): Promise<LearningProfile> {
+  const empty: LearningProfile = { approvedCount: 0, rejectedCount: 0, preferredTerms: [], avoidedTerms: [], applied: false };
+  try {
+    const { data, error } = await client.from("production_discovery_candidates")
+      .select("status,address,province,district,raw_data,reviewed_at")
+      .eq("organization_id", "mimin").eq("role", role)
+      .in("status", ["APPROVED", "REJECTED"])
+      .order("reviewed_at", { ascending: false }).limit(100);
+    if (error || !data) return empty;
+    const approved = new Map<string, number>(), rejected = new Map<string, number>();
+    let approvedCount = 0, rejectedCount = 0;
+    for (const row of data as Array<{ status: string; address?: string; province?: string; district?: string; raw_data?: unknown }>) {
+      const target = row.status === "APPROVED" ? approved : rejected;
+      if (row.status === "APPROVED") approvedCount += 1; else rejectedCount += 1;
+      const raw = row.raw_data && typeof row.raw_data === "object" ? row.raw_data as Record<string, unknown> : {};
+      const capabilities = Array.isArray(raw.capabilities) ? raw.capabilities.filter((item): item is string => typeof item === "string") : [];
+      tokenSet(`${capabilities.join(" ")} ${row.province ?? ""} ${row.district ?? ""} ${row.address ?? ""}`).forEach((term) => target.set(term, (target.get(term) ?? 0) + 1));
+    }
+    const meaningful = (entries: Map<string, number>, opposite: Map<string, number>) => Array.from(entries.entries())
+      .map(([term, count]) => ({ term, score: count - (opposite.get(term) ?? 0) }))
+      .filter((item) => item.score > 0 && item.term.length >= 4)
+      .sort((left, right) => right.score - left.score || left.term.localeCompare(right.term))
+      .slice(0, 8).map((item) => item.term);
+    const total = approvedCount + rejectedCount;
+    return { approvedCount, rejectedCount, preferredTerms: meaningful(approved, rejected), avoidedTerms: meaningful(rejected, approved), applied: total >= 3 };
+  } catch { return empty; }
 }
 
 async function searchTavily(queries: string[]): Promise<SourceResult[]> {
@@ -334,9 +369,9 @@ async function normalizeWithDeepSeek(query: string, location: string, sources: S
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await verify(req);
-    if (!user) return NextResponse.json({ error: "Không có quyền" }, { status: 401 });
-    if (limited(user.id)) return NextResponse.json({ error: "Vượt giới hạn 10 lượt/phút" }, { status: 429 });
+    const auth = await verify(req);
+    if (!auth) return NextResponse.json({ error: "Không có quyền" }, { status: 401 });
+    if (limited(auth.user.id)) return NextResponse.json({ error: "Vượt giới hạn 10 lượt/phút" }, { status: 429 });
     const body = await req.json() as { query?: string; location?: string; role?: string; center?: { latitude?: unknown; longitude?: unknown; accuracy?: unknown }; radiusKm?: number; locationMode?: string };
     const query = body.query?.trim().slice(0, 150) ?? "";
     const location = body.location?.trim().slice(0, 150) ?? "";
@@ -344,11 +379,12 @@ export async function POST(req: NextRequest) {
     const radiusKm = typeof body.radiusKm === "number" && Number.isFinite(body.radiusKm) ? Math.max(1, Math.min(200, body.radiusKm)) : 20;
     const locationMode = body.locationMode === "STRICT" ? "STRICT" : "PREFER";
     const center = await resolveCenter(location, body.center);
-    const searchQueries = await buildQueryPlan(query, location, body.role);
+    const learning = await loadLearningProfile(auth.client, body.role);
+    const searchQueries = await buildQueryPlan(query, location, body.role, learning);
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
-    const candidates = postProcessCandidates(normalizedCandidates, query, location, center, radiusKm, locationMode);
-    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, candidates });
+    const candidates = postProcessCandidates(normalizedCandidates, query, location, center, radiusKm, locationMode, learning);
+    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, candidates });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Tìm kiếm thất bại" }, { status: 502 });
   }
