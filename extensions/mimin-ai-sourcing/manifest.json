@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "MIMIN AI Sourcing",
+  "version": "1.0.0",
+  "description": "Chuyển kết quả tìm nhà cung cấp từ ChatGPT, Gemini và DeepSeek vào vùng chờ MIMIN ERP.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://gemini.google.com/*",
+    "https://chat.deepseek.com/*",
+    "https://mimin-erp.vercel.app/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{
+    "matches": [
+      "https://chatgpt.com/*",
+      "https://gemini.google.com/*",
+      "https://chat.deepseek.com/*",
+      "https://mimin-erp.vercel.app/*"
+    ],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }]
+}
