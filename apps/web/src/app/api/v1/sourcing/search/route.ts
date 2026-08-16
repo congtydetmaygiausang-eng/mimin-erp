@@ -12,7 +12,8 @@ const ROLE_SEARCH_TERMS: Record<string, string[]> = {
 };
 
 interface SourceResult { title: string; url: string; content: string; latitude?: number; longitude?: number }
-interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[] }
+interface SearchCenter { latitude: number; longitude: number; label: string; source: "GPS" | "ADDRESS"; accuracy?: number }
+interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" }
 
 function normalized(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(cong ty|tnhh|co phan|cp|mot thanh vien|mtv|san xuat|thuong mai|dich vu)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
@@ -51,7 +52,15 @@ function sameEntity(left: Candidate, right: Candidate): boolean {
 
 function mergeText(left: string, right: string): string { return right.length > left.length ? right : left; }
 
-function postProcessCandidates(candidates: Candidate[], query: string, location: string): Candidate[] {
+function distanceKm(center: SearchCenter, latitude: number, longitude: number): number {
+  const radians = (value: number) => value * Math.PI / 180;
+  const deltaLat = radians(latitude - center.latitude);
+  const deltaLng = radians(longitude - center.longitude);
+  const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(radians(center.latitude)) * Math.cos(radians(latitude)) * Math.sin(deltaLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter | null, radiusKm: number, locationMode: "PREFER" | "STRICT"): Candidate[] {
   const clusters: Candidate[] = [];
   for (const item of candidates) {
     const existing = clusters.find((candidate) => sameEntity(candidate, item));
@@ -78,7 +87,10 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
   return clusters.map((item) => {
     const searchable = tokenSet(`${item.legalName} ${item.address} ${item.capabilities.join(" ")}`);
     const relevance = Math.round(overlapRatio(queryTokens, searchable) * 35);
-    const locationScore = Math.round(overlapRatio(locationTokens, tokenSet(`${item.address} ${item.province} ${item.district}`)) * 15);
+    const measuredDistance = center && item.latitude !== null && item.longitude !== null ? distanceKm(center, item.latitude, item.longitude) : null;
+    const locationStatus: "INSIDE" | "OUTSIDE" | "UNKNOWN" = measuredDistance === null ? "UNKNOWN" : measuredDistance <= radiusKm ? "INSIDE" : "OUTSIDE";
+    const textLocationScore = Math.round(overlapRatio(locationTokens, tokenSet(`${item.address} ${item.province} ${item.district}`)) * 15);
+    const locationScore = measuredDistance === null ? textLocationScore : measuredDistance <= radiusKm ? Math.max(5, Math.round(15 * (1 - measuredDistance / Math.max(radiusKm, 1)))) : 0;
     const contact = (item.phone ? 7 : 0) + (item.website ? 5 : 0) + (item.address ? 3 : 0);
     const sourceCount = item.sources?.length ?? 1;
     const evidence = Math.min(15, sourceCount * 5);
@@ -87,12 +99,31 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const confidence = Math.max(0, Math.min(100, Math.round(relevance + locationScore + contact + evidence + completeness + aiScore)));
     const matchReasons = [
       relevance >= 20 ? "Phù hợp nhu cầu" : "Cần kiểm tra thêm năng lực",
-      locationScore >= 8 ? "Đúng khu vực tìm kiếm" : "Vị trí cần xác minh",
+      measuredDistance !== null ? `${measuredDistance.toFixed(1)} km · ${locationStatus === "INSIDE" ? "Trong bán kính" : "Ngoài bán kính"}` : locationScore >= 8 ? "Đúng khu vực theo địa chỉ" : "Chưa có tọa độ để tính km",
       sourceCount >= 2 ? `${sourceCount} nguồn xác nhận` : "1 nguồn tham khảo",
       item.phone || item.website ? "Có thông tin liên hệ" : "Thiếu thông tin liên hệ",
     ];
-    return { ...item, confidence, sourceCount, matchReasons };
-  }).sort((left, right) => right.confidence - left.confidence || (right.sourceCount ?? 0) - (left.sourceCount ?? 0)).slice(0, 30);
+    return { ...item, confidence, sourceCount, matchReasons, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus };
+  }).filter((item) => locationMode !== "STRICT" || item.locationStatus === "INSIDE").sort((left, right) => right.confidence - left.confidence || (left.distanceKm ?? Number.MAX_VALUE) - (right.distanceKm ?? Number.MAX_VALUE) || (right.sourceCount ?? 0) - (left.sourceCount ?? 0)).slice(0, 30);
+}
+
+async function resolveCenter(location: string, provided?: { latitude?: unknown; longitude?: unknown; accuracy?: unknown }): Promise<SearchCenter | null> {
+  const latitude = typeof provided?.latitude === "number" ? provided.latitude : null;
+  const longitude = typeof provided?.longitude === "number" ? provided.longitude : null;
+  if (latitude !== null && longitude !== null && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+    return { latitude, longitude, label: location, source: "GPS", accuracy: typeof provided?.accuracy === "number" ? Math.max(0, Math.min(provided.accuracy, 10000)) : undefined };
+  }
+  try {
+    const params = new URLSearchParams({ q: `${location}, Việt Nam`, format: "jsonv2", limit: "1", countrycodes: "vn" });
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": "MIMIN-ERP-Sourcing/1.0", "Accept-Language": "vi" }, signal: AbortSignal.timeout(10_000) });
+    if (!response.ok) return null;
+    const data = await response.json() as Array<{ display_name: string; lat: string; lon: string }>;
+    const first = data[0];
+    if (!first) return null;
+    const resolvedLatitude = Number(first.lat), resolvedLongitude = Number(first.lon);
+    if (!Number.isFinite(resolvedLatitude) || !Number.isFinite(resolvedLongitude)) return null;
+    return { latitude: resolvedLatitude, longitude: resolvedLongitude, label: first.display_name, source: "ADDRESS" };
+  } catch { return null; }
 }
 
 function fallbackQueryPlan(query: string, location: string, role: string): string[] {
@@ -275,15 +306,18 @@ export async function POST(req: NextRequest) {
     const user = await verify(req);
     if (!user) return NextResponse.json({ error: "Không có quyền" }, { status: 401 });
     if (limited(user.id)) return NextResponse.json({ error: "Vượt giới hạn 10 lượt/phút" }, { status: 429 });
-    const body = await req.json() as { query?: string; location?: string; role?: string };
+    const body = await req.json() as { query?: string; location?: string; role?: string; center?: { latitude?: unknown; longitude?: unknown; accuracy?: unknown }; radiusKm?: number; locationMode?: string };
     const query = body.query?.trim().slice(0, 150) ?? "";
     const location = body.location?.trim().slice(0, 150) ?? "";
     if (!query || !location || !body.role || !ROLES.has(body.role)) return NextResponse.json({ error: "Tiêu chí không hợp lệ" }, { status: 400 });
+    const radiusKm = typeof body.radiusKm === "number" && Number.isFinite(body.radiusKm) ? Math.max(1, Math.min(200, body.radiusKm)) : 20;
+    const locationMode = body.locationMode === "STRICT" ? "STRICT" : "PREFER";
+    const center = await resolveCenter(location, body.center);
     const searchQueries = await buildQueryPlan(query, location, body.role);
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
-    const candidates = postProcessCandidates(normalizedCandidates, query, location);
-    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, candidates });
+    const candidates = postProcessCandidates(normalizedCandidates, query, location, center, radiusKm, locationMode);
+    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, candidates });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Tìm kiếm thất bại" }, { status: 502 });
   }

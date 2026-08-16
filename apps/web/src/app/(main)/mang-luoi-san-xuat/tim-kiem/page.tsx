@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, ExternalLink, MapPin, Search, Sparkles, X } from "lucide-react";
+import { Check, ExternalLink, MapPin, Navigation, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
@@ -16,6 +16,10 @@ export default function TimKiemDoiTacPage() {
   const [loading, setLoading] = useState(false);
   const [directResults, setDirectResults] = useState<DirectSearchCandidate[]>([]);
   const [directProvider, setDirectProvider] = useState("");
+  const [radiusKm, setRadiusKm] = useState(20);
+  const [locationMode, setLocationMode] = useState<"PREFER"|"STRICT">("PREFER");
+  const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
+  const [resolvedCenter, setResolvedCenter] = useState<{label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null>(null);
   const [aiText, setAiText] = useState("");
   const [aiProvider, setAiProvider] = useState("AI_IMPORT");
   const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
@@ -41,15 +45,16 @@ export default function TimKiemDoiTacPage() {
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
-      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role}) });
-      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];candidates?:DirectSearchCandidate[]};
+      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
+      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:{label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null;candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
-      setDirectResults(data.candidates??[]); setDirectProvider(data.provider??"");
+      setDirectResults(data.candidates??[]); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null);
       toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${data.candidates?.length??0} kết quả`);
     }
     catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); }
     finally { setLoading(false); }
   };
+  const useCurrentLocation=()=>{if(!navigator.geolocation)return toast.error("Thiết bị không hỗ trợ định vị");navigator.geolocation.getCurrentPosition(position=>{setCenter({latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy});toast.success(`Đã lấy vị trí GPS · sai số khoảng ${Math.round(position.coords.accuracy)} m`)},()=>toast.error("Không lấy được vị trí. Hãy cấp quyền định vị cho trình duyệt."),{enableHighAccuracy:true,timeout:10000,maximumAge:60000})};
   const review = async (id: string, status: "APPROVED" | "REJECTED") => {
     try { if (status === "APPROVED") await approveDiscoveryCandidate(id); else await setDiscoveryStatus(id, status); await refresh(); toast.success(status === "APPROVED" ? "Đã duyệt vào danh mục đối tác" : "Đã loại ứng viên"); }
     catch { toast.error("Không cập nhật được trạng thái"); }
@@ -67,13 +72,12 @@ export default function TimKiemDoiTacPage() {
     <PageHeader moduleLabel="MIMIN ERP — Mạng lưới sản xuất" title="Tìm kiếm ứng viên tự động"
       subtitle="Kết quả từ nguồn mở được lưu vào vùng chờ; chưa tự động ghi vào danh mục đối tác chính thức."
       icon={<Search className="w-5 h-5" />} />
-    <div className="card p-5 grid grid-cols-1 md:grid-cols-4 gap-3">
-      <label className="text-xs font-medium">Danh mục<select className="input mt-1" value={role} onChange={(e) => setRole(e.target.value as ProductionPartnerRole)}>{PARTNER_ROLES.map((item) => <option key={item} value={item}>{ROLE_LABELS[item]}</option>)}</select></label>
-      <label className="text-xs font-medium">Cần tìm<input className="input mt-1" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="VD: xưởng dệt, vải cotton" /></label>
-      <label className="text-xs font-medium">Khu vực<input className="input mt-1" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="VD: Thủ Đức, TP.HCM" /></label>
-      <div className="flex items-end"><button className="btn-primary w-full inline-flex justify-center gap-2" disabled={loading} onClick={() => void search()}><Search className="w-4 h-4" />{loading ? "Đang tìm..." : "Tìm tự động"}</button></div>
+    <div className="card p-5 space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><label className="text-xs font-medium">Danh mục<select className="input mt-1" value={role} onChange={(e) => setRole(e.target.value as ProductionPartnerRole)}>{PARTNER_ROLES.map((item) => <option key={item} value={item}>{ROLE_LABELS[item]}</option>)}</select></label><label className="text-xs font-medium">Cần tìm<input className="input mt-1" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="VD: xưởng dệt, vải cotton" /></label></div>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3"><label className="text-xs font-medium md:col-span-2">Vị trí trung tâm<input className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null)}} placeholder="VD: Hóc Môn, TP.HCM" /></label><label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Ưu tiên gần</option><option value="STRICT">Chỉ trong bán kính</option></select></label><div className="flex items-end"><button type="button" className="btn-secondary w-full inline-flex justify-center gap-2" onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:"Nếu không dùng GPS, hệ thống sẽ xác định tâm từ địa chỉ đã nhập."}</p><button className="btn-primary md:min-w-56 inline-flex justify-center gap-2" disabled={loading} onClick={() => void search()}><Search className="w-4 h-4" />{loading ? "Đang tìm..." : "Tìm tự động"}</button></div>
     </div>
-    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Đã hợp nhất trùng lặp và xếp hạng</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=><article key={`${item.sourceUrl}-${index}`} className="rounded-xl border p-4" style={{borderColor:"var(--border)"}}><div className="flex justify-between gap-2"><b>{item.legalName}</b><span className="text-xs text-brand-700">{item.confidence}% phù hợp</span></div><p className="text-xs mt-2 opacity-70">{item.address}</p><div className="mt-2 flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div><div className="mt-3 flex gap-3 text-xs"><a className="text-brand-700" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Kiểm tra nguồn ({item.sourceCount??1})</a>{item.phone&&<a href={`tel:${item.phone}`}>{item.phone}</a>}</div></article>)}</div></div>}
+    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=><article key={`${item.sourceUrl}-${index}`} className="rounded-xl border p-4" style={{borderColor:"var(--border)"}}><div className="flex justify-between gap-2"><b>{item.legalName}</b><span className="text-xs text-brand-700">{item.confidence}% phù hợp</span></div><p className="text-xs mt-2 opacity-70">{item.address}</p><div className="mt-2 flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div><div className="mt-3 flex gap-3 text-xs"><a className="text-brand-700" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Kiểm tra nguồn ({item.sourceCount??1})</a>{item.phone&&<a href={`tel:${item.phone}`}>{item.phone}</a>}</div></article>)}</div></div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />
