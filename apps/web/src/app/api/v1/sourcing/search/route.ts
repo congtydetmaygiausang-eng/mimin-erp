@@ -294,24 +294,35 @@ async function requestGeminiSearch(key: string, model: string, query: string, lo
   }).slice(0, 10);
 }
 
+function geminiApiKeys(): string[] {
+  const clean = (value: string | undefined) => (value ?? "").trim().replace(/^(?:"([\s\S]*)"|'([\s\S]*)')$/, "$1$2").trim();
+  return Array.from(new Set([
+    clean(process.env.GOOGLE_API_KEY),
+    clean(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
+    clean(process.env.GEMINI_API_KEY),
+  ].filter(Boolean)));
+}
+
 async function searchGemini(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!key) return [];
+  const keys = geminiApiKeys();
+  if (!keys.length) return [];
   const primaryModel = process.env.GEMINI_SEARCH_MODEL || "gemini-2.5-flash";
   const fallbackModel = "gemini-2.5-flash-lite";
-  let primaryError: unknown = null;
-  try {
-    const primary = await requestGeminiSearch(key, primaryModel, query, location, queries, 18_000);
-    if (primary.length || primaryModel === fallbackModel) return primary;
-  } catch (error) {
-    primaryError = error;
-    if (error instanceof Error && /HTTP (401|403)/.test(error.message)) throw error;
+  const models = Array.from(new Set([primaryModel.trim(), fallbackModel].filter(Boolean)));
+  let lastError: unknown = null;
+  for (const key of keys) {
+    for (const [index, model] of models.entries()) {
+      try {
+        const results = await requestGeminiSearch(key, model, query, location, queries, index === 0 ? 18_000 : 14_000);
+        if (results.length) return results;
+      } catch (error) {
+        lastError = error;
+        if (error instanceof Error && /HTTP (401|403)/.test(error.message)) break;
+      }
+    }
   }
-  try {
-    return await requestGeminiSearch(key, fallbackModel, query, location, queries, 14_000);
-  } catch (fallbackError) {
-    throw fallbackError ?? primaryError ?? new Error("Gemini REQUEST_FAILED");
-  }
+  if (lastError) throw lastError;
+  return [];
 }
 
 async function searchOpenStreetMap(query: string, location: string): Promise<SourceResult[]> {
@@ -344,7 +355,7 @@ async function searchSources(query: string, location: string, queries: string[])
   ].filter(Boolean);
   const providerHealth = [
     { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" as const : tavily.status === "rejected" ? "ERROR" as const : tavily.value.length ? "OK" as const : "EMPTY" as const, count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
-    { name: "Gemini", status: !(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
+    { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
   ];
   if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 40), providerHealth };
   const fallback = await searchOpenStreetMap(query, location);
