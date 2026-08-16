@@ -3,6 +3,7 @@
 // @codex Giai đoạn 2 - hồ sơ năng lực và tìm kiếm đối tác theo bán kính.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Boxes,
   Building2,
@@ -391,9 +392,9 @@ export default function MangLuoiSanXuatPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Làm mới
             </button>
             {mayCreate && (
-              <button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
+              <><Link href="/mang-luoi-san-xuat/tim-kiem" className="btn-secondary inline-flex items-center gap-2"><Search className="w-4 h-4" /> Tìm tự động</Link><button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" /> Thêm đối tác
-              </button>
+              </button></>
             )}
           </div>
         }
