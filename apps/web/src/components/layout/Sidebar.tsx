@@ -171,12 +171,14 @@ const NAV: NavItem[] = [
     subBg: "bg-white/95 ring-1 ring-black/5 shadow-lg shadow-black/25",
     subIdleText: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
     activeSubBg: "bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-900 ring-1 ring-teal-200",
+    // 2 mục tạm gỡ khỏi bản deploy này vì repo GitHub đang CÔNG KHAI:
+    //  - "AI Tính Giá Vốn" (kèm tab Kho Mẫu Hot): chứa 28 tên xưởng gia công
+    //    thật + toàn bộ đơn giá đã thoả thuận -> lộ cơ cấu giá vốn cho đối thủ.
+    //  - "Khách Hàng Tiềm Năng": chứa 461 số điện thoại + tên khách hàng thật.
+    // Cả 2 sẽ làm lại bằng cách đọc dữ liệu từ Supabase có phân quyền, thay vì
+    // nhúng thẳng vào code frontend (cách cũ dù repo private thì dữ liệu vẫn
+    // được đóng gói vào JS gửi xuống trình duyệt người dùng).
     subItems: [
-      { href: "/ai-tinh-gia", label: "AI Tính Giá Vốn", icon: Sparkles, iconColor: "text-teal-600", permModule: "ai-tinh-gia" },
-      // Mục "Khách Hàng Tiềm Năng" tạm gỡ khỏi menu: danh sách 461 số điện thoại
-      // khách thật không được đưa vào repo (repo đang công khai) và cũng không
-      // nên nhúng vào code frontend vì sẽ tải xuống trình duyệt người dùng.
-      // Sẽ làm lại bằng cách đọc từ Supabase có phân quyền.
       { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
     ]
   },
