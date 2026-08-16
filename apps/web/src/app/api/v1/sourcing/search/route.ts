@@ -4,9 +4,59 @@ import { createClient } from "@supabase/supabase-js";
 const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPLIER", "PACKAGING_FINISHER"]);
 const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
 const requests = new Map<string, { count: number; reset: number }>();
+const ROLE_SEARCH_TERMS: Record<string, string[]> = {
+  CUSTOMER: ["khách hàng may mặc", "thương hiệu thời trang", "đơn vị đặt may"],
+  SATELLITE_PROCESSOR: ["xưởng gia công may", "xưởng may vệ tinh", "gia công công đoạn may"],
+  MATERIAL_SUPPLIER: ["nhà cung cấp nguyên phụ liệu", "nhà sản xuất vải", "công ty dệt vải"],
+  PACKAGING_FINISHER: ["đơn vị ủi đóng gói", "hoàn thiện sản phẩm may", "dịch vụ đóng gói may mặc"],
+};
 
 interface SourceResult { title: string; url: string; content: string; latitude?: number; longitude?: number }
 interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number }
+
+function fallbackQueryPlan(query: string, location: string, role: string): string[] {
+  const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
+  return Array.from(new Set([
+    `${query} ${location}`,
+    `${query} tại ${location} công ty xưởng`,
+    `${query} gần ${location} địa chỉ điện thoại`,
+    ...roleTerms.slice(0, 3).map((term) => `${term} ${query} ${location}`),
+    `${query} manufacturer supplier ${location} Vietnam`,
+  ])).slice(0, 8);
+}
+
+async function buildQueryPlan(query: string, location: string, role: string): Promise<string[]> {
+  const fallback = fallbackQueryPlan(query, location, role);
+  const key = process.env.DEEPSEEK_API_KEY;
+  if (!key) return fallback;
+  try {
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        temperature: 0.2,
+        max_tokens: 900,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8 truy vấn tìm kiếm khác nhau, ngắn và cụ thể. Bao phủ tên ngành, sản phẩm/dịch vụ, loại hình công ty/xưởng, từ đồng nghĩa, địa phương lân cận hợp lý và tối đa 2 truy vấn tiếng Anh. Luôn giữ đúng ý định, danh mục và khu vực; không thêm yêu cầu ngoài phạm vi. Không dùng toán tử tìm kiếm khó hiểu." },
+          { role: "user", content: JSON.stringify({ query, location, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [] }) },
+        ],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return fallback;
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "{}") as { queries?: unknown[] };
+    const aiQueries = (parsed.queries ?? [])
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim().slice(0, 180))
+      .filter((item) => item.length >= 4);
+    return Array.from(new Set([...aiQueries, ...fallback])).slice(0, 10);
+  } catch {
+    return fallback;
+  }
+}
 
 function limited(userId: string): boolean {
   const now = Date.now();
@@ -30,21 +80,24 @@ async function verify(req: NextRequest) {
   return ALLOWED_APP_ROLES.has(String(data.user.app_metadata?.role ?? "")) ? data.user : null;
 }
 
-async function searchTavily(query: string, location: string): Promise<SourceResult[]> {
+async function searchTavily(queries: string[]): Promise<SourceResult[]> {
   const key = process.env.TAVILY_API_KEY;
   if (!key) return [];
-  const response = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: key, query: `${query} ${location} Việt Nam`, search_depth: "advanced", max_results: 15, include_answer: false }),
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!response.ok) throw new Error(`Tavily HTTP ${response.status}`);
-  const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string }> };
-  return (data.results ?? []).map((item) => ({ title: item.title ?? "", url: item.url ?? "", content: item.content ?? "" })).filter((item) => item.url);
+  const batches = await Promise.allSettled(queries.slice(0, 6).map(async (searchQuery) => {
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key, query: `${searchQuery} Việt Nam`, search_depth: "basic", max_results: 8, include_answer: false }),
+      signal: AbortSignal.timeout(18_000),
+    });
+    if (!response.ok) throw new Error(`Tavily HTTP ${response.status}`);
+    const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string }> };
+    return (data.results ?? []).map((item) => ({ title: item.title ?? "", url: item.url ?? "", content: item.content ?? "" })).filter((item) => item.url);
+  }));
+  return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
 }
 
-async function searchGemini(query: string, location: string): Promise<SourceResult[]> {
+async function searchGemini(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!key) return [];
   const model = process.env.GEMINI_SEARCH_MODEL || "gemini-2.5-flash";
@@ -55,7 +108,9 @@ async function searchGemini(query: string, location: string): Promise<SourceResu
       contents: [{ parts: [{ text: [
         "Tìm trên Google các doanh nghiệp thật phù hợp với nhu cầu sản xuất may mặc sau.",
         `Nhu cầu: ${query}. Khu vực ưu tiên: ${location}, Việt Nam.`,
+        `Các hướng truy vấn cần bao phủ:\n- ${queries.join("\n- ")}`,
         "Liệt kê tên pháp lý/tên giao dịch, địa chỉ, điện thoại, website và năng lực nếu nguồn có nêu.",
+        "Tìm đa dạng công ty, nhà máy và xưởng; không lặp lại cùng một doanh nghiệp.",
         "Không bịa dữ liệu; chỉ đưa doanh nghiệp có nguồn web kiểm chứng được.",
       ].join("\n") }] }],
       tools: [{ google_search: {} }],
@@ -66,11 +121,11 @@ async function searchGemini(query: string, location: string): Promise<SourceResu
   if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
   const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> } }> };
   const candidate = data.candidates?.[0];
-  const answer = candidate?.content?.parts?.map((part) => part.text ?? "").join("\n") ?? "";
+  const answer = (candidate?.content?.parts?.map((part) => part.text ?? "").join("\n") ?? "").slice(0, 6000);
   return (candidate?.groundingMetadata?.groundingChunks ?? []).flatMap((chunk) => {
     const url = chunk.web?.uri?.trim();
     return url ? [{ title: chunk.web?.title?.trim() || "Google Search", url, content: answer }] : [];
-  }).slice(0, 15);
+  }).slice(0, 10);
 }
 
 async function searchOpenStreetMap(query: string, location: string): Promise<SourceResult[]> {
@@ -81,8 +136,8 @@ async function searchOpenStreetMap(query: string, location: string): Promise<Sou
   return data.map((item) => ({ title: item.display_name.split(",")[0], url: `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`, content: item.display_name, latitude: Number(item.lat), longitude: Number(item.lon) }));
 }
 
-async function searchSources(query: string, location: string): Promise<{ provider: string; items: SourceResult[] }> {
-  const [tavily, gemini] = await Promise.allSettled([searchTavily(query, location), searchGemini(query, location)]);
+async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[] }> {
+  const [tavily, gemini] = await Promise.allSettled([searchTavily(queries), searchGemini(query, location, queries)]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
     ...(gemini.status === "fulfilled" ? gemini.value : []),
@@ -92,7 +147,7 @@ async function searchSources(query: string, location: string): Promise<{ provide
     tavily.status === "fulfilled" && tavily.value.length ? "TAVILY" : "",
     gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
   ].filter(Boolean);
-  if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 25) };
+  if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 40) };
   return { provider: "OPENSTREETMAP", items: await searchOpenStreetMap(query, location) };
 }
 
@@ -143,9 +198,10 @@ export async function POST(req: NextRequest) {
     const query = body.query?.trim().slice(0, 150) ?? "";
     const location = body.location?.trim().slice(0, 150) ?? "";
     if (!query || !location || !body.role || !ROLES.has(body.role)) return NextResponse.json({ error: "Tiêu chí không hợp lệ" }, { status: 400 });
-    const source = await searchSources(query, location);
+    const searchQueries = await buildQueryPlan(query, location, body.role);
+    const source = await searchSources(query, location, searchQueries);
     const candidates = await normalizeWithDeepSeek(query, location, source.items);
-    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", candidates });
+    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, candidates });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Tìm kiếm thất bại" }, { status: 502 });
   }

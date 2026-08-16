@@ -42,10 +42,10 @@ export default function TimKiemDoiTacPage() {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
       const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role}) });
-      const data = await response.json() as {error?:string;provider?:string;candidates?:DirectSearchCandidate[]};
+      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       setDirectResults(data.candidates??[]); setDirectProvider(data.provider??"");
-      toast.success(`Gemini + DeepSeek đã xử lý ${data.candidates?.length??0} kết quả`);
+      toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${data.candidates?.length??0} kết quả`);
     }
     catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); }
     finally { setLoading(false); }
