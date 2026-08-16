@@ -82,6 +82,8 @@ type NavItem = {
   idleIcon?: string;     // màu icon header khi đóng
   subBg?: string;        // nền khối chứa các mục con (mặc định bg-black/20)
   subIdleText?: string;  // class chữ/hover của mục con khi chưa active
+  iconChip?: string;     // bọc icon header trong 1 "chip" bo tròn (điểm nhấn màu)
+  noAccentBar?: boolean; // bỏ thanh viền trái - dùng cho group kiểu thẻ card
 };
 
 const NAV: NavItem[] = [
@@ -153,19 +155,26 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    // Nhóm tính năng mới - dùng tông XÁM TRẮNG để nổi bật trên nền sidebar tối.
-    // Vì nền sáng nên phải khai báo chữ/icon tông tối, không dùng mặc định chữ trắng.
+    // === MIMIN Group - nhóm tính năng mới ===
+    // Thiết kế kiểu "thẻ card trắng nổi" trên nền sidebar tối: nền gradient trắng-xám
+    // + viền sáng + đổ bóng để tách khỏi nền. Điểm nhấn màu thương hiệu (teal) dồn
+    // hết vào chip icon, tránh nhiều điểm màu cạnh tranh nhau. Vì nền sáng nên chữ
+    // và icon đều phải là tông tối.
     label: "MIMIN Group", icon: Sparkles, isGroup: true,
-    color: "border-slate-300", iconColor: "text-slate-700",
-    activeBg: "bg-slate-100", activeText: "text-slate-900",
-    activeSubBg: "bg-white text-slate-900",
-    idleBg: "bg-slate-200/90 hover:bg-slate-100", idleText: "text-slate-800", idleIcon: "text-slate-600",
-    subBg: "bg-slate-100/95",
-    subIdleText: "text-slate-600 hover:bg-slate-200 hover:text-slate-900",
+    noAccentBar: true,
+    color: "border-teal-400",
+    iconChip: "w-7 h-7 bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-sm shadow-cyan-900/40",
+    idleBg: "bg-gradient-to-br from-white via-slate-50 to-slate-200 ring-1 ring-white/60 shadow-lg shadow-black/25 hover:from-white hover:via-white hover:to-slate-100",
+    idleText: "text-slate-800",
+    activeBg: "bg-gradient-to-br from-white via-white to-slate-100 ring-1 ring-white/80 shadow-xl shadow-black/30",
+    activeText: "text-slate-900",
+    subBg: "bg-white/95 ring-1 ring-black/5 shadow-lg shadow-black/25",
+    subIdleText: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+    activeSubBg: "bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-900 ring-1 ring-teal-200",
     subItems: [
-      { href: "/ai-tinh-gia", label: "AI Tính Giá Vốn", icon: Sparkles, iconColor: "text-slate-500", permModule: "ai-tinh-gia" },
-      { href: "/khach-hang-tiem-nang", label: "Khách Hàng Tiềm Năng", icon: Users, iconColor: "text-slate-500", permModule: "khach-hang-tiem-nang" },
-      { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-slate-500", permModule: "so-do-chien-luoc" },
+      { href: "/ai-tinh-gia", label: "AI Tính Giá Vốn", icon: Sparkles, iconColor: "text-teal-600", permModule: "ai-tinh-gia" },
+      { href: "/khach-hang-tiem-nang", label: "Khách Hàng Tiềm Năng", icon: Users, iconColor: "text-cyan-600", permModule: "khach-hang-tiem-nang" },
+      { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
     ]
   },
   {
@@ -316,7 +325,8 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     onClick={() => toggleGroup(item.label)}
                     aria-expanded={isOpen}
                     className={clsx(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150 border-l-2",
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150",
+                      !item.noAccentBar && "border-l-2",
                       isGroupActive || isOpen
                         ? `${groupBorderColor} ${activeBg} ${activeText}`
                         : idleHeaderClasses,
@@ -324,7 +334,13 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     )}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : (item.idleIcon || "text-slate-400"))} />
+                    {item.iconChip ? (
+                      <span className={clsx("shrink-0 flex items-center justify-center rounded-lg transition-transform duration-150", item.iconChip)}>
+                        <Icon className="w-[15px] h-[15px]" />
+                      </span>
+                    ) : (
+                      <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : (item.idleIcon || "text-slate-400"))} />
+                    )}
                     {!isCollapsed && (
                       <>
                         <span className="flex-1 text-left tracking-wide">{item.label}</span>
