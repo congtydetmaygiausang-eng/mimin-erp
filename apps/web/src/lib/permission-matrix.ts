@@ -87,14 +87,14 @@ export type Module =
   | "kho-vai" | "kho-phu-lieu" | "kho-thanh-pham" | "don-hang"
   | "cong-no-cong-doan" | "kiem-tra-chat-luong" | "to-may" | "hoan-thien"
   | "giao-hang" | "cham-cong" | "bang-luong" | "nha-cung-cap"
-  | "gia-cong-ngoai" | "bao-cao" | "ai-tinh-gia" | "khach-hang-tiem-nang" | "realtime" | "cai-dat";
+  | "gia-cong-ngoai" | "bao-cao" | "ai-tinh-gia" | "khach-hang-tiem-nang" | "so-do-chien-luoc" | "realtime" | "cai-dat";
 
 export const ALL_MODULES: Module[] = [
   "dashboard", "lenh-cat", "khach-hang", "ke-hoach-sx", "nhan-su",
   "kho-vai", "kho-phu-lieu", "kho-thanh-pham", "don-hang",
   "cong-no-cong-doan", "kiem-tra-chat-luong", "to-may", "hoan-thien",
   "giao-hang", "cham-cong", "bang-luong", "nha-cung-cap",
-  "gia-cong-ngoai", "bao-cao", "ai-tinh-gia", "khach-hang-tiem-nang", "realtime", "cai-dat",
+  "gia-cong-ngoai", "bao-cao", "ai-tinh-gia", "khach-hang-tiem-nang", "so-do-chien-luoc", "realtime", "cai-dat",
 ];
 
 // ============ LEGACY ROLE MAPPING ============
@@ -188,6 +188,7 @@ const PERMISSIONS: Record<VaiTroChuan, Partial<Record<Module, PermSet>>> = {
     "bao-cao": all(...ALL_ACTIONS),
     "ai-tinh-gia": all(...ALL_ACTIONS),
     "khach-hang-tiem-nang": all(...ALL_ACTIONS),
+    "so-do-chien-luoc": all(...ALL_ACTIONS),
     realtime: all(...ALL_ACTIONS),
     "cai-dat": all(...ALL_ACTIONS),
   },
@@ -197,6 +198,7 @@ const PERMISSIONS: Record<VaiTroChuan, Partial<Record<Module, PermSet>>> = {
     "cai-dat": CRUD,
     "ai-tinh-gia": all("VIEW"),
     "khach-hang-tiem-nang": all("VIEW"),
+    "so-do-chien-luoc": all("VIEW"),
     audit_log: all("VIEW"),
   } as any,
   DIEU_PHOI_SX: {
@@ -220,6 +222,7 @@ const PERMISSIONS: Record<VaiTroChuan, Partial<Record<Module, PermSet>>> = {
     "bao-cao": all("VIEW"),
     "ai-tinh-gia": all("VIEW"),
     "khach-hang-tiem-nang": all("VIEW", "CREATE", "UPDATE"),
+    "so-do-chien-luoc": all("VIEW", "CREATE", "UPDATE"),
     realtime: all("VIEW"),
   },
   KE_TOAN: {

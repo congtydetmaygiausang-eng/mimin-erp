@@ -100,7 +100,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { href: "/audit-log", label: "Audit Log", iconName: "Activity", module: "cai-dat", allowedRoles: ["GIAM_DOC", "QUAN_TRI_HE_THONG", "KE_TOAN"] },
   { href: "/workflow", label: "Workflow Công đoạn", iconName: "Scissors", module: "lenh-cat" },
   { href: "/tong-hop-cong-doan", label: "Tổng hợp công đoạn", iconName: "Grid3x3", module: "bao-cao" },
-  { href: "/so-do-chien-luoc", label: "🗺️ Sơ đồ chiến lược", iconName: "Palette", module: "dashboard" },
+  { href: "/so-do-chien-luoc", label: "🗺️ Sơ đồ chiến lược", iconName: "Palette", module: "so-do-chien-luoc" },
 
   // === Kho + Sợi/Dệt ===
   { href: "/so-det-nhuom", label: "Sợi - Dệt - Nhuộm", iconName: "Factory", module: "kho-vai" },
