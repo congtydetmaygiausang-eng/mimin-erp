@@ -94,3 +94,50 @@ export async function approveDiscoveryCandidate(id: string): Promise<void> {
   const { error } = await supabase.rpc("approve_production_candidate", { p_candidate_id: id });
   if (error) throw error;
 }
+
+interface AICandidateInput {
+  legalName?: unknown; name?: unknown; address?: unknown; province?: unknown; district?: unknown;
+  phone?: unknown; website?: unknown; latitude?: unknown; longitude?: unknown;
+}
+
+function textValue(value: unknown, maximum = 500): string {
+  return typeof value === "string" ? value.trim().slice(0, maximum) : "";
+}
+
+async function fingerprint(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((item) => item.toString(16).padStart(2, "0")).join("");
+}
+
+export async function importAICandidates(
+  rawText: string, role: ProductionPartnerRole, provider: string, sourceUrl: string,
+): Promise<number> {
+  if (!supabase) throw new Error("Cần đăng nhập Supabase để nhập dữ liệu");
+  const fenced = rawText.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? rawText;
+  let parsed: unknown;
+  try { parsed = JSON.parse(fenced.trim()); } catch { throw new Error("Nội dung AI chưa phải JSON hợp lệ"); }
+  const list = Array.isArray(parsed) ? parsed : [parsed];
+  if (list.length === 0 || list.length > 50) throw new Error("Mỗi lần chỉ nhập từ 1 đến 50 ứng viên");
+  const normalizedProvider = ["CHATGPT", "GEMINI", "DEEPSEEK"].includes(provider) ? provider : "AI_IMPORT";
+  const rows = await Promise.all(list.map(async (raw) => {
+    if (!raw || typeof raw !== "object") throw new Error("Ứng viên không đúng cấu trúc");
+    const item = raw as AICandidateInput;
+    const legalName = textValue(item.legalName ?? item.name, 200);
+    if (!legalName) throw new Error("Mỗi ứng viên phải có legalName");
+    const latitude = typeof item.latitude === "number" && item.latitude >= -90 && item.latitude <= 90 ? item.latitude : null;
+    const longitude = typeof item.longitude === "number" && item.longitude >= -180 && item.longitude <= 180 ? item.longitude : null;
+    const hasCoordinates = latitude !== null && longitude !== null;
+    const identity = `${normalizedProvider}|${legalName}|${textValue(item.address)}|${textValue(item.phone)}`.toLowerCase();
+    return { organization_id: PRODUCTION_ORGANIZATION_ID, role, search_query: `AI ${normalizedProvider}`,
+      legal_name: legalName, address: textValue(item.address), province: textValue(item.province, 100),
+      district: textValue(item.district, 100), phone: textValue(item.phone, 50), website: textValue(item.website),
+      latitude: hasCoordinates ? latitude : null, longitude: hasCoordinates ? longitude : null,
+      source_provider: `AI_${normalizedProvider}`, source_url: sourceUrl.startsWith("https://") ? sourceUrl : "https://mimin-erp.vercel.app",
+      external_id: await fingerprint(identity), raw_data: item };
+  }));
+  const { error } = await supabase.from("production_discovery_candidates").upsert(rows,
+    { onConflict: "organization_id,source_provider,external_id", ignoreDuplicates: true });
+  if (error) throw error;
+  return rows.length;
+}
