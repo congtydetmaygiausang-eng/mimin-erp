@@ -297,7 +297,7 @@ async function searchOpenStreetMap(query: string, location: string): Promise<Sou
   return data.map((item) => ({ title: item.display_name.split(",")[0], url: `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`, content: item.display_name, latitude: Number(item.lat), longitude: Number(item.lon) }));
 }
 
-async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[] }> {
+async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[]; providerHealth: Array<{ name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED"; count: number }> }> {
   const [tavily, gemini] = await Promise.allSettled([searchTavily(queries), searchGemini(query, location, queries)]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
@@ -308,8 +308,13 @@ async function searchSources(query: string, location: string, queries: string[])
     tavily.status === "fulfilled" && tavily.value.length ? "TAVILY" : "",
     gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
   ].filter(Boolean);
-  if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 40) };
-  return { provider: "OPENSTREETMAP", items: await searchOpenStreetMap(query, location) };
+  const providerHealth = [
+    { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" as const : tavily.status === "rejected" ? "ERROR" as const : tavily.value.length ? "OK" as const : "EMPTY" as const, count: tavily.status === "fulfilled" ? tavily.value.length : 0 },
+    { name: "Gemini", status: !(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0 },
+  ];
+  if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 40), providerHealth };
+  const fallback = await searchOpenStreetMap(query, location);
+  return { provider: "OPENSTREETMAP", items: fallback, providerHealth: [...providerHealth, { name: "OpenStreetMap", status: fallback.length ? "OK" : "EMPTY", count: fallback.length }] };
 }
 
 function fallbackCandidates(query: string, sources: SourceResult[]): Candidate[] {
@@ -384,7 +389,17 @@ export async function POST(req: NextRequest) {
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
     const candidates = postProcessCandidates(normalizedCandidates, query, location, center, radiusKm, locationMode, learning);
-    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, candidates });
+    const diagnostics = {
+      collectedSources: source.items.length,
+      normalizedCandidates: normalizedCandidates.length,
+      finalCandidates: candidates.length,
+      verified: candidates.filter((item) => item.verificationStatus === "VERIFIED").length,
+      partial: candidates.filter((item) => item.verificationStatus === "PARTIAL").length,
+      insideRadius: candidates.filter((item) => item.locationStatus === "INSIDE").length,
+      unknownCoordinates: candidates.filter((item) => item.locationStatus === "UNKNOWN").length,
+      providers: source.providerHealth,
+    };
+    return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, diagnostics, candidates });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Tìm kiếm thất bại" }, { status: 502 });
   }
