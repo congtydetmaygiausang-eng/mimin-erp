@@ -173,7 +173,10 @@ const NAV: NavItem[] = [
     activeSubBg: "bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-900 ring-1 ring-teal-200",
     subItems: [
       { href: "/ai-tinh-gia", label: "AI Tính Giá Vốn", icon: Sparkles, iconColor: "text-teal-600", permModule: "ai-tinh-gia" },
-      { href: "/khach-hang-tiem-nang", label: "Khách Hàng Tiềm Năng", icon: Users, iconColor: "text-cyan-600", permModule: "khach-hang-tiem-nang" },
+      // Mục "Khách Hàng Tiềm Năng" tạm gỡ khỏi menu: danh sách 461 số điện thoại
+      // khách thật không được đưa vào repo (repo đang công khai) và cũng không
+      // nên nhúng vào code frontend vì sẽ tải xuống trình duyệt người dùng.
+      // Sẽ làm lại bằng cách đọc từ Supabase có phân quyền.
       { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
     ]
   },
