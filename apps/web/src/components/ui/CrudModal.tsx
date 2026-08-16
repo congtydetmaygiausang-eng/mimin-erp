@@ -7,7 +7,7 @@ import { toast } from "sonner";
 export type FieldDef =
   | { name: string; label: string; type: "text"; required?: boolean; placeholder?: string }
   | { name: string; label: string; type: "email"; required?: boolean; placeholder?: string }
-  | { name: string; label: string; type: "number"; required?: boolean; placeholder?: string; min?: number; max?: number }
+  | { name: string; label: string; type: "number"; required?: boolean; placeholder?: string; min?: number; max?: number; step?: number | "any" }
   | { name: string; label: string; type: "date"; required?: boolean }
   | { name: string; label: string; type: "textarea"; required?: boolean; placeholder?: string; rows?: number }
   | { name: string; label: string; type: "select"; required?: boolean; options: { value: string; label: string }[] }
@@ -146,6 +146,7 @@ export function CrudModal({
                   required={f.required}
                   min={f.type === "number" ? f.min : undefined}
                   max={f.type === "number" ? f.max : undefined}
+                  step={f.type === "number" ? f.step : undefined}
                   value={values[f.name] || ""}
                   onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
                 />

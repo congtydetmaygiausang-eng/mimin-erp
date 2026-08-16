@@ -32,6 +32,15 @@ export interface ProductionPartner {
   status: PartnerStatus;
   verificationStatus: VerificationStatus;
   notes: string;
+  capabilities: string[];
+  capacityPerMonth: number | null;
+  minimumOrderQuantity: number | null;
+  leadTimeDays: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  serviceRadiusKm: number | null;
+  qualityScore: number | null;
+  reliabilityScore: number | null;
   roles: ProductionPartnerRole[];
   createdAt: string;
   updatedAt: string;
@@ -52,6 +61,15 @@ export interface ProductionPartnerInput {
   status: PartnerStatus;
   verificationStatus: VerificationStatus;
   notes: string;
+  capabilities: string[];
+  capacityPerMonth: number | null;
+  minimumOrderQuantity: number | null;
+  leadTimeDays: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  serviceRadiusKm: number | null;
+  qualityScore: number | null;
+  reliabilityScore: number | null;
   roles: ProductionPartnerRole[];
 }
 
@@ -71,6 +89,15 @@ interface PartnerRow {
   status: PartnerStatus;
   verification_status: VerificationStatus;
   notes: string | null;
+  capabilities: string[] | null;
+  capacity_per_month: number | null;
+  minimum_order_quantity: number | null;
+  lead_time_days: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  service_radius_km: number | null;
+  quality_score: number | null;
+  reliability_score: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -163,6 +190,30 @@ export function createPartnerCode(role: ProductionPartnerRole, partners: Product
   return `${prefix}-${String(highestSequence + 1).padStart(4, "0")}`;
 }
 
+export function calculateDistanceKm(
+  fromLatitude: number,
+  fromLongitude: number,
+  toLatitude: number,
+  toLongitude: number,
+): number {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const earthRadiusKm = 6371.0088;
+  const latitudeDelta = toRadians(toLatitude - fromLatitude);
+  const longitudeDelta = toRadians(toLongitude - fromLongitude);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(toRadians(fromLatitude)) * Math.cos(toRadians(toLatitude))
+    * Math.sin(longitudeDelta / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function calculatePartnerScore(partner: ProductionPartner): number | null {
+  const scores = [partner.qualityScore, partner.reliabilityScore].filter(
+    (score): score is number => score !== null,
+  );
+  if (scores.length === 0) return null;
+  return Math.round(scores.reduce((total, score) => total + score, 0) / scores.length);
+}
+
 function isPartnerRole(value: unknown): value is ProductionPartnerRole {
   return typeof value === "string" && PARTNER_ROLES.includes(value as ProductionPartnerRole);
 }
@@ -184,6 +235,15 @@ function mapPartner(row: PartnerRow, roles: ProductionPartnerRole[]): Production
     status: row.status,
     verificationStatus: row.verification_status,
     notes: row.notes ?? "",
+    capabilities: row.capabilities ?? [],
+    capacityPerMonth: row.capacity_per_month,
+    minimumOrderQuantity: row.minimum_order_quantity,
+    leadTimeDays: row.lead_time_days,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    serviceRadiusKm: row.service_radius_km,
+    qualityScore: row.quality_score,
+    reliabilityScore: row.reliability_score,
     roles,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -286,6 +346,15 @@ export async function saveProductionPartner(
     p_verification_status: input.verificationStatus,
     p_notes: input.notes,
     p_roles: input.roles,
+    p_capabilities: input.capabilities,
+    p_capacity_per_month: input.capacityPerMonth,
+    p_minimum_order_quantity: input.minimumOrderQuantity,
+    p_lead_time_days: input.leadTimeDays,
+    p_latitude: input.latitude,
+    p_longitude: input.longitude,
+    p_service_radius_km: input.serviceRadiusKm,
+    p_quality_score: input.qualityScore,
+    p_reliability_score: input.reliabilityScore,
   });
   if (error) throw error;
   return loadProductionPartners();

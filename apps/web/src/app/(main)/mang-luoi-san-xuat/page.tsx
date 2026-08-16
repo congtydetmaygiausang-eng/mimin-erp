@@ -1,6 +1,6 @@
 "use client";
 
-// @codex Giai đoạn 1 - danh mục Mạng lưới sản xuất độc lập với ERP core.
+// @codex Giai đoạn 2 - hồ sơ năng lực và tìm kiếm đối tác theo bán kính.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -11,11 +11,13 @@ import {
   Factory,
   Mail,
   MapPin,
+  Navigation,
   PackageCheck,
   Phone,
   Plus,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Trash2,
   Users,
 } from "lucide-react";
@@ -28,6 +30,8 @@ import { canCreate, canDelete, canEdit } from "@/lib/permissions";
 import {
   PARTNER_ROLES,
   ROLE_LABELS,
+  calculateDistanceKm,
+  calculatePartnerScore,
   createPartnerCode,
   deleteProductionPartner,
   loadProductionPartners,
@@ -91,6 +95,21 @@ const FORM_FIELDS: FieldDef[] = [
   { name: "district", label: "Quận / huyện", type: "text" },
   { name: "province", label: "Tỉnh / thành", type: "text" },
   {
+    name: "capabilities",
+    label: "Năng lực / sản phẩm / dịch vụ",
+    type: "textarea",
+    rows: 2,
+    placeholder: "Cách nhau bằng dấu phẩy, VD: vải cotton, nhuộm, may áo thun",
+  },
+  { name: "capacityPerMonth", label: "Công suất / tháng", type: "number", min: 0 },
+  { name: "minimumOrderQuantity", label: "Đơn hàng tối thiểu", type: "number", min: 0 },
+  { name: "leadTimeDays", label: "Thời gian đáp ứng (ngày)", type: "number", min: 0 },
+  { name: "latitude", label: "Vĩ độ", type: "number", min: -90, max: 90, step: "any", placeholder: "VD: 10.8231" },
+  { name: "longitude", label: "Kinh độ", type: "number", min: -180, max: 180, step: "any", placeholder: "VD: 106.6297" },
+  { name: "serviceRadiusKm", label: "Bán kính phục vụ (km)", type: "number", min: 0 },
+  { name: "qualityScore", label: "Điểm chất lượng (0-100)", type: "number", min: 0, max: 100 },
+  { name: "reliabilityScore", label: "Điểm uy tín (0-100)", type: "number", min: 0, max: 100 },
+  {
     name: "verificationStatus",
     label: "Trạng thái xác minh",
     type: "select",
@@ -130,7 +149,22 @@ function partnerToInitial(partner: ProductionPartner): Record<string, string> {
     status: partner.status,
     verificationStatus: partner.verificationStatus,
     notes: partner.notes,
+    capabilities: partner.capabilities.join(", "),
+    capacityPerMonth: partner.capacityPerMonth?.toString() ?? "",
+    minimumOrderQuantity: partner.minimumOrderQuantity?.toString() ?? "",
+    leadTimeDays: partner.leadTimeDays?.toString() ?? "",
+    latitude: partner.latitude?.toString() ?? "",
+    longitude: partner.longitude?.toString() ?? "",
+    serviceRadiusKm: partner.serviceRadiusKm?.toString() ?? "",
+    qualityScore: partner.qualityScore?.toString() ?? "",
+    reliabilityScore: partner.reliabilityScore?.toString() ?? "",
   };
+}
+
+function nullableNumber(value: string | undefined): number | null {
+  if (!value?.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function valuesToInput(
@@ -140,6 +174,11 @@ function valuesToInput(
   const roles = values.roles
     .split(",")
     .filter((role): role is ProductionPartnerRole => PARTNER_ROLES.includes(role as ProductionPartnerRole));
+  const latitude = nullableNumber(values.latitude);
+  const longitude = nullableNumber(values.longitude);
+  if ((latitude === null) !== (longitude === null)) {
+    throw new Error("Vĩ độ và kinh độ phải được nhập cùng nhau");
+  }
 
   return {
     id: editingPartner?.id,
@@ -157,6 +196,18 @@ function valuesToInput(
     status: values.status as PartnerStatus,
     verificationStatus: values.verificationStatus as VerificationStatus,
     notes: values.notes?.trim() ?? "",
+    capabilities: (values.capabilities ?? "")
+      .split(",")
+      .map((capability) => capability.trim())
+      .filter(Boolean),
+    capacityPerMonth: nullableNumber(values.capacityPerMonth),
+    minimumOrderQuantity: nullableNumber(values.minimumOrderQuantity),
+    leadTimeDays: nullableNumber(values.leadTimeDays),
+    latitude,
+    longitude,
+    serviceRadiusKm: nullableNumber(values.serviceRadiusKm),
+    qualityScore: nullableNumber(values.qualityScore),
+    reliabilityScore: nullableNumber(values.reliabilityScore),
   };
 }
 
@@ -175,6 +226,11 @@ export default function MangLuoiSanXuatPage() {
   const [partners, setPartners] = useState<ProductionPartner[]>([]);
   const [activeRole, setActiveRole] = useState<ProductionPartnerRole>("CUSTOMER");
   const [search, setSearch] = useState("");
+  const [provinceFilter, setProvinceFilter] = useState("");
+  const [capabilityFilter, setCapabilityFilter] = useState("");
+  const [radiusKm, setRadiusKm] = useState("");
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<ProductionPartner | undefined>();
@@ -215,8 +271,26 @@ export default function MangLuoiSanXuatPage() {
 
   const filteredPartners = useMemo(() => {
     const normalizedSearch = normalizeSearchValue(search);
+    const normalizedProvince = normalizeSearchValue(provinceFilter);
+    const normalizedCapability = normalizeSearchValue(capabilityFilter);
+    const maximumDistance = nullableNumber(radiusKm);
     return partners.filter((partner) => {
       if (!partner.roles.includes(activeRole)) return false;
+      if (normalizedProvince && !normalizeSearchValue(partner.province).includes(normalizedProvince)) return false;
+      if (
+        normalizedCapability
+        && !partner.capabilities.some((capability) => normalizeSearchValue(capability).includes(normalizedCapability))
+      ) return false;
+      if (maximumDistance !== null) {
+        if (!currentLocation || partner.latitude === null || partner.longitude === null) return false;
+        const distance = calculateDistanceKm(
+          currentLocation.latitude,
+          currentLocation.longitude,
+          partner.latitude,
+          partner.longitude,
+        );
+        if (distance > maximumDistance) return false;
+      }
       if (!normalizedSearch) return true;
       return [
         partner.partnerCode,
@@ -225,9 +299,39 @@ export default function MangLuoiSanXuatPage() {
         partner.phone,
         partner.address,
         partner.province,
+        ...partner.capabilities,
       ].some((value) => normalizeSearchValue(value).includes(normalizedSearch));
+    }).sort((left, right) => {
+      if (!currentLocation) return left.legalName.localeCompare(right.legalName, "vi");
+      const leftDistance = left.latitude === null || left.longitude === null
+        ? Number.POSITIVE_INFINITY
+        : calculateDistanceKm(currentLocation.latitude, currentLocation.longitude, left.latitude, left.longitude);
+      const rightDistance = right.latitude === null || right.longitude === null
+        ? Number.POSITIVE_INFINITY
+        : calculateDistanceKm(currentLocation.latitude, currentLocation.longitude, right.latitude, right.longitude);
+      return leftDistance - rightDistance;
     });
-  }, [activeRole, partners, search]);
+  }, [activeRole, capabilityFilter, currentLocation, partners, provinceFilter, radiusKm, search]);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Trình duyệt không hỗ trợ định vị");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setCurrentLocation({ latitude: coords.latitude, longitude: coords.longitude });
+        toast.success("Đã xác định vị trí hiện tại");
+        setLocating(false);
+      },
+      () => {
+        toast.error("Không lấy được vị trí. Anh hãy cho phép quyền vị trí trên trình duyệt.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    );
+  };
 
   const openCreate = () => {
     setEditingPartner(undefined);
@@ -279,7 +383,7 @@ export default function MangLuoiSanXuatPage() {
       <PageHeader
         moduleLabel="MIMIN ERP — Mạng lưới sản xuất"
         title="Trang chủ sản xuất"
-        subtitle="Một hồ sơ đối tác có thể thuộc nhiều danh mục; dữ liệu được lưu riêng, không ảnh hưởng danh mục ERP hiện hữu."
+        subtitle="Tìm theo năng lực, tỉnh thành và khoảng cách; dữ liệu vẫn tách riêng khỏi các danh mục ERP hiện hữu."
         icon={<Building2 className="w-5 h-5" />}
         actions={
           <div className="flex gap-2">
@@ -335,6 +439,32 @@ export default function MangLuoiSanXuatPage() {
             />
           </div>
         </div>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+          <label className="text-xs font-medium">
+            Tỉnh / thành
+            <input value={provinceFilter} onChange={(event) => setProvinceFilter(event.target.value)} className="input mt-1" placeholder="VD: Bình Dương" />
+          </label>
+          <label className="text-xs font-medium">
+            Năng lực cần tìm
+            <input value={capabilityFilter} onChange={(event) => setCapabilityFilter(event.target.value)} className="input mt-1" placeholder="VD: vải cotton, thêu" />
+          </label>
+          <label className="text-xs font-medium">
+            Trong bán kính (km)
+            <input value={radiusKm} onChange={(event) => setRadiusKm(event.target.value)} className="input mt-1" type="number" min={0} placeholder="VD: 50" />
+          </label>
+          <div className="flex flex-col justify-end">
+            <button type="button" onClick={useMyLocation} disabled={locating} className="btn-secondary inline-flex items-center justify-center gap-2">
+              <Navigation className={`w-4 h-4 ${locating ? "animate-pulse" : ""}`} />
+              {currentLocation ? "Cập nhật vị trí" : "Dùng vị trí hiện tại"}
+            </button>
+          </div>
+        </div>
+        {(provinceFilter || capabilityFilter || radiusKm) && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-brand-700">
+            <SlidersHorizontal className="w-4 h-4" /> Đang áp dụng bộ lọc nâng cao
+            <button type="button" className="underline" onClick={() => { setProvinceFilter(""); setCapabilityFilter(""); setRadiusKm(""); }}>Xóa bộ lọc</button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -365,12 +495,26 @@ export default function MangLuoiSanXuatPage() {
                     {ROLE_LABELS[role]}
                   </span>
                 ))}
+                {partner.capabilities.slice(0, 4).map((capability) => (
+                  <span key={capability} className="text-[10px] rounded-full bg-slate-100 text-slate-700 px-2 py-1">
+                    {capability}
+                  </span>
+                ))}
               </div>
 
               <div className="space-y-2 text-sm min-h-20">
                 {partner.phone && <a href={`tel:${partner.phone}`} className="flex items-center gap-2 hover:text-brand-600"><Phone className="w-4 h-4" /> {partner.phone}</a>}
                 {partner.email && <a href={`mailto:${partner.email}`} className="flex items-center gap-2 hover:text-brand-600"><Mail className="w-4 h-4" /> {partner.email}</a>}
                 {(partner.address || partner.province) && <div className="flex items-start gap-2"><MapPin className="w-4 h-4 mt-0.5 shrink-0" /> {[partner.address, partner.district, partner.province].filter(Boolean).join(", ")}</div>}
+                {currentLocation && partner.latitude !== null && partner.longitude !== null && (
+                  <div className="flex items-center gap-2 text-brand-700"><Navigation className="w-4 h-4" /> Cách {calculateDistanceKm(currentLocation.latitude, currentLocation.longitude, partner.latitude, partner.longitude).toFixed(1)} km</div>
+                )}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {partner.capacityPerMonth !== null && <span>Công suất: <strong>{partner.capacityPerMonth.toLocaleString("vi-VN")}/tháng</strong></span>}
+                  {partner.leadTimeDays !== null && <span>Đáp ứng: <strong>{partner.leadTimeDays} ngày</strong></span>}
+                  {calculatePartnerScore(partner) !== null && <span>Phù hợp: <strong>{calculatePartnerScore(partner)}/100</strong></span>}
+                  {partner.serviceRadiusKm !== null && <span>Phục vụ: <strong>{partner.serviceRadiusKm} km</strong></span>}
+                </div>
               </div>
 
               <div className="mt-auto flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
