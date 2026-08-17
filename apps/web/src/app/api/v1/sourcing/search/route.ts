@@ -35,6 +35,8 @@ interface NominatimPlace {
   boundingbox?: string[];
   address?: { country_code?: string };
 }
+type CoordinateSource = "MANUAL" | "SOURCE" | "WEBSITE" | "NOMINATIM";
+type GeocodeCacheStatus = "MEMORY" | "PERSISTENT" | "PROVIDER" | "STALE_FALLBACK";
 interface DistanceEvidence {
   method: "HAVERSINE";
   unit: "KM";
@@ -42,12 +44,12 @@ interface DistanceEvidence {
   radiusKm: number;
   rawDistanceKm: number | null;
   center: { latitude: number; longitude: number; label: string; source: "GPS" | "ADDRESS" };
-  destination: { latitude: number | null; longitude: number | null; coordinateSource?: "SOURCE" | "NOMINATIM"; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
+  destination: { latitude: number | null; longitude: number | null; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
   addressConsistency: "MATCHED" | "UNVERIFIED" | "CONFLICT";
 }
-interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: "SOURCE" | "NOMINATIM"; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string }
+interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
-interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number }
+interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number; persistentHits: number; staleFallbacks: number; providerRequests: number }
 interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
 interface PostProcessedCandidates { candidates: Candidate[]; breakdown: LocationBreakdown; excludedByStrictMode: number }
 
@@ -88,6 +90,10 @@ function sameEntity(left: Candidate, right: Candidate): boolean {
 }
 
 function mergeText(left: string, right: string): string { return right.length > left.length ? right : left; }
+
+function coordinatePriority(source?: CoordinateSource): number {
+  return source === "MANUAL" ? 4 : source === "SOURCE" ? 3 : source === "WEBSITE" ? 2 : source === "NOMINATIM" ? 1 : 0;
+}
 
 function verificationStatus(fields: string[], sourceCount: number): "VERIFIED" | "PARTIAL" | "UNVERIFIED" {
   const hasContact = fields.some((field) => ["phone", "email", "website", "taxCode"].includes(field));
@@ -144,7 +150,17 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     existing.website = mergeText(existing.website, item.website);
     if (existing.latitude !== null && existing.longitude !== null && item.latitude !== null && item.longitude !== null) {
       const separationKm = distanceKm({ latitude: existing.latitude, longitude: existing.longitude }, item.latitude, item.longitude);
-      if (separationKm > 1) existing.coordinateConflictReason = `Nhiều nguồn đưa tọa độ lệch nhau ${separationKm.toFixed(1)} km`;
+      if (coordinatePriority(item.coordinateSource) > coordinatePriority(existing.coordinateSource)) {
+        existing.latitude = item.latitude;
+        existing.longitude = item.longitude;
+        existing.coordinateSource = item.coordinateSource;
+        existing.coordinateConfidence = item.coordinateConfidence;
+        existing.geocodedAddress = item.geocodedAddress;
+        existing.geocodedAt = item.geocodedAt;
+        existing.geocodeStatus = item.geocodeStatus;
+        existing.coordinateBoundingBox = item.coordinateBoundingBox;
+        existing.geocodeCacheStatus = item.geocodeCacheStatus;
+      } else if (coordinatePriority(item.coordinateSource) === coordinatePriority(existing.coordinateSource) && separationKm > 1) existing.coordinateConflictReason = `Nhiều nguồn cùng cấp đưa tọa độ lệch nhau ${separationKm.toFixed(1)} km`;
     } else if (existing.latitude === null && existing.longitude === null && item.latitude !== null && item.longitude !== null) {
       existing.latitude = item.latitude;
       existing.longitude = item.longitude;
@@ -154,6 +170,7 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
       existing.geocodedAt = item.geocodedAt;
       existing.geocodeStatus = item.geocodeStatus;
       existing.coordinateBoundingBox = item.coordinateBoundingBox;
+      existing.geocodeCacheStatus = item.geocodeCacheStatus;
     }
     existing.capabilities = Array.from(new Set([...existing.capabilities, ...item.capabilities])).slice(0, 20);
     existing.confidence = Math.max(existing.confidence, item.confidence);
@@ -281,6 +298,7 @@ async function resolveCenter(location: string, provided?: { latitude?: unknown; 
   } catch { return null; }
 }
 
+const GEOCODE_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
 const geocodeCache = new Map<string, { expiresAt: number; places: NominatimPlace[] }>();
 let nominatimQueue: Promise<void> = Promise.resolve();
 let lastNominatimRequestAt = 0;
@@ -324,6 +342,31 @@ function candidatePlaceScore(candidate: Candidate, place: NominatimPlace): numbe
   return score >= 50 ? score : -1;
 }
 
+function geocodeCacheClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && key ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
+}
+
+function validPlaces(value: unknown): NominatimPlace[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((place): place is NominatimPlace => Boolean(place && typeof place === "object" && typeof (place as Record<string, unknown>).lat === "string" && typeof (place as Record<string, unknown>).lon === "string" && typeof (place as Record<string, unknown>).display_name === "string")).slice(0, 3);
+}
+
+async function readPersistentGeocode(client: SupabaseClient | null, cacheKey: string): Promise<{ places: NominatimPlace[]; expiresAt: number } | null> {
+  if (!client) return null;
+  const { data, error } = await client.from("production_geocode_cache").select("places,expires_at").eq("organization_id", "mimin").eq("provider", "NOMINATIM").eq("cache_key", cacheKey).maybeSingle();
+  if (error || !data) return null;
+  const expiresAt = Date.parse(String(data.expires_at));
+  return Number.isFinite(expiresAt) ? { places: validPlaces(data.places), expiresAt } : null;
+}
+
+async function writePersistentGeocode(client: SupabaseClient | null, cacheKey: string, query: string, places: NominatimPlace[]): Promise<void> {
+  if (!client) return;
+  const now = new Date();
+  await client.from("production_geocode_cache").upsert({ organization_id: "mimin", provider: "NOMINATIM", cache_key: cacheKey, normalized_query: query, places, result_count: places.length, fetched_at: now.toISOString(), expires_at: new Date(now.getTime() + GEOCODE_CACHE_MS).toISOString(), last_used_at: now.toISOString(), updated_at: now.toISOString() }, { onConflict: "organization_id,provider,cache_key" });
+}
+
 async function queuedNominatimSearch(query: string): Promise<NominatimPlace[]> {
   const previous = nominatimQueue;
   let release: (() => void) | undefined;
@@ -335,25 +378,40 @@ async function queuedNominatimSearch(query: string): Promise<NominatimPlace[]> {
     lastNominatimRequestAt = Date.now();
     const params = new URLSearchParams({ q: query, format: "jsonv2", limit: "3", countrycodes: "vn", addressdetails: "1", dedupe: "1" });
     const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": "MIMIN-ERP-Sourcing/1.0", "Accept-Language": "vi" }, signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) return [];
+    if (!response.ok) throw new Error(`Nominatim HTTP ${response.status}`);
     return await response.json() as NominatimPlace[];
   } finally { release?.(); }
 }
 
-async function geocodeCandidate(candidate: Candidate, searchLocation: string): Promise<Candidate> {
+async function lookupGeocode(client: SupabaseClient | null, query: string): Promise<{ places: NominatimPlace[]; status: GeocodeCacheStatus }> {
+  const cacheKey = normalizedLocation(query);
+  const memory = geocodeCache.get(cacheKey);
+  if (memory && memory.expiresAt > Date.now()) return { places: memory.places, status: "MEMORY" };
+  const persistent = await readPersistentGeocode(client, cacheKey);
+  if (persistent && persistent.expiresAt > Date.now()) {
+    geocodeCache.set(cacheKey, persistent);
+    return { places: persistent.places, status: "PERSISTENT" };
+  }
+  try {
+    const places = await queuedNominatimSearch(query);
+    const expiresAt = Date.now() + GEOCODE_CACHE_MS;
+    geocodeCache.set(cacheKey, { expiresAt, places });
+    await writePersistentGeocode(client, cacheKey, query, places);
+    return { places, status: "PROVIDER" };
+  } catch {
+    if (persistent) return { places: persistent.places, status: "STALE_FALLBACK" };
+    return { places: [], status: "PROVIDER" };
+  }
+}
+
+async function geocodeCandidate(candidate: Candidate, searchLocation: string, cacheClient: SupabaseClient | null): Promise<Candidate> {
   const sourceCoordinates = candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates");
   if (sourceCoordinates) return { ...candidate, coordinateSource: "SOURCE", coordinateConfidence: "HIGH", geocodedAddress: candidate.address, geocodedAt: candidate.lastVerifiedAt ?? new Date().toISOString(), geocodeStatus: "VERIFIED" };
   const queries = candidateGeocodeQueries(candidate, searchLocation);
   for (let queryIndex = 0; queryIndex < queries.length; queryIndex += 1) {
     const query = queries[queryIndex];
-    const cacheKey = normalizedLocation(query);
-    const cached = geocodeCache.get(cacheKey);
-    let places: NominatimPlace[];
-    if (cached && cached.expiresAt > Date.now()) places = cached.places;
-    else {
-      places = await queuedNominatimSearch(query);
-      geocodeCache.set(cacheKey, { expiresAt: Date.now() + 24 * 60 * 60 * 1000, places });
-    }
+    const lookup = await lookupGeocode(cacheClient, query);
+    const places = lookup.places;
     const matches = places.map((place) => ({ place, score: candidatePlaceScore(candidate, place) })).filter((item) => item.score >= 0).sort((left, right) => right.score - left.score);
     const best = matches[0];
     if (!best) continue;
@@ -361,23 +419,24 @@ async function geocodeCandidate(candidate: Candidate, searchLocation: string): P
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
     const coordinateConfidence = best.score >= 75 && queryIndex === 0 ? "HIGH" : best.score >= 50 ? "MEDIUM" : "LOW";
     const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), "coordinates"]));
-    return { ...candidate, latitude, longitude, verifiedFields, coordinateSource: "NOMINATIM", coordinateConfidence, geocodedAddress: best.place.display_name, geocodedAt: new Date().toISOString(), geocodeStatus: "VERIFIED", coordinateBoundingBox: parseBoundingBox(best.place.boundingbox) };
+    return { ...candidate, latitude, longitude, verifiedFields, coordinateSource: "NOMINATIM", coordinateConfidence, geocodedAddress: best.place.display_name, geocodedAt: new Date().toISOString(), geocodeStatus: "VERIFIED", coordinateBoundingBox: parseBoundingBox(best.place.boundingbox), geocodeCacheStatus: lookup.status };
   }
   return { ...candidate, latitude: null, longitude: null, geocodeStatus: "REJECTED" };
 }
 
 async function geocodeCandidates(candidates: Candidate[], searchLocation: string): Promise<{ candidates: Candidate[]; summary: CandidateGeocodingSummary }> {
+  const cacheClient = geocodeCacheClient();
   const retainedFromSource = candidates.filter((candidate) => candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")).length;
   const targets = candidates.filter((candidate) => !(candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")) && cleanCandidateAddress(candidate.address)).slice(0, 10);
   const targetSet = new Set(targets);
   const geocoded = new Map<Candidate, Candidate>();
-  for (const candidate of targets) geocoded.set(candidate, await geocodeCandidate(candidate, searchLocation));
+  for (const candidate of targets) geocoded.set(candidate, await geocodeCandidate(candidate, searchLocation, cacheClient));
   const output = candidates.map((candidate) => {
     if (geocoded.has(candidate)) return geocoded.get(candidate) ?? candidate;
     if (candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")) return { ...candidate, coordinateSource: "SOURCE" as const, coordinateConfidence: "HIGH" as const, geocodedAddress: candidate.address, geocodedAt: candidate.lastVerifiedAt ?? new Date().toISOString(), geocodeStatus: "VERIFIED" as const };
     return { ...candidate, latitude: null, longitude: null, geocodeStatus: targetSet.has(candidate) ? "REJECTED" as const : "NOT_ATTEMPTED" as const };
   });
-  return { candidates: output, summary: { attempted: targets.length, verified: output.filter((candidate) => candidate.coordinateSource === "NOMINATIM" && candidate.geocodeStatus === "VERIFIED").length, rejected: output.filter((candidate) => candidate.geocodeStatus === "REJECTED").length, retainedFromSource } };
+  return { candidates: output, summary: { attempted: targets.length, verified: output.filter((candidate) => candidate.coordinateSource === "NOMINATIM" && candidate.geocodeStatus === "VERIFIED").length, rejected: output.filter((candidate) => candidate.geocodeStatus === "REJECTED").length, retainedFromSource, persistentHits: output.filter((candidate) => candidate.geocodeCacheStatus === "PERSISTENT").length, staleFallbacks: output.filter((candidate) => candidate.geocodeCacheStatus === "STALE_FALLBACK").length, providerRequests: output.filter((candidate) => candidate.geocodeCacheStatus === "PROVIDER").length } };
 }
 
 function fallbackQueryPlan(query: string, location: string, role: string): string[] {
