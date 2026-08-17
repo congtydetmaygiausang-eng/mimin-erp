@@ -1,0 +1,152 @@
+import { supabase } from "@/lib/supabase/client";
+import { PRODUCTION_ORGANIZATION_ID, type ProductionPartnerRole } from "@/lib/production-network";
+import type { DirectSearchCandidate } from "@/lib/production-discovery";
+
+export type CompanyProfileStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
+export type CompanyVerificationStatus = "DISCOVERED" | "REVIEWED" | "VERIFIED";
+
+export interface ProductionCompanyProfile {
+  id: string;
+  role: ProductionPartnerRole;
+  legalName: string;
+  taxCode: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+  province: string;
+  district: string;
+  latitude: number | null;
+  longitude: number | null;
+  capabilities: string[];
+  profileStatus: CompanyProfileStatus;
+  verificationStatus: CompanyVerificationStatus;
+  summary: string;
+  sourceProvider: string;
+  sourceUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductionCompanySource {
+  id: string;
+  sourceType: "SEARCH" | "OFFICIAL" | "REGISTRY" | "MAP" | "SOCIAL" | "OTHER";
+  sourceProvider: string;
+  sourceUrl: string;
+  sourceTitle: string;
+  verificationStatus: "UNVERIFIED" | "PARTIAL" | "VERIFIED" | "REJECTED";
+  capturedAt: string;
+}
+
+interface CompanyProfileRow {
+  id: string; role: ProductionPartnerRole; legal_name: string; tax_code: string | null;
+  phone: string | null; email: string | null; website: string | null; address: string | null;
+  province: string | null; district: string | null; latitude: number | null; longitude: number | null;
+  capabilities: string[] | null; profile_status: CompanyProfileStatus;
+  verification_status: CompanyVerificationStatus; summary: string | null;
+  source_provider: string | null; source_url: string | null; created_at: string; updated_at: string;
+}
+
+interface CompanySourceRow {
+  id: string; source_type: ProductionCompanySource["sourceType"]; source_provider: string | null;
+  source_url: string; source_title: string | null;
+  verification_status: ProductionCompanySource["verificationStatus"]; captured_at: string;
+}
+
+function mapProfile(row: CompanyProfileRow): ProductionCompanyProfile {
+  return { id: row.id, role: row.role, legalName: row.legal_name, taxCode: row.tax_code ?? "",
+    phone: row.phone ?? "", email: row.email ?? "", website: row.website ?? "", address: row.address ?? "",
+    province: row.province ?? "", district: row.district ?? "", latitude: row.latitude, longitude: row.longitude,
+    capabilities: row.capabilities ?? [], profileStatus: row.profile_status, verificationStatus: row.verification_status,
+    summary: row.summary ?? "", sourceProvider: row.source_provider ?? "", sourceUrl: row.source_url ?? "",
+    createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+function safeHttpsUrl(value: string): string {
+  const trimmed = value.trim();
+  if (/^https:\/\//i.test(trimmed)) return trimmed;
+  if (/^http:\/\//i.test(trimmed)) return `https://${trimmed.slice(7)}`;
+  return "";
+}
+
+async function fingerprint(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value.toLowerCase().trim()));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function ensureCompanyProfileFromSearch(
+  candidate: DirectSearchCandidate,
+  role: ProductionPartnerRole,
+  provider: string,
+): Promise<string> {
+  if (!supabase) throw new Error("Chưa kết nối Supabase");
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("Phiên đăng nhập đã hết hạn");
+  const identityKey = await fingerprint([candidate.taxCode, candidate.legalName, candidate.address, candidate.phone].filter(Boolean).join("|"));
+  const sourceUrl = safeHttpsUrl(candidate.sourceUrl);
+  const profileValues = {
+    organization_id: PRODUCTION_ORGANIZATION_ID,
+    identity_key: identityKey,
+    role,
+    legal_name: candidate.legalName.trim(),
+    tax_code: candidate.taxCode?.trim() || null,
+    phone: candidate.phone.trim() || null,
+    email: candidate.email?.trim() || null,
+    website: candidate.website.trim() || null,
+    address: candidate.address.trim() || null,
+    province: candidate.province.trim() || null,
+    district: candidate.district.trim() || null,
+    latitude: candidate.latitude,
+    longitude: candidate.longitude,
+    capabilities: candidate.capabilities,
+    profile_status: "DRAFT",
+    verification_status: candidate.verificationStatus === "VERIFIED" ? "VERIFIED" : candidate.verificationStatus === "PARTIAL" ? "REVIEWED" : "DISCOVERED",
+    source_provider: provider,
+    source_url: sourceUrl || null,
+    raw_data: candidate,
+    updated_by: userId,
+  };
+  const existing = await supabase.from("production_company_profiles")
+    .select("id")
+    .eq("organization_id", PRODUCTION_ORGANIZATION_ID)
+    .eq("identity_key", identityKey)
+    .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message);
+  const profileResult = existing.data
+    ? await supabase.from("production_company_profiles").update(profileValues).eq("id", existing.data.id).select("id").single()
+    : await supabase.from("production_company_profiles").insert({ ...profileValues, created_by: userId }).select("id").single();
+  const { data, error } = profileResult;
+  if (error || !data) throw new Error(error?.message || "Không tạo được hồ sơ công ty");
+
+  const sources = candidate.sources?.length ? candidate.sources : sourceUrl ? [{ url: sourceUrl, title: candidate.sourceTitle }] : [];
+  if (sources.length) {
+    const rows = sources.flatMap((source) => {
+      const url = safeHttpsUrl(source.url);
+      return url ? [{ organization_id: PRODUCTION_ORGANIZATION_ID, company_profile_id: data.id,
+        source_type: "SEARCH", source_provider: provider, source_url: url,
+        source_title: source.title || null, verification_status: "UNVERIFIED", created_by: userId }] : [];
+    });
+    if (rows.length) {
+      const { error: sourceError } = await supabase.from("production_company_sources").upsert(rows, { onConflict: "company_profile_id,source_url", ignoreDuplicates: true });
+      if (sourceError) throw new Error(sourceError.message);
+    }
+  }
+  return data.id as string;
+}
+
+export async function loadCompanyProfile(id: string): Promise<{ profile: ProductionCompanyProfile; sources: ProductionCompanySource[] }> {
+  if (!supabase) throw new Error("Chưa kết nối Supabase");
+  const [profileResult, sourcesResult] = await Promise.all([
+    supabase.from("production_company_profiles").select("*").eq("organization_id", PRODUCTION_ORGANIZATION_ID).eq("id", id).single(),
+    supabase.from("production_company_sources").select("*").eq("organization_id", PRODUCTION_ORGANIZATION_ID).eq("company_profile_id", id).order("captured_at", { ascending: false }),
+  ]);
+  if (profileResult.error || !profileResult.data) throw new Error(profileResult.error?.message || "Không tìm thấy hồ sơ công ty");
+  if (sourcesResult.error) throw new Error(sourcesResult.error.message);
+  return {
+    profile: mapProfile(profileResult.data as CompanyProfileRow),
+    sources: (sourcesResult.data ?? []).map((row) => ({ id: (row as CompanySourceRow).id,
+      sourceType: (row as CompanySourceRow).source_type, sourceProvider: (row as CompanySourceRow).source_provider ?? "",
+      sourceUrl: (row as CompanySourceRow).source_url, sourceTitle: (row as CompanySourceRow).source_title ?? "",
+      verificationStatus: (row as CompanySourceRow).verification_status, capturedAt: (row as CompanySourceRow).captured_at })),
+  };
+}
