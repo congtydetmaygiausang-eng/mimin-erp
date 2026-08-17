@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, DatabaseZap, RefreshCw, ShieldQuestion, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { createRegistryFieldReview, loadLatestRegistryVerification, loadRegistryFieldReviews, runRegistryVerification, type CompanyRegistryVerification as Verification, type RegistryFieldReview, type RegistryProviderAttempt, type RegistryReviewDecision } from "@/lib/company-registry-verification";
+import { createRegistryFieldReview, finalizeRegistryVerification, loadLatestRegistryVerification, loadLatestRegistryVerificationPacket, loadRegistryFieldReviews, runRegistryVerification, type CompanyRegistryVerification as Verification, type RegistryFieldReview, type RegistryProviderAttempt, type RegistryReviewDecision, type RegistryVerificationPacket } from "@/lib/company-registry-verification";
 import type { FieldComparisonStatus, ReconciliationStatus, RegistryFieldName } from "@/lib/registry-reconciliation";
 
 const FIELD_LABELS: Record<RegistryFieldName, string> = {
@@ -43,6 +43,8 @@ export function CompanyRegistryVerification({ profileId, taxCode }: { profileId:
   const [reviews, setReviews] = useState<RegistryFieldReview[]>([]);
   const [reviewing, setReviewing] = useState<RegistryFieldName | "">("");
   const [note, setNote] = useState("");
+  const [packet, setPacket] = useState<RegistryVerificationPacket | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -53,7 +55,7 @@ export function CompanyRegistryVerification({ profileId, taxCode }: { profileId:
   useEffect(() => {
     let active = true;
     if (!verification?.id) { setReviews([]); return () => { active = false; }; }
-    void loadRegistryFieldReviews(verification.id).then(value => { if (active) setReviews(value); }).catch(() => undefined);
+    void Promise.all([loadRegistryFieldReviews(verification.id), loadLatestRegistryVerificationPacket(verification.id)]).then(([reviewItems, latestPacket]) => { if (active) { setReviews(reviewItems); setPacket(latestPacket); } }).catch(() => undefined);
     return () => { active = false; };
   }, [verification?.id]);
 
@@ -68,6 +70,18 @@ export function CompanyRegistryVerification({ profileId, taxCode }: { profileId:
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không đối chiếu được nguồn pháp lý");
     } finally { setLoading(false); }
+  };
+
+  const finalize = async () => {
+    if (!verification) return;
+    setFinalizing(true);
+    try {
+      await finalizeRegistryVerification(profileId, verification.id, note);
+      setPacket(await loadLatestRegistryVerificationPacket(verification.id));
+      setNote("");
+      toast.success("Đã chốt biên bản xác minh V6");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không chốt được biên bản"); }
+    finally { setFinalizing(false); }
   };
 
   const reviewField = async (fieldName: RegistryFieldName, decision: RegistryReviewDecision) => {
@@ -93,7 +107,8 @@ export function CompanyRegistryVerification({ profileId, taxCode }: { profileId:
       <div className={`rounded-xl border p-4 ${statusStyle(verification.overallStatus)}`}><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold">{STATUS_LABELS[verification.overallStatus]} · {verification.formulaVersion}</p><p className="mt-1 text-xs opacity-70">Lưu lúc {new Date(verification.createdAt).toLocaleString("vi-VN")}</p></div><div className="text-right"><strong className="text-2xl">{verification.matchScore}%</strong><p className="text-[11px]">độ khớp hai nguồn</p></div></div></div>
       <div className="rounded-lg border p-3" style={{borderColor:"var(--border)"}}><label className="text-xs font-semibold" htmlFor="registry-review-note">Ghi chú chung cho quyết định tiếp theo</label><input id="registry-review-note" value={note} onChange={event=>setNote(event.target.value)} maxLength={1000} placeholder="VD: Đã kiểm tra giấy đăng ký kinh doanh bản gốc" className="input mt-2 text-xs"/></div>
       <div className="grid gap-3 lg:grid-cols-2">{verification.fields.map(field => {const review=reviews.find(item=>item.fieldName===field.fieldName);return <article key={field.fieldName} className="rounded-xl border p-3" style={{ borderColor: "var(--border)" }}><div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">{FIELD_LABELS[field.fieldName]}</h3><span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${statusStyle(field.status)}`}>{FIELD_STATUS_LABELS[field.status]}{field.status !== "MISSING_SOURCE" ? ` · ${field.similarity}%` : ""}</span></div><div className="mt-3 grid gap-2 sm:grid-cols-2"><div className="rounded-lg bg-brand-500/5 p-2"><p className="text-[11px] font-semibold text-brand-700">VietQR</p><p className="mt-1 break-words text-xs">{field.vietQrValue || "Chưa có"}</p></div><div className="rounded-lg bg-slate-500/5 p-2"><p className="text-[11px] font-semibold">MaSoThue</p><p className="mt-1 break-words text-xs">{field.maSoThueValue || "Chưa có"}</p></div></div><p className="mt-2 text-[11px] opacity-60">{field.reason}</p>{review&&<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-[11px] text-emerald-800"><b>Quyết định gần nhất: {DECISION_LABELS[review.decision]}</b><p>{new Date(review.reviewedAt).toLocaleString("vi-VN")}{review.note?` · ${review.note}`:""}</p></div>}<div className="mt-3 grid grid-cols-2 gap-2"><button type="button" disabled={Boolean(reviewing)||!field.vietQrValue} onClick={()=>void reviewField(field.fieldName,"ACCEPT_VIETQR")} className="btn-secondary text-[11px]">Chọn VietQR</button><button type="button" disabled={Boolean(reviewing)||!field.maSoThueValue} onClick={()=>void reviewField(field.fieldName,"ACCEPT_MASOTHUE")} className="btn-secondary text-[11px]">Chọn MaSoThue</button><button type="button" disabled={Boolean(reviewing)} onClick={()=>void reviewField(field.fieldName,"KEEP_PROFILE")} className="btn-secondary text-[11px]">Giữ hồ sơ</button><button type="button" disabled={Boolean(reviewing)} onClick={()=>void reviewField(field.fieldName,"REJECT_BOTH")} className="btn-secondary text-[11px]">Loại cả hai</button></div></article>})}</div>
-      <p className="text-[11px] text-amber-700">V5 chỉ lưu quyết định của người kiểm duyệt thành lịch sử bất biến. Chưa có thao tác nào tự cập nhật hồ sơ hoặc danh mục ERP.</p>
+      <div className="rounded-xl border p-4" style={{borderColor:"var(--border)"}}><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-bold">V6 · Chốt biên bản xác minh</h3><p className="text-xs opacity-60">Cần đủ 4/4 quyết định V5 của lần đối chiếu hiện tại.</p>{packet&&<p className={`mt-2 text-xs font-semibold ${packet.status==="VERIFIED"?"text-emerald-700":"text-amber-700"}`}>{packet.status==="VERIFIED"?"Biên bản đã xác minh":"Biên bản cần xem lại"} · {new Date(packet.finalizedAt).toLocaleString("vi-VN")}</p>}</div><button type="button" disabled={finalizing||reviews.length<4} onClick={()=>void finalize()} className="btn-primary shrink-0">{finalizing?"Đang chốt...":`Chốt biên bản (${reviews.length}/4)`}</button></div></div>
+      <p className="text-[11px] text-amber-700">V6 chỉ lưu biên bản bất biến. Không tự cập nhật hồ sơ, điểm uy tín hoặc danh mục ERP.</p>
     </>}
   </section>;
 }

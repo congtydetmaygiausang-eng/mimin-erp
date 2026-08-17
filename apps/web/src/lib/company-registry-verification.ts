@@ -24,6 +24,21 @@ export interface RegistryFieldReview {
   reviewedAt: string;
 }
 
+export interface RegistryVerificationPacket {
+  id: string;
+  reconciliationId: string;
+  status: "VERIFIED" | "NEEDS_REVIEW";
+  reviewCount: number;
+  note: string;
+  finalizedBy: string;
+  finalizedAt: string;
+}
+
+interface VerificationPacketRow {
+  id: string; reconciliation_id: string; packet_status: RegistryVerificationPacket["status"];
+  review_count: number; note: string; finalized_by: string; finalized_at: string;
+}
+
 interface FieldReviewRow {
   id: string; reconciliation_id: string; field_name: RegistryFieldReview["fieldName"];
   decision: RegistryReviewDecision; selected_value: string | null; note: string; reviewed_by: string; reviewed_at: string;
@@ -129,4 +144,23 @@ export async function createRegistryFieldReview(profileId: string, reconciliatio
   const response = await fetch("/api/v1/sourcing/company-registry/reviews", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ profileId, reconciliationId, fieldName, decision, note }) });
   const payload = await response.json().catch((): Record<string, unknown> => ({})) as Record<string, unknown>;
   if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Không lưu được quyết định kiểm duyệt");
+}
+
+export async function loadLatestRegistryVerificationPacket(reconciliationId: string): Promise<RegistryVerificationPacket | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("production_company_registry_verification_packets")
+    .select("id,reconciliation_id,packet_status,review_count,note,finalized_by,finalized_at")
+    .eq("organization_id", "mimin").eq("reconciliation_id", reconciliationId)
+    .order("finalized_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const row = data as VerificationPacketRow;
+  return { id: row.id, reconciliationId: row.reconciliation_id, status: row.packet_status, reviewCount: row.review_count, note: row.note, finalizedBy: row.finalized_by, finalizedAt: row.finalized_at };
+}
+
+export async function finalizeRegistryVerification(profileId: string, reconciliationId: string, note: string): Promise<void> {
+  const token = await accessToken();
+  const response = await fetch("/api/v1/sourcing/company-registry/finalize", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ profileId, reconciliationId, note }) });
+  const payload = await response.json().catch((): Record<string, unknown> => ({})) as Record<string, unknown>;
+  if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Không chốt được biên bản xác minh");
 }
