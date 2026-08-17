@@ -10,6 +10,7 @@ interface SavedConfig {
   name: string;
   loaiSP: string;
   soSize: number;
+  sizeNames?: string;
   giaVai: string;
   tongMet: string;
   giaMay: string;
@@ -71,12 +72,12 @@ async function loadConfigsFromDB(): Promise<SavedConfig[]> {
 
 export default function CongThucDinhMucPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
-  
   const [name, setName] = useState<string>("");
   const [loaiSP, setLoaiSP] = useState<string>("Áo");
+  const [soSize, setSoSize] = useState<number>(6);
+  const [sizeNames, setSizeNames] = useState<string>("");
   const [giaVai, setGiaVai] = useState<string>("");
   const [tongMet, setTongMet] = useState<string>("");
-  const [soSize, setSoSize] = useState<number>(6);
 
   // Thêm các loại giá
   const [giaMay, setGiaMay] = useState<string>("");
@@ -94,10 +95,14 @@ export default function CongThucDinhMucPage() {
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
   const [viewingConfig, setViewingConfig] = useState<SavedConfig | null>(null);
 
-  // Tự động điều chỉnh số size mặc định theo loại sản phẩm
   useEffect(() => {
-    if (loaiSP === "Quần") setSoSize(5);
-    else setSoSize(6); // Áo, Bộ
+    if (loaiSP === "Quần") {
+      setSoSize(5);
+      setSizeNames("29, 30, 31, 32, 33");
+    } else {
+      setSoSize(6);
+      setSizeNames("S, M, L, XL, 2XL, 3XL");
+    }
   }, [loaiSP]);
 
   // Load saved configs on mount
@@ -189,6 +194,7 @@ export default function CongThucDinhMucPage() {
       name: name.trim(),
       loaiSP,
       soSize,
+      sizeNames,
       giaVai,
       tongMet,
       giaMay,
@@ -242,6 +248,7 @@ export default function CongThucDinhMucPage() {
     setName(config.name);
     setLoaiSP(config.loaiSP);
     setSoSize(config.soSize);
+    setSizeNames(config.sizeNames || "");
     setGiaVai(config.giaVai);
     setTongMet(config.tongMet);
     setGiaMay(config.giaMay);
@@ -337,6 +344,16 @@ export default function CongThucDinhMucPage() {
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">size</span>
                   </div>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tên các size</label>
+                <input
+                  type="text"
+                  value={sizeNames}
+                  onChange={(e) => setSizeNames(e.target.value)}
+                  placeholder="VD: S, M, L, XL, XXL..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all text-slate-800 font-medium"
+                />
               </div>
             </div>
           </div>
@@ -753,6 +770,12 @@ export default function CongThucDinhMucPage() {
                     <span className="text-sm text-slate-500">Loại sản phẩm:</span>
                     <span className="font-semibold text-slate-800">{viewingConfig.loaiSP} ({viewingConfig.soSize} size)</span>
                   </div>
+                  {viewingConfig.sizeNames && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500">Tên size:</span>
+                      <span className="font-semibold text-slate-800">{viewingConfig.sizeNames}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-sm text-slate-500">Kế hoạch cắt:</span>
                     <span className="font-semibold text-slate-800">{viewingConfig.soLuongCat ? `${formatMoney(parseFloat(viewingConfig.soLuongCat.replace(/,/g, "")))} cái` : "Chưa nhập"}</span>
