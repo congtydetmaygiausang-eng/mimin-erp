@@ -40,6 +40,20 @@ export default function SoDoChienLuocPage() {
 
   const filtered = projects.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
+  const handleDelete = (id: string) => {
+    if (confirm("Bạn có chắc muốn xoá sơ đồ này? Thao tác này không thể hoàn tác.")) {
+      const raw = localStorage.getItem("mimin_so_do_chien_luoc_v1");
+      if (raw) {
+        try {
+          const savedData = JSON.parse(raw);
+          delete savedData[id];
+          localStorage.setItem("mimin_so_do_chien_luoc_v1", JSON.stringify(savedData));
+        } catch(e) {}
+      }
+      setProjects(prev => prev.filter(p => p.id !== id));
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -82,9 +96,17 @@ export default function SoDoChienLuocPage() {
                 <div className="w-10 h-10 rounded-lg bg-brand-500/10 text-brand-600 flex items-center justify-center">
                   <Palette className="w-5 h-5" />
                 </div>
-                <button className="p-1 opacity-40 hover:opacity-100 transition rounded-md hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => e.preventDefault()}>
-                  <MoreVertical className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
+                  <Link href={`/so-do-chien-luoc/${proj.id}`} className="px-3 py-1.5 bg-brand-50 text-brand-600 rounded-md hover:bg-brand-100 transition text-sm font-medium">
+                    Xem
+                  </Link>
+                  <button 
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(proj.id); }}
+                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition text-sm font-medium"
+                  >
+                    Xoá
+                  </button>
+                </div>
               </div>
               
               <h3 className="font-bold text-lg mb-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">

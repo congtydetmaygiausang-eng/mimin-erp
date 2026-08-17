@@ -397,8 +397,8 @@ function SoDoCanvasInner() {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full">
       {/* Toolbar */}
-      <div className="bg-white dark:bg-slate-900 border-b border-black/10 dark:border-white/10 px-4 py-3 flex items-center justify-between shrink-0 z-10">
-        <div className="flex items-center gap-4">
+      <div className="bg-white dark:bg-slate-900 border-b border-black/10 dark:border-white/10 px-4 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 z-10 overflow-x-auto">
+        <div className="flex items-center gap-4 shrink-0">
           <Link href="/so-do-chien-luoc" className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition">
             <ArrowLeft className="w-5 h-5" />
           </Link>
@@ -409,7 +409,7 @@ function SoDoCanvasInner() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 xl:pb-0">
           <button 
             onClick={addTextNode}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-sm font-medium transition"
@@ -464,18 +464,18 @@ function SoDoCanvasInner() {
 
           {/* Thao tác chỉnh sửa cơ bản - đều có phím tắt tương ứng */}
           {([
-            [Undo2, "Hoàn tác (Ctrl+Z)", hoanTac],
-            [Copy, "Nhân đôi khối đang chọn (Ctrl+D)", nhanDoiDangChon],
-            [Pencil, "Đổi nội dung khối đang chọn (F2)", doiTenDangChon],
-            [Trash2, "Xoá khối/dây đang chọn (Delete)", xoaDangChon],
+            [Undo2, "Hoàn tác", hoanTac],
+            [Copy, "Nhân đôi", nhanDoiDangChon],
+            [Pencil, "Đổi tên", doiTenDangChon],
+            [Trash2, "Xoá", xoaDangChon],
           ] as [any, string, () => void][]).map(([Icon, title, fn], i) => (
             <button
               key={i}
               onClick={fn}
               title={title}
-              className="p-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition"
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4" /> <span className="hidden 2xl:inline">{title}</span>
             </button>
           ))}
 
@@ -484,9 +484,9 @@ function SoDoCanvasInner() {
             <button
               onClick={() => setHienPhimTat((v) => !v)}
               title="Xem danh sách phím tắt"
-              className="p-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition"
             >
-              <Keyboard className="w-4 h-4" />
+              <Keyboard className="w-4 h-4" /> <span className="hidden 2xl:inline">Phím tắt</span>
             </button>
             {hienPhimTat && (
               <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl ring-1 ring-slate-200 dark:ring-white/10 shadow-xl p-3 z-50 text-left">
