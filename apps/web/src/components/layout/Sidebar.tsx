@@ -51,6 +51,7 @@ import {
   Sliders,
   Calculator,
   Search,
+  Wind,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -112,7 +113,7 @@ const NAV: NavItem[] = [
       { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, iconColor: "text-green-400", permModule: "to-may" },
       { href: "/to-qc-work", label: "QC – Kiểm tra chất lượng", icon: ShieldCheck, iconColor: "text-blue-400", permModule: "kiem-tra-chat-luong" },
       { href: "/ui-khuy-nut", label: "Khuy nút – Việc của tôi", icon: ClipboardList, iconColor: "text-amber-400", permModule: "to-khuy-nut" },
-      { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: ClipboardList, iconColor: "text-orange-400", permModule: "to-ui" },
+      { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: Wind, iconColor: "text-orange-400", permModule: "to-ui" },
       { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, iconColor: "text-pink-400", permModule: "to-dong-goi" },
       { href: "/to-ht-work", label: "Hoàn Thiện (Tổng hợp)", icon: CheckCircle2, iconColor: "text-teal-300", permModule: "hoan-thien" },
       { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, iconColor: "text-rose-400", permModule: "gia-cong-ngoai" },
