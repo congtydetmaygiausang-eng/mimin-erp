@@ -3,11 +3,12 @@ import type {
   ProductionCompanyDocument,
   ProductionCompanyDocumentExtraction,
   ProductionCompanyImage,
+  ProductionCompanyManualCheck,
   ProductionCompanyProfile,
   ProductionCompanySource,
 } from "@/lib/production-company-profile";
 
-export const COMPANY_TRUST_SCORE_VERSION = "U4.1" as const;
+export const COMPANY_TRUST_SCORE_VERSION = "U5.1" as const;
 
 export type CompanyTrustFactorKey = "LEGAL" | "IDENTITY" | "EVIDENCE" | "CAPABILITY" | "REPUTATION" | "HISTORY" | "FRESHNESS";
 
@@ -50,6 +51,7 @@ interface CompanyTrustInput {
   documents: ProductionCompanyDocument[];
   extractions: ProductionCompanyDocumentExtraction[];
   auditEvents: ProductionCompanyAuditEvent[];
+  manualChecks: ProductionCompanyManualCheck[];
   now?: Date;
 }
 
@@ -76,7 +78,7 @@ function validDate(value: string): Date | null {
 }
 
 export function calculateCompanyTrust(input: CompanyTrustInput): CompanyTrustAssessment {
-  const { profile, sources, images, documents, extractions, auditEvents } = input;
+  const { profile, sources, images, documents, extractions, auditEvents, manualChecks } = input;
   const now = input.now ?? new Date();
   const verifiedSources = sources.filter(source => source.verificationStatus === "PARTIAL" || source.verificationStatus === "VERIFIED");
   const officialSources = verifiedSources.filter(source => source.sourceType === "OFFICIAL" || source.sourceType === "REGISTRY");
@@ -85,6 +87,7 @@ export function calculateCompanyTrust(input: CompanyTrustInput): CompanyTrustAss
   const approvedOperationalImage = images.some(image => image.reviewStatus === "APPROVED" && image.archivalStatus === "ARCHIVED" && ["FACTORY", "MACHINERY", "PRODUCT"].includes(image.category));
   const verifiedCapabilityDocument = documents.some(document => document.reviewStatus === "VERIFIED" && ["CERTIFICATE", "FACTORY_LICENSE"].includes(document.documentType));
   const independentDomains = distinctSourceDomains(verifiedSources);
+  const confirmedChecks = new Set(manualChecks.filter(check => check.status === "CONFIRMED").map(check => check.checkType));
 
   const legalReasons: string[] = [];
   let legalScore = 0;
@@ -93,14 +96,16 @@ export function calculateCompanyTrust(input: CompanyTrustInput): CompanyTrustAss
   if (verifiedLegalDocument) { legalScore += 5; legalReasons.push("Có giấy tờ pháp lý được người dùng duyệt"); }
   if (acceptedOcr) { legalScore += 4; legalReasons.push("OCR giấy tờ đã được người dùng chấp nhận"); }
   if (profile.address && verifiedSources.length > 0) { legalScore += 3; legalReasons.push("Địa chỉ có nguồn đối chiếu"); }
+  if (confirmedChecks.has("DOCUMENTS_MATCHED")) { legalScore += 3; legalReasons.push("Nhân viên xác nhận giấy tờ khớp hồ sơ"); }
 
   const identityReasons: string[] = [];
   let identityScore = 0;
-  if (profile.phone && verifiedSources.length > 0) { identityScore += 4; identityReasons.push("Có điện thoại và nguồn đối chiếu"); }
+  if (profile.phone && (verifiedSources.length > 0 || confirmedChecks.has("PHONE_REACHED"))) { identityScore += 4; identityReasons.push(confirmedChecks.has("PHONE_REACHED") ? "Nhân viên đã liên hệ điện thoại thành công" : "Có điện thoại và nguồn đối chiếu"); }
   if (profile.website && verifiedSources.length > 0) { identityScore += 3; identityReasons.push("Có website và nguồn đối chiếu"); }
   if (profile.email && verifiedSources.length > 0) { identityScore += 3; identityReasons.push("Có email và nguồn đối chiếu"); }
   if (profile.address && profile.latitude !== null && profile.longitude !== null) { identityScore += 3; identityReasons.push("Địa chỉ có tọa độ"); }
-  identityReasons.push("2 điểm Zalo được giữ lại đến khi nhân viên xác nhận liên lạc");
+  if (confirmedChecks.has("ZALO_CONFIRMED")) { identityScore += 2; identityReasons.push("Nhân viên xác nhận đúng tài khoản Zalo"); }
+  else identityReasons.push("2 điểm Zalo được giữ lại đến khi nhân viên xác nhận liên lạc");
 
   const evidenceReasons: string[] = [];
   const evidenceScore = Math.min(8, independentDomains * 4) + (officialSources.length > 0 ? 4 : 0) + (auditEvents.length > 0 ? 3 : 0);
@@ -114,6 +119,7 @@ export function calculateCompanyTrust(input: CompanyTrustInput): CompanyTrustAss
   if (approvedOperationalImage) { capabilityScore += 5; capabilityReasons.push("Có ảnh xưởng, máy móc hoặc sản phẩm đã duyệt"); }
   if (verifiedCapabilityDocument) { capabilityScore += 4; capabilityReasons.push("Có chứng nhận hoặc giấy phép nhà xưởng đã xác minh"); }
   if (profile.latitude !== null && profile.longitude !== null) { capabilityScore += 2; capabilityReasons.push("Có tọa độ cơ sở"); }
+  if (confirmedChecks.has("SITE_VISITED")) { capabilityScore += 3; capabilityReasons.push("Nhân viên xác nhận đã khảo sát cơ sở"); }
 
   const updatedAt = new Date(profile.updatedAt);
   const ageDays = Number.isNaN(updatedAt.getTime()) ? Number.POSITIVE_INFINITY : Math.max(0, (now.getTime() - updatedAt.getTime()) / 86_400_000);

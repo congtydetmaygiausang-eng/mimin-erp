@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 13:45 | Codex | mang-luoi-san-xuat | U5: 4 xác nhận thủ công có người/thời gian, RLS Supabase và tác động đúng nhóm điểm uy tín; M5 vẫn khóa | codex/u5-manual-company-verification | 🟢 DONE |
 | 2026-08-17 13:20 | Codex | mang-luoi-san-xuat | U4: lớp điểm trừ tối đa 40, cảnh báo MST mâu thuẫn/sai định dạng, giấy tờ hết hạn và bảng 7 nhóm điểm | codex/u4-trust-risk-penalties | 🟢 DONE |
 | 2026-08-17 13:00 | Codex | mang-luoi-san-xuat | U3: bộ máy điểm uy tín sơ bộ 100 điểm tách khỏi độ phù hợp, có 7 nhóm, độ phủ dữ liệu và phiên bản công thức | codex/u3-company-trust-score | 🟢 DONE |
 | 2026-08-17 12:35 | Codex | mang-luoi-san-xuat | U2: thay H1 cố định bằng mức hồ sơ động M0-M5 dựa trên nguồn, liên hệ, pháp lý, ảnh, giấy tờ và OCR | codex/u2-dynamic-profile-maturity | 🟢 DONE |
