@@ -26,6 +26,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-is": "^19.2.8",
+    "react-textarea-autosize": "^8.5.9",
     "recharts": "^3.10.1",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.4",

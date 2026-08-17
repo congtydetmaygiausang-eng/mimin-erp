@@ -3,6 +3,7 @@
 import { Handle, Position, useReactFlow } from "@xyflow/react";
 import { MAU_KHOI, type MauKhoi } from "@/lib/data/so-do-chien-luoc-data";
 import { useRef } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 
 export function MiminNode({
   id,
@@ -56,15 +57,16 @@ export function MiminNode({
         />
       </div>
 
-      <input 
-        ref={inputRef}
+      <TextareaAutosize 
+        ref={inputRef as any}
         value={data.label} 
         onChange={(e) => updateNodeData(id, { label: e.target.value })}
         onDoubleClick={(e) => e.stopPropagation()}
-        className="bg-transparent border-none focus:outline-none text-center w-full min-w-[80px] cursor-pointer"
+        className="bg-transparent border-none focus:outline-none text-center w-full min-w-[80px] cursor-pointer resize-none"
         style={{ color: 'inherit' }}
         placeholder="Nhập nội dung..."
         onFocus={(e) => e.target.select()}
+        minRows={1}
       />
       <Handle type="source" position={Position.Bottom} className="!bg-slate-400 !w-3 !h-3" />
     </div>
@@ -95,14 +97,15 @@ export function MiminImageNode({
         )}
       </div>
       <div className="text-center font-medium text-sm px-2 pb-1">
-        <input 
-          ref={inputRef}
+        <TextareaAutosize 
+          ref={inputRef as any}
           value={data.label} 
           onChange={(e) => updateNodeData(id, { label: e.target.value })}
           onDoubleClick={(e) => e.stopPropagation()}
-          className="bg-transparent border-none focus:outline-none text-center w-full cursor-pointer"
+          className="bg-transparent border-none focus:outline-none text-center w-full cursor-pointer resize-none"
           placeholder="Nhập ghi chú..."
           onFocus={(e) => e.target.select()}
+          minRows={1}
         />
       </div>
       
