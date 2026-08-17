@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 18:50 | Codex | mang-luoi-san-xuat | L5: nhãn màu và số km, Google Maps, xem bằng chứng Haversine, xác minh lại có đối chiếu đúng doanh nghiệp | codex/l5-location-verification-ui | 🟢 DONE |
 | 2026-08-17 18:25 | Codex | mang-luoi-san-xuat | L4: ưu tiên gần theo nhóm và km tăng dần; chế độ nghiêm ngặt chỉ giữ INSIDE, báo số hồ sơ bị loại và tách khu vực kết quả | codex/l4-location-mode-ranking | 🟢 DONE |
 | 2026-08-17 18:00 | Codex | mang-luoi-san-xuat | L3: Haversine chuẩn, phân loại trong/ngoài/thiếu/mâu thuẫn, gói bằng chứng phép tính và epsilon chính xác tại ranh giới | codex/l3-distance-classification | 🟢 DONE |
 | 2026-08-17 17:35 | Codex | mang-luoi-san-xuat | L2: làm sạch và geocode tối đa 10 địa chỉ công ty, xác minh Việt Nam/tương đồng/số nhà, lưu nguồn và độ tin cậy tọa độ | codex/l2-candidate-geocoding | 🟢 DONE |

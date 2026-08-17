@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Building2, Check, ExternalLink, Eye, Globe2, Hash, Mail, MapPin, Navigation, Phone, Search, Sparkles, X } from "lucide-react";
+import { BadgeCheck, Building2, Calculator, Check, ExternalLink, Eye, Globe2, Hash, Mail, Map, MapPin, Navigation, Phone, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
@@ -45,14 +45,29 @@ function contactDetails(item: DirectSearchCandidate) {
   return { email, phone, website, taxCode };
 }
 
-function SupplierResultCard({ item, opening, onViewDetails }: { item: DirectSearchCandidate; opening: boolean; onViewDetails: () => void }) {
+const LOCATION_BADGES = {
+  INSIDE: { label: "Trong bán kính", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
+  OUTSIDE: { label: "Ngoài bán kính", className: "border-amber-300 bg-amber-50 text-amber-700" },
+  UNKNOWN: { label: "Chưa xác minh tọa độ", className: "border-slate-300 bg-slate-50 text-slate-700" },
+  CONFLICT: { label: "Mâu thuẫn vị trí", className: "border-red-300 bg-red-50 text-red-700" },
+} as const;
+
+function SupplierResultCard({ item, opening, verifying, onViewDetails, onVerifyLocation }: { item: DirectSearchCandidate; opening: boolean; verifying: boolean; onViewDetails: () => void; onVerifyLocation: () => void }) {
+  const [showCalculation, setShowCalculation] = useState(false);
   const contact = contactDetails(item);
   const sources = item.sources?.length ? item.sources : [{ url: item.sourceUrl, title: item.sourceTitle }];
+  const status = item.locationStatus ?? "UNKNOWN";
+  const locationBadge = LOCATION_BADGES[status];
+  const distanceLabel = status === "INSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `${item.distanceKm.toFixed(1)} km từ tâm` : status === "OUTSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `Ngoài bán kính · ${item.distanceKm.toFixed(1)} km` : locationBadge.label;
+  const mapQuery = item.latitude !== null && item.longitude !== null ? `${item.latitude},${item.longitude}` : item.geocodedAddress || item.address;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+  const evidence = item.distanceEvidence;
   return <article className="rounded-xl border p-4 space-y-3" style={{borderColor:"var(--border)"}}>
     <div className="flex justify-between gap-3">
       <div className="min-w-0"><div className="flex items-start gap-2"><Building2 className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600"/><b className="leading-snug">{item.legalName}</b></div><div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>{item.verificationStatus==="VERIFIED"?"Đã đối chiếu nhiều nguồn":item.verificationStatus==="PARTIAL"?"Đã đối chiếu một phần":"Chưa đủ bằng chứng"}</div></div>
       <span className="text-xs text-brand-700 shrink-0">{item.confidence}% phù hợp</span>
     </div>
+    <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${locationBadge.className}`}><Navigation className="w-3.5 h-3.5"/>{distanceLabel}</div>
     <div className="grid grid-cols-1 gap-2 text-xs">
       <div className="flex items-start gap-2"><MapPin className="w-4 h-4 shrink-0 text-rose-600"/><span className="w-20 shrink-0 font-medium">Địa chỉ</span><span className="min-w-0 break-words leading-relaxed line-clamp-2" title={item.address}>{item.address||"Chưa có"}</span></div>
       <div className="flex items-start gap-2"><Phone className="w-4 h-4 shrink-0 text-emerald-600"/><span className="w-20 shrink-0 font-medium">Điện thoại</span>{contact.phone?<a className="break-all" href={`tel:${contact.phone}`}>{contact.phone}</a>:<span className="opacity-50">Chưa có</span>}</div>
@@ -61,6 +76,8 @@ function SupplierResultCard({ item, opening, onViewDetails }: { item: DirectSear
       <div className="flex items-start gap-2"><Hash className="w-4 h-4 shrink-0 text-amber-600"/><span className="w-20 shrink-0 font-medium">Mã số thuế</span>{contact.taxCode?<span>{contact.taxCode}</span>:<span className="opacity-50">Chưa xác minh</span>}</div>
     </div>
     <div className="flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div>
+    <div className="flex flex-wrap gap-2"><a className="btn-secondary inline-flex items-center gap-2 text-xs" href={mapsUrl} target="_blank" rel="noopener noreferrer"><Map className="w-4 h-4"/>Google Maps</a><button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={()=>setShowCalculation((current)=>!current)}><Calculator className="w-4 h-4"/>{showCalculation?"Ẩn cách tính":"Xem cách tính"}</button><button type="button" disabled={verifying} className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={onVerifyLocation}><RefreshCw className={`w-4 h-4 ${verifying?"animate-spin":""}`}/>{verifying?"Đang xác minh...":"Xác minh lại vị trí"}</button></div>
+    {showCalculation&&<div className="rounded-lg border bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1"><p><b>Phương pháp:</b> {evidence?.method==="HAVERSINE"?"Haversine · khoảng cách đường chim bay":"Chưa có phép tính"}</p><p><b>Bán kính áp dụng:</b> {evidence?`${evidence.radiusKm} km`:"Chưa có"}</p><p><b>Tâm:</b> {evidence?`${evidence.center.latitude.toFixed(6)}, ${evidence.center.longitude.toFixed(6)} · ${evidence.center.label}`:"Chưa xác định"}</p><p><b>Công ty:</b> {evidence?.destination.latitude!==null&&evidence?.destination.latitude!==undefined&&evidence.destination.longitude!==null&&evidence.destination.longitude!==undefined?`${evidence.destination.latitude.toFixed(6)}, ${evidence.destination.longitude.toFixed(6)}`:"Chưa có tọa độ"}</p><p><b>Nguồn tọa độ:</b> {evidence?.destination.coordinateSource??"Chưa xác minh"} · độ tin cậy {evidence?.destination.coordinateConfidence??"chưa có"}</p><p><b>Kết luận:</b> {item.locationReason??locationBadge.label}</p>{evidence&&<p><b>Thời điểm tính:</b> {new Date(evidence.calculatedAt).toLocaleString("vi-VN")}</p>}</div>}
     <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3 text-xs">{sources.slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div><button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-2 text-xs"><Eye className="w-4 h-4"/>{opening?"Đang mở...":"Xem chi tiết công ty"}</button></div>
   </article>;
 }
@@ -75,6 +92,7 @@ export default function TimKiemDoiTacPage() {
   const [directResults, setDirectResults] = useState<DirectSearchCandidate[]>([]);
   const [directProvider, setDirectProvider] = useState("");
   const [openingProfile, setOpeningProfile] = useState("");
+  const [verifyingLocation, setVerifyingLocation] = useState("");
   const [radiusKm, setRadiusKm] = useState(20);
   const [locationMode, setLocationMode] = useState<"PREFER"|"STRICT">("PREFER");
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
@@ -126,8 +144,8 @@ export default function TimKiemDoiTacPage() {
     return () => window.removeEventListener("message", receive);
   }, []);
 
-  const search = async () => {
-    if (!query.trim() || !location.trim()) return toast.error("Nhập nội dung và khu vực cần tìm");
+  const search = async (silent = false): Promise<DirectSearchCandidate[]|null> => {
+    if (!query.trim() || !location.trim()) { toast.error("Nhập nội dung và khu vực cần tìm"); return null; }
     setLoading(true);
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
@@ -135,11 +153,13 @@ export default function TimKiemDoiTacPage() {
       const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
       const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;locationBreakdown?:{inside:number;outside:number;unknown:number;conflict:number};strictExcluded?:number;strictLocationFallback?:boolean;enrichmentSources?:number;enrichedCandidates?:number;geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number};providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>};candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
-      setDirectResults(data.candidates??[]); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(data.diagnostics??null);
-      if (locationMode === "STRICT" && !(data.candidates?.length)) toast.warning(`Không có hồ sơ đã xác minh trong bán kính ${radiusKm} km`);
-      else toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${data.candidates?.length??0} kết quả`);
+      const candidates = data.candidates??[];
+      setDirectResults(candidates); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(data.diagnostics??null);
+      if (!silent && locationMode === "STRICT" && !candidates.length) toast.warning(`Không có hồ sơ đã xác minh trong bán kính ${radiusKm} km`);
+      else if (!silent) toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${candidates.length} kết quả`);
+      return candidates;
     }
-    catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); return null; }
     finally { setLoading(false); }
   };
   const useCurrentLocation=()=>{if(!navigator.geolocation)return toast.error("Thiết bị không hỗ trợ định vị");navigator.geolocation.getCurrentPosition(position=>{setCenter({latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy});toast.success(`Đã lấy vị trí GPS · sai số khoảng ${Math.round(position.coords.accuracy)} m`)},()=>toast.error("Không lấy được vị trí. Hãy cấp quyền định vị cho trình duyệt."),{enableHighAccuracy:true,timeout:10000,maximumAge:60000})};
@@ -165,6 +185,17 @@ export default function TimKiemDoiTacPage() {
       setOpeningProfile("");
     }
   };
+  const verifyLocation = async (item: DirectSearchCandidate, key: string) => {
+    setVerifyingLocation(key);
+    try {
+      const refreshed = await search(true);
+      if (!refreshed) return;
+      const matched = refreshed.some((candidate) => candidate.sourceUrl === item.sourceUrl || candidate.legalName.trim().toLowerCase() === item.legalName.trim().toLowerCase());
+      if (matched) toast.success(`Đã xác minh lại vị trí cho ${item.legalName}`);
+      else toast.warning(`Lần tìm mới chưa xác nhận lại được ${item.legalName}`);
+    }
+    finally { setVerifyingLocation(""); }
+  };
   const directResultSections = [
     { status: "INSIDE", title: `Trong bán kính ${radiusKm} km`, description: "Đã xác minh tọa độ · xếp từ gần đến xa" },
     { status: "OUTSIDE", title: "Gợi ý mở rộng ngoài bán kính", description: "Chỉ hiển thị trong chế độ Ưu tiên gần" },
@@ -184,7 +215,7 @@ export default function TimKiemDoiTacPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3"><label className="text-xs font-medium md:col-span-2">Vị trí trung tâm<input className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null)}} placeholder="VD: Hóc Môn, TP.HCM" /></label><label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Ưu tiên gần</option><option value="STRICT">Chỉ trong bán kính</option></select></label><div className="flex items-end"><button type="button" className="btn-secondary w-full inline-flex justify-center gap-2" onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:"Nếu không dùng GPS, hệ thống sẽ xác định tâm từ địa chỉ đã nhập."}</p><button className="btn-primary md:min-w-56 inline-flex justify-center gap-2" disabled={loading} onClick={() => void search()}><Search className="w-4 h-4" />{loading ? "Đang tìm..." : "Tìm tự động"}</button></div>
     </div>
-    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div>{directResultSections.map((section)=><section key={section.status} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.status}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)}/>})}</div></section>)}</div>}
+    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div>{directResultSections.map((section)=><section key={section.status} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.status}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)}/>})}</div></section>)}</div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />
