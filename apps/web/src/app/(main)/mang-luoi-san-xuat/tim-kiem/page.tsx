@@ -12,6 +12,16 @@ import { supabase } from "@/lib/supabase/client";
 
 const SEARCH_CACHE_KEY = "mimin:sourcing-search:v1";
 
+interface ResolvedSearchCenter {
+  label: string;
+  source: "GPS" | "ADDRESS";
+  accuracy?: number;
+  validationStatus: "VERIFIED";
+  validationConfidence: "HIGH" | "MEDIUM";
+  placeType: string;
+  validatedAt: string;
+}
+
 interface SearchCache {
   query: string;
   location: string;
@@ -21,7 +31,7 @@ interface SearchCache {
   center: {latitude:number;longitude:number;accuracy?:number}|null;
   directResults: DirectSearchCandidate[];
   directProvider: string;
-  resolvedCenter: {label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null;
+  resolvedCenter: ResolvedSearchCenter|null;
   learningSummary: {approvedCount:number;rejectedCount:number;applied:boolean}|null;
   diagnostics: {collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>}|null;
 }
@@ -68,7 +78,7 @@ export default function TimKiemDoiTacPage() {
   const [radiusKm, setRadiusKm] = useState(20);
   const [locationMode, setLocationMode] = useState<"PREFER"|"STRICT">("PREFER");
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
-  const [resolvedCenter, setResolvedCenter] = useState<{label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null>(null);
+  const [resolvedCenter, setResolvedCenter] = useState<ResolvedSearchCenter|null>(null);
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [diagnostics, setDiagnostics] = useState<{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>}|null>(null);
   const [aiText, setAiText] = useState("");
@@ -123,7 +133,7 @@ export default function TimKiemDoiTacPage() {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
       const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
-      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:{label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>};candidates?:DirectSearchCandidate[]};
+      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>};candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       setDirectResults(data.candidates??[]); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(data.diagnostics??null);
       toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${data.candidates?.length??0} kết quả`);
@@ -166,7 +176,7 @@ export default function TimKiemDoiTacPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3"><label className="text-xs font-medium md:col-span-2">Vị trí trung tâm<input className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null)}} placeholder="VD: Hóc Môn, TP.HCM" /></label><label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Ưu tiên gần</option><option value="STRICT">Chỉ trong bán kính</option></select></label><div className="flex items-end"><button type="button" className="btn-secondary w-full inline-flex justify-center gap-2" onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:"Nếu không dùng GPS, hệ thống sẽ xác định tâm từ địa chỉ đã nhập."}</p><button className="btn-primary md:min-w-56 inline-flex justify-center gap-2" disabled={loading} onClick={() => void search()}><Search className="w-4 h-4" />{loading ? "Đang tìm..." : "Tìm tự động"}</button></div>
     </div>
-    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=>{const itemKey=`${item.sourceUrl}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)}/>})}</div></div>}
+    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=>{const itemKey=`${item.sourceUrl}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)}/>})}</div></div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />

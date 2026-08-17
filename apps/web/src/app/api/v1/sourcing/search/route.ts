@@ -12,7 +12,29 @@ const ROLE_SEARCH_TERMS: Record<string, string[]> = {
 };
 
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number }
-interface SearchCenter { latitude: number; longitude: number; label: string; source: "GPS" | "ADDRESS"; accuracy?: number }
+interface SearchCenter {
+  latitude: number;
+  longitude: number;
+  label: string;
+  source: "GPS" | "ADDRESS";
+  accuracy?: number;
+  validationStatus: "VERIFIED";
+  validationConfidence: "HIGH" | "MEDIUM";
+  placeType: string;
+  boundingBox?: [number, number, number, number];
+  validatedAt: string;
+}
+interface NominatimPlace {
+  display_name: string;
+  lat: string;
+  lon: string;
+  type?: string;
+  addresstype?: string;
+  category?: string;
+  importance?: number;
+  boundingbox?: string[];
+  address?: { country_code?: string };
+}
 interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN"; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 
@@ -61,7 +83,7 @@ function verificationStatus(fields: string[], sourceCount: number): "VERIFIED" |
   return "UNVERIFIED";
 }
 
-function distanceKm(center: SearchCenter, latitude: number, longitude: number): number {
+function distanceKm(center: Pick<SearchCenter, "latitude" | "longitude">, latitude: number, longitude: number): number {
   const radians = (value: number) => value * Math.PI / 180;
   const deltaLat = radians(latitude - center.latitude);
   const deltaLng = radians(longitude - center.longitude);
@@ -137,22 +159,64 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
   })).slice(0, 30);
 }
 
+const LOCATION_NOISE_WORDS = new Set(["quan", "huyen", "phuong", "xa", "thi", "tran", "thanh", "pho", "tinh", "viet", "nam"]);
+
+function normalizedLocation(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\b(tp\.?\s*hcm|tphcm|hcm)\b/g, "ho chi minh")
+    .replace(/\bq\.?\s*(\d+)\b/g, "quan $1")
+    .replace(/\bp\.?\s*(\d+)\b/g, "phuong $1")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function locationTerms(value: string): string[] {
+  return normalizedLocation(value).split(" ").filter((term) => term && !LOCATION_NOISE_WORDS.has(term));
+}
+
+function parseBoundingBox(value?: string[]): [number, number, number, number] | undefined {
+  if (!value || value.length !== 4) return undefined;
+  const parsed = value.map(Number);
+  return parsed.every(Number.isFinite) ? [parsed[0], parsed[1], parsed[2], parsed[3]] : undefined;
+}
+
+function placeMatchScore(place: NominatimPlace, requestedTerms: string[]): number {
+  if (place.address?.country_code?.toLowerCase() !== "vn") return -1;
+  const displayTerms = new Set(locationTerms(place.display_name));
+  const matchedTerms = requestedTerms.filter((term) => displayTerms.has(term)).length;
+  if (requestedTerms.length && matchedTerms !== requestedTerms.length) return -1;
+  const placeType = `${place.addresstype ?? ""} ${place.type ?? ""} ${place.category ?? ""}`.toLowerCase();
+  const administrativeBonus = /city|state|province|county|district|municipality|administrative/.test(placeType) ? 20 : 0;
+  return 60 + administrativeBonus + Math.round(Math.max(0, Math.min(1, place.importance ?? 0)) * 20);
+}
+
 async function resolveCenter(location: string, provided?: { latitude?: unknown; longitude?: unknown; accuracy?: unknown }): Promise<SearchCenter | null> {
   const latitude = typeof provided?.latitude === "number" ? provided.latitude : null;
   const longitude = typeof provided?.longitude === "number" ? provided.longitude : null;
   if (latitude !== null && longitude !== null && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
-    return { latitude, longitude, label: location, source: "GPS", accuracy: typeof provided?.accuracy === "number" ? Math.max(0, Math.min(provided.accuracy, 10000)) : undefined };
+    const accuracy = typeof provided?.accuracy === "number" ? Math.max(0, Math.min(provided.accuracy, 10000)) : undefined;
+    return { latitude, longitude, label: "Vị trí GPS hiện tại", source: "GPS", accuracy, validationStatus: "VERIFIED", validationConfidence: accuracy !== undefined && accuracy <= 100 ? "HIGH" : "MEDIUM", placeType: "gps", validatedAt: new Date().toISOString() };
   }
   try {
-    const params = new URLSearchParams({ q: `${location}, Việt Nam`, format: "jsonv2", limit: "1", countrycodes: "vn" });
+    const params = new URLSearchParams({ q: `${location}, Việt Nam`, format: "jsonv2", limit: "5", countrycodes: "vn", addressdetails: "1", dedupe: "1" });
     const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": "MIMIN-ERP-Sourcing/1.0", "Accept-Language": "vi" }, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) return null;
-    const data = await response.json() as Array<{ display_name: string; lat: string; lon: string }>;
-    const first = data[0];
+    const data = await response.json() as NominatimPlace[];
+    const requestedTerms = locationTerms(location);
+    const matches = data.map((place) => ({ place, score: placeMatchScore(place, requestedTerms) })).filter((item) => item.score >= 0).sort((left, right) => right.score - left.score || (right.place.importance ?? 0) - (left.place.importance ?? 0));
+    const first = matches[0];
     if (!first) return null;
-    const resolvedLatitude = Number(first.lat), resolvedLongitude = Number(first.lon);
+    const resolvedLatitude = Number(first.place.lat), resolvedLongitude = Number(first.place.lon);
     if (!Number.isFinite(resolvedLatitude) || !Number.isFinite(resolvedLongitude)) return null;
-    return { latitude: resolvedLatitude, longitude: resolvedLongitude, label: first.display_name, source: "ADDRESS" };
+    const second = matches[1];
+    if (second && second.score === first.score) {
+      const secondLatitude = Number(second.place.lat), secondLongitude = Number(second.place.lon);
+      if (Number.isFinite(secondLatitude) && Number.isFinite(secondLongitude) && distanceKm({ latitude: resolvedLatitude, longitude: resolvedLongitude }, secondLatitude, secondLongitude) > 5) return null;
+    }
+    return { latitude: resolvedLatitude, longitude: resolvedLongitude, label: first.place.display_name, source: "ADDRESS", validationStatus: "VERIFIED", validationConfidence: first.score >= 90 ? "HIGH" : "MEDIUM", placeType: first.place.addresstype ?? first.place.type ?? "place", boundingBox: parseBoundingBox(first.place.boundingbox), validatedAt: new Date().toISOString() };
   } catch { return null; }
 }
 
@@ -497,6 +561,7 @@ export async function POST(req: NextRequest) {
     const radiusKm = typeof body.radiusKm === "number" && Number.isFinite(body.radiusKm) ? Math.max(1, Math.min(200, body.radiusKm)) : 20;
     const locationMode = body.locationMode === "STRICT" ? "STRICT" : "PREFER";
     const center = await resolveCenter(location, body.center);
+    if (!center) return NextResponse.json({ error: "Không xác minh được vị trí trung tâm. Hãy nhập đầy đủ quận/huyện, tỉnh/thành phố hoặc dùng Vị trí hiện tại." }, { status: 422 });
     const learning = await loadLearningProfile(auth.client, body.role);
     const searchQueries = await buildQueryPlan(query, location, body.role, learning);
     const source = await searchSources(query, location, searchQueries);
