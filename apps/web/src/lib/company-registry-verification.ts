@@ -12,6 +12,23 @@ export interface RegistryProviderAttempt {
   message: string;
 }
 
+export type RegistryReviewDecision = "ACCEPT_VIETQR" | "ACCEPT_MASOTHUE" | "KEEP_PROFILE" | "REJECT_BOTH";
+export interface RegistryFieldReview {
+  id: string;
+  reconciliationId: string;
+  fieldName: RegistryFieldComparison["fieldName"];
+  decision: RegistryReviewDecision;
+  selectedValue: string;
+  note: string;
+  reviewedBy: string;
+  reviewedAt: string;
+}
+
+interface FieldReviewRow {
+  id: string; reconciliation_id: string; field_name: RegistryFieldReview["fieldName"];
+  decision: RegistryReviewDecision; selected_value: string | null; note: string; reviewed_by: string; reviewed_at: string;
+}
+
 interface ReconciliationRow {
   id: string;
   formula_version: "registry-v3.1";
@@ -93,4 +110,23 @@ export async function runRegistryVerification(profileId: string, taxCode: string
   const payload = await response.json().catch((): Record<string, unknown> => ({})) as Record<string, unknown>;
   if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Không đối chiếu được hai nguồn");
   return { verification: payload as unknown as CompanyRegistryVerification, attempts };
+}
+
+export async function loadRegistryFieldReviews(reconciliationId: string): Promise<RegistryFieldReview[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("production_company_registry_field_reviews")
+    .select("id,reconciliation_id,field_name,decision,selected_value,note,reviewed_by,reviewed_at")
+    .eq("organization_id", "mimin").eq("reconciliation_id", reconciliationId)
+    .order("reviewed_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const latest = new Map<RegistryFieldReview["fieldName"], RegistryFieldReview>();
+  for (const row of (data ?? []) as FieldReviewRow[]) if (!latest.has(row.field_name)) latest.set(row.field_name, { id: row.id, reconciliationId: row.reconciliation_id, fieldName: row.field_name, decision: row.decision, selectedValue: row.selected_value ?? "", note: row.note, reviewedBy: row.reviewed_by, reviewedAt: row.reviewed_at });
+  return Array.from(latest.values());
+}
+
+export async function createRegistryFieldReview(profileId: string, reconciliationId: string, fieldName: RegistryFieldReview["fieldName"], decision: RegistryReviewDecision, note: string): Promise<void> {
+  const token = await accessToken();
+  const response = await fetch("/api/v1/sourcing/company-registry/reviews", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ profileId, reconciliationId, fieldName, decision, note }) });
+  const payload = await response.json().catch((): Record<string, unknown> => ({})) as Record<string, unknown>;
+  if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Không lưu được quyết định kiểm duyệt");
 }
