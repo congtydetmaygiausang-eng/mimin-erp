@@ -57,6 +57,9 @@ export interface ProductionCompanyImage {
   createdAt: string;
 }
 
+export type CompanyDocumentType = "BUSINESS_LICENSE"|"TAX_REGISTRATION"|"BRAND_LICENSE"|"CERTIFICATE"|"FACTORY_LICENSE"|"OTHER";
+export interface ProductionCompanyDocument { id:string;documentType:CompanyDocumentType;title:string;documentNumber:string;issuer:string;issuedOn:string;expiresOn:string;notes:string;originalFilename:string;mimeType:string;fileBytes:number;reviewStatus:"PENDING"|"VERIFIED"|"REJECTED";signedUrl:string;createdAt:string }
+
 interface DiscoveredCompanyImage {
   imageUrl: string; sourcePageUrl: string; sourceTitle: string; caption: string;
   category: CompanyImageCategory; matchScore: number;
@@ -238,4 +241,27 @@ export async function reviewCompanyImage(id: string, status: Exclude<CompanyImag
   });
   const payload = await response.json() as { error?: string };
   if (!response.ok) throw new Error(payload.error || "Không cập nhật được ảnh");
+}
+
+export async function loadCompanyDocuments(profileId:string):Promise<ProductionCompanyDocument[]>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const{data,error}=await supabase.from("production_company_documents").select("*").eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("company_profile_id",profileId).order("created_at",{ascending:false});
+  if(error)throw new Error(error.message);
+  const rows=data??[],paths=rows.map(row=>String(row.storage_path));
+  const urls=new Map<string,string>();
+  if(paths.length){const signed=await supabase.storage.from("production-company-documents").createSignedUrls(paths,900);if(signed.error)throw new Error(signed.error.message);for(const item of signed.data??[])if(item.path&&item.signedUrl)urls.set(item.path,item.signedUrl);}
+  return rows.map(row=>({id:String(row.id),documentType:row.document_type as CompanyDocumentType,title:String(row.title),documentNumber:String(row.document_number??""),issuer:String(row.issuer??""),issuedOn:String(row.issued_on??""),expiresOn:String(row.expires_on??""),notes:String(row.notes??""),originalFilename:String(row.original_filename),mimeType:String(row.mime_type),fileBytes:Number(row.file_bytes),reviewStatus:row.review_status as ProductionCompanyDocument["reviewStatus"],signedUrl:urls.get(String(row.storage_path))??"",createdAt:String(row.created_at)}));
+}
+
+export async function uploadCompanyDocument(profileId:string,input:{file:File;documentType:CompanyDocumentType;title:string;documentNumber:string;issuer:string;issuedOn:string;expiresOn:string;notes:string}):Promise<void>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const token=(await supabase.auth.getSession()).data.session?.access_token;if(!token)throw new Error("Phiên đăng nhập đã hết hạn");
+  const form=new FormData();form.set("profileId",profileId);form.set("file",input.file);Object.entries(input).forEach(([key,value])=>{if(key!=="file")form.set(key,value)});
+  const response=await fetch("/api/v1/sourcing/company-documents",{method:"POST",headers:{Authorization:`Bearer ${token}`},body:form});
+  const payload=await response.json() as{error?:string};if(!response.ok)throw new Error(payload.error||"Không tải được giấy tờ");
+}
+
+export async function reviewCompanyDocument(id:string,status:"VERIFIED"|"REJECTED"):Promise<void>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const{error}=await supabase.from("production_company_documents").update({review_status:status}).eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("id",id);if(error)throw new Error(error.message);
 }
