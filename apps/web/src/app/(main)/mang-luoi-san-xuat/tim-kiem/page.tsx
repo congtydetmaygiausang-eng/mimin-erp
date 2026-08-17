@@ -10,6 +10,22 @@ import { approveDiscoveryCandidate, importAICandidates, loadDiscoveryCandidates,
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { supabase } from "@/lib/supabase/client";
 
+const SEARCH_CACHE_KEY = "mimin:sourcing-search:v1";
+
+interface SearchCache {
+  query: string;
+  location: string;
+  role: ProductionPartnerRole;
+  radiusKm: number;
+  locationMode: "PREFER" | "STRICT";
+  center: {latitude:number;longitude:number;accuracy?:number}|null;
+  directResults: DirectSearchCandidate[];
+  directProvider: string;
+  resolvedCenter: {label:string;source:"GPS"|"ADDRESS";accuracy?:number}|null;
+  learningSummary: {approvedCount:number;rejectedCount:number;applied:boolean}|null;
+  diagnostics: {collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>}|null;
+}
+
 function contactDetails(item: DirectSearchCandidate) {
   const sourceText = item.address ?? "";
   const email = item.email || sourceText.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] || "";
@@ -27,8 +43,8 @@ function SupplierResultCard({ item, opening, onViewDetails }: { item: DirectSear
       <div className="min-w-0"><div className="flex items-start gap-2"><Building2 className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600"/><b className="leading-snug">{item.legalName}</b></div><div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>{item.verificationStatus==="VERIFIED"?"Đã đối chiếu nhiều nguồn":item.verificationStatus==="PARTIAL"?"Đã đối chiếu một phần":"Chưa đủ bằng chứng"}</div></div>
       <span className="text-xs text-brand-700 shrink-0">{item.confidence}% phù hợp</span>
     </div>
-    <div className="rounded-lg border px-3 py-2.5" style={{borderColor:"var(--border)"}}><div className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-600"><MapPin className="w-3.5 h-3.5"/>Địa chỉ / thông tin nguồn</div><p className="text-xs mt-1 opacity-75 leading-relaxed line-clamp-3" title={item.address}>{item.address || "Chưa có địa chỉ"}</p></div>
     <div className="grid grid-cols-1 gap-2 text-xs">
+      <div className="flex items-start gap-2"><MapPin className="w-4 h-4 shrink-0 text-rose-600"/><span className="w-20 shrink-0 font-medium">Địa chỉ</span><span className="min-w-0 break-words leading-relaxed line-clamp-2" title={item.address}>{item.address||"Chưa có"}</span></div>
       <div className="flex items-start gap-2"><Phone className="w-4 h-4 shrink-0 text-emerald-600"/><span className="w-20 shrink-0 font-medium">Điện thoại</span>{contact.phone?<a className="break-all" href={`tel:${contact.phone}`}>{contact.phone}</a>:<span className="opacity-50">Chưa có</span>}</div>
       <div className="flex items-start gap-2"><Mail className="w-4 h-4 shrink-0 text-violet-600"/><span className="w-20 shrink-0 font-medium">Email</span>{contact.email?<a className="break-all text-brand-700" href={`mailto:${contact.email}`}>{contact.email}</a>:<span className="opacity-50">Chưa có</span>}</div>
       <div className="flex items-start gap-2"><Globe2 className="w-4 h-4 shrink-0 text-sky-600"/><span className="w-20 shrink-0 font-medium">Website</span>{contact.website?<a className="break-all text-brand-700" href={contact.website.startsWith("http")?contact.website:`https://${contact.website}`} target="_blank" rel="noopener noreferrer">{contact.website}</a>:<span className="opacity-50">Chưa có</span>}</div>
@@ -58,8 +74,34 @@ export default function TimKiemDoiTacPage() {
   const [aiText, setAiText] = useState("");
   const [aiProvider, setAiProvider] = useState("AI_IMPORT");
   const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
+  const [cacheReady,setCacheReady]=useState(false);
   const refresh = useCallback(async () => { try { setItems(await loadDiscoveryCandidates()); } catch { toast.error("Không tải được ứng viên"); } }, []);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(()=>{
+    try{
+      const raw=sessionStorage.getItem(SEARCH_CACHE_KEY);
+      if(raw){
+        const cached=JSON.parse(raw) as Partial<SearchCache>;
+        if(typeof cached.query==="string")setQuery(cached.query);
+        if(typeof cached.location==="string")setLocation(cached.location);
+        if(cached.role&&PARTNER_ROLES.includes(cached.role))setRole(cached.role);
+        if(typeof cached.radiusKm==="number")setRadiusKm(cached.radiusKm);
+        if(cached.locationMode==="PREFER"||cached.locationMode==="STRICT")setLocationMode(cached.locationMode);
+        if(cached.center)setCenter(cached.center);
+        if(Array.isArray(cached.directResults))setDirectResults(cached.directResults);
+        if(typeof cached.directProvider==="string")setDirectProvider(cached.directProvider);
+        if(cached.resolvedCenter)setResolvedCenter(cached.resolvedCenter);
+        if(cached.learningSummary)setLearningSummary(cached.learningSummary);
+        if(cached.diagnostics)setDiagnostics(cached.diagnostics);
+      }
+    }catch{sessionStorage.removeItem(SEARCH_CACHE_KEY)}
+    finally{setCacheReady(true)}
+  },[]);
+  useEffect(()=>{
+    if(!cacheReady)return;
+    const cached:SearchCache={query,location,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics};
+    try{sessionStorage.setItem(SEARCH_CACHE_KEY,JSON.stringify(cached))}catch{/* Trình duyệt có thể chặn hoặc hết dung lượng sessionStorage. */}
+  },[cacheReady,query,location,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.data?.type !== "MIMIN_AI_IMPORT") return;
@@ -124,7 +166,7 @@ export default function TimKiemDoiTacPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3"><label className="text-xs font-medium md:col-span-2">Vị trí trung tâm<input className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null)}} placeholder="VD: Hóc Môn, TP.HCM" /></label><label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Ưu tiên gần</option><option value="STRICT">Chỉ trong bán kính</option></select></label><div className="flex items-end"><button type="button" className="btn-secondary w-full inline-flex justify-center gap-2" onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:"Nếu không dùng GPS, hệ thống sẽ xác định tâm từ địa chỉ đã nhập."}</p><button className="btn-primary md:min-w-56 inline-flex justify-center gap-2" disabled={loading} onClick={() => void search()}><Search className="w-4 h-4" />{loading ? "Đang tìm..." : "Tìm tự động"}</button></div>
     </div>
-    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=>{const itemKey=`${item.sourceUrl}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)}/>})}</div></div>}
+    {directResults.length>0&&<div className="card p-5 space-y-4"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p></div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div><div className="grid md:grid-cols-2 gap-3">{directResults.map((item,index)=>{const itemKey=`${item.sourceUrl}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)}/>})}</div></div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />
