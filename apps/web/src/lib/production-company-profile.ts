@@ -38,6 +38,27 @@ export interface ProductionCompanySource {
   capturedAt: string;
 }
 
+export type CompanyImageCategory = "LOGO" | "FACADE" | "FACTORY" | "MACHINERY" | "PRODUCT" | "CERTIFICATE" | "OTHER";
+export type CompanyImageReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
+export interface ProductionCompanyImage {
+  id: string;
+  imageUrl: string;
+  sourcePageUrl: string;
+  sourceProvider: string;
+  sourceTitle: string;
+  caption: string;
+  category: CompanyImageCategory;
+  reviewStatus: CompanyImageReviewStatus;
+  matchScore: number;
+  isPrimary: boolean;
+  createdAt: string;
+}
+
+interface DiscoveredCompanyImage {
+  imageUrl: string; sourcePageUrl: string; sourceTitle: string; caption: string;
+  category: CompanyImageCategory; matchScore: number;
+}
+
 interface CompanyProfileRow {
   id: string; role: ProductionPartnerRole; legal_name: string; tax_code: string | null;
   phone: string | null; email: string | null; website: string | null; address: string | null;
@@ -149,4 +170,55 @@ export async function loadCompanyProfile(id: string): Promise<{ profile: Product
       sourceUrl: (row as CompanySourceRow).source_url, sourceTitle: (row as CompanySourceRow).source_title ?? "",
       verificationStatus: (row as CompanySourceRow).verification_status, capturedAt: (row as CompanySourceRow).captured_at })),
   };
+}
+
+export async function loadCompanyImages(profileId: string): Promise<ProductionCompanyImage[]> {
+  if (!supabase) throw new Error("Chưa kết nối Supabase");
+  const { data, error } = await supabase.from("production_company_images").select("*")
+    .eq("organization_id", PRODUCTION_ORGANIZATION_ID).eq("company_profile_id", profileId)
+    .order("match_score", { ascending: false }).order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: String(row.id), imageUrl: String(row.image_url), sourcePageUrl: String(row.source_page_url),
+    sourceProvider: String(row.source_provider ?? ""), sourceTitle: String(row.source_title ?? ""),
+    caption: String(row.caption ?? ""), category: row.image_category as CompanyImageCategory,
+    reviewStatus: row.review_status as CompanyImageReviewStatus, matchScore: Number(row.match_score ?? 0),
+    isPrimary: Boolean(row.is_primary), createdAt: String(row.created_at),
+  }));
+}
+
+export async function discoverCompanyImages(profile: ProductionCompanyProfile): Promise<number> {
+  if (!supabase) throw new Error("Chưa kết nối Supabase");
+  const session = (await supabase.auth.getSession()).data.session;
+  if (!session?.access_token) throw new Error("Phiên đăng nhập đã hết hạn");
+  const response = await fetch("/api/v1/sourcing/company-images", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ legalName: profile.legalName, address: profile.address, website: profile.website }),
+  });
+  const payload = await response.json() as { images?: DiscoveredCompanyImage[]; provider?: string; error?: string };
+  if (!response.ok) throw new Error(payload.error || "Không tìm được hình ảnh");
+  const images = payload.images ?? [];
+  if (!images.length) return 0;
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("Phiên đăng nhập đã hết hạn");
+  const rows = images.map((image) => ({
+    organization_id: PRODUCTION_ORGANIZATION_ID, company_profile_id: profile.id,
+    image_url: image.imageUrl, source_page_url: image.sourcePageUrl,
+    source_provider: payload.provider || "TAVILY", source_title: image.sourceTitle,
+    caption: image.caption, image_category: image.category, match_score: image.matchScore,
+    review_status: "PENDING", is_primary: false, created_by: userId,
+  }));
+  const { error } = await supabase.from("production_company_images").upsert(rows, {
+    onConflict: "company_profile_id,image_url", ignoreDuplicates: true,
+  });
+  if (error) throw new Error(error.message);
+  return images.length;
+}
+
+export async function reviewCompanyImage(id: string, status: Exclude<CompanyImageReviewStatus, "PENDING">): Promise<void> {
+  if (!supabase) throw new Error("Chưa kết nối Supabase");
+  const { error } = await supabase.from("production_company_images").update({ review_status: status })
+    .eq("organization_id", PRODUCTION_ORGANIZATION_ID).eq("id", id);
+  if (error) throw new Error(error.message);
 }
