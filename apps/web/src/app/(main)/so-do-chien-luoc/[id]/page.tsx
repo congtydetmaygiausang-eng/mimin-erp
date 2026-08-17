@@ -357,42 +357,15 @@ function SoDoCanvasInner() {
       const dangGo = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
       if (dangGo) return; // Nếu đang gõ text thì cho phép paste text bình thường
 
-      // Xử lý dán link ảnh hoặc text thông thường
-      const text = e.clipboardData?.getData("text");
-      if (text) {
-        luuLichSu();
-        if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|svg)$/i)) {
-          // Paste URL hình ảnh
-          setNodes((nds: any[]) => [...nds, {
-            id: `img_${Date.now()}`,
-            position: { x: Math.random() * 200 + 200, y: Math.random() * 200 + 200 },
-            data: { label: "Ảnh dán", imageSrc: text },
-            type: "miminImageNode",
-          }]);
-          toast.success("Đã dán ảnh từ link");
-        } else {
-          // Paste text thường -> tạo khối chữ
-          setNodes((nds: any[]) => [...nds, {
-            id: `node_${Date.now()}`,
-            position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
-            data: { label: text, type: "normal" },
-            type: "miminNode",
-          }]);
-          toast.success("Đã dán văn bản thành khối mới");
-        }
-        e.preventDefault();
-        return;
-      }
-
       // Xử lý dán file ảnh (copy từ màn hình/thư mục)
       const items = e.clipboardData?.items;
-      if (!items) return;
-      
       const files: File[] = [];
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith("image/")) {
-          const file = items[i].getAsFile();
-          if (file) files.push(file);
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith("image/")) {
+            const file = items[i].getAsFile();
+            if (file) files.push(file);
+          }
         }
       }
 
@@ -442,6 +415,33 @@ function SoDoCanvasInner() {
         }
         setNodes((nds: any[]) => [...nds, ...nodesMoi]);
         toast.success(`Đã dán ${nodesMoi.length} ảnh`);
+        return;
+      }
+
+      // Nếu không có file ảnh, kiểm tra xem có chữ hoặc link không
+      const text = e.clipboardData?.getData("text");
+      if (text) {
+        e.preventDefault();
+        luuLichSu();
+        if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|svg)$/i)) {
+          // Paste URL hình ảnh
+          setNodes((nds: any[]) => [...nds, {
+            id: `img_${Date.now()}`,
+            position: { x: Math.random() * 200 + 200, y: Math.random() * 200 + 200 },
+            data: { label: "Ảnh dán", imageSrc: text },
+            type: "miminImageNode",
+          }]);
+          toast.success("Đã dán ảnh từ link");
+        } else {
+          // Paste text thường -> tạo khối chữ
+          setNodes((nds: any[]) => [...nds, {
+            id: `node_${Date.now()}`,
+            position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
+            data: { label: text, type: "normal" },
+            type: "miminNode",
+          }]);
+          toast.success("Đã dán văn bản thành khối mới");
+        }
       }
     };
 
