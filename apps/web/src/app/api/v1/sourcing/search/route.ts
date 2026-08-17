@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { standardizeVietnamAddress } from "@/lib/vietnam-address";
 
 const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPLIER", "PACKAGING_FINISHER"]);
 const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
@@ -58,7 +59,7 @@ interface DistanceEvidence {
   destination: { latitude: number | null; longitude: number | null; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
   addressConsistency: "MATCHED" | "UNVERIFIED" | "CONFLICT";
 }
-interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
+interface Candidate { legalName: string; address: string; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number; persistentHits: number; staleFallbacks: number; providerRequests: number }
 interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
@@ -383,6 +384,7 @@ function candidateGeocodeQueries(candidate: Candidate, searchLocation: string): 
   const withoutHouseNumber = address.replace(/^\s*\d+[\w/-]*\s*[,.-]?\s*/, "");
   return Array.from(new Set([
     `${address}${hasAdministrativeArea ? "" : `, ${administrativeArea}`}, Việt Nam`,
+    candidate.legacyAddress ? `${cleanCandidateAddress(candidate.legacyAddress)}, Việt Nam` : "",
     withoutHouseNumber !== address ? `${withoutHouseNumber}, ${administrativeArea}, Việt Nam` : "",
     `${candidate.legalName}, ${administrativeArea}, Việt Nam`,
   ].filter(Boolean))).slice(0, 3);
@@ -848,7 +850,10 @@ export async function POST(req: NextRequest) {
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
     const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
-    const businessCandidates = enrichment.candidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query));
+    const businessCandidates = enrichment.candidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query)).map((candidate) => {
+      const standardized = standardizeVietnamAddress(candidate.address);
+      return { ...candidate, address: standardized.currentAddress, legacyAddress: standardized.legacyAddress, addressStandard: standardized.standard, district: standardized.standard ? "" : candidate.district };
+    });
     const geocoding = await geocodeCandidates(businessCandidates, location);
     const processed = postProcessCandidates(geocoding.candidates, query, location, center, radiusKm, locationMode, learning);
     const candidates = processed.candidates;

@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 21:20 | Codex | mang-luoi-san-xuat | Google Maps tìm bằng tên công ty + địa chỉ; chuẩn hóa 12 đơn vị Hóc Môn cũ sang 4 xã sau sắp xếp 2025 và giữ địa chỉ cũ dự phòng | codex/fix-google-maps-post-merger-address | 🟢 DONE |
 | 2026-08-17 20:45 | Codex | mang-luoi-san-xuat | Chặn domain rao vặt/việc làm và chỉ giữ hồ sơ doanh nghiệp đúng vai trò, có bằng chứng nhận diện | codex/filter-sourcing-noise-domains | 🟢 DONE |
 | 2026-08-17 20:15 | Codex | mang-luoi-san-xuat | Sửa địa chỉ nguồn tìm kiếm: chỉ nhận cấu trúc bưu chính, chặn mô tả bài viết và bỏ fallback nội dung nguồn | codex/fix-sourcing-company-address | 🟢 DONE |
 | 2026-08-17 19:40 | Codex | mang-luoi-san-xuat | L7: mã truy vết từng lượt, phiên bản thuật toán, chấm chất lượng phủ tọa độ và cảnh báo cache cũ/mâu thuẫn | codex/l7-location-quality-observability | 🟢 DONE |
