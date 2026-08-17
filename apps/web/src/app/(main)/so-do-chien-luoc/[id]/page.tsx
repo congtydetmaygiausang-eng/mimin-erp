@@ -71,6 +71,7 @@ function SoDoCanvasInner() {
   // Lịch sử để Hoàn tác (Ctrl+Z). Dùng ref chứ không dùng state: chỉ cần đọc/ghi
   // khi có thao tác, không cần render lại mỗi lần đẩy snapshot.
   const lichSuRef = useRef<{ nodes: any[]; edges: any[] }[]>([]);
+  const clipboardRef = useRef<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
 
   // Khởi tạo data: ưu tiên bản đã lưu của người dùng, chưa có mới lấy mẫu sẵn
   useEffect(() => {
@@ -322,6 +323,30 @@ function SoDoCanvasInner() {
 
       if (ctrl && e.key.toLowerCase() === "z") { e.preventDefault(); hoanTac(); return; }
       if (ctrl && e.key.toLowerCase() === "d") { e.preventDefault(); nhanDoiDangChon(); return; }
+      if (ctrl && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        const selectedNodes = nodes.filter(n => n.selected);
+        if (selectedNodes.length > 0) {
+          clipboardRef.current = { nodes: selectedNodes, edges: [] }; // Tạm thời chỉ copy nodes
+          toast.success(`Đã copy ${selectedNodes.length} khối`);
+        }
+        return;
+      }
+      if (ctrl && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        if (clipboardRef.current.nodes.length > 0) {
+          luuLichSu();
+          const newNodes = clipboardRef.current.nodes.map(n => ({
+            ...n,
+            id: `${n.type}_${Date.now()}_${Math.random()}`,
+            position: { x: n.position.x + 30, y: n.position.y + 30 },
+            selected: false,
+          }));
+          setNodes(nds => [...nds, ...newNodes]);
+          toast.success(`Đã dán ${newNodes.length} khối`);
+        }
+        return;
+      }
       if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); xoaDangChon(); return; }
       if (e.key === "F2") { e.preventDefault(); doiTenDangChon(); return; }
       if (e.key === "Escape") { boChon(); setHienPhimTat(false); return; }

@@ -14,9 +14,10 @@ export default function SoDoChienLuocPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        if (!supabase) return;
+        // Tải từ Supabase
+        if (!supabase) throw new Error("Chưa kết nối CSDL");
         const { data, error } = await supabase
-          .from('so_do_chien_luoc')
+          .from("so_do_chien_luoc")
           .select('*')
           .order('updated_at', { ascending: false });
 
@@ -56,9 +57,11 @@ export default function SoDoChienLuocPage() {
                   updatedAt: new Date().toISOString()
                 });
                 // Tự động đẩy lên Supabase (migration)
-                supabase.from('so_do_chien_luoc').upsert({
-                  id, name: savedProj.name, nodes: savedProj.nodes || [], edges: savedProj.edges || []
-                }).then(() => console.log("Migrated", id));
+                if (supabase) {
+                  supabase.from('so_do_chien_luoc').upsert({
+                    id, name: savedProj.name, nodes: savedProj.nodes || [], edges: savedProj.edges || []
+                  }).then(() => console.log("Migrated", id));
+                }
               }
             });
           } catch(e) {}
