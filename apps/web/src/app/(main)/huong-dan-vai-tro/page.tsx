@@ -233,13 +233,15 @@ export default function HuongDanVaiTroPage() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
-          <Users className="w-6 h-6 text-brand-500" />
+      <div className="mb-8 bg-white/30 dark:bg-slate-900/50 backdrop-blur-md border border-white/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-lg">
+        <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-3 mb-3 text-slate-900 dark:text-white drop-shadow-sm">
+          <div className="p-2 bg-brand-600 text-white rounded-xl shadow-md">
+            <Users className="w-6 h-6" />
+          </div>
           Sơ đồ hướng dẫn sử dụng & Vai trò chi tiết
         </h1>
-        <p className="text-slate-500">
-          Danh sách các vai trò trong hệ thống MIMIN ERP. <strong>Bấm vào từng thẻ</strong> để xem hướng dẫn chi tiết từng nút bấm cho các thao tác chính.
+        <p className="text-slate-800 dark:text-slate-200 text-base md:text-lg font-medium drop-shadow-sm">
+          Danh sách các vai trò trong hệ thống MIMIN ERP. <strong className="text-brand-700 dark:text-brand-300">Bấm vào từng thẻ</strong> để xem hướng dẫn chi tiết từng nút bấm cho các thao tác chính.
         </p>
       </div>
 
