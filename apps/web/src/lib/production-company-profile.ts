@@ -43,6 +43,7 @@ export type CompanyImageReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
 export interface ProductionCompanyImage {
   id: string;
   imageUrl: string;
+  displayUrl: string;
   sourcePageUrl: string;
   sourceProvider: string;
   sourceTitle: string;
@@ -51,6 +52,8 @@ export interface ProductionCompanyImage {
   reviewStatus: CompanyImageReviewStatus;
   matchScore: number;
   isPrimary: boolean;
+  archivalStatus: "REMOTE" | "ARCHIVED" | "FAILED";
+  storagePath: string;
   createdAt: string;
 }
 
@@ -178,12 +181,21 @@ export async function loadCompanyImages(profileId: string): Promise<ProductionCo
     .eq("organization_id", PRODUCTION_ORGANIZATION_ID).eq("company_profile_id", profileId)
     .order("match_score", { ascending: false }).order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => ({
-    id: String(row.id), imageUrl: String(row.image_url), sourcePageUrl: String(row.source_page_url),
+  const rows = data ?? [];
+  const archivedPaths = rows.flatMap((row) => row.archival_status === "ARCHIVED" && row.storage_path ? [String(row.storage_path)] : []);
+  const signedUrls = new Map<string, string>();
+  if (archivedPaths.length) {
+    const signed = await supabase.storage.from("production-company-images").createSignedUrls(archivedPaths, 3600);
+    if (signed.error) throw new Error(signed.error.message);
+    for (const item of signed.data ?? []) if (item.path && item.signedUrl) signedUrls.set(item.path, item.signedUrl);
+  }
+  return rows.map((row) => ({
+    id: String(row.id), imageUrl: String(row.image_url), displayUrl: signedUrls.get(String(row.storage_path ?? "")) || String(row.image_url), sourcePageUrl: String(row.source_page_url),
     sourceProvider: String(row.source_provider ?? ""), sourceTitle: String(row.source_title ?? ""),
     caption: String(row.caption ?? ""), category: row.image_category as CompanyImageCategory,
     reviewStatus: row.review_status as CompanyImageReviewStatus, matchScore: Number(row.match_score ?? 0),
-    isPrimary: Boolean(row.is_primary), createdAt: String(row.created_at),
+    isPrimary: Boolean(row.is_primary), archivalStatus: (row.archival_status ?? "REMOTE") as ProductionCompanyImage["archivalStatus"],
+    storagePath: String(row.storage_path ?? ""), createdAt: String(row.created_at),
   }));
 }
 
@@ -218,7 +230,12 @@ export async function discoverCompanyImages(profile: ProductionCompanyProfile): 
 
 export async function reviewCompanyImage(id: string, status: Exclude<CompanyImageReviewStatus, "PENDING">): Promise<void> {
   if (!supabase) throw new Error("Chưa kết nối Supabase");
-  const { error } = await supabase.from("production_company_images").update({ review_status: status })
-    .eq("organization_id", PRODUCTION_ORGANIZATION_ID).eq("id", id);
-  if (error) throw new Error(error.message);
+  const session = (await supabase.auth.getSession()).data.session;
+  if (!session?.access_token) throw new Error("Phiên đăng nhập đã hết hạn");
+  const response = await fetch(`/api/v1/sourcing/company-images/${encodeURIComponent(id)}/review`, {
+    method: "POST", headers: { "Content-Type":"application/json", Authorization:`Bearer ${session.access_token}` },
+    body: JSON.stringify({ status }),
+  });
+  const payload = await response.json() as { error?: string };
+  if (!response.ok) throw new Error(payload.error || "Không cập nhật được ảnh");
 }
