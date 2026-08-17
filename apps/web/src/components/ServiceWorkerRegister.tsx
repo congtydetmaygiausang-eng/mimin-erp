@@ -6,7 +6,19 @@ export function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
-    if (process.env.NODE_ENV !== "production") return;
+
+    const clearStaleServiceWorkers = async () => {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        registrations.map((registration) => registration.unregister())
+      );
+    };
+
+    if (process.env.NODE_ENV !== "production") {
+      clearStaleServiceWorkers().catch(() => undefined);
+      return;
+    }
+
     const onLoad = () => {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
@@ -17,6 +29,7 @@ export function ServiceWorkerRegister() {
           console.warn("Service Worker registration failed:", err);
         });
     };
+
     if (document.readyState === "complete") {
       onLoad();
     } else {

@@ -6,9 +6,10 @@ import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge, u
 import "@xyflow/react/dist/style.css";
 import { MiminNode, MiminImageNode } from "@/components/mindmap/CustomNodes";
 import { MOCK_PROJECTS, MAU_KHOI, DS_MAU_KHOI, type MauKhoi } from "@/lib/data/so-do-chien-luoc-data";
-import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Undo2, Copy, Trash2, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Undo2, Copy, Trash2, Pencil, DownloadCloud } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { toPng } from "html-to-image";
 
 // Lưu sơ đồ vào localStorage riêng theo id dự án. Trước đây nút "Lưu lại" chỉ
 // hiện thông báo chứ KHÔNG lưu gì -> tải ảnh lên xong reload là mất sạch.
@@ -185,6 +186,23 @@ function SoDoCanvasInner() {
     }
   };
 
+  const handleDownloadImage = () => {
+    const el = document.querySelector(".react-flow__viewport") as HTMLElement;
+    if (!el) return;
+    toast.info("Đang xử lý ảnh, vui lòng đợi...");
+    toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2 })
+      .then((dataUrl) => {
+        const a = document.createElement("a");
+        a.setAttribute("download", `SoDo_${projName.replace(/\s+/g, '_')}.png`);
+        a.setAttribute("href", dataUrl);
+        a.click();
+        toast.success("Đã tải xong ảnh sơ đồ!");
+      })
+      .catch((err) => {
+        toast.error("Lỗi khi tạo ảnh, hãy thử thu nhỏ sơ đồ lại.");
+      });
+  };
+
   // ============ THAO TÁC CHỈNH SỬA CƠ BẢN + PHÍM TẮT ============
 
   /** Chụp lại trạng thái hiện tại trước khi sửa, để Ctrl+Z quay lại được */
@@ -256,7 +274,7 @@ function SoDoCanvasInner() {
     setEdges((eds: any[]) => eds.map((e) => ({ ...e, selected: false })));
   };
 
-  // Bắt phím tắt. Bỏ qua khi đang gõ trong ô nhập liệu để không cướp phím.
+  // Bắt phím tắt và sự kiện Paste
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -272,8 +290,106 @@ function SoDoCanvasInner() {
       if (e.key === "F2") { e.preventDefault(); doiTenDangChon(); return; }
       if (e.key === "Escape") { boChon(); setHienPhimTat(false); return; }
     };
+
+    const onPaste = async (e: ClipboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const dangGo = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      if (dangGo) return; // Nếu đang gõ text thì cho phép paste text bình thường
+
+      // Xử lý dán link ảnh hoặc text thông thường
+      const text = e.clipboardData?.getData("text");
+      if (text) {
+        luuLichSu();
+        if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|svg)$/i)) {
+          // Paste URL hình ảnh
+          setNodes((nds: any[]) => [...nds, {
+            id: `img_${Date.now()}`,
+            position: { x: Math.random() * 200 + 200, y: Math.random() * 200 + 200 },
+            data: { label: "Ảnh dán", imageSrc: text },
+            type: "miminImageNode",
+          }]);
+          toast.success("Đã dán ảnh từ link");
+        } else {
+          // Paste text thường -> tạo khối chữ
+          setNodes((nds: any[]) => [...nds, {
+            id: `node_${Date.now()}`,
+            position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
+            data: { label: text, type: "normal" },
+            type: "miminNode",
+          }]);
+          toast.success("Đã dán văn bản thành khối mới");
+        }
+        e.preventDefault();
+        return;
+      }
+
+      // Xử lý dán file ảnh (copy từ màn hình/thư mục)
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        luuLichSu();
+        
+        // Kiểm tra có node ảnh được chọn không -> nếu có chỉ 1 ảnh thì paste vào node đó
+        const selectedImageNode = nodes.find((n: any) => n.selected && n.type === "miminImageNode");
+        
+        if (selectedImageNode && files.length === 1) {
+          // Paste ảnh vào node được chọn
+          const f = files[0];
+          const goc = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(f);
+          });
+          const src = await nenAnh(goc);
+          setNodes((nds: any[]) =>
+            nds.map((n) =>
+              n.id === selectedImageNode.id
+                ? { ...n, data: { ...n.data, imageSrc: src } }
+                : n
+            )
+          );
+          toast.success("Đã thay ảnh cho khối được chọn");
+          return;
+        }
+        
+        // Còn không thì tạo node mới cho mỗi ảnh
+        const nodesMoi: any[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          const goc = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(f);
+          });
+          const src = await nenAnh(goc);
+          nodesMoi.push({
+            id: `img_${Date.now()}_${i}`,
+            position: { x: 220 + (i % 4) * 190, y: 300 + Math.floor(i / 4) * 210 },
+            data: { label: "Ảnh dán", imageSrc: src },
+            type: "miminImageNode",
+          });
+        }
+        setNodes((nds: any[]) => [...nds, ...nodesMoi]);
+        toast.success(`Đã dán ${nodesMoi.length} ảnh`);
+      }
+    };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("paste", onPaste);
+    };
   });
 
   if (!isReady) return null;
@@ -400,6 +516,14 @@ function SoDoCanvasInner() {
           </div>
 
           <div className="w-px h-6 bg-black/10 dark:bg-white/10 mx-2"></div>
+
+          <button
+            onClick={handleDownloadImage}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium transition"
+            title="Lưu thành file ảnh PNG"
+          >
+            <DownloadCloud className="w-4 h-4" /> Xuất Ảnh
+          </button>
 
           <button
             onClick={handleSave}

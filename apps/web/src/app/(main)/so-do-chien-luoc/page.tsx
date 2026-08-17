@@ -1,14 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Palette, Plus, Clock, Search, MoreVertical } from "lucide-react";
 import { MOCK_PROJECTS } from "@/lib/data/so-do-chien-luoc-data";
 
 export default function SoDoChienLuocPage() {
+  const [projects, setProjects] = useState(MOCK_PROJECTS);
   const [search, setSearch] = useState("");
 
-  const filtered = MOCK_PROJECTS.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  useEffect(() => {
+    // Merge mock projects with local storage
+    const raw = localStorage.getItem("mimin_so_do_chien_luoc_v1");
+    if (raw) {
+      try {
+        const savedData = JSON.parse(raw);
+        let merged = [...MOCK_PROJECTS];
+        
+        // Cập nhật hoặc thêm mới từ localStorage
+        Object.keys(savedData).forEach(id => {
+          const index = merged.findIndex(p => p.id === id);
+          const savedProj = savedData[id];
+          if (index >= 0) {
+            merged[index] = { ...merged[index], name: savedProj.name, nodes: savedProj.nodes, edges: savedProj.edges };
+          } else {
+            merged.push({
+              id,
+              name: savedProj.name,
+              nodes: savedProj.nodes || [],
+              edges: savedProj.edges || [],
+              updatedAt: new Date().toISOString()
+            });
+          }
+        });
+        setProjects(merged);
+      } catch(e) {}
+    }
+  }, []);
+
+  const filtered = projects.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
