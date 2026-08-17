@@ -61,7 +61,7 @@ function SupplierResultCard({ item, opening, verifying, onViewDetails, onVerifyL
   const status = item.locationStatus ?? "UNKNOWN";
   const locationBadge = LOCATION_BADGES[status];
   const distanceLabel = status === "INSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `${item.distanceKm.toFixed(1)} km từ tâm` : status === "OUTSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `Ngoài bán kính · ${item.distanceKm.toFixed(1)} km` : locationBadge.label;
-  const mapQuery = item.latitude !== null && item.longitude !== null ? `${item.latitude},${item.longitude}` : item.geocodedAddress || item.address;
+  const mapQuery = item.address ? `${item.legalName}, ${item.address}` : item.latitude !== null && item.longitude !== null ? `${item.legalName}, ${item.latitude},${item.longitude}` : item.legalName;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const evidence = item.distanceEvidence;
   return <article className="rounded-xl border p-4 space-y-3" style={{borderColor:"var(--border)"}}>
@@ -71,7 +71,7 @@ function SupplierResultCard({ item, opening, verifying, onViewDetails, onVerifyL
     </div>
     <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${locationBadge.className}`}><Navigation className="w-3.5 h-3.5"/>{distanceLabel}</div>
     <div className="grid grid-cols-1 gap-2 text-xs">
-      <div className="flex items-start gap-2"><MapPin className="w-4 h-4 shrink-0 text-rose-600"/><span className="w-20 shrink-0 font-medium">Địa chỉ</span><span className="min-w-0 break-words leading-relaxed line-clamp-2" title={item.address}>{item.address||"Chưa có"}</span></div>
+      <div className="flex items-start gap-2"><MapPin className="w-4 h-4 shrink-0 text-rose-600"/><span className="w-20 shrink-0 font-medium">Địa chỉ</span><span className="min-w-0 break-words leading-relaxed line-clamp-2" title={item.legacyAddress?`Địa chỉ cũ: ${item.legacyAddress}`:item.address}>{item.address||"Chưa có"}{item.addressStandard&&<small className="ml-2 text-emerald-700">Đã chuẩn hóa sau sắp xếp 2025</small>}</span></div>
       <div className="flex items-start gap-2"><Phone className="w-4 h-4 shrink-0 text-emerald-600"/><span className="w-20 shrink-0 font-medium">Điện thoại</span>{contact.phone?<a className="break-all" href={`tel:${contact.phone}`}>{contact.phone}</a>:<span className="opacity-50">Chưa có</span>}</div>
       <div className="flex items-start gap-2"><Mail className="w-4 h-4 shrink-0 text-violet-600"/><span className="w-20 shrink-0 font-medium">Email</span>{contact.email?<a className="break-all text-brand-700" href={`mailto:${contact.email}`}>{contact.email}</a>:<span className="opacity-50">Chưa có</span>}</div>
       <div className="flex items-start gap-2"><Globe2 className="w-4 h-4 shrink-0 text-sky-600"/><span className="w-20 shrink-0 font-medium">Website</span>{contact.website?<a className="break-all text-brand-700" href={contact.website.startsWith("http")?contact.website:`https://${contact.website}`} target="_blank" rel="noopener noreferrer">{contact.website}</a>:<span className="opacity-50">Chưa có</span>}</div>
