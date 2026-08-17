@@ -73,6 +73,17 @@ export interface ProductionCompanyAuditEvent {
   actorId:string;occurredAt:string;
 }
 
+export type CompanyManualCheckType = "PHONE_REACHED" | "ZALO_CONFIRMED" | "SITE_VISITED" | "DOCUMENTS_MATCHED";
+export type CompanyManualCheckStatus = "CONFIRMED" | "REVOKED";
+export interface ProductionCompanyManualCheck {
+  id: string;
+  checkType: CompanyManualCheckType;
+  status: CompanyManualCheckStatus;
+  notes: string;
+  checkedBy: string;
+  checkedAt: string;
+}
+
 interface DiscoveredCompanyImage {
   imageUrl: string; sourcePageUrl: string; sourceTitle: string; caption: string;
   category: CompanyImageCategory; matchScore: number;
@@ -307,4 +318,19 @@ export async function loadCompanyAuditEvents(profileId:string):Promise<Productio
   const{data,error}=await supabase.from("production_company_audit_events").select("id,entity_type,entity_id,event_type,title,details,actor_id,occurred_at").eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("company_profile_id",profileId).order("occurred_at",{ascending:false}).order("id",{ascending:false}).limit(100);
   if(error)throw new Error(error.message);
   return(data??[]).map(row=>({id:String(row.id),entityType:row.entity_type as ProductionCompanyAuditEvent["entityType"],entityId:String(row.entity_id),eventType:row.event_type as CompanyAuditEventType,title:String(row.title),details:(row.details??{}) as Record<string,string|number|boolean|null>,actorId:String(row.actor_id??""),occurredAt:String(row.occurred_at)}));
+}
+
+export async function loadCompanyManualChecks(profileId:string):Promise<ProductionCompanyManualCheck[]>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const{data,error}=await supabase.from("production_company_manual_checks").select("id,check_type,check_status,notes,checked_by,checked_at").eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("company_profile_id",profileId).order("checked_at",{ascending:false});
+  if(error)throw new Error(error.message);
+  return(data??[]).map(row=>({id:String(row.id),checkType:row.check_type as CompanyManualCheckType,status:row.check_status as CompanyManualCheckStatus,notes:String(row.notes??""),checkedBy:String(row.checked_by??""),checkedAt:String(row.checked_at)}));
+}
+
+export async function updateCompanyManualCheck(profileId:string,checkType:CompanyManualCheckType,status:CompanyManualCheckStatus):Promise<void>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const userId=(await supabase.auth.getUser()).data.user?.id;
+  if(!userId)throw new Error("Phiên đăng nhập đã hết hạn");
+  const{error}=await supabase.from("production_company_manual_checks").upsert({organization_id:PRODUCTION_ORGANIZATION_ID,company_profile_id:profileId,check_type:checkType,check_status:status,checked_by:userId},{onConflict:"company_profile_id,check_type"});
+  if(error)throw new Error(error.message);
 }
