@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calculator, ArrowRight, Receipt, Ruler, Sparkles, Scissors, Save, List, Trash2, Layers, Image as ImageIcon, Edit, Check, Eye, X } from "lucide-react";
+import { Calculator, ArrowRight, Receipt, Ruler, Sparkles, Scissors, Save, List, Trash2, Layers, Image as ImageIcon, Edit, Check, Eye, X, User } from "lucide-react";
 import { toast } from "sonner";
 import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
+import { useSession } from "@/components/session-provider";
 
 interface SavedConfig {
   id: string;
@@ -23,6 +24,7 @@ interface SavedConfig {
   tongGiaVon: number;
   images?: UploadedFile[];
   createdAt: string;
+  createdBy?: string;
 }
 
 // --- INDEXEDDB UTILS ---
@@ -72,6 +74,7 @@ async function loadConfigsFromDB(): Promise<SavedConfig[]> {
 // --- END INDEXEDDB ---
 
 export default function CongThucDinhMucPage() {
+  const { user } = useSession();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState<string>("");
   const [loaiSP, setLoaiSP] = useState<string>("Áo");
@@ -208,7 +211,8 @@ export default function CongThucDinhMucPage() {
       soLuongCat,
       tongGiaVon,
       images,
-      createdAt: new Date().toLocaleString("vi-VN"),
+      createdAt: editingId ? (savedConfigs.find(c => c.id === editingId)?.createdAt || new Date().toLocaleString("vi-VN")) : new Date().toLocaleString("vi-VN"),
+      createdBy: editingId ? (savedConfigs.find(c => c.id === editingId)?.createdBy || user?.name || "Khuyết danh") : (user?.name || "Khuyết danh"),
     };
 
     let updated;
@@ -698,6 +702,12 @@ export default function CongThucDinhMucPage() {
                             <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{config.loaiSP}</span>
                             <span>{config.createdAt.split(" ")[0]}</span>
                           </div>
+                          {config.createdBy && (
+                            <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                              <User className="w-3 h-3" />
+                              <span>{config.createdBy}</span>
+                            </div>
+                          )}
                         </td>
                         <td className="p-4 text-right">
                           <div className="font-medium text-slate-700">{formatMoney(Math.round(tienVai1SP))} đ</div>
@@ -798,6 +808,10 @@ export default function CongThucDinhMucPage() {
                   <div className="flex justify-between">
                     <span className="text-sm text-slate-500">Ngày tạo:</span>
                     <span className="text-sm text-slate-800">{viewingConfig.createdAt}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-500">Người tạo:</span>
+                    <span className="text-sm text-slate-800">{viewingConfig.createdBy || "Khuyết danh"}</span>
                   </div>
                 </div>
               </div>
