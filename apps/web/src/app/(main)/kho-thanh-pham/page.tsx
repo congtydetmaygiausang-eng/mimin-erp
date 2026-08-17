@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Box, Download, Sparkles, Plus } from "lucide-react";
+import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { STORAGE_KEY, fromStorage, saveStorage, generateSanPhamFromWorkflow, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
@@ -11,6 +12,7 @@ import { ProductFormModal } from "./components/ProductFormModal";
 import { MasterDetailsModal } from "./components/MasterDetailsModal";
 
 export default function KhoThanhPhamPage() {
+  const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const [dsSanPham, setDsSanPham] = useState<SanPhamTP[]>([]);
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | SanPhamTP["trangThai"]>("all");
@@ -180,10 +182,91 @@ export default function KhoThanhPhamPage() {
     toast.success("Đã xuất CSV");
   };
 
+  // Tính toán Lệnh cắt chờ nhập kho
+  const dsChoNhapKho = useMemo(() => {
+    return dsLenhCat.filter(lc => {
+      if (lc.trangThai === "HoanThanh" || lc.trangThai === "TaoMoi") return false;
+      const htPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói"));
+      if (!htPCs || htPCs.length === 0) return false;
+      return htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+    });
+  }, [dsLenhCat]);
+
+  const handleNhapKhoFromLC = (lc: any) => {
+    // Collect all chiTietMau from dong_goi
+    const dongGoiPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")) || [];
+    
+    let addedCount = 0;
+    const newSps: SanPhamTP[] = [];
+    
+    dongGoiPCs.forEach((pc: any) => {
+      if (pc.chiTietMau) {
+        Object.keys(pc.chiTietMau).forEach(tenMau => {
+          Object.keys(pc.chiTietMau[tenMau]).forEach(size => {
+            const val = pc.chiTietMau[tenMau][size];
+            const sl = typeof val === 'object' ? val.dat || 0 : (parseInt(String(val)) || 0);
+            
+            if (sl > 0) {
+              newSps.push({
+                id: `TP${Date.now().toString().slice(-6)}${Math.floor(Math.random()*1000)}`,
+                maSP: lc.id, // Or extract from lc
+                tenSP: lc.ten || `Sản phẩm từ ${lc.id}`,
+                phanLoai: "Áo",
+                mau: tenMau,
+                size: size,
+                lsx: lc.id,
+                ngayNhap: new Date().toISOString().slice(0, 10),
+                soLuong: sl,
+                donGia: pc.donGia || 0,
+                giaTri: sl * (pc.donGia || 0),
+                viTri: "Khu A1", // Default
+                trangThai: "con"
+              });
+              addedCount++;
+            }
+          });
+        });
+      }
+    });
+
+    if (newSps.length > 0) {
+      update([...newSps, ...dsSanPham]);
+      capNhatTrangThai(lc.id, "HoanThanh");
+      toast.success(`Đã nhập kho ${addedCount} loại sản phẩm từ ${lc.id}!`);
+    } else {
+      toast.error("Không tìm thấy chi tiết màu/số lượng đóng gói đạt!");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/30 to-rose-50/30 p-3 md:p-5">
       <div className="max-w-7xl mx-auto space-y-4">
         <StatsHeader stats={stats} />
+
+        {/* Lệnh Cắt chờ nhập kho */}
+        {dsChoNhapKho.length > 0 && (
+          <div className="bg-white/60 backdrop-blur-md rounded-2xl border border-amber-200 p-4 shadow-sm space-y-3">
+            <h2 className="text-sm font-bold text-amber-700 flex items-center gap-2">
+              <Package className="w-4 h-4" /> Có {dsChoNhapKho.length} lệnh cắt hoàn thành đóng gói, chờ nhập kho thành phẩm:
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {dsChoNhapKho.map(lc => (
+                <div key={lc.id} className="bg-white rounded-xl border border-amber-100 p-3 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="font-bold text-slate-800 text-sm">{lc.id} - {lc.ten}</div>
+                    <div className="text-xs text-slate-500 mt-1">SL yêu cầu: <span className="font-semibold text-sky-600">{lc.tongSL?.toLocaleString('vi-VN')}</span></div>
+                  </div>
+                  <button
+                    onClick={() => handleNhapKhoFromLC(lc)}
+                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                  >
+                    Chi tiết nhập kho <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <FilterBar
           search={search} setSearch={setSearch}
