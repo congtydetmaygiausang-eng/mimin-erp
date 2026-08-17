@@ -33,7 +33,7 @@ interface SearchCache {
   directProvider: string;
   resolvedCenter: ResolvedSearchCenter|null;
   learningSummary: {approvedCount:number;rejectedCount:number;applied:boolean}|null;
-  diagnostics: {collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number};strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>}|null;
+  diagnostics: {collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;enrichmentSources?:number;enrichedCandidates?:number;geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number};strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>}|null;
 }
 
 function contactDetails(item: DirectSearchCandidate) {
@@ -80,7 +80,7 @@ export default function TimKiemDoiTacPage() {
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
   const [resolvedCenter, setResolvedCenter] = useState<ResolvedSearchCenter|null>(null);
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
-  const [diagnostics, setDiagnostics] = useState<{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number};strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>}|null>(null);
+  const [diagnostics, setDiagnostics] = useState<{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;enrichmentSources?:number;enrichedCandidates?:number;geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number};strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>}|null>(null);
   const [aiText, setAiText] = useState("");
   const [aiProvider, setAiProvider] = useState("AI_IMPORT");
   const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
@@ -133,7 +133,7 @@ export default function TimKiemDoiTacPage() {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
       const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
-      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;enrichmentSources?:number;enrichedCandidates?:number;geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number};strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>};candidates?:DirectSearchCandidate[]};
+      const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:{collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;enrichmentSources?:number;enrichedCandidates?:number;geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number};strictLocationFallback?:boolean;providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}>};candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       setDirectResults(data.candidates??[]); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(data.diagnostics??null);
       toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${data.candidates?.length??0} kết quả`);
