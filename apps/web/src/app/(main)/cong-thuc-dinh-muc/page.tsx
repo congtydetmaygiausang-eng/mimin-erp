@@ -11,6 +11,7 @@ interface SavedConfig {
   loaiSP: string;
   soSize: number;
   sizeNames?: string;
+  tenVai?: string;
   giaVai: string;
   tongMet: string;
   giaMay: string;
@@ -76,6 +77,7 @@ export default function CongThucDinhMucPage() {
   const [loaiSP, setLoaiSP] = useState<string>("Áo");
   const [soSize, setSoSize] = useState<number>(6);
   const [sizeNames, setSizeNames] = useState<string>("");
+  const [tenVai, setTenVai] = useState<string>("");
   const [giaVai, setGiaVai] = useState<string>("");
   const [tongMet, setTongMet] = useState<string>("");
 
@@ -195,6 +197,7 @@ export default function CongThucDinhMucPage() {
       loaiSP,
       soSize,
       sizeNames,
+      tenVai,
       giaVai,
       tongMet,
       giaMay,
@@ -249,6 +252,7 @@ export default function CongThucDinhMucPage() {
     setLoaiSP(config.loaiSP);
     setSoSize(config.soSize);
     setSizeNames(config.sizeNames || "");
+    setTenVai(config.tenVai || "");
     setGiaVai(config.giaVai);
     setTongMet(config.tongMet);
     setGiaMay(config.giaMay);
@@ -369,6 +373,17 @@ export default function CongThucDinhMucPage() {
               </h2>
 
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tên vải</label>
+                  <input
+                    type="text"
+                    value={tenVai}
+                    onChange={(e) => setTenVai(e.target.value)}
+                    placeholder="VD: Cotton 100%, Cá sấu..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all text-slate-800 font-medium"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Giá tiền vải 1 mét</label>
                   <div className="relative">
@@ -790,6 +805,12 @@ export default function CongThucDinhMucPage() {
               <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 space-y-3">
                 <h4 className="font-bold text-slate-700 mb-4 border-b border-slate-200 pb-2">Chi tiết giá vốn / 1 Sản phẩm</h4>
                 
+                {viewingConfig.tenVai && (
+                  <div className="flex justify-between items-center text-sm mb-2">
+                    <span className="text-slate-500">Tên vải:</span>
+                    <span className="font-semibold text-slate-800">{viewingConfig.tenVai}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-600">Tiền vải ({viewingConfig.giaVai}đ/m x {(parseFloat(viewingConfig.tongMet.replace(/,/g, "")) / viewingConfig.soSize).toFixed(2)}m):</span>
                   <span className="font-medium text-slate-800">{formatMoney(Math.round(parseFloat(viewingConfig.giaVai.replace(/,/g, "")) * parseFloat(viewingConfig.tongMet.replace(/,/g, "")) / viewingConfig.soSize))} đ</span>
