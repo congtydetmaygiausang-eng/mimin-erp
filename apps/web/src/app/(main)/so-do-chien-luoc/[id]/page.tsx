@@ -10,6 +10,7 @@ import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Un
 import { toast } from "sonner";
 import Link from "next/link";
 import { toPng } from "html-to-image";
+import { supabase } from "@/lib/supabase/client";
 
 // Lưu sơ đồ vào localStorage riêng theo id dự án. Trước đây nút "Lưu lại" chỉ
 // hiện thông báo chứ KHÔNG lưu gì -> tải ảnh lên xong reload là mất sạch.
@@ -73,26 +74,44 @@ function SoDoCanvasInner() {
 
   // Khởi tạo data: ưu tiên bản đã lưu của người dùng, chưa có mới lấy mẫu sẵn
   useEffect(() => {
-    const daLuu = docTatCa()[id];
-    if (daLuu) {
-      setProjName(daLuu.name);
-      setNodes(daLuu.nodes || []);
-      setEdges(daLuu.edges || []);
+    const loadData = async () => {
+      try {
+        if (supabase) {
+          const { data, error } = await supabase.from('so_do_chien_luoc').select('*').eq('id', id).single();
+          if (data) {
+            setProjName(data.name);
+            setNodes(data.nodes || []);
+            setEdges(data.edges || []);
+            setIsReady(true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi fetch Supabase, fallback về localStorage", err);
+      }
+      
+      const daLuu = docTatCa()[id];
+      if (daLuu) {
+        setProjName(daLuu.name);
+        setNodes(daLuu.nodes || []);
+        setEdges(daLuu.edges || []);
+        setIsReady(true);
+        return;
+      }
+      const existing = MOCK_PROJECTS.find(p => p.id === id);
+      if (existing) {
+        setProjName(existing.name);
+        setNodes(existing.nodes);
+        setEdges(existing.edges);
+      } else {
+        setProjName(id.startsWith("new-") ? "Dự án mới" : "Sơ đồ không tên");
+        setNodes([
+          { id: "1", position: { x: 400, y: 100 }, data: { label: "Tên Dự Án", type: "title" }, type: "miminNode" }
+        ]);
+      }
       setIsReady(true);
-      return;
-    }
-    const existing = MOCK_PROJECTS.find(p => p.id === id);
-    if (existing) {
-      setProjName(existing.name);
-      setNodes(existing.nodes);
-      setEdges(existing.edges);
-    } else {
-      setProjName(id.startsWith("new-") ? "Dự án mới" : "Sơ đồ không tên");
-      setNodes([
-        { id: "1", position: { x: 400, y: 100 }, data: { label: "Tên Dự Án", type: "title" }, type: "miminNode" }
-      ]);
-    }
-    setIsReady(true);
+    };
+    loadData();
   }, [id, setNodes, setEdges]);
 
   // Xử lý nối dây
@@ -175,12 +194,29 @@ function SoDoCanvasInner() {
     toast.success(`Đã đổi ${dangChon.length} khối sang màu ${MAU_KHOI[mau].ten}`);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const all = docTatCa();
     all[id] = { name: projName, nodes, edges };
+    
+    let savedToDB = false;
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('so_do_chien_luoc').upsert({
+          id,
+          name: projName,
+          nodes,
+          edges
+        });
+        if (!error) savedToDB = true;
+      }
+    } catch(err) {
+      console.error(err);
+    }
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-      toast.success("Đã lưu sơ đồ!");
+      if (savedToDB) toast.success("Đã lưu và đồng bộ sơ đồ lên Cloud!");
+      else toast.success("Đã lưu sơ đồ vào máy địa phương!");
     } catch {
       toast.error("Bộ nhớ trình duyệt đã đầy - hãy bớt ảnh trong sơ đồ rồi lưu lại.");
     }

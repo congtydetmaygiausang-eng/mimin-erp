@@ -4,43 +4,80 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Palette, Plus, Clock, Search, MoreVertical } from "lucide-react";
 import { MOCK_PROJECTS } from "@/lib/data/so-do-chien-luoc-data";
+import { supabase } from "@/lib/supabase/client";
 
 export default function SoDoChienLuocPage() {
   const [projects, setProjects] = useState(MOCK_PROJECTS);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Merge mock projects with local storage
-    const raw = localStorage.getItem("mimin_so_do_chien_luoc_v1");
-    if (raw) {
+    const loadData = async () => {
       try {
-        const savedData = JSON.parse(raw);
+        if (!supabase) return;
+        const { data, error } = await supabase
+          .from('so_do_chien_luoc')
+          .select('*')
+          .order('updated_at', { ascending: false });
+
         let merged = [...MOCK_PROJECTS];
+
+        if (data && data.length > 0) {
+          data.forEach((dbProj: any) => {
+            const index = merged.findIndex(p => p.id === dbProj.id);
+            if (index >= 0) {
+              merged[index] = { ...merged[index], name: dbProj.name, nodes: dbProj.nodes, edges: dbProj.edges, updatedAt: dbProj.updated_at };
+            } else {
+              merged.push({
+                id: dbProj.id,
+                name: dbProj.name,
+                nodes: dbProj.nodes || [],
+                edges: dbProj.edges || [],
+                updatedAt: dbProj.updated_at
+              });
+            }
+          });
+        }
         
-        // Cập nhật hoặc thêm mới từ localStorage
-        Object.keys(savedData).forEach(id => {
-          const index = merged.findIndex(p => p.id === id);
-          const savedProj = savedData[id];
-          if (index >= 0) {
-            merged[index] = { ...merged[index], name: savedProj.name, nodes: savedProj.nodes, edges: savedProj.edges };
-          } else {
-            merged.push({
-              id,
-              name: savedProj.name,
-              nodes: savedProj.nodes || [],
-              edges: savedProj.edges || [],
-              updatedAt: new Date().toISOString()
+        // Migrate từ localStorage nếu có bản ghi chưa đẩy lên
+        const raw = localStorage.getItem("mimin_so_do_chien_luoc_v1");
+        if (raw) {
+          try {
+            const savedData = JSON.parse(raw);
+            Object.keys(savedData).forEach(id => {
+              const savedProj = savedData[id];
+              const index = merged.findIndex(p => p.id === id);
+              if (index < 0) {
+                merged.push({
+                  id,
+                  name: savedProj.name,
+                  nodes: savedProj.nodes || [],
+                  edges: savedProj.edges || [],
+                  updatedAt: new Date().toISOString()
+                });
+                // Tự động đẩy lên Supabase (migration)
+                supabase.from('so_do_chien_luoc').upsert({
+                  id, name: savedProj.name, nodes: savedProj.nodes || [], edges: savedProj.edges || []
+                }).then(() => console.log("Migrated", id));
+              }
             });
-          }
-        });
+          } catch(e) {}
+        }
+        
         setProjects(merged);
-      } catch(e) {}
-    }
+      } catch (err) {
+        console.error("Lỗi tải sơ đồ:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
   }, []);
 
   const filtered = projects.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Bạn có chắc muốn xoá sơ đồ này? Thao tác này không thể hoàn tác.")) {
       const raw = localStorage.getItem("mimin_so_do_chien_luoc_v1");
       if (raw) {
@@ -49,6 +86,9 @@ export default function SoDoChienLuocPage() {
           delete savedData[id];
           localStorage.setItem("mimin_so_do_chien_luoc_v1", JSON.stringify(savedData));
         } catch(e) {}
+      }
+      if (supabase) {
+        await supabase.from('so_do_chien_luoc').delete().eq('id', id);
       }
       setProjects(prev => prev.filter(p => p.id !== id));
     }
