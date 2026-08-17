@@ -192,7 +192,7 @@ const NAV: NavItem[] = [
     subItems: [
       { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
       { href: "/cong-thuc-dinh-muc", label: "Công thức định mức", icon: Calculator, iconColor: "text-teal-600", permModule: "lenh-cat" },
-      { href: "/mang-luoi-san-xuat/tim-kiem", label: "Mạng lưới sản xuất", icon: Search, iconColor: "text-blue-500", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/tim-kiem", label: "Tìm kiếm mạng lưới", icon: Search, iconColor: "text-blue-500", permModule: "nha-cung-cap" },
     ]
   },
   {
