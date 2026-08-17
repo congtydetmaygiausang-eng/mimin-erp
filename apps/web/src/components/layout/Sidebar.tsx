@@ -190,6 +190,7 @@ const NAV: NavItem[] = [
     // nhúng thẳng vào code frontend (cách cũ dù repo private thì dữ liệu vẫn
     // được đóng gói vào JS gửi xuống trình duyệt người dùng).
     subItems: [
+      { href: "/huong-dan-vai-tro", label: "Sơ đồ HD sử dụng", icon: Users, iconColor: "text-amber-500", permModule: "so-do-chien-luoc" },
       { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
       { href: "/cong-thuc-dinh-muc", label: "Công thức định mức", icon: Calculator, iconColor: "text-teal-600", permModule: "lenh-cat" },
     ]
