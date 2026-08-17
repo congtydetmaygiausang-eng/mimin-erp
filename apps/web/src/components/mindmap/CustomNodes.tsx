@@ -62,10 +62,11 @@ export function MiminNode({
         value={data.label} 
         onChange={(e) => updateNodeData(id, { label: e.target.value })}
         onDoubleClick={(e) => e.stopPropagation()}
-        className="bg-transparent border-none focus:outline-none text-center w-full min-w-[80px] cursor-pointer resize-none"
+        className="bg-transparent border-none focus:outline-none text-center w-full min-w-[80px] cursor-pointer resize-none nodrag nopan"
         style={{ color: 'inherit' }}
         placeholder="Nhập nội dung..."
         onFocus={(e) => e.target.select()}
+        onKeyDown={(e) => e.stopPropagation()}
         minRows={1}
       />
       <Handle type="source" position={Position.Bottom} className="!bg-slate-400 !w-3 !h-3" />
@@ -102,9 +103,10 @@ export function MiminImageNode({
           value={data.label} 
           onChange={(e) => updateNodeData(id, { label: e.target.value })}
           onDoubleClick={(e) => e.stopPropagation()}
-          className="bg-transparent border-none focus:outline-none text-center w-full cursor-pointer resize-none"
+          className="bg-transparent border-none focus:outline-none text-center w-full cursor-pointer resize-none nodrag nopan"
           placeholder="Nhập ghi chú..."
           onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => e.stopPropagation()}
           minRows={1}
         />
       </div>
