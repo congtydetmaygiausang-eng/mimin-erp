@@ -7,18 +7,18 @@ import { useState } from "react";
 import { ShieldCheck, CheckCircle2, XCircle, AlertTriangle, ClipboardCheck, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay } from "@/components/ui";
+import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
 
 const LOAI_LOI_OPTIONS = [
-  "Lỗi đường may", "Sai size", "Sai màu", "Vải bị lỗi",
+  "Lỗi rập / kích thước", "Lỗi đường may", "Lỗi vải (lủng, rách)", 
   "Ô nhiễm / bẩn", "Cúc / khóa lỗi", "Đường in bị lem", "Thêu lỗi",
 ];
 
 export default function UiQCPage() {
   const { dsLenhCat, capNhatCongDoan } = useLenhCat();
-  const [slDat, setSlDat] = useState<Record<string, number>>({});
-  const [slLoi, setSlLoi] = useState<Record<string, number>>({});
+  const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
   const [loaiLoi, setLoaiLoi] = useState<Record<string, string>>({});
+  const [khauLoi, setKhauLoi] = useState<Record<string, string>>({});
   const [ghiChu, setGhiChu] = useState<Record<string, string>>({});
 
   // Lấy LC có công đoạn may đã xong, chờ QC
@@ -41,53 +41,85 @@ export default function UiQCPage() {
   const tongSPChoKiem = lcChoQC.reduce((s, lc) => s + (lc.tongSL || 0), 0);
 
   function handleDat(lc: any) {
-    const slD = slDat[lc.id] ?? lc.tongSL;
-    const slL = slLoi[lc.id] ?? 0;
+    const chiTiet = mauInputs[lc.id] || {};
+    let slD = 0;
+    let slL = 0;
+    const chiTietMau: any[] = [];
+    
+    if (Object.keys(chiTiet).length > 0) {
+      for (const m of Object.values(chiTiet)) {
+        slD += (m.soLuongDat || 0);
+        slL += (m.soLuongLoi || 0);
+        chiTietMau.push(m);
+      }
+    } else {
+      slD = lc.tongSL;
+      slL = 0;
+    }
+
     // Cập nhật tất cả công đoạn may thành hoan_thanh (QC pass)
     lc.phanCong?.filter((pc: any) =>
       pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "cho_qc"
     ).forEach((pc: any) => {
-      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: slD, soLuongLoi: slL });
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: slD, soLuongLoi: slL, chiTietMau });
     });
     // Không cần tự động kích hoạt Khuy/Ủi vì chúng tự hiển thị khi May hoàn thành
     toast.success(`✅ QC đạt: ${lc.id} – ${slD} SP đạt${slL > 0 ? `, ${slL} SP lỗi` : ""}`);
   }
 
   function handleTraLai(lc: any) {
-    const slL = slLoi[lc.id] ?? 0;
+    const chiTiet = mauInputs[lc.id] || {};
+    let slL = 0;
+    const chiTietMau: any[] = [];
+    
+    if (Object.keys(chiTiet).length > 0) {
+      for (const m of Object.values(chiTiet)) {
+        slL += (m.soLuongLoi || 0);
+        chiTietMau.push(m);
+      }
+    }
+
     const ll = loaiLoi[lc.id] ?? "";
+    const kl = khauLoi[lc.id] ?? "";
+    const gc = ghiChu[lc.id] ?? "";
+    
     lc.phanCong?.filter((pc: any) =>
       pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "cho_qc"
     ).forEach((pc: any) => {
-      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi", soLuongLoi: slL });
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi", soLuongLoi: slL, lyDoLoi: `${kl ? `[${kl}] ` : ""}${ll} ${gc}`.trim(), chiTietMau });
     });
-    toast.error(`⚠️ Trả lại: ${lc.id} – ${slL} SP lỗi${ll ? ` (${ll})` : ""}`);
+    toast.error(`⚠️ Trả lại: ${lc.id} – ${slL} SP lỗi${ll ? ` (${ll})` : ""}${kl ? ` (Do ${kl})` : ""}`);
   }
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <ShieldCheck className="w-7 h-7 text-emerald-500" /> QC – Kiểm tra chất lượng
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {lcChoQC.length} lô chờ kiểm · {tongSPChoKiem.toLocaleString()} SP
-        </p>
-      </div>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+            <ShieldCheck className="w-7 h-7 text-emerald-600" /> QC – Kiểm tra chất lượng
+          </h1>
+          <p className="text-sm font-bold text-slate-600 mt-1">
+            {lcChoQC.length} lô chờ kiểm · {tongSPChoKiem.toLocaleString()} SP
+          </p>
+        </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Chờ kiểm", value: lcChoQC.length, color: "text-amber-600", icon: ClipboardCheck },
-          { label: "SP cần kiểm", value: tongSPChoKiem, color: "text-slate-700", icon: ShieldCheck },
-          { label: "Đã đạt hôm nay", value: 0, color: "text-emerald-600", icon: CheckCircle2 },
-          { label: "Trả lại hôm nay", value: 0, color: "text-rose-600", icon: XCircle },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500 flex items-center gap-1"><k.icon className="w-3 h-3" /> {k.label}</div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value.toLocaleString()}</div>
-          </div>
-        ))}
+        {/* KPI */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Chờ kiểm", value: lcChoQC.length, color: "text-amber-700", icon: ClipboardCheck },
+            { label: "SP cần kiểm", value: tongSPChoKiem, color: "text-slate-800", icon: ShieldCheck },
+            { label: "Đã đạt hôm nay", value: 0, color: "text-emerald-700", icon: CheckCircle2 },
+            { label: "Trả lại hôm nay", value: 0, color: "text-rose-700", icon: XCircle },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                <k.icon className="w-3.5 h-3.5" /> {k.label}
+              </div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value.toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {lcChoQC.length === 0 ? (
@@ -123,35 +155,44 @@ export default function UiQCPage() {
                 </div>
 
                 {/* Form kiểm tra */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <div className="text-xs font-bold text-slate-600 mb-1">🟢 SP đạt:</div>
-                    <input type="number" value={slDat[lc.id] ?? lc.tongSL}
-                      onChange={e => setSlDat(p => ({ ...p, [lc.id]: +e.target.value }))}
-                      className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/30" />
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-inner">
+                  <KhaiBaoSoLuongTheoMau
+                    dsMau={lc.dsMau || []}
+                    value={mauInputs[lc.id] || {}}
+                    onChange={(val) => setMauInputs(p => ({ ...p, [lc.id]: val }))}
+                    showLyDoLoi={false}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                    <div>
+                      <div className="text-xs font-bold text-slate-600 mb-1">Loại lỗi (nếu có):</div>
+                      <select value={loaiLoi[lc.id] ?? ""}
+                        onChange={e => setLoaiLoi(p => ({ ...p, [lc.id]: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-slate-400">
+                        <option value="">-- Chọn loại lỗi --</option>
+                        {LOAI_LOI_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-600 mb-1">Khâu gây lỗi:</div>
+                      <select value={khauLoi[lc.id] ?? ""}
+                        onChange={e => setKhauLoi(p => ({ ...p, [lc.id]: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-slate-400">
+                        <option value="">-- Bắt đền tổ nào? --</option>
+                        <option value="Tổ Cắt">Tổ Cắt</option>
+                        <option value="Xưởng In/Thêu">Xưởng In/Thêu</option>
+                        <option value="Tổ May">Tổ May</option>
+                        <option value="Khác">Khác</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-600 mb-1">🔴 SP lỗi:</div>
-                    <input type="number" value={slLoi[lc.id] ?? 0}
-                      onChange={e => setSlLoi(p => ({ ...p, [lc.id]: +e.target.value }))}
-                      className="w-full px-3 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400/30" />
+                  <div className="mt-3">
+                    <div className="text-xs font-bold text-slate-600 mb-1">Ghi chú thêm:</div>
+                    <input type="text" value={ghiChu[lc.id] ?? ""}
+                      onChange={e => setGhiChu(p => ({ ...p, [lc.id]: e.target.value }))}
+                      placeholder="Chi tiết lỗi (nếu có)..."
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/30" />
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-600 mb-1">Loại lỗi:</div>
-                    <select value={loaiLoi[lc.id] ?? ""}
-                      onChange={e => setLoaiLoi(p => ({ ...p, [lc.id]: e.target.value }))}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none">
-                      <option value="">-- Chọn loại lỗi --</option>
-                      {LOAI_LOI_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-600 mb-1">Ghi chú:</div>
-                  <input type="text" value={ghiChu[lc.id] ?? ""}
-                    onChange={e => setGhiChu(p => ({ ...p, [lc.id]: e.target.value }))}
-                    placeholder="Mô tả chi tiết lỗi (tuỳ chọn)"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none" />
                 </div>
 
                 {/* Buttons */}

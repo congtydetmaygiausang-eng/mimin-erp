@@ -11,6 +11,7 @@ export { RoleBadge, type RoleBadgeProps } from "./RoleBadge";
 export { ScopeBadge, type ScopeBadgeProps } from "./ScopeBadge";
 export { CrudModal, type FieldDef } from "./CrudModal";
 export { ImageUploader, type UploadedFile } from "./ImageUploader";
+export { KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "./KhaiBaoSoLuongTheoMau";
 
 // Re-export formatVND helpers từ real-data (dùng nhiều nơi)
 export { formatVND, formatVNDShort } from "@/lib/data/real-data";

@@ -7,12 +7,13 @@ import { useState } from "react";
 import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay } from "@/components/ui";
+import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 export default function UiDongGoiPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
-  const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
+  const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
+  const [lyDoLoi, setLyDoLoi] = useState<Record<string, string>>({});
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
@@ -45,16 +46,29 @@ export default function UiDongGoiPage() {
 
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
-    const key = `${lc.id}-${pc.id}`;
-    setHtInput(p => ({ ...p, [key]: { dat: pc.soLuong || lc.tongSL, loi: 0, lyDo: "" } }));
     toast.success(`🧺 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
   function handleXong(lc: any, pc: any) {
-    const input = htInput[`${lc.id}-${pc.id}`] || {};
-    const slDat = input.dat ?? pc.soLuong ?? lc.tongSL;
-    const slLoi = input.loi ?? 0;
-    const lyDo = input.lyDo ?? "";
+    const key = `${lc.id}-${pc.id}`;
+    const chiTiet = mauInputs[key] || {};
+    
+    let slDat = 0;
+    let slLoi = 0;
+    const chiTietMau = [];
+    
+    if (Object.keys(chiTiet).length > 0) {
+      for (const m of Object.values(chiTiet)) {
+        slDat += (m.soLuongDat || 0);
+        slLoi += (m.soLuongLoi || 0);
+        chiTietMau.push(m);
+      }
+    } else {
+      slDat = pc.soLuong || lc.tongSL;
+      slLoi = 0;
+    }
+    
+    const lyDo = lyDoLoi[key] ?? "";
     
     const thanhTienDat = slDat * (pc.donGia || 0);
 
@@ -63,6 +77,7 @@ export default function UiDongGoiPage() {
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
       lyDoLoi: lyDo,
+      chiTietMau,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -81,26 +96,29 @@ export default function UiDongGoiPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <Package className="w-7 h-7 text-amber-500" /> Đóng gói nhập kho – Việc của tôi
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">{lcHT.length} lô đang cần Đóng gói & Nhập kho</p>
-      </div>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+            <Package className="w-7 h-7 text-amber-600" /> Đóng gói nhập kho – Việc của tôi
+          </h1>
+          <p className="text-sm font-bold text-slate-600 mt-1">{lcHT.length} lô đang cần Đóng gói & Nhập kho</p>
+        </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Đang làm", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
-          { label: "Chờ nhận", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600" },
-          { label: "Hoàn thành", value: lcHT.filter(lc => getHTPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-600" },
-          { label: "Có lỗi", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-600" },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500">{k.label}</div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
-          </div>
-        ))}
+        {/* KPI */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Đang làm", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-700" },
+            { label: "Chờ nhận", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-800" },
+            { label: "Hoàn thành", value: lcHT.filter(lc => getHTPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-700" },
+            { label: "Có lỗi", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-700" },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">{k.label}</div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {lcHT.length === 0 ? (
@@ -154,38 +172,14 @@ export default function UiDongGoiPage() {
                         </div>
 
                         {tt === "dang_lam" && (
-                          <div className="mb-4 space-y-3 bg-white p-3 rounded-lg border border-slate-100">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-500 mb-1">Số lượng nhận</div>
-                                <div className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700">
-                                  {pc.soLuong || lc.tongSL}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-emerald-600 mb-1">Số lượng đạt *</div>
-                                <input type="number"
-                                  value={htInput[key]?.dat ?? (pc.soLuong || lc.tongSL)}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], dat: +e.target.value } }))}
-                                  className="w-full px-3 py-1.5 border border-emerald-300 rounded-lg text-sm font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/30" />
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-rose-600 mb-1">Số lượng lỗi</div>
-                                <input type="number"
-                                  value={htInput[key]?.loi ?? 0}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], loi: +e.target.value } }))}
-                                  className="w-full px-3 py-1.5 border border-rose-300 rounded-lg text-sm font-bold text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-400/30" />
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-600 mb-1">Lý do lỗi</div>
-                                <input type="text"
-                                  value={htInput[key]?.lyDo ?? ""}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], lyDo: e.target.value } }))}
-                                  placeholder="Vd: Thủng lỗ..."
-                                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/30" />
-                              </div>
-                            </div>
-                          </div>
+                          <KhaiBaoSoLuongTheoMau
+                            dsMau={lc.dsMau || []}
+                            value={mauInputs[key] || {}}
+                            onChange={(val) => setMauInputs(p => ({ ...p, [key]: val }))}
+                            showLyDoLoi={true}
+                            lyDoLoi={lyDoLoi[key]}
+                            onLyDoLoiChange={(val) => setLyDoLoi(p => ({ ...p, [key]: val }))}
+                          />
                         )}
 
                         <div className="flex gap-2">

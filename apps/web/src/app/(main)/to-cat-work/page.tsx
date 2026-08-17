@@ -12,13 +12,14 @@ import { useKho } from "@/lib/data/kho-store";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
+import { CatThucTeInput } from "./components/CatThucTeInput";
 
 export default function CongViecCatPage() {
-  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
+  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { themGiaoDich } = useKho();
   const { user } = useSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [slInput, setSlInput] = useState<Record<string, number>>({});
+  const [showThucTeInput, setShowThucTeInput] = useState<string | null>(null);
 
   function getPhanCongCat(lc: any) {
     return lc.phanCong?.find((pc: any) => {
@@ -90,12 +91,23 @@ export default function CongViecCatPage() {
     }
   }
 
-  function handleHoanThanh(lc: any) {
+  function handleHoanThanh(lc: any, newDsMau?: any[], totalThucTe?: number) {
     const pc = getPhanCongCat(lc);
     if (!pc) return;
-    const sl = slInput[lc.id] || lc.tongSL;
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });
-    toast.success(`✅ Chuyển tiếp thành công: ${sl} SP`);
+    
+    // Nếu có truyền newDsMau thì gọi suaLenhCat để cập nhật
+    if (newDsMau && typeof totalThucTe === 'number') {
+      suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: totalThucTe });
+      toast.success(`✅ Lưu thông số và hoàn thành: ${totalThucTe} SP`);
+      setShowThucTeInput(null);
+    } else {
+      // Trường hợp xác nhận đơn giản nếu không nhập chi tiết
+      const sl = totalThucTe || lc.tongSLThucTe || lc.tongSL;
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });
+      toast.success(`✅ Chuyển tiếp thành công: ${sl} SP`);
+    }
+    
     setSelectedId(null);
   }
 
@@ -120,33 +132,36 @@ export default function CongViecCatPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-            <Scissors className="w-7 h-7 text-sky-500" /> Tổ Cắt – Công việc
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {lcCoCat.length} lệnh cắt · {tongSLChuaCat.toLocaleString()} SP chưa cắt
-          </p>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Lệnh được giao", value: lcCoCat.length, icon: Package, color: "text-sky-600" },
-          { label: "Đang cắt", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "dang_lam").length, icon: Clock, color: "text-amber-600" },
-          { label: "Đã cắt xong", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "hoan_thanh").length, icon: CheckCircle2, color: "text-emerald-600" },
-          { label: "Có lỗi", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "co_loi").length, icon: AlertTriangle, color: "text-rose-600" },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500 flex items-center gap-1">
-              <k.icon className="w-3 h-3" /> {k.label}
-            </div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+              <Scissors className="w-7 h-7 text-sky-600" /> Tổ Cắt – Công việc
+            </h1>
+            <p className="text-sm font-bold text-slate-600 mt-1">
+              {lcCoCat.length} lệnh cắt · {tongSLChuaCat.toLocaleString()} SP chưa cắt
+            </p>
           </div>
-        ))}
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Lệnh được giao", value: lcCoCat.length, icon: Package, color: "text-sky-600" },
+            { label: "Đang cắt", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "dang_lam").length, icon: Clock, color: "text-amber-600" },
+            { label: "Đã cắt xong", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "hoan_thanh").length, icon: CheckCircle2, color: "text-emerald-700" },
+            { label: "Có lỗi", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "co_loi").length, icon: AlertTriangle, color: "text-rose-700" },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                <k.icon className="w-3.5 h-3.5" /> {k.label}
+              </div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Danh sách lệnh cắt */}
@@ -260,18 +275,13 @@ export default function CongViecCatPage() {
                     </div>
                   )}
 
-                  {/* Input SL khi hoàn thành */}
-                  {isExpanded && (
-                    <div className="border-t border-slate-100 pt-3 space-y-2">
-                      <div className="text-xs font-bold text-slate-600">Số SP thực tế đã cắt:</div>
-                      <input
-                        type="number"
-                        value={slInput[lc.id] ?? lc.tongSL}
-                        onChange={e => setSlInput(prev => ({ ...prev, [lc.id]: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
-                        max={lc.tongSL}
-                      />
-                    </div>
+                  {/* Form nhập thông số thực tế */}
+                  {showThucTeInput === lc.id && (
+                    <CatThucTeInput 
+                      lc={lc} 
+                      onCancel={() => setShowThucTeInput(null)} 
+                      onSave={(newDsMau, totalThucTe) => handleHoanThanh(lc, newDsMau, totalThucTe)} 
+                    />
                   )}
 
                   {/* Chi tiết 4 bước cắt */}
@@ -336,13 +346,13 @@ export default function CongViecCatPage() {
                                     onClick={() => setSelectedId(isExpanded ? null : lc.id)}
                                     className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
                                   >
-                                    {isExpanded ? "Xác nhận & Chuyển" : "Chuyển tiếp (Hoàn thành)"}
+                                    {isExpanded ? "Đóng" : "Chuyển tiếp (Hoàn thành)"}
                                   </button>
                                   {isExpanded && (
                                     <button
-                                      onClick={() => handleHoanThanh(lc)}
-                                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-sm shadow-emerald-200"
-                                    >✓</button>
+                                      onClick={() => setShowThucTeInput(lc.id)}
+                                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 shadow-sm shadow-emerald-200 uppercase tracking-wide flex items-center gap-1"
+                                    >Nhập thực tế <CheckCircle2 className="w-4 h-4" /></button>
                                   )}
                                 </>
                               )}

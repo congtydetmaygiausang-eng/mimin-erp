@@ -121,17 +121,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<KhachHangUI[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setList(parsed);
-        }
-      }
-    } catch (err) {}
-  }, []);
+  // Bỏ load localStorage - khách hàng 700+ rows quá lớn, dùng Supabase trực tiếp
 
   useEffect(() => {
     let mounted = true;
@@ -149,10 +139,9 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
           if (data && data.length > 0) {
             const mapped = data.map((d: any) => mapToUI(d));
             setList(mapped);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+            // Không lưu localStorage - 700+ rows quá lớn
           } else {
             setList(KHACH_HANG_MOCK);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(KHACH_HANG_MOCK));
             Promise.all(KHACH_HANG_MOCK.map(kh => 
               supabaseUpsert("khach_hang", mapToDB(kh))
             )).catch(() => {});
@@ -169,11 +158,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const themKhachHang = useCallback(async (kh: KhachHangUI) => {
-    setList(prev => {
-      const newList = [kh, ...prev];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-      return newList;
-    });
+    setList(prev => [kh, ...prev]);
     if (isSupabaseEnabled) {
       try {
         await supabaseUpsert("khach_hang", mapToDB(kh));
@@ -184,11 +169,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const suaKhachHang = useCallback(async (kh: KhachHangUI) => {
-    setList(prev => {
-      const newList = prev.map(x => x.maKH === kh.maKH ? kh : x);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-      return newList;
-    });
+    setList(prev => prev.map(x => x.maKH === kh.maKH ? kh : x));
     if (isSupabaseEnabled) {
       try {
         await supabase!.from("khach_hang").update(mapToDB(kh)).eq("ma_kh", kh.maKH);
@@ -199,11 +180,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const xoaKhachHang = useCallback(async (maKH: string) => {
-    setList(prev => {
-      const newList = prev.filter(x => x.maKH !== maKH);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-      return newList;
-    });
+    setList(prev => prev.filter(x => x.maKH !== maKH));
     if (isSupabaseEnabled) {
       try {
         await supabase!.from("khach_hang").delete().eq("ma_kh", maKH);

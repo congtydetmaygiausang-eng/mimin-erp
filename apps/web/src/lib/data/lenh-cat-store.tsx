@@ -139,6 +139,13 @@ type CongDoanBase = {
   ngayHoanThanh?: string;          // Ngày hoàn thành thực tế
   // Chi tiết 4 bước dành riêng cho khâu Cắt
   catChiTiet?: CatChiTiet;
+  // Khai báo chi tiết số lượng theo màu (Mới)
+  chiTietMau?: {
+    mau: string;
+    soLuongNhan: number;
+    soLuongDat: number;
+    soLuongLoi: number;
+  }[];
 };
 
 
@@ -338,6 +345,7 @@ interface LenhCatStore {
     thanhTien?: number;
     conLai?: number;
     catChiTiet?: CatChiTiet;
+    chiTietMau?: any;
   }) => void;
   reset: () => void;
   loading: boolean;
@@ -580,6 +588,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     thanhTien?: number;
     conLai?: number;
     catChiTiet?: CatChiTiet;
+    chiTietMau?: any;
   }) => {
     setDsLenhCat(prev => {
       const next = prev.map(lc => {

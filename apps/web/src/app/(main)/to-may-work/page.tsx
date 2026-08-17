@@ -8,15 +8,15 @@ import { useState } from "react";
 import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay } from "@/components/ui";
+import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 
 export default function UiMayPage() {
   const { dsLenhCat, capNhatCongDoan } = useLenhCat();
-  const [slInput, setSlInput] = useState<Record<string, number>>({});
-  const [loiInput, setLoiInput] = useState<Record<string, number>>({});
+  const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
+  const [lyDoLoi, setLyDoLoi] = useState<Record<string, string>>({});
   const { user } = useSession();
 
   function getMayPC(lc: any) {
@@ -65,9 +65,32 @@ export default function UiMayPage() {
 
   function handleHoanThanh(lc: any, pc: any) {
     const key = `${lc.id}-${pc.id}`;
-    const sl = slInput[key] ?? pc.soLuong ?? lc.tongSL;
-    const loi = loiInput[key] ?? 0;
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "cho_qc", soLuongHoanThanh: sl, soLuongLoi: loi });
+    const chiTiet = mauInputs[key] || {};
+    
+    let sl = 0;
+    let loi = 0;
+    const chiTietMau = [];
+    
+    if (Object.keys(chiTiet).length > 0) {
+      for (const m of Object.values(chiTiet)) {
+        sl += (m.soLuongDat || 0);
+        loi += (m.soLuongLoi || 0);
+        chiTietMau.push(m);
+      }
+    } else {
+      sl = pc.soLuong ?? lc.tongSL;
+      loi = 0;
+    }
+    
+    const lyDo = lyDoLoi[key] ?? "";
+    
+    capNhatCongDoan(lc.id, pc.id, { 
+      trangThaiCD: "cho_qc", 
+      soLuongHoanThanh: sl, 
+      soLuongLoi: loi,
+      lyDoLoi: lyDo,
+      chiTietMau
+    });
     toast.success(`✅ Đã giao QC: ${sl} SP (Lỗi: ${loi})`);
   }
 
@@ -78,26 +101,29 @@ export default function UiMayPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <Shirt className="w-7 h-7 text-violet-500" /> Tổ May – Công việc
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">{lcCoMay.length} lệnh đang chờ / đang may</p>
-      </div>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+            <Shirt className="w-7 h-7 text-violet-600" /> Tổ May – Công việc
+          </h1>
+          <p className="text-sm font-bold text-slate-600 mt-1">{lcCoMay.length} lệnh đang chờ / đang may</p>
+        </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Đang may", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
-          { label: "Chờ nhận", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600" },
-          { label: "Hoàn thành", value: lcCoMay.filter(lc => getMayPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-600" },
-          { label: "Có lỗi", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-600" },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500">{k.label}</div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
-          </div>
-        ))}
+        {/* KPI */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Đang may", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
+            { label: "Chờ nhận", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-700" },
+            { label: "Hoàn thành", value: lcCoMay.filter(lc => getMayPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-700" },
+            { label: "Có lỗi", value: lcCoMay.filter(lc => getMayPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-700" },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">{k.label}</div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {lcCoMay.length === 0 ? (
@@ -152,20 +178,14 @@ export default function UiMayPage() {
 
                         {/* Input SL khi đang làm */}
                         {tt === "dang_lam" && (
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div>
-                              <div className="text-xs font-bold text-slate-600 mb-1">SP đã may xong:</div>
-                              <input type="number" value={slInput[key] ?? ""} onChange={e => setSlInput(p => ({ ...p, [key]: +e.target.value }))}
-                                placeholder={String(pc.soLuong || lc.tongSL)}
-                                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-600 mb-1">SP lỗi:</div>
-                              <input type="number" value={loiInput[key] ?? ""} onChange={e => setLoiInput(p => ({ ...p, [key]: +e.target.value }))}
-                                placeholder="0"
-                                className="w-full px-3 py-1.5 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400/30" />
-                            </div>
-                          </div>
+                          <KhaiBaoSoLuongTheoMau
+                            dsMau={lc.dsMau || []}
+                            value={mauInputs[key] || {}}
+                            onChange={(val) => setMauInputs(p => ({ ...p, [key]: val }))}
+                            showLyDoLoi={true}
+                            lyDoLoi={lyDoLoi[key]}
+                            onLyDoLoiChange={(val) => setLyDoLoi(p => ({ ...p, [key]: val }))}
+                          />
                         )}
 
                         {/* Buttons */}

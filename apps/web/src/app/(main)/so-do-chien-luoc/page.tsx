@@ -27,7 +27,7 @@ export default function SoDoChienLuocPage() {
           data.forEach((dbProj: any) => {
             const index = merged.findIndex(p => p.id === dbProj.id);
             if (index >= 0) {
-              merged[index] = { ...merged[index], name: dbProj.name, nodes: dbProj.nodes, edges: dbProj.edges, updatedAt: dbProj.updated_at };
+              merged[index] = { ...merged[index], name: dbProj.name, nodes: dbProj.nodes || [], edges: dbProj.edges || [], updatedAt: dbProj.updated_at };
             } else {
               merged.push({
                 id: dbProj.id,
