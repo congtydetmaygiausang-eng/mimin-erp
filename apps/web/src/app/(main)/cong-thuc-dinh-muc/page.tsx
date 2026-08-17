@@ -23,6 +23,52 @@ interface SavedConfig {
   createdAt: string;
 }
 
+// --- INDEXEDDB UTILS ---
+const DB_NAME = "MiminERP_DinhMuc";
+const STORE_NAME = "configs";
+const DB_VERSION = 1;
+
+function getDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = (e.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveConfigsToDB(configs: SavedConfig[]) {
+  const db = await getDB();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.clear().onsuccess = () => {
+      configs.forEach(c => store.put(c));
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadConfigsFromDB(): Promise<SavedConfig[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      resolve((request.result as SavedConfig[]).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+// --- END INDEXEDDB ---
+
 export default function CongThucDinhMucPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -54,16 +100,29 @@ export default function CongThucDinhMucPage() {
     else setSoSize(6); // Áo, Bộ
   }, [loaiSP]);
 
-  // Load saved configs from local storage on mount
+  // Load saved configs on mount
   useEffect(() => {
-    try {
-      const data = localStorage.getItem("mimin_cong_thuc_dinh_muc");
-      if (data) {
-        setSavedConfigs(JSON.parse(data));
+    const loadData = async () => {
+      try {
+        let dbConfigs = await loadConfigsFromDB();
+        
+        // Migrate từ localStorage nếu có
+        const localData = localStorage.getItem("mimin_cong_thuc_dinh_muc");
+        if (localData && dbConfigs.length === 0) {
+          const parsed = JSON.parse(localData);
+          await saveConfigsToDB(parsed);
+          dbConfigs = parsed;
+        }
+        
+        setSavedConfigs(dbConfigs);
+      } catch (err) {
+        console.error("Lỗi tải IndexedDB:", err);
+        // Fallback to localStorage
+        const data = localStorage.getItem("mimin_cong_thuc_dinh_muc");
+        if (data) setSavedConfigs(JSON.parse(data));
       }
-    } catch (err) {
-      console.error(err);
-    }
+    };
+    loadData();
   }, []);
 
   // Logic tính toán
@@ -151,22 +210,31 @@ export default function CongThucDinhMucPage() {
     }
     
     try {
-      localStorage.setItem("mimin_cong_thuc_dinh_muc", JSON.stringify(updated));
-      setSavedConfigs(updated);
-      toast.success(editingId ? "Cập nhật thành công!" : "Đã lưu định mức mới thành công!");
-      resetForm();
+      saveConfigsToDB(updated).then(() => {
+        setSavedConfigs(updated);
+        toast.success(editingId ? "Cập nhật thành công!" : "Đã lưu định mức mới thành công!");
+        resetForm();
+      }).catch((e) => {
+        console.error(e);
+        toast.error("Lỗi khi lưu vào cơ sở dữ liệu trình duyệt.");
+      });
+      // Vẫn lưu backup vào localStorage nếu đủ chỗ
+      try { localStorage.setItem("mimin_cong_thuc_dinh_muc", JSON.stringify(updated)); } catch(e){}
     } catch (e) {
-      toast.error("Bộ nhớ trình duyệt đã đầy (do lưu quá nhiều ảnh). Hãy xoá bớt các định mức cũ.");
+      toast.error("Đã xảy ra lỗi khi lưu.");
     }
   };
 
   const handleDelete = (id: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xoá định mức này?")) return;
+    if (!confirm("Bạn có chắc chắn muốn xoá định mức này?")) return;
     const updated = savedConfigs.filter(c => c.id !== id);
-    setSavedConfigs(updated);
-    localStorage.setItem("mimin_cong_thuc_dinh_muc", JSON.stringify(updated));
-    toast.success("Đã xoá bản lưu.");
-    if (editingId === id) resetForm();
+    
+    saveConfigsToDB(updated).then(() => {
+      setSavedConfigs(updated);
+      toast.success("Đã xoá thành công!");
+      if (editingId === id) resetForm();
+    });
+    try { localStorage.setItem("mimin_cong_thuc_dinh_muc", JSON.stringify(updated)); } catch(e){}
   };
 
   const handleLoad = (config: SavedConfig) => {
