@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calculator, ArrowRight, Receipt, Ruler, Sparkles, Scissors, Save, List, Trash2, Layers, Image as ImageIcon, Edit, Check } from "lucide-react";
+import { Calculator, ArrowRight, Receipt, Ruler, Sparkles, Scissors, Save, List, Trash2, Layers, Image as ImageIcon, Edit, Check, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
 
@@ -15,6 +15,8 @@ interface SavedConfig {
   giaMay: string;
   giaDongGoi: string;
   giaVatTu: string;
+  phiDieuPhoi: string;
+  vatPercent: number;
   soLuongCat: string;
   tongGiaVon: number;
   images?: UploadedFile[];
@@ -34,6 +36,8 @@ export default function CongThucDinhMucPage() {
   const [giaMay, setGiaMay] = useState<string>("");
   const [giaDongGoi, setGiaDongGoi] = useState<string>("");
   const [giaVatTu, setGiaVatTu] = useState<string>("");
+  const [phiDieuPhoi, setPhiDieuPhoi] = useState<string>("");
+  const [vatPercent, setVatPercent] = useState<number>(0);
 
   // Thêm dự tính số lượng cắt
   const [soLuongCat, setSoLuongCat] = useState<string>("");
@@ -42,6 +46,7 @@ export default function CongThucDinhMucPage() {
   const [images, setImages] = useState<UploadedFile[]>([]);
 
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
+  const [viewingConfig, setViewingConfig] = useState<SavedConfig | null>(null);
 
   // Tự động điều chỉnh số size mặc định theo loại sản phẩm
   useEffect(() => {
@@ -67,12 +72,15 @@ export default function CongThucDinhMucPage() {
   const numGiaMay = parseFloat(giaMay.replace(/,/g, "")) || 0;
   const numDongGoi = parseFloat(giaDongGoi.replace(/,/g, "")) || 0;
   const numVatTu = parseFloat(giaVatTu.replace(/,/g, "")) || 0;
+  const numPhiDieuPhoi = parseFloat(phiDieuPhoi.replace(/,/g, "")) || 0;
   const numSoLuongCat = parseFloat(soLuongCat.replace(/,/g, "")) || 0;
 
   const tongGiaTienVai = numGiaVai * numTongMet;
   const binhQuanTienVaiSP = soSize > 0 ? tongGiaTienVai / soSize : 0;
   const dinhMucMet1SP = soSize > 0 ? numTongMet / soSize : 0;
-  const tongGiaVon = binhQuanTienVaiSP + numGiaMay + numDongGoi + numVatTu;
+  const tongGiaVonChuaVat = binhQuanTienVaiSP + numGiaMay + numDongGoi + numVatTu + numPhiDieuPhoi;
+  const tienVat = tongGiaVonChuaVat * (vatPercent / 100);
+  const tongGiaVon = tongGiaVonChuaVat + tienVat;
 
   const tongMetCanMua = dinhMucMet1SP * numSoLuongCat;
   const tongChiPhiDonHang = tongGiaVon * numSoLuongCat;
@@ -127,6 +135,8 @@ export default function CongThucDinhMucPage() {
       giaMay,
       giaDongGoi,
       giaVatTu,
+      phiDieuPhoi,
+      vatPercent,
       soLuongCat,
       tongGiaVon,
       images,
@@ -169,6 +179,8 @@ export default function CongThucDinhMucPage() {
     setGiaMay(config.giaMay);
     setGiaDongGoi(config.giaDongGoi);
     setGiaVatTu(config.giaVatTu);
+    setPhiDieuPhoi(config.phiDieuPhoi || "");
+    setVatPercent(config.vatPercent || 0);
     setSoLuongCat(config.soLuongCat || "");
     setImages(config.images || []);
     toast.success("Đã tải dữ liệu. Bạn có thể chỉnh sửa và cập nhật lại.");
@@ -352,6 +364,39 @@ export default function CongThucDinhMucPage() {
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">đ</span>
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Phí dịch vụ điều phối</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={phiDieuPhoi}
+                      onChange={handleNumberChange(setPhiDieuPhoi)}
+                      placeholder="Chi phí điều phối ĐTSX"
+                      className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all text-slate-800 font-medium"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">đ</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Thuế VAT (%)</label>
+                  <div className="flex gap-3">
+                    {[0, 8, 10].map(val => (
+                      <label key={val} className={`flex-1 flex items-center justify-center py-2.5 rounded-xl border cursor-pointer transition-colors ${vatPercent === val ? 'bg-orange-50 border-orange-500 text-orange-700 font-bold' : 'border-slate-200 hover:bg-slate-50 text-slate-600 font-medium'}`}>
+                        <input 
+                          type="radio" 
+                          name="vatPercent" 
+                          value={val} 
+                          checked={vatPercent === val} 
+                          onChange={(e) => setVatPercent(Number(e.target.value))} 
+                          className="sr-only" 
+                        />
+                        {val}%
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -430,9 +475,13 @@ export default function CongThucDinhMucPage() {
                   <div className="text-slate-300 text-sm font-medium">3. Tiền đóng gói (1 SP)</div>
                   <div className="text-white font-bold">{formatMoney(numDongGoi)} đ</div>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center pb-3 border-b border-white/10">
                   <div className="text-slate-300 text-sm font-medium">4. Tiền vật tư (1 SP)</div>
                   <div className="text-white font-bold">{formatMoney(numVatTu)} đ</div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="text-slate-300 text-sm font-medium">5. Phí điều phối (1 SP)</div>
+                  <div className="text-white font-bold">{formatMoney(numPhiDieuPhoi)} đ</div>
                 </div>
               </div>
 
@@ -443,6 +492,20 @@ export default function CongThucDinhMucPage() {
                 </div>
                 
                 <div className="text-teal-50 text-sm font-medium mb-3 uppercase tracking-wider drop-shadow-sm">TỔNG GIÁ VỐN / SP</div>
+                
+                <div className="pt-2 border-t border-teal-400/30 mt-2 space-y-2 mb-4">
+                  <div className="flex justify-between items-center text-teal-100 text-sm">
+                    <div>Tổng giá vốn (trước VAT):</div>
+                    <div>{formatMoney(Math.round(tongGiaVonChuaVat))} đ/SP</div>
+                  </div>
+                  {vatPercent > 0 && (
+                    <div className="flex justify-between items-center text-teal-100 text-sm">
+                      <div>Thuế VAT ({vatPercent}%):</div>
+                      <div>{formatMoney(Math.round(tienVat))} đ/SP</div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-baseline gap-2 mb-2">
                   <div className="text-4xl lg:text-5xl font-bold text-white tracking-tight drop-shadow-sm">
                     {formatMoney(Math.round(tongGiaVon))}
@@ -561,9 +624,16 @@ export default function CongThucDinhMucPage() {
                         <td className="p-4">
                           <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
+                              onClick={() => setViewingConfig(config)}
+                              className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                              title="Xem chi tiết tổng thể"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button 
                               onClick={() => handleLoad(config)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Sửa / Xem chi tiết"
+                              title="Sửa định mức"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
@@ -586,6 +656,144 @@ export default function CongThucDinhMucPage() {
         </div>
       </div>
 
+      {/* VIEW MODAL */}
+      {viewingConfig && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-5 border-b border-slate-100">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-teal-600" /> Tổng Thể Định Mức: {viewingConfig.name}
+              </h3>
+              <button onClick={() => setViewingConfig(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div className="flex gap-6">
+                <div className="w-32 h-32 shrink-0 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                  {viewingConfig.images && viewingConfig.images.length > 0 ? (
+                    <img src={viewingConfig.images[0].dataUrl} className="w-full h-full object-cover" alt="sp" />
+                  ) : (
+                    <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-300">
+                      <ImageIcon className="w-8 h-8" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2 flex-1">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-500">Loại sản phẩm:</span>
+                    <span className="font-semibold text-slate-800">{viewingConfig.loaiSP} ({viewingConfig.soSize} size)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-500">Kế hoạch cắt:</span>
+                    <span className="font-semibold text-slate-800">{viewingConfig.soLuongCat ? `${formatMoney(parseFloat(viewingConfig.soLuongCat.replace(/,/g, "")))} cái` : "Chưa nhập"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-500">Ngày tạo:</span>
+                    <span className="text-sm text-slate-800">{viewingConfig.createdAt}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 space-y-3">
+                <h4 className="font-bold text-slate-700 mb-4 border-b border-slate-200 pb-2">Chi tiết giá vốn / 1 Sản phẩm</h4>
+                
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Tiền vải ({viewingConfig.giaVai}đ/m x {(parseFloat(viewingConfig.tongMet.replace(/,/g, "")) / viewingConfig.soSize).toFixed(2)}m):</span>
+                  <span className="font-medium text-slate-800">{formatMoney(Math.round(parseFloat(viewingConfig.giaVai.replace(/,/g, "")) * parseFloat(viewingConfig.tongMet.replace(/,/g, "")) / viewingConfig.soSize))} đ</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Tiền may gia công:</span>
+                  <span className="font-medium text-slate-800">{formatMoney(parseFloat(viewingConfig.giaMay.replace(/,/g, "")) || 0)} đ</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Tiền đóng gói:</span>
+                  <span className="font-medium text-slate-800">{formatMoney(parseFloat(viewingConfig.giaDongGoi.replace(/,/g, "")) || 0)} đ</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Tiền vật tư:</span>
+                  <span className="font-medium text-slate-800">{formatMoney(parseFloat(viewingConfig.giaVatTu.replace(/,/g, "")) || 0)} đ</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-600">Phí điều phối:</span>
+                  <span className="font-medium text-slate-800">{formatMoney(parseFloat(viewingConfig.phiDieuPhoi?.replace(/,/g, "") || "0"))} đ</span>
+                </div>
+                
+                <div className="pt-3 mt-3 border-t border-slate-200 border-dashed space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-semibold text-slate-700">Tổng (trước VAT):</span>
+                    <span className="font-semibold text-slate-800">
+                      {formatMoney(
+                        Math.round(parseFloat(viewingConfig.giaVai.replace(/,/g, "")) * parseFloat(viewingConfig.tongMet.replace(/,/g, "")) / viewingConfig.soSize) +
+                        (parseFloat(viewingConfig.giaMay.replace(/,/g, "")) || 0) +
+                        (parseFloat(viewingConfig.giaDongGoi.replace(/,/g, "")) || 0) +
+                        (parseFloat(viewingConfig.giaVatTu.replace(/,/g, "")) || 0) +
+                        (parseFloat(viewingConfig.phiDieuPhoi?.replace(/,/g, "") || "0"))
+                      )} đ
+                    </span>
+                  </div>
+                  {viewingConfig.vatPercent > 0 && (
+                    <div className="flex justify-between items-center text-sm text-slate-500">
+                      <span>Thuế VAT ({viewingConfig.vatPercent}%):</span>
+                      <span>
+                        {formatMoney(
+                          Math.round((
+                            Math.round(parseFloat(viewingConfig.giaVai.replace(/,/g, "")) * parseFloat(viewingConfig.tongMet.replace(/,/g, "")) / viewingConfig.soSize) +
+                            (parseFloat(viewingConfig.giaMay.replace(/,/g, "")) || 0) +
+                            (parseFloat(viewingConfig.giaDongGoi.replace(/,/g, "")) || 0) +
+                            (parseFloat(viewingConfig.giaVatTu.replace(/,/g, "")) || 0) +
+                            (parseFloat(viewingConfig.phiDieuPhoi?.replace(/,/g, "") || "0"))
+                          ) * (viewingConfig.vatPercent / 100))
+                        )} đ
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="font-bold text-slate-800">TỔNG GIÁ VỐN / SP:</span>
+                    <span className="font-bold text-2xl text-teal-600">{formatMoney(Math.round(viewingConfig.tongGiaVon))} VNĐ</span>
+                  </div>
+                </div>
+              </div>
+
+              {viewingConfig.soLuongCat && parseFloat(viewingConfig.soLuongCat.replace(/,/g, "")) > 0 && (
+                <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                  <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2"><Layers className="w-4 h-4" /> Kế hoạch sản xuất</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white p-3 rounded-lg border border-blue-50 shadow-sm">
+                      <div className="text-xs text-slate-500 mb-1">Tổng vải cần xuất</div>
+                      <div className="font-bold text-blue-700">
+                        {((parseFloat(viewingConfig.tongMet.replace(/,/g, "")) / viewingConfig.soSize) * parseFloat(viewingConfig.soLuongCat.replace(/,/g, ""))).toLocaleString("en-US", {maximumFractionDigits: 2})} mét
+                      </div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-blue-50 shadow-sm">
+                      <div className="text-xs text-slate-500 mb-1">Tổng chi phí dự kiến</div>
+                      <div className="font-bold text-blue-700">
+                        {formatMoney(Math.round(viewingConfig.tongGiaVon * parseFloat(viewingConfig.soLuongCat.replace(/,/g, ""))))} VNĐ
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+              <button onClick={() => setViewingConfig(null)} className="btn-secondary px-6">Đóng</button>
+              <button 
+                onClick={() => {
+                  handleLoad(viewingConfig);
+                  setViewingConfig(null);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+                className="btn-primary px-6 inline-flex gap-2 items-center"
+              >
+                <Edit className="w-4 h-4" />
+                Sửa định mức
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
