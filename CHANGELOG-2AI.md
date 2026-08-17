@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 15:35 | Codex | mang-luoi-san-xuat | V4: màn hình kiểm duyệt VietQR–MaSoThue trong hồ sơ công ty, giữ kết quả gần nhất và hiển thị đối chiếu từng trường không tự ghi đè | codex/v4-registry-review-ui | 🟢 DONE |
 | 2026-08-17 15:15 | Codex | mang-luoi-san-xuat | V3: đối chiếu VietQR–MaSoThue theo trọng số từng trường, phát hiện mâu thuẫn/thiếu nguồn và lưu lịch sử bất biến | codex/v3-registry-reconciliation | 🟢 DONE |
 | 2026-08-17 15:00 | Codex | mang-luoi-san-xuat | V2: adapter MaSoThue phía server, xác minh chặt MST/URL, cache 3 ngày và lưu 10 nhóm chứng cứ mở rộng không ghi đè hồ sơ | codex/v2-masothue-evidence-adapter | 🟢 DONE |
 | 2026-08-17 14:45 | Codex | mang-luoi-san-xuat | V1: adapter VietQR phía server, cache có hạn dùng, chuẩn hóa dữ liệu pháp lý và lưu chứng cứ theo từng trường với RLS | codex/v1-vietqr-registry-foundation | 🟢 DONE |
