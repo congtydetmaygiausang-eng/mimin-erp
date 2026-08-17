@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 17:05 | Codex | mang-luoi-san-xuat | L1: chuẩn hóa và xác minh tâm tìm kiếm theo quốc gia, từ khóa hành chính, độ mơ hồ, GPS/sai số trước khi gọi nguồn AI | codex/l1-location-center-validation | 🟢 DONE |
 | 2026-08-17 16:15 | Codex | mang-luoi-san-xuat | V6: chốt biên bản 4 trường pháp lý từ quyết định V5, lưu ảnh chụp bất biến và không tự cập nhật hồ sơ/danh mục | codex/v6-registry-verification-packet | 🟢 DONE |
 | 2026-08-17 15:55 | Codex | mang-luoi-san-xuat | V5: kiểm duyệt từng trường VietQR/MaSoThue, lưu quyết định/người/thời gian/chứng cứ bất biến và không tự cập nhật hồ sơ | codex/v5-registry-field-review | 🟢 DONE |
 | 2026-08-17 15:35 | Codex | mang-luoi-san-xuat | V4: màn hình kiểm duyệt VietQR–MaSoThue trong hồ sơ công ty, giữ kết quả gần nhất và hiển thị đối chiếu từng trường không tự ghi đè | codex/v4-registry-review-ui | 🟢 DONE |
