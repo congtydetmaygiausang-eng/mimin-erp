@@ -48,6 +48,8 @@ interface DistanceEvidence {
 interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: "SOURCE" | "NOMINATIM"; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number }
+interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
+interface PostProcessedCandidates { candidates: Candidate[]; breakdown: LocationBreakdown; excludedByStrictMode: number }
 
 function normalized(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(cong ty|tnhh|co phan|cp|mot thanh vien|mtv|san xuat|thuong mai|dich vu)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
@@ -123,7 +125,7 @@ function coordinateAddressConsistency(candidate: Candidate): "MATCHED" | "UNVERI
   return expectedAdminTerms.every((term) => returnedTerms.has(term)) ? "MATCHED" : "CONFLICT";
 }
 
-function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter, radiusKm: number, locationMode: "PREFER" | "STRICT", learning: LearningProfile): Candidate[] {
+function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter, radiusKm: number, locationMode: "PREFER" | "STRICT", learning: LearningProfile): PostProcessedCandidates {
   const clusters: Candidate[] = [];
   for (const item of candidates) {
     const existing = clusters.find((candidate) => sameEntity(candidate, item));
@@ -194,15 +196,28 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     ];
     const distanceEvidence: DistanceEvidence = { method: "HAVERSINE", unit: "KM", calculatedAt: new Date().toISOString(), radiusKm, rawDistanceKm: measuredDistance, center: { latitude: center.latitude, longitude: center.longitude, label: center.label, source: center.source }, destination: { latitude: item.latitude, longitude: item.longitude, coordinateSource: item.coordinateSource, coordinateConfidence: item.coordinateConfidence, geocodedAddress: item.geocodedAddress }, addressConsistency };
     return { ...item, confidence, sourceCount, matchReasons, verifiedFields, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus, locationReason, distanceEvidence };
-  }).sort((left, right) => right.confidence - left.confidence || (left.distanceKm ?? Number.MAX_VALUE) - (right.distanceKm ?? Number.MAX_VALUE) || (right.sourceCount ?? 0) - (left.sourceCount ?? 0));
-
-  if (locationMode !== "STRICT") return ranked.slice(0, 30);
-  const insideRadius = ranked.filter((item) => item.locationStatus === "INSIDE");
-  if (insideRadius.length) return insideRadius.slice(0, 30);
-  return ranked.filter((item) => item.locationStatus === "UNKNOWN").map((item) => ({
-    ...item,
-    matchReasons: ["Chưa xác minh trong bán kính · cần bổ sung tọa độ", ...(item.matchReasons ?? [])],
-  })).slice(0, 30);
+  });
+  const locationRank: Record<NonNullable<Candidate["locationStatus"]>, number> = { INSIDE: 0, OUTSIDE: 1, UNKNOWN: 2, CONFLICT: 3 };
+  const ordered = ranked.sort((left, right) => {
+    const groupDifference = locationRank[left.locationStatus ?? "UNKNOWN"] - locationRank[right.locationStatus ?? "UNKNOWN"];
+    if (groupDifference) return groupDifference;
+    if ((left.locationStatus === "INSIDE" || left.locationStatus === "OUTSIDE") && (right.locationStatus === "INSIDE" || right.locationStatus === "OUTSIDE")) {
+      const distanceDifference = (left.distanceKm ?? Number.MAX_VALUE) - (right.distanceKm ?? Number.MAX_VALUE);
+      if (distanceDifference) return distanceDifference;
+    }
+    return right.confidence - left.confidence || (right.sourceCount ?? 0) - (left.sourceCount ?? 0) || left.legalName.localeCompare(right.legalName, "vi");
+  });
+  const breakdown: LocationBreakdown = {
+    inside: ordered.filter((item) => item.locationStatus === "INSIDE").length,
+    outside: ordered.filter((item) => item.locationStatus === "OUTSIDE").length,
+    unknown: ordered.filter((item) => item.locationStatus === "UNKNOWN").length,
+    conflict: ordered.filter((item) => item.locationStatus === "CONFLICT").length,
+  };
+  if (locationMode === "STRICT") {
+    const strictCandidates = ordered.filter((item) => item.locationStatus === "INSIDE").slice(0, 30);
+    return { candidates: strictCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.unknown + breakdown.conflict };
+  }
+  return { candidates: ordered.slice(0, 30), breakdown, excludedByStrictMode: 0 };
 }
 
 const LOCATION_NOISE_WORDS = new Set(["quan", "huyen", "phuong", "xa", "thi", "tran", "thanh", "pho", "tinh", "viet", "nam"]);
@@ -713,20 +728,22 @@ export async function POST(req: NextRequest) {
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
     const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
     const geocoding = await geocodeCandidates(enrichment.candidates, location);
-    const candidates = postProcessCandidates(geocoding.candidates, query, location, center, radiusKm, locationMode, learning);
+    const processed = postProcessCandidates(geocoding.candidates, query, location, center, radiusKm, locationMode, learning);
+    const candidates = processed.candidates;
     const diagnostics = {
       collectedSources: source.items.length,
       normalizedCandidates: normalizedCandidates.length,
       finalCandidates: candidates.length,
       verified: candidates.filter((item) => item.verificationStatus === "VERIFIED").length,
       partial: candidates.filter((item) => item.verificationStatus === "PARTIAL").length,
-      insideRadius: candidates.filter((item) => item.locationStatus === "INSIDE").length,
-      unknownCoordinates: candidates.filter((item) => item.locationStatus === "UNKNOWN").length,
-      coordinateConflicts: candidates.filter((item) => item.locationStatus === "CONFLICT").length,
+      insideRadius: processed.breakdown.inside,
+      unknownCoordinates: processed.breakdown.unknown,
+      coordinateConflicts: processed.breakdown.conflict,
+      locationBreakdown: processed.breakdown,
+      strictExcluded: processed.excludedByStrictMode,
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
       geocoding: geocoding.summary,
-      strictLocationFallback: locationMode === "STRICT" && candidates.length > 0 && candidates.every((item) => item.locationStatus === "UNKNOWN"),
       providers: source.providerHealth,
     };
     return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, diagnostics, candidates });
