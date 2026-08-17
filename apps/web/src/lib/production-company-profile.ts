@@ -66,6 +66,12 @@ export interface ProductionCompanyDocumentExtraction {
   registeredAddress:string;legalRepresentative:string;summary:string;rawTextExcerpt:string;
   confidence:number;createdAt:string;reviewedAt:string;
 }
+export type CompanyAuditEventType = "PROFILE_CREATED"|"PROFILE_UPDATED"|"IMAGE_DISCOVERED"|"IMAGE_APPROVED"|"IMAGE_REJECTED"|"DOCUMENT_UPLOADED"|"DOCUMENT_VERIFIED"|"DOCUMENT_REJECTED"|"DOCUMENT_OCR_COMPLETED"|"DOCUMENT_OCR_ACCEPTED"|"DOCUMENT_OCR_REJECTED";
+export interface ProductionCompanyAuditEvent {
+  id:string;entityType:"PROFILE"|"IMAGE"|"DOCUMENT"|"DOCUMENT_EXTRACTION";entityId:string;
+  eventType:CompanyAuditEventType;title:string;details:Record<string,string|number|boolean|null>;
+  actorId:string;occurredAt:string;
+}
 
 interface DiscoveredCompanyImage {
   imageUrl: string; sourcePageUrl: string; sourceTitle: string; caption: string;
@@ -294,4 +300,11 @@ export async function reviewCompanyDocumentExtraction(id:string,status:"ACCEPTED
   if(!supabase)throw new Error("Chưa kết nối Supabase");
   const{error}=await supabase.from("production_company_document_extractions").update({extraction_status:status}).eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("id",id).eq("extraction_status","PENDING");
   if(error)throw new Error(error.message);
+}
+
+export async function loadCompanyAuditEvents(profileId:string):Promise<ProductionCompanyAuditEvent[]>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const{data,error}=await supabase.from("production_company_audit_events").select("id,entity_type,entity_id,event_type,title,details,actor_id,occurred_at").eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("company_profile_id",profileId).order("occurred_at",{ascending:false}).order("id",{ascending:false}).limit(100);
+  if(error)throw new Error(error.message);
+  return(data??[]).map(row=>({id:String(row.id),entityType:row.entity_type as ProductionCompanyAuditEvent["entityType"],entityId:String(row.entity_id),eventType:row.event_type as CompanyAuditEventType,title:String(row.title),details:(row.details??{}) as Record<string,string|number|boolean|null>,actorId:String(row.actor_id??""),occurredAt:String(row.occurred_at)}));
 }

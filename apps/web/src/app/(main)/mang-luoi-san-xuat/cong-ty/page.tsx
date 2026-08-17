@@ -3,10 +3,10 @@
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, BrainCircuit, Building2, Check, ExternalLink, FileCheck2, FileText, Globe2, History, Images, Mail, MapPin, Phone, RefreshCw, ScanText, SearchCheck, ShieldCheck, Upload, X } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Building2, Camera, Check, ExternalLink, FileCheck2, FileText, Globe2, History, Images, Mail, MapPin, Phone, RefreshCw, ScanText, SearchCheck, ShieldCheck, Upload, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
-import { discoverCompanyImages, extractCompanyDocument, loadCompanyDocumentExtractions, loadCompanyDocuments, loadCompanyImages, loadCompanyProfile, reviewCompanyDocument, reviewCompanyDocumentExtraction, reviewCompanyImage, uploadCompanyDocument, type CompanyDocumentType, type ProductionCompanyDocument, type ProductionCompanyDocumentExtraction, type ProductionCompanyImage, type ProductionCompanyProfile, type ProductionCompanySource } from "@/lib/production-company-profile";
+import { discoverCompanyImages, extractCompanyDocument, loadCompanyAuditEvents, loadCompanyDocumentExtractions, loadCompanyDocuments, loadCompanyImages, loadCompanyProfile, reviewCompanyDocument, reviewCompanyDocumentExtraction, reviewCompanyImage, uploadCompanyDocument, type CompanyDocumentType, type ProductionCompanyAuditEvent, type ProductionCompanyDocument, type ProductionCompanyDocumentExtraction, type ProductionCompanyImage, type ProductionCompanyProfile, type ProductionCompanySource } from "@/lib/production-company-profile";
 
 const TABS = ["Tổng quan", "Liên hệ", "Hình ảnh", "Giấy tờ", "Nguồn kiểm chứng", "Lịch sử"] as const;
 type CompanyTab = typeof TABS[number];
@@ -22,6 +22,12 @@ function DocumentExtractionSection({documents,extractions,extractingId,reviewing
   return <div className="mt-6 border-t pt-5 space-y-3" style={{borderColor:"var(--border)"}}><div className="flex items-start gap-3"><BrainCircuit className="w-6 h-6 text-violet-600 shrink-0"/><div><h2 className="font-bold text-lg">H5 · Trích xuất giấy tờ bằng AI</h2><p className="text-xs opacity-60">Gemini chỉ tạo đề xuất. Anh phải kiểm tra tệp gốc và bấm Áp dụng trước khi metadata được cập nhật.</p></div></div>{documents.map(document=>{const extraction=extractions.find(item=>item.documentId===document.id);const fields=extraction?[{label:"Tên pháp lý",value:extraction.legalName},{label:"Mã số thuế",value:extraction.taxCode},{label:"Số giấy tờ",value:extraction.documentNumber},{label:"Đơn vị cấp",value:extraction.issuer},{label:"Ngày cấp",value:extraction.issuedOn},{label:"Ngày hết hạn",value:extraction.expiresOn},{label:"Địa chỉ đăng ký",value:extraction.registeredAddress},{label:"Người đại diện",value:extraction.legalRepresentative}].filter(field=>field.value):[];return <article key={document.id} className="rounded-xl border p-4 space-y-3" style={{borderColor:"var(--border)"}}><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="font-semibold">{document.title}</div><div className="text-xs opacity-60">{document.originalFilename}</div></div><button type="button" disabled={Boolean(extractingId)||document.reviewStatus==="REJECTED"} onClick={()=>onExtract(document.id)} className="btn-secondary text-xs inline-flex items-center gap-1"><ScanText className={`w-4 h-4 ${extractingId===document.id?"animate-pulse":""}`}/>{extractingId===document.id?"Đang trích xuất...":extraction?"Trích xuất lại":"AI trích xuất"}</button></div>{extraction&&<div className="rounded-xl bg-violet-500/5 p-4 space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-semibold text-violet-700">{extraction.provider} · {extraction.model}</span><span className="text-xs font-semibold">Tin cậy {extraction.confidence}%</span></div>{fields.length?<div className="grid sm:grid-cols-2 gap-2">{fields.map(field=><div key={field.label} className="rounded-lg bg-white/60 dark:bg-white/5 p-2"><div className="text-[11px] opacity-55">{field.label}</div><div className="text-sm font-medium break-words">{field.value}</div></div>)}</div>:<p className="text-sm opacity-60">AI chưa đọc được trường dữ liệu rõ ràng.</p>}{extraction.summary&&<p className="text-sm">{extraction.summary}</p>}{extraction.status==="PENDING"?<div className="flex flex-wrap gap-2"><button type="button" disabled={Boolean(reviewingId)} onClick={()=>onReview(extraction.id,"ACCEPTED")} className="btn-secondary text-xs inline-flex items-center gap-1"><Check className="w-3 h-3 text-emerald-600"/>Áp dụng metadata</button><button type="button" disabled={Boolean(reviewingId)} onClick={()=>onReview(extraction.id,"REJECTED")} className="btn-secondary text-xs inline-flex items-center gap-1"><X className="w-3 h-3 text-rose-600"/>Bỏ kết quả AI</button></div>:<div className={`text-xs font-semibold ${extraction.status==="ACCEPTED"?"text-emerald-700":"text-rose-700"}`}>{extraction.status==="ACCEPTED"?"Đã được người dùng kiểm tra và áp dụng":"Đã bỏ kết quả AI"}</div>}</div>}</article>})}</div>;
 }
 
+function AuditTimeline({events}:{events:ProductionCompanyAuditEvent[]}){
+  if(!events.length)return <EmptyStage icon={<History className="w-6 h-6"/>} title="Chưa có lịch sử xác minh" description="H6 sẽ tự ghi nhận các thao tác mới; dữ liệu H1-H5 hiện có được bổ sung khi migration chạy."/>;
+  const iconFor=(event:ProductionCompanyAuditEvent)=>event.entityType==="IMAGE"?<Camera className="w-4 h-4"/>:event.entityType==="PROFILE"?<UserRound className="w-4 h-4"/>:event.entityType==="DOCUMENT_EXTRACTION"?<BrainCircuit className="w-4 h-4"/>:<FileText className="w-4 h-4"/>;
+  return <div className="space-y-4"><div><h2 className="font-bold text-lg">Lịch sử xác minh</h2><p className="text-xs opacity-60">Nhật ký chỉ đọc, sắp xếp mới nhất trước; không lưu toàn văn giấy tờ hoặc khóa bí mật.</p></div><ol className="relative border-l ml-4 space-y-1" style={{borderColor:"var(--border)"}}>{events.map(event=><li key={event.id} className="relative pl-8 pb-5"><span className="absolute -left-4 top-0 w-8 h-8 rounded-full bg-brand-500/10 text-brand-700 flex items-center justify-center ring-4 ring-white dark:ring-slate-950">{iconFor(event)}</span><article className="rounded-xl border p-3" style={{borderColor:"var(--border)"}}><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="font-semibold text-sm">{event.title}</div><div className="text-[11px] opacity-55">{event.eventType} · {event.entityType}</div></div><time className="text-xs opacity-60">{new Date(event.occurredAt).toLocaleString("vi-VN")}</time></div>{Object.keys(event.details).length>0&&<div className="mt-2 flex flex-wrap gap-2">{Object.entries(event.details).filter(([,value])=>value!==null&&value!=="").map(([key,value])=><span key={key} className="text-[11px] rounded-full bg-slate-500/5 border px-2 py-1" style={{borderColor:"var(--border)"}}>{key}: {String(value)}</span>)}</div>}</article></li>)}</ol></div>;
+}
+
 function CompanyProfileContent() {
   const id = useSearchParams().get("id") ?? "";
   const [profile, setProfile] = useState<ProductionCompanyProfile | null>(null);
@@ -29,6 +35,7 @@ function CompanyProfileContent() {
   const [images, setImages] = useState<ProductionCompanyImage[]>([]);
   const [documents,setDocuments]=useState<ProductionCompanyDocument[]>([]);
   const [documentExtractions,setDocumentExtractions]=useState<ProductionCompanyDocumentExtraction[]>([]);
+  const [auditEvents,setAuditEvents]=useState<ProductionCompanyAuditEvent[]>([]);
   const [documentFile,setDocumentFile]=useState<File|null>(null);
   const [documentType,setDocumentType]=useState<CompanyDocumentType>("BUSINESS_LICENSE");
   const [documentTitle,setDocumentTitle]=useState("");
@@ -44,11 +51,18 @@ function CompanyProfileContent() {
   useEffect(() => {
     let active = true;
     if (!id) { setError("Thiếu mã hồ sơ công ty"); setLoading(false); return; }
-    void Promise.all([loadCompanyProfile(id), loadCompanyImages(id),loadCompanyDocuments(id).catch(()=>[]),loadCompanyDocumentExtractions(id).catch(()=>[])]).then(([result, companyImages,companyDocuments,extractions]) => { if (active) { setProfile(result.profile); setSources(result.sources); setImages(companyImages);setDocuments(companyDocuments);setDocumentExtractions(extractions); } })
+    void Promise.all([loadCompanyProfile(id),loadCompanyImages(id),loadCompanyDocuments(id).catch(()=>[]),loadCompanyDocumentExtractions(id).catch(()=>[]),loadCompanyAuditEvents(id).catch(()=>[])]).then(([result,companyImages,companyDocuments,extractions,events])=>{if(active){setProfile(result.profile);setSources(result.sources);setImages(companyImages);setDocuments(companyDocuments);setDocumentExtractions(extractions);setAuditEvents(events);}})
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : "Không tải được hồ sơ công ty"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [id]);
+
+  useEffect(()=>{
+    if(activeTab!=="Lịch sử"||!id)return;
+    let active=true;
+    void loadCompanyAuditEvents(id).then(events=>{if(active)setAuditEvents(events)}).catch(()=>undefined);
+    return()=>{active=false};
+  },[activeTab,id]);
 
   const findImages = async () => {
     if (!profile) return;
@@ -94,7 +108,9 @@ function CompanyProfileContent() {
         onReview={(extractionId,status)=>void reviewExtraction(extractionId,status)}
       />}
       {activeTab==="Nguồn kiểm chứng"&&<div className="space-y-3"><h2 className="font-bold text-lg">Nguồn đã liên kết</h2>{sources.length===0?<EmptyStage icon={<SearchCheck className="w-6 h-6"/>} title="Chưa có nguồn" description="Hồ sơ này chưa có URL nguồn hợp lệ."/>:sources.map((source,index)=><a key={source.id} href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl border p-4 flex items-start justify-between gap-3 hover:bg-brand-500/5" style={{borderColor:"var(--border)"}}><div className="min-w-0"><div className="text-xs text-brand-700">Nguồn {index+1} · {source.sourceProvider||source.sourceType}</div><div className="font-semibold truncate">{source.sourceTitle||source.sourceUrl}</div><div className="text-xs opacity-60 truncate">{source.sourceUrl}</div></div><ExternalLink className="w-4 h-4 shrink-0"/></a>)}</div>}
-      {activeTab==="Lịch sử"&&<EmptyStage icon={<History className="w-6 h-6"/>} title="Chưa có lịch sử xác minh" description="Các hành động duyệt ảnh, giấy tờ và thay đổi hồ sơ sẽ được ghi nhận ở những giai đoạn tiếp theo."/>}
+      {activeTab==="Lịch sử"&&(
+        <AuditTimeline events={auditEvents}/>
+      )}
     </div>
   </div>;
 }
