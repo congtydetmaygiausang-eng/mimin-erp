@@ -35,7 +35,17 @@ interface NominatimPlace {
   boundingbox?: string[];
   address?: { country_code?: string };
 }
-interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN"; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: "SOURCE" | "NOMINATIM"; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number] }
+interface DistanceEvidence {
+  method: "HAVERSINE";
+  unit: "KM";
+  calculatedAt: string;
+  radiusKm: number;
+  rawDistanceKm: number | null;
+  center: { latitude: number; longitude: number; label: string; source: "GPS" | "ADDRESS" };
+  destination: { latitude: number | null; longitude: number | null; coordinateSource?: "SOURCE" | "NOMINATIM"; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
+  addressConsistency: "MATCHED" | "UNVERIFIED" | "CONFLICT";
+}
+interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: "SOURCE" | "NOMINATIM"; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number }
 
@@ -89,10 +99,31 @@ function distanceKm(center: Pick<SearchCenter, "latitude" | "longitude">, latitu
   const deltaLat = radians(latitude - center.latitude);
   const deltaLng = radians(longitude - center.longitude);
   const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(radians(center.latitude)) * Math.cos(radians(latitude)) * Math.sin(deltaLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371.0088 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter | null, radiusKm: number, locationMode: "PREFER" | "STRICT", learning: LearningProfile): Candidate[] {
+function isWithinRadius(distance: number, radiusKm: number): boolean {
+  return distance <= radiusKm + 1e-9;
+}
+
+function isInsideBoundingBox(latitude: number, longitude: number, boundingBox: [number, number, number, number]): boolean {
+  const [south, north, west, east] = boundingBox;
+  const tolerance = 0.0001;
+  return latitude >= south - tolerance && latitude <= north + tolerance && longitude >= west - tolerance && longitude <= east + tolerance;
+}
+
+function coordinateAddressConsistency(candidate: Candidate): "MATCHED" | "UNVERIFIED" | "CONFLICT" {
+  if (candidate.coordinateConflictReason) return "CONFLICT";
+  if (candidate.latitude === null || candidate.longitude === null) return "UNVERIFIED";
+  if (candidate.coordinateBoundingBox && !isInsideBoundingBox(candidate.latitude, candidate.longitude, candidate.coordinateBoundingBox)) return "CONFLICT";
+  if (candidate.coordinateSource !== "NOMINATIM" || !candidate.geocodedAddress) return "UNVERIFIED";
+  const expectedAdminTerms = locationTerms([candidate.district, candidate.province].filter(Boolean).join(" "));
+  if (!expectedAdminTerms.length) return "MATCHED";
+  const returnedTerms = new Set(locationTerms(candidate.geocodedAddress));
+  return expectedAdminTerms.every((term) => returnedTerms.has(term)) ? "MATCHED" : "CONFLICT";
+}
+
+function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter, radiusKm: number, locationMode: "PREFER" | "STRICT", learning: LearningProfile): Candidate[] {
   const clusters: Candidate[] = [];
   for (const item of candidates) {
     const existing = clusters.find((candidate) => sameEntity(candidate, item));
@@ -109,8 +140,19 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     existing.email = mergeText(existing.email, item.email);
     existing.taxCode = mergeText(existing.taxCode, item.taxCode);
     existing.website = mergeText(existing.website, item.website);
-    existing.latitude ??= item.latitude;
-    existing.longitude ??= item.longitude;
+    if (existing.latitude !== null && existing.longitude !== null && item.latitude !== null && item.longitude !== null) {
+      const separationKm = distanceKm({ latitude: existing.latitude, longitude: existing.longitude }, item.latitude, item.longitude);
+      if (separationKm > 1) existing.coordinateConflictReason = `Nhiều nguồn đưa tọa độ lệch nhau ${separationKm.toFixed(1)} km`;
+    } else if (existing.latitude === null && existing.longitude === null && item.latitude !== null && item.longitude !== null) {
+      existing.latitude = item.latitude;
+      existing.longitude = item.longitude;
+      existing.coordinateSource = item.coordinateSource;
+      existing.coordinateConfidence = item.coordinateConfidence;
+      existing.geocodedAddress = item.geocodedAddress;
+      existing.geocodedAt = item.geocodedAt;
+      existing.geocodeStatus = item.geocodeStatus;
+      existing.coordinateBoundingBox = item.coordinateBoundingBox;
+    }
     existing.capabilities = Array.from(new Set([...existing.capabilities, ...item.capabilities])).slice(0, 20);
     existing.confidence = Math.max(existing.confidence, item.confidence);
     existing.verifiedFields = Array.from(new Set([...(existing.verifiedFields ?? []), ...(item.verifiedFields ?? [])]));
@@ -124,10 +166,12 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
   const ranked = clusters.map((item) => {
     const searchable = tokenSet(`${item.legalName} ${item.address} ${item.capabilities.join(" ")}`);
     const relevance = Math.round(overlapRatio(queryTokens, searchable) * 35);
-    const measuredDistance = center && item.latitude !== null && item.longitude !== null ? distanceKm(center, item.latitude, item.longitude) : null;
-    const locationStatus: "INSIDE" | "OUTSIDE" | "UNKNOWN" = measuredDistance === null ? "UNKNOWN" : measuredDistance <= radiusKm ? "INSIDE" : "OUTSIDE";
+    const addressConsistency = coordinateAddressConsistency(item);
+    const measuredDistance = item.latitude !== null && item.longitude !== null && addressConsistency !== "CONFLICT" ? distanceKm(center, item.latitude, item.longitude) : null;
+    const locationStatus: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT" = addressConsistency === "CONFLICT" ? "CONFLICT" : measuredDistance === null ? "UNKNOWN" : isWithinRadius(measuredDistance, radiusKm) ? "INSIDE" : "OUTSIDE";
+    const locationReason = locationStatus === "INSIDE" ? `Nằm trong bán kính ${radiusKm} km` : locationStatus === "OUTSIDE" ? `Nằm ngoài bán kính ${radiusKm} km` : locationStatus === "CONFLICT" ? item.coordinateConflictReason ?? "Địa chỉ và tọa độ mâu thuẫn" : "Chưa có tọa độ đủ tin cậy";
     const textLocationScore = Math.round(overlapRatio(locationTokens, tokenSet(`${item.address} ${item.province} ${item.district}`)) * 15);
-    const locationScore = measuredDistance === null ? textLocationScore : measuredDistance <= radiusKm ? Math.max(5, Math.round(15 * (1 - measuredDistance / Math.max(radiusKm, 1)))) : 0;
+    const locationScore = addressConsistency === "CONFLICT" ? 0 : measuredDistance === null ? textLocationScore : isWithinRadius(measuredDistance, radiusKm) ? Math.max(5, Math.round(15 * (1 - measuredDistance / Math.max(radiusKm, 1)))) : 0;
     const contact = Math.min(15, (item.phone ? 6 : 0) + (item.email ? 3 : 0) + (item.website ? 3 : 0) + (item.taxCode ? 2 : 0) + (item.address ? 1 : 0));
     const sourceCount = item.sources?.length ?? 1;
     const verifiedFields = item.verifiedFields ?? [];
@@ -142,13 +186,14 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const confidence = Math.max(0, Math.min(100, Math.round(relevance + locationScore + contact + evidence + completeness + aiScore + learningAdjustment)));
     const matchReasons = [
       relevance >= 20 ? "Phù hợp nhu cầu" : "Cần kiểm tra thêm năng lực",
-      measuredDistance !== null ? `${measuredDistance.toFixed(1)} km · ${locationStatus === "INSIDE" ? "Trong bán kính" : "Ngoài bán kính"}` : locationScore >= 8 ? "Đúng khu vực theo địa chỉ" : "Chưa có tọa độ để tính km",
+      measuredDistance !== null ? `${measuredDistance.toFixed(1)} km · ${locationStatus === "INSIDE" ? "Trong bán kính" : "Ngoài bán kính"}` : locationStatus === "CONFLICT" ? "Địa chỉ và tọa độ mâu thuẫn" : locationScore >= 8 ? "Đúng khu vực theo địa chỉ · chưa xác minh km" : "Chưa có tọa độ để tính km",
       sourceCount >= 2 ? `${sourceCount} nguồn xác nhận` : "1 nguồn tham khảo",
       item.phone || item.website ? "Có thông tin liên hệ" : "Thiếu thông tin liên hệ",
       verifiedStatus === "VERIFIED" ? "Đã đối chiếu nhiều nguồn" : verifiedStatus === "PARTIAL" ? "Đã đối chiếu một phần" : "Chưa đủ bằng chứng",
       ...(learningAdjustment >= 2 ? ["Phù hợp lịch sử lựa chọn"] : learningAdjustment <= -2 ? ["Khác mẫu thường ưu tiên"] : []),
     ];
-    return { ...item, confidence, sourceCount, matchReasons, verifiedFields, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus };
+    const distanceEvidence: DistanceEvidence = { method: "HAVERSINE", unit: "KM", calculatedAt: new Date().toISOString(), radiusKm, rawDistanceKm: measuredDistance, center: { latitude: center.latitude, longitude: center.longitude, label: center.label, source: center.source }, destination: { latitude: item.latitude, longitude: item.longitude, coordinateSource: item.coordinateSource, coordinateConfidence: item.coordinateConfidence, geocodedAddress: item.geocodedAddress }, addressConsistency };
+    return { ...item, confidence, sourceCount, matchReasons, verifiedFields, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus, locationReason, distanceEvidence };
   }).sort((left, right) => right.confidence - left.confidence || (left.distanceKm ?? Number.MAX_VALUE) - (right.distanceKm ?? Number.MAX_VALUE) || (right.sourceCount ?? 0) - (left.sourceCount ?? 0));
 
   if (locationMode !== "STRICT") return ranked.slice(0, 30);
@@ -677,6 +722,7 @@ export async function POST(req: NextRequest) {
       partial: candidates.filter((item) => item.verificationStatus === "PARTIAL").length,
       insideRadius: candidates.filter((item) => item.locationStatus === "INSIDE").length,
       unknownCoordinates: candidates.filter((item) => item.locationStatus === "UNKNOWN").length,
+      coordinateConflicts: candidates.filter((item) => item.locationStatus === "CONFLICT").length,
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
       geocoding: geocoding.summary,
