@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 12:20 | Codex | mang-luoi-san-xuat | U1: thêm Google Maps theo tọa độ/địa chỉ và liên kết Zalo cho số di động Việt Nam hợp lệ trong hồ sơ công ty | codex/u1-company-maps-zalo | 🟢 DONE |
 | 2026-08-17 12:05 | Codex | mang-luoi-san-xuat | Giữ bộ lọc và kết quả tìm nguồn khi quay lại; tách địa chỉ thành dòng thông tin riêng có icon | codex/persist-sourcing-search-address | 🟢 DONE |
 | 2026-08-17 11:45 | Codex | mang-luoi-san-xuat | H6: nhật ký kiểm toán bất biến cho hồ sơ, hình ảnh, giấy tờ và kết quả OCR; hiển thị dòng thời gian chỉ đọc | codex/h6-company-audit-history | 🟢 DONE |
 | 2026-08-17 11:30 | Codex | mang-luoi-san-xuat | H5: Gemini OCR giấy tờ riêng tư, lưu đề xuất và bắt buộc người dùng duyệt trước khi áp dụng | codex/h5-document-ocr-review | 🟢 DONE |
