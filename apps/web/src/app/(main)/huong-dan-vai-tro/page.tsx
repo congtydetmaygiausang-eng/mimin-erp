@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Shield, Package, Scissors, ShieldCheck, PenTool, Calculator, Image as ImageIcon, Briefcase } from "lucide-react";
-import Link from "next/link";
+import { Users, Shield, Package, Scissors, ShieldCheck, PenTool, Calculator, Image as ImageIcon, Briefcase, ChevronDown, CheckCircle2 } from "lucide-react";
 
 const ROLES = [
   {
@@ -11,8 +10,26 @@ const ROLES = [
     icon: Shield,
     color: "bg-red-50 text-red-600 border-red-200",
     description: "Quản trị viên toàn quyền hệ thống. Quản lý toàn bộ vòng đời sản phẩm.",
-    modules: ["Tất cả tính năng (30/30)", "Quản lý tài khoản & phân quyền", "Duyệt công nợ & chi phí", "Cài đặt hệ thống & AI"],
-    users: "sang, hoa, phi, vy2, A Cường"
+    users: "sang, hoa, phi, vy2, A Cường",
+    detailedGuide: [
+      {
+        task: "Quản lý Tài Khoản & Phân Quyền",
+        steps: [
+          "Truy cập menu [Quản lý tài khoản] ở Sidebar bên trái.",
+          "Bấm nút [Thêm tài khoản mới] màu xanh góc phải trên.",
+          "Điền [Email], [Mật khẩu], [Họ Tên] và chọn [Vai trò].",
+          "Bấm nút [Lưu] để tạo tài khoản cho nhân viên."
+        ]
+      },
+      {
+        task: "Xem Báo Cáo Tổng Quan",
+        steps: [
+          "Truy cập menu [Dashboard] hoặc [Sơ Đồ Chiến Lược].",
+          "Bấm nút [Xem] tại mỗi thẻ để xem chi tiết tiến độ hoặc doanh thu.",
+          "Dùng nút [Bộ lọc] góc trên để lọc theo thời gian."
+        ]
+      }
+    ]
   },
   {
     id: "planner",
@@ -20,8 +37,27 @@ const ROLES = [
     icon: Briefcase,
     color: "bg-purple-50 text-purple-600 border-purple-200",
     description: "Lên kế hoạch sản xuất, tạo lệnh cắt và điều phối nguyên phụ liệu.",
-    modules: ["Công thức định mức", "Sơ đồ chiến lược", "Lệnh cắt & Lệnh tổng", "Kiểm tra vải & phụ liệu"],
-    users: "giau, huyen, huyen2"
+    users: "giau, huyen, huyen2",
+    detailedGuide: [
+      {
+        task: "1. Tạo Công Thức Định Mức",
+        steps: [
+          "Truy cập menu [Công thức định mức].",
+          "Nhập [Số lượng sản phẩm], [Kích thước Size] (VD: S, M, L), [Tên vải].",
+          "Điền các chi phí [Giá vải], [Bo cổ], [Công may]... Hệ thống sẽ tự động cộng tổng.",
+          "Bấm nút [Lưu định mức] để lưu lại cấu hình giá vốn."
+        ]
+      },
+      {
+        task: "2. Tạo Lệnh Cắt",
+        steps: [
+          "Truy cập menu [Lệnh Cắt].",
+          "Bấm nút [Thêm Lệnh Cắt] màu xanh góc phải.",
+          "Điền [Mã Lệnh Cắt] (Ví dụ: LC-001) và [Mã Sản Phẩm].",
+          "Nhập [Số lượng cần cắt], chọn [Tổ cắt] và bấm [Lưu]."
+        ]
+      }
+    ]
   },
   {
     id: "warehouse",
@@ -29,8 +65,27 @@ const ROLES = [
     icon: Package,
     color: "bg-amber-50 text-amber-600 border-amber-200",
     description: "Nhập xuất tồn kho vải, phụ liệu và thành phẩm.",
-    modules: ["Kho vải & Kho phụ liệu", "Kho thành phẩm", "Nhập/Xuất kho Mobile", "Kiểm kê kho"],
-    users: "hau"
+    users: "hau",
+    detailedGuide: [
+      {
+        task: "1. Nhập Kho Vải / Phụ Liệu",
+        steps: [
+          "Truy cập [Kho Vải] hoặc [Kho Phụ Liệu].",
+          "Bấm nút [Nhập Kho mới].",
+          "Chọn [Mã Vải/Phụ liệu], nhập [Số lượng], [Số lô].",
+          "Bấm [Xác nhận nhập kho]."
+        ]
+      },
+      {
+        task: "2. Xuất Kho (Theo Lệnh Cắt)",
+        steps: [
+          "Vào tab [Xuất Kho].",
+          "Bấm nút [Xuất cho Lệnh Cắt].",
+          "Chọn [Mã Lệnh Cắt] từ danh sách thả xuống, hệ thống sẽ tự động điền số lượng định mức.",
+          "Bấm [Xuất Kho] và in phiếu xuất."
+        ]
+      }
+    ]
   },
   {
     id: "sewing",
@@ -38,17 +93,25 @@ const ROLES = [
     icon: Scissors,
     color: "bg-cyan-50 text-cyan-600 border-cyan-200",
     description: "Quản lý tiến độ may, nhận lệnh cắt và phân công thợ may.",
-    modules: ["Tiến độ cắt may", "Giao việc tổ may", "Báo cáo sản lượng may", "Tính tiền công may"],
-    users: "giang, de, phu, vinh, minh1, nhan, ruong"
-  },
-  {
-    id: "finishing",
-    name: "Tổ trưởng Hoàn Thiện",
-    icon: PenTool,
-    color: "bg-pink-50 text-pink-600 border-pink-200",
-    description: "Quản lý các công đoạn sau may: Ủi, Khuy nút, Đóng gói.",
-    modules: ["Tiến độ ủi/đóng gói", "Nhận/giao hàng hoàn thiện", "Ghi nhận sản lượng", "Tính tiền công hoàn thiện"],
-    users: "nhu, nga"
+    users: "giang, de, phu, vinh, minh1, nhan, ruong",
+    detailedGuide: [
+      {
+        task: "1. Nhận Việc (Từ Lệnh Cắt)",
+        steps: [
+          "Truy cập màn hình [Tổ May Work].",
+          "Ở tab [Chờ nhận], tìm Mã Lệnh Cắt và bấm nút [Nhận việc].",
+          "Trạng thái sẽ chuyển sang [Đang thực hiện]."
+        ]
+      },
+      {
+        task: "2. Báo Cáo Sản Lượng (Hoàn Thành)",
+        steps: [
+          "Ở Lệnh cắt đang thực hiện, bấm nút [Báo cáo tiến độ].",
+          "Nhập [Số lượng đạt] và [Số lượng lỗi] (nếu có).",
+          "Bấm [Lưu tiến độ]. Nếu làm xong toàn bộ, bấm [Chuyển QC]."
+        ]
+      }
+    ]
   },
   {
     id: "qc",
@@ -56,26 +119,70 @@ const ROLES = [
     icon: ShieldCheck,
     color: "bg-emerald-50 text-emerald-600 border-emerald-200",
     description: "Kiểm tra chất lượng thành phẩm trước khi nhập kho.",
-    modules: ["Báo cáo lỗi QC", "Nghiệm thu chất lượng", "Danh sách hàng đạt/hỏng"],
-    users: "KCS team"
+    users: "KCS team",
+    detailedGuide: [
+      {
+        task: "1. Kiểm tra Thành Phẩm",
+        steps: [
+          "Truy cập [Kiểm Tra CL (QC)].",
+          "Tại danh sách Hàng chờ QC, bấm nút [Kiểm Tra].",
+          "Nhập [Số lượng Đạt] và ghi chú [Số lượng Lỗi] (phân loại lỗi: tuột chỉ, sai kích thước...).",
+          "Bấm [Xác nhận] để hàng tự động đẩy sang Kho Thành Phẩm."
+        ]
+      }
+    ]
+  },
+  {
+    id: "finishing",
+    name: "Tổ trưởng Hoàn Thiện",
+    icon: PenTool,
+    color: "bg-pink-50 text-pink-600 border-pink-200",
+    description: "Quản lý các công đoạn sau may: Ủi, Khuy nút, Đóng gói.",
+    users: "nhu, nga",
+    detailedGuide: [
+      {
+        task: "1. Nhận Việc Hoàn Thiện",
+        steps: [
+          "Truy cập [Tổ Hoàn Thiện Work].",
+          "Bấm nút [Nhận lô hàng] đã qua QC hoặc từ Tổ May chuyển đến."
+        ]
+      },
+      {
+        task: "2. Đóng Gói / Ghi nhận",
+        steps: [
+          "Bấm nút [Báo cáo đóng gói].",
+          "Nhập [Số lượng thùng] hoặc [Số lượng cái].",
+          "Bấm nút [Hoàn tất đóng gói] để chuyển giao cho Kho Thành Phẩm hoặc Giao hàng."
+        ]
+      }
+    ]
   },
   {
     id: "accountant",
     name: "Kế toán (Accountant)",
     icon: Calculator,
     color: "bg-blue-50 text-blue-600 border-blue-200",
-    description: "Quản lý dòng tiền, công nợ và thanh toán cho đối tác/nhân viên.",
-    modules: ["Công nợ gia công", "Tính lương tiền công", "Hóa đơn điện tử", "Duyệt phiếu chi"],
-    users: "linh, chau"
-  },
-  {
-    id: "content",
-    name: "Content/Media",
-    icon: ImageIcon,
-    color: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200",
-    description: "Marketing, cập nhật hình ảnh sản phẩm.",
-    modules: ["Danh mục sản phẩm", "Tải ảnh sản phẩm", "Cập nhật catalogue"],
-    users: "Content team"
+    description: "Quản lý dòng tiền, công nợ và thanh toán.",
+    users: "linh, chau",
+    detailedGuide: [
+      {
+        task: "1. Chốt Công Nợ Gia Công",
+        steps: [
+          "Truy cập menu [Công Nợ & Thanh Toán].",
+          "Chọn mục [Đối tác Gia Công Ngoài], xem tổng dư nợ.",
+          "Bấm nút [Tạo Phiếu Chi] để thanh toán tiền cho đối tác.",
+          "Điền [Số tiền], [Ghi chú] và bấm [Lưu Phiếu]."
+        ]
+      },
+      {
+        task: "2. Duyệt Lương Công Nhân",
+        steps: [
+          "Vào menu [Tiền Công Hoàn Thiện] / [Tiền Công May].",
+          "Xem bảng kê số lượng từ các Tổ, đối chiếu và bấm nút [Chốt Lương].",
+          "Hệ thống tự động tính tổng tiền công trong tháng."
+        ]
+      }
+    ]
   },
   {
     id: "partner",
@@ -83,10 +190,42 @@ const ROLES = [
     icon: Users,
     color: "bg-slate-50 text-slate-600 border-slate-200",
     description: "Xưởng gia công ngoài xem tiến độ và công nợ của riêng họ.",
-    modules: ["Nhận lệnh gia công", "Báo cáo giao hàng", "Xem công nợ cá nhân"],
-    users: "Đối tác ngoài (ví dụ: Xưởng A, Xưởng B)"
+    users: "Xưởng A, Xưởng B",
+    detailedGuide: [
+      {
+        task: "1. Xem Lệnh Gia Công",
+        steps: [
+          "Truy cập [Trang Chủ Gia Công].",
+          "Nhìn thấy các Mã Hàng đang nhận gia công, bấm nút [Chi tiết] để xem số lượng và yêu cầu kỹ thuật."
+        ]
+      },
+      {
+        task: "2. Xem Công Nợ",
+        steps: [
+          "Bấm vào tab [Công Nợ Của Tôi].",
+          "Xem các khoản đã nhận thanh toán, và các khoản MIMIN ERP đang nợ chưa thanh toán."
+        ]
+      }
+    ]
   }
 ];
+
+// Helper to render steps with badge styling for buttons
+const renderStepWithBadges = (text: string) => {
+  // Regex tìm nội dung nằm trong cặp ngoặc vuông [...] để biến thành nút/badge
+  const parts = text.split(/(\[[^\]]+\])/g);
+  return parts.map((part, index) => {
+    if (part.startsWith("[") && part.endsWith("]")) {
+      const btnText = part.slice(1, -1);
+      return (
+        <span key={index} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 shadow-sm">
+          {btnText}
+        </span>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
 
 export default function HuongDanVaiTroPage() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -97,47 +236,68 @@ export default function HuongDanVaiTroPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
           <Users className="w-6 h-6 text-brand-500" />
-          Sơ đồ hướng dẫn sử dụng & Vai trò
+          Sơ đồ hướng dẫn sử dụng & Vai trò chi tiết
         </h1>
         <p className="text-slate-500">
-          Danh sách các vai trò trong hệ thống MIMIN ERP và quyền hạn tương ứng của từng tài khoản.
+          Danh sách các vai trò trong hệ thống MIMIN ERP. <strong>Bấm vào từng thẻ</strong> để xem hướng dẫn chi tiết từng nút bấm cho các thao tác chính.
         </p>
       </div>
 
       {/* Grid of roles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {ROLES.map((role) => {
           const isSelected = selectedRole === role.id;
           return (
             <div 
               key={role.id}
               onClick={() => setSelectedRole(isSelected ? null : role.id)}
-              className={`border rounded-xl p-5 cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-brand-500 shadow-md bg-white' : 'hover:border-brand-300 hover:shadow-sm bg-white/60 dark:bg-slate-900/40'} ${role.color.replace('bg-', 'border-').split(' ')[0]}`}
+              className={`border rounded-xl p-5 cursor-pointer transition-all duration-300 relative overflow-hidden ${isSelected ? 'ring-2 ring-brand-500 shadow-lg bg-white dark:bg-slate-900 z-10 scale-[1.02]' : 'hover:border-brand-300 hover:shadow-md bg-white/80 dark:bg-slate-900/40'} ${role.color.replace('bg-', 'border-').split(' ')[0]}`}
             >
               <div className="flex items-start gap-4 mb-3">
-                <div className={`p-3 rounded-lg ${role.color}`}>
+                <div className={`p-3 rounded-lg shrink-0 ${role.color}`}>
                   <role.icon className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{role.name}</h3>
                   <p className="text-xs font-medium text-slate-500 mt-0.5 break-words">Tài khoản: {role.users}</p>
                 </div>
+                <div className="shrink-0 mt-2">
+                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isSelected ? 'rotate-180 text-brand-500' : ''}`} />
+                </div>
               </div>
               
-              <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 h-10 line-clamp-2">
+              <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
                 {role.description}
               </p>
 
-              <div className={`space-y-2 overflow-hidden transition-all duration-300 ${isSelected ? 'max-h-60 opacity-100 mt-4 border-t pt-4 border-slate-100' : 'max-h-0 opacity-0'}`}>
-                <div className="text-xs font-bold text-slate-400 uppercase mb-2">Tính năng chính</div>
-                <ul className="space-y-1.5">
-                  {role.modules.map((mod, idx) => (
-                    <li key={idx} className="text-sm flex items-start gap-2 text-slate-700">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-400 mt-1.5 shrink-0" />
-                      {mod}
-                    </li>
-                  ))}
-                </ul>
+              {/* Detailed Guide Section (Collapsible) */}
+              <div 
+                className={`grid transition-all duration-300 ease-in-out ${isSelected ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0'}`}
+              >
+                <div className="overflow-hidden">
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-5">
+                    {role.detailedGuide.map((guide, idx) => (
+                      <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-100 dark:border-slate-800">
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-brand-500" />
+                          {guide.task}
+                        </h4>
+                        <ul className="space-y-3">
+                          {guide.steps.map((step, stepIdx) => (
+                            <li key={stepIdx} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2.5">
+                              <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold mt-0.5">
+                                {stepIdx + 1}
+                              </span>
+                              <div className="leading-relaxed">
+                                {renderStepWithBadges(step)}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -149,7 +309,6 @@ export default function HuongDanVaiTroPage() {
         <h2 className="text-lg font-bold mb-6 text-slate-800 dark:text-slate-100">Luồng hoạt động chính (Workflow)</h2>
         
         <div className="relative">
-          {/* Connecting line (desktop) */}
           <div className="hidden md:block absolute top-1/2 left-8 right-8 h-1 bg-slate-100 dark:bg-slate-800 -translate-y-1/2 z-0 rounded-full" />
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
