@@ -420,7 +420,7 @@ export default function CongThucDinhMucPage() {
                 <span className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500">
                   <Scissors className="w-4 h-4" />
                 </span>
-                2. Gia công \u0026 Phụ liệu
+                2. Gia công may hoàn thiện đóng gói sản phẩm
               </h2>
 
               <div className="space-y-4">
@@ -466,7 +466,7 @@ export default function CongThucDinhMucPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Phí dịch vụ điều phối</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Phí dịch vụ điều phối sản xuất ERP</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -828,7 +828,7 @@ export default function CongThucDinhMucPage() {
                   <span className="font-medium text-slate-800">{formatMoney(parseFloat(viewingConfig.giaVatTu.replace(/,/g, "")) || 0)} đ</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600">Phí điều phối:</span>
+                  <span className="text-slate-600">Phí dịch vụ điều phối sản xuất ERP:</span>
                   <span className="font-medium text-slate-800">{formatMoney(parseFloat(viewingConfig.phiDieuPhoi?.replace(/,/g, "") || "0"))} đ</span>
                 </div>
                 
