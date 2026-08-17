@@ -59,6 +59,13 @@ export interface ProductionCompanyImage {
 
 export type CompanyDocumentType = "BUSINESS_LICENSE"|"TAX_REGISTRATION"|"BRAND_LICENSE"|"CERTIFICATE"|"FACTORY_LICENSE"|"OTHER";
 export interface ProductionCompanyDocument { id:string;documentType:CompanyDocumentType;title:string;documentNumber:string;issuer:string;issuedOn:string;expiresOn:string;notes:string;originalFilename:string;mimeType:string;fileBytes:number;reviewStatus:"PENDING"|"VERIFIED"|"REJECTED";signedUrl:string;createdAt:string }
+export type CompanyDocumentExtractionStatus = "PENDING"|"ACCEPTED"|"REJECTED";
+export interface ProductionCompanyDocumentExtraction {
+  id:string;documentId:string;status:CompanyDocumentExtractionStatus;provider:"GEMINI";model:string;
+  legalName:string;taxCode:string;documentNumber:string;issuer:string;issuedOn:string;expiresOn:string;
+  registeredAddress:string;legalRepresentative:string;summary:string;rawTextExcerpt:string;
+  confidence:number;createdAt:string;reviewedAt:string;
+}
 
 interface DiscoveredCompanyImage {
   imageUrl: string; sourcePageUrl: string; sourceTitle: string; caption: string;
@@ -264,4 +271,27 @@ export async function uploadCompanyDocument(profileId:string,input:{file:File;do
 export async function reviewCompanyDocument(id:string,status:"VERIFIED"|"REJECTED"):Promise<void>{
   if(!supabase)throw new Error("Chưa kết nối Supabase");
   const{error}=await supabase.from("production_company_documents").update({review_status:status}).eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("id",id);if(error)throw new Error(error.message);
+}
+
+export async function loadCompanyDocumentExtractions(profileId:string):Promise<ProductionCompanyDocumentExtraction[]>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const{data:documents,error:documentError}=await supabase.from("production_company_documents").select("id").eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("company_profile_id",profileId);
+  if(documentError)throw new Error(documentError.message);
+  const ids=(documents??[]).map(document=>String(document.id));if(!ids.length)return[];
+  const{data,error}=await supabase.from("production_company_document_extractions").select("*").eq("organization_id",PRODUCTION_ORGANIZATION_ID).in("document_id",ids).order("created_at",{ascending:false});
+  if(error)throw new Error(error.message);
+  return(data??[]).map(row=>({id:String(row.id),documentId:String(row.document_id),status:row.extraction_status as CompanyDocumentExtractionStatus,provider:"GEMINI",model:String(row.model),legalName:String(row.legal_name??""),taxCode:String(row.tax_code??""),documentNumber:String(row.document_number??""),issuer:String(row.issuer??""),issuedOn:String(row.issued_on??""),expiresOn:String(row.expires_on??""),registeredAddress:String(row.registered_address??""),legalRepresentative:String(row.legal_representative??""),summary:String(row.summary??""),rawTextExcerpt:String(row.raw_text_excerpt??""),confidence:Number(row.confidence??0),createdAt:String(row.created_at),reviewedAt:String(row.reviewed_at??"")}));
+}
+
+export async function extractCompanyDocument(id:string):Promise<void>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const token=(await supabase.auth.getSession()).data.session?.access_token;if(!token)throw new Error("Phiên đăng nhập đã hết hạn");
+  const response=await fetch(`/api/v1/sourcing/company-documents/${encodeURIComponent(id)}/extract`,{method:"POST",headers:{Authorization:`Bearer ${token}`}});
+  const payload=await response.json() as{error?:string};if(!response.ok)throw new Error(payload.error||"Không OCR được giấy tờ");
+}
+
+export async function reviewCompanyDocumentExtraction(id:string,status:"ACCEPTED"|"REJECTED"):Promise<void>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const{error}=await supabase.from("production_company_document_extractions").update({extraction_status:status}).eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("id",id).eq("extraction_status","PENDING");
+  if(error)throw new Error(error.message);
 }
