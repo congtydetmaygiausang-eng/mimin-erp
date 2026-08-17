@@ -49,6 +49,7 @@ import {
   MessageSquare,
   Webhook,
   Sliders,
+  Calculator,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -189,6 +190,7 @@ const NAV: NavItem[] = [
     // được đóng gói vào JS gửi xuống trình duyệt người dùng).
     subItems: [
       { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
+      { href: "/cong-thuc-dinh-muc", label: "Công thức định mức", icon: Calculator, iconColor: "text-teal-600", permModule: "lenh-cat" },
     ]
   },
   {
