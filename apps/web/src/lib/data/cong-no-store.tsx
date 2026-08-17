@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useCallback, ReactNode } from "react";
-import { PHAN_CONG as PHAN_CONG_DEFAULT, type PhanCongCongDoan, type CongDoanKey, type NguoiPhuTrach } from "./cong-no";
+import { type PhanCongCongDoan, type CongDoanKey, type NguoiPhuTrach } from "./cong-no";
 import { layDanhSachNguoiPT } from "./cong-no";
 import { useSupabaseSync, camelToSnake } from "@/lib/supabase/client";
 
@@ -42,12 +42,8 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
     { mapOut: phanCongToRow }
   );
 
-  // KHÔNG auto-seed PHAN_CONG_DEFAULT nữa.
-  // Trước đây: bảng rỗng -> setPhanCong(PHAN_CONG_DEFAULT), mà setPhanCong ghi
-  // cả lên Supabase -> 11 dòng hardcode trong code tự đổ vào DB production.
-  // Trước giờ việc này âm thầm fail vì lỗi nguoi_ma NOT NULL; sau khi sửa lỗi
-  // đó nó sẽ ghi thật. Dữ liệu thật phải do người dùng nhập hoặc import có
-  // chủ đích, không để code tự seed. Dùng `reset()` nếu cần nạp lại mẫu.
+  // KHÔNG auto-seed dữ liệu mẫu nữa. Dữ liệu thật phải do người dùng nhập
+  // hoặc import có chủ đích, không để code tự seed lên Supabase.
 
 
   const themThanhToan = useCallback((id: string, soTien: number, ghiChu?: string) => {
@@ -84,7 +80,7 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
   }, [setPhanCong]);
 
   const reset = useCallback(() => {
-    setPhanCong(PHAN_CONG_DEFAULT);
+    setPhanCong([]);
   }, [setPhanCong]);
 
   const layTheoLenh = useCallback(

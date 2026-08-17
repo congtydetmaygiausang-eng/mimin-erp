@@ -353,14 +353,11 @@ function SoDoCanvasInner() {
     };
 
     const onPaste = async (e: ClipboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      const dangGo = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
-      if (dangGo) return; // Nếu đang gõ text thì cho phép paste text bình thường
-
       // Xử lý dán file ảnh (copy từ màn hình/thư mục)
+      const files: File[] = Array.from(e.clipboardData?.files || []);
       const items = e.clipboardData?.items;
-      const files: File[] = [];
-      if (items) {
+      
+      if (files.length === 0 && items) {
         for (let i = 0; i < items.length; i++) {
           if (items[i].type.startsWith("image/")) {
             const file = items[i].getAsFile();
@@ -369,8 +366,12 @@ function SoDoCanvasInner() {
         }
       }
 
+      // DEBUG
+      // toast.info(`Dán: ${files.length} file ảnh, có chữ không: ${!!e.clipboardData?.getData("text")}`);
+
       if (files.length > 0) {
         e.preventDefault();
+        e.stopPropagation();
         luuLichSu();
         
         // Kiểm tra có node ảnh được chọn không -> nếu có chỉ 1 ảnh thì paste vào node đó
@@ -418,6 +419,11 @@ function SoDoCanvasInner() {
         return;
       }
 
+      // Nếu không có file ảnh, thì check dangGo để quyết định xử lý text
+      const el = e.target as HTMLElement | null;
+      const dangGo = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      if (dangGo) return; // Đang ở trong ô gõ chữ thì để mặc định paste chữ
+
       // Nếu không có file ảnh, kiểm tra xem có chữ hoặc link không
       const text = e.clipboardData?.getData("text");
       if (text) {
@@ -446,10 +452,10 @@ function SoDoCanvasInner() {
     };
 
     window.addEventListener("keydown", onKey);
-    window.addEventListener("paste", onPaste);
+    document.addEventListener("paste", onPaste, { capture: true });
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("paste", onPaste);
+      document.removeEventListener("paste", onPaste, { capture: true });
     };
   });
 

@@ -63,15 +63,15 @@ export default function CongNoPage() {
           </button>
           <button
             onClick={() => {
-              if (confirm("Reset về data mặc định?")) {
+              if (confirm("Xoá toàn bộ phân công công nợ? Không thể hoàn tác.")) {
                 reset();
-                toast.success("Đã reset data");
+                toast.success("Đã xoá toàn bộ phân công");
               }
             }}
             className="btn-ghost text-xs"
-            title="Reset data"
+            title="Xoá toàn bộ dữ liệu phân công"
           >
-            Reset
+            Xoá tất cả
           </button>
         </div>
       </div>
