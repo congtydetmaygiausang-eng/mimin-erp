@@ -52,6 +52,7 @@ interface LearningProfile { approvedCount: number; rejectedCount: number; prefer
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number; persistentHits: number; staleFallbacks: number; providerRequests: number }
 interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
 interface PostProcessedCandidates { candidates: Candidate[]; breakdown: LocationBreakdown; excludedByStrictMode: number }
+interface LocationQualityAudit { runId: string; algorithmVersion: "L7-HAVERSINE-1"; grade: "HIGH" | "MEDIUM" | "LOW"; coordinateCoveragePercent: number; staleFallbackUsed: boolean; warnings: string[]; evaluatedAt: string }
 
 function normalized(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(cong ty|tnhh|co phan|cp|mot thanh vien|mtv|san xuat|thuong mai|dich vu)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
@@ -789,6 +790,20 @@ export async function POST(req: NextRequest) {
     const geocoding = await geocodeCandidates(enrichment.candidates, location);
     const processed = postProcessCandidates(geocoding.candidates, query, location, center, radiusKm, locationMode, learning);
     const candidates = processed.candidates;
+    const measurableCount = processed.candidates.filter((candidate) => candidate.locationStatus === "INSIDE" || candidate.locationStatus === "OUTSIDE").length;
+    const coordinateCoveragePercent = processed.candidates.length ? Math.round(measurableCount / processed.candidates.length * 100) : 0;
+    const staleFallbackUsed = geocoding.summary.staleFallbacks > 0;
+    const qualityWarnings = [
+      coordinateCoveragePercent < 70 ? `Chỉ ${coordinateCoveragePercent}% kết quả có tọa độ đủ điều kiện tính khoảng cách` : "",
+      processed.breakdown.conflict > 0 ? `${processed.breakdown.conflict} hồ sơ có mâu thuẫn địa chỉ/tọa độ` : "",
+      staleFallbackUsed ? `${geocoding.summary.staleFallbacks} hồ sơ đang dùng cache tọa độ cũ do dịch vụ bản đồ tạm lỗi` : "",
+      center.validationConfidence === "MEDIUM" ? "Tâm tìm kiếm có độ tin cậy trung bình" : "",
+    ].filter(Boolean);
+    const locationQuality: LocationQualityAudit = {
+      runId: crypto.randomUUID(), algorithmVersion: "L7-HAVERSINE-1",
+      grade: qualityWarnings.length === 0 && coordinateCoveragePercent >= 90 ? "HIGH" : coordinateCoveragePercent >= 60 && processed.breakdown.conflict === 0 ? "MEDIUM" : "LOW",
+      coordinateCoveragePercent, staleFallbackUsed, warnings: qualityWarnings, evaluatedAt: new Date().toISOString(),
+    };
     const diagnostics = {
       collectedSources: source.items.length,
       normalizedCandidates: normalizedCandidates.length,
@@ -803,6 +818,7 @@ export async function POST(req: NextRequest) {
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
       geocoding: geocoding.summary,
+      locationQuality,
       providers: source.providerHealth,
     };
     return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, diagnostics, candidates });

@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 19:40 | Codex | mang-luoi-san-xuat | L7: mã truy vết từng lượt, phiên bản thuật toán, chấm chất lượng phủ tọa độ và cảnh báo cache cũ/mâu thuẫn | codex/l7-location-quality-observability | 🟢 DONE |
 | 2026-08-17 19:15 | Codex | mang-luoi-san-xuat | L6: cache geocode Supabase 7 ngày, fallback bản cũ khi Nominatim lỗi và ưu tiên nguồn tọa độ mạnh hơn | codex/l6-geocode-cache-fallback | 🟢 DONE |
 | 2026-08-17 18:50 | Codex | mang-luoi-san-xuat | L5: nhãn màu và số km, Google Maps, xem bằng chứng Haversine, xác minh lại có đối chiếu đúng doanh nghiệp | codex/l5-location-verification-ui | 🟢 DONE |
 | 2026-08-17 18:25 | Codex | mang-luoi-san-xuat | L4: ưu tiên gần theo nhóm và km tăng dần; chế độ nghiêm ngặt chỉ giữ INSIDE, báo số hồ sơ bị loại và tách khu vực kết quả | codex/l4-location-mode-ranking | 🟢 DONE |
