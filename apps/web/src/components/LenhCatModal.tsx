@@ -1546,17 +1546,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
 
             {/* Grid Thẻ Màu Sắc */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 gap-6 mb-6">
               {dsMau.map((mau, idx) => {
                 const isBo = loaiSP?.toLowerCase().includes("bo");
                 return (
-                <div key={idx} className={`bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row gap-4 ${isBo ? "md:col-span-2" : ""}`}>
+                <div key={idx} className="bg-white rounded-lg shadow-md p-5 flex flex-col md:flex-row gap-6 border border-slate-200/60">
                   
-                  {/* Left: Image - chiều rộng cố định, KHÔNG scale theo % container để card
-                      không bị phình cao khi modal full màn hình. Ảnh Áo/Quần đặt CẠNH NHAU
-                      (không xếp chồng dọc) để cột ảnh không kéo card cao lên thành cả vùng lớn. */}
-                  <div className="w-full sm:w-64 sm:shrink-0 flex flex-col gap-2">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Màu {idx + 1}</div>
+                  {/* Left: Image */}
+                  <div className="w-full md:w-[320px] shrink-0 flex flex-col gap-3">
+                    <div className="text-sm font-bold text-[#2B4C3E] uppercase tracking-wide border-b border-slate-100 pb-1">Màu {idx + 1}</div>
                     <input
                       type="text"
                       className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold"
@@ -1664,8 +1662,37 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                               <span className={`shrink-0 px-1 rounded text-white font-bold ${p.apDungCho === "quan" ? "bg-rose-500" : "bg-[#2B4C3E]"}`}>
                                 {p.apDungCho === "quan" ? "Q" : "A"}
                               </span>
-                              <span className="flex-1 truncate font-medium text-slate-700">{p.tenPL || "(chưa chọn vật tư)"}</span>
-                              <span className="shrink-0 text-slate-500">{p.soLuong}{p.dvt}</span>
+                              <select 
+                                className="flex-1 font-medium text-slate-700 bg-transparent border-b border-slate-300 outline-none hover:border-[#2B4C3E] focus:border-[#2B4C3E] w-24 text-[11px]"
+                                value={p.maPL}
+                                onChange={e => {
+                                  const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
+                                  if(v) {
+                                    setDsPhuLieu(prev => {
+                                      const next = [...prev];
+                                      next[i] = { ...next[i], maPL: v.maVT, tenPL: v.tenVT, donGia: v.donGia || 0, dvt: v.dvt || "cái" };
+                                      return next;
+                                    });
+                                  }
+                                }}
+                              >
+                                {KHO_VAT_TU.map(v => <option key={v.maVT} value={v.maVT}>{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
+                              </select>
+                              <div className="flex items-center shrink-0">
+                                <input 
+                                  type="number" 
+                                  className="w-10 text-right text-slate-600 bg-transparent border-b border-slate-300 outline-none hover:border-[#2B4C3E] focus:border-[#2B4C3E] text-[11px]" 
+                                  value={p.soLuong} 
+                                  onChange={e => {
+                                    setDsPhuLieu(prev => {
+                                      const next = [...prev];
+                                      next[i] = { ...next[i], soLuong: parseInt(e.target.value) || 0 };
+                                      return next;
+                                    });
+                                  }} 
+                                />
+                                <span className="text-slate-500 ml-0.5">{p.dvt}</span>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => setDsPhuLieu(prev => prev.filter((_, pi) => pi !== i))}
@@ -1680,9 +1707,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     })()}
                   </div>
 
-                  {/* Right: Details & Sizes - lấp phần còn lại nhưng chặn max-width để input
-                      không bị kéo giãn quá to trên màn hình rất rộng */}
-                  <div className="flex-1 min-w-0 max-w-3xl flex flex-col gap-3 justify-center">
+                    {/* Right: Details & Sizes */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-4">
                     <div className="flex gap-2">
                       <div className="w-full">
                         <label className="text-[10px] font-bold text-slate-500 mb-1 block">Mã SKU Biến Thể</label>
@@ -2197,41 +2223,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
           </div>
           
-          {/* KHỐI 4: NHẬP THỰC TẾ (Chỉ hiện khi Đang cắt hoặc Hoàn thành) */}
-          {(trangThai === "DangCat" || trangThai === "HoanThanh" || trangThai === "ChuyenTiep") && (
-            <div className="bg-slate-800 text-white p-5 rounded-lg border border-slate-700 shadow-sm">
-              <h2 className="text-xl font-bold text-white mb-6 uppercase tracking-wide">THÔNG SỐ THỰC TẾ SAU CẮT</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-sm font-bold text-slate-300 block mb-1">Tổng SL Thực Tế Cắt Được</label>
-                  <input 
-                    type="number" 
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 text-white rounded font-bold focus:ring-2 focus:ring-emerald-500" 
-                    value={tongSLThucTe || ""} 
-                    onChange={e => setTongSLThucTe(parseInt(e.target.value) || "")} 
-                    placeholder="VD: 505 cái"
-                  />
-                </div>
-                <div>
-                   <label className="text-sm font-bold text-slate-300 block mb-1">Chi tiết hao hụt từng màu</label>
-                   <div className="space-y-2">
-                     {dsMau.map((mau, idx) => (
-                       <div key={idx} className="flex gap-2 items-center bg-slate-700/50 p-2 rounded">
-                         <div className="w-24 text-xs text-white truncate font-bold">{mau.ten || `Màu ${idx+1}`}</div>
-                         <input type="number" placeholder="Kg thực tế..." className="w-1/3 px-2 py-1 text-sm bg-slate-900 text-white border border-slate-600 rounded" value={mau.kgThucTe || ""} onChange={e => { const n = [...dsMau]; n[idx].kgThucTe = parseFloat(e.target.value); setDsMau(n); }} />
-                         <input type="number" placeholder="% Hao hụt..." className="w-1/3 px-2 py-1 text-sm bg-slate-900 text-white border border-slate-600 rounded" value={mau.haoHut || ""} onChange={e => { const n = [...dsMau]; n[idx].haoHut = parseFloat(e.target.value); setDsMau(n); }} />
-                       </div>
-                     ))}
-                   </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* KHỐI 4: NHẬP THỰC TẾ - Đã chuyển sang kênh của tổ cắt */}
 
         </div>
 
-        {/* Footer Buttons: trai = tien ich (dong/in/chia se), phai = hanh dong luu theo 1 trong 3 muc do - Chuyen khau la CTA chinh */}
+        {/* Footer Buttons */}
         <div className="shrink-0 bg-white px-6 py-4 flex items-center justify-between border-t border-slate-200 rounded-b-xl relative gap-4">
+          {/* Left Actions */}
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
@@ -2239,19 +2237,30 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             >
               Đóng
             </button>
+            
             <span className="w-px h-6 bg-slate-200 mx-1" />
+            
+            {/* Tam cap 3: hanh dong nhe nhat - luu tam, chua can du dieu kien */}
+            <button
+              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
+              onClick={() => handleSave("Nhap")}
+            >
+              Lưu nháp
+            </button>
+            
             <button
               onClick={handleInPhieuGiaCong}
               className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2"
             >
-              <Printer className="w-4 h-4" /> In phiếu gia công
+              <Printer className="w-4 h-4" /> In phiếu
             </button>
+            
             <div className="relative">
               <button
                 onClick={() => setZaloPickerOpen(v => !v)}
                 className="px-4 py-2 rounded-lg font-semibold text-sm text-sky-600 bg-transparent border border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center gap-2"
               >
-                <Share2 className="w-4 h-4" /> Chia sẻ Zalo
+                <Share2 className="w-4 h-4" /> Zalo
               </button>
               {zaloPickerOpen && (
                 <div className="absolute bottom-full mb-2 left-0 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
@@ -2275,14 +2284,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               )}
             </div>
           </div>
+          
+          {/* Right Actions */}
           <div className="flex items-center gap-3">
-            {/* Tam cap 3: hanh dong nhe nhat - luu tam, chua can du dieu kien */}
-            <button
-              className="px-5 py-2.5 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
-              onClick={() => handleSave("Nhap")}
-            >
-              Lưu nháp
-            </button>
 
             {/* Tam cap 2: xac nhan lenh da du dieu kien */}
             <button
