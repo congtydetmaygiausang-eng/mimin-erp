@@ -29,6 +29,8 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-17 11:45 | Codex | mang-luoi-san-xuat | H6: nhật ký kiểm toán bất biến cho hồ sơ, hình ảnh, giấy tờ và kết quả OCR; hiển thị dòng thời gian chỉ đọc | codex/h6-company-audit-history | 🟢 DONE |
+| 2026-08-17 11:30 | Codex | mang-luoi-san-xuat | H5: Gemini OCR giấy tờ riêng tư, lưu đề xuất và bắt buộc người dùng duyệt trước khi áp dụng | codex/h5-document-ocr-review | 🟢 DONE |
 | 2026-08-16 17:30 | Codex | mang-luoi-san-xuat | Giai đoạn 1: 4 danh mục, hồ sơ nhiều vai trò, CRUD, chống trùng, Supabase RLS | codex/production-network-foundation | 🟢 DONE |
 | 2026-08-01 01:55 | Mavis | ai-tools | Fix Vercel AI SDK v7 compat: parameters → inputSchema, bỏ _options param. Build 89 routes OK. (Antigravity pause - Mavis fix) | feature/ai-agents | 🟢 DONE |
 | 2026-08-01 01:50 | Mavis | workflow | Antigravity PAUSE: user yêu cầu Mavis làm 1 mình, Mavis tự review+fix code Antigravity | - | ⏸️ PAUSE |

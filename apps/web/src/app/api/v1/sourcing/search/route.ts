@@ -11,7 +11,7 @@ const ROLE_SEARCH_TERMS: Record<string, string[]> = {
   PACKAGING_FINISHER: ["đơn vị ủi đóng gói", "hoàn thiện sản phẩm may", "dịch vụ đóng gói may mặc"],
 };
 
-interface SourceResult { title: string; url: string; content: string; latitude?: number; longitude?: number }
+interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number }
 interface SearchCenter { latitude: number; longitude: number; label: string; source: "GPS" | "ADDRESS"; accuracy?: number }
 interface Candidate { legalName: string; address: string; province: string; district: string; phone: string; email: string; taxCode: string; website: string; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: Array<{ url: string; title: string }>; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN"; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
@@ -75,7 +75,7 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const existing = clusters.find((candidate) => sameEntity(candidate, item));
     const source = { url: item.sourceUrl, title: item.sourceTitle };
     if (!existing) {
-      clusters.push({ ...item, sources: [source] });
+      clusters.push({ ...item, sources: item.sources?.length ? item.sources : [source] });
       continue;
     }
     existing.legalName = mergeText(existing.legalName, item.legalName);
@@ -91,7 +91,9 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     existing.capabilities = Array.from(new Set([...existing.capabilities, ...item.capabilities])).slice(0, 20);
     existing.confidence = Math.max(existing.confidence, item.confidence);
     existing.verifiedFields = Array.from(new Set([...(existing.verifiedFields ?? []), ...(item.verifiedFields ?? [])]));
-    if (!existing.sources?.some((entry) => entry.url === source.url)) existing.sources?.push(source);
+    for (const entry of item.sources?.length ? item.sources : [source]) {
+      if (!existing.sources?.some((current) => current.url === entry.url)) existing.sources?.push(entry);
+    }
   }
 
   const queryTokens = tokenSet(query);
@@ -266,6 +268,72 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
   return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
 }
 
+const DIRECTORY_DOMAINS = ["masothue.com", "yellowpages.vn", "trangvangvietnam.com", "facebook.com", "linkedin.com", "google.com", "maps.google.com"];
+
+function firstVietnamPhone(value: string): string {
+  const matches = value.match(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/g) ?? [];
+  return matches.map((item) => item.trim()).find((item) => {
+    const valueDigits = digits(item);
+    return valueDigits.length >= 9 && valueDigits.length <= 12;
+  }) ?? "";
+}
+
+function extractContactEvidence(candidate: Candidate, sources: SourceResult[]): Candidate {
+  const relevant = sources.filter((source) => {
+    const haystack = tokenSet(`${source.title} ${source.content} ${source.rawContent ?? ""}`);
+    return overlapRatio(tokenSet(candidate.legalName), haystack) >= 0.55 || (candidate.taxCode && digits(`${source.content} ${source.rawContent ?? ""}`).includes(digits(candidate.taxCode)));
+  });
+  if (!relevant.length) return candidate;
+  const evidence = relevant.map((source) => `${source.title}\n${source.content}\n${source.rawContent ?? ""}\n${source.url}`).join("\n").slice(0, 60_000);
+  const email = candidate.email || evidence.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() || "";
+  const phone = candidate.phone || firstVietnamPhone(evidence);
+  const taxCode = candidate.taxCode || evidence.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] || "";
+  const explicitWebsite = evidence.match(/(?:website|web|trang web)\s*[:#-]?\s*((?:https?:\/\/|www\.)[^\s,;<>]+)/i)?.[1]?.replace(/[.)\]]+$/, "") || "";
+  const officialSource = relevant.find((source) => {
+    const domain = domainOf(source.url);
+    return domain && !DIRECTORY_DOMAINS.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
+  });
+  const website = candidate.website || explicitWebsite || officialSource?.url || "";
+  const address = candidate.address || evidence.match(/(?:địa chỉ(?: thuế)?|trụ sở(?: chính)?)\s*[:#-]?\s*([^\n|]{10,180})/i)?.[1]?.trim() || "";
+  const newlyVerified = [phone ? "phone" : "", email ? "email" : "", taxCode ? "taxCode" : "", website ? "website" : "", address ? "address" : ""].filter(Boolean);
+  const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), ...newlyVerified]));
+  const sourceLinks = Array.from(new Map([
+    ...(candidate.sources ?? [{ url: candidate.sourceUrl, title: candidate.sourceTitle }]),
+    ...relevant.map((source) => ({ url: source.url, title: source.title })),
+  ].map((source) => [source.url, source])).values()).slice(0, 8);
+  return { ...candidate, address, phone, email, taxCode, website, sources: sourceLinks, verifiedFields, confidence: Math.min(100, candidate.confidence + Math.min(10, newlyVerified.length * 2)), lastVerifiedAt: new Date().toISOString() };
+}
+
+async function enrichCandidatesWithContacts(candidates: Candidate[], location: string): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
+  const key = process.env.TAVILY_API_KEY;
+  if (!key) return { candidates, sourceCount: 0, enrichedCount: 0 };
+  const targets = candidates.filter((item) => !item.phone || !item.email || !item.website || !item.taxCode || !item.address).slice(0, 10);
+  const batches = await Promise.allSettled(targets.map(async (candidate) => {
+    const identity = [candidate.legalName, candidate.taxCode, candidate.district || candidate.province || location].filter(Boolean).join(" ");
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key, query: `\"${identity}\" điện thoại email website mã số thuế địa chỉ`, search_depth: "advanced", max_results: 5, chunks_per_source: 3, include_raw_content: "text", include_answer: false, country: "vietnam" }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!response.ok) throw new Error(`Tavily enrichment HTTP ${response.status}`);
+    const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string; raw_content?: string }> };
+    const sources = (data.results ?? []).map((item) => ({ title: item.title ?? "", url: item.url ?? "", content: item.content ?? "", rawContent: item.raw_content ?? "" })).filter((item) => item.url);
+    return { candidate, sources };
+  }));
+  const enrichments = batches.flatMap((batch) => batch.status === "fulfilled" ? [batch.value] : []);
+  const byCandidate = new Map(enrichments.map((entry) => [entry.candidate, entry.sources]));
+  let enrichedCount = 0;
+  const enriched = candidates.map((candidate) => {
+    const sources = byCandidate.get(candidate);
+    if (!sources?.length) return candidate;
+    const updated = extractContactEvidence(candidate, sources);
+    if ([updated.phone, updated.email, updated.website, updated.taxCode, updated.address].filter(Boolean).length > [candidate.phone, candidate.email, candidate.website, candidate.taxCode, candidate.address].filter(Boolean).length) enrichedCount += 1;
+    return updated;
+  });
+  return { candidates: enriched, sourceCount: enrichments.reduce((total, entry) => total + entry.sources.length, 0), enrichedCount };
+}
+
 async function requestGeminiSearch(key: string, model: string, query: string, location: string, queries: string[], timeoutMs: number): Promise<SourceResult[]> {
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
@@ -433,7 +501,8 @@ export async function POST(req: NextRequest) {
     const searchQueries = await buildQueryPlan(query, location, body.role, learning);
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
-    const candidates = postProcessCandidates(normalizedCandidates, query, location, center, radiusKm, locationMode, learning);
+    const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
+    const candidates = postProcessCandidates(enrichment.candidates, query, location, center, radiusKm, locationMode, learning);
     const diagnostics = {
       collectedSources: source.items.length,
       normalizedCandidates: normalizedCandidates.length,
@@ -442,6 +511,8 @@ export async function POST(req: NextRequest) {
       partial: candidates.filter((item) => item.verificationStatus === "PARTIAL").length,
       insideRadius: candidates.filter((item) => item.locationStatus === "INSIDE").length,
       unknownCoordinates: candidates.filter((item) => item.locationStatus === "UNKNOWN").length,
+      enrichmentSources: enrichment.sourceCount,
+      enrichedCandidates: enrichment.enrichedCount,
       strictLocationFallback: locationMode === "STRICT" && candidates.length > 0 && candidates.every((item) => item.locationStatus === "UNKNOWN"),
       providers: source.providerHealth,
     };
