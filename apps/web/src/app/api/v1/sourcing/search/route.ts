@@ -10,6 +10,17 @@ const ROLE_SEARCH_TERMS: Record<string, string[]> = {
   MATERIAL_SUPPLIER: ["nhà cung cấp nguyên phụ liệu", "nhà sản xuất vải", "công ty dệt vải"],
   PACKAGING_FINISHER: ["đơn vị ủi đóng gói", "hoàn thiện sản phẩm may", "dịch vụ đóng gói may mặc"],
 };
+const BLOCKED_SOURCE_DOMAINS = [
+  "muaban.net", "vieclamtot.com", "chotot.com", "vieclam24h.vn", "topcv.vn",
+  "careerbuilder.vn", "vietnamworks.com", "jobsgo.vn", "timviec365.vn", "indeed.com",
+  "glints.com", "rongbay.com", "raovat.net", "pinterest.com", "youtube.com", "tiktok.com",
+] as const;
+const ROLE_EVIDENCE_TERMS: Record<string, string[]> = {
+  CUSTOMER: ["thương hiệu", "thời trang", "đặt may", "đồng phục", "bán lẻ"],
+  SATELLITE_PROCESSOR: ["xưởng may", "gia công", "may mặc", "cắt", "thêu", "in"],
+  MATERIAL_SUPPLIER: ["vải", "dệt", "sợi", "nhuộm", "cotton", "thun", "phụ liệu", "nguyên liệu", "bo", "cúc", "chỉ", "dây kéo"],
+  PACKAGING_FINISHER: ["ủi", "đóng gói", "hoàn thiện", "bao bì", "kiểm hàng"],
+};
 
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number }
 interface SearchCenter {
@@ -62,6 +73,15 @@ function domainOf(value: string): string {
   if (!value) return "";
   try { return new URL(value.startsWith("http") ? value : `https://${value}`).hostname.replace(/^www\./, ""); }
   catch { return ""; }
+}
+
+function blockedSource(value: string): boolean {
+  const domain = domainOf(value);
+  return BLOCKED_SOURCE_DOMAINS.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
+}
+
+function noiseListing(value: string): boolean {
+  return /\b(?:tuyển dụng|tìm việc|việc làm|lương cao|cần tuyển|ứng tuyển|nhận may tại nhà|rao vặt|mua bán|thanh lý|đăng tin)\b/i.test(value);
 }
 
 function digits(value: string): string { return value.replace(/\D/g, ""); }
@@ -340,7 +360,19 @@ function postalAddress(value: string): string {
 function isGenericCompanyName(value: string): boolean {
   const name = value.trim();
   if (!name || /^(?:trang chủ|home|giới thiệu|liên hệ)$/i.test(name)) return true;
-  return /\b(?:là gì|ưu điểm|nhược điểm|các mẫu|top \d+|danh sách \d+|ở đâu|giá bao nhiêu)\b/i.test(name);
+  return /\b(?:là gì|ưu điểm|nhược điểm|các mẫu|top \d+|danh sách \d+|ở đâu|giá bao nhiêu)\b/i.test(name) || noiseListing(name);
+}
+
+function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: string): boolean {
+  if (blockedSource(candidate.sourceUrl) || isGenericCompanyName(candidate.legalName) || noiseListing(candidate.sourceTitle)) return false;
+  const identityText = `${candidate.legalName} ${candidate.capabilities.join(" ")} ${candidate.sourceTitle}`;
+  const roleRelevant = (ROLE_EVIDENCE_TERMS[role] ?? []).some((term) => normalized(identityText).includes(normalized(term)));
+  const queryRelevant = overlapRatio(tokenSet(query), tokenSet(identityText)) > 0;
+  if (!roleRelevant || !queryRelevant) return false;
+  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
+  const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
+  const officialWebsite = Boolean(candidate.website && !blockedSource(candidate.website));
+  return identityEvidence >= 2 || Boolean(candidate.taxCode) || (businessName && identityEvidence >= 1) || (officialWebsite && identityEvidence >= 1);
 }
 
 function candidateGeocodeQueries(candidate: Candidate, searchLocation: string): string[] {
@@ -729,7 +761,7 @@ async function searchSources(query: string, location: string, queries: string[])
     ...(tavily.status === "fulfilled" ? tavily.value : []),
     ...(gemini.status === "fulfilled" ? gemini.value : []),
   ];
-  const unique = Array.from(new Map(sources.map((item) => [item.url, item])).values());
+  const unique = Array.from(new Map(sources.filter((item) => !blockedSource(item.url) && !noiseListing(`${item.title} ${item.content}`)).map((item) => [item.url, item])).values());
   const providers = [
     tavily.status === "fulfilled" && tavily.value.length ? "TAVILY" : "",
     gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
@@ -816,7 +848,8 @@ export async function POST(req: NextRequest) {
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
     const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
-    const geocoding = await geocodeCandidates(enrichment.candidates, location);
+    const businessCandidates = enrichment.candidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query));
+    const geocoding = await geocodeCandidates(businessCandidates, location);
     const processed = postProcessCandidates(geocoding.candidates, query, location, center, radiusKm, locationMode, learning);
     const candidates = processed.candidates;
     const measurableCount = processed.candidates.filter((candidate) => candidate.locationStatus === "INSIDE" || candidate.locationStatus === "OUTSIDE").length;
@@ -846,6 +879,7 @@ export async function POST(req: NextRequest) {
       strictExcluded: processed.excludedByStrictMode,
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
+      rejectedNoiseCandidates: enrichment.candidates.length - businessCandidates.length,
       geocoding: geocoding.summary,
       locationQuality,
       providers: source.providerHealth,
