@@ -84,6 +84,31 @@ export interface ProductionCompanyManualCheck {
   checkedAt: string;
 }
 
+export interface ProductionCompanyTrustAssessment {
+  id: string;
+  formulaVersion: string;
+  score: number;
+  baseScore: number;
+  penaltyTotal: number;
+  coverage: number;
+  label: string;
+  riskLevel: "NONE" | "MEDIUM" | "HIGH" | "CRITICAL";
+  factors: Array<{key:string;label:string;score:number;maximum:number;reasons:string[]}>;
+  penalties: Array<{code:string;label:string;points:number;severity:string;evidence:string[]}>;
+  evidenceSummary: Record<string,number>;
+  note: string;
+  assessedBy: string;
+  assessedAt: string;
+}
+
+export interface CompanyTrustSnapshotInput {
+  formulaVersion:string;score:number;baseScore:number;penaltyTotal:number;coverage:number;label:string;
+  riskLevel:ProductionCompanyTrustAssessment["riskLevel"];
+  factors:ProductionCompanyTrustAssessment["factors"];
+  penalties:ProductionCompanyTrustAssessment["penalties"];
+  evidenceSummary:Record<string,number>;note:string;
+}
+
 interface DiscoveredCompanyImage {
   imageUrl: string; sourcePageUrl: string; sourceTitle: string; caption: string;
   category: CompanyImageCategory; matchScore: number;
@@ -332,5 +357,20 @@ export async function updateCompanyManualCheck(profileId:string,checkType:Compan
   const userId=(await supabase.auth.getUser()).data.user?.id;
   if(!userId)throw new Error("Phiên đăng nhập đã hết hạn");
   const{error}=await supabase.from("production_company_manual_checks").upsert({organization_id:PRODUCTION_ORGANIZATION_ID,company_profile_id:profileId,check_type:checkType,check_status:status,checked_by:userId},{onConflict:"company_profile_id,check_type"});
+  if(error)throw new Error(error.message);
+}
+
+export async function loadCompanyTrustAssessments(profileId:string):Promise<ProductionCompanyTrustAssessment[]>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const{data,error}=await supabase.from("production_company_trust_assessments").select("id,formula_version,score,base_score,penalty_total,coverage,assessment_label,risk_level,factors,penalties,evidence_summary,note,assessed_by,assessed_at").eq("organization_id",PRODUCTION_ORGANIZATION_ID).eq("company_profile_id",profileId).order("assessed_at",{ascending:false}).order("id",{ascending:false}).limit(50);
+  if(error)throw new Error(error.message);
+  return(data??[]).map(row=>({id:String(row.id),formulaVersion:String(row.formula_version),score:Number(row.score),baseScore:Number(row.base_score),penaltyTotal:Number(row.penalty_total),coverage:Number(row.coverage),label:String(row.assessment_label),riskLevel:row.risk_level as ProductionCompanyTrustAssessment["riskLevel"],factors:(row.factors??[]) as ProductionCompanyTrustAssessment["factors"],penalties:(row.penalties??[]) as ProductionCompanyTrustAssessment["penalties"],evidenceSummary:(row.evidence_summary??{}) as Record<string,number>,note:String(row.note??""),assessedBy:String(row.assessed_by??""),assessedAt:String(row.assessed_at)}));
+}
+
+export async function createCompanyTrustAssessment(profileId:string,input:CompanyTrustSnapshotInput):Promise<void>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const userId=(await supabase.auth.getUser()).data.user?.id;
+  if(!userId)throw new Error("Phiên đăng nhập đã hết hạn");
+  const{error}=await supabase.from("production_company_trust_assessments").insert({organization_id:PRODUCTION_ORGANIZATION_ID,company_profile_id:profileId,formula_version:input.formulaVersion,score:input.score,base_score:input.baseScore,penalty_total:input.penaltyTotal,coverage:input.coverage,assessment_label:input.label,risk_level:input.riskLevel,factors:input.factors,penalties:input.penalties,evidence_summary:input.evidenceSummary,note:input.note.trim(),assessed_by:userId});
   if(error)throw new Error(error.message);
 }
