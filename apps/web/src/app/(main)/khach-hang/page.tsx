@@ -78,6 +78,16 @@ export default function KhachHangPage() {
       if (ok) toast.success(`Đã cập nhật: ${kh.ten}`);
       else toast.error("Lỗi khi cập nhật");
     } else {
+      // Chặn CỨNG khi mã KH bị trùng (khác với trùng tên/SĐT bên dưới - trùng mã
+      // luôn luôn sai, không có trường hợp "có thể là cùng người"). themKhachHang
+      // ghi bằng upsert theo mã KH nên trùng mã sẽ XÓA MẤT hồ sơ + công nợ của
+      // khách hàng đang giữ mã đó. Đã kiểm chứng thực tế: mã mặc định trước đây
+      // tính bằng list.length+1 và bị trùng ngay với 1 khách hàng có thật.
+      if (list.some((x) => x.maKH === kh.maKH)) {
+        toast.error(`Mã KH "${kh.maKH}" đã có người dùng. Vui lòng đổi sang mã khác trước khi lưu.`);
+        return;
+      }
+
       // Chặn tạo trùng khách. Công nợ được cộng theo tên khách trên đơn, nên 2 hồ
       // sơ cùng tên (khác hoa/thường, thừa dấu cách) sẽ làm công nợ bị chia lẻ,
       // không nhìn ra tổng nợ thật của người đó.
@@ -349,14 +359,27 @@ export default function KhachHangPage() {
         </EntityCardList>
       )}
 
-      {showForm && <KHForm mode={showForm.mode} kh={showForm.kh} existingCount={list.length} onClose={() => setShowForm(null)} onSave={handleSave} />}
+      {showForm && <KHForm mode={showForm.mode} kh={showForm.kh} dsMaDaCo={list.map((x) => x.maKH)} onClose={() => setShowForm(null)} onSave={handleSave} />}
     </div>
   );
 }
 
-function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "edit"; kh?: KhachHangUI; existingCount: number; onClose: () => void; onSave: (k: KhachHangUI) => void }) {
+function KHForm({ mode, kh, dsMaDaCo, onClose, onSave }: { mode: "add" | "edit"; kh?: KhachHangUI; dsMaDaCo: string[]; onClose: () => void; onSave: (k: KhachHangUI) => void }) {
+  // Mã KH mặc định dùng SỐ LỚN NHẤT hiện có + 1, KHÔNG dùng tổng số khách hàng.
+  // Trước đây dùng `KH-${list.length + 1}` - đã kiểm chứng thực tế trên production:
+  // với 727 khách hàng, mã sinh ra "KH-728" lại TRÙNG với 1 khách hàng có thật
+  // (do có khoảng trống trong dãy mã từ trước). Vì themKhachHang ghi bằng upsert
+  // theo mã KH, lưu đè sẽ XÓA MẤT hồ sơ + công nợ của khách hàng đó.
+  const maKHMoi = useMemo(() => {
+    const maxSo = dsMaDaCo.reduce((max, ma) => {
+      const n = parseInt((ma || "").replace(/^KH-/, ""), 10);
+      return isNaN(n) ? max : Math.max(max, n);
+    }, 0);
+    return `KH-${String(maxSo + 1).padStart(3, "0")}`;
+  }, [dsMaDaCo]);
+
   const [form, setForm] = useState<KhachHangUI>(kh || {
-    maKH: `KH-${(existingCount + 1).toString().padStart(3, "0")}`,
+    maKH: maKHMoi,
     ten: "",
     sdt: "",
     email: "",
