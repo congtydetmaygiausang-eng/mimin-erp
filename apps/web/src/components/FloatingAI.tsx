@@ -1,25 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   MessageSquare, X, Send, Sparkles, Bot, User, Loader2,
-  Package, BarChart3, TrendingUp, AlertTriangle, FileText,
-  Minimize2, Maximize2, ArrowUpRight, Warehouse
+  Minimize2, Maximize2, Warehouse, ArrowUpRight
 } from "lucide-react";
 import { toast } from "sonner";
-import { getQuickPrompts, detectContext, getContextLabel } from "@/lib/ai-quick-prompts";
-
-// Icon mapper cho quick prompts (emoji → lucide icon)
-const ICON_MAP: Record<string, any> = {
-  "📦": Package, "📥": ArrowUpRight, "⚠️": AlertTriangle, "🔍": FileText,
-  "✂️": Warehouse, "📋": FileText, "⏱️": TrendingUp, "🚨": AlertTriangle,
-  "🪡": Warehouse, "💰": TrendingUp, "📊": BarChart3,
-  "👥": User, "📅": FileText, "💸": TrendingUp, "📝": FileText,
-  "🛒": Package, "📞": User, "🚚": Warehouse,
-  "📈": TrendingUp, "💵": TrendingUp, "🔄": ArrowUpRight,
-  "🏭": Warehouse,
-};
 
 interface ChatMessage {
   id: string;
@@ -42,17 +29,6 @@ export function FloatingAI() {
   const pathname = usePathname();
 
   const isKhoRoute = pathname?.includes("-kho") || pathname?.includes("trang-chu-kho");
-
-  // Quick prompts theo context (kho, sx, gia-cong, nhan-su, ke-toan, ...)
-  const quickPrompts = useMemo(() => {
-    const list = getQuickPrompts(pathname);
-    return list.map((p) => ({
-      ...p,
-      iconComp: ICON_MAP[p.icon] || Sparkles,
-    }));
-  }, [pathname]);
-
-  const contextLabel = useMemo(() => getContextLabel(detectContext(pathname)), [pathname]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -171,10 +147,6 @@ export function FloatingAI() {
     e.preventDefault();
     sendMessage(input);
     setInput("");
-  };
-
-  const sendQuickPrompt = (query: string) => {
-    sendMessage(query);
   };
 
   const botName = isKhoRoute ? "Minimax AI (Kho)" : "MIMIN AI";
@@ -324,31 +296,6 @@ export function FloatingAI() {
                 </div>
               )}
             </div>
-
-            {/* Quick Prompts */}
-            {messages.length === 0 && (
-              <div className="px-4 pb-3 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex flex-wrap gap-2">
-                  {quickPrompts.map((p) => {
-                    const Icon = p.iconComp;
-                    return (
-                      <button
-                        key={p.label}
-                        onClick={() => sendQuickPrompt(p.query)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition shadow-sm border ${
-                          isKhoRoute 
-                            ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 border-emerald-200/50" 
-                            : "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20 border-violet-200/50"
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* Input */}
             <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
