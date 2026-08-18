@@ -1,6 +1,7 @@
 "use client";
 
-import { Heart, MessageCircle, Send, Trash2, Pin, X } from "lucide-react";
+import { useState } from "react";
+import { Heart, MessageCircle, Send, Trash2, Pin, X, Maximize2 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 
 export type AnhBaiDang = { id: string; dataUrl: string };
@@ -72,6 +73,7 @@ export function PostCard({
 }) {
   const daThich = likes.some((l) => l.created_by_name === currentUserName);
   const laChuBai = post.created_by_name === currentUserName;
+  const [phongToVideo, setPhongToVideo] = useState(false);
 
   return (
     <div className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl p-4 space-y-3">
@@ -94,7 +96,16 @@ export function PostCard({
       {post.noi_dung && <p className="text-sm whitespace-pre-wrap">{post.noi_dung}</p>}
 
       {post.video_url && (
-        <video src={post.video_url} controls className="w-full rounded-lg bg-black max-h-[420px]" />
+        <div className="relative">
+          <video src={post.video_url} controls className="w-full rounded-lg bg-black max-h-[420px]" />
+          <button
+            onClick={() => setPhongToVideo(true)}
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition"
+            title="Xem to"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {!post.video_url && post.hinh_anh?.length > 0 && (
@@ -151,6 +162,18 @@ export function PostCard({
               <Send className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+      )}
+
+      {phongToVideo && post.video_url && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90" onClick={() => setPhongToVideo(false)}>
+          <video src={post.video_url} controls autoPlay className="max-w-full max-h-[90vh] rounded-lg" onClick={(e) => e.stopPropagation()} />
+          <button
+            onClick={() => setPhongToVideo(false)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
       )}
     </div>
