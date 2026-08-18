@@ -116,6 +116,7 @@ export const TRANG_THAI_CD_STYLE: Record<TrangThaiCongDoan, { bg: string; text: 
 export type CatChiTietTrangThai = "cho_lam" | "hoan_thanh" | "khong_can";
 
 export type CatChiTiet = {
+  nhanLieu: CatChiTietTrangThai;
   traiVai: CatChiTietTrangThai;
   catHang: CatChiTietTrangThai;
   epNhan: CatChiTietTrangThai;
@@ -265,7 +266,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-AO-TRON",
     ten: "Áo tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -278,7 +279,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-AO-TRU",
     ten: "Áo trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -292,7 +293,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-BO-TRON",
     ten: "Bộ tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -306,7 +307,7 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-BO-TRU",
     ten: "Bộ trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
@@ -624,6 +625,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 thanhTien: data.thanhTien ?? pc.thanhTien,
                 conLai: data.conLai ?? pc.conLai,
                 catChiTiet: data.catChiTiet ?? pc.catChiTiet,
+                chiTietMau: data.chiTietMau ?? pc.chiTietMau,
                 ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
                   ? new Date().toISOString().slice(0, 10)
                   : pc.ngayNhanViec,
