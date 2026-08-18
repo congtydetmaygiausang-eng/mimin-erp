@@ -192,7 +192,7 @@ export function FloatingAI() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-[90] group"
+          className="fixed bottom-20 right-6 md:bottom-6 z-[90] group"
           aria-label="Mở AI Assistant"
         >
           {/* Pulse rings */}
@@ -219,7 +219,7 @@ export function FloatingAI() {
         <div className={`fixed z-[95] transition-all duration-300 ${
           expanded
             ? "inset-0 sm:inset-4"
-            : "bottom-4 right-4 w-[360px] sm:w-[400px] h-[560px] sm:h-[620px]"
+            : "bottom-20 right-4 md:bottom-4 w-[360px] sm:w-[400px] h-[560px] sm:h-[620px]"
         }`}>
           {/* Backdrop on mobile expanded */}
           {expanded && <div className="absolute inset-0 bg-black/30 backdrop-blur-sm sm:rounded-3xl" onClick={() => setExpanded(false)} />}
