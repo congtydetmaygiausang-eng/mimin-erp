@@ -96,6 +96,7 @@ function SupplierResultCard({ item, opening, verifying, onViewDetails, onVerifyL
 export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [manualKeyword, setManualKeyword] = useState("");
   const [locationType, setLocationType] = useState<"DISTRICT" | "GPS">("DISTRICT");
   const [location, setLocation] = useState("");
   const [items, setItems] = useState<DiscoveryCandidate[]>([]);
@@ -114,8 +115,12 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [aiProvider, setAiProvider] = useState("AI_IMPORT");
   const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
   const [cacheReady,setCacheReady]=useState(false);
-  const refresh = useCallback(async () => { try { setItems(await loadDiscoveryCandidates()); } catch { toast.error("Không tải được ứng viên"); } }, []);
+  const refresh = useCallback(async () => { try { setItems(await loadDiscoveryCandidates()); } catch (error) { console.error("Không tải được ứng viên:", error); } }, []);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    setQuery("");
+    setManualKeyword("");
+  }, [role]);
   useEffect(()=>{
     try{
       const raw=sessionStorage.getItem(SEARCH_CACHE_KEY);
@@ -158,12 +163,13 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   }, []);
 
   const search = async (silent = false): Promise<DirectSearchCandidate[]|null> => {
-    if (!query.trim() || !location.trim()) { toast.error("Nhập nội dung và khu vực cần tìm"); return null; }
+    const combinedQuery = [query, manualKeyword].filter(Boolean).join(", ");
+    if (!combinedQuery.trim() || !location.trim()) { toast.error("Nhập nội dung và khu vực cần tìm"); return null; }
     setLoading(true);
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
-      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:query.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
+      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:combinedQuery.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
       const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:SearchDiagnostics;candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       const candidates = data.candidates??[];
@@ -222,7 +228,17 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     {diagnostics?.locationQuality&&<div className={`rounded-lg border px-3 py-2 text-xs ${diagnostics.locationQuality.grade==="HIGH"?"border-emerald-300 bg-emerald-50 text-emerald-900":diagnostics.locationQuality.grade==="MEDIUM"?"border-amber-300 bg-amber-50 text-amber-900":"border-red-300 bg-red-50 text-red-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><b>Chất lượng định vị: {diagnostics.locationQuality.grade==="HIGH"?"Cao":diagnostics.locationQuality.grade==="MEDIUM"?"Trung bình":"Thấp"} · phủ tọa độ {diagnostics.locationQuality.coordinateCoveragePercent}%</b><span className="font-mono text-[10px]">Mã lượt: {diagnostics.locationQuality.runId.slice(0,8)} · {diagnostics.locationQuality.algorithmVersion}</span></div>{diagnostics.locationQuality.warnings.length>0&&<ul className="mt-1 list-disc pl-4">{diagnostics.locationQuality.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul>}</div>}
     {diagnostics&&<div className="card p-4 space-y-3"><div className="flex flex-wrap gap-2">{diagnostics.providers.map(item=><span key={item.name} className="text-xs rounded-full border px-3 py-1" style={{borderColor:"var(--border)"}}>{item.name}: {item.status==="OK"?`${item.count} nguồn`:item.status==="EMPTY"?"không có kết quả":item.status==="DISABLED"?"chưa cấu hình":`tạm lỗi${item.code?` (${item.code})`:""}`}</span>)}{typeof diagnostics.enrichmentSources==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Làm giàu: {diagnostics.enrichmentSources} nguồn · bổ sung {diagnostics.enrichedCandidates??0} hồ sơ</span>}{Boolean(diagnostics.rejectedNoiseCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-amber-300 text-amber-700">Đã loại {diagnostics.rejectedNoiseCandidates} kết quả rao vặt/không đủ hồ sơ công ty</span>}{diagnostics.geocoding&&<span className="text-xs rounded-full border px-3 py-1 border-sky-300 text-sky-700">Định vị: xác minh {diagnostics.geocoding.verified+diagnostics.geocoding.retainedFromSource}/{diagnostics.geocoding.attempted+diagnostics.geocoding.retainedFromSource} hồ sơ</span>}</div>{diagnostics.strictLocationFallback&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Chưa có hồ sơ nào đủ tọa độ để xác nhận trong {radiusKm} km. Hệ thống đang hiển thị hồ sơ chưa có tọa độ để anh kiểm tra; các hồ sơ này không được tính là nằm trong bán kính.</div>}<div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center"><div><b>{diagnostics.collectedSources}</b><p className="text-[11px] opacity-60">Nguồn thu thập</p></div><div><b>{diagnostics.finalCandidates}</b><p className="text-[11px] opacity-60">Hồ sơ sau gộp</p></div><div><b>{diagnostics.verified}</b><p className="text-[11px] opacity-60">Đối chiếu nhiều nguồn</p></div><div><b>{diagnostics.partial}</b><p className="text-[11px] opacity-60">Đối chiếu một phần</p></div><div><b>{diagnostics.insideRadius}</b><p className="text-[11px] opacity-60">Trong bán kính</p></div><div><b>{diagnostics.unknownCoordinates}</b><p className="text-[11px] opacity-60">Thiếu tọa độ</p></div></div></div>}
     <div className="card p-5 space-y-4 relative z-20">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><label className="text-xs font-medium relative block">Cần tìm<MultiSelectDropdown options={MANG_LUOI_DANH_MUC[role]} selected={query ? query.split(", ") : []} onChange={(arr) => setQuery(arr.join(", "))} placeholder="Nhấn để chọn..." /></label></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label className="text-xs font-medium">Năng lực cần tìm
+          <select className="input mt-1" value={query} onChange={(e) => setQuery(e.target.value)}>
+            <option value="">-- Chọn 1 năng lực --</option>
+            {MANG_LUOI_DANH_MUC[role].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+        </label>
+        <label className="text-xs font-medium">Hoặc nhập từ khóa khác
+          <input className="input mt-1" value={manualKeyword} onChange={(e) => setManualKeyword(e.target.value)} placeholder="VD: Xưởng dệt kim cao cấp..." />
+        </label>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         <label className="text-xs font-medium md:col-span-2">
           Vị trí trung tâm

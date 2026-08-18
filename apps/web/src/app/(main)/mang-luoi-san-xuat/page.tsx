@@ -412,12 +412,17 @@ export default function MangLuoiSanXuatPage() {
           const Icon = meta.icon;
           const active = activeRole === role;
           return (
-            <button
-              key={role}
-              onClick={() => setActiveRole(role)}
-              className={`text-left rounded-2xl border bg-gradient-to-br p-4 transition shadow-sm ${meta.cardClass} ${active ? "ring-2 ring-brand-500 shadow-md" : "hover:-translate-y-0.5"}`}
-            >
-              <div className="flex items-start justify-between gap-3">
+              <button
+                key={role}
+                onClick={() => {
+                  setActiveRole(role);
+                  setCapabilityFilter([]);
+                  setSearch("");
+                }}
+                className={`text-left rounded-2xl border bg-gradient-to-br p-4 transition relative ${meta.cardClass} ${active ? "ring-4 ring-brand-600 shadow-xl scale-[1.02] brightness-105" : "shadow-sm opacity-60 hover:opacity-100 grayscale-[0.3] hover:grayscale-0"}`}
+              >
+                {active && <CheckCircle2 className="absolute top-4 right-4 w-6 h-6 text-brand-600 animate-in fade-in zoom-in" />}
+                <div className="flex items-start justify-between gap-3 pr-8">
                 <div className={`w-11 h-11 rounded-xl bg-white/70 flex items-center justify-center ${meta.iconClass}`}>
                   <Icon className="w-6 h-6" />
                 </div>
