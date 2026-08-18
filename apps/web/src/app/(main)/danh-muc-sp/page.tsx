@@ -78,11 +78,13 @@ export default function DanhMucSanPhamPage() {
   };
 
   // Tạo 1 đơn hàng chỉ với đúng SP này (biến thể đầu tiên) - mở OrderFormModal
-  // có sẵn để chọn thêm màu/size/khách hàng/thanh toán nếu cần.
+  // ở chế độ Bán sỉ (nhập số lượng theo bảng size × màu) - bán lẻ thì đi qua
+  // Giỏ hàng, bán sỉ thì tạo đơn hàng thẳng.
   const openQuickOrder = (sp: SanPham) => {
     const variants = generateVariants(sp.id, sp.dsMau || [], sp.bangSize);
     const first = variants[0];
     const order = createEmptyOrder();
+    order.loaiDonHang = "ban-si";
     order.items = [
       createOrderItemFromVariant({
         spId: sp.id,
