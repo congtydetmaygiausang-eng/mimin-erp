@@ -259,7 +259,7 @@ export default function UiDongGoiPage() {
                             const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
                             return {
                               id: `SP-${Date.now()}-${idx}`,
-                              maSP: lc.id,
+                              maSP: lc.maSP || lc.id,
                               tenSP: lc.tenSP,
                               phanLoai: "Áo",
                               mau: m.ten,

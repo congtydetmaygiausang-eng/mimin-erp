@@ -224,7 +224,9 @@ export default function KhoThanhPhamPage() {
       toast.error("Không tìm thấy dữ liệu màu từ lệnh cắt gốc để tách");
       return;
     }
-    if (!confirm(`Tách "${group.maSP}" thành ${lc.dsMau.length} card theo màu (dựa trên lệnh cắt gốc ${lc.id})?`)) return;
+    const maSPMoi = lc.maSP || group.maSP;
+    const doiMaMsg = maSPMoi !== group.maSP ? ` Mã SP sẽ đổi từ "${group.maSP}" thành "${maSPMoi}" (mã lệnh cắt vs mã sản phẩm thật).` : "";
+    if (!confirm(`Tách "${group.maSP}" thành ${lc.dsMau.length} card theo màu (dựa trên lệnh cắt gốc ${lc.id}).${doiMaMsg}`)) return;
 
     const dongGoiPCs = (lc.phanCong || []).filter(
       (pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")
@@ -239,7 +241,7 @@ export default function KhoThanhPhamPage() {
       const sl = ct?.soLuongDat ?? old?.soLuong ?? Math.round((lc.tongSL || 0) / lc.dsMau.length);
       return {
         id: old?.id || `SP-${Date.now()}-${idx}`,
-        maSP: group.maSP,
+        maSP: lc.maSP || group.maSP,
         tenSP: group.tenSP,
         phanLoai: old?.phanLoai || "Áo",
         mau: m.ten,
@@ -262,7 +264,7 @@ export default function KhoThanhPhamPage() {
 
     const otherItems = dsSanPham.filter((s) => s.maSP !== group.maSP);
     update([...newSPs, ...otherItems]);
-    toast.success(`Đã tách ${group.maSP} thành ${newSPs.length} card theo màu`);
+    toast.success(`Đã tách ${maSPMoi} thành ${newSPs.length} card theo màu`);
   };
 
   // Chuyển 1 nhóm sản phẩm (theo maSP) từ Kho thành phẩm sang Danh mục sản phẩm để bán.
@@ -367,7 +369,7 @@ export default function KhoThanhPhamPage() {
             if (sl > 0) {
               newSps.push({
                 id: `TP${Date.now().toString().slice(-6)}${Math.floor(Math.random()*1000)}`,
-                maSP: lc.id, // Or extract from lc
+                maSP: lc.maSP || lc.id,
                 tenSP: lc.ten || `Sản phẩm từ ${lc.id}`,
                 phanLoai: "Áo",
                 mau: tenMau,

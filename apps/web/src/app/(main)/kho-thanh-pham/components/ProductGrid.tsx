@@ -47,8 +47,9 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
         const lsx = group.items[0]?.lsx || group.maSP;
         const lc = dsLenhCat.find((l) => l.id === lsx);
         const soMauThat = lc?.dsMau?.length || 0;
-        // Chỉ hiện nút tách khi có lệnh cắt gốc nhiều màu nhưng kho đang gộp thành ít card hơn số màu thật
-        const canRebuild = soMauThat > 0 && group.items.length < soMauThat;
+        const maSPSai = !!lc?.maSP && lc.maSP !== group.maSP;
+        // Hiện nút tách khi: đang gộp ít card hơn số màu thật, HOẶC mã SP đang dùng nhầm mã lệnh cắt thay vì mã sản phẩm thật
+        const canRebuild = soMauThat > 0 && (group.items.length < soMauThat || maSPSai);
 
         return (
           <div key={group.maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -103,9 +104,13 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
                 <button
                   onClick={() => onRebuildFromLC(group)}
                   className="px-3 py-2 bg-sky-100 hover:bg-sky-200 rounded-xl text-sky-700 transition-all text-sm font-bold flex items-center gap-1.5"
-                  title={`Đang gộp ${group.items.length}/${soMauThat} màu - tách lại thành ${soMauThat} card riêng theo màu từ lệnh cắt gốc`}
+                  title={
+                    maSPSai
+                      ? `Đang dùng nhầm mã lệnh cắt "${group.maSP}" - mã sản phẩm thật là "${lc.maSP}". Bấm để đồng bộ lại.`
+                      : `Đang gộp ${group.items.length}/${soMauThat} màu - tách lại thành ${soMauThat} card riêng theo màu từ lệnh cắt gốc`
+                  }
                 >
-                  <RefreshCw className="w-4 h-4" /> Tách theo màu ({group.items.length}/{soMauThat})
+                  <RefreshCw className="w-4 h-4" /> {maSPSai ? `Sửa mã SP → ${lc.maSP}` : `Tách theo màu (${group.items.length}/${soMauThat})`}
                 </button>
               )}
               <button onClick={() => onDangBan(group)} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Đăng bán vào Danh mục sản phẩm">
