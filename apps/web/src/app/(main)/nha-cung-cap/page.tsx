@@ -32,7 +32,6 @@ import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityC
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { useNhaCungCap, type NhaCungCapModel } from "@/lib/data/nha-cung-cap-store";
 import { useKho } from "@/lib/data/kho-store";
-import { DANH_MUC_VAT_TU_CHI_TIET } from "@/lib/data/danh-muc-vat-tu";
 
 // Map UI type to Store type for compatibility
 type NCC = {
@@ -53,7 +52,6 @@ type NCC = {
   hanMucNo?: number;
   // === 2026-08-08 - Facebook URL ===
   facebookUrl?: string;
-  danhMucChiTiet?: string[]; // Phụ liệu chi tiết
 };
 
 function mapToUI(db: NhaCungCapModel, index: number): NCC {
@@ -73,7 +71,6 @@ function mapToUI(db: NhaCungCapModel, index: number): NCC {
     avatar: "",
     hanMucNo: db.han_muc || 0, // P1 - 2026-08-07
     facebookUrl: db.facebook_url || "", // 2026-08-08
-    danhMucChiTiet: db.danh_muc_chi_tiet || [],
   };
 }
 
@@ -93,7 +90,6 @@ function mapToDB(ui: NCC): NhaCungCapModel {
     rating: ui.rating,
     han_muc: ui.hanMucNo || 0, // P1 - 2026-08-07
     facebook_url: ui.facebookUrl || "", // 2026-08-08
-    danh_muc_chi_tiet: ui.danhMucChiTiet || [],
   };
 }
 
@@ -443,7 +439,6 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
     ghiChu: "",
     avatar: "",
     facebookUrl: "", // 2026-08-08
-    danhMucChiTiet: [],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -524,42 +519,6 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
                 <option>Cúc</option>
                 <option>Khác</option>
               </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Danh mục vật tư chi tiết cung cấp</label>
-            <div className="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 max-h-[250px] overflow-y-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
-                {DANH_MUC_VAT_TU_CHI_TIET.map((nhom) => (
-                  <div key={nhom.id} className="space-y-2">
-                    <div className="text-xs font-bold text-amber-600 dark:text-amber-500 border-b border-slate-200 dark:border-slate-700 pb-1">{nhom.tenNhom}</div>
-                    <div className="space-y-1.5 pl-1">
-                      {nhom.danhMuc.map((item) => {
-                        const isChecked = form.danhMucChiTiet?.includes(item.id) || false;
-                        return (
-                          <label key={item.id} className="flex items-start gap-2 cursor-pointer group">
-                            <input
-                              type="checkbox"
-                              className="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                const newDanh = new Set(form.danhMucChiTiet || []);
-                                if (e.target.checked) newDanh.add(item.id);
-                                else newDanh.delete(item.id);
-                                setForm({ ...form, danhMucChiTiet: Array.from(newDanh) });
-                              }}
-                            />
-                            <span className="text-xs text-slate-700 dark:text-slate-300 group-hover:text-amber-600 transition-colors leading-tight">
-                              {item.ten}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
 
