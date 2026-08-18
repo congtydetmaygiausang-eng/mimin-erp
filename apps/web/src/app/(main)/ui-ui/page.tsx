@@ -1,20 +1,18 @@
 "use client";
 
-// ============ UI ỦI (/ui-ui) ============  
+// ============ UI ỦI (/ui-ui) ============
 // Nhận hàng từ Khuy nút (hoặc QC đạt), Ủi phẳng, giao Đóng gói
 
 import { useState } from "react";
 import { CheckCircle2, Wind, Package, Box } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
-import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 export default function UiUiPage() {
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
-  const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
-  const [lyDoLoi, setLyDoLoi] = useState<Record<string, string>>({});
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
@@ -46,40 +44,56 @@ export default function UiUiPage() {
     return mayPCs.length > 0 && mayPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
   });
 
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
+
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     toast.success(`💨 Nhận hàng ủi: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
   function handleXong(lc: any, pc: any) {
-    const key = `${lc.id}-${pc.id}`;
-    const chiTiet = mauInputs[key] || {};
-    
+    const chiTietMau = pc.chiTietMau || [];
+
     let slDat = 0;
     let slLoi = 0;
-    const chiTietMau = [];
-    
-    if (Object.keys(chiTiet).length > 0) {
-      for (const m of Object.values(chiTiet)) {
+
+    if (chiTietMau.length > 0) {
+      for (const m of chiTietMau) {
         slDat += (m.soLuongDat || 0);
         slLoi += (m.soLuongLoi || 0);
-        chiTietMau.push(m);
       }
     } else {
       slDat = pc.soLuong || lc.tongSL;
       slLoi = 0;
     }
-    
-    const lyDo = lyDoLoi[key] ?? "";
-    
+
     const thanhTienDat = slDat * (pc.donGia || 0);
 
-    capNhatCongDoan(lc.id, pc.id, { 
-      trangThaiCD: "hoan_thanh", 
+    capNhatCongDoan(lc.id, pc.id, {
+      trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
-      lyDoLoi: lyDo,
-      chiTietMau,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -137,27 +151,22 @@ export default function UiUiPage() {
             const isLCDone = lc.trangThai === "HoanThanh";
 
             return (
-              <div key={lc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                {/* Header */}
-                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-sky-50/50">
-                  <div>
-                    <span className="font-black text-teal-700 font-mono">{lc.id}</span>
-                    <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
-                    <span className="ml-2 text-xs text-slate-400">{lc.tongSL?.toLocaleString()} SP</span>
-                  </div>
-                  <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
-                </div>
-
-                {/* Danh sách màu */}
-                <div className="pt-2 bg-slate-50 border-b border-slate-100">
-                  <LenhCatColorCards lc={lc} />
-                </div>
-
-                <div className="p-5 space-y-3 bg-white">
+              <LenhCatCardV2
+                key={lc.id}
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                renderStatus={
+                  isLCDone ? (
+                    <span className="text-xs bg-emerald-500 text-white font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
+                    </span>
+                  ) : null
+                }
+              >
+                <div className="space-y-3">
                   {htPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
-                    const key = `${lc.id}-${pc.id}`;
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -170,17 +179,6 @@ export default function UiUiPage() {
                             {TRANG_THAI_CD_LABELS[tt]}
                           </span>
                         </div>
-
-                        {tt === "dang_lam" && (
-                          <KhaiBaoSoLuongTheoMau
-                            dsMau={lc.dsMau || []}
-                            value={mauInputs[key] || {}}
-                            onChange={(val) => setMauInputs(p => ({ ...p, [key]: val }))}
-                            showLyDoLoi={true}
-                            lyDoLoi={lyDoLoi[key]}
-                            onLyDoLoiChange={(val) => setLyDoLoi(p => ({ ...p, [key]: val }))}
-                          />
-                        )}
 
                         <div className="flex gap-2">
                           {tt === "cho_giao" && (
@@ -202,7 +200,7 @@ export default function UiUiPage() {
                               </div>
                               {(pc.soLuongLoi > 0) && (
                                 <div className="text-xs text-rose-600 font-semibold pl-6">
-                                  ⚠️ Lỗi: {pc.soLuongLoi} SP - {pc.lyDoLoi}
+                                  ⚠️ Lỗi: {pc.soLuongLoi} SP
                                 </div>
                               )}
                             </div>
@@ -246,10 +244,22 @@ export default function UiUiPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </LenhCatCardV2>
             );
           })}
         </div>
+      )}
+
+      {/* Modal nhập liệu cho màu */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );

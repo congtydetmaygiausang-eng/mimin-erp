@@ -4,93 +4,104 @@
 // Nhận hàng từ Tổ May, kiểm tra SL đạt/lỗi, quyết định Đạt → HT hay Lỗi → Trả may
 
 import { useState } from "react";
-import { ShieldCheck, CheckCircle2, XCircle, AlertTriangle, ClipboardCheck, ArrowRight } from "lucide-react";
+import { ShieldCheck, CheckCircle2, XCircle, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat } from "@/lib/data/lenh-cat-store";
-import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
-import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
-import { useSession } from "@/components/session-provider";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 
 const LOAI_LOI_OPTIONS = [
-  "Lỗi rập / kích thước", "Lỗi đường may", "Lỗi vải (lủng, rách)", 
+  "Lỗi rập / kích thước", "Lỗi đường may", "Lỗi vải (lủng, rách)",
   "Ô nhiễm / bẩn", "Cúc / khóa lỗi", "Đường in bị lem", "Thêu lỗi",
 ];
 
 export default function UiQCPage() {
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const { dsLenhCat, capNhatCongDoan } = useLenhCat();
-  const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
   const [loaiLoi, setLoaiLoi] = useState<Record<string, string>>({});
   const [khauLoi, setKhauLoi] = useState<Record<string, string>>({});
   const [ghiChu, setGhiChu] = useState<Record<string, string>>({});
 
-  // Lấy LC có công đoạn may đã xong, chờ QC
-  const lcChoQC = dsLenhCat.filter(lc =>
-    lc.phanCong?.some((pc: any) =>
-      (pc.id === "mayAo" || pc.id === "mayQuan" || pc.tenCongDoan?.toLowerCase().includes("may")) &&
-      pc.trangThaiCD === "cho_qc"
-    )
-  );
-
-  const lcQCData = lcChoQC.map(lc => {
-    const mayPCs = lc.phanCong?.filter((pc: any) =>
+  function getMayPC(lc: any) {
+    return lc.phanCong?.filter((pc: any) =>
       (pc.id === "mayAo" || pc.id === "mayQuan" || pc.tenCongDoan?.toLowerCase().includes("may")) &&
       pc.trangThaiCD === "cho_qc"
     ) || [];
-    return { lc, mayPCs };
-  });
+  }
+
+  // Lấy LC có công đoạn may đã xong, chờ QC
+  const lcChoQC = dsLenhCat.filter(lc => getMayPC(lc).length > 0);
 
   // KPI
   const tongSPChoKiem = lcChoQC.reduce((s, lc) => s + (lc.tongSL || 0), 0);
 
-  function handleDat(lc: any) {
-    const chiTiet = mauInputs[lc.id] || {};
-    let slD = 0;
-    let slL = 0;
-    const chiTietMau: any[] = [];
-    
-    if (Object.keys(chiTiet).length > 0) {
-      for (const m of Object.values(chiTiet)) {
-        slD += (m.soLuongDat || 0);
-        slL += (m.soLuongLoi || 0);
-        chiTietMau.push(m);
-      }
-    } else {
-      slD = lc.tongSL;
-      slL = 0;
-    }
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
 
-    // Cập nhật tất cả công đoạn may thành hoan_thanh (QC pass)
-    lc.phanCong?.filter((pc: any) =>
-      pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "cho_qc"
-    ).forEach((pc: any) => {
-      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: slD, soLuongLoi: slL, chiTietMau });
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  function handleDat(lc: any) {
+    let tongD = 0;
+    let tongL = 0;
+
+    getMayPC(lc).forEach((pc: any) => {
+      const chiTietMau = pc.chiTietMau || [];
+      let slD = 0;
+      let slL = 0;
+      if (chiTietMau.length > 0) {
+        for (const m of chiTietMau) {
+          slD += (m.soLuongDat || 0);
+          slL += (m.soLuongLoi || 0);
+        }
+      } else {
+        slD = pc.soLuong || lc.tongSL;
+        slL = 0;
+      }
+      tongD += slD;
+      tongL += slL;
+      // Cập nhật công đoạn may thành hoan_thanh (QC pass)
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: slD, soLuongLoi: slL });
     });
+
     // Không cần tự động kích hoạt Khuy/Ủi vì chúng tự hiển thị khi May hoàn thành
-    toast.success(`✅ QC đạt: ${lc.id} – ${slD} SP đạt${slL > 0 ? `, ${slL} SP lỗi` : ""}`);
+    toast.success(`✅ QC đạt: ${lc.id} – ${tongD} SP đạt${tongL > 0 ? `, ${tongL} SP lỗi` : ""}`);
   }
 
   function handleTraLai(lc: any) {
-    const chiTiet = mauInputs[lc.id] || {};
-    let slL = 0;
-    const chiTietMau: any[] = [];
-    
-    if (Object.keys(chiTiet).length > 0) {
-      for (const m of Object.values(chiTiet)) {
-        slL += (m.soLuongLoi || 0);
-        chiTietMau.push(m);
-      }
-    }
-
     const ll = loaiLoi[lc.id] ?? "";
     const kl = khauLoi[lc.id] ?? "";
     const gc = ghiChu[lc.id] ?? "";
-    
-    lc.phanCong?.filter((pc: any) =>
-      pc.tenCongDoan?.toLowerCase().includes("may") && pc.trangThaiCD === "cho_qc"
-    ).forEach((pc: any) => {
-      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi", soLuongLoi: slL, lyDoLoi: `${kl ? `[${kl}] ` : ""}${ll} ${gc}`.trim(), chiTietMau });
+
+    let tongL = 0;
+
+    getMayPC(lc).forEach((pc: any) => {
+      const chiTietMau = pc.chiTietMau || [];
+      let slL = 0;
+      for (const m of chiTietMau) {
+        slL += (m.soLuongLoi || 0);
+      }
+      tongL += slL;
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi", soLuongLoi: slL, lyDoLoi: `${kl ? `[${kl}] ` : ""}${ll} ${gc}`.trim() });
     });
-    toast.error(`⚠️ Trả lại: ${lc.id} – ${slL} SP lỗi${ll ? ` (${ll})` : ""}${kl ? ` (Do ${kl})` : ""}`);
+
+    toast.error(`⚠️ Trả lại: ${lc.id} – ${tongL} SP lỗi${ll ? ` (${ll})` : ""}${kl ? ` (Do ${kl})` : ""}`);
   }
 
   return (
@@ -132,91 +143,91 @@ export default function UiQCPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {lcQCData.map(({ lc, mayPCs }) => (
-            <div key={lc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              {/* Header */}
-              <div className="px-5 py-4 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between">
-                <div>
-                  <span className="font-black text-teal-700 font-mono">{lc.id}</span>
-                  <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-black text-slate-700">{lc.tongSL?.toLocaleString()} SP</div>
-                  <DateDisplay value={lc.hanHoanThanh} format="dd/MM" />
-                </div>
-              </div>
+          {lcChoQC.map(lc => {
+            const mayPCs = getMayPC(lc);
 
-              {/* Danh sách màu */}
-              <div className="pt-2 bg-slate-50 border-b border-slate-100">
-                <LenhCatColorCards lc={lc} />
-              </div>
+            return (
+              <LenhCatCardV2
+                key={lc.id}
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+              >
+                <div className="space-y-4">
+                  {/* Công đoạn may đã xong, chờ QC */}
+                  <div className="flex flex-wrap gap-2">
+                    {mayPCs.map((pc: any) => {
+                      const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
+                      const style = TRANG_THAI_CD_STYLE[tt];
+                      return (
+                        <span key={pc.id} className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full font-bold border ${style.bg} ${style.text} border-current/20`}>
+                          <CheckCircle2 className="w-3 h-3" /> {pc.tenCongDoan}: {TRANG_THAI_CD_LABELS[tt]}
+                        </span>
+                      );
+                    })}
+                  </div>
 
-              <div className="p-5 space-y-4 bg-white">
-                {/* Công đoạn may đã xong */}
-                <div className="flex flex-wrap gap-2">
-                  {mayPCs.map((pc: any) => (
-                    <span key={pc.id} className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-bold border border-emerald-200">
-                      <CheckCircle2 className="w-3 h-3" /> {pc.tenCongDoan}: {pc.soLuongHoanThanh || lc.tongSL} SP
-                    </span>
-                  ))}
-                </div>
-
-                {/* Form kiểm tra */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-inner">
-                  <KhaiBaoSoLuongTheoMau
-                    dsMau={lc.dsMau || []}
-                    value={mauInputs[lc.id] || {}}
-                    onChange={(val) => setMauInputs(p => ({ ...p, [lc.id]: val }))}
-                    showLyDoLoi={false}
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                    <div>
-                      <div className="text-xs font-bold text-slate-600 mb-1">Loại lỗi (nếu có):</div>
-                      <select value={loaiLoi[lc.id] ?? ""}
-                        onChange={e => setLoaiLoi(p => ({ ...p, [lc.id]: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-slate-400">
-                        <option value="">-- Chọn loại lỗi --</option>
-                        {LOAI_LOI_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                      </select>
+                  {/* Form kiểm tra */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-inner">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs font-bold text-slate-600 mb-1">Loại lỗi (nếu có):</div>
+                        <select value={loaiLoi[lc.id] ?? ""}
+                          onChange={e => setLoaiLoi(p => ({ ...p, [lc.id]: e.target.value }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-slate-400">
+                          <option value="">-- Chọn loại lỗi --</option>
+                          {LOAI_LOI_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-600 mb-1">Khâu gây lỗi:</div>
+                        <select value={khauLoi[lc.id] ?? ""}
+                          onChange={e => setKhauLoi(p => ({ ...p, [lc.id]: e.target.value }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-slate-400">
+                          <option value="">-- Bắt đền tổ nào? --</option>
+                          <option value="Tổ Cắt">Tổ Cắt</option>
+                          <option value="Xưởng In/Thêu">Xưởng In/Thêu</option>
+                          <option value="Tổ May">Tổ May</option>
+                          <option value="Khác">Khác</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-600 mb-1">Khâu gây lỗi:</div>
-                      <select value={khauLoi[lc.id] ?? ""}
-                        onChange={e => setKhauLoi(p => ({ ...p, [lc.id]: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-slate-400">
-                        <option value="">-- Bắt đền tổ nào? --</option>
-                        <option value="Tổ Cắt">Tổ Cắt</option>
-                        <option value="Xưởng In/Thêu">Xưởng In/Thêu</option>
-                        <option value="Tổ May">Tổ May</option>
-                        <option value="Khác">Khác</option>
-                      </select>
+                    <div className="mt-3">
+                      <div className="text-xs font-bold text-slate-600 mb-1">Ghi chú thêm:</div>
+                      <input type="text" value={ghiChu[lc.id] ?? ""}
+                        onChange={e => setGhiChu(p => ({ ...p, [lc.id]: e.target.value }))}
+                        placeholder="Chi tiết lỗi (nếu có)..."
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/30" />
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <div className="text-xs font-bold text-slate-600 mb-1">Ghi chú thêm:</div>
-                    <input type="text" value={ghiChu[lc.id] ?? ""}
-                      onChange={e => setGhiChu(p => ({ ...p, [lc.id]: e.target.value }))}
-                      placeholder="Chi tiết lỗi (nếu có)..."
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/30" />
+
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-2 border-t border-slate-100">
+                    <button onClick={() => handleDat(lc)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-1.5 transition-colors">
+                      <CheckCircle2 className="w-4 h-4" /> QC Đạt & Chuyển Khuy/Ủi
+                    </button>
+                    <button onClick={() => handleTraLai(lc)}
+                      className="flex-1 py-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-600 font-bold hover:bg-rose-100 flex items-center justify-center gap-2 transition-colors">
+                      <XCircle className="w-4 h-4" /> Lỗi – Trả lại Tổ May
+                    </button>
                   </div>
                 </div>
-
-                {/* Buttons */}
-                <div className="flex gap-3 pt-2 border-t border-slate-100">
-                      <button onClick={() => handleDat(lc)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-1.5 transition-colors">
-                        <CheckCircle2 className="w-4 h-4" /> QC Đạt & Chuyển Khuy/Ủi
-                      </button>
-                  <button onClick={() => handleTraLai(lc)}
-                    className="flex-1 py-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-600 font-bold hover:bg-rose-100 flex items-center justify-center gap-2 transition-colors">
-                    <XCircle className="w-4 h-4" /> Lỗi – Trả lại Tổ May
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+              </LenhCatCardV2>
+            );
+          })}
         </div>
+      )}
+
+      {/* Modal nhập liệu cho màu */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={getMayPC(selectedMau.lc)}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );

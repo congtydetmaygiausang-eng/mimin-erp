@@ -1,20 +1,18 @@
 "use client";
 
-// ============ UI HOÀN THIỆN (/ui-hoan-thien) ============  
+// ============ UI HOÀN THIỆN (/ui-hoan-thien) ============
 // Nhận hàng từ QC đạt, Ủi + Gấp + Đóng gói, giao Kho Thành Phẩm
 
 import { useState } from "react";
 import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
-import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 export default function UiHoanThienPage() {
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
-  const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
-  const [lyDoLoi, setLyDoLoi] = useState<Record<string, string>>({});
   const [soThung, setSoThung] = useState<Record<string, number>>({});
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
@@ -25,7 +23,7 @@ export default function UiHoanThienPage() {
       const isHT = pc.id === "ui" || pc.id === "dongGoi" ||
                    pc.tenCongDoan?.toLowerCase().includes("ủi") ||
                    pc.tenCongDoan?.toLowerCase().includes("đóng gói");
-                   
+
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isHT && isMyTask;
@@ -41,7 +39,7 @@ export default function UiHoanThienPage() {
     if (htPCs.length === 0) return false;
 
     // 2. Tất cả công đoạn gia công trước đó (Cắt, May, In...) phải hoàn thành thì mới "đủ bộ"
-    const prevPCs = lc.phanCong?.filter((pc: any) => 
+    const prevPCs = lc.phanCong?.filter((pc: any) =>
       !(pc.id === "ui" || pc.id === "dongGoi" ||
         pc.tenCongDoan?.toLowerCase().includes("ủi") ||
         pc.tenCongDoan?.toLowerCase().includes("đóng gói"))
@@ -51,6 +49,29 @@ export default function UiHoanThienPage() {
     return prevPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
   });
 
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
+
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     toast.success(`🧺 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
@@ -58,35 +79,28 @@ export default function UiHoanThienPage() {
 
   function handleXong(lc: any, pc: any) {
     const key = `${lc.id}-${pc.id}`;
-    const chiTiet = mauInputs[key] || {};
-    
+    const chiTietMau = pc.chiTietMau || [];
+
     let slDat = 0;
     let slLoi = 0;
-    const chiTietMau = [];
-    
-    if (Object.keys(chiTiet).length > 0) {
-      for (const m of Object.values(chiTiet)) {
+
+    if (chiTietMau.length > 0) {
+      for (const m of chiTietMau) {
         slDat += (m.soLuongDat || 0);
         slLoi += (m.soLuongLoi || 0);
-        chiTietMau.push(m);
       }
     } else {
       slDat = pc.soLuong || lc.tongSL;
       slLoi = 0;
     }
-    
-    let lyDo = lyDoLoi[key] ?? "";
+
     const numThung = soThung[key] ?? 0;
-    
-    const lyDoKemThung = [
-      lyDo ? `Lỗi: ${lyDo}` : "",
-      numThung > 0 ? `Đóng được: ${numThung} thùng` : ""
-    ].filter(Boolean).join(" | ");
-    
+    const lyDoKemThung = numThung > 0 ? `Đóng được: ${numThung} thùng` : "";
+
     const thanhTienDat = slDat * (pc.donGia || 0);
 
-    capNhatCongDoan(lc.id, pc.id, { 
-      trangThaiCD: "hoan_thanh", 
+    capNhatCongDoan(lc.id, pc.id, {
+      trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
       lyDoLoi: lyDoKemThung,
@@ -157,30 +171,19 @@ export default function UiHoanThienPage() {
             const isLCDone = lc.trangThai === "HoanThanh";
 
             return (
-              <div key={lc.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${isLCDone ? "border-emerald-200" : "border-slate-200"}`}>
-                {/* Header */}
-                <div className={`px-5 py-4 border-b flex items-center justify-between ${isLCDone ? "bg-emerald-50 border-emerald-100" : "bg-sky-50 border-sky-100"}`}>
-                  <div>
-                    <span className="font-black text-teal-700 font-mono">{lc.id}</span>
-                    <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
-                    <span className="ml-2 text-xs text-slate-400">{lc.tongSL?.toLocaleString()} SP</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {isLCDone && (
-                      <span className="text-xs bg-emerald-500 text-white font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
-                      </span>
-                    )}
-                    <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
-                  </div>
-                </div>
-
-                {/* Danh sách màu */}
-                <div className="pt-2 bg-slate-50 border-b border-slate-100">
-                  <LenhCatColorCards lc={lc} />
-                </div>
-
-                <div className="p-5 space-y-3 bg-white">
+              <LenhCatCardV2
+                key={lc.id}
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                renderStatus={
+                  isLCDone ? (
+                    <span className="text-xs bg-emerald-500 text-white font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
+                    </span>
+                  ) : null
+                }
+              >
+                <div className="space-y-3">
                   {htPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
@@ -199,24 +202,14 @@ export default function UiHoanThienPage() {
                         </div>
 
                         {tt === "dang_lam" && (
-                          <KhaiBaoSoLuongTheoMau
-                            dsMau={lc.dsMau || []}
-                            value={mauInputs[key] || {}}
-                            onChange={(val) => setMauInputs(p => ({ ...p, [key]: val }))}
-                            showLyDoLoi={true}
-                            lyDoLoi={lyDoLoi[key]}
-                            onLyDoLoiChange={(val) => setLyDoLoi(p => ({ ...p, [key]: val }))}
-                            extraField={
-                              <div>
-                                <div className="text-[11px] font-bold text-sky-600 mb-1">Số thùng/kiện</div>
-                                <input type="number"
-                                  value={soThung[key] ?? ""}
-                                  onChange={e => setSoThung(p => ({ ...p, [key]: +e.target.value }))}
-                                  placeholder="0"
-                                  className="w-full px-3 py-2 border border-sky-300 rounded-lg text-sm font-bold text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
-                              </div>
-                            }
-                          />
+                          <div className="mb-3">
+                            <div className="text-[11px] font-bold text-sky-600 mb-1">Số thùng/kiện</div>
+                            <input type="number"
+                              value={soThung[key] ?? ""}
+                              onChange={e => setSoThung(p => ({ ...p, [key]: +e.target.value }))}
+                              placeholder="0"
+                              className="w-full px-3 py-2 border border-sky-300 rounded-lg text-sm font-bold text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
+                          </div>
                         )}
 
                         <div className="flex gap-2">
@@ -283,10 +276,22 @@ export default function UiHoanThienPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </LenhCatCardV2>
             );
           })}
         </div>
+      )}
+
+      {/* Modal nhập liệu cho màu */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );
