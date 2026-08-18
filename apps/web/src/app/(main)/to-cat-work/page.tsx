@@ -18,7 +18,6 @@ export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { themGiaoDich } = useKho();
   const { user } = useSession();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [modalGiaCong, setModalGiaCong] = useState<{ id: string, type: "ao" | "quan" } | null>(null);
   const [modalTyLeMau, setModalTyLeMau] = useState<{ id: string, mauIdx: number } | null>(null);
@@ -107,8 +106,6 @@ export default function CongViecCatPage() {
       capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });
       toast.success(`✅ Chuyển tiếp thành công: ${sl} SP`);
     }
-
-    setSelectedId(null);
   }
 
   function handleCoLoi(lc: any) {
@@ -201,7 +198,6 @@ export default function CongViecCatPage() {
             const tt = (pc?.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
             const style = TRANG_THAI_CD_STYLE[tt];
             const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && tt !== "hoan_thanh";
-            const isExpanded = selectedId === lc.id;
 
             const isBo = lc.loaiSP?.toLowerCase().includes("bo");
             const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
@@ -337,10 +333,15 @@ export default function CongViecCatPage() {
                             </div>
                           ) : (
                             <button
-                              onClick={() => setSelectedId(isExpanded ? null : lc.id)}
+                              onClick={() => {
+                                // Ưu tiên tổng SL Đạt đã nhập theo màu (ChiTietMauHistoryModal),
+                                // nếu chưa nhập màu nào thì dùng SL thực tế / tổng SL của lệnh.
+                                const tongDat = (pc?.chiTietMau || []).reduce((s: number, m: any) => s + (m.soLuongDat || 0), 0);
+                                handleHoanThanh(lc, undefined, tongDat > 0 ? tongDat : undefined);
+                              }}
                               className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
                             >
-                              {isExpanded ? "Đóng" : "Chuyển tiếp (Hoàn thành)"}
+                              <CheckCircle2 className="w-4 h-4" /> Chuyển tiếp (Hoàn thành)
                             </button>
                           )}
                         </div>
