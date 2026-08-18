@@ -43,9 +43,8 @@ import {
   type ProductionPartnerInput,
   type ProductionPartnerRole,
   type VerificationStatus,
-} from "@/lib/production-network";
 import { useProductionPartnerStore } from "@/lib/data/mang-luoi-store";
-import { DANH_MUC_VAT_TU_CHI_TIET } from "@/lib/data/danh-muc-vat-tu";
+import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 
 const CATEGORY_META: Record<ProductionPartnerRole, {
   icon: typeof Users;
@@ -449,9 +448,9 @@ export default function MangLuoiSanXuatPage() {
           </label>
           <label className="text-xs font-medium">
             Năng lực cần tìm
-            <input value={capabilityFilter} onChange={(event) => setCapabilityFilter(event.target.value)} list="category-list" className="input mt-1" placeholder="VD: vải cotton, thêu" />
+            <input value={capabilityFilter} onChange={(event) => setCapabilityFilter(event.target.value)} list="category-list" className="input mt-1" placeholder="Nhập hoặc chọn..." />
             <datalist id="category-list">
-              {DANH_MUC_VAT_TU_CHI_TIET.flatMap(nhom => nhom.danhMuc.map(item => <option key={item.id} value={item.ten} />))}
+              {MANG_LUOI_DANH_MUC[activeRole].map(item => <option key={item} value={item} />)}
             </datalist>
           </label>
           <label className="text-xs font-medium">
