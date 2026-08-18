@@ -337,6 +337,7 @@ export default function BangTinPage() {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={newImages.length >= MAX_ANH || !!newVideo}
+              title={newVideo ? "Xoá video để đổi sang ảnh" : newImages.length >= MAX_ANH ? `Tối đa ${MAX_ANH} ảnh/bài` : undefined}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition"
             >
               <ImageIcon className="w-4 h-4" /> Ảnh {newImages.length > 0 && `(${newImages.length}/${MAX_ANH})`}
@@ -345,8 +346,8 @@ export default function BangTinPage() {
             <button
               onClick={() => videoRef.current?.click()}
               disabled={uploadingVideo || !!newVideo || newImages.length > 0}
+              title={newImages.length > 0 ? "Xoá ảnh để đổi sang video" : "Video tối đa 3 phút"}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition"
-              title="Video tối đa 3 phút"
             >
               {uploadingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />} Video
             </button>
@@ -359,6 +360,12 @@ export default function BangTinPage() {
             {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Đăng
           </button>
         </div>
+        {newImages.length > 0 && (
+          <div className="pl-[52px] text-xs opacity-50">Đã chọn ảnh — xoá hết ảnh nếu muốn đổi sang đăng video.</div>
+        )}
+        {newVideo && (
+          <div className="pl-[52px] text-xs opacity-50">Đã chọn video — xoá video nếu muốn đổi sang đăng ảnh.</div>
+        )}
       </div>
 
       {/* Feed */}
