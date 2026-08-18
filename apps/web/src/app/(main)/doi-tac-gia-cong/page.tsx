@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { DOI_TAC_GIA_CONG, thongKeDoiTac, type DoiTacGiaCong, type LoaiDoiTac } from "@/lib/doi-tac-gia-cong";
 import { formatVNDShort } from "@/lib/data/real-data";
+import { DANH_MUC_VAT_TU_CHI_TIET } from "@/lib/data/danh-muc-vat-tu";
 import { usePermission } from "@/components/PermissionGuard";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { Avatar } from "@/components/Avatar";
@@ -316,6 +317,7 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
     thoiHanThanhToan: 30,
     phuongThucTT: "Chuyển khoản",
     rating: 4.0,
+    chuyenMonChiTiet: [],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -408,6 +410,42 @@ function DoiTacFormModal({ mode, dt, onClose, onSave }: { mode: "add" | "edit"; 
                 <option value="Wash-May">Wash + May</option>
                 <option value="Khác">Khác</option>
               </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Chuyên môn phụ liệu chi tiết (nếu có)</label>
+            <div className="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 max-h-[250px] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
+                {DANH_MUC_VAT_TU_CHI_TIET.map((nhom) => (
+                  <div key={nhom.id} className="space-y-2">
+                    <div className="text-xs font-bold text-violet-600 dark:text-violet-500 border-b border-slate-200 dark:border-slate-700 pb-1">{nhom.tenNhom}</div>
+                    <div className="space-y-1.5 pl-1">
+                      {nhom.danhMuc.map((item) => {
+                        const isChecked = form.chuyenMonChiTiet?.includes(item.id) || false;
+                        return (
+                          <label key={item.id} className="flex items-start gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 rounded border-slate-300 text-violet-500 focus:ring-violet-500"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const newDanh = new Set(form.chuyenMonChiTiet || []);
+                                if (e.target.checked) newDanh.add(item.id);
+                                else newDanh.delete(item.id);
+                                setForm({ ...form, chuyenMonChiTiet: Array.from(newDanh) });
+                              }}
+                            />
+                            <span className="text-xs text-slate-700 dark:text-slate-300 group-hover:text-violet-600 transition-colors leading-tight">
+                              {item.ten}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

@@ -26,6 +26,7 @@ import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { useKhachHang, type KhachHangUI } from "@/lib/data/khach-hang-store";
 import { useEffect } from "react";
 import PageHeader from "@/components/ui/PageHeader";
+import { DANH_MUC_VAT_TU_CHI_TIET } from "@/lib/data/danh-muc-vat-tu";
 
 // Tính từ đơn hàng (mock data)
 const DOANH_THU_KH: Record<string, number> = {
@@ -349,6 +350,7 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
     ghiChu: "",
     avatar: "",
     facebookUrl: "",
+    nhuCauChinh: [],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -433,6 +435,42 @@ function KHForm({ mode, kh, existingCount, onClose, onSave }: { mode: "add" | "e
                 <option value="Shop">🛍️ Shop (Bán lẻ)</option>
                 <option value="Cá nhân">👤 Cá nhân</option>
               </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Danh mục phụ liệu khách hàng thường dùng / yêu cầu</label>
+            <div className="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 max-h-[250px] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
+                {DANH_MUC_VAT_TU_CHI_TIET.map((nhom) => (
+                  <div key={nhom.id} className="space-y-2">
+                    <div className="text-xs font-bold text-indigo-600 dark:text-indigo-500 border-b border-slate-200 dark:border-slate-700 pb-1">{nhom.tenNhom}</div>
+                    <div className="space-y-1.5 pl-1">
+                      {nhom.danhMuc.map((item) => {
+                        const isChecked = form.nhuCauChinh?.includes(item.id) || false;
+                        return (
+                          <label key={item.id} className="flex items-start gap-2 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const newDanh = new Set(form.nhuCauChinh || []);
+                                if (e.target.checked) newDanh.add(item.id);
+                                else newDanh.delete(item.id);
+                                setForm({ ...form, nhuCauChinh: Array.from(newDanh) });
+                              }}
+                            />
+                            <span className="text-xs text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors leading-tight">
+                              {item.ten}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

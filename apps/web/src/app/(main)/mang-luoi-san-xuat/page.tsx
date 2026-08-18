@@ -44,6 +44,8 @@ import {
   type ProductionPartnerRole,
   type VerificationStatus,
 } from "@/lib/production-network";
+import { useProductionPartnerStore } from "@/lib/data/mang-luoi-store";
+import { DANH_MUC_VAT_TU_CHI_TIET } from "@/lib/data/danh-muc-vat-tu";
 
 const CATEGORY_META: Record<ProductionPartnerRole, {
   icon: typeof Users;
@@ -97,10 +99,9 @@ const FORM_FIELDS: FieldDef[] = [
   { name: "province", label: "Tỉnh / thành", type: "text" },
   {
     name: "capabilities",
-    label: "Năng lực / sản phẩm / dịch vụ",
-    type: "textarea",
-    rows: 2,
-    placeholder: "Cách nhau bằng dấu phẩy, VD: vải cotton, nhuộm, may áo thun",
+    label: "Danh mục phụ liệu / Năng lực / Sản phẩm",
+    type: "checkbox-group",
+    options: DANH_MUC_VAT_TU_CHI_TIET.flatMap(nhom => nhom.danhMuc.map(item => ({ value: item.ten, label: item.ten }))),
   },
   { name: "capacityPerMonth", label: "Công suất / tháng", type: "number", min: 0 },
   { name: "minimumOrderQuantity", label: "Đơn hàng tối thiểu", type: "number", min: 0 },
