@@ -227,12 +227,16 @@ export default function CaNhanPage() {
       {/* Trang cá nhân kiểu Zalo: ảnh bìa + avatar tròn đè lên, thông tin căn giữa */}
       <div className="rounded-b-xl md:rounded-xl overflow-hidden bg-white/60 dark:bg-white/5 border-b md:border border-black/5 dark:border-white/5">
         <div
-          className="h-28 md:h-36 relative bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-500 bg-cover bg-center"
+          className="h-44 sm:h-56 md:h-64 relative bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-500 bg-cover bg-center cursor-pointer group"
           style={anhBia ? { backgroundImage: `url(${anhBia})` } : undefined}
+          onClick={() => anhBiaRef.current?.click()}
         >
+          {/* Đổ bóng dưới đáy để icon luôn nổi rõ dù ảnh sáng hay tối */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+
           <button
-            onClick={moThongBao}
-            className="absolute top-3 right-3 p-2.5 rounded-full bg-black/20 hover:bg-black/30 text-white transition"
+            onClick={(e) => { e.stopPropagation(); moThongBao(); }}
+            className="absolute top-3 right-3 p-2.5 rounded-full bg-black/25 hover:bg-black/40 text-white transition"
             title="Thông báo"
           >
             <Bell className="w-5 h-5" />
@@ -245,12 +249,12 @@ export default function CaNhanPage() {
 
           <input ref={anhBiaRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleChonAnhBia(e.target.files); e.target.value = ""; }} />
           <button
-            onClick={() => anhBiaRef.current?.click()}
+            onClick={(e) => { e.stopPropagation(); anhBiaRef.current?.click(); }}
             disabled={dangTaiAnhBia}
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/30 hover:bg-black/40 text-white text-xs font-medium transition disabled:opacity-60"
+            className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-white text-slate-700 shadow-md group-hover:scale-110 transition disabled:opacity-60"
             title="Đổi ảnh bìa"
           >
-            {dangTaiAnhBia ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Đổi ảnh bìa
+            {dangTaiAnhBia ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
           </button>
         </div>
 
