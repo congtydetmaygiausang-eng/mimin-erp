@@ -220,6 +220,17 @@ Password: admin123
    - Phải có `index.html` ở root
    - `images.unoptimized: true`
 
+4. **Lỗi DB Supabase (Pending Fix)**:
+   - Bảng `don_hang` đang thiếu cột `dia_chi`.
+   - Bảng `phan_cong` đang bị lỗi khóa ngoại `fk_phan_cong_lenh_cat`.
+   - AI sau cần chú ý sửa 2 lỗi này bằng SQL script trước khi làm việc với các bảng này.
+
+5. **Luồng Nhập Tỷ Lệ Size (Mới cập nhật)**:
+   - Dùng `TyLeSizeModal` làm nơi duy nhất nhập số lượng cho Cắt, In/Thêu, Ủi, Đóng Gói...
+   - Tự động copy số lượng: Cắt -> In/Thêu (chỉ copy khi In/Thêu đang trống).
+   - Tự động tính số lượng lỗi: Từ khâu In/Thêu trở đi, hệ thống so sánh với Cắt để báo `Lỗi: x SP`.
+   - Các khâu gia công ngoài (May áo, May quần) nhập số liệu qua `GiaCongModal` và đồng bộ lại vào `TyLeSizeModal`.
+
 ---
 
 ## 🎯 Khi AI agent nhận task
