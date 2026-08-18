@@ -281,6 +281,10 @@ export default function KhoThanhPhamPage() {
       ? mauTuLC.map((m) => ({ ten: m.ten, maSKU: m.maSKU || `${group.maSP}-${m.ten}`, dinhMuc: m.dinhMuc || 0, img: m.img || "" }))
       : Array.from(new Set(group.items.map((i) => i.mau))).map((mau) => ({ ten: mau, maSKU: `${group.maSP}-${mau}`, dinhMuc: 0, img: "" }));
 
+    // Ảnh đại diện cho card thư viện (SanPham.hinhAnh là 1 URL, khác dsMau[].img theo màu) -
+    // lấy ảnh màu đầu tiên có ảnh, fallback ảnh đã upload riêng trong Kho thành phẩm.
+    const anhDaiDien = dsMauForSanPham.find((m) => m.img)?.img || group.items.find((i) => i.hinhAnh?.[0])?.hinhAnh?.[0] || "";
+
     // Kiểm tra trực tiếp Supabase thay vì dùng dsDanhMuc cache (có thể chưa tải xong
     // lúc bấm nút, dẫn tới nhầm "chưa có" -> tạo bản ghi trùng thay vì cập nhật).
     let existingId: string | undefined = dsDanhMuc.find((sp) => sp.id === group.maSP)?.id;
@@ -303,6 +307,7 @@ export default function KhoThanhPhamPage() {
         giaVonDuKien: giaVon || existing?.giaVonDuKien || 0,
         dsMau: dsMauForSanPham,
         tenSP: group.tenSP || existing?.tenSP || group.maSP,
+        hinhAnh: anhDaiDien || existing?.hinhAnh || "",
       });
       toast.success(`Đã cập nhật ${group.maSP} trong Danh mục sản phẩm`);
     } else {
@@ -322,6 +327,7 @@ export default function KhoThanhPhamPage() {
         ghiChu: lsx ? `Từ lệnh cắt ${lsx}` : "",
         ngayTao: new Date().toISOString().slice(0, 10),
         trangThai: "con-hang",
+        hinhAnh: anhDaiDien,
       });
       toast.success(`Đã đăng bán ${group.maSP} vào Danh mục sản phẩm`);
     }
