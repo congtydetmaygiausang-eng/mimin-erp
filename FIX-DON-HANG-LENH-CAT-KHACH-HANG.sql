@@ -1,32 +1,37 @@
 -- ============================================
 -- MIMIN ERP - Sua loi KHONG LUU DUOC len Supabase: don_hang + lenh_cat + khach_hang
--- 2026-08-19 - Ban sua lan 2 (lan 1 bi rollback het vi cau test o cuoi loi)
+-- 2026-08-19 - Ban sua lan 3 (lan 1 va 2 deu bi ROLLBACK het vi cau kiem tra loi)
 -- ============================================
--- QUAN TRONG VE CACH CHAY: bam nut "Run" cho TUNG PHAN rieng (PHAN A, roi PHAN B),
--- KHONG bam Run 1 lan cho ca file. Supabase SQL Editor chay moi lan "Run" la MOT
--- transaction - neu co 1 cau loi o cuoi, TOAN BO cac cau ALTER TABLE phia truoc
--- trong CUNG LAN RUN DO cung bi huy bo (rollback). Lan truoc da bi dung do:
--- da them cot xong nhung cau INSERT kiem tra o cuoi loi -> rollback mat het.
+-- CHAY: bam "Run" MOT LAN DUY NHAT cho toan bo file nay. Khong can tach phan nua -
+-- phan kiem tra o cuoi da duoc boc trong khoi tu bat loi (EXCEPTION), nen du no
+-- co loi gi cung KHONG lam mat tac dung cac lenh ALTER TABLE o tren.
 -- ============================================
 --
 -- VAN DE (da kiem chung truc tiep tren DB that qua nhieu vong test):
 --
--- 1) don_hang: con thieu 14 cot cho model don hang nhieu san pham (items,
---    payments, shipping...) - PostgREST tu choi nguyen dong khi thieu 1 cot.
+-- 1) don_hang: thieu 14 cot cho model don hang nhieu san pham (items, payments,
+--    shipping...) - PostgREST tu choi nguyen dong khi thieu 1 cot.
 -- 2) don_hang: 2 cot cu "san_pham" va "loai" (thiet ke 1-don-1-san-pham truoc day)
---    vAN con NOT NULL + rang buoc CHECK gia tri cu. App moi KHONG con dien 2 cot
---    nay nua -> du them du cot o (1) thi van bi chan boi (2).
--- 3) lenh_cat: thieu 2 cot tong_sl_thuc_te_ao/quan -> lenh cat "Bo" (ao+quan)
+--    con NOT NULL + CHECK gia tri cu (don_hang_loai_check). App moi khong con
+--    dien 2 cot nay nua.
+-- 3) don_hang: cot "trang_thai" cung con CHECK gia tri cu (don_hang_trang_thai_check)
+--    khac voi cac trang thai app dang dung ("Mới", "Đã duyệt", "Đang SX"...).
+-- 4) lenh_cat: thieu 2 cot tong_sl_thuc_te_ao/quan -> lenh cat "Bo" (ao+quan)
 --    tao moi deu luu that bai (day la loi lam lenh cat vua tao khong hien o To Cat).
--- 4) khach_hang: thieu cot nhu_cau_chinh -> tao/sua khach hang deu that bai.
+-- 5) khach_hang: thieu cot nhu_cau_chinh -> tao/sua khach hang deu that bai.
 --
 -- Hau qua nghiem trong nhat: SELECT COUNT(*) FROM don_hang -> 0. Tu truoc den
 -- gio CHUA CO don hang nao luu duoc len may chu, chi nam tam trong trinh duyet.
+--
+-- LUU Y KY THUAT: 2 lan sua truoc bi that bai vi Supabase SQL Editor chay ca
+-- doan duoc chon nhu MOT transaction - cau INSERT kiem tra o cuoi loi se ROLLBACK
+-- luon ca cac cau ALTER TABLE phia truoc trong cung 1 lan Run. Ban nay khong con
+-- rui ro do nua vi da bo khoi kiem tra vao EXCEPTION block rieng.
 -- ============================================
 
 
 -- ============================================
--- PHAN A - Bam "Run" cho khoi nay TRUOC (chi ALTER TABLE, an toan, khong the loi)
+-- BUOC 1: Them cot con thieu + go rang buoc cu tren don_hang
 -- ============================================
 
 ALTER TABLE don_hang
@@ -45,14 +50,23 @@ ALTER TABLE don_hang
   ADD COLUMN IF NOT EXISTS trang_thai_thanh_toan  TEXT,
   ADD COLUMN IF NOT EXISTS da_tru_kho             BOOLEAN DEFAULT false;
 
--- 2 cot cu "san_pham" / "loai" - go NOT NULL va go CHECK cu, vi model moi khong
--- con dien 2 cot nay (da thay bang cot "items" JSONB nhieu san pham).
+-- 2 cot cu "san_pham" / "loai" - model moi khong con dien nua
 ALTER TABLE don_hang ALTER COLUMN san_pham DROP NOT NULL;
 ALTER TABLE don_hang ALTER COLUMN loai DROP NOT NULL;
 ALTER TABLE don_hang DROP CONSTRAINT IF EXISTS don_hang_loai_check;
--- Phong khi so_luong/don_gia cung con NOT NULL tu thiet ke cu (an toan du dang la gi):
+
+-- "trang_thai" - CHECK cu chi cho phep vai gia tri cu, khong khop voi trang thai
+-- that app dang dung ("Mới", "Đã duyệt", "Đang SX", "Hoàn thành", "Đã giao", "Hủy")
+ALTER TABLE don_hang DROP CONSTRAINT IF EXISTS don_hang_trang_thai_check;
+
+-- Phong khi so_luong/don_gia cung con NOT NULL tu thiet ke cu (an toan du dang la gi)
 ALTER TABLE don_hang ALTER COLUMN so_luong DROP NOT NULL;
 ALTER TABLE don_hang ALTER COLUMN don_gia DROP NOT NULL;
+
+
+-- ============================================
+-- BUOC 2: lenh_cat + khach_hang
+-- ============================================
 
 ALTER TABLE lenh_cat
   ADD COLUMN IF NOT EXISTS tong_sl_thuc_te_ao   NUMERIC,
@@ -63,36 +77,56 @@ ALTER TABLE khach_hang
 
 
 -- ============================================
--- PHAN B - Bam "Run" RIENG cho khoi nay SAU KHI Phan A da chay xong khong loi.
--- Day chi la buoc KIEM TRA - neu Phan B loi thi Phan A van giu nguyen (vi da
--- chay + commit o lan Run truoc do roi), chi can bao lai loi cu the la duoc.
+-- BUOC 3: Kiem tra lai - BOC TRONG KHOI TU BAT LOI nen KHONG THE lam rollback
+-- cac lenh ALTER TABLE o tren, du co loi gi xay ra o day.
 -- ============================================
 
-INSERT INTO don_hang
-  (id, ma_dh, ngay_dat, ngay_giao, khach_hang, sdt, thanh_tien, trang_thai,
-   loai_don_hang, tong_tien, items, payments, shipping, trang_thai_thanh_toan, da_tru_kho)
-VALUES
-  ('DH-KIEMTRA-XOA-DI', 'DH-KIEMTRA', CURRENT_DATE, CURRENT_DATE, 'Kiem tra', '0900000000',
-   0, 'Mới', 'ban-le', 0, '[]'::jsonb, '[]'::jsonb, NULL, 'chua-thanh-toan', false);
-DELETE FROM don_hang WHERE id = 'DH-KIEMTRA-XOA-DI';
+DO $$
+BEGIN
+  INSERT INTO don_hang
+    (id, ma_dh, ngay_dat, ngay_giao, khach_hang, sdt, thanh_tien, trang_thai,
+     loai_don_hang, tong_tien, items, payments, shipping, trang_thai_thanh_toan, da_tru_kho)
+  VALUES
+    ('DH-KIEMTRA-XOA-DI', 'DH-KIEMTRA', CURRENT_DATE, CURRENT_DATE, 'Kiem tra', '0900000000',
+     0, 'Mới', 'ban-le', 0, '[]'::jsonb, '[]'::jsonb, NULL, 'chua-thanh-toan', false);
+  DELETE FROM don_hang WHERE id = 'DH-KIEMTRA-XOA-DI';
+  RAISE NOTICE 'OK: don_hang da luu duoc.';
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'CHUA XONG don_hang: %', SQLERRM;
+END $$;
 
-INSERT INTO lenh_cat
-  (id, loai_lenh, loai_sp, ma_sp, ten_sp, tong_sl, tong_sl_thuc_te_ao, tong_sl_thuc_te_quan,
-   han_hoan_thanh, ti_le_size, ds_mau, ds_phu_lieu, phan_cong, trang_thai, ngay_tao, nguoi_tao)
-VALUES
-  ('LC-KIEMTRA-XOA-DI', 'HangDat', 'BoTru', 'TEST', 'Kiem tra', 10, 5, 5,
-   CURRENT_DATE, '1:1', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, 'Nhap', CURRENT_DATE, 'test');
-DELETE FROM lenh_cat WHERE id = 'LC-KIEMTRA-XOA-DI';
+DO $$
+BEGIN
+  INSERT INTO lenh_cat
+    (id, loai_lenh, loai_sp, ma_sp, ten_sp, tong_sl, tong_sl_thuc_te_ao, tong_sl_thuc_te_quan,
+     han_hoan_thanh, ti_le_size, ds_mau, ds_phu_lieu, phan_cong, trang_thai, ngay_tao, nguoi_tao)
+  VALUES
+    ('LC-KIEMTRA-XOA-DI', 'HangDat', 'BoTru', 'TEST', 'Kiem tra', 10, 5, 5,
+     CURRENT_DATE, '1:1', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, 'Nhap', CURRENT_DATE, 'test');
+  DELETE FROM lenh_cat WHERE id = 'LC-KIEMTRA-XOA-DI';
+  RAISE NOTICE 'OK: lenh_cat da luu duoc.';
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'CHUA XONG lenh_cat: %', SQLERRM;
+END $$;
 
-INSERT INTO khach_hang (id, ma_kh, ten_kh, nhu_cau_chinh)
-VALUES ('KH-KIEMTRA-XOA-DI', 'KH-KIEMTRA', 'Kiem tra', '[]'::jsonb);
-DELETE FROM khach_hang WHERE id = 'KH-KIEMTRA-XOA-DI';
+DO $$
+BEGIN
+  INSERT INTO khach_hang (id, ma_kh, ten_kh, nhu_cau_chinh)
+  VALUES ('KH-KIEMTRA-XOA-DI', 'KH-KIEMTRA', 'Kiem tra', '[]'::jsonb);
+  DELETE FROM khach_hang WHERE id = 'KH-KIEMTRA-XOA-DI';
+  RAISE NOTICE 'OK: khach_hang da luu duoc.';
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'CHUA XONG khach_hang: %', SQLERRM;
+END $$;
 
--- Neu ca 3 INSERT/DELETE tren chay khong loi -> DA SUA XONG HOAN TOAN CA 3 BANG.
+-- Sau khi Run xong, xem tab "Logs"/"Notices" cua Supabase (khong phai "Results")
+-- de doc 3 dong "NOTICE: OK: ..." hoac "NOTICE: CHUA XONG ...: <ly do>".
+-- Neu ca 3 deu "OK" -> DA SUA XONG HOAN TOAN. Neu con dong "CHUA XONG" nao,
+-- gui lai dung dong do (co ghi ro ten cot/rang buoc con vuong) de sua tiep.
 
 
 -- ============================================
--- LUU Y SAU KHI CHAY XONG CA 2 PHAN
+-- LUU Y SAU KHI SUA XONG
 -- ============================================
 -- Cac don hang/lenh cat dang nam trong localStorage cua may dang dung SE TU DONG
 -- day len may chu ngay lan sau mo lai trang tuong ung (store merge local + remote).
