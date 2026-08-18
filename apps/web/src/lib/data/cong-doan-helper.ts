@@ -67,6 +67,66 @@ export function coMauThat(lc: LenhCat): boolean {
   return ds.length > 0 && ds.some((m: any) => m?.ten);
 }
 
+/** Lệnh cắt là hàng Bộ (áo + quần) hay chỉ Áo/Phụ kiện đơn lẻ. */
+export function laHangBo(lc: LenhCat): boolean {
+  return (lc?.loaiSP || "").startsWith("Bo");
+}
+
+function timCongDoan(lc: LenhCat, tuKhoa: string): CongDoanItem | undefined {
+  return (lc?.phanCong || []).find((pc: any) => {
+    const id = (pc.id || "").toLowerCase().replace(/_/g, "");
+    const ten = (pc.tenCongDoan || "").toLowerCase();
+    return id.includes(tuKhoa) || ten.includes(tuKhoa === "mayao" ? "may áo" : "may quần");
+  });
+}
+
+export interface KetQuaKhopBo {
+  ok: boolean;
+  loi?: string;
+}
+
+/**
+ * Với hàng Bộ (áo + quần), May áo và May quần là 2 khâu TÁCH RIÊNG trong cùng 1
+ * lệnh cắt. Việc kiểm tra "không vượt khâu liền trước" (tranSoLuong) chỉ so với
+ * ĐÚNG 1 khâu ngay trước đó trong mảng phanCong - nếu quy trình là
+ * ...May áo -> May quần -> Khuy nút -> Ủi..., khâu Khuy nút/Ủi chỉ bị so với
+ * May quần, không hề biết May áo có làm ĐỦ số tương ứng hay chưa. Hàng có thể
+ * bị đóng gói/ủi thiếu áo hoặc thiếu quần mà hệ thống không phát hiện.
+ *
+ * Hàm này so khớp số ĐẠT của May áo và May quần khi CẢ HAI đã khai báo - dùng
+ * cho các khâu SAU khi cả áo và quần đã gộp lại (Khuy nút, Ủi, Đóng gói...).
+ */
+export function kiemTraKhopBo(lc: LenhCat, pc: any): KetQuaKhopBo {
+  if (!laHangBo(lc)) return { ok: true };
+
+  const mayAo = timCongDoan(lc, "mayao");
+  const mayQuan = timCongDoan(lc, "mayquan");
+  if (!mayAo || !mayQuan) return { ok: true }; // lệnh cắt không tách riêng 2 khâu này
+
+  // Đang đứng ở chính khâu May áo/May quần thì chưa cần so - 1 trong 2 vế có thể
+  // chưa xong, đó là chuyện bình thường.
+  const idHienTai = (pc?.id || "").toLowerCase();
+  if (idHienTai === (mayAo.id || "").toLowerCase() || idHienTai === (mayQuan.id || "").toLowerCase()) {
+    return { ok: true };
+  }
+
+  const kqAo = tongKhaiBao(mayAo);
+  const kqQuan = tongKhaiBao(mayQuan);
+  if (!kqAo.daKhaiBao || !kqQuan.daKhaiBao) {
+    return {
+      ok: false,
+      loi: `Hàng Bộ cần cả May áo và May quần đều đã khai báo số lượng trước khi qua "${pc?.tenCongDoan || "khâu này"}". Hiện ${!kqAo.daKhaiBao ? "May áo" : "May quần"} chưa khai báo.`,
+    };
+  }
+  if (kqAo.slDat !== kqQuan.slDat) {
+    return {
+      ok: false,
+      loi: `Chưa đủ bộ: May áo đạt ${kqAo.slDat.toLocaleString("vi-VN")} nhưng May quần đạt ${kqQuan.slDat.toLocaleString("vi-VN")}. Cần khớp số nhau mới chuyển "${pc?.tenCongDoan || "khâu tiếp theo"}" được (thiếu ${Math.abs(kqAo.slDat - kqQuan.slDat).toLocaleString("vi-VN")} ở bên ${kqAo.slDat < kqQuan.slDat ? "áo" : "quần"}).`,
+    };
+  }
+  return { ok: true };
+}
+
 export interface KetQuaKiemTra {
   ok: boolean;
   /** Lý do không cho hoàn thành (hiển thị cho người dùng) */
@@ -116,6 +176,11 @@ export function kiemTraTruocHoanThanh(lc: LenhCat, pc: any): KetQuaKiemTra {
       slDat,
       slLoi,
     };
+  }
+
+  const khopBo = kiemTraKhopBo(lc, pc);
+  if (!khopBo.ok) {
+    return { ok: false, loi: khopBo.loi, slDat, slLoi };
   }
 
   return { ok: true, slDat, slLoi };
