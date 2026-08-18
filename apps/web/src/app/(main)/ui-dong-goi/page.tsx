@@ -7,6 +7,7 @@ import { useState } from "react";
 import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
@@ -84,20 +85,13 @@ export default function UiDongGoiPage() {
   }
 
   function handleXong(lc: any, pc: any) {
-    const chiTietMau = pc.chiTietMau || [];
-
-    let slDat = 0;
-    let slLoi = 0;
-
-    if (chiTietMau.length > 0) {
-      for (const m of chiTietMau) {
-        slDat += (m.soLuongDat || 0);
-        slLoi += (m.soLuongLoi || 0);
-      }
-    } else {
-      slDat = pc.soLuong || lc.tongSL;
-      slLoi = 0;
+    // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
+    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+    if (!kiemTra.ok) {
+      toast.error(kiemTra.loi!, { duration: 6000 });
+      return;
     }
+    const { slDat, slLoi } = kiemTra;
 
     const thanhTienDat = slDat * (pc.donGia || 0);
 

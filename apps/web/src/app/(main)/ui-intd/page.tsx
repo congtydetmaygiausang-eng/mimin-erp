@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
@@ -89,20 +90,14 @@ export default function UiInTheuPage() {
   }
 
   function handleHoanThanh(lc: any, pc: any) {
-    const chiTietMau = pc.chiTietMau || [];
-
-    let tongDat = 0;
-    let tongLoi = 0;
-
-    if (chiTietMau.length > 0) {
-      for (const m of chiTietMau) {
-        tongDat += (m.soLuongDat || 0);
-        tongLoi += (m.soLuongLoi || 0);
-      }
-    } else {
-      tongDat = pc.soLuong || lc.tongSL;
-      tongLoi = 0;
+    // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
+    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+    if (!kiemTra.ok) {
+      toast.error(kiemTra.loi!, { duration: 6000 });
+      return;
     }
+    const tongDat = kiemTra.slDat;
+    const tongLoi = kiemTra.slLoi;
 
     capNhatCongDoan(lc.id, pc.id, {
       trangThaiCD: "hoan_thanh",

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ShieldCheck, CheckCircle2, XCircle, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
@@ -70,26 +71,28 @@ export default function UiQCPage() {
   };
 
   function handleDat(lc: any) {
+    const dsMayPC = getMayPC(lc);
+
+    // Kiểm tra TRƯỚC toàn bộ, chưa ghi gì cả - tránh trường hợp phiếu đầu đã lưu
+    // rồi phiếu sau mới báo lỗi, để lại dữ liệu dở dang.
+    const loi: string[] = [];
+    const ketQua = dsMayPC.map((pc: any) => {
+      const kt = kiemTraTruocHoanThanh(lc, pc);
+      if (!kt.ok) loi.push(`${pc.tenCongDoan}: ${kt.loi}`);
+      return { pc, kt };
+    });
+    if (loi.length > 0) {
+      toast.error(`Chưa thể xác nhận QC đạt:\n• ${loi.join("\n• ")}`, { duration: 8000 });
+      return;
+    }
+
     let tongD = 0;
     let tongL = 0;
-
-    getMayPC(lc).forEach((pc: any) => {
-      const chiTietMau = pc.chiTietMau || [];
-      let slD = 0;
-      let slL = 0;
-      if (chiTietMau.length > 0) {
-        for (const m of chiTietMau) {
-          slD += (m.soLuongDat || 0);
-          slL += (m.soLuongLoi || 0);
-        }
-      } else {
-        slD = pc.soLuong || lc.tongSL;
-        slL = 0;
-      }
-      tongD += slD;
-      tongL += slL;
+    ketQua.forEach(({ pc, kt }: { pc: any; kt: ReturnType<typeof kiemTraTruocHoanThanh> }) => {
+      tongD += kt.slDat;
+      tongL += kt.slLoi;
       // Cập nhật công đoạn may thành hoan_thanh (QC pass)
-      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: slD, soLuongLoi: slL });
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: kt.slDat, soLuongLoi: kt.slLoi });
     });
 
     // Không cần tự động kích hoạt Khuy/Ủi vì chúng tự hiển thị khi May hoàn thành

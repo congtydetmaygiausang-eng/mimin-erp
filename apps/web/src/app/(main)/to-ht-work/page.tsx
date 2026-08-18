@@ -4,9 +4,10 @@
 // Nhận hàng từ QC đạt, Ủi + Gấp + Đóng gói, giao Kho Thành Phẩm
 
 import { useState } from "react";
-import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box } from "lucide-react";
+import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh, thongKeLoiLenhCat } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
@@ -89,20 +90,14 @@ export default function UiHoanThienPage() {
 
   function handleXong(lc: any, pc: any) {
     const key = `${lc.id}-${pc.id}`;
-    const chiTietMau = pc.chiTietMau || [];
 
-    let slDat = 0;
-    let slLoi = 0;
-
-    if (chiTietMau.length > 0) {
-      for (const m of chiTietMau) {
-        slDat += (m.soLuongDat || 0);
-        slLoi += (m.soLuongLoi || 0);
-      }
-    } else {
-      slDat = pc.soLuong || lc.tongSL;
-      slLoi = 0;
+    // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
+    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+    if (!kiemTra.ok) {
+      toast.error(kiemTra.loi!, { duration: 6000 });
+      return;
     }
+    const { slDat, slLoi } = kiemTra;
 
     const numThung = soThung[key] ?? 0;
     const lyDoKemThung = numThung > 0 ? `Đóng được: ${numThung} thùng` : "";
@@ -136,6 +131,12 @@ export default function UiHoanThienPage() {
     return dangLam ? s + (lc.tongSL || 0) : s;
   }, 0);
 
+  // Chỉ hiện lệnh đã có khai báo thật ở ít nhất 1 khâu, ưu tiên lệnh lỗi nhiều lên đầu
+  const thongKeLoi = lcHT
+    .map(thongKeLoiLenhCat)
+    .filter((tk) => tk.chiTiet.length > 0)
+    .sort((a, b) => b.tongLoi - a.tongLoi);
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Transparent Glassmorphism Header Card */}
@@ -166,6 +167,60 @@ export default function UiHoanThienPage() {
           ))}
         </div>
       </div>
+
+      {/* Tổng hợp hao hụt theo khâu - trước đây số lỗi chỉ nằm rời trong từng
+          phiếu công đoạn, không có chỗ nào cộng lại để quản lý nhìn ra khâu nào
+          đang lỗi nhiều. */}
+      {thongKeLoi.length > 0 && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-white p-5 shadow-sm space-y-3">
+          <h2 className="text-sm font-black text-slate-700 uppercase tracking-wide flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" /> Tổng hợp hao hụt theo khâu
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse min-w-[560px]">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200">
+                  <th className="py-2 pr-3 font-bold">Lệnh cắt</th>
+                  <th className="py-2 px-3 font-bold text-right">SL cắt</th>
+                  <th className="py-2 px-3 font-bold text-right">Tổng lỗi</th>
+                  <th className="py-2 px-3 font-bold text-right">% lỗi</th>
+                  <th className="py-2 pl-3 font-bold">Khâu lỗi nhiều nhất</th>
+                </tr>
+              </thead>
+              <tbody>
+                {thongKeLoi.map((tk) => (
+                  <tr key={tk.maLenhCat} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2 pr-3">
+                      <div className="font-bold text-slate-800">{tk.maLenhCat}</div>
+                      <div className="text-xs text-slate-500">{tk.tenSP}</div>
+                    </td>
+                    <td className="py-2 px-3 text-right font-semibold text-slate-700 tabular-nums">
+                      {tk.tongSLCat.toLocaleString("vi-VN")}
+                    </td>
+                    <td className={`py-2 px-3 text-right font-black tabular-nums ${tk.tongLoi > 0 ? "text-rose-600" : "text-slate-400"}`}>
+                      {tk.tongLoi.toLocaleString("vi-VN")}
+                    </td>
+                    <td className={`py-2 px-3 text-right font-bold tabular-nums ${tk.tiLeLoiChung >= 5 ? "text-rose-600" : tk.tiLeLoiChung > 0 ? "text-amber-600" : "text-slate-400"}`}>
+                      {tk.tiLeLoiChung.toFixed(1)}%
+                    </td>
+                    <td className="py-2 pl-3 text-slate-600">
+                      {tk.khauLoiNhieuNhat ? (
+                        <span>
+                          <b className="text-slate-800">{tk.khauLoiNhieuNhat.tenCongDoan}</b>
+                          {" – "}{tk.khauLoiNhieuNhat.slLoi.toLocaleString("vi-VN")} SP
+                          {tk.khauLoiNhieuNhat.nguoiTen ? ` (${tk.khauLoiNhieuNhat.nguoiTen})` : ""}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Không có lỗi</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {lcHT.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">

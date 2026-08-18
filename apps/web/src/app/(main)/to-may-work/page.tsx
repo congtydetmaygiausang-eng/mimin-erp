@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
@@ -97,8 +98,25 @@ export default function UiMayPage() {
   }
 
   function handleHoanThanh(lc: any, pc: any) {
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "cho_qc" });
-    toast.success(`✅ Đã giao QC: ${pc.tenCongDoan}`);
+    // Trước đây khâu May chỉ đổi trạng thái sang "chờ QC", KHÔNG ghi nhận số đạt
+    // và số lỗi - tức khâu dễ phát sinh lỗi nhất lại không có số liệu hao hụt nào.
+    // Nay bắt buộc khai báo theo màu và lưu lại số đạt/lỗi cùng tiền công thực tế.
+    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+    if (!kiemTra.ok) {
+      toast.error(kiemTra.loi!, { duration: 6000 });
+      return;
+    }
+    const { slDat, slLoi } = kiemTra;
+    const thanhTienDat = slDat * (pc.donGia || 0);
+
+    capNhatCongDoan(lc.id, pc.id, {
+      trangThaiCD: "cho_qc",
+      soLuongHoanThanh: slDat,
+      soLuongLoi: slLoi,
+      thanhTien: thanhTienDat,
+      conLai: thanhTienDat - (pc.daThanhToan || 0),
+    });
+    toast.success(`✅ Đã giao QC: ${pc.tenCongDoan} – ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
   }
 
   return (
