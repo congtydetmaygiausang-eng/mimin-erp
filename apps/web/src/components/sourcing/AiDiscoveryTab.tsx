@@ -282,21 +282,24 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         <label className="text-xs font-medium md:col-span-2">
-          Vị trí trung tâm
+          Lấy tâm tìm kiếm tại
           {locationType === "GPS" ? (
             <div className="flex items-center justify-between input mt-1 bg-slate-50 border-emerald-200">
               <span className="text-emerald-700 font-medium flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> Đang dùng tọa độ GPS</span>
               <button onClick={() => {setLocationType("DISTRICT"); setCenter(null); setLocation("");}} className="text-rose-500 hover:text-rose-700" title="Hủy định vị"><X className="w-4 h-4"/></button>
             </div>
           ) : (
-            <select className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null);}}>
-              <option value="">Chọn Quận/Huyện tại TP.HCM...</option>
-              {HCM_DISTRICTS.map(d => <option key={d} value={`${d}, TP.HCM`}>{d}</option>)}
-            </select>
+            <div className="space-y-1">
+              <select className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value);setCenter(null);if(e.target.value)setLocationMode("STRICT");}}>
+                <option value="">Chọn Quận/Huyện tại TP.HCM...</option>
+                {HCM_DISTRICTS.map(d => <option key={d} value={`${d}, TP.HCM`}>{d}</option>)}
+              </select>
+              <p className="text-[10px] text-slate-500 font-normal leading-tight">(Hệ thống sẽ lấy điểm chính giữa Quận/Huyện làm tâm, sau đó quét compa theo bán kính)</p>
+            </div>
           )}
         </label>
-        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Ưu tiên gần</option><option value="STRICT">Chỉ trong bán kính</option></select></label><div className="flex items-end"><button type="button" className={`btn-secondary w-full inline-flex justify-center gap-2 ${locationType === "GPS" ? "opacity-50 cursor-not-allowed" : ""}`} disabled={locationType === "GPS"} onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:"Nếu không dùng GPS, hệ thống sẽ xác định tâm từ Quận/Huyện đã chọn."}</p>
+        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Tìm trong bán kính (Mở rộng thêm nếu thiếu)</option><option value="STRICT">Nghiêm ngặt (Tuyệt đối không lấy xưởng xa)</option></select></label><div className="flex items-end"><button type="button" className={`btn-secondary w-full inline-flex justify-center gap-2 ${locationType === "GPS" ? "opacity-50 cursor-not-allowed" : ""}`} disabled={locationType === "GPS"} onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:""}</p>
         <div className="flex items-end md:col-span-1">
           <button onClick={() => void search(false)} disabled={loading} className="btn-primary w-full inline-flex items-center justify-center gap-2">
             <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm tự động"}
@@ -313,8 +316,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         <li><b>Vị trí:</b> Chọn một Quận cụ thể hoặc bật "Vị trí hiện tại" để AI quét các xưởng xung quanh tâm đó.</li>
         <li><b>Bán kính & Chế độ:</b> 
           <ul className="list-circle pl-4 mt-1">
-            <li><i>Ưu tiên gần:</i> AI sẽ rà soát từ gần đến xa, lấy cả các xưởng ngoài bán kính nếu rất phù hợp.</li>
-            <li><i>Chỉ trong bán kính:</i> Loại bỏ tuyệt đối mọi xưởng nằm ngoài vòng tròn (Dùng khi cần tìm gấp, không muốn đi xa).</li>
+            <li><i>Mở rộng thêm nếu thiếu:</i> AI sẽ rà soát từ gần đến xa, lấy cả các xưởng ngoài bán kính nếu rất phù hợp.</li>
+            <li><i>Nghiêm ngặt:</i> Loại bỏ tuyệt đối mọi xưởng nằm ngoài vòng tròn (Dùng khi cần tìm gấp, không muốn đi xa).</li>
           </ul>
         </li>
       </ul>
