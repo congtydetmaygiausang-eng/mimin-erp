@@ -427,7 +427,7 @@ export default function MangLuoiSanXuatPage() {
         })}
       </div>
 
-      <div className="card p-4">
+      <div className="card p-4 relative z-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h2 className="font-bold text-lg">{ROLE_LABELS[activeRole]}</h2>
