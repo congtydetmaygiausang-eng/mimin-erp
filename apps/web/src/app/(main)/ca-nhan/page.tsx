@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { CircleUserRound, Mail, Briefcase, Building2, Bell, Heart } from "lucide-react";
+import { Mail, Briefcase, Building2, Bell, Heart } from "lucide-react";
 import { MiminGroupTabs } from "@/components/mimin-group/MiminGroupTabs";
 import { useSession } from "@/components/session-provider";
 import { Avatar } from "@/components/Avatar";
@@ -159,24 +159,33 @@ export default function CaNhanPage() {
   };
 
   const soChuaDoc = thongBaos.filter((t) => !t.da_doc).length;
+  const tongLuotThich = Object.values(likes).reduce((sum, ds) => sum + ds.length, 0);
+  const tongBinhLuan = Object.values(comments).reduce((sum, ds) => sum + ds.length, 0);
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4 pb-24 md:pb-20">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <CircleUserRound className="w-6 h-6 text-brand-500" /> Cá nhân
-        </h1>
-        <p className="text-sm opacity-70 mt-1">Thông tin và hoạt động của anh trong MIMIN Group.</p>
-      </div>
+    <div className="max-w-2xl mx-auto pb-24 md:pb-20">
+      {/* Trang cá nhân kiểu Zalo: ảnh bìa + avatar tròn đè lên, thông tin căn giữa */}
+      <div className="rounded-b-xl md:rounded-xl overflow-hidden bg-white/60 dark:bg-white/5 border-b md:border border-black/5 dark:border-white/5">
+        <div className="h-28 md:h-36 bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-500 relative">
+          <button
+            onClick={moThongBao}
+            className="absolute top-3 right-3 p-2.5 rounded-full bg-black/20 hover:bg-black/30 text-white transition"
+            title="Thông báo"
+          >
+            <Bell className="w-5 h-5" />
+            {soChuaDoc > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                {soChuaDoc}
+              </span>
+            )}
+          </button>
+        </div>
 
-      <MiminGroupTabs />
-
-      <div className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl p-5 flex items-center gap-4">
-        <Avatar name={tenNguoiDung} size="2xl" />
-        <div className="min-w-0 flex-1">
-          <div className="text-lg font-bold truncate">{tenNguoiDung}</div>
+        <div className="flex flex-col items-center px-4 pb-5 -mt-12">
+          <Avatar name={tenNguoiDung} size="2xl" className="ring-4 ring-white dark:ring-slate-900 shadow-lg" />
+          <div className="text-lg font-bold mt-2 text-center">{tenNguoiDung}</div>
           {user?.title && (
-            <div className="text-sm opacity-70 flex items-center gap-1.5 mt-0.5">
+            <div className="text-sm opacity-70 flex items-center gap-1.5 mt-1">
               <Briefcase className="w-3.5 h-3.5" /> {user.title}
             </div>
           )}
@@ -190,20 +199,26 @@ export default function CaNhanPage() {
               <Mail className="w-3.5 h-3.5" /> {user.email}
             </div>
           )}
+
+          <div className="flex items-center gap-8 mt-4 pt-4 border-t border-black/5 dark:border-white/10 w-full max-w-xs justify-center">
+            <div className="text-center">
+              <div className="font-bold text-lg">{posts.length}</div>
+              <div className="text-xs opacity-60">Bài đăng</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">{tongLuotThich}</div>
+              <div className="text-xs opacity-60">Lượt thích</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">{tongBinhLuan}</div>
+              <div className="text-xs opacity-60">Bình luận</div>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={moThongBao}
-          className="relative p-2.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition shrink-0"
-          title="Thông báo"
-        >
-          <Bell className="w-5 h-5" />
-          {soChuaDoc > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-              {soChuaDoc}
-            </span>
-          )}
-        </button>
       </div>
+
+      <div className="p-4 md:p-0 md:mt-4 space-y-4">
+      <MiminGroupTabs />
 
       {hienThongBao && (
         <div className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl p-4 space-y-2">
@@ -252,6 +267,7 @@ export default function CaNhanPage() {
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {previewImg && (
