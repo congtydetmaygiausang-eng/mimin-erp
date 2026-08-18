@@ -256,13 +256,16 @@ export default function CongViecCatPage() {
                           Gia công quần
                         </button>
                       )}
-                      <button
-                        onClick={() => setModalTyLeMau({ id: lc.id, mauIdx: 0 })}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-sky-200 text-sky-700 rounded-lg text-xs font-bold hover:bg-sky-50 transition-colors shadow-sm"
-                        title="Xem/sửa chi tiết số lượng theo size"
-                      >
-                        <Ruler className="w-3.5 h-3.5" /> Chi tiết size
-                      </button>
+                      {lc.dsMau?.map((m: any, mIdx: number) => (
+                        <button
+                          key={mIdx}
+                          onClick={() => setModalTyLeMau({ id: lc.id, mauIdx: mIdx })}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-sky-200 text-sky-700 rounded-lg text-xs font-bold hover:bg-sky-50 transition-colors shadow-sm"
+                          title={`Xem/sửa chi tiết số lượng theo size - màu ${m.ten}`}
+                        >
+                          <Ruler className="w-3.5 h-3.5" /> Size {m.ten}
+                        </button>
+                      ))}
                     </div>
                     <div className="text-sm text-right">
                       <span className="text-slate-500 mr-1.5">Thợ cắt:</span>
