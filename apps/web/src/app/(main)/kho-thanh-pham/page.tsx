@@ -3,6 +3,7 @@ import { useState, useMemo, useRef } from "react";
 import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
+import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { useSupabaseSync } from "@/lib/supabase/sync-helper";
 import { STORAGE_KEY, generateSanPhamFromWorkflow, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
@@ -11,10 +12,13 @@ import { ProductGrid } from "./components/ProductGrid";
 import { ProductTable } from "./components/ProductTable";
 import { ProductFormModal } from "./components/ProductFormModal";
 import { MasterDetailsModal } from "./components/MasterDetailsModal";
+import { DangBanModal } from "./components/DangBanModal";
 
 export default function KhoThanhPhamPage() {
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const { data: dsSanPham, setData: setDsSanPham } = useSupabaseSync<SanPhamTP>(STORAGE_KEY, "kho_thanh_pham", []);
+  const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
+  const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | SanPhamTP["trangThai"]>("all");
   const [filterLoai, setFilterLoai] = useState<"all" | string>("all");
@@ -156,6 +160,52 @@ export default function KhoThanhPhamPage() {
     const ds = generateSanPhamFromWorkflow();
     update(ds);
     toast.success(`Đã tạo ${ds.length} sản phẩm từ workflow`);
+  };
+
+  // Chuyển 1 nhóm sản phẩm (theo maSP) từ Kho thành phẩm sang Danh mục sản phẩm để bán.
+  // Ảnh lấy từ dsMau của lệnh cắt gốc (lsx) - giữ nguyên, không cần upload lại.
+  const handleDangBan = (giaBan: number, giaVon: number) => {
+    const group = dangBanGroup;
+    if (!group) return;
+
+    const lsx = group.items[0]?.lsx;
+    const lc = dsLenhCat.find((l) => l.id === lsx);
+    const mauTuLC = lc?.dsMau || [];
+
+    const dsMauForSanPham: MauTieuChuan[] = mauTuLC.length > 0
+      ? mauTuLC.map((m) => ({ ten: m.ten, maSKU: m.maSKU || `${group.maSP}-${m.ten}`, dinhMuc: m.dinhMuc || 0, img: m.img || "" }))
+      : Array.from(new Set(group.items.map((i) => i.mau))).map((mau) => ({ ten: mau, maSKU: `${group.maSP}-${mau}`, dinhMuc: 0, img: "" }));
+
+    const existing = dsDanhMuc.find((sp) => sp.id === group.maSP);
+    if (existing) {
+      suaSP(existing.id, {
+        giaBanDuKien: giaBan,
+        giaVonDuKien: giaVon || existing.giaVonDuKien,
+        dsMau: dsMauForSanPham,
+        tenSP: group.tenSP || existing.tenSP,
+      });
+      toast.success(`Đã cập nhật ${group.maSP} trong Danh mục sản phẩm`);
+    } else {
+      themSP({
+        id: group.maSP,
+        tenSP: group.tenSP || lc?.tenSP || group.maSP,
+        loaiSP: lc?.loaiSP || "BoTru",
+        giaBanDuKien: giaBan,
+        giaVonDuKien: giaVon || 0,
+        tiLeSize: lc?.tiLeSize || "",
+        bangSize: {
+          sizes: lc?.dsMau?.[0]?.phanBoSize?.map((s) => s.size) || [],
+          ratios: (lc?.tiLeSize || "").split(":").map((n) => parseInt(n) || 0),
+          riSo: (lc?.tiLeSize || "").split(":").reduce((s, n) => s + (parseInt(n) || 0), 0),
+        },
+        dsMau: dsMauForSanPham,
+        ghiChu: lsx ? `Từ lệnh cắt ${lsx}` : "",
+        ngayTao: new Date().toISOString().slice(0, 10),
+        trangThai: "con-hang",
+      });
+      toast.success(`Đã đăng bán ${group.maSP} vào Danh mục sản phẩm`);
+    }
+    setDangBanGroup(null);
   };
 
   const exportCSV = () => {
@@ -300,6 +350,7 @@ export default function KhoThanhPhamPage() {
               handleXuatKho={handleXuatKho}
               update={update}
               dsSanPham={dsSanPham}
+              onDangBan={setDangBanGroup}
             />
           ) : (
             <ProductTable
@@ -319,6 +370,25 @@ export default function KhoThanhPhamPage() {
       {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={productImages} onClose={() => setShowMasterDetails(null)} />}
       {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
       {editing && <ProductFormModal sp={editing} initialImage={productImages[editing.id]} onClose={() => setEditing(null)} onSave={handleEdit} />}
+      {dangBanGroup && (() => {
+        const lc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.lsx);
+        const mauTuLC = lc?.dsMau || [];
+        const soMauCoAnh = mauTuLC.filter((m) => m.img).length;
+        const tongSoMau = mauTuLC.length || new Set(dangBanGroup.items.map((i) => i.mau)).size;
+        const existing = dsDanhMuc.find((sp) => sp.id === dangBanGroup.maSP);
+        return (
+          <DangBanModal
+            group={dangBanGroup}
+            soMauCoAnh={soMauCoAnh}
+            tongSoMau={tongSoMau}
+            daCoTrongDanhMuc={!!existing}
+            giaBanMacDinh={existing?.giaBanDuKien}
+            giaVonMacDinh={existing?.giaVonDuKien}
+            onClose={() => setDangBanGroup(null)}
+            onConfirm={handleDangBan}
+          />
+        );
+      })()}
 
       {/* Hidden file input for upload (image + video) */}
       <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />

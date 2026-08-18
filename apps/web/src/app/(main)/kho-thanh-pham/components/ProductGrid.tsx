@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.2)
 
 import type { RefObject } from "react";
-import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Video, Package } from "lucide-react";
+import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Video, Package, Tag } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
 interface ProductGroup {
@@ -25,9 +25,10 @@ interface ProductGridProps {
   handleXuatKho: (id: string) => void;
   update: (newDs: SanPhamTP[]) => void;
   dsSanPham: SanPhamTP[];
+  onDangBan: (group: ProductGroup) => void;
 }
 
-export function ProductGrid({ groups, productImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham }: ProductGridProps) {
+export function ProductGrid({ groups, productImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan }: ProductGridProps) {
   return (
     <div className="flex flex-col gap-8">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={() => {}} />
@@ -124,6 +125,9 @@ export function ProductGrid({ groups, productImages, productVideos, setUploading
                     </button>
                     <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur text-white transition-all text-sm font-semibold flex items-center gap-2 shadow-sm border border-white/10 hover:scale-105" title="Thêm đơn hàng">
                       <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Thêm đơn</span>
+                    </button>
+                    <button onClick={() => onDangBan(group)} className="px-4 py-2 bg-emerald-500/90 hover:bg-emerald-500 rounded-xl backdrop-blur text-white transition-all text-sm font-bold flex items-center gap-2 shadow-md border border-emerald-400/50 hover:scale-105" title="Đăng bán vào Danh mục sản phẩm">
+                      <Tag className="w-4 h-4" /> <span className="hidden sm:inline">Đăng bán</span>
                     </button>
                     <button onClick={() => alert('Chức năng sửa tổng')} className="px-4 py-2 bg-amber-500/90 hover:bg-amber-500 rounded-xl backdrop-blur text-white transition-all text-sm font-bold flex items-center gap-2 shadow-md border border-amber-400/50 hover:scale-105" title="Sửa tổng">
                       <Edit className="w-4 h-4" /> <span className="hidden sm:inline">Sửa tổng</span>
