@@ -448,7 +448,10 @@ export default function MangLuoiSanXuatPage() {
           </label>
           <label className="text-xs font-medium">
             Năng lực cần tìm
-            <input value={capabilityFilter} onChange={(event) => setCapabilityFilter(event.target.value)} className="input mt-1" placeholder="VD: vải cotton, thêu" />
+            <input value={capabilityFilter} onChange={(event) => setCapabilityFilter(event.target.value)} list="category-list" className="input mt-1" placeholder="VD: vải cotton, thêu" />
+            <datalist id="category-list">
+              {DANH_MUC_VAT_TU_CHI_TIET.flatMap(nhom => nhom.danhMuc.map(item => <option key={item.id} value={item.ten} />))}
+            </datalist>
           </label>
           <label className="text-xs font-medium">
             Trong bán kính (km)
