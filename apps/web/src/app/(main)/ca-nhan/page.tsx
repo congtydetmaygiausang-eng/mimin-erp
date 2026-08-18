@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Mail, Briefcase, Building2, Bell, Heart } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Mail, Briefcase, Building2, Bell, Heart, Camera, Loader2 } from "lucide-react";
 import { MiminGroupTabs } from "@/components/mimin-group/MiminGroupTabs";
 import { useSession } from "@/components/session-provider";
 import { Avatar } from "@/components/Avatar";
@@ -34,12 +34,19 @@ export default function CaNhanPage() {
   const [thongBaos, setThongBaos] = useState<ThongBao[]>([]);
   const [hienThongBao, setHienThongBao] = useState(false);
 
+  const [anhBia, setAnhBia] = useState<string | null>(null);
+  const [dangTaiAnhBia, setDangTaiAnhBia] = useState(false);
+  const anhBiaRef = useRef<HTMLInputElement>(null);
+
   const load = useCallback(async () => {
     if (!supabase) {
       setLoading(false);
       return;
     }
     try {
+      const { data: hoSoData } = await supabase.from("bang_tin_ho_so").select("anh_bia").eq("id", tenNguoiDung).maybeSingle();
+      setAnhBia(hoSoData?.anh_bia || null);
+
       const { data: postData } = await supabase
         .from("bang_tin_bai_dang")
         .select("*")
@@ -80,6 +87,59 @@ export default function CaNhanPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  /** Nén ảnh bìa trước khi lưu (base64) để hồ sơ không quá nặng */
+  const nenAnhBia = (dataUrl: string, maxW = 1200, maxH = 400, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(1, maxW / img.width, maxH / img.height);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(dataUrl);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        try {
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
+  const handleChonAnhBia = async (fileList: FileList | null) => {
+    const file = fileList?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    if (!supabase) {
+      toast.error("Chưa kết nối được cơ sở dữ liệu.");
+      return;
+    }
+    setDangTaiAnhBia(true);
+    try {
+      const goc = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const nen = await nenAnhBia(goc);
+      const { error } = await supabase.from("bang_tin_ho_so").upsert({
+        id: tenNguoiDung,
+        anh_bia: nen,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setAnhBia(nen);
+      toast.success("Đã cập nhật ảnh bìa!");
+    } catch (err: any) {
+      toast.error("Đổi ảnh bìa thất bại: " + err.message);
+    } finally {
+      setDangTaiAnhBia(false);
+    }
+  };
 
   const toggleThich = async (post: BaiDang) => {
     if (!supabase) return;
@@ -166,7 +226,10 @@ export default function CaNhanPage() {
     <div className="max-w-2xl mx-auto pb-24 md:pb-20">
       {/* Trang cá nhân kiểu Zalo: ảnh bìa + avatar tròn đè lên, thông tin căn giữa */}
       <div className="rounded-b-xl md:rounded-xl overflow-hidden bg-white/60 dark:bg-white/5 border-b md:border border-black/5 dark:border-white/5">
-        <div className="h-28 md:h-36 bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-500 relative">
+        <div
+          className="h-28 md:h-36 relative bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-500 bg-cover bg-center"
+          style={anhBia ? { backgroundImage: `url(${anhBia})` } : undefined}
+        >
           <button
             onClick={moThongBao}
             className="absolute top-3 right-3 p-2.5 rounded-full bg-black/20 hover:bg-black/30 text-white transition"
@@ -178,6 +241,16 @@ export default function CaNhanPage() {
                 {soChuaDoc}
               </span>
             )}
+          </button>
+
+          <input ref={anhBiaRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleChonAnhBia(e.target.files); e.target.value = ""; }} />
+          <button
+            onClick={() => anhBiaRef.current?.click()}
+            disabled={dangTaiAnhBia}
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/30 hover:bg-black/40 text-white text-xs font-medium transition disabled:opacity-60"
+            title="Đổi ảnh bìa"
+          >
+            {dangTaiAnhBia ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Đổi ảnh bìa
           </button>
         </div>
 
