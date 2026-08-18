@@ -226,13 +226,13 @@ export default function TinNhanPage() {
                 <div className="py-12 text-center opacity-50 text-sm px-4">Không tìm thấy.</div>
               ) : (
                 dsLienHe.map((u) => (
-                  <button
+                  <div
                     key={u.id}
                     onClick={() => { setDangChonVoi(u.name); setTabTrai("chat"); }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left"
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 transition cursor-pointer"
                   >
                     <Avatar name={u.name} size="lg" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium truncate">{u.name}</div>
                       {u.sdt && (
                         <div className="text-xs opacity-60 truncate flex items-center gap-1">
@@ -240,7 +240,24 @@ export default function TinNhanPage() {
                         </div>
                       )}
                     </div>
-                  </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDangChonVoi(u.name); setTabTrai("chat"); }}
+                      className="p-2 rounded-full bg-brand-500 hover:bg-brand-600 text-white transition shrink-0"
+                      title="Nhắn tin"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                    {u.sdt && (
+                      <a
+                        href={`tel:${u.sdt}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white transition shrink-0"
+                        title="Gọi điện thoại"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
                 ))
               )}
             </div>
