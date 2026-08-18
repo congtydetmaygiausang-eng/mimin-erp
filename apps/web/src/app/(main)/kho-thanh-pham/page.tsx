@@ -208,7 +208,7 @@ export default function KhoThanhPhamPage() {
 
   // Chuyển 1 nhóm sản phẩm (theo maSP) từ Kho thành phẩm sang Danh mục sản phẩm để bán.
   // Ảnh lấy từ dsMau của lệnh cắt gốc (lsx) - giữ nguyên, không cần upload lại.
-  const handleDangBan = (giaBan: number, giaVon: number) => {
+  const handleDangBan = async (giaBan: number, giaVon: number) => {
     const group = dangBanGroup;
     if (!group) return;
 
@@ -220,13 +220,28 @@ export default function KhoThanhPhamPage() {
       ? mauTuLC.map((m) => ({ ten: m.ten, maSKU: m.maSKU || `${group.maSP}-${m.ten}`, dinhMuc: m.dinhMuc || 0, img: m.img || "" }))
       : Array.from(new Set(group.items.map((i) => i.mau))).map((mau) => ({ ten: mau, maSKU: `${group.maSP}-${mau}`, dinhMuc: 0, img: "" }));
 
-    const existing = dsDanhMuc.find((sp) => sp.id === group.maSP);
-    if (existing) {
-      suaSP(existing.id, {
+    // Kiểm tra trực tiếp Supabase thay vì dùng dsDanhMuc cache (có thể chưa tải xong
+    // lúc bấm nút, dẫn tới nhầm "chưa có" -> tạo bản ghi trùng thay vì cập nhật).
+    let existingId: string | undefined = dsDanhMuc.find((sp) => sp.id === group.maSP)?.id;
+    if (!existingId) {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        if (supabase) {
+          const { data } = await supabase.from("san_pham").select("ma_sp").eq("ma_sp", group.maSP).limit(1).maybeSingle();
+          if (data) existingId = group.maSP;
+        }
+      } catch (e) {
+        console.error("Lỗi kiểm tra sản phẩm đã tồn tại trong Danh mục", e);
+      }
+    }
+
+    if (existingId) {
+      const existing = dsDanhMuc.find((sp) => sp.id === existingId);
+      suaSP(existingId, {
         giaBanDuKien: giaBan,
-        giaVonDuKien: giaVon || existing.giaVonDuKien,
+        giaVonDuKien: giaVon || existing?.giaVonDuKien || 0,
         dsMau: dsMauForSanPham,
-        tenSP: group.tenSP || existing.tenSP,
+        tenSP: group.tenSP || existing?.tenSP || group.maSP,
       });
       toast.success(`Đã cập nhật ${group.maSP} trong Danh mục sản phẩm`);
     } else {
