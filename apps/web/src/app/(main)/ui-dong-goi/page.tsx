@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
+import { supabaseUpsert } from "@/lib/supabase/client";
 
 export default function UiDongGoiPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
@@ -245,30 +246,33 @@ export default function UiDongGoiPage() {
                           }
                           capNhatTrangThai(lc.id, "HoanThanh", null);
 
-                          // Thêm vào kho thành phẩm
+                          // Thêm vào kho thành phẩm (localStorage + Supabase)
+                          const newSP = {
+                            id: `SP-${Date.now()}`,
+                            maSP: lc.id,
+                            tenSP: lc.tenSP,
+                            phanLoai: "Áo",
+                            mau: "Nhiều màu",
+                            size: "Nhiều size",
+                            lsx: lc.id,
+                            ngayNhap: new Date().toISOString().split("T")[0],
+                            soLuong: lc.tongSL,
+                            donGia: 0,
+                            giaTri: 0,
+                            viTri: khuVuc[lc.id],
+                            trangThai: "con"
+                          };
                           try {
                             const khoKey = "mimin_kho_thanh_pham_v2";
                             const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
-                            const newSP = {
-                              id: `SP-${Date.now()}`,
-                              maSP: lc.id,
-                              tenSP: lc.tenSP,
-                              phanLoai: "Áo",
-                              mau: "Nhiều màu",
-                              size: "Nhiều size",
-                              lsx: lc.id,
-                              ngayNhap: new Date().toISOString().split("T")[0],
-                              soLuong: lc.tongSL,
-                              donGia: 0,
-                              giaTri: 0,
-                              viTri: khuVuc[lc.id],
-                              trangThai: "con"
-                            };
                             currentKho.push(newSP);
                             localStorage.setItem(khoKey, JSON.stringify(currentKho));
                           } catch (e) {
-                            console.error("Lỗi khi thêm vào kho thành phẩm", e);
+                            console.error("Lỗi khi thêm vào kho thành phẩm (local)", e);
                           }
+                          supabaseUpsert("kho_thanh_pham", newSP).catch((e) =>
+                            console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
+                          );
 
                           toast.success(`📦 Đã nhập kho ${lc.id} tại ${khuVuc[lc.id]}`);
                         }}

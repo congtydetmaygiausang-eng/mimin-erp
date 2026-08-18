@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
-import { STORAGE_KEY, fromStorage, saveStorage, generateSanPhamFromWorkflow, type SanPhamTP } from "./data";
+import { useSupabaseSync } from "@/lib/supabase/sync-helper";
+import { STORAGE_KEY, generateSanPhamFromWorkflow, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -13,7 +14,7 @@ import { MasterDetailsModal } from "./components/MasterDetailsModal";
 
 export default function KhoThanhPhamPage() {
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
-  const [dsSanPham, setDsSanPham] = useState<SanPhamTP[]>([]);
+  const { data: dsSanPham, setData: setDsSanPham } = useSupabaseSync<SanPhamTP>(STORAGE_KEY, "kho_thanh_pham", []);
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | SanPhamTP["trangThai"]>("all");
   const [filterLoai, setFilterLoai] = useState<"all" | string>("all");
@@ -49,20 +50,9 @@ export default function KhoThanhPhamPage() {
     }
   };
 
-  // Load data
-  useEffect(() => {
-    let ds = fromStorage<SanPhamTP[]>(STORAGE_KEY, []);
-    if (ds.length === 0) {
-      ds = generateSanPhamFromWorkflow();
-      saveStorage(STORAGE_KEY, ds);
-    }
-    setDsSanPham(ds);
-  }, []);
-
-  // Save on change
+  // Save on change (setDsSanPham ghi cả localStorage + Supabase)
   const update = (newDs: SanPhamTP[]) => {
     setDsSanPham(newDs);
-    saveStorage(STORAGE_KEY, newDs);
   };
 
   // Filter + search + sort
