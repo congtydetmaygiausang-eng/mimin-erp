@@ -392,7 +392,7 @@ export default function MangLuoiSanXuatPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Làm mới
             </button>
             {mayCreate && (
-              <><Link href="/mang-luoi-san-xuat/tim-kiem" className="btn-secondary inline-flex items-center gap-2"><Search className="w-4 h-4" /> Tìm tự động</Link><button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
+              <><Link href="/mang-luoi-san-xuat/xep-hang" className="btn-secondary inline-flex items-center gap-2">Xếp hạng</Link><Link href="/mang-luoi-san-xuat/tim-kiem" className="btn-secondary inline-flex items-center gap-2"><Search className="w-4 h-4" /> Tìm tự động</Link><button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" /> Thêm đối tác
               </button></>
             )}
