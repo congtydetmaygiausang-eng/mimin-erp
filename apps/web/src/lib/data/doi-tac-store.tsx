@@ -19,6 +19,7 @@ export type DoiTacDBModel = {
   cong_no?: number;
   han_muc?: number;
   rating?: number;
+  chuyen_mon_chi_tiet?: string[]; // 2026-08-18
 };
 
 function mapToDB(ui: DoiTacGiaCong): DoiTacDBModel {
@@ -37,6 +38,7 @@ function mapToDB(ui: DoiTacGiaCong): DoiTacDBModel {
     cong_no: ui.congNo || 0,
     han_muc: ui.hanMucNo || 0,
     rating: ui.rating || 4.0,
+    chuyen_mon_chi_tiet: ui.chuyenMonChiTiet || [], // 2026-08-18
   };
 }
 
@@ -63,6 +65,7 @@ function mapToUI(db: any, index: number): DoiTacGiaCong {
     thoiHanThanhToan: 30,
     phuongThucTT: "Chuyển khoản",
     rating: db.rating || 4.0,
+    chuyenMonChiTiet: Array.isArray(db.chuyen_mon_chi_tiet) ? db.chuyen_mon_chi_tiet : [], // 2026-08-18
   };
 }
 

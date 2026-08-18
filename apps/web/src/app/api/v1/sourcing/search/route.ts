@@ -6,10 +6,10 @@ const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPLIER", "
 const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
 const requests = new Map<string, { count: number; reset: number }>();
 const ROLE_SEARCH_TERMS: Record<string, string[]> = {
-  CUSTOMER: ["khách hàng may mặc", "thương hiệu thời trang", "đơn vị đặt may"],
-  SATELLITE_PROCESSOR: ["xưởng gia công may", "xưởng may vệ tinh", "gia công công đoạn may"],
-  MATERIAL_SUPPLIER: ["nhà cung cấp nguyên phụ liệu", "nhà sản xuất vải", "công ty dệt vải"],
-  PACKAGING_FINISHER: ["đơn vị ủi đóng gói", "hoàn thiện sản phẩm may", "dịch vụ đóng gói may mặc"],
+  CUSTOMER: ["khách hàng may mặc", "thương hiệu thời trang", "đơn vị đặt may", "đặt hàng sỉ"],
+  SATELLITE_PROCESSOR: ["xưởng gia công may", "xưởng may vệ tinh", "gia công công đoạn may", "xưởng may quần", "xưởng may áo"],
+  MATERIAL_SUPPLIER: ["nhà cung cấp nguyên phụ liệu", "nhà sản xuất vải", "công ty dệt vải", "nhà cung cấp chỉ sợi", "phụ kiện may mặc kim loại nhựa", "keo mếch lót", "nhãn mác bao bì"],
+  PACKAGING_FINISHER: ["đơn vị ủi đóng gói", "hoàn thiện sản phẩm may", "dịch vụ đóng gói may mặc", "xưởng ủi đóng gói"],
 };
 const BLOCKED_SOURCE_DOMAINS = [
   "muaban.net", "vieclamtot.com", "chotot.com", "vieclam24h.vn", "topcv.vn",
@@ -17,10 +17,10 @@ const BLOCKED_SOURCE_DOMAINS = [
   "glints.com", "rongbay.com", "raovat.net", "pinterest.com", "youtube.com", "tiktok.com",
 ] as const;
 const ROLE_EVIDENCE_TERMS: Record<string, string[]> = {
-  CUSTOMER: ["thương hiệu", "thời trang", "đặt may", "đồng phục", "bán lẻ"],
-  SATELLITE_PROCESSOR: ["xưởng may", "gia công", "may mặc", "cắt", "thêu", "in"],
-  MATERIAL_SUPPLIER: ["vải", "dệt", "sợi", "nhuộm", "cotton", "thun", "phụ liệu", "nguyên liệu", "bo", "cúc", "chỉ", "dây kéo"],
-  PACKAGING_FINISHER: ["ủi", "đóng gói", "hoàn thiện", "bao bì", "kiểm hàng"],
+  CUSTOMER: ["thương hiệu", "thời trang", "đặt may", "đồng phục", "bán lẻ", "đặt sỉ"],
+  SATELLITE_PROCESSOR: ["xưởng may", "gia công", "may mặc", "cắt", "thêu", "in", "quần", "áo", "trụ", "tròn"],
+  MATERIAL_SUPPLIER: ["vải", "dệt", "sợi", "nhuộm", "cotton", "thun", "phụ liệu", "nguyên liệu", "bo", "cúc", "chỉ", "dây kéo", "polyester", "keo dựng", "mếch", "nhãn", "ren", "bao bì", "túi pe", "carton", "móc", "khuy bấm", "đinh tán"],
+  PACKAGING_FINISHER: ["ủi", "đóng gói", "hoàn thiện", "bao bì", "kiểm hàng", "gấp xếp"],
 };
 
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number }
@@ -47,7 +47,7 @@ interface NominatimPlace {
   boundingbox?: string[];
   address?: { country_code?: string };
 }
-type CoordinateSource = "MANUAL" | "SOURCE" | "WEBSITE" | "NOMINATIM";
+type CoordinateSource = "MANUAL" | "SOURCE" | "WEBSITE" | "NOMINATIM" | "GOOGLE_MAPS";
 type GeocodeCacheStatus = "MEMORY" | "PERSISTENT" | "PROVIDER" | "STALE_FALLBACK";
 interface DistanceEvidence {
   method: "HAVERSINE";
@@ -114,7 +114,7 @@ function sameEntity(left: Candidate, right: Candidate): boolean {
 function mergeText(left: string, right: string): string { return right.length > left.length ? right : left; }
 
 function coordinatePriority(source?: CoordinateSource): number {
-  return source === "MANUAL" ? 4 : source === "SOURCE" ? 3 : source === "WEBSITE" ? 2 : source === "NOMINATIM" ? 1 : 0;
+  return source === "MANUAL" ? 5 : source === "SOURCE" ? 4 : source === "GOOGLE_MAPS" ? 3 : source === "WEBSITE" ? 2 : source === "NOMINATIM" ? 1 : 0;
 }
 
 function verificationStatus(fields: string[], sourceCount: number): "VERIFIED" | "PARTIAL" | "UNVERIFIED" {
@@ -300,7 +300,33 @@ async function resolveCenter(location: string, provided?: { latitude?: unknown; 
     const accuracy = typeof provided?.accuracy === "number" ? Math.max(0, Math.min(provided.accuracy, 10000)) : undefined;
     return { latitude, longitude, label: "Vị trí GPS hiện tại", source: "GPS", accuracy, validationStatus: "VERIFIED", validationConfidence: accuracy !== undefined && accuracy <= 100 ? "HIGH" : "MEDIUM", placeType: "gps", validatedAt: new Date().toISOString() };
   }
-  try {
+  
+  // Try Google Maps Geocoding first if API key is present
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (googleApiKey) {
+    try {
+      const params = new URLSearchParams({ address: `${location}, Việt Nam`, key: googleApiKey, language: "vi", region: "vn" });
+      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`, { signal: AbortSignal.timeout(5000) });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === "OK" && data.results?.[0]) {
+          const result = data.results[0];
+          const resolvedLatitude = result.geometry.location.lat;
+          const resolvedLongitude = result.geometry.location.lng;
+          const viewport = result.geometry.viewport;
+          let boundingBox: [number, number, number, number] | undefined;
+          if (viewport) {
+             boundingBox = [viewport.southwest.lat, viewport.northeast.lat, viewport.southwest.lng, viewport.northeast.lng];
+          }
+          return { latitude: resolvedLatitude, longitude: resolvedLongitude, label: result.formatted_address, source: "ADDRESS", validationStatus: "VERIFIED", validationConfidence: "HIGH", placeType: result.types?.[0] ?? "place", boundingBox, validatedAt: new Date().toISOString() };
+        }
+      }
+    } catch (e) {
+      console.warn("Google Maps API center resolution failed, falling back to Nominatim", e);
+    }
+  }
+
+  // Fallback to Nominatim
     const params = new URLSearchParams({ q: `${location}, Việt Nam`, format: "jsonv2", limit: "5", countrycodes: "vn", addressdetails: "1", dedupe: "1" });
     const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": "MIMIN-ERP-Sourcing/1.0", "Accept-Language": "vi" }, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) return null;
@@ -446,24 +472,66 @@ async function queuedNominatimSearch(query: string): Promise<NominatimPlace[]> {
   } finally { release?.(); }
 }
 
-async function lookupGeocode(client: SupabaseClient | null, query: string): Promise<{ places: NominatimPlace[]; status: GeocodeCacheStatus }> {
+async function queuedGoogleMapsSearch(query: string): Promise<NominatimPlace[]> {
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!googleApiKey) return [];
+  const params = new URLSearchParams({ address: query, key: googleApiKey, language: "vi", region: "vn" });
+  const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`, { signal: AbortSignal.timeout(5000) });
+  if (!response.ok) throw new Error(`Google Maps HTTP ${response.status}`);
+  const data = await response.json();
+  if (data.status !== "OK" || !data.results) return [];
+  return data.results.map((res: any) => {
+    const bounds = res.geometry.viewport;
+    const bb = bounds ? [bounds.southwest.lat.toString(), bounds.northeast.lat.toString(), bounds.southwest.lng.toString(), bounds.northeast.lng.toString()] : undefined;
+    return {
+      display_name: res.formatted_address,
+      lat: res.geometry.location.lat.toString(),
+      lon: res.geometry.location.lng.toString(),
+      importance: 0.9,
+      boundingbox: bb,
+      address: { country_code: "vn" }
+    };
+  });
+}
+
+async function lookupGeocode(client: SupabaseClient | null, query: string, sourcePriority: "GOOGLE_MAPS" | "NOMINATIM" = "GOOGLE_MAPS"): Promise<{ places: NominatimPlace[]; status: GeocodeCacheStatus; source: CoordinateSource }> {
   const cacheKey = normalizedLocation(query);
   const memory = geocodeCache.get(cacheKey);
-  if (memory && memory.expiresAt > Date.now()) return { places: memory.places, status: "MEMORY" };
+  if (memory && memory.expiresAt > Date.now()) return { places: memory.places, status: "MEMORY", source: "NOMINATIM" };
   const persistent = await readPersistentGeocode(client, cacheKey);
   if (persistent && persistent.expiresAt > Date.now()) {
     geocodeCache.set(cacheKey, persistent);
-    return { places: persistent.places, status: "PERSISTENT" };
+    return { places: persistent.places, status: "PERSISTENT", source: "NOMINATIM" };
   }
   try {
-    const places = await queuedNominatimSearch(query);
+    let places: NominatimPlace[] = [];
+    let actualSource: CoordinateSource = "NOMINATIM";
+    
+    if (sourcePriority === "GOOGLE_MAPS" && process.env.GOOGLE_MAPS_API_KEY) {
+      try {
+        places = await queuedGoogleMapsSearch(query);
+        actualSource = "GOOGLE_MAPS";
+      } catch (e) {
+        places = await queuedNominatimSearch(query);
+      }
+    } else {
+      places = await queuedNominatimSearch(query);
+    }
+    
+    if (!places.length && sourcePriority === "GOOGLE_MAPS") {
+       places = await queuedNominatimSearch(query);
+       actualSource = "NOMINATIM";
+    }
+
     const expiresAt = Date.now() + GEOCODE_CACHE_MS;
     geocodeCache.set(cacheKey, { expiresAt, places });
-    await writePersistentGeocode(client, cacheKey, query, places);
-    return { places, status: "PROVIDER" };
+    if (places.length) {
+       await writePersistentGeocode(client, cacheKey, query, places);
+    }
+    return { places, status: "PROVIDER", source: actualSource };
   } catch {
-    if (persistent) return { places: persistent.places, status: "STALE_FALLBACK" };
-    return { places: [], status: "PROVIDER" };
+    if (persistent) return { places: persistent.places, status: "STALE_FALLBACK", source: "NOMINATIM" };
+    return { places: [], status: "PROVIDER", source: "NOMINATIM" };
   }
 }
 
@@ -473,7 +541,7 @@ async function geocodeCandidate(candidate: Candidate, searchLocation: string, ca
   const queries = candidateGeocodeQueries(candidate, searchLocation);
   for (let queryIndex = 0; queryIndex < queries.length; queryIndex += 1) {
     const query = queries[queryIndex];
-    const lookup = await lookupGeocode(cacheClient, query);
+    const lookup = await lookupGeocode(cacheClient, query, "GOOGLE_MAPS");
     const places = lookup.places;
     const matches = places.map((place) => ({ place, score: candidatePlaceScore(candidate, place) })).filter((item) => item.score >= 0).sort((left, right) => right.score - left.score);
     const best = matches[0];
@@ -482,7 +550,7 @@ async function geocodeCandidate(candidate: Candidate, searchLocation: string, ca
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
     const coordinateConfidence = best.score >= 75 && queryIndex === 0 ? "HIGH" : best.score >= 50 ? "MEDIUM" : "LOW";
     const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), "coordinates"]));
-    return { ...candidate, latitude, longitude, verifiedFields, coordinateSource: "NOMINATIM", coordinateConfidence, geocodedAddress: best.place.display_name, geocodedAt: new Date().toISOString(), geocodeStatus: "VERIFIED", coordinateBoundingBox: parseBoundingBox(best.place.boundingbox), geocodeCacheStatus: lookup.status };
+    return { ...candidate, latitude, longitude, verifiedFields, coordinateSource: lookup.source, coordinateConfidence, geocodedAddress: best.place.display_name, geocodedAt: new Date().toISOString(), geocodeStatus: "VERIFIED", coordinateBoundingBox: parseBoundingBox(best.place.boundingbox), geocodeCacheStatus: lookup.status };
   }
   return { ...candidate, latitude: null, longitude: null, geocodeStatus: "REJECTED" };
 }
