@@ -4,7 +4,7 @@
 // Nhận hàng từ QC đạt, Khuy nút, giao Ủi
 
 import { useState } from "react";
-import { CheckCircle2, Circle, Package, Box } from "lucide-react";
+import { CheckCircle2, Circle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
@@ -12,8 +12,7 @@ import { useSession } from "@/components/session-provider";
 
 export default function UiKhuyNutPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
-  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
-  const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
+  const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
 
   const { user } = useSession();
 
@@ -155,7 +154,6 @@ export default function UiKhuyNutPage() {
         <div className="space-y-4">
           {lcHT.map(lc => {
             const htPCs = getHTPC(lc);
-            const isAllDone = htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
             const isLCDone = lc.trangThai === "HoanThanh";
 
             return (
@@ -217,40 +215,6 @@ export default function UiKhuyNutPage() {
                       </div>
                     );
                   })}
-
-                  {/* Nhập kho khi tất cả xong */}
-                  {isAllDone && !isLCDone && (
-                    <div className="border-t border-slate-100 pt-4 mt-2">
-                      <div className="mb-3">
-                        <label className="text-xs font-bold text-slate-600 block mb-1">Khu vực Nhập kho *</label>
-                        <select
-                          value={khuVuc[lc.id] || ""}
-                          onChange={e => setKhuVuc(p => ({ ...p, [lc.id]: e.target.value }))}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30"
-                        >
-                          <option value="">-- Chọn khu vực lưu trữ --</option>
-                          <option value="Khu A - Tầng 1">Khu A - Tầng 1</option>
-                          <option value="Khu A - Tầng 2">Khu A - Tầng 2</option>
-                          <option value="Khu B - Kệ 01">Khu B - Kệ 01</option>
-                          <option value="Khu B - Kệ 02">Khu B - Kệ 02</option>
-                          <option value="Khu C chờ xuất">Khu C chờ xuất</option>
-                        </select>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (!khuVuc[lc.id]) {
-                            toast.error("Vui lòng chọn khu vực nhập kho!");
-                            return;
-                          }
-                          capNhatTrangThai(lc.id, "HoanThanh", null);
-                          toast.success(`📦 Đã nhập kho ${lc.id} tại ${khuVuc[lc.id]}`);
-                        }}
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02]"
-                      >
-                        <Box className="w-5 h-5" /> Nhập kho thành phẩm
-                      </button>
-                    </div>
-                  )}
                 </div>
               </LenhCatCardV2>
             );

@@ -21,21 +21,28 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
     return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
   });
 
-  // Khởi tạo state bằng dữ liệu cũ, nếu khâu nào chưa có dữ liệu thì các size sẽ bằng 0
+  // Khởi tạo state bằng dữ liệu cũ. Khâu nào chưa có dữ liệu thì lấy số lượng
+  // dự kiến từ khâu liền trước (nếu có), hoặc từ phân bổ size gốc của màu -
+  // KHÔNG reset về 0, để người dùng thấy ngay số dự kiến và chỉ cần xác nhận/chỉnh.
   const [tyLeChiTiet, setTyLeChiTiet] = useState<Record<string, { size: string; sl: number }[]>>(() => {
     const initial: Record<string, { size: string; sl: number }[]> = {};
-    
+
     // Nếu đã có dữ liệu lưu trước đó, copy sang
     if (mau.tyLeSizeChiTiet && Object.keys(mau.tyLeSizeChiTiet).length > 0) {
       Object.assign(initial, JSON.parse(JSON.stringify(mau.tyLeSizeChiTiet)));
     }
 
     // Duyệt qua tất cả các khâu theo thứ tự để điền bù những khâu bị thiếu
-    khauList.forEach((khau) => {
+    khauList.forEach((khau, idx) => {
       if (!initial[khau.id] || initial[khau.id].length === 0) {
-        // Gán bằng phân bổ gốc nhưng reset số lượng về 0
-        const phanBoGoc = mau.phanBoSize ? JSON.parse(JSON.stringify(mau.phanBoSize)) : [];
-        initial[khau.id] = phanBoGoc.map((s: any) => ({ ...s, sl: 0 }));
+        // Tìm khâu liền trước gần nhất đã có số liệu (khác 0) để cascade sang
+        let cascadeFrom: { size: string; sl: number }[] | null = null;
+        for (let i = idx - 1; i >= 0; i--) {
+          const prev = initial[khauList[i].id];
+          if (prev && prev.some(s => s.sl > 0)) { cascadeFrom = prev; break; }
+        }
+        const template = cascadeFrom || mau.phanBoSize || [];
+        initial[khau.id] = template.map((s: any) => ({ size: s.size, sl: s.sl || 0 }));
       }
     });
 
@@ -45,38 +52,22 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
   const handleSizeChange = (khauId: string, sizeIdx: number, sl: number) => {
     setTyLeChiTiet(prev => {
       const next = JSON.parse(JSON.stringify(prev));
-      const khauIndex = khauList.findIndex(k => k.id === khauId);
-      
-      if (khauIndex === -1) return prev;
 
       // Chỉ cập nhật khâu hiện tại
       if (!next[khauId]) {
         const phanBoGoc = mau.phanBoSize ? JSON.parse(JSON.stringify(mau.phanBoSize)) : [];
-        next[khauId] = phanBoGoc.map((s: any) => ({ ...s, sl: 0 }));
+        next[khauId] = phanBoGoc;
       }
       if (next[khauId][sizeIdx]) {
         next[khauId][sizeIdx].sl = sl;
       }
-      
+
       return next;
     });
   };
 
   const handleSave = () => {
-    const finalData = JSON.parse(JSON.stringify(tyLeChiTiet));
-    
-    // Tự động cascade (sao chép) số lượng thực tế từ khâu Cắt sang khâu In/Thêu nếu In/Thêu đang trống
-    const catKhau = khauList.find(k => k.id.toLowerCase().includes("cat"));
-    const inTheuKhau = khauList.find(k => k.id.toLowerCase().includes("in_theu"));
-    
-    if (catKhau && inTheuKhau && finalData[catKhau.id]) {
-      const isInTheuEmpty = !finalData[inTheuKhau.id] || finalData[inTheuKhau.id].every((s: any) => s.sl === 0);
-      if (isInTheuEmpty) {
-        finalData[inTheuKhau.id] = JSON.parse(JSON.stringify(finalData[catKhau.id]));
-      }
-    }
-
-    onSave(mauIdx, finalData);
+    onSave(mauIdx, JSON.parse(JSON.stringify(tyLeChiTiet)));
     onClose();
   };
 
