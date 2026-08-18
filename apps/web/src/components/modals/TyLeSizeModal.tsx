@@ -111,21 +111,31 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
           {khauList.length === 0 ? (
             <div className="text-center text-slate-500 italic py-10">Chưa có phân công gia công nào để nhập tỷ lệ.</div>
           ) : (
-            khauList.map(khau => {
+            khauList.map((khau, khauIdx) => {
               const sizes = tyLeChiTiet[khau.id] || [];
               const tongSL = sizes.reduce((acc, curr) => acc + (curr.sl || 0), 0);
-              
+
               const catKhauId = khauList.find(k => k.id.toLowerCase().includes("cat"))?.id;
               const isNotCat = catKhauId && khau.id !== catKhauId;
               const catSizes = catKhauId ? tyLeChiTiet[catKhauId] : null;
 
+              // Khoá khâu nếu khâu ngay trước đó (theo quy trình) chưa hoàn thành -
+              // tránh nhập nhầm số liệu cho khâu chưa tới lượt (VD: nhập Ủi khi May chưa xong)
+              const khauTruoc = khauIdx > 0 ? khauList[khauIdx - 1] : null;
+              const daKhoa = !!khauTruoc && khauTruoc.trangThaiCD !== "hoan_thanh";
+
               return (
-                <div key={khau.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <div key={khau.id} className={`bg-white border rounded-xl p-4 shadow-sm ${daKhoa ? "border-slate-200 opacity-60" : "border-slate-200"}`}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="font-bold text-slate-800 flex items-center gap-2">
                       {getKhauIcon(khau.tenCongDoan)}
                       {khau.tenCongDoan}
                       {khau.nguoiTen && <span className="text-xs font-medium text-slate-400">({khau.nguoiTen})</span>}
+                      {daKhoa && (
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                          🔒 Chờ "{khauTruoc?.tenCongDoan}" xong
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
                       Tổng: <span className="text-sky-600">{tongSL}</span> SP
@@ -146,7 +156,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
                           defect = catSl;
                         }
                       }
-                      
+
                       return (
                         <div key={sIdx} className="flex flex-col items-center w-20">
                           <div className={`flex flex-col items-center bg-slate-50 border ${defect > 0 ? 'border-rose-300' : 'border-slate-200'} rounded-lg p-2 w-full`}>
@@ -156,7 +166,9 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
                               value={sz.sl || ""}
                               onChange={e => handleSizeChange(khau.id, sIdx, Number(e.target.value))}
                               onFocus={e => e.target.select()}
-                              className="w-full px-2 py-1.5 text-center border border-slate-300 rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800"
+                              disabled={daKhoa}
+                              title={daKhoa ? `Chưa thể nhập - đang chờ "${khauTruoc?.tenCongDoan}" hoàn thành` : undefined}
+                              className="w-full px-2 py-1.5 text-center border border-slate-300 rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                               min="0"
                             />
                           </div>
