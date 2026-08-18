@@ -89,11 +89,28 @@ type NavItem = {
   noAccentBar?: boolean; // bỏ thanh viền trái - dùng cho group kiểu thẻ card
 };
 
+// Kiểu "thẻ card trắng nổi" dùng chung cho mọi nhóm (giống MIMIN Group) - chỉ
+// đổi màu chip icon + màu mục con đang active theo từng nhóm, phần khung/nền
+// trắng giữ nguyên để đồng bộ toàn sidebar.
+function cardStyle(chipFrom: string, chipTo: string, subFrom: string, subTo: string, subText: string): Partial<NavItem> {
+  return {
+    noAccentBar: true,
+    iconChip: `w-7 h-7 bg-gradient-to-br ${chipFrom} ${chipTo} text-white shadow-sm`,
+    idleBg: "bg-gradient-to-br from-white via-slate-50 to-slate-200 ring-1 ring-white/60 shadow-lg shadow-black/25 hover:from-white hover:via-white hover:to-slate-100",
+    idleText: "text-slate-800",
+    activeBg: "bg-gradient-to-br from-white via-white to-slate-100 ring-1 ring-white/80 shadow-xl shadow-black/30",
+    activeText: "text-slate-900",
+    subBg: "bg-white/95 ring-1 ring-black/5 shadow-lg shadow-black/25",
+    subIdleText: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+    activeSubBg: `bg-gradient-to-r ${subFrom} ${subTo} ${subText} ring-1 ring-black/5`,
+  };
+}
+
 const NAV: NavItem[] = [
   {
     label: "Tổng Quan", icon: LayoutDashboard, isGroup: true,
     color: "border-cyan-400", iconColor: "text-cyan-300",
-    activeBg: "bg-cyan-900/40", activeSubBg: "bg-cyan-400/20 text-white",
+    ...cardStyle("from-cyan-500", "to-blue-600", "from-cyan-50", "to-blue-50", "text-cyan-900"),
     subItems: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, iconColor: "text-cyan-400", permModule: "dashboard" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX", icon: Factory, iconColor: "text-sky-400", permModule: "bang-dieu-hanh-sx" },
@@ -104,7 +121,7 @@ const NAV: NavItem[] = [
   {
     label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
     color: "border-teal-400", iconColor: "text-teal-300",
-    activeBg: "bg-teal-900/40", activeSubBg: "bg-teal-400/20 text-white",
+    ...cardStyle("from-teal-500", "to-emerald-600", "from-teal-50", "to-emerald-50", "text-teal-900"),
     subItems: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, iconColor: "text-teal-400", permModule: "ke-hoach-sx" },
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, iconColor: "text-cyan-400", permModule: "lenh-cat" },
@@ -123,7 +140,7 @@ const NAV: NavItem[] = [
   {
     label: "Kho & Giao Hàng", icon: Boxes, isGroup: true,
     color: "border-emerald-400", iconColor: "text-emerald-300",
-    activeBg: "bg-emerald-900/40", activeSubBg: "bg-emerald-400/20 text-white",
+    ...cardStyle("from-emerald-500", "to-green-600", "from-emerald-50", "to-green-50", "text-emerald-900"),
     subItems: [
       { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, iconColor: "text-emerald-400", permModule: "kho-vai" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, iconColor: "text-orange-400", permModule: "kho-phu-lieu" },
@@ -134,7 +151,7 @@ const NAV: NavItem[] = [
   {
     label: "Kế Toán & Mua Bán", icon: Wallet, isGroup: true,
     color: "border-amber-400", iconColor: "text-amber-300",
-    activeBg: "bg-amber-900/30", activeSubBg: "bg-amber-400/20 text-white",
+    ...cardStyle("from-amber-500", "to-orange-600", "from-amber-50", "to-orange-50", "text-amber-900"),
     subItems: [
       { href: "/cham-cong", label: "Chấm công", icon: Calendar, iconColor: "text-amber-400", permModule: "cham-cong" },
       { href: "/bang-luong", label: "Bảng lương", icon: Wallet, iconColor: "text-yellow-400", permModule: "bang-luong" },
@@ -147,7 +164,7 @@ const NAV: NavItem[] = [
     // @codex Phân hệ mới dùng quyền NCC sẵn có để không sửa permission matrix của Mavis.
     label: "Mạng Lưới Sản Xuất", icon: Link2, isGroup: true,
     color: "border-cyan-400", iconColor: "text-cyan-300",
-    activeBg: "bg-cyan-900/40", activeSubBg: "bg-cyan-400/20 text-white",
+    ...cardStyle("from-sky-500", "to-indigo-600", "from-sky-50", "to-indigo-50", "text-sky-900"),
     subItems: [
       { href: "/mang-luoi-san-xuat", label: "Trang chủ sản xuất", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
     ]
@@ -155,7 +172,7 @@ const NAV: NavItem[] = [
   {
     label: "Danh Mục Dữ Liệu", icon: Building2, isGroup: true,
     color: "border-violet-400", iconColor: "text-violet-300",
-    activeBg: "bg-violet-900/40", activeSubBg: "bg-violet-400/20 text-white",
+    ...cardStyle("from-violet-500", "to-purple-600", "from-violet-50", "to-purple-50", "text-violet-900"),
     subItems: [
       { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, iconColor: "text-violet-400", permModule: "danh-muc-sp" },
       { href: "/nhan-su", label: "Nhân sự", icon: Users, iconColor: "text-blue-400", permModule: "nhan-su" },
@@ -200,7 +217,7 @@ const NAV: NavItem[] = [
   {
     label: "Hệ Thống (Dev)", icon: Settings, isGroup: true,
     color: "border-rose-400", iconColor: "text-rose-300",
-    activeBg: "bg-rose-900/40", activeSubBg: "bg-rose-400/20 text-white",
+    ...cardStyle("from-rose-500", "to-pink-600", "from-rose-50", "to-pink-50", "text-rose-900"),
     subItems: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản", icon: Users, iconColor: "text-rose-400", permModule: "cai-dat" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh", icon: Sliders, iconColor: "text-orange-400", permModule: "cai-dat" },
