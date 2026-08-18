@@ -10,7 +10,7 @@ import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCo
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
-import { toSupabaseRow } from "../kho-thanh-pham/data";
+import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
 
 export default function UiDongGoiPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
@@ -247,35 +247,50 @@ export default function UiDongGoiPage() {
                           }
                           capNhatTrangThai(lc.id, "HoanThanh", null);
 
-                          // Thêm vào kho thành phẩm (localStorage + Supabase)
-                          const newSP = {
-                            id: `SP-${Date.now()}`,
-                            maSP: lc.id,
-                            tenSP: lc.tenSP,
-                            phanLoai: "Áo",
-                            mau: "Nhiều màu",
-                            size: "Nhiều size",
-                            lsx: lc.id,
-                            ngayNhap: new Date().toISOString().split("T")[0],
-                            soLuong: lc.tongSL,
-                            donGia: 0,
-                            giaTri: 0,
-                            viTri: khuVuc[lc.id],
-                            trangThai: "con" as const
-                          };
+                          // Thêm vào kho thành phẩm: 1 dòng riêng cho MỖI MÀU (không gộp
+                          // "Nhiều màu") - lấy ảnh từ dsMau gốc, số lượng thật từ chiTietMau
+                          // của khâu Đóng gói (nếu có), fallback chia đều theo tổng SL.
+                          const dongGoiPCs = getHTPC(lc);
+                          const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+                          const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
+
+                          const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
+                            const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+                            const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+                            return {
+                              id: `SP-${Date.now()}-${idx}`,
+                              maSP: lc.id,
+                              tenSP: lc.tenSP,
+                              phanLoai: "Áo",
+                              mau: m.ten,
+                              size: "Nhiều size",
+                              lsx: lc.id,
+                              ngayNhap: new Date().toISOString().split("T")[0],
+                              soLuong: sl,
+                              donGia: 0,
+                              giaTri: 0,
+                              viTri: khuVuc[lc.id],
+                              trangThai: "con",
+                              hinhAnh: m.img ? [m.img] : [],
+                              chiTietSize: ct?.sizes || m.phanBoSize || [],
+                            };
+                          });
+
                           try {
                             const khoKey = "mimin_kho_thanh_pham_v2";
                             const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
-                            currentKho.push(newSP);
+                            currentKho.push(...newSPs);
                             localStorage.setItem(khoKey, JSON.stringify(currentKho));
                           } catch (e) {
                             console.error("Lỗi khi thêm vào kho thành phẩm (local)", e);
                           }
-                          supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(newSP)).catch((e) =>
-                            console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
-                          );
+                          newSPs.forEach((sp) => {
+                            supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(sp)).catch((e) =>
+                              console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
+                            );
+                          });
 
-                          toast.success(`📦 Đã nhập kho ${lc.id} tại ${khuVuc[lc.id]}`);
+                          toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) tại ${khuVuc[lc.id]}`);
                         }}
                         className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02]"
                       >

@@ -13,12 +13,14 @@ import { ProductTable } from "./components/ProductTable";
 import { ProductFormModal } from "./components/ProductFormModal";
 import { MasterDetailsModal } from "./components/MasterDetailsModal";
 import { DangBanModal } from "./components/DangBanModal";
+import { VariantDetailModal } from "./components/VariantDetailModal";
 
 export default function KhoThanhPhamPage() {
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
+  const [openVariant, setOpenVariant] = useState<SanPhamTP | null>(null);
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | SanPhamTP["trangThai"]>("all");
   const [filterLoai, setFilterLoai] = useState<"all" | string>("all");
@@ -204,6 +206,11 @@ export default function KhoThanhPhamPage() {
     const ds = generateSanPhamFromWorkflow();
     update(ds);
     toast.success(`Đã tạo ${ds.length} sản phẩm từ workflow`);
+  };
+
+  const handleSaveVariant = (updated: SanPhamTP) => {
+    update(dsSanPham.map((s) => (s.id === updated.id ? updated : s)));
+    toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
   };
 
   // Chuyển 1 nhóm sản phẩm (theo maSP) từ Kho thành phẩm sang Danh mục sản phẩm để bán.
@@ -410,6 +417,7 @@ export default function KhoThanhPhamPage() {
               update={update}
               dsSanPham={dsSanPham}
               onDangBan={setDangBanGroup}
+              onOpenVariant={setOpenVariant}
             />
           ) : (
             <ProductTable
@@ -448,6 +456,13 @@ export default function KhoThanhPhamPage() {
           />
         );
       })()}
+      {openVariant && (
+        <VariantDetailModal
+          sp={openVariant}
+          onClose={() => setOpenVariant(null)}
+          onSave={handleSaveVariant}
+        />
+      )}
 
       {/* Hidden file input for upload (image + video) */}
       <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />

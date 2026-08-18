@@ -35,6 +35,12 @@ export interface SanPhamTP {
   khachHang?: string;
   tiLeSize?: string;
   ghiChu?: string;
+  // Chi tiết theo từng màu (biến thể) - thêm 2026-08-18
+  giaBanLe?: number;
+  giaBanSi?: number;
+  hinhAnh?: string[];
+  video?: string;
+  chiTietSize?: { size: string; sl: number }[];
 }
 
 export const STORAGE_KEY = "mimin_kho_thanh_pham_v2";
@@ -60,6 +66,11 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     khachHang: r.khach_hang ?? undefined,
     tiLeSize: r.ti_le_size ?? undefined,
     ghiChu: r.ghi_chu ?? undefined,
+    giaBanLe: r.gia_ban_le != null ? Number(r.gia_ban_le) : undefined,
+    giaBanSi: r.gia_ban_si != null ? Number(r.gia_ban_si) : undefined,
+    hinhAnh: Array.isArray(r.hinh_anh) ? r.hinh_anh : undefined,
+    video: r.video ?? undefined,
+    chiTietSize: Array.isArray(r.chi_tiet_size) ? r.chi_tiet_size : undefined,
   };
 }
 
@@ -81,6 +92,11 @@ export function toSupabaseRow(sp: SanPhamTP) {
     khach_hang: sp.khachHang ?? null,
     ti_le_size: sp.tiLeSize ?? null,
     ghi_chu: sp.ghiChu ?? null,
+    gia_ban_le: sp.giaBanLe ?? null,
+    gia_ban_si: sp.giaBanSi ?? null,
+    hinh_anh: sp.hinhAnh ?? null,
+    video: sp.video ?? null,
+    chi_tiet_size: sp.chiTietSize ?? null,
   };
 }
 
