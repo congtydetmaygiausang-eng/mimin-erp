@@ -39,6 +39,51 @@ export interface SanPhamTP {
 
 export const STORAGE_KEY = "mimin_kho_thanh_pham_v2";
 
+// Map 1 row Supabase (snake_case) -> SanPhamTP (camelCase app model).
+// KHONG dung camelToSnake/snakeToCamel tu dong vi no bien ma_sp -> maSp
+// (mat hoa "SP"), giong van de da gap voi kho-store.tsx/giao_dich_kho.
+export function fromSupabaseRow(r: any): SanPhamTP {
+  return {
+    id: String(r.id),
+    maSP: r.ma_sp ?? "",
+    tenSP: r.ten_sp ?? "",
+    phanLoai: r.phan_loai ?? "",
+    mau: r.mau ?? "",
+    size: r.size ?? "",
+    lsx: r.lsx ?? "",
+    ngayNhap: r.ngay_nhap ?? "",
+    soLuong: Number(r.so_luong) || 0,
+    donGia: Number(r.don_gia) || 0,
+    giaTri: Number(r.gia_tri) || 0,
+    viTri: r.vi_tri ?? "",
+    trangThai: (r.trang_thai as SanPhamTP["trangThai"]) ?? "con",
+    khachHang: r.khach_hang ?? undefined,
+    tiLeSize: r.ti_le_size ?? undefined,
+    ghiChu: r.ghi_chu ?? undefined,
+  };
+}
+
+export function toSupabaseRow(sp: SanPhamTP) {
+  return {
+    id: sp.id,
+    ma_sp: sp.maSP,
+    ten_sp: sp.tenSP,
+    phan_loai: sp.phanLoai,
+    mau: sp.mau,
+    size: sp.size,
+    lsx: sp.lsx,
+    ngay_nhap: sp.ngayNhap,
+    so_luong: sp.soLuong,
+    don_gia: sp.donGia,
+    gia_tri: sp.giaTri,
+    vi_tri: sp.viTri,
+    trang_thai: sp.trangThai,
+    khach_hang: sp.khachHang ?? null,
+    ti_le_size: sp.tiLeSize ?? null,
+    ghi_chu: sp.ghiChu ?? null,
+  };
+}
+
 // ============ HELPERS ============
 export function fromStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === "undefined") return defaultValue;

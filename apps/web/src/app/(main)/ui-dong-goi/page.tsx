@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
-import { supabaseUpsert } from "@/lib/supabase/client";
+import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
+import { toSupabaseRow } from "../kho-thanh-pham/data";
 
 export default function UiDongGoiPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
@@ -260,7 +261,7 @@ export default function UiDongGoiPage() {
                             donGia: 0,
                             giaTri: 0,
                             viTri: khuVuc[lc.id],
-                            trangThai: "con"
+                            trangThai: "con" as const
                           };
                           try {
                             const khoKey = "mimin_kho_thanh_pham_v2";
@@ -270,7 +271,7 @@ export default function UiDongGoiPage() {
                           } catch (e) {
                             console.error("Lỗi khi thêm vào kho thành phẩm (local)", e);
                           }
-                          supabaseUpsert("kho_thanh_pham", newSP).catch((e) =>
+                          supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(newSP)).catch((e) =>
                             console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
                           );
 

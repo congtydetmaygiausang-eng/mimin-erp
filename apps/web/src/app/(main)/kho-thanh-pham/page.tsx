@@ -1,11 +1,11 @@
 "use client";
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
-import { useSupabaseSync } from "@/lib/supabase/sync-helper";
-import { STORAGE_KEY, generateSanPhamFromWorkflow, type SanPhamTP } from "./data";
+import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase } from "@/lib/supabase/sync-helper";
+import { STORAGE_KEY, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -16,7 +16,7 @@ import { DangBanModal } from "./components/DangBanModal";
 
 export default function KhoThanhPhamPage() {
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
-  const { data: dsSanPham, setData: setDsSanPham } = useSupabaseSync<SanPhamTP>(STORAGE_KEY, "kho_thanh_pham", []);
+  const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [search, setSearch] = useState("");
@@ -54,10 +54,54 @@ export default function KhoThanhPhamPage() {
     }
   };
 
-  // Save on change (setDsSanPham ghi cả localStorage + Supabase)
-  const update = (newDs: SanPhamTP[]) => {
-    setDsSanPham(newDs);
-  };
+  // Load từ localStorage trước (không trắng màn hình), rồi đọc lại 2 chiều từ Supabase
+  // (nguồn chính). Dùng fromSupabaseRow/toSupabaseRow thủ công thay vì
+  // camelToSnake/snakeToCamel tự động vì "maSP"/"tenSP" có hoa liền (SP) bị
+  // convert sai chiều đọc về (ma_sp -> maSp thay vì maSP).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as SanPhamTP[];
+        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed);
+      }
+    } catch {}
+
+    if (!checkSupabase()) return;
+    let mounted = true;
+    (async () => {
+      const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham");
+      if (!mounted) return;
+      if (rows.length > 0) {
+        const remote = rows.map(fromSupabaseRow);
+        setDsSanPhamState((prev) => {
+          const remoteIds = new Set(remote.map((r) => r.id));
+          const localOnly = prev.filter((r) => !remoteIds.has(r.id));
+          const merged = [...remote, ...localOnly];
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+          return merged;
+        });
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Save on change: ghi localStorage ngay + đồng bộ Supabase cho các dòng thay đổi/mới/xoá
+  const update = useCallback((newDs: SanPhamTP[]) => {
+    setDsSanPhamState((prev) => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newDs)); } catch {}
+      if (checkSupabase()) {
+        const prevIds = new Set(prev.map((r) => r.id));
+        const newIds = new Set(newDs.map((r) => r.id));
+        const deletedIds = prev.filter((r) => !newIds.has(r.id)).map((r) => r.id);
+        Promise.all([
+          ...newDs.map((row) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(row))),
+          ...deletedIds.map((id) => supabaseDelete("kho_thanh_pham", id)),
+        ]).catch((err) => console.error("[KhoThanhPham] sync error:", err));
+      }
+      return newDs;
+    });
+  }, []);
 
   // Filter + search + sort
   const filtered = useMemo(() => {
