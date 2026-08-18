@@ -6,6 +6,9 @@ export type ChiTietMauInput = {
   soLuongNhan: number;
   soLuongDat: number;
   soLuongLoi: number;
+  // Chi tiết số lượng đạt theo từng size (M, L, XL...) của khâu này - tùy chọn,
+  // dùng để đồng bộ với mau.tyLeSizeChiTiet[khauId] khi nhập qua ChiTietMauHistoryModal.
+  sizes?: { size: string; sl: number }[];
 };
 
 interface Props {

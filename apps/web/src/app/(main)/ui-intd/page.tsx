@@ -15,7 +15,7 @@ const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo"];
 
 export default function UiInTheuPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
-  const { dsLenhCat, capNhatCongDoan } = useLenhCat();
+  const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { user } = useSession();
 
   function getIntdPC(lc: any) {
@@ -67,6 +67,16 @@ export default function UiInTheuPage() {
       }
 
       capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+
+      if (data.sizes && data.sizes.length > 0) {
+        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
+        if (mauIdx >= 0) {
+          const newDsMau = [...(lc.dsMau || [])];
+          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
+          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+        }
+      }
+
       toast.success(`Đã lưu thông tin màu ${data.mau}`);
     } catch (e: any) {
       toast.error(e.message);
