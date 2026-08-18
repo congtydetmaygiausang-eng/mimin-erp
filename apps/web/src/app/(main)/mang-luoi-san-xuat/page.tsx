@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   Users,
 } from "lucide-react";
@@ -47,6 +48,7 @@ import {
 import { useProductionPartnerStore } from "@/lib/data/mang-luoi-store";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 import MultiSelectDropdown from "@/components/ui/MultiSelectDropdown";
+import { AiDiscoveryTab } from "@/components/sourcing/AiDiscoveryTab";
 
 const CATEGORY_META: Record<ProductionPartnerRole, {
   icon: typeof Users;
@@ -229,6 +231,7 @@ export default function MangLuoiSanXuatPage() {
   const { user } = useSession();
   const [partners, setPartners] = useState<ProductionPartner[]>([]);
   const [activeRole, setActiveRole] = useState<ProductionPartnerRole>("CUSTOMER");
+  const [currentTab, setCurrentTab] = useState<"LOCAL" | "AI_DISCOVERY">("LOCAL");
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
   const [capabilityFilter, setCapabilityFilter] = useState<string[]>([]);
@@ -395,9 +398,9 @@ export default function MangLuoiSanXuatPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Làm mới
             </button>
             {mayCreate && (
-              <><Link href="/mang-luoi-san-xuat/tim-kiem" className="btn-secondary inline-flex items-center gap-2"><Search className="w-4 h-4" /> Tìm tự động</Link><button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
+              <button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" /> Thêm đối tác
-              </button></>
+              </button>
             )}
           </div>
         }
@@ -427,7 +430,26 @@ export default function MangLuoiSanXuatPage() {
         })}
       </div>
 
-      <div className="card p-4 relative z-20">
+      <div className="flex gap-4 border-b border-slate-200">
+        <button
+          onClick={() => setCurrentTab("LOCAL")}
+          className={`pb-2 px-2 text-sm font-semibold transition-colors ${currentTab === "LOCAL" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
+        >
+          🗃️ Dữ liệu nội bộ
+        </button>
+        <button
+          onClick={() => setCurrentTab("AI_DISCOVERY")}
+          className={`pb-2 px-2 text-sm font-semibold transition-colors ${currentTab === "AI_DISCOVERY" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
+        >
+          🤖 Tìm nguồn mới (AI)
+        </button>
+      </div>
+
+      {currentTab === "AI_DISCOVERY" ? (
+        <AiDiscoveryTab role={activeRole} />
+      ) : (
+        <>
+          <div className="card p-4 relative z-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h2 className="font-bold text-lg">{ROLE_LABELS[activeRole]}</h2>
@@ -479,10 +501,18 @@ export default function MangLuoiSanXuatPage() {
       {loading ? (
         <div className="card p-10 text-center opacity-70">Đang tải mạng lưới sản xuất...</div>
       ) : filteredPartners.length === 0 ? (
-        <div className="card p-10 text-center">
-          <Building2 className="w-12 h-12 mx-auto text-slate-300" />
+        <div className="card p-10 text-center flex flex-col items-center justify-center">
+          <Building2 className="w-12 h-12 text-slate-300" />
           <h3 className="mt-3 font-bold">Chưa có đối tác trong danh mục này</h3>
-          <p className="mt-1 text-sm opacity-60">Thêm thủ công ở Giai đoạn 1; công cụ tìm kiếm tự động sẽ được bổ sung ở Giai đoạn 3.</p>
+          <p className="mt-1 text-sm opacity-60">Không tìm thấy hồ sơ nào khớp với bộ lọc của anh.</p>
+          {(search || provinceFilter || capabilityFilter.length > 0) && (
+            <button 
+              onClick={() => setCurrentTab("AI_DISCOVERY")} 
+              className="mt-4 btn-primary inline-flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" /> Dùng AI tìm nguồn mới ngay
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -539,6 +569,8 @@ export default function MangLuoiSanXuatPage() {
             </article>
           ))}
         </div>
+      )}
+      </>
       )}
 
       <CrudModal
