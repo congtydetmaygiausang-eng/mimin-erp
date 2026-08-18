@@ -8,6 +8,7 @@ import { CheckCircle2, Circle, Scissors, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
 import { useSession } from "@/components/session-provider";
 
 export default function UiKhuyNutPage() {
@@ -152,7 +153,12 @@ export default function UiKhuyNutPage() {
                   </div>
                 </div>
 
-                <div className="p-5 space-y-3">
+                {/* Danh sách màu */}
+                <div className="pt-2 bg-slate-50 border-b border-slate-100">
+                  <LenhCatColorCards lc={lc} />
+                </div>
+
+                <div className="p-5 space-y-3 bg-white">
                   {htPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];

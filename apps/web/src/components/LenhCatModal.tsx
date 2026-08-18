@@ -1871,7 +1871,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         value={mau.slDuKien || ""}
                         placeholder="VD: 125"
                         onChange={(e) => {
-                          const next = [...dsMau]; next[idx].slDuKien = parseInt(e.target.value) || 0; setDsMau(next);
+                          const newVal = parseInt(e.target.value) || 0;
+                          const next = [...dsMau]; 
+                          next[idx].slDuKien = newVal; 
+                          setDsMau(next);
+                          
+                          // Cập nhật Tổng SL
+                          const newTongSL = next.reduce((sum, m) => sum + (m.slDuKien || 0), 0);
+                          setTongSL(newTongSL);
+                          
+                          // Cập nhật số lượng vật tư của màu này
+                          setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
                         }}
                       />
                       {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
@@ -1880,8 +1890,20 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         return (
                           <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
                             <span>⚠️ {mau.slDuKien} chưa khớp bội số tỉ lệ ({soSpTrongSoDo}/lượt), hệ thống sẽ không tự phá tỉ lệ. Chọn số gần nhất:</span>
-                            <button type="button" onClick={() => { const next = [...dsMau]; next[idx].slDuKien = duoi; setDsMau(next); }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{duoi}</button>
-                            <button type="button" onClick={() => { const next = [...dsMau]; next[idx].slDuKien = tren; setDsMau(next); }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{tren}</button>
+                            <button type="button" onClick={() => { 
+                              const next = [...dsMau]; 
+                              next[idx].slDuKien = duoi; 
+                              setDsMau(next); 
+                              setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
+                              setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: duoi } : p));
+                            }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{duoi}</button>
+                            <button type="button" onClick={() => { 
+                              const next = [...dsMau]; 
+                              next[idx].slDuKien = tren; 
+                              setDsMau(next); 
+                              setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
+                              setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: tren } : p));
+                            }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{tren}</button>
                           </div>
                         );
                       })()}

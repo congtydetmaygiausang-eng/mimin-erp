@@ -9,6 +9,7 @@ import { Palette, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, Shirt
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
 import { useSession } from "@/components/session-provider";
 
 const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo"];
@@ -150,8 +151,13 @@ export default function UiInTheuPage() {
                   </div>
                 )}
 
-                {/* In/Thêu công đoạn */}
-                <div className="p-5 space-y-4">
+                {/* Danh sách màu */}
+                <div className="pt-2 bg-slate-50 border-b border-slate-100">
+                  <LenhCatColorCards lc={lc} />
+                </div>
+
+                {/* In / Thêu / Dập */}
+                <div className="p-5 space-y-3 bg-white">
                   {/* Các công đoạn In/Thêu của lô này */}
                   {intdPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
