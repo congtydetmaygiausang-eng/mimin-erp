@@ -38,14 +38,19 @@ export default function CaNhanPage() {
   const [dangTaiAnhBia, setDangTaiAnhBia] = useState(false);
   const anhBiaRef = useRef<HTMLInputElement>(null);
 
+  const [anhDaiDien, setAnhDaiDien] = useState<string | null>(null);
+  const [dangTaiAnhDaiDien, setDangTaiAnhDaiDien] = useState(false);
+  const anhDaiDienRef = useRef<HTMLInputElement>(null);
+
   const load = useCallback(async () => {
     if (!supabase) {
       setLoading(false);
       return;
     }
     try {
-      const { data: hoSoData } = await supabase.from("bang_tin_ho_so").select("anh_bia").eq("id", tenNguoiDung).maybeSingle();
+      const { data: hoSoData } = await supabase.from("bang_tin_ho_so").select("anh_bia, anh_dai_dien").eq("id", tenNguoiDung).maybeSingle();
       setAnhBia(hoSoData?.anh_bia || null);
+      setAnhDaiDien(hoSoData?.anh_dai_dien || null);
 
       const { data: postData } = await supabase
         .from("bang_tin_bai_dang")
@@ -138,6 +143,36 @@ export default function CaNhanPage() {
       toast.error("Đổi ảnh bìa thất bại: " + err.message);
     } finally {
       setDangTaiAnhBia(false);
+    }
+  };
+
+  const handleChonAnhDaiDien = async (fileList: FileList | null) => {
+    const file = fileList?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    if (!supabase) {
+      toast.error("Chưa kết nối được cơ sở dữ liệu.");
+      return;
+    }
+    setDangTaiAnhDaiDien(true);
+    try {
+      const goc = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const nen = await nenAnhBia(goc, 400, 400);
+      const { error } = await supabase.from("bang_tin_ho_so").upsert({
+        id: tenNguoiDung,
+        anh_dai_dien: nen,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setAnhDaiDien(nen);
+      toast.success("Đã cập nhật ảnh đại diện!");
+    } catch (err: any) {
+      toast.error("Đổi ảnh đại diện thất bại: " + err.message);
+    } finally {
+      setDangTaiAnhDaiDien(false);
     }
   };
 
@@ -259,7 +294,18 @@ export default function CaNhanPage() {
         </div>
 
         <div className="flex flex-col items-center px-4 pb-5 -mt-12">
-          <Avatar name={tenNguoiDung} size="2xl" className="ring-4 ring-white dark:ring-slate-900 shadow-lg" />
+          <div className="relative group/avatar">
+            <Avatar name={tenNguoiDung} src={anhDaiDien || undefined} size="2xl" className="ring-4 ring-white dark:ring-slate-900 shadow-lg" />
+            <input ref={anhDaiDienRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleChonAnhDaiDien(e.target.files); e.target.value = ""; }} />
+            <button
+              onClick={() => anhDaiDienRef.current?.click()}
+              disabled={dangTaiAnhDaiDien}
+              className="absolute bottom-0 right-0 w-7 h-7 flex items-center justify-center rounded-full bg-brand-500 hover:bg-brand-600 text-white ring-2 ring-white dark:ring-slate-900 shadow-md group-hover/avatar:scale-110 transition disabled:opacity-60"
+              title="Đổi ảnh đại diện"
+            >
+              {dangTaiAnhDaiDien ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+            </button>
+          </div>
           <div className="text-lg font-bold mt-2 text-center">{tenNguoiDung}</div>
           {user?.title && (
             <div className="text-sm opacity-70 flex items-center gap-1.5 mt-1">
