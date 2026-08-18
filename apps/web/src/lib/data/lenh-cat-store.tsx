@@ -611,6 +611,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     catChiTiet?: CatChiTiet;
     chiTietMau?: any;
   }) => {
+    let updatedPhanCong: any = null;
     setDsLenhCat(prev => {
       const next = prev.map(lc => {
         if (lc.id !== lenhId) return lc;
@@ -635,6 +636,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
               }
             : pc
         );
+        updatedPhanCong = newPhanCong;
         return { ...lc, phanCong: newPhanCong };
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -694,6 +696,22 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       
       return next;
     });
+
+    // Đồng bộ Supabase (nguồn sự thật) - thiếu bước này thì effect load-lại-từ-Supabase
+    // khi mount trang sẽ ghi đè mất thay đổi công đoạn vừa lưu (chỉ có ở localStorage).
+    if (updatedPhanCong) {
+      (async () => {
+        try {
+          const { supabase } = await import("@/lib/supabase/client");
+          if (supabase) {
+            const { error } = await supabase.from("lenh_cat").update({ phan_cong: updatedPhanCong }).eq("id", lenhId);
+            if (error) console.error("[LenhCat] Đồng bộ phan_cong lên Supabase thất bại:", error);
+          }
+        } catch (e) {
+          console.error("[LenhCat] Đồng bộ phan_cong lên Supabase lỗi:", e);
+        }
+      })();
+    }
   }, []);
 
   const reset = useCallback(() => {
