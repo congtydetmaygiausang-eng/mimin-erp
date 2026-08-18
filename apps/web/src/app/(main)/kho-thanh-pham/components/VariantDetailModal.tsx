@@ -57,16 +57,16 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-6 overflow-y-auto flex-1 space-y-5">
           {/* Size + số lượng */}
-          <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+          <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
               <Box className="w-3.5 h-3.5" /> Số lượng theo size
             </div>
             {sp.chiTietSize && sp.chiTietSize.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {sp.chiTietSize.map((s, i) => (
-                  <div key={i} className="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-lg p-2 w-16">
+                  <div key={i} className="flex flex-col items-center bg-white border border-slate-200 rounded-lg p-2 w-16 shadow-sm">
                     <span className="text-xs font-black text-slate-600">{s.size}</span>
                     <span className="text-sm font-bold text-emerald-600">{s.sl}</span>
                   </div>
@@ -77,55 +77,56 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
             )}
           </div>
 
-          {/* Ảnh */}
-          <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Hình ảnh ({hinhAnh.length})</div>
-            <div className="flex flex-wrap gap-3">
-              {hinhAnh.map((img, i) => (
-                <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 group">
-                  <img src={img} className="w-full h-full object-cover" alt="" />
+          {/* Ảnh + Video cùng hàng */}
+          <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex gap-5">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2.5">Hình ảnh ({hinhAnh.length})</div>
+              <div className="flex flex-wrap gap-3">
+                {hinhAnh.map((img, i) => (
+                  <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
+                    <img src={img} className="w-full h-full object-cover" alt="" />
+                    <button
+                      onClick={() => setHinhAnh((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-600 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
+                >
+                  <Camera className="w-6 h-6 mb-1" />
+                  <span className="text-[10px] font-bold">Thêm ảnh</span>
+                </button>
+                <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAddImages} />
+              </div>
+            </div>
+
+            <div className="w-24 shrink-0">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2.5">Video</div>
+              {video ? (
+                <div className="relative w-24 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
+                  <video src={video} className="w-full aspect-[9/16] object-cover bg-black" controls playsInline />
                   <button
-                    onClick={() => setHinhAnh((prev) => prev.filter((_, idx) => idx !== i))}
+                    onClick={() => setVideo(undefined)}
                     className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-600 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
-              ))}
-              <button
-                onClick={() => imageInputRef.current?.click()}
-                className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors"
-              >
-                <Camera className="w-6 h-6 mb-1" />
-                <span className="text-[10px] font-bold">Thêm ảnh</span>
-              </button>
-              <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAddImages} />
-            </div>
-          </div>
-
-          {/* Video */}
-          <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Video</div>
-            {video ? (
-              <div className="relative w-40 rounded-xl overflow-hidden border border-slate-200 group">
-                <video src={video} className="w-full aspect-[9/16] object-cover bg-black" controls playsInline />
+              ) : (
                 <button
-                  onClick={() => setVideo(undefined)}
-                  className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-600 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => videoInputRef.current?.click()}
+                  className="w-24 aspect-[9/16] rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Video className="w-6 h-6 mb-1" />
+                  <span className="text-[10px] font-bold">Thêm video</span>
                 </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => videoInputRef.current?.click()}
-                className="w-40 aspect-[9/16] rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors"
-              >
-                <Video className="w-6 h-6 mb-1" />
-                <span className="text-[10px] font-bold">Thêm video</span>
-              </button>
-            )}
-            <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleAddVideo} />
+              )}
+              <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleAddVideo} />
+            </div>
           </div>
 
           {/* Giá */}
