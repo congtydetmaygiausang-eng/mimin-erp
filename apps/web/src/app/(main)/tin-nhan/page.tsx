@@ -249,6 +249,19 @@ export default function TinNhanPage() {
                     </button>
                     {u.sdt && (
                       <a
+                        href={`https://zalo.me/${u.sdt.replace(/[^\d]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-white text-[11px] font-bold shrink-0 transition"
+                        style={{ backgroundColor: "#0068FF" }}
+                        title="Mở Zalo"
+                      >
+                        Za
+                      </a>
+                    )}
+                    {u.sdt && (
+                      <a
                         href={`tel:${u.sdt}`}
                         onClick={(e) => e.stopPropagation()}
                         className="p-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white transition shrink-0"
