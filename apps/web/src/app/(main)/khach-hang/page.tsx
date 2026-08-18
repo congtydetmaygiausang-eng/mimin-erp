@@ -78,6 +78,24 @@ export default function KhachHangPage() {
       if (ok) toast.success(`Đã cập nhật: ${kh.ten}`);
       else toast.error("Lỗi khi cập nhật");
     } else {
+      // Chặn tạo trùng khách. Công nợ được cộng theo tên khách trên đơn, nên 2 hồ
+      // sơ cùng tên (khác hoa/thường, thừa dấu cách) sẽ làm công nợ bị chia lẻ,
+      // không nhìn ra tổng nợ thật của người đó.
+      const chuanHoa = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const soDT = (s: string) => (s || "").replace(/\D/g, "");
+      const trungTen = list.find((x) => chuanHoa(x.ten) === chuanHoa(kh.ten));
+      const trungSDT = kh.sdt ? list.find((x) => soDT(x.sdt) && soDT(x.sdt) === soDT(kh.sdt)) : undefined;
+      const trung = trungTen || trungSDT;
+      if (trung) {
+        const lyDo = trungTen ? `trùng tên với "${trung.ten}"` : `trùng số điện thoại với "${trung.ten}"`;
+        if (!confirm(
+          `Khách hàng này ${lyDo} (mã ${trung.maKH}).\n\n` +
+          `Nếu là cùng một người, hãy bấm Hủy rồi sửa hồ sơ đang có - tạo thêm hồ sơ mới sẽ làm công nợ bị chia lẻ giữa 2 hồ sơ.\n\n` +
+          `Vẫn muốn tạo hồ sơ mới?`
+        )) {
+          return;
+        }
+      }
       const ok = await themKhachHang(kh);
       if (ok) toast.success(`Đã thêm KH: ${kh.ten}`);
       else toast.error("Lỗi khi thêm mới");

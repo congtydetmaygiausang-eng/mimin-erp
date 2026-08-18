@@ -20,8 +20,9 @@ import {
   LOAI_DON_HANG_LABELS, PHUONG_THUC_THANH_TOAN_LABELS, PHUONG_THUC_VAN_CHUYEN_LABELS,
   KENH_BAN_SAN_OPTIONS, NGAN_HANG_OPTIONS,
 } from "./types";
+import { useDonHang } from "@/lib/data/don-hang-store";
 import {
-  createEmptyOrder, createOrderItemFromVariant, createEmptyPayment,
+  createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, generateMaDH,
   calcOrderTotal, calcPaidTotal, calcOrderRemain, calcOrderQty, recalcItem,
 } from "./helpers";
 import { generateVariants, type ProductVariant } from "@/lib/data/product-variants";
@@ -44,7 +45,10 @@ interface Props {
 export default function OrderFormModal({ open, onClose, initial, isNewOrder, onSave }: Props) {
   const { dsSanPham } = useDanhMucSP();
   const { list: dsKhachHang } = useKhachHang();
-  const [order, setOrder] = useState<Order>(createEmptyOrder());
+  const { dsOrder } = useDonHang();
+  // Mã đơn đang có - để sinh mã mới chạy tuần tự, không đụng mã cũ
+  const dsMaDaCo = useMemo(() => dsOrder.map((o) => o.maDH), [dsOrder]);
+  const [order, setOrder] = useState<Order>(() => createEmptyOrder());
   const [activeTab, setActiveTab] = useState<"info" | "items" | "payment" | "shipping">("info");
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -60,12 +64,17 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
     }
     const newId = initial?.id || null;
     if (lastInitialIdRef.current !== newId) {
-      setOrder(initial || createEmptyOrder());
+      // Đơn seed sẵn từ giỏ hàng/mua nhanh vẫn là đơn MỚI -> cấp lại mã chạy
+      // tuần tự để không trùng mã đơn đã lưu.
+      const base = initial
+        ? (isNewOrder ? { ...initial, maDH: generateMaDH(dsMaDaCo) } : initial)
+        : createEmptyOrder(dsMaDaCo);
+      setOrder(base);
       setActiveTab("info");
       setShowConfirm(false);
       lastInitialIdRef.current = newId;
     }
-  }, [open, initial?.id]);
+  }, [open, initial?.id, isNewOrder, dsMaDaCo]);
 
   const tongTien = calcOrderTotal(order.items);
   const tongSL = calcOrderQty(order.items);

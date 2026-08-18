@@ -112,6 +112,8 @@ type KhachHangContextType = {
   themKhachHang: (kh: KhachHangUI) => Promise<boolean>;
   suaKhachHang: (kh: KhachHangUI) => Promise<boolean>;
   xoaKhachHang: (idOrMaKH: string) => Promise<boolean>;
+  /** Cộng/trừ công nợ an toàn theo mã KH (đọc lại số dư mới nhất trước khi ghi) */
+  congTruCongNo: (maKH: string, diff: number) => Promise<boolean>;
   loading: boolean;
 };
 
@@ -185,6 +187,50 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  /**
+   * Cộng/trừ công nợ theo MÃ khách hàng, đọc lại số dư mới nhất từ máy chủ ngay
+   * trước khi ghi.
+   *
+   * Trước đây công nợ được tính bằng cách đọc kh.congNo từ state trong máy rồi
+   * ghi đè cả dòng. Hai đơn của cùng 1 khách lưu gần nhau (2 tab, hoặc bấm nhanh
+   * trước khi state kịp cập nhật) sẽ cùng đọc một số dư cũ, đơn sau ghi đè đơn
+   * trước -> mất công nợ của 1 đơn mà không báo lỗi gì.
+   */
+  const congTruCongNo = useCallback(async (maKH: string, diff: number) => {
+    if (!maKH || !diff) return true;
+
+    let soDuHienTai: number | null = null;
+    if (isSupabaseEnabled && supabase) {
+      try {
+        const { data } = await supabase.from("khach_hang").select("cong_no").eq("ma_kh", maKH).limit(1).maybeSingle();
+        if (data) soDuHienTai = Number((data as any).cong_no) || 0;
+      } catch (err) {
+        console.error("[KhachHang] Không đọc được công nợ mới nhất:", err);
+      }
+    }
+
+    let daGhi = false;
+    setList(prev => prev.map(x => {
+      if (x.maKH !== maKH) return x;
+      const goc = soDuHienTai ?? (x.congNo || 0);
+      daGhi = true;
+      return { ...x, congNo: goc + diff };
+    }));
+    if (!daGhi) return false;
+
+    if (isSupabaseEnabled && supabase) {
+      try {
+        const goc = soDuHienTai ?? 0;
+        await supabase.from("khach_hang").update({ cong_no: goc + diff }).eq("ma_kh", maKH);
+        return true;
+      } catch (err) {
+        console.error("[KhachHang] Lỗi cập nhật công nợ:", err);
+        return false;
+      }
+    }
+    return true;
+  }, []);
+
   const xoaKhachHang = useCallback(async (maKH: string) => {
     setList(prev => prev.filter(x => x.maKH !== maKH));
     if (isSupabaseEnabled) {
@@ -197,7 +243,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ list, themKhachHang, suaKhachHang, xoaKhachHang, loading }}>
+    <Ctx.Provider value={{ list, themKhachHang, suaKhachHang, xoaKhachHang, congTruCongNo, loading }}>
       {children}
     </Ctx.Provider>
   );

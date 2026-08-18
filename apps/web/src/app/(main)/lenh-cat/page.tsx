@@ -5,6 +5,7 @@ import { Scissors } from "lucide-react";
 import { toast } from "sonner";
 import { LenhCatModal } from "@/components/LenhCatModal";
 import { useLenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
+import { useSession } from "@/components/session-provider";
 import { EmptyState } from "@/components/ui";
 import { PremiumHeader } from "./components/Header";
 import { FilterBar, MauSection } from "./components/FilterBar";
@@ -22,7 +23,11 @@ const DEFAULT_GIA_CONG = [
 ];
 
 export default function LenhCatPage() {
-  const { dsLenhCat, xoaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi, dsMauCongDoan, dsMauChiPhi, xoaMauCongDoan, xoaMauChiPhi, loading } = useLenhCat();
+  // suaLenhCat + user được dùng ở onSaveTyLe/onSaveGiaCong bên dưới nhưng trước
+  // đây không hề được lấy ra -> lưu tỷ lệ size hoặc giao việc là lỗi "suaLenhCat
+  // is not defined" ngay tại chỗ.
+  const { dsLenhCat, xoaLenhCat, suaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi, dsMauCongDoan, dsMauChiPhi, xoaMauCongDoan, xoaMauChiPhi, loading } = useLenhCat();
+  const { user } = useSession();
 
   const [showTaoMauCD, setShowTaoMauCD] = useState(false);
   const [showTaoMauCP, setShowTaoMauCP] = useState(false);
@@ -168,7 +173,7 @@ export default function LenhCatPage() {
                 if (newDsMau) {
                   updatePayload.dsMau = newDsMau;
                   // Xác định xem đang lưu áo hay quần để cập nhật tổng SL thực tế
-                  const hasMayAo = dsPhanCong.some(pc => pc.tenCongDoan.toLowerCase().includes("may áo"));
+                  const hasMayAo = dsPhanCong.some((pc: any) => pc.tenCongDoan.toLowerCase().includes("may áo"));
                   if (hasMayAo) updatePayload.tongSLThucTeAo = slThucTe;
                   else updatePayload.tongSLThucTeQuan = slThucTe;
                 }

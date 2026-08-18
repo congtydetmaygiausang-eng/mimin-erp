@@ -57,7 +57,10 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   onEdit?: () => void;
   onDelete?: () => void;
   onChangeStatus?: (tt: TrangThaiLenhCat) => void;
-  onSaveGiaCong?: (slThucTe: number, dsPhanCong: any) => void;
+  // newDsMau: GiaCongModal có gửi kèm dsMau đã sửa (chi tiết size theo màu).
+  // Trước đây prop này chỉ khai 2 tham số và callback bên dưới cũng chỉ truyền 2,
+  // nên dsMau bị rơi mất -> tongSLThucTeAo/Quan không bao giờ được cập nhật.
+  onSaveGiaCong?: (slThucTe: number, dsPhanCong: any, newDsMau?: any[]) => void;
   onSaveTyLe?: (mauIdx: number, newTyLe: any) => void;
 }) {
   const s = TRANG_THAI_LC_STYLE[lc.trangThai] || { bg: "bg-slate-100", color: "text-slate-600" };
@@ -216,8 +219,8 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
           lc={lc}
           type={modalGiaCong}
           onClose={() => setModalGiaCong(null)}
-          onSave={(slThucTe, dsPhanCong) => {
-            if (onSaveGiaCong) onSaveGiaCong(slThucTe, dsPhanCong);
+          onSave={(slThucTe, dsPhanCong, newDsMau) => {
+            if (onSaveGiaCong) onSaveGiaCong(slThucTe, dsPhanCong, newDsMau);
           }}
         />
       )}

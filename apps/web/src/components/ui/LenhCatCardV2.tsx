@@ -1,6 +1,7 @@
 import React from "react";
 import { Calendar, Package, Shirt, Hash, Users, MapPin, ArrowRight } from "lucide-react";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
+import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "./DateDisplay";
 
 interface Props {
@@ -42,7 +43,9 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                 Mã SP: {lc.maSP}
               </span>
               <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold border border-slate-200">
-                Loại: {lc.loaiSP === "bo" ? "Bộ" : lc.loaiSP === "ao" ? "Áo" : "Quần"}
+                {/* loaiSP là "AoTru" | "BoTru" | "PhuKien"... - so sánh với "bo"/"ao"
+                    luôn sai nên trước đây mọi lệnh cắt đều hiện "Quần". */}
+                Loại: {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
               </span>
             </div>
           </div>

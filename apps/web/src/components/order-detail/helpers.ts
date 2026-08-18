@@ -23,23 +23,40 @@ function uuid(): string {
   return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/** Sinh mã đơn hàng mới - VD: "DH-2026-08-06-001" */
-export function generateMaDH(): string {
+/**
+ * Sinh mã đơn hàng mới - VD: "DH-2026-08-06-001".
+ *
+ * Truyền `dsMaDaCo` (danh sách mã đơn đang có) để đảm bảo KHÔNG trùng: mã chạy
+ * tuần tự theo ngày (001, 002, 003...). Trước đây lấy 3 số ngẫu nhiên trong 999
+ * giá trị và không kiểm tra trùng - 20 đơn/ngày là ~17% khả năng có 2 đơn cùng
+ * mã, 50 đơn/ngày lên tới ~71%, gây rối khi tra cứu và in phiếu cho khách.
+ */
+export function generateMaDH(dsMaDaCo: string[] = []): string {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const dd = String(now.getDate()).padStart(2, "0");
-  const seq = String(Math.floor(Math.random() * 999) + 1).padStart(3, "0");
-  return `DH-${yyyy}-${mm}-${dd}-${seq}`;
+  const prefix = `DH-${yyyy}-${mm}-${dd}-`;
+
+  const maxSeq = dsMaDaCo.reduce((max, ma) => {
+    if (!ma?.startsWith(prefix)) return max;
+    const n = parseInt(ma.slice(prefix.length), 10);
+    return isNaN(n) ? max : Math.max(max, n);
+  }, 0);
+
+  return `${prefix}${String(maxSeq + 1).padStart(3, "0")}`;
 }
 
-/** Tạo Order mới (mặc định bán lẻ, chưa có items) */
-export function createEmptyOrder(): Order {
+/**
+ * Tạo Order mới (mặc định bán lẻ, chưa có items).
+ * Truyền `dsMaDaCo` để mã đơn chạy tuần tự, không đụng mã đã có.
+ */
+export function createEmptyOrder(dsMaDaCo: string[] = []): Order {
   const today = new Date().toISOString().slice(0, 10);
   const ngayGiao = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   return {
     id: uuid(),
-    maDH: generateMaDH(),
+    maDH: generateMaDH(dsMaDaCo),
     ngayDat: today,
     ngayGiao,
     khachHang: "",

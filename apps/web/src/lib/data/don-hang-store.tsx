@@ -152,16 +152,26 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
   const { data: dsOrder, setData: setDsOrder, loading } = useSupabaseSync<Order>(STORAGE_KEY, "don_hang", SEED_ORDERS);
   
   // Lấy dữ liệu khách hàng để đồng bộ công nợ
-  const { list: khList, suaKhachHang } = useKhachHang();
+  const { list: khList, congTruCongNo } = useKhachHang();
 
-  // Helper sync công nợ
+  // Đồng bộ công nợ. Đơn hàng chỉ lưu TÊN khách (Order.khachHang) nên vẫn phải
+  // tra ngược ra mã, nhưng so khớp đã nới (bỏ khoảng trắng thừa, không phân biệt
+  // hoa/thường) và có cảnh báo khi không khớp - trước đây so khớp tuyệt đối từng
+  // ký tự, lệch 1 dấu cách là bỏ qua âm thầm, đơn vẫn lưu mà công nợ không cộng.
   const syncCongNoKhachHang = useCallback((khTen: string, diff: number) => {
     if (diff === 0) return;
-    const kh = khList.find(x => x.ten === khTen);
+    const chuanHoa = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const dich = chuanHoa(khTen);
+    const kh = khList.find(x => chuanHoa(x.ten) === dich);
     if (kh) {
-      suaKhachHang({ ...kh, congNo: (kh.congNo || 0) + diff });
+      congTruCongNo(kh.maKH, diff);
+    } else if (khTen) {
+      toast.warning(
+        `Không tìm thấy khách hàng "${khTen}" trong danh mục nên CHƯA cộng công nợ. Vui lòng kiểm tra lại tên khách hoặc thêm khách vào Danh mục khách hàng.`,
+        { duration: 10000 }
+      );
     }
-  }, [khList, suaKhachHang]);
+  }, [khList, congTruCongNo]);
 
   // Trừ tồn kho thành phẩm khi đơn được giao. Trước đây bán hàng KHÔNG hề trừ kho -
   // phải bấm tay nút "Xuất kho" trên từng màu, nên tồn kho hiển thị lệch dần so với
