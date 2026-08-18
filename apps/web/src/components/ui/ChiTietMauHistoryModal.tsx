@@ -46,19 +46,29 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
           return;
         }
 
-        // Cascade: tìm khâu gần nhất TRƯỚC pc đã có dữ liệu theo size
+        // SL Nhận (số nhận vào khâu này) = số ĐẠT thật của khâu liền TRƯỚC -
+        // đây là thông tin hợp lệ (không phải giả định). Khâu đầu tiên (Cắt)
+        // thì SL nhận = SL dự kiến ban đầu.
         const myIdx = sortedPCs.findIndex(p => p.id === pc.id);
-        let cascadeSizes: { size: string; sl: number }[] | null = null;
+        let slNhan = 0;
         if (myIdx > 0) {
           for (let i = myIdx - 1; i >= 0; i--) {
             const prevSizes = mau.tyLeSizeChiTiet?.[sortedPCs[i].id];
-            if (prevSizes && prevSizes.length > 0) { cascadeSizes = prevSizes; break; }
+            if (prevSizes && prevSizes.length > 0) { slNhan = tongSizes(prevSizes); break; }
           }
+        } else {
+          slNhan = tongSizes(mau.phanBoSize);
         }
 
-        const template = cascadeSizes || mau.phanBoSize || [];
-        newSizeInputs[pc.id] = template.map(s => ({ size: s.size, sl: s.sl || 0 }));
-        newNhanInputs[pc.id] = tongSizes(newSizeInputs[pc.id]);
+        // SL ĐẠT (số size nhập ở khâu này) KHÔNG được mặc định = số nhận -
+        // từng khâu gia công đều có thể phát sinh lỗi/rớt số lượng, không có
+        // căn cứ gì để giả định "y nguyên số nhận". Chỉ khâu Cắt (đầu tiên)
+        // mới mặc định = SL dự kiến; các khâu sau để 0, bắt nhập số thực tế -
+        // tránh lặp lại lỗi từng xảy ra: Cắt chỉ ra 488 mà May áo/Ủi/Đóng gói
+        // lại tự hiện 496 (cao hơn cả số cắt được).
+        const template = mau.phanBoSize || [];
+        newSizeInputs[pc.id] = template.map(s => ({ size: s.size, sl: myIdx === 0 ? (s.sl || 0) : 0 }));
+        newNhanInputs[pc.id] = slNhan;
       });
 
       setSizeInputs(newSizeInputs);
