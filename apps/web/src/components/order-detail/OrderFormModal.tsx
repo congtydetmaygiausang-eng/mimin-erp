@@ -32,11 +32,16 @@ interface Props {
   onClose: () => void;
   /** Order để edit, undefined = tạo mới */
   initial?: Order | null;
+  /**
+   * true khi `initial` được truyền vào chỉ để seed sẵn items (VD: từ giỏ hàng/mua
+   * nhanh 1 SP) chứ không phải sửa 1 đơn đã lưu - giữ tiêu đề "Tạo đơn hàng mới".
+   */
+  isNewOrder?: boolean;
   /** Callback khi save */
   onSave: (order: Order) => void;
 }
 
-export default function OrderFormModal({ open, onClose, initial, onSave }: Props) {
+export default function OrderFormModal({ open, onClose, initial, isNewOrder, onSave }: Props) {
   const { dsSanPham } = useDanhMucSP();
   const { list: dsKhachHang } = useKhachHang();
   const [order, setOrder] = useState<Order>(createEmptyOrder());
@@ -270,7 +275,7 @@ export default function OrderFormModal({ open, onClose, initial, onSave }: Props
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
-              {initial ? `Sửa đơn hàng: ${initial.maDH}` : "Tạo đơn hàng mới"}
+              {initial && !isNewOrder ? `Sửa đơn hàng: ${initial.maDH}` : "Tạo đơn hàng mới"}
             </h2>
             <p className="text-xs text-cyan-50 mt-0.5">
               {tongSL} sản phẩm · Tổng {formatVNDShort(tongThanhToan)} · Còn lại {formatVNDShort(conLai)}

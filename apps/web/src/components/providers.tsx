@@ -24,6 +24,7 @@ import { LenhCatProvider } from "@/lib/data/lenh-cat-store";
 import { DanhMucSPProvider } from "@/lib/data/danh-muc-sp-store";
 import { CongNhanGiaCongProvider } from "@/lib/data/cong-nhan-gia-cong";
 import { DonHangProvider } from "@/lib/data/don-hang-store";
+import { GioHangProvider } from "@/lib/data/gio-hang-store";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -60,20 +61,22 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                       <DanhMucSPProvider>
                                         <CongNhanGiaCongProvider>
                                           <DonHangProvider>
-                                            <NotificationProvider>
-                                              <ErrorBoundary>
-                                                {children}
-                                                <PWAInstallPrompt />
-                                                <Toaster
-                                                  position="top-right"
-                                                  richColors
-                                                  closeButton
-                                                  toastOptions={{
-                                                    duration: 3000,
-                                                  }}
-                                                />
-                                              </ErrorBoundary>
-                                            </NotificationProvider>
+                                            <GioHangProvider>
+                                              <NotificationProvider>
+                                                <ErrorBoundary>
+                                                  {children}
+                                                  <PWAInstallPrompt />
+                                                  <Toaster
+                                                    position="top-right"
+                                                    richColors
+                                                    closeButton
+                                                    toastOptions={{
+                                                      duration: 3000,
+                                                    }}
+                                                  />
+                                                </ErrorBoundary>
+                                              </NotificationProvider>
+                                            </GioHangProvider>
                                           </DonHangProvider>
                                         </CongNhanGiaCongProvider>
                                       </DanhMucSPProvider>

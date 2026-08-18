@@ -6,12 +6,19 @@
 // ============================================
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag } from "lucide-react";
+import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart } from "lucide-react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
+import { useGioHang } from "@/lib/data/gio-hang-store";
+import { useDonHang } from "@/lib/data/don-hang-store";
 import { toast } from "sonner";
 import ProductLibraryCard from "@/components/danh-muc-sp/ProductLibraryCard";
 import ProductDetailModal from "@/components/danh-muc-sp/ProductDetailModal";
 import ProductFormModal from "@/components/danh-muc-sp/ProductFormModal";
+import { GioHangDrawer } from "@/components/danh-muc-sp/GioHangDrawer";
+import OrderFormModal from "@/components/order-detail/OrderFormModal";
+import { createEmptyOrder, createOrderItemFromVariant } from "@/components/order-detail/helpers";
+import { generateVariants } from "@/lib/data/product-variants";
+import type { Order } from "@/components/order-detail/types";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
@@ -24,12 +31,17 @@ const FILTER_TABS = [
 
 export default function DanhMucSanPhamPage() {
   const { dsSanPham, loading, themSP, suaSP, xoaSP } = useDanhMucSP();
+  const { items: gioHangItems, themVaoGio, capNhatSoLuong, xoaKhoiGio, xoaGio, tongSoLuong: soLuongTrongGio } = useGioHang();
+  const { themOrder } = useDonHang();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedProduct, setSelectedProduct] = useState<SanPham | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [productToEdit, setProductToEdit] = useState<SanPham | null>(null);
+  const [showGioHang, setShowGioHang] = useState(false);
+  const [orderFormInitial, setOrderFormInitial] = useState<Order | null>(null);
+  const [orderFromCart, setOrderFromCart] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -60,19 +72,64 @@ export default function DanhMucSanPhamPage() {
   }, [dsSanPham, search, activeFilter]);
 
   // === HANDLERS (3 CTA buttons) ===
-  const handleAddToCart = (sp: any) => {
+  const handleAddToCart = (sp: SanPham) => {
+    themVaoGio(sp);
     toast.success(`Đã thêm "${sp.tenSP}" vào giỏ`);
   };
-  const handleCreateOrder = (sp: any) => {
-    toast.success(`Đang tạo đơn hàng từ "${sp.tenSP}"...`);
-    // TODO: Open OrderFormModal
+
+  // Tạo 1 đơn hàng chỉ với đúng SP này (biến thể đầu tiên) - mở OrderFormModal
+  // có sẵn để chọn thêm màu/size/khách hàng/thanh toán nếu cần.
+  const openQuickOrder = (sp: SanPham) => {
+    const variants = generateVariants(sp.id, sp.dsMau || [], sp.bangSize);
+    const first = variants[0];
+    const order = createEmptyOrder();
+    order.items = [
+      createOrderItemFromVariant({
+        spId: sp.id,
+        spTen: sp.tenSP,
+        mauCode: first?.mauCode,
+        mauTen: first?.mauTen || sp.dsMau?.[0]?.ten,
+        size: first?.size,
+        sku: first?.maSKU,
+        donGia: sp.giaBanDuKien,
+      }),
+    ];
+    setOrderFromCart(false);
+    setOrderFormInitial(order);
   };
-  const handleDirectOrder = (sp: any) => {
-    toast.success(`Đặt hàng nhanh "${sp.tenSP}"`);
-    // TODO: Open DirectOrderModal
-  };
+  const handleCreateOrder = (sp: SanPham) => openQuickOrder(sp);
+  const handleDirectOrder = (sp: SanPham) => openQuickOrder(sp);
+
   const handleFavorite = (sp: any) => {
     toast.success(`Đã thêm "${sp.tenSP}" vào yêu thích`);
+  };
+
+  // Chốt giỏ hàng -> đơn hàng nháp, mở OrderFormModal để hoàn tất khách hàng/thanh toán
+  const handleCheckoutGioHang = () => {
+    if (gioHangItems.length === 0) return;
+    const order = createEmptyOrder();
+    order.items = gioHangItems.map((it) =>
+      createOrderItemFromVariant({
+        spId: it.spId,
+        spTen: it.spTen,
+        mauCode: it.mauCode,
+        mauTen: it.mauTen,
+        size: it.size,
+        sku: it.sku,
+        donGia: it.donGia,
+      })
+    ).map((item, idx) => ({ ...item, soLuong: gioHangItems[idx].soLuong, thanhTien: gioHangItems[idx].soLuong * gioHangItems[idx].donGia }));
+    setOrderFromCart(true);
+    setOrderFormInitial(order);
+    setShowGioHang(false);
+  };
+
+  const handleSaveOrderForm = (order: Order) => {
+    themOrder(order);
+    toast.success(`Đã tạo đơn hàng: ${order.maDH}`);
+    if (orderFromCart) xoaGio();
+    setOrderFormInitial(null);
+    setOrderFromCart(false);
   };
 
   const handleEditProduct = (sp: SanPham) => {
@@ -140,7 +197,18 @@ export default function DanhMucSanPhamPage() {
                 className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-white/30 bg-white/95 backdrop-blur-md text-sm focus:ring-2 focus:ring-white focus:border-white outline-none shadow-xl"
               />
             </div>
-            <button 
+            <button
+              onClick={() => setShowGioHang(true)}
+              className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-white/30 transition-colors whitespace-nowrap"
+            >
+              <ShoppingCart className="w-5 h-5" /> Giỏ hàng
+              {soLuongTrongGio > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center shadow-md">
+                  {soLuongTrongGio}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setShowProductForm(true)}
               className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white text-cyan-700 font-extrabold rounded-2xl shadow-xl hover:bg-cyan-50 transition-colors whitespace-nowrap"
             >
@@ -232,6 +300,28 @@ export default function DanhMucSanPhamPage() {
           onSave={handleSaveProduct}
         />
       )}
+
+      {showGioHang && (
+        <GioHangDrawer
+          items={gioHangItems}
+          onClose={() => setShowGioHang(false)}
+          onUpdateQty={capNhatSoLuong}
+          onRemove={xoaKhoiGio}
+          onClearAll={xoaGio}
+          onCheckout={handleCheckoutGioHang}
+        />
+      )}
+
+      <OrderFormModal
+        open={!!orderFormInitial}
+        initial={orderFormInitial}
+        isNewOrder
+        onClose={() => {
+          setOrderFormInitial(null);
+          setOrderFromCart(false);
+        }}
+        onSave={handleSaveOrderForm}
+      />
     </div>
   );
 }
