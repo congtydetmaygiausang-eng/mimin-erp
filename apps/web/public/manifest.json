@@ -53,7 +53,7 @@
     {
       "name": "Kho vải",
       "short_name": "Kho vải",
-      "url": "/kho-vai",
+      "url": "/kho-vai-tinhmann",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
