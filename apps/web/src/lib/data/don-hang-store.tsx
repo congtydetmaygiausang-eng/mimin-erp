@@ -143,6 +143,7 @@ const DonHangContext = createContext<DonHangContextType | undefined>(undefined);
 // ─── Provider ──────────────────────────────────────────────────────────────────
 import { useSupabaseSync } from "@/lib/supabase/client";
 import { useKhachHang } from "./khach-hang-store";
+import { toast } from "sonner";
 
 // ... [The context and interfaces remain unchanged above this block]
 
@@ -162,6 +163,40 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
     }
   }, [khList, suaKhachHang]);
 
+  // Trừ tồn kho thành phẩm khi đơn được giao. Trước đây bán hàng KHÔNG hề trừ kho -
+  // phải bấm tay nút "Xuất kho" trên từng màu, nên tồn kho hiển thị lệch dần so với
+  // thực tế. Chỉ trừ đúng 1 lần (cờ daTruKho) và chỉ khi đơn thật sự đã giao.
+  const truKhoChoDon = useCallback(async (order: Order) => {
+    if (order.daTruKho) return;
+    const items = (order.items || []).filter(it => it.soLuong > 0);
+    if (items.length === 0) return;
+
+    try {
+      const { truTonKhoThanhPham } = await import("@/app/(main)/kho-thanh-pham/data");
+      const { thieu } = await truTonKhoThanhPham(
+        items.map(it => ({
+          spId: it.spId,
+          mauTen: it.mauTen,
+          soLuong: it.soLuong,
+          tenHienThi: it.spTen,
+        })),
+        `Xuất theo đơn ${order.maDH}`
+      );
+
+      setDsOrder(prev => prev.map(o => o.id === order.id ? { ...o, daTruKho: true } : o));
+
+      if (thieu.length > 0) {
+        toast.warning(
+          `Đã giao ${order.maDH} nhưng kho không đủ hàng để trừ:\n• ${thieu.join("\n• ")}`,
+          { duration: 10000 }
+        );
+      }
+    } catch (e) {
+      console.error("[DonHang] Lỗi trừ tồn kho thành phẩm:", e);
+      toast.error(`Chưa trừ được tồn kho cho đơn ${order.maDH}. Vui lòng kiểm tra Kho thành phẩm.`);
+    }
+  }, [setDsOrder]);
+
   const themOrder = useCallback((order: Order) => {
     setDsOrder(prev => [order, ...prev]);
     const conNo = calcConLai(order);
@@ -169,18 +204,21 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
   }, [setDsOrder, syncCongNoKhachHang]);
 
   const suaOrder = useCallback((id: string, data: Partial<Order>) => {
+    let danGiao: Order | undefined;
     setDsOrder(prev => {
       const oldOrder = prev.find(o => o.id === id);
       if (!oldOrder) return prev;
-      
+
       const newOrder = { ...oldOrder, ...data };
       const diff = calcConLai(newOrder) - calcConLai(oldOrder);
-      
+
       syncCongNoKhachHang(newOrder.khachHang, diff);
-      
+      if (newOrder.trangThai === "Đã giao" && !oldOrder.daTruKho) danGiao = newOrder;
+
       return prev.map(o => o.id === id ? newOrder : o);
     });
-  }, [setDsOrder, syncCongNoKhachHang]);
+    if (danGiao) truKhoChoDon(danGiao);
+  }, [setDsOrder, syncCongNoKhachHang, truKhoChoDon]);
 
   const xoaOrder = useCallback((id: string) => {
     setDsOrder(prev => {
@@ -218,20 +256,31 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
   }, [setDsOrder, syncCongNoKhachHang]);
 
   const capNhatVanChuyen = useCallback((orderId: string, shipping: Partial<OrderShipping>) => {
+    let danGiao: Order | undefined;
     setDsOrder(prev => prev.map(o => {
       if (o.id !== orderId) return o;
-      const newShipping = { 
-        ...(o.shipping || { phuongThuc: "ghtk", phiVanChuyen: 0, trangThai: "cho-xu-ly" as TrangThaiVanChuyen }), 
-        ...shipping 
+      const newShipping = {
+        ...(o.shipping || { phuongThuc: "ghtk", phiVanChuyen: 0, trangThai: "cho-xu-ly" as TrangThaiVanChuyen }),
+        ...shipping
       } as OrderShipping;
       const trangThai: Order["trangThai"] = shipping.trangThai === "da-giao" ? "Đã giao" : o.trangThai;
-      return { ...o, shipping: newShipping, trangThai };
+      const next = { ...o, shipping: newShipping, trangThai };
+      if (trangThai === "Đã giao" && !o.daTruKho) danGiao = next;
+      return next;
     }));
-  }, [setDsOrder]);
+    if (danGiao) truKhoChoDon(danGiao);
+  }, [setDsOrder, truKhoChoDon]);
 
   const doiTrangThai = useCallback((orderId: string, trangThai: Order["trangThai"]) => {
-    setDsOrder(prev => prev.map(o => o.id === orderId ? { ...o, trangThai } : o));
-  }, [setDsOrder]);
+    let danGiao: Order | undefined;
+    setDsOrder(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      const next = { ...o, trangThai };
+      if (trangThai === "Đã giao" && !o.daTruKho) danGiao = next;
+      return next;
+    }));
+    if (danGiao) truKhoChoDon(danGiao);
+  }, [setDsOrder, truKhoChoDon]);
 
   return (
     <DonHangContext.Provider value={{

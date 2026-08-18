@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase } from "@/lib/supabase/sync-helper";
-import { STORAGE_KEY, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
+import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -86,6 +86,21 @@ export default function KhoThanhPhamPage() {
       }
     })();
     return () => { mounted = false; };
+  }, []);
+
+  // Đơn hàng chuyển sang "Đã giao" sẽ trừ tồn kho ở nơi khác (don-hang-store) rồi
+  // phát sự kiện này - nạp lại từ localStorage để số tồn trên màn hình đúng ngay.
+  useEffect(() => {
+    const onChanged = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as SanPhamTP[];
+        if (Array.isArray(parsed)) setDsSanPhamState(parsed);
+      } catch {}
+    };
+    window.addEventListener(KHO_TP_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(KHO_TP_CHANGED_EVENT, onChanged);
   }, []);
 
   // Save on change: ghi localStorage ngay + đồng bộ Supabase cho các dòng thay đổi/mới/xoá
@@ -235,10 +250,14 @@ export default function KhoThanhPhamPage() {
     const viTri = group.items.find((i) => i.viTri)?.viTri || "";
     const ngayNhap = group.items[0]?.ngayNhap || new Date().toISOString().slice(0, 10);
 
+    // Giá vốn 1 SP từ lệnh cắt gốc - dùng khi bản ghi cũ chưa có (donGia = 0)
+    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+
     const newSPs: SanPhamTP[] = lc.dsMau.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
       const old = group.items.find((i) => i.mau === m.ten);
       const sl = ct?.soLuongDat ?? old?.soLuong ?? Math.round((lc.tongSL || 0) / lc.dsMau.length);
+      const donGia = old?.donGia || giaVon1SP;
       return {
         id: old?.id || `SP-${Date.now()}-${idx}`,
         maSP: lc.maSP || group.maSP,
@@ -249,8 +268,8 @@ export default function KhoThanhPhamPage() {
         lsx,
         ngayNhap,
         soLuong: sl,
-        donGia: old?.donGia || 0,
-        giaTri: old?.giaTri || 0,
+        donGia,
+        giaTri: sl * donGia,
         viTri,
         trangThai: old?.trangThai || "con",
         hinhAnh: old?.hinhAnh?.length ? old.hinhAnh : m.img ? [m.img] : [],
@@ -357,57 +376,55 @@ export default function KhoThanhPhamPage() {
     toast.success("Đã xuất CSV");
   };
 
-  // Tính toán Lệnh cắt chờ nhập kho
+  // Tính toán Lệnh cắt chờ nhập kho ("Nhap" = bản nháp, chưa chốt lệnh)
   const dsChoNhapKho = useMemo(() => {
     return dsLenhCat.filter(lc => {
-      if (lc.trangThai === "HoanThanh" || lc.trangThai === "TaoMoi") return false;
+      if (lc.trangThai === "HoanThanh" || lc.trangThai === "Nhap") return false;
       const htPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói"));
       if (!htPCs || htPCs.length === 0) return false;
       return htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
     });
   }, [dsLenhCat]);
 
+  // Nhập kho từ lệnh cắt (luồng dự phòng của trang này - luồng chính ở ui-dong-goi).
+  // Trước đây hàm này đọc pc.chiTietMau như object lồng (chiTietMau[tênMàu][size])
+  // trong khi dữ liệu thật là MẢNG {mau, soLuongDat, soLuongLoi, sizes[]}, nên
+  // Object.keys trả về "0","1"... và số lượng luôn = 0 -> luôn báo "Không tìm thấy".
+  // Nay đọc đúng cấu trúc và tạo 1 dòng cho MỖI MÀU, khớp với luồng ui-dong-goi.
   const handleNhapKhoFromLC = (lc: any) => {
-    // Collect all chiTietMau from dong_goi
     const dongGoiPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")) || [];
-    
-    let addedCount = 0;
-    const newSps: SanPhamTP[] = [];
-    
-    dongGoiPCs.forEach((pc: any) => {
-      if (pc.chiTietMau) {
-        Object.keys(pc.chiTietMau).forEach(tenMau => {
-          Object.keys(pc.chiTietMau[tenMau]).forEach(size => {
-            const val = pc.chiTietMau[tenMau][size];
-            const sl = typeof val === 'object' ? val.dat || 0 : (parseInt(String(val)) || 0);
-            
-            if (sl > 0) {
-              newSps.push({
-                id: `TP${Date.now().toString().slice(-6)}${Math.floor(Math.random()*1000)}`,
-                maSP: lc.maSP || lc.id,
-                tenSP: lc.ten || `Sản phẩm từ ${lc.id}`,
-                phanLoai: "Áo",
-                mau: tenMau,
-                size: size,
-                lsx: lc.id,
-                ngayNhap: new Date().toISOString().slice(0, 10),
-                soLuong: sl,
-                donGia: pc.donGia || 0,
-                giaTri: sl * (pc.donGia || 0),
-                viTri: "Khu A1", // Default
-                trangThai: "con"
-              });
-              addedCount++;
-            }
-          });
-        });
-      }
-    });
+    const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+    const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
+    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+    const ngayNhap = new Date().toISOString().slice(0, 10);
+
+    const newSps: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
+      const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+      const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+      return {
+        id: `TP-${Date.now().toString(36)}-${idx}`,
+        maSP: lc.maSP || lc.id,
+        tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
+        phanLoai: "Áo",
+        mau: m.ten,
+        size: "Nhiều size",
+        lsx: lc.id,
+        ngayNhap,
+        soLuong: sl,
+        donGia: giaVon1SP,
+        giaTri: sl * giaVon1SP,
+        viTri: "Khu A1",
+        trangThai: "con",
+        hinhAnh: m.img ? [m.img] : [],
+        imgQuan: m.imgQuan || undefined,
+        chiTietSize: ct?.sizes || m.phanBoSize || [],
+      } as SanPhamTP;
+    }).filter((sp: SanPhamTP) => sp.soLuong > 0);
 
     if (newSps.length > 0) {
       update([...newSps, ...dsSanPham]);
-      capNhatTrangThai(lc.id, "HoanThanh");
-      toast.success(`Đã nhập kho ${addedCount} loại sản phẩm từ ${lc.id}!`);
+      capNhatTrangThai(lc.id, "HoanThanh", null);
+      toast.success(`Đã nhập kho ${newSps.length} màu từ ${lc.id}!`);
     } else {
       toast.error("Không tìm thấy chi tiết màu/số lượng đóng gói đạt!");
     }
@@ -428,7 +445,7 @@ export default function KhoThanhPhamPage() {
               {dsChoNhapKho.map(lc => (
                 <div key={lc.id} className="bg-white rounded-xl border border-amber-100 p-3 shadow-sm flex flex-col justify-between">
                   <div>
-                    <div className="font-bold text-slate-800 text-sm">{lc.id} - {lc.ten}</div>
+                    <div className="font-bold text-slate-800 text-sm">{lc.id} - {lc.tenSP}</div>
                     <div className="text-xs text-slate-500 mt-1">SL yêu cầu: <span className="font-semibold text-sky-600">{lc.tongSL?.toLocaleString('vi-VN')}</span></div>
                   </div>
                   <button
@@ -512,6 +529,15 @@ export default function KhoThanhPhamPage() {
         const soMauCoAnh = dangBanGroup.items.filter((i) => i.hinhAnh?.[0]).length;
         const tongSoMau = dangBanGroup.items.length;
         const existing = dsDanhMuc.find((sp) => sp.id === dangBanGroup.maSP);
+        // Giá vốn thật: ưu tiên đơn giá đã ghi lúc nhập kho, sau đó tới bảng COGS
+        // của lệnh cắt gốc.
+        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.lsx);
+        const giaVonTuLenhCat = Math.round(
+          dangBanGroup.items.find((i) => i.donGia > 0)?.donGia ||
+          lcGoc?.bangCOGS?.giaVonBinhQuan ||
+          lcGoc?.bangCOGS?.giaVon1SP ||
+          0
+        );
         return (
           <DangBanModal
             group={dangBanGroup}
@@ -520,6 +546,7 @@ export default function KhoThanhPhamPage() {
             daCoTrongDanhMuc={!!existing}
             giaBanMacDinh={existing?.giaBanDuKien}
             giaVonMacDinh={existing?.giaVonDuKien}
+            giaVonTuLenhCat={giaVonTuLenhCat}
             onClose={() => setDangBanGroup(null)}
             onConfirm={handleDangBan}
           />

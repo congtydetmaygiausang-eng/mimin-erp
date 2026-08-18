@@ -72,7 +72,7 @@ export default function CongViecCatPage() {
           const soLuong = round2(mau.dinhMuc * slMau * (1 + haoHut / 100));
           const donGia = vai?.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: mau.maVai, tenVT: vai?.tenVT || `Vải ${mau.ten}`,
+            ngay, loai: "XUAT", loaiKho: "vai", maVT: mau.maVai, tenVT: vai?.tenVT || `Vải ${mau.ten}`,
             soLuong,
             donVi: vai?.dvt || "kg", donGia, thanhTien: round2(soLuong * donGia),
             nguonNhap: `Lệnh cắt ${lc.id}`,
@@ -84,7 +84,7 @@ export default function CongViecCatPage() {
           const soLuong = round2(mau.dinhMucQuan * slMau * (1 + haoHut / 100));
           const donGia = vaiQuan?.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: mau.maVaiQuan, tenVT: vaiQuan?.tenVT || `Vải Quần ${mau.ten}`,
+            ngay, loai: "XUAT", loaiKho: "vai", maVT: mau.maVaiQuan, tenVT: vaiQuan?.tenVT || `Vải Quần ${mau.ten}`,
             soLuong,
             donVi: vaiQuan?.dvt || "kg", donGia, thanhTien: round2(soLuong * donGia),
             nguonNhap: `Lệnh cắt ${lc.id}`,
@@ -99,7 +99,7 @@ export default function CongViecCatPage() {
           const vt = KHO_VAT_TU.find((v) => v.maVT === pl.maPL);
           const donGia = vt?.donGia || pl.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: pl.maPL, tenVT: pl.tenPL,
+            ngay, loai: "XUAT", loaiKho: "phu-lieu", maVT: pl.maPL, tenVT: pl.tenPL,
             soLuong: pl.soLuong,
             donVi: vt?.dvt || pl.dvt || "cái", donGia, thanhTien: round2(pl.soLuong * donGia),
             nguonNhap: `Lệnh cắt ${lc.id}`,

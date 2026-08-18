@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { toast } from "sonner";
 import { KHO_VAI as KHO_VAI_DEFAULT, KHO_VAT_TU as KHO_VAT_TU_DEFAULT, type KhoVai } from "./real-data";
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 
@@ -11,6 +12,7 @@ export type GiaoDichKho = {
   id: string;
   ngay: string;              // YYYY-MM-DD
   loai: "NHAP" | "XUAT";
+  loaiKho?: LoaiKho;         // "vai" | "phu-lieu" - cột loai_kho có thật trên DB
   maVT: string;              // Mã vải/VT
   tenVT: string;
   soLuong: number;           // Số lượng giao dịch
@@ -56,6 +58,7 @@ function fromSupabaseRow(r: any): GiaoDichKho {
     id: String(r.id),
     ngay: String(r.ngay || r.created_at || "").slice(0, 10),
     loai: r.loai === "XUAT" ? "XUAT" : "NHAP",
+    loaiKho: (r.loai_kho ?? r.loaiKho) || undefined,
     maVT: r.ma_vt ?? r.maVT ?? "",
     tenVT: r.ten_vt ?? r.tenVT ?? "",
     soLuong: Number(r.so_luong ?? r.soLuong) || 0,
@@ -65,6 +68,30 @@ function fromSupabaseRow(r: any): GiaoDichKho {
     nguonNhap: r.nguon_nhap ?? r.nguonNhap ?? undefined,
     nguoiThucHien: r.nguoi_thuc_hien ?? r.nguoiThucHien ?? "",
     ghiChu: r.ghi_chu ?? r.ghiChu ?? undefined,
+  };
+}
+
+// Map GiaoDichKho -> đúng bộ cột CÓ THẬT trên bảng giao_dich_kho.
+// Không dùng camelToSnake tự động: nó sinh cả "nguon_nhap" - cột này KHÔNG tồn
+// tại trên DB nên PostgREST (PGRST204) từ chối nguyên dòng, làm mọi giao dịch
+// kho im lặng không lưu được lên server. Giữ nguonNhap bằng cách gộp vào ghi_chu.
+function toSupabaseRow(g: GiaoDichKho) {
+  const ghiChu = [g.ghiChu, g.nguonNhap ? `Nguồn: ${g.nguonNhap}` : null]
+    .filter(Boolean)
+    .join(" · ");
+  return {
+    id: g.id,
+    ngay: g.ngay,
+    loai: g.loai,
+    loai_kho: g.loaiKho ?? null,
+    ma_vt: g.maVT,
+    ten_vt: g.tenVT,
+    so_luong: g.soLuong,
+    don_vi: g.donVi,
+    don_gia: g.donGia,
+    thanh_tien: g.thanhTien,
+    nguoi_thuc_hien: g.nguoiThucHien,
+    ghi_chu: ghiChu || null,
   };
 }
 
@@ -143,10 +170,25 @@ export function KhoProvider({ children }: { children: ReactNode }) {
       id: `GD-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     };
     setGiaoDich((prev) => [...prev, newRow]);
-    if (isSupabaseEnabled) {
-      supabaseUpsert("giao_dich_kho", newRow).catch((err) =>
-        console.error("[KhoStore] Supabase upsert error:", err)
-      );
+    if (isSupabaseEnabled && supabase) {
+      // Ghi thẳng (không qua supabaseUpsert/camelToSnake) để kiểm soát đúng bộ cột.
+      supabase
+        .from("giao_dich_kho")
+        .upsert(toSupabaseRow(newRow))
+        .then(({ error }) => {
+          if (!error) return;
+          console.error("[KhoStore] Supabase upsert error:", error);
+          // KHÔNG nuốt lỗi: trước đây chỉ log ra console nên người dùng vẫn thấy
+          // tồn kho đã trừ trên máy mình, trong khi server không lưu được gì.
+          const chiTiet =
+            error.code === "23503"
+              ? `Mã vật tư "${newRow.maVT}" chưa có trong bảng vat_tu trên máy chủ.`
+              : error.message || "Lỗi không xác định";
+          toast.error(
+            `Chưa lưu được giao dịch kho lên máy chủ (chỉ lưu tạm trên máy này). ${chiTiet}`,
+            { duration: 8000 }
+          );
+        });
     }
   }, []);
 

@@ -11,13 +11,18 @@ interface Props {
   daCoTrongDanhMuc: boolean;
   giaBanMacDinh?: number;
   giaVonMacDinh?: number;
+  /** Giá vốn 1 SP tính từ lệnh cắt gốc (vải + phụ liệu + gia công + chi phí cố định) */
+  giaVonTuLenhCat?: number;
   onClose: () => void;
   onConfirm: (giaBan: number, giaVon: number) => void;
 }
 
-export function DangBanModal({ group, soMauCoAnh, tongSoMau, daCoTrongDanhMuc, giaBanMacDinh, giaVonMacDinh, onClose, onConfirm }: Props) {
+export function DangBanModal({ group, soMauCoAnh, tongSoMau, daCoTrongDanhMuc, giaBanMacDinh, giaVonMacDinh, giaVonTuLenhCat = 0, onClose, onConfirm }: Props) {
   const [giaBan, setGiaBan] = useState(giaBanMacDinh || 0);
-  const [giaVon, setGiaVon] = useState(giaVonMacDinh || 0);
+  // Ưu tiên giá vốn thật từ lệnh cắt; chỉ lùi về giá đã lưu khi lệnh cắt chưa tính.
+  // Trước đây chỉ lấy giaVonMacDinh (= chính giá tự gõ lần trước) nên để trống
+  // 1 lần là giá vốn bằng 0 vĩnh viễn -> nhãn "+50%" lợi nhuận là số ảo.
+  const [giaVon, setGiaVon] = useState(giaVonTuLenhCat || giaVonMacDinh || 0);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -57,7 +62,9 @@ export function DangBanModal({ group, soMauCoAnh, tongSoMau, daCoTrongDanhMuc, g
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-600 block mb-1">Giá vốn (tùy chọn)</label>
+            <label className="text-xs font-bold text-slate-600 block mb-1">
+              Giá vốn {giaVonTuLenhCat > 0 && <span className="text-emerald-600 font-normal">(tự lấy từ lệnh cắt)</span>}
+            </label>
             <input
               type="number"
               value={giaVon || ""}
@@ -66,6 +73,27 @@ export function DangBanModal({ group, soMauCoAnh, tongSoMau, daCoTrongDanhMuc, g
               placeholder="VD: 78000"
               className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400/30"
             />
+            {giaVonTuLenhCat > 0 && giaVon !== giaVonTuLenhCat && (
+              <button
+                type="button"
+                onClick={() => setGiaVon(giaVonTuLenhCat)}
+                className="text-[11px] text-emerald-600 hover:text-emerald-700 font-bold mt-1 underline"
+              >
+                Dùng giá vốn thật từ lệnh cắt: {giaVonTuLenhCat.toLocaleString()}đ
+              </button>
+            )}
+            {giaBan > 0 && giaVon > 0 && (
+              <div className="text-[11px] text-slate-500 mt-1.5">
+                Lợi nhuận: <b className={giaBan > giaVon ? "text-emerald-600" : "text-rose-600"}>
+                  {(giaBan - giaVon).toLocaleString()}đ ({Math.round(((giaBan - giaVon) / giaVon) * 100)}%)
+                </b>
+              </div>
+            )}
+            {giaVon <= 0 && (
+              <div className="text-[11px] text-amber-600 mt-1.5">
+                Chưa có giá vốn - nhãn % lợi nhuận trong Danh mục sản phẩm sẽ không chính xác.
+              </div>
+            )}
           </div>
 
           <p className="text-[11px] text-slate-400">Video theo từng màu có thể thêm sau tại trang Danh mục sản phẩm.</p>

@@ -254,6 +254,13 @@ export default function UiDongGoiPage() {
                           const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
                           const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
 
+                          // Giá vốn 1 SP đã được tính sẵn lúc tạo lệnh cắt (vải + phụ liệu
+                          // + gia công + chi phí cố định). Trước đây bị gán cứng donGia: 0
+                          // nên cột "Giá trị" của Kho thành phẩm luôn hiện 0đ.
+                          const giaVon1SP = Math.round(
+                            lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0
+                          );
+
                           const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
                             const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
                             const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
@@ -267,8 +274,8 @@ export default function UiDongGoiPage() {
                               lsx: lc.id,
                               ngayNhap: new Date().toISOString().split("T")[0],
                               soLuong: sl,
-                              donGia: 0,
-                              giaTri: 0,
+                              donGia: giaVon1SP,
+                              giaTri: sl * giaVon1SP,
                               viTri: khuVuc[lc.id],
                               trangThai: "con",
                               hinhAnh: m.img ? [m.img] : [],
