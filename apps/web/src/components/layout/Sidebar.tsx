@@ -100,7 +100,7 @@ function cardStyle(chipFrom: string, chipTo: string, subFrom: string, subTo: str
     idleText: "text-white",
     activeBg: "bg-white/30 backdrop-blur-md ring-1 ring-white/40 shadow-xl shadow-black/25",
     activeText: "text-white",
-    subBg: "bg-white/10 backdrop-blur-sm ring-1 ring-white/15 shadow-lg shadow-black/20",
+    subBg: "bg-black/25 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30",
     subIdleText: "text-slate-100 hover:bg-white/15 hover:text-white",
     activeSubBg: `bg-gradient-to-r ${subFrom} ${subTo} ${subText} ring-1 ring-black/5`,
   };
