@@ -162,15 +162,30 @@ export default function BangTinPage() {
       return;
     }
 
+    if (!supabase) {
+      toast.error("Chưa kết nối được cơ sở dữ liệu.");
+      return;
+    }
+
     setUploadingVideo(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("path", `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`);
-      const res = await fetch("/api/bang-tin-upload", { method: "POST", body: formData });
+      const path = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      // Chỉ xin "link upload có chữ ký" qua server (request nhỏ, không kèm file) -
+      // rồi trình duyệt tự đẩy file thẳng lên Supabase Storage, không qua Vercel
+      // nữa vì Vercel giới hạn body request ~4.5MB, video vài chục giây là treo.
+      const res = await fetch("/api/bang-tin-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload thất bại");
-      setNewVideo(data.url);
+      if (!res.ok) throw new Error(data.error || "Không tạo được link upload");
+
+      const { error: uploadErr } = await supabase.storage.from("bang-tin-video").uploadToSignedUrl(data.path, data.token, file);
+      if (uploadErr) throw uploadErr;
+
+      const { data: publicData } = supabase.storage.from("bang-tin-video").getPublicUrl(data.path);
+      setNewVideo(publicData.publicUrl);
     } catch (err: any) {
       toast.error("Upload video thất bại: " + err.message);
     } finally {
