@@ -138,6 +138,8 @@ export default function TinNhanPage() {
 
   const hoiThoaisLoc = hoiThoais.filter((ht) => ht.ten.toLowerCase().includes(timHoiThoai.toLowerCase()));
 
+  const sdtDangChon = dangChonVoi ? USERS.find((u) => u.name === dangChonVoi)?.sdt : undefined;
+
   return (
     <div className="max-w-5xl mx-auto pb-24 md:pb-20">
       <div className="p-4 md:p-6 pb-0">
@@ -155,7 +157,7 @@ export default function TinNhanPage() {
       <div className="p-4 md:p-6">
         <div className="md:flex md:h-[70vh] bg-white/60 dark:bg-white/5 md:border border-black/5 dark:border-white/5 rounded-xl overflow-hidden">
           {/* CỘT TRÁI: danh sách bạn / hội thoại */}
-          <div className={`${dangChonVoi ? "hidden md:flex" : "flex"} flex-col md:w-80 shrink-0 md:border-r border-black/5 dark:border-white/10`}>
+          <div className={`${dangChonVoi ? "hidden md:flex" : "flex"} flex-col md:w-[380px] shrink-0 md:border-r border-black/5 dark:border-white/10`}>
             <div className="p-3 border-b border-black/5 dark:border-white/10 shrink-0 space-y-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
@@ -229,9 +231,9 @@ export default function TinNhanPage() {
                   <div
                     key={u.id}
                     onClick={() => { setDangChonVoi(u.name); setTabTrai("chat"); }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 transition cursor-pointer"
+                    className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 transition cursor-pointer"
                   >
-                    <Avatar name={u.name} size="lg" />
+                    <Avatar name={u.name} size="md" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium truncate">{u.name}</div>
                       {u.sdt && (
@@ -242,10 +244,10 @@ export default function TinNhanPage() {
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); setDangChonVoi(u.name); setTabTrai("chat"); }}
-                      className="p-2 rounded-full bg-brand-500 hover:bg-brand-600 text-white transition shrink-0"
+                      className="p-1.5 rounded-full bg-brand-500 hover:bg-brand-600 text-white transition shrink-0"
                       title="Nhắn tin"
                     >
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageCircle className="w-3.5 h-3.5" />
                     </button>
                     {u.sdt && (
                       <a
@@ -253,7 +255,7 @@ export default function TinNhanPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="w-8 h-8 flex items-center justify-center rounded-full text-white text-[11px] font-bold shrink-0 transition"
+                        className="w-7 h-7 flex items-center justify-center rounded-full text-white text-[10px] font-bold shrink-0 transition"
                         style={{ backgroundColor: "#0068FF" }}
                         title="Mở Zalo"
                       >
@@ -264,10 +266,10 @@ export default function TinNhanPage() {
                       <a
                         href={`tel:${u.sdt}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="p-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white transition shrink-0"
+                        className="p-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white transition shrink-0"
                         title="Gọi điện thoại"
                       >
-                        <Phone className="w-4 h-4" />
+                        <Phone className="w-3.5 h-3.5" />
                       </a>
                     )}
                   </div>
@@ -291,7 +293,28 @@ export default function TinNhanPage() {
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   <Avatar name={dangChonVoi} size="sm" />
-                  <span className="font-semibold text-sm">{dangChonVoi}</span>
+                  <span className="font-semibold text-sm flex-1">{dangChonVoi}</span>
+                  {sdtDangChon && (
+                    <>
+                      <a
+                        href={`https://zalo.me/${sdtDangChon.replace(/[^\d]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-7 h-7 flex items-center justify-center rounded-full text-white text-[10px] font-bold shrink-0 transition"
+                        style={{ backgroundColor: "#0068FF" }}
+                        title="Mở Zalo"
+                      >
+                        Za
+                      </a>
+                      <a
+                        href={`tel:${sdtDangChon}`}
+                        className="p-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white transition shrink-0"
+                        title="Gọi điện thoại"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </>
+                  )}
                 </div>
 
                 {/* Khung tin nhắn */}
