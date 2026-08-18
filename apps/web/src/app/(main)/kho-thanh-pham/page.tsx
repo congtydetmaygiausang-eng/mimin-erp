@@ -213,6 +213,57 @@ export default function KhoThanhPhamPage() {
     toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
   };
 
+  // Tách/đồng bộ lại 1 nhóm sản phẩm thành card riêng cho MỖI MÀU, dựa trên
+  // dsMau + số lượng thật của khâu Đóng gói ở lệnh cắt gốc. Dùng cho các bản ghi
+  // cũ bị gộp "Nhiều màu" (nhập kho trước khi sửa lỗi gộp màu) - giữ lại ảnh/giá
+  // đã nhập riêng nếu tên màu trùng khớp với card cũ.
+  const handleRebuildFromLC = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
+    const lsx = group.items[0]?.lsx || group.maSP;
+    const lc = dsLenhCat.find((l) => l.id === lsx);
+    if (!lc || !lc.dsMau || lc.dsMau.length === 0) {
+      toast.error("Không tìm thấy dữ liệu màu từ lệnh cắt gốc để tách");
+      return;
+    }
+    if (!confirm(`Tách "${group.maSP}" thành ${lc.dsMau.length} card theo màu (dựa trên lệnh cắt gốc ${lc.id})?`)) return;
+
+    const dongGoiPCs = (lc.phanCong || []).filter(
+      (pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")
+    );
+    const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+    const viTri = group.items.find((i) => i.viTri)?.viTri || "";
+    const ngayNhap = group.items[0]?.ngayNhap || new Date().toISOString().slice(0, 10);
+
+    const newSPs: SanPhamTP[] = lc.dsMau.map((m: any, idx: number) => {
+      const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+      const old = group.items.find((i) => i.mau === m.ten);
+      const sl = ct?.soLuongDat ?? old?.soLuong ?? Math.round((lc.tongSL || 0) / lc.dsMau.length);
+      return {
+        id: old?.id || `SP-${Date.now()}-${idx}`,
+        maSP: group.maSP,
+        tenSP: group.tenSP,
+        phanLoai: old?.phanLoai || "Áo",
+        mau: m.ten,
+        size: "Nhiều size",
+        lsx,
+        ngayNhap,
+        soLuong: sl,
+        donGia: old?.donGia || 0,
+        giaTri: old?.giaTri || 0,
+        viTri,
+        trangThai: old?.trangThai || "con",
+        hinhAnh: old?.hinhAnh?.length ? old.hinhAnh : m.img ? [m.img] : [],
+        video: old?.video,
+        giaBanLe: old?.giaBanLe,
+        giaBanSi: old?.giaBanSi,
+        chiTietSize: ct?.sizes || m.phanBoSize || old?.chiTietSize || [],
+      };
+    });
+
+    const otherItems = dsSanPham.filter((s) => s.maSP !== group.maSP);
+    update([...newSPs, ...otherItems]);
+    toast.success(`Đã tách ${group.maSP} thành ${newSPs.length} card theo màu`);
+  };
+
   // Chuyển 1 nhóm sản phẩm (theo maSP) từ Kho thành phẩm sang Danh mục sản phẩm để bán.
   // Ảnh lấy từ dsMau của lệnh cắt gốc (lsx) - giữ nguyên, không cần upload lại.
   const handleDangBan = async (giaBan: number, giaVon: number) => {
@@ -418,6 +469,8 @@ export default function KhoThanhPhamPage() {
               dsSanPham={dsSanPham}
               onDangBan={setDangBanGroup}
               onOpenVariant={setOpenVariant}
+              onRebuildFromLC={handleRebuildFromLC}
+              dsLenhCat={dsLenhCat}
             />
           ) : (
             <ProductTable

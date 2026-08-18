@@ -3,7 +3,7 @@
 // giống lưới sản phẩm e-commerce. Tông màu trắng/slate/emerald khớp phần còn lại của app.
 
 import type { RefObject } from "react";
-import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Package, Tag, Hash, DollarSign, MapPin } from "lucide-react";
+import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Package, Tag, Hash, DollarSign, MapPin, RefreshCw } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
 interface ProductGroup {
@@ -28,9 +28,11 @@ interface ProductGridProps {
   dsSanPham: SanPhamTP[];
   onDangBan: (group: ProductGroup) => void;
   onOpenVariant: (sp: SanPhamTP) => void;
+  onRebuildFromLC: (group: ProductGroup) => void;
+  dsLenhCat: any[];
 }
 
-export function ProductGrid({ groups, productImages, setUploadingSP, setUploadType, fileInputRef, setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, onOpenVariant }: ProductGridProps) {
+export function ProductGrid({ groups, productImages, setUploadingSP, setUploadType, fileInputRef, setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, onOpenVariant, onRebuildFromLC, dsLenhCat }: ProductGridProps) {
   return (
     <div className="flex flex-col gap-6">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={() => {}} />
@@ -41,6 +43,12 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
         const priceDisplay = priceRange.length === 0 ? null
           : priceRange.length === 1 ? priceRange[0].toLocaleString()
           : `${Math.min(...priceRange).toLocaleString()} - ${Math.max(...priceRange).toLocaleString()}`;
+
+        const lsx = group.items[0]?.lsx || group.maSP;
+        const lc = dsLenhCat.find((l) => l.id === lsx);
+        const soMauThat = lc?.dsMau?.length || 0;
+        // Chỉ hiện nút tách khi có lệnh cắt gốc nhiều màu nhưng kho đang gộp thành ít card hơn số màu thật
+        const canRebuild = soMauThat > 0 && group.items.length < soMauThat;
 
         return (
           <div key={group.maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -90,6 +98,15 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
               <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-all text-sm font-bold flex items-center gap-1.5" title="Thêm đơn hàng">
                 <Plus className="w-4 h-4" /> Thêm đơn
               </button>
+              {canRebuild && (
+                <button
+                  onClick={() => onRebuildFromLC(group)}
+                  className="px-3 py-2 bg-sky-100 hover:bg-sky-200 rounded-xl text-sky-700 transition-all text-sm font-bold flex items-center gap-1.5"
+                  title={`Đang gộp ${group.items.length}/${soMauThat} màu - tách lại thành ${soMauThat} card riêng theo màu từ lệnh cắt gốc`}
+                >
+                  <RefreshCw className="w-4 h-4" /> Tách theo màu ({group.items.length}/{soMauThat})
+                </button>
+              )}
               <button onClick={() => onDangBan(group)} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Đăng bán vào Danh mục sản phẩm">
                 <Tag className="w-4 h-4" /> Đăng bán
               </button>
