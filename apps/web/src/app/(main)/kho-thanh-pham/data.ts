@@ -39,6 +39,7 @@ export interface SanPhamTP {
   giaBanLe?: number;
   giaBanSi?: number;
   hinhAnh?: string[];
+  imgQuan?: string; // Ảnh thứ 2 (áo mặt sau / quần bộ) - lấy nguyên từ mau.imgQuan của lệnh cắt gốc
   video?: string;
   chiTietSize?: { size: string; sl: number }[];
 }
@@ -69,6 +70,7 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     giaBanLe: r.gia_ban_le != null ? Number(r.gia_ban_le) : undefined,
     giaBanSi: r.gia_ban_si != null ? Number(r.gia_ban_si) : undefined,
     hinhAnh: Array.isArray(r.hinh_anh) ? r.hinh_anh : undefined,
+    imgQuan: r.img_quan ?? undefined,
     video: r.video ?? undefined,
     chiTietSize: Array.isArray(r.chi_tiet_size) ? r.chi_tiet_size : undefined,
   };
@@ -95,6 +97,7 @@ export function toSupabaseRow(sp: SanPhamTP) {
     gia_ban_le: sp.giaBanLe ?? null,
     gia_ban_si: sp.giaBanSi ?? null,
     hinh_anh: sp.hinhAnh ?? null,
+    img_quan: sp.imgQuan ?? null,
     video: sp.video ?? null,
     chi_tiet_size: sp.chiTietSize ?? null,
   };

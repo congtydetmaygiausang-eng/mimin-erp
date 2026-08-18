@@ -272,6 +272,7 @@ export default function UiDongGoiPage() {
                               viTri: khuVuc[lc.id],
                               trangThai: "con",
                               hinhAnh: m.img ? [m.img] : [],
+                              imgQuan: m.imgQuan || undefined,
                               chiTietSize: ct?.sizes || m.phanBoSize || [],
                             };
                           });

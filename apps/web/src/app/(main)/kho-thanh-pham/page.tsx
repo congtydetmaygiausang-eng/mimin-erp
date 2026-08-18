@@ -252,6 +252,7 @@ export default function KhoThanhPhamPage() {
         viTri,
         trangThai: old?.trangThai || "con",
         hinhAnh: old?.hinhAnh?.length ? old.hinhAnh : m.img ? [m.img] : [],
+        imgQuan: old?.imgQuan || m.imgQuan || undefined,
         video: old?.video,
         giaBanLe: old?.giaBanLe,
         giaBanSi: old?.giaBanSi,

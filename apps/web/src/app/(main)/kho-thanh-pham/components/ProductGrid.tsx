@@ -74,14 +74,15 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
               </div>
             </div>
 
-            {/* Lưới biến thể - ảnh phủ full card */}
+            {/* Lưới biến thể - mỗi màu 1 card, 2 ảnh cạnh nhau lấy nguyên từ lệnh cắt gốc */}
             <div className="p-5 bg-slate-50">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {group.items.map(s => (
                   <VariantCard
                     key={s.id}
                     sp={s}
                     image={s.hinhAnh?.[0] || productImages[s.id]}
+                    imageQuan={s.imgQuan || s.hinhAnh?.[1]}
                     onOpen={() => onOpenVariant(s)}
                     onEdit={() => setEditing(s)}
                     onXuatKho={() => handleXuatKho(s.id)}
@@ -131,53 +132,72 @@ const TRANG_THAI_STYLE: Record<string, { label: string; bg: string; text: string
   "khong-dat": { label: "Không đạt", bg: "bg-rose-500", text: "text-white" },
 };
 
-function VariantCard({ sp, image, onOpen, onEdit, onXuatKho }: { sp: SanPhamTP; image?: string; onOpen: () => void; onEdit: () => void; onXuatKho: () => void }) {
+function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: SanPhamTP; image?: string; imageQuan?: string; onOpen: () => void; onEdit: () => void; onXuatKho: () => void }) {
   const trangThai = TRANG_THAI_STYLE[sp.trangThai] || TRANG_THAI_STYLE["con"];
 
   return (
     <div
-      className="relative aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 shadow-sm group cursor-pointer bg-slate-100"
+      className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
       onClick={onOpen}
       title="Xem chi tiết màu"
     >
-      {/* Ảnh phủ full */}
-      {image ? (
-        <img src={image} alt={sp.mau} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-300">
-          <Camera className="w-10 h-10" />
+      {/* 2 ảnh cạnh nhau - lấy nguyên từ lệnh cắt gốc, không chỉnh sửa */}
+      <div className="relative flex bg-slate-100 aspect-[16/11]">
+        {image ? (
+          <div className={`flex-1 overflow-hidden ${imageQuan ? "border-r border-slate-200" : ""}`}>
+            <img src={image} alt={sp.mau} className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-slate-300 border-r border-slate-200">
+            <Camera className="w-8 h-8" />
+          </div>
+        )}
+        {imageQuan && (
+          <div className="flex-1 overflow-hidden">
+            <img src={imageQuan} alt={`${sp.mau} - ảnh 2`} className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${trangThai.bg} ${trangThai.text}`}>
+          {trangThai.label}
+        </span>
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Sửa">
+            <Edit className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onXuatKho(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Xuất kho">
+            <Truck className="w-3.5 h-3.5" />
+          </button>
         </div>
-      )}
-
-      {/* Badge trạng thái - góc trên trái */}
-      <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${trangThai.bg} ${trangThai.text}`}>
-        {trangThai.label}
-      </span>
-
-      {/* Nút sửa/xuất kho - hiện khi hover */}
-      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Sửa">
-          <Edit className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); onXuatKho(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Xuất kho">
-          <Truck className="w-3.5 h-3.5" />
-        </button>
       </div>
 
-      {/* Overlay thông tin - đáy card, gradient tối dần */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent pt-10 pb-3 px-3">
-        <div className="font-black text-white text-base leading-tight truncate drop-shadow-sm">{sp.mau}</div>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-white/90 text-xs font-bold flex items-center gap-1">
-            <Box className="w-3 h-3" /> {sp.soLuong.toLocaleString()} sp
+      {/* Thông tin màu */}
+      <div className="p-3.5">
+        <div className="font-black text-slate-800 text-lg leading-tight mb-2 truncate">{sp.mau}</div>
+
+        {sp.chiTietSize && sp.chiTietSize.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {sp.chiTietSize.map((s) => (
+              <span key={s.size} className="px-2 py-0.5 rounded-md shadow-sm border bg-sky-50 border-sky-200 text-sky-800 text-xs">
+                <strong className="text-sky-900">{s.size}:</strong> {s.sl.toLocaleString()}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-2.5 border-t border-slate-100">
+          <span className="text-slate-600 text-xs font-bold flex items-center gap-1">
+            <Box className="w-3.5 h-3.5" /> {sp.soLuong.toLocaleString()} sp
           </span>
           {sp.giaBanLe ? (
-            <span className="text-emerald-300 text-sm font-black">{sp.giaBanLe.toLocaleString()}đ</span>
-          ) : null}
+            <span className="text-emerald-600 text-sm font-black">{sp.giaBanLe.toLocaleString()}đ</span>
+          ) : (
+            <span className="text-slate-300 text-xs font-bold">Chưa có giá</span>
+          )}
         </div>
         {sp.viTri && (
-          <div className="text-white/70 text-[10px] font-semibold flex items-center gap-0.5 mt-1">
-            <MapPin className="w-2.5 h-2.5" /> {sp.viTri}
+          <div className="text-slate-400 text-[11px] font-semibold flex items-center gap-1 mt-1.5">
+            <MapPin className="w-3 h-3" /> {sp.viTri}
           </div>
         )}
       </div>
