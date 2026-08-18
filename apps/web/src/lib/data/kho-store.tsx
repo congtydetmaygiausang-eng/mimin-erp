@@ -134,13 +134,16 @@ export function KhoProvider({ children }: { children: ReactNode }) {
   }, [giaoDich, hydrated]);
 
   const themGiaoDich = useCallback((gd: Omit<GiaoDichKho, "id">) => {
-    let newRow = null;
-    setGiaoDich((prev) => {
-      const nextNum = prev.length + 1;
-      newRow = { ...gd, id: `GD-${String(nextNum).padStart(3, "0")}` };
-      return [...prev, newRow];
-    });
-    if (isSupabaseEnabled && newRow) {
+    // Sinh id duy nhất KHÔNG dựa vào prev.length: đếm theo length sẽ tạo mã trùng
+    // ngay khi có 1 giao dịch bị xoá, hoặc khi 2 giao dịch được ghi liên tiếp
+    // trong cùng 1 lần render (VD xuất kho nhiều màu 1 lượt) - upsert theo id
+    // sẽ GHI ĐÈ mất giao dịch trước đó.
+    const newRow: GiaoDichKho = {
+      ...gd,
+      id: `GD-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    };
+    setGiaoDich((prev) => [...prev, newRow]);
+    if (isSupabaseEnabled) {
       supabaseUpsert("giao_dich_kho", newRow).catch((err) =>
         console.error("[KhoStore] Supabase upsert error:", err)
       );

@@ -10,7 +10,6 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { logWorkflow } from "../audit-log";
 import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
 import type { AppUser } from "@/components/session-provider";
-import { xuatKhoChoLenhCat } from "@/lib/inventory-engine";
 
 export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron" | "AoPolo" | "PhuKien";
 export type LoaiLenh = "HangNha" | "HangDat";
@@ -342,7 +341,7 @@ export function generateLenhCatId(existing: LenhCat[]): string {
 
 interface LenhCatStore {
   dsLenhCat: LenhCat[];
-  themLenhCat: (lenh: LenhCat, nguoiTao: AppUser) => void;
+  themLenhCat: (lenh: LenhCat, nguoiTao: AppUser) => Promise<void>;
   suaLenhCat: (id: string, lenh: Partial<LenhCat>, nguoiSua: AppUser) => void;
   xoaLenhCat: (id: string, nguoiXoa: AppUser) => void;
   dsMauCongDoan: MauCongDoanItem[];
@@ -484,6 +483,19 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const themLenhCat = useCallback(async (lenh: LenhCat, u: AppUser) => {
+    // Chốt chặn cuối: upsert theo id nên nếu mã bị trùng sẽ GHI ĐÈ mất lệnh cũ.
+    // Kiểm tra thẳng trên Supabase (không tin cache client vì có thể chưa tải xong
+    // hoặc người khác vừa tạo) - trùng thì báo lỗi, KHÔNG ghi đè.
+    {
+      const { supabase: sb } = await import("@/lib/supabase/client");
+      if (sb) {
+        const { data: trung } = await sb.from("lenh_cat").select("id").eq("id", lenh.id).limit(1).maybeSingle();
+        if (trung) {
+          throw new Error(`Mã lệnh cắt ${lenh.id} đã tồn tại. Vui lòng tải lại trang rồi tạo lại để lấy mã mới.`);
+        }
+      }
+    }
+
     setDsLenhCat((prev) => [lenh, ...prev]); // Optimistic
     logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
     const { supabase } = await import("@/lib/supabase/client");
@@ -579,21 +591,16 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       return prev.map(x => x.id === id ? { ...x, trangThai: tt } : x);
     });
 
-    // 🔑 AUTO XUẤT KHO: khi chuyển sang Đang Cắt (từ bất kỳ trạng thái nào)
-    if (tt === "DangCat" && lenhHienTai && lenhHienTai.trangThai !== "DangCat") {
-      try {
-        const ketQua = xuatKhoChoLenhCat({
-          id: lenhHienTai.id,
-          tongSL: lenhHienTai.tongSL,
-          dsMau: lenhHienTai.dsMau,
-          dsPhuLieu: lenhHienTai.dsPhuLieu,
-        }, u);
-        const soLoai = ketQua.length;
-        console.info(`[LeHCat] Tự động xuất kho ${lenhHienTai.id}: ${soLoai} loại vật tư`);
-      } catch(e) {
-        console.error("[LenhCat] Auto xuất kho thất bại:", e);
-      }
-    }
+    // ĐÃ BỎ auto-xuất-kho ở đây (trước gọi xuatKhoChoLenhCat của inventory-engine).
+    // Lý do: có 2 luồng trừ kho chạy song song cho cùng 1 lần bắt đầu cắt ->
+    //   (1) handleNhanViec ở to-cat-work/page.tsx: ghi qua useKho().themGiaoDich
+    //       (có React state + đồng bộ Supabase)
+    //   (2) xuatKhoChoLenhCat: ghi thẳng localStorage "mimin_kho_vai_v2" bằng
+    //       ghiXuatKho(), không qua React state, không lên Supabase
+    // Cả 2 ghi cùng 1 key nên useEffect lưu state của kho-store sẽ ghi đè, XOÁ MẤT
+    // các dòng do (2) tạo -> vừa trừ kho 2 lần vừa mất dữ liệu.
+    // Nay giữ DUY NHẤT luồng (1), và đã port công thức đúng của (2) sang
+    // (định mức × slDuKien từng màu + % hao hụt + đơn giá thật) tại to-cat-work.
 
     try {
       const { supabase } = await import("@/lib/supabase/client");

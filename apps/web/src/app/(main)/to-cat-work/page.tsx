@@ -9,6 +9,7 @@ import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriang
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { useKho } from "@/lib/data/kho-store";
+import { KHO_VAI, KHO_VAT_TU } from "@/lib/data/real-data";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
@@ -51,38 +52,58 @@ export default function CongViecCatPage() {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     capNhatTrangThai(lc.id, "DangCat", null);
 
-    // Tự động xuất kho vải & phụ liệu
+    // Tự động xuất kho vải & phụ liệu.
+    // Công thức: định mức × SL DỰ KIẾN CỦA TỪNG MÀU × (1 + hao hụt%).
+    // KHÔNG dùng lc.tongSL cho mỗi màu - làm vậy lệnh 2 màu sẽ trừ vải gấp đôi,
+    // 3 màu gấp ba (mỗi màu trừ theo tổng SL của cả lệnh).
     try {
       const ngay = new Date().toISOString().split("T")[0];
+      const nguoiThucHien = user?.name || "Tổ Cắt";
+      const round2 = (n: number) => Math.round(n * 100) / 100;
 
       // 1. Xuất vải
       lc.dsMau?.forEach((mau: any) => {
+        const slMau = mau.slDuKien || 0;
+        if (!slMau) return;
+        const haoHut = mau.haoHut ?? 5; // % hao hụt mặc định 5%
+
         if (mau.maVai && mau.dinhMuc) {
+          const vai = KHO_VAI.find((v) => v.maVT === mau.maVai);
+          const soLuong = round2(mau.dinhMuc * slMau * (1 + haoHut / 100));
+          const donGia = vai?.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: mau.maVai, tenVT: `Vải ${mau.ten}`,
-            soLuong: mau.dinhMuc * (lc.tongSL || 0),
-            donVi: "kg", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
-            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động cho LC ${lc.id}`
+            ngay, loai: "XUAT", maVT: mau.maVai, tenVT: vai?.tenVT || `Vải ${mau.ten}`,
+            soLuong,
+            donVi: vai?.dvt || "kg", donGia, thanhTien: round2(soLuong * donGia),
+            nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien, ghiChu: `Xuất tự động LC ${lc.id} - màu ${mau.ten}: ${slMau} SP × ${mau.dinhMuc} + ${haoHut}% hao hụt`
           });
         }
         if (mau.maVaiQuan && mau.dinhMucQuan) {
+          const vaiQuan = KHO_VAI.find((v) => v.maVT === mau.maVaiQuan);
+          const soLuong = round2(mau.dinhMucQuan * slMau * (1 + haoHut / 100));
+          const donGia = vaiQuan?.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: mau.maVaiQuan, tenVT: `Vải Quần ${mau.ten}`,
-            soLuong: mau.dinhMucQuan * (lc.tongSL || 0),
-            donVi: "kg", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
-            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động (Quần) cho LC ${lc.id}`
+            ngay, loai: "XUAT", maVT: mau.maVaiQuan, tenVT: vaiQuan?.tenVT || `Vải Quần ${mau.ten}`,
+            soLuong,
+            donVi: vaiQuan?.dvt || "kg", donGia, thanhTien: round2(soLuong * donGia),
+            nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien, ghiChu: `Xuất tự động (Quần) LC ${lc.id} - màu ${mau.ten}: ${slMau} SP × ${mau.dinhMucQuan} + ${haoHut}% hao hụt`
           });
         }
       });
 
-      // 2. Xuất phụ liệu
+      // 2. Xuất phụ liệu (số lượng đã là tổng cho cả lệnh, không nhân theo màu)
       lc.dsPhuLieu?.forEach((pl: any) => {
         if (pl.maPL && pl.soLuong) {
+          const vt = KHO_VAT_TU.find((v) => v.maVT === pl.maPL);
+          const donGia = vt?.donGia || pl.donGia || 0;
           themGiaoDich({
             ngay, loai: "XUAT", maVT: pl.maPL, tenVT: pl.tenPL,
             soLuong: pl.soLuong,
-            donVi: pl.dvt || "cái", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
-            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động cho LC ${lc.id}`
+            donVi: vt?.dvt || pl.dvt || "cái", donGia, thanhTien: round2(pl.soLuong * donGia),
+            nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien, ghiChu: `Xuất tự động cho LC ${lc.id}`
           });
         }
       });

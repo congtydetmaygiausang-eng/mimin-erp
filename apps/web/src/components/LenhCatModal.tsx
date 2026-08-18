@@ -32,6 +32,7 @@ import {
   LOAI_SP_LABELS,
   BANG_CHI_PHI_CO_DINH,
   useLenhCat,
+  generateLenhCatId,
 } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
@@ -659,7 +660,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     return thieu;
   };
 
-  const handleSave = (status: TrangThaiLenhCat) => {
+  const handleSave = async (status: TrangThaiLenhCat) => {
     if (!maSP || !tenSP || !tongSL) {
       toast.error("Vui lòng điền đầy đủ Mã SP, Tên SP và Tổng SL!");
       return;
@@ -729,8 +730,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
     } else {
-      const newId = `LC-${new Date().getFullYear()}-${String(dsLenhCat.length + 1).padStart(4, "0")}`;
-      themLenhCat({
+      // Dùng generateLenhCatId (max số hiện có + 1) thay vì dsLenhCat.length + 1:
+      // đếm theo length sẽ sinh mã TRÙNG với lệnh đang tồn tại ngay khi có 1 lệnh
+      // cũ bị xóa ở giữa (VD xóa 0002 trong 0001-0003 -> length=2 -> sinh lại 0003),
+      // và themLenhCat upsert theo id nên sẽ GHI ĐÈ mất lệnh cũ.
+      const newId = generateLenhCatId(dsLenhCat);
+      try {
+      await themLenhCat({
         id: newId,
         loaiLenh,
         khachHang: loaiLenh === "HangDat" ? khachHang : undefined,
@@ -774,6 +780,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         ghiChuInTheu,
         nguoiTao: user?.name || "Nguyễn Thị Ngọc Giàu"
       }, user || getFallbackUser());
+      } catch (e: any) {
+        // Giữ nguyên modal + dữ liệu đang nhập để không mất công nhập lại.
+        toast.error(e?.message || "Không tạo được lệnh cắt. Vui lòng thử lại.");
+        return;
+      }
 
       toast.success(`Đã tạo thành công Lệnh Cắt mới: ${newId} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
       localStorage.removeItem("lenhCatDraft");
