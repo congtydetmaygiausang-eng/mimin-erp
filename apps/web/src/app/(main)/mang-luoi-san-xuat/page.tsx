@@ -276,7 +276,7 @@ export default function MangLuoiSanXuatPage() {
   const filteredPartners = useMemo(() => {
     const normalizedSearch = normalizeSearchValue(search);
     const normalizedProvince = normalizeSearchValue(provinceFilter);
-    const normalizedCapability = normalizeSearchValue(capabilityFilter);
+
     const maximumDistance = nullableNumber(radiusKm);
     return partners.filter((partner) => {
       if (!partner.roles.includes(activeRole)) return false;
@@ -468,10 +468,10 @@ export default function MangLuoiSanXuatPage() {
             </button>
           </div>
         </div>
-        {(provinceFilter || capabilityFilter || radiusKm) && (
+        {(provinceFilter || capabilityFilter.length > 0 || radiusKm) && (
           <div className="mt-3 flex items-center gap-2 text-xs text-brand-700">
             <SlidersHorizontal className="w-4 h-4" /> Đang áp dụng bộ lọc nâng cao
-            <button type="button" className="underline" onClick={() => { setProvinceFilter(""); setCapabilityFilter(""); setRadiusKm(""); }}>Xóa bộ lọc</button>
+            <button type="button" className="underline" onClick={() => { setProvinceFilter(""); setCapabilityFilter([]); setRadiusKm(""); }}>Xóa bộ lọc</button>
           </div>
         )}
       </div>
