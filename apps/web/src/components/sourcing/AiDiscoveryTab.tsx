@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Building2, Calculator, Check, CheckCircle2, ExternalLink, Eye, Globe2, Hash, Mail, Map, MapPin, Navigation, Phone, RefreshCw, Search, Sparkles, X } from "lucide-react";
+import { BadgeCheck, Bookmark, BookmarkCheck, Building2, Calculator, Check, CheckCircle2, ExternalLink, Eye, Globe2, Hash, Mail, Map, MapPin, Navigation, Phone, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
@@ -102,15 +102,17 @@ function SearchProgressModal({ loading }: { loading: boolean }) {
   );
 }
 
-function SupplierResultCard({ item, opening, verifying, onViewDetails, onVerifyLocation }: { item: DirectSearchCandidate; opening: boolean; verifying: boolean; onViewDetails: () => void; onVerifyLocation: () => void }) {
+function SupplierResultCard({ item, opening, verifying, saving, onViewDetails, onVerifyLocation, onSaveOne }: { item: DirectSearchCandidate; opening: boolean; verifying: boolean; saving: boolean; onViewDetails: () => void; onVerifyLocation: () => void; onSaveOne: () => void }) {
   const [showCalculation, setShowCalculation] = useState(false);
   const contact = contactDetails(item);
   const sources = item.sources?.length ? item.sources : [{ url: item.sourceUrl, title: item.sourceTitle }];
   const status = item.locationStatus ?? "UNKNOWN";
   const locationBadge = LOCATION_BADGES[status];
   const distanceLabel = status === "INSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `${item.distanceKm.toFixed(1)} km từ tâm` : status === "OUTSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `Ngoài bán kính · ${item.distanceKm.toFixed(1)} km` : locationBadge.label;
-  const mapQuery = item.address ? `${item.legalName}, ${item.address}` : item.latitude !== null && item.longitude !== null ? `${item.legalName}, ${item.latitude},${item.longitude}` : item.legalName;
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+  const mapQuery = item.address ? `${item.legalName}, ${item.address}` : item.legalName;
+  const mapsUrl = item.latitude !== null && item.latitude !== undefined && item.longitude !== null && item.longitude !== undefined
+    ? `https://www.google.com/maps?q=${item.latitude},${item.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
   const evidence = item.distanceEvidence;
   return <article className="rounded-xl border p-4 space-y-3" style={{borderColor:"var(--border)"}}>
     <div className="flex justify-between gap-3">
@@ -130,7 +132,7 @@ function SupplierResultCard({ item, opening, verifying, onViewDetails, onVerifyL
     <div className="flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div>
     <div className="flex flex-wrap gap-2"><a className="btn-secondary inline-flex items-center gap-2 text-xs" href={mapsUrl} target="_blank" rel="noopener noreferrer"><Map className="w-4 h-4"/>Google Maps</a><button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={()=>setShowCalculation((current)=>!current)}><Calculator className="w-4 h-4"/>{showCalculation?"Ẩn cách tính":"Xem cách tính"}</button><button type="button" disabled={verifying} className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={onVerifyLocation}><RefreshCw className={`w-4 h-4 ${verifying?"animate-spin":""}`}/>{verifying?"Đang xác minh...":"Xác minh lại vị trí"}</button></div>
     {showCalculation&&<div className="rounded-lg border bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1"><p><b>Phương pháp:</b> {evidence?.method==="HAVERSINE"?"Haversine · khoảng cách đường chim bay":"Chưa có phép tính"}</p><p><b>Bán kính áp dụng:</b> {evidence?`${evidence.radiusKm} km`:"Chưa có"}</p><p><b>Tâm:</b> {evidence?`${evidence.center.latitude.toFixed(6)}, ${evidence.center.longitude.toFixed(6)} · ${evidence.center.label}`:"Chưa xác định"}</p><p><b>Công ty:</b> {evidence?.destination.latitude!==null&&evidence?.destination.latitude!==undefined&&evidence.destination.longitude!==null&&evidence.destination.longitude!==undefined?`${evidence.destination.latitude.toFixed(6)}, ${evidence.destination.longitude.toFixed(6)}`:"Chưa có tọa độ"}</p><p><b>Nguồn tọa độ:</b> {evidence?.destination.coordinateSource??"Chưa xác minh"} · độ tin cậy {evidence?.destination.coordinateConfidence??"chưa có"}</p><p><b>Kết luận:</b> {item.locationReason??locationBadge.label}</p>{evidence&&<p><b>Thời điểm tính:</b> {new Date(evidence.calculatedAt).toLocaleString("vi-VN")}</p>}</div>}
-    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3 text-xs">{sources.slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div><button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-2 text-xs"><Eye className="w-4 h-4"/>{opening?"Đang mở...":"Xem chi tiết công ty"}</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3 text-xs">{sources.slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div><div className="flex gap-2"><button type="button" disabled={saving} onClick={onSaveOne} className={`btn-secondary inline-flex items-center gap-1.5 text-xs ${saving ? "opacity-60" : ""}`}>{saving ? <><BookmarkCheck className="w-4 h-4 text-emerald-600"/>Đang lưu...</> : <><Bookmark className="w-4 h-4"/>Lưu công ty này</>}</button><button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-2 text-xs"><Eye className="w-4 h-4"/>{opening?"Đang mở...":"Xem chi tiết"}</button></div></div>
   </article>;
 }
 
@@ -146,6 +148,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [directProvider, setDirectProvider] = useState("");
   const [openingProfile, setOpeningProfile] = useState("");
   const [verifyingLocation, setVerifyingLocation] = useState("");
+  const [savingCard, setSavingCard] = useState("");
   const [radiusKm, setRadiusKm] = useState(20);
   const [locationMode, setLocationMode] = useState<"PREFER"|"STRICT">("PREFER");
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
@@ -234,7 +237,16 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     catch (error) { toast.error(error instanceof Error ? error.message : "Không nhập được dữ liệu AI"); }
     finally { setLoading(false); }
   };
-  const saveDirectResults = async()=>{try{await saveDirectSearchCandidates(directResults,role,`${query} | ${location}`,directProvider);setDirectResults([]);await refresh();toast.success("Đã lưu kết quả vào vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
+  const saveDirectResults = async()=>{try{await saveDirectSearchCandidates(directResults,role,`${query} | ${location}`,directProvider);setDirectResults([]);await refresh();toast.success("Dã lưu kết quả vào vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
+  const saveOneResult = async (item: DirectSearchCandidate, key: string) => {
+    setSavingCard(key);
+    try {
+      await saveDirectSearchCandidates([item], role, `${query} | ${location}`, directProvider);
+      await refresh();
+      toast.success(`Đã lưu "${item.legalName}" vào vùng chờ`);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không lưu được"); }
+    finally { setSavingCard(""); }
+  };
   const viewCompanyProfile = async (item: DirectSearchCandidate, key: string) => {
     setOpeningProfile(key);
     try {
@@ -298,13 +310,20 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
             </div>
           )}
         </label>
-        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label><label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Tìm trong bán kính (Mở rộng thêm nếu thiếu)</option><option value="STRICT">Nghiêm ngặt (Tuyệt đối không lấy xưởng xa)</option></select></label><div className="flex items-end"><button type="button" className={`btn-secondary w-full inline-flex justify-center gap-2 ${locationType === "GPS" ? "opacity-50 cursor-not-allowed" : ""}`} disabled={locationType === "GPS"} onClick={useCurrentLocation}><Navigation className="w-4 h-4"/>Vị trí hiện tại</button></div></div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3"><p className="text-xs opacity-60">{center?`GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m`:""}</p>
-        <div className="flex items-end md:col-span-1">
-          <button onClick={() => void search(false)} disabled={loading} className="btn-primary w-full inline-flex items-center justify-center gap-2">
-            <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm tự động"}
+        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label>
+        <label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Tìm trong bán kính (Mở rộng thêm nếu thiếu)</option><option value="STRICT">Nghiêm ngặt (Tuyệt đối không lấy xưởng xa)</option></select></label>
+        <div className="flex flex-col gap-1 justify-end">
+          <button type="button" className={`btn-secondary inline-flex justify-center items-center gap-2 ${locationType === "GPS" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`} onClick={locationType === "GPS" ? () => {setLocationType("DISTRICT"); setCenter(null); setLocation("");} : useCurrentLocation}>
+            <Navigation className="w-4 h-4"/>{locationType === "GPS" ? "Đang dùng GPS • Hủy" : "Vị trí hiện tại"}
           </button>
+          {center && <p className="text-[10px] text-emerald-700 text-center">số {Math.round(center.accuracy??0)} m</p>}
         </div>
+      </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <p className="text-xs opacity-60">{center ? `✅ GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m` : ""}</p>
+        <button onClick={() => void search(false)} disabled={loading} className="btn-primary inline-flex items-center justify-center gap-2">
+          <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm tự động"}
+        </button>
       </div>
     </div>
     <SearchProgressModal loading={loading} />
@@ -322,7 +341,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         </li>
       </ul>
     </div>)}
-    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div>{directResultSections.map((section)=><section key={section.status} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.status}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)}/>})}</div></section>)}</div>}
+    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div>{directResultSections.map((section)=><section key={section.status} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.status}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />

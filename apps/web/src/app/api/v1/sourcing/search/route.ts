@@ -385,6 +385,25 @@ function postalAddress(value: string): string {
   return "";
 }
 
+/** Tự động thêm tên tỉnh/thành phố nếu địa chỉ bị cụt (chỉ có TP, TPHCM không có chữ đầy đủ) */
+function appendCityIfMissing(address: string, location: string): string {
+  if (!address) return address;
+  const hasCity = /\b(hồ chí minh|hà nội|đà nẵng|cần thơ|hải phòng|bình dương|đồng nai|long an|tây ninh)\b/i.test(address);
+  if (hasCity) return address;
+  // Nếu kết thúc bằng "TP" hoặc "TP." thì bổ sung tên đầy đủ
+  const endsWithTP = /,?\s*TP\.?\s*$/i.test(address);
+  if (endsWithTP) {
+    const base = address.replace(/,?\s*TP\.?\s*$/i, "");
+    // Suy từ location (VD: "Quận 10, TP.HCM") ra tên tỉnh thành
+    const cityFromLocation = /hồ chí minh|tp\s*\.?\s*hcm|tphcm/i.test(location) ? "TP. Hồ Chí Minh"
+      : /hà nội/i.test(location) ? "Hà Nội"
+      : /đà nẵng/i.test(location) ? "Đà Nẵng"
+      : "TP. Hồ Chí Minh"; // default HCM vì đây là hệ thống tập trung tại HCM
+    return `${base}, ${cityFromLocation}`.replace(/,\s*,/g, ",").trim();
+  }
+  return address;
+}
+
 function isGenericCompanyName(value: string): boolean {
   const name = value.trim();
   if (!name || /^(?:trang chủ|home|giới thiệu|liên hệ)$/i.test(name)) return true;
@@ -921,7 +940,8 @@ export async function POST(req: NextRequest) {
     const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
     const businessCandidates = enrichment.candidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query)).map((candidate) => {
       const standardized = standardizeVietnamAddress(candidate.address);
-      return { ...candidate, address: standardized.currentAddress, legacyAddress: standardized.legacyAddress, addressStandard: standardized.standard, district: standardized.standard ? "" : candidate.district };
+      const fullAddress = appendCityIfMissing(standardized.currentAddress, location);
+      return { ...candidate, address: fullAddress, legacyAddress: standardized.legacyAddress, addressStandard: standardized.standard, district: standardized.standard ? "" : candidate.district };
     });
     const geocoding = await geocodeCandidates(businessCandidates, location);
     const processed = postProcessCandidates(geocoding.candidates, query, location, center, radiusKm, locationMode, learning);
