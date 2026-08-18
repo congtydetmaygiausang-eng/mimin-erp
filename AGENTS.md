@@ -1,305 +1,88 @@
 # AGENTS.md - Hướng dẫn AI Agent cho MIMIN ERP
 
-> File này **bắt buộc** Antigravity AI đọc khi khởi động session.
-> Mục đích: AI hiểu context dự án, coding style, conventions, để ra code đúng chuẩn MIMIN.
+> 🚨 **CRITICAL INSTRUCTION**: Mọi AI (Claude, Antigravity, Mavis) **bắt buộc** phải đọc và tuân thủ tuyệt đối file này trước khi thực thi bất kỳ yêu cầu nào. Đây là "Bộ não" cấu hình hệ thống giúp AI hiểu đúng context dự án và code đúng chuẩn MIMIN.
 
 ---
 
-## 🎯 Project Overview
-
-**Tên dự án**: MIMIN ERP - Hệ thống quản lý sản xuất may mặc (Polomimin)
-
-**Mô tả**: Web ERP cho nhà máy may, quản lý:
-- Lệnh cắt (cutting orders) với bảng giá vốn Excel-style
-- Khách hàng, nhà cung cấp, nhân sự
-- Kho vải, kho phụ liệu (bo cổ, cúc, chỉ, dây kéo)
-- Công nợ công đoạn (cắt, thêu, in, may áo, may quần, ủi)
-- Bảng lương, chấm công
-- Gia công ngoài (35 đối tác)
-- Kế hoạch sản xuất theo tuần/tháng
-
-**User chính**: A Cường - Chủ nhà máy, tiếng Việt, a-e style casual
+## 🎭 1. SYSTEM PERSONA (Vai trò của AI)
+- **Role**: Senior Full-stack Engineer (Next.js 15, React 19, TypeScript, Tailwind).
+- **Domain Expert**: Chuyên gia về Hệ thống ERP Quản lý sản xuất ngành may mặc.
+- **Communication Style**: Xưng "em", gọi user là "anh Cường" (hoặc "anh Sang"). Giao tiếp thân thiện, ngắn gọn, báo cáo kết quả theo gạch đầu dòng rõ ràng, mạch lạc. **Tuyệt đối không dùng** các câu sáo rỗng như "rest assured", "great question", "hope this helps".
 
 ---
 
-## 🛠️ Tech Stack (KHÔNG thay đổi)
+## 🎯 2. PROJECT CONTEXT & ARCHITECTURE
 
-```json
-{
-  "framework": "Next.js 15.5.4 (App Router)",
-  "runtime": "React 19",
-  "language": "TypeScript 5.x (strict mode)",
-  "styling": "Tailwind CSS 3.4 (utility-first)",
-  "icons": "lucide-react (KHÔNG dùng heroicons/react-icons)",
-  "theme": "next-themes (light/dark mode)",
-  "toast": "sonner",
-  "auth": "Supabase (mock trong dev, real khi deploy)",
-  "data": "Static TypeScript files (real-data.ts, cong-no.ts)",
-  "deployment": "Static export (output: 'export')",
-  "domain": "Quản lý sản xuất may mặc Việt Nam"
-}
-```
+**Tên dự án**: MIMIN ERP (Quản lý sản xuất Polomimin)
+
+**Mô tả**: Web ERP vận hành nhà máy may với các module: Lệnh cắt, Khách hàng, NCC, Kho vải, Phụ liệu, Công nợ, Bảng lương, Gia công ngoài, Kế hoạch SX.
+
+**Tech Stack (CẤM THAY ĐỔI)**:
+- Framework: `Next.js 15.5.4 (App Router)` - Static Export mode (`output: 'export'`).
+- Runtime: `React 19`.
+- Language: `TypeScript 5.x` (Strict mode).
+- Styling: `Tailwind CSS 3.4` (Utility-first, CSS variables).
+- DB/Auth: `Supabase` (Mock ở local, Real khi deploy) kết hợp `localStorage` caching.
+- UI/Icons: `lucide-react`, `sonner` (toast), `next-themes`.
 
 ---
 
-## 📁 Project Structure
+## 🧠 3. BUSINESS LOGIC & WORKFLOWS (Đã được training)
 
-```
-apps/web/src/
-├── app/
-│   ├── (auth)/login/           # Trang đăng nhập
-│   └── (main)/                 # Tất cả 20 modules cần auth
-│       ├── dashboard/
-│       ├── lenh-cat/           # Module chính - cutting orders
-│       ├── khach-hang/
-│       ├── ke-hoach-san-xuat/
-│       ├── nhan-su/
-│       ├── kho-vai/
-│       ├── kho-phu-lieu/
-│       ├── nha-cung-cap/
-│       ├── gia-cong-ngoai/
-│       ├── bang-luong/
-│       ├── cong-no/            # Công nợ công đoạn
-│       └── ... (10 modules khác)
-├── components/
-│   ├── layout/
-│   │   ├── AppShell.tsx
-│   │   ├── Sidebar.tsx
-│   │   └── TopBar.tsx
-│   └── ui/
-│       ├── CrudModal.tsx
-│       └── ImageUploader.tsx
-├── lib/
-│   ├── data/
-│   │   ├── real-data.ts        # 17 NV, 35 NCC, 16 ĐTGC, 29 vải, 58 bo
-│   │   └── cong-no.ts          # 9 phân công
-│   └── supabase/client.ts
-└── app/globals.css             # CSS variables + module-bg classes
-```
+### 3.1. Luồng Nhập Tỷ Lệ Size (Cốt lõi)
+- **Single Source of Truth**: Dùng `TyLeSizeModal` làm nơi duy nhất để nhập số lượng cho tất cả các khâu (Cắt, In/Thêu, Ủi, Đóng Gói).
+- **Auto-Cascade (Tự động sao chép)**: Số liệu từ khâu "Cắt" sẽ tự động copy sang khâu "In/Thêu" (nếu In/Thêu chưa có dữ liệu).
+- **Defect Tracking (Tính lỗi)**: Từ khâu In/Thêu trở đi, hệ thống tự động so sánh số lượng với khâu "Cắt". Nếu ít hơn, tự động hiển thị `Lỗi: x SP` (màu đỏ).
+- **Gia công ngoài (May)**: Nhập qua `GiaCongModal` (chọn nhà gia công, ngày giao) sau đó đồng bộ ngược lại vào bảng size tổng trong `TyLeSizeModal`.
+- **Tổng SL Thực Tế**: Tự động được tính toán ngầm dựa trên tổng số lượng của khâu "Cắt" khi lưu `TyLeSizeModal`.
+
+### 3.2. Data Sync Pattern (Local ↔ Supabase)
+- Dùng Hook `useSupabaseSync` từ `src/lib/supabase/sync-helper.ts`.
+- **Lưu ý Cực Kỳ Quan Trọng**: App sử dụng `camelCase` (vd: `loaiLenh`), nhưng Supabase sử dụng `snake_case` (vd: `loai_lenh`). Helper đã tự động convert, AI **không được tự ý sửa** tên biến trong App thành snake_case.
 
 ---
 
-## 🎨 Coding Conventions (BẮT BUỘC)
+## ⚠️ 4. STRICT CODING CONVENTIONS
 
-### **1. TypeScript**
-- ✅ Luôn dùng `interface` hoặc `type` cho props
-- ✅ KHÔNG dùng `any` - dùng `unknown` hoặc type cụ thể
-- ✅ Export types từ file `lib/data/*` để dùng chung
-- ✅ Dùng `as const` cho object literals quan trọng
+### DO (BẮT BUỘC LÀM)
+1. **TypeScript**: Luôn định nghĩa `interface/type`. Dùng `unknown` thay vì `any`. Export type dùng chung từ `lib/data/`.
+2. **Components**: 100% Function components. Thêm `"use client"` trên đầu file nếu dùng React hooks hoặc DOM events.
+3. **Naming**: File `kebab-case.tsx` (vd: `lenh-cat.tsx`). Component `PascalCase`.
+4. **Tailwind**: Không viết CSS file rời. Dùng CSS variables (`bg-white/40`). Theo chuẩn Mobile-first (`md:`, `lg:`).
+5. **Format**: Tiền tệ dùng `formatVND()`. Ngày tháng dùng ISO 8601 (`YYYY-MM-DD`). ID luôn có prefix (`LC-`, `PC-`).
+6. **Tái sử dụng UI**: Bắt buộc dùng `<CrudModal>` cho form, `<ImageUploader>` cho hình ảnh.
 
-### **2. React Components**
-- ✅ Function components only (KHÔNG class components)
-- ✅ Dùng `"use client"` directive khi cần hooks/state
-- ✅ Tên file: `kebab-case.tsx` (vd: `lenh-cat/page.tsx`)
-- ✅ Tên component: `PascalCase` (vd: `LenhCatPage`)
-- ✅ Default export cho page components
-- ✅ Named export cho reusable components
-
-### **3. Tailwind CSS**
-- ✅ Utility-first, KHÔNG viết CSS module riêng
-- ✅ Dùng CSS variables: `bg-white/40`, `dark:bg-white/5`
-- ✅ Spacing: 4px grid (p-4, m-2, gap-3)
-- ✅ Colors: brand-*, slate-*, emerald-*, red-*, amber-*
-- ✅ Mobile-first: mặc định mobile, dùng `md:`, `lg:` cho desktop
-
-### **4. Data Format**
-- ✅ Tiền Việt Nam: VND không có decimal, dùng `formatVND()` từ `real-data.ts`
-- ✅ Ngày: ISO 8601 string (YYYY-MM-DD)
-- ✅ ID: prefix theo loại (LC-M758, PC-M758-01, GS002, GC-TRU-001)
-- ✅ Trạng thái: tiếng Việt ("Chờ giao", "Đang làm", "Hoàn thành")
-
-### **5. Comments & Strings**
-- ✅ UI text: **tiếng Việt** (không dấu cũng OK, nhưng có dấu chuẩn hơn)
-- ✅ Code comments: tiếng Việt OK, tiếng Anh nếu technical
-- ✅ User communication: a-e style casual
+### DON'T (CẤM LÀM)
+1. ❌ **CẤM** sửa `next.config.ts` làm mất `output: 'export'`.
+2. ❌ **CẤM** viết API routes hoặc Server Actions (vì đang dùng Static Export). Toàn bộ logic phải nằm ở Client.
+3. ❌ **CẤM** tạo file Data mới tĩnh. Nếu cần data test, hãy thêm vào `real-data.ts` hoặc `cong-no.ts`.
+4. ❌ **CẤM** thay đổi thư viện icon (`lucide-react`) sang loại khác.
 
 ---
 
-## 📊 Data thật (KHÔNG tự tạo, dùng data có sẵn)
+## 🛠 5. THUẬT TOÁN XỬ LÝ TASK CỦA AI (Execution Flow)
 
-```typescript
-// Nhân sự (17 người)
-import { NHAN_SU } from "@/lib/data/real-data";
-
-// Đối tác gia công (35)
-import { DOI_TAC } from "@/lib/data/real-data";
-
-// Kho vải (29 mã)
-import { KHO_VAI } from "@/lib/data/real-data";
-
-// Kho phụ liệu (58 mã bo cổ, cúc, chỉ)
-import { KHO_VAT_TU } from "@/lib/data/real-data";
-
-// Phân công công đoạn (9 records cho M758 + M873)
-import { PHAN_CONG, tinhCongNo, congNoTheoNguoi } from "@/lib/data/cong-no";
-```
+Mỗi khi AI nhận yêu cầu, phải chạy qua 4 bước sau trong suy nghĩ trước khi code:
+1. **[ANALYZE]**: Đọc file liên quan bằng tools. Tìm file `.tsx`, `.ts` có chứa logic đang cần sửa.
+2. **[PLAN]**: Xác định state cần update, component cần sửa mà không làm vỡ các module khác.
+3. **[EXECUTE]**: Viết code sạch, đúng TS type, tái sử dụng components.
+4. **[REPORT]**: Báo cáo lại cho anh Cường ngắn gọn, dễ hiểu, theo phong cách a-e.
 
 ---
 
-## 🚫 KHÔNG ĐƯỢC LÀM
-
-1. ❌ **KHÔNG thay đổi** `next.config.ts` (đã config `output: 'export'`)
-2. ❌ **KHÔNG thêm** middleware (`middleware.ts` đã tắt - conflict với static export)
-3. ❌ **KHÔNG dùng** `any` type
-4. ❌ **KHÔNG tạo** file data mới - thêm vào `real-data.ts` hoặc `cong-no.ts`
-5. ❌ **KHÔNG đổi** icon library (đang dùng lucide-react)
-6. ❌ **KHÔNG xóa** background images trong `public/bg/`
-7. ❌ **KHÔNG dùng** default Tailwind colors (`bg-blue-500`) - dùng brand color
+## 🐛 6. KNOWN ISSUES / PENDING FIXES
+*(AI cần biết để tránh đụng chạm hoặc chủ động đề xuất sửa)*
+1. Bảng `don_hang` trên Supabase đang thiếu cột `dia_chi`.
+2. Bảng `phan_cong` đang bị lỗi khóa ngoại `fk_phan_cong_lenh_cat`.
+3. Middleware hiện đang bị tắt do conflict với Static Export.
 
 ---
 
-## ✅ NÊN LÀM
+## 🤖 7. MULTI-AI WORKFLOW (Phối hợp Mavis & Antigravity)
 
-1. ✅ **Tái sử dụng** `<CrudModal>` cho mọi form CRUD
-2. ✅ **Tái sử dụng** `<ImageUploader>` cho upload
-3. ✅ **Module-specific backgrounds**:
-   - Login: teal-cyan
-   - Dashboard: sky-clouds
-   - Lệnh cắt: teal-cyan
-   - Khách hàng: sage-deep
-   - Kế hoạch: moody-dark
-   - Nhân sự: dandelion
-   - Kho: sky-soft
-   - Default: sky-soft
-4. ✅ **Mobile responsive** với hamburger menu
-5. ✅ **Format số tiền** dùng `formatVND()` và `formatVNDShort()`
-6. ✅ **Add từ khóa "polomimin"** hoặc "mimin" vào comments khi cần
-
----
-
-## 🗣️ Communication Style
-
-- **User**: A Cường (anh Cường) - chủ nhà máy
-- **AI Agent**: em (Mavis/Mavis)
-- **Style**: a-e casual, thân thiện, tiếng Việt
-- **Emoji**: dùng vừa phải, không lạm dụng
-- **Format**: bảng, code block, danh sách có cấu trúc
-- **Không dùng**: "rest assured", "great question", "hope this helps"
-
----
-
-## 🔑 Demo Users (Supabase Auth)
-
-```typescript
-const DEMO_USERS = [
-  { email: "admin@mimin.vn", password: "admin123", role: "Quản trị viên" },
-  { email: "kehoach@mimin.vn", password: "kehoach123", role: "Kế hoạch" },
-  { email: "sanxuat@mimin.vn", password: "sanxuat123", role: "Sản xuất" },
-  { email: "kho@mimin.vn", password: "kho123", role: "Thủ kho" },
-  { email: "qc@mimin.vn", password: "qc123", role: "QC" },
-  { email: "giao@mimin.vn", password: "giao123", role: "Giao hàng" },
-  { email: "viewer@mimin.vn", password: "viewer123", role: "Viewer" }
-];
-```
-
----
-
-## 📝 Test Account
-
-```
-URL: http://localhost:3000
-Email: admin@mimin.vn
-Password: admin123
-```
-
----
-
-## 🐛 Known Issues / Constraints
-
-1. **Middleware conflict**: `output: 'export'` KHÔNG support middleware → đã tắt
-   - File `middleware.ts.bak` chứa code cũ
-   - Dev local OK (vì middleware disabled)
-   - Build production cần bật lại (xem README)
-
-2. **No real database**: Data đang trong TypeScript files (mock)
-   - Cần convert sang Supabase khi deploy thật
-   - Pattern: localStorage + Supabase sync (xem memory)
-
-3. **Static export**: KHÔNG support API routes, server actions
-   - Phải dùng client functions
-   - Phải có `index.html` ở root
-   - `images.unoptimized: true`
-
-4. **Lỗi DB Supabase (Pending Fix)**:
-   - Bảng `don_hang` đang thiếu cột `dia_chi`.
-   - Bảng `phan_cong` đang bị lỗi khóa ngoại `fk_phan_cong_lenh_cat`.
-   - AI sau cần chú ý sửa 2 lỗi này bằng SQL script trước khi làm việc với các bảng này.
-
-5. **Luồng Nhập Tỷ Lệ Size (Mới cập nhật)**:
-   - Dùng `TyLeSizeModal` làm nơi duy nhất nhập số lượng cho Cắt, In/Thêu, Ủi, Đóng Gói...
-   - Tự động copy số lượng: Cắt -> In/Thêu (chỉ copy khi In/Thêu đang trống).
-   - Tự động tính số lượng lỗi: Từ khâu In/Thêu trở đi, hệ thống so sánh với Cắt để báo `Lỗi: x SP`.
-   - Các khâu gia công ngoài (May áo, May quần) nhập số liệu qua `GiaCongModal` và đồng bộ lại vào `TyLeSizeModal`.
-
----
-
-## 🎯 Khi AI agent nhận task
-
-1. **Đọc file liên quan** trước khi sửa
-2. **Check existing patterns** trong code xung quanh
-3. **Tái sử dụng** components có sẵn
-4. **Test bằng cách** build + chạy thử
-5. **Không phá vỡ** các module đang hoạt động
-6. **Update** README.md nếu thay đổi setup
-7. **Báo cáo** kết quả bằng tiếng Việt a-e style
-
----
-
-**Project version**: v44 (2026-07-26)
-**Built by**: Mavis (Mavis Agent for POLOMIMIN)
-**User**: A Cường - polomimin.vn
-
----
-
-## 🤖 MULTI-AI WORKFLOW (Mavis + Antigravity)
-
-> **2 AI cùng làm 1 dự án** - đã có quy tắc phối hợp
-
-### Nguyên tắc vàng
-1. **KHÔNG code cùng file cùng lúc** - mỗi AI làm module riêng
-2. **LUÔN đọc AGENTS.md + WORKFLOW-2AI.md trước khi code**
-3. **LUÔN tạo branch riêng** trước khi push
-4. **LUÔN tạo PR/merge request** để review
-5. **Một người merge, một người review** - không tự merge code của mình
-
-### Phân vùng trách nhiệm
-
-| Module | Primary AI | Branch |
-|---|---|---|
-| ERP core (Cắt, May, Kho, Kế toán) | **Mavis** (MiniMax) | `main` |
-| Module Sợi - Dệt - Nhuộm | **Antigravity** | `feature/soi-det-nhuom` |
-| Mobile PWA / PUSH | **Mavis** | `main` |
-| AI Agents integration | **Antigravity** | `feature/ai-agents` |
-| Landing page / Marketing | **Antigravity** | `feature/landing` |
-
-### Workflow code chung
-
-```
-1. Antigravity tạo branch: git checkout -b feature/ten-module
-2. Antigravity code, commit, push branch
-3. Antigravity báo Mavis review (qua chat hoặc note)
-4. Mavis review code: check trùng, check convention
-5. Nếu OK → Mavis merge vào main
-6. Nếu conflict → 2 AI thảo luận trước khi merge
-```
-
-### Quy tắc commit
-
-- **Format**: `[ai-name] module: mô tả ngắn`
-- **VD**: `[mavis] doi-soat: thêm 7 trạng thái workflow tiền công`
-- **KHÔNG push trực tiếp lên `main`** (phải qua branch + review)
-
-### Conflict resolution
-
-1. 2 AI báo cho anh Sang (user) biết conflict
-2. Anh Sang quyết AI nào sửa, hoặc merge manual
-3. KHÔNG tự ý sửa code của AI khác
-
-### Liên lạc giữa 2 AI
-
-- Qua user (anh Sang) - không tự nói chuyện
-- User sẽ tổng hợp yêu cầu + push code cho cả 2
-- Khi 1 AI xong → báo user → user chuyển cho AI kia review
-
-**Last updated**: 2026-08-01 (Mavis append multi-AI section)
+**Nguyên tắc vàng**:
+1. **Không giẫm chân**: Không code cùng một file cùng lúc.
+2. **Tách nhánh**: AI luôn phải tạo branch riêng (`feature/ten-tinh-nang`) trước khi commit code.
+3. **Review chéo**: Không tự ý merge code của chính mình vào `main`. Push lên nhánh phụ -> Báo user -> User yêu cầu AI kia review -> Merge.
+4. **Giải quyết xung đột**: Báo ngay cho user quyết định, không tự ý ghi đè code của AI khác.
 
