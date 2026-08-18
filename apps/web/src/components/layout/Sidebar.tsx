@@ -89,19 +89,19 @@ type NavItem = {
   noAccentBar?: boolean; // bỏ thanh viền trái - dùng cho group kiểu thẻ card
 };
 
-// Kiểu "thẻ card trắng nổi" dùng chung cho mọi nhóm (giống MIMIN Group) - chỉ
-// đổi màu chip icon + màu mục con đang active theo từng nhóm, phần khung/nền
-// trắng giữ nguyên để đồng bộ toàn sidebar.
+// Kiểu "thẻ kính mờ" (glassmorphism) dùng chung cho mọi nhóm - trong suốt +
+// backdrop-blur để thấy mờ mờ nền tối phía sau, chỉ đổi màu chip icon + màu
+// mục con đang active theo từng nhóm.
 function cardStyle(chipFrom: string, chipTo: string, subFrom: string, subTo: string, subText: string): Partial<NavItem> {
   return {
     noAccentBar: true,
     iconChip: `w-7 h-7 bg-gradient-to-br ${chipFrom} ${chipTo} text-white shadow-sm`,
-    idleBg: "bg-gradient-to-br from-white via-slate-50 to-slate-200 ring-1 ring-white/60 shadow-lg shadow-black/25 hover:from-white hover:via-white hover:to-slate-100",
-    idleText: "text-slate-800",
-    activeBg: "bg-gradient-to-br from-white via-white to-slate-100 ring-1 ring-white/80 shadow-xl shadow-black/30",
-    activeText: "text-slate-900",
-    subBg: "bg-white/95 ring-1 ring-black/5 shadow-lg shadow-black/25",
-    subIdleText: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+    idleBg: "bg-white/15 backdrop-blur-md ring-1 ring-white/25 shadow-lg shadow-black/20 hover:bg-white/25",
+    idleText: "text-white",
+    activeBg: "bg-white/30 backdrop-blur-md ring-1 ring-white/40 shadow-xl shadow-black/25",
+    activeText: "text-white",
+    subBg: "bg-white/10 backdrop-blur-sm ring-1 ring-white/15 shadow-lg shadow-black/20",
+    subIdleText: "text-slate-100 hover:bg-white/15 hover:text-white",
     activeSubBg: `bg-gradient-to-r ${subFrom} ${subTo} ${subText} ring-1 ring-black/5`,
   };
 }
@@ -185,21 +185,10 @@ const NAV: NavItem[] = [
   },
   {
     // === MIMIN Group - nhóm tính năng mới ===
-    // Thiết kế kiểu "thẻ card trắng nổi" trên nền sidebar tối: nền gradient trắng-xám
-    // + viền sáng + đổ bóng để tách khỏi nền. Điểm nhấn màu thương hiệu (teal) dồn
-    // hết vào chip icon, tránh nhiều điểm màu cạnh tranh nhau. Vì nền sáng nên chữ
-    // và icon đều phải là tông tối.
+    // Dùng chung kiểu "thẻ kính mờ" (glassmorphism) với các nhóm khác qua cardStyle().
     label: "MIMIN Group", icon: Sparkles, isGroup: true,
-    noAccentBar: true,
     color: "border-teal-400",
-    iconChip: "w-7 h-7 bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-sm shadow-cyan-900/40",
-    idleBg: "bg-gradient-to-br from-white via-slate-50 to-slate-200 ring-1 ring-white/60 shadow-lg shadow-black/25 hover:from-white hover:via-white hover:to-slate-100",
-    idleText: "text-slate-800",
-    activeBg: "bg-gradient-to-br from-white via-white to-slate-100 ring-1 ring-white/80 shadow-xl shadow-black/30",
-    activeText: "text-slate-900",
-    subBg: "bg-white/95 ring-1 ring-black/5 shadow-lg shadow-black/25",
-    subIdleText: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-    activeSubBg: "bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-900 ring-1 ring-teal-200",
+    ...cardStyle("from-teal-500", "to-cyan-600", "from-teal-50", "to-cyan-50", "text-teal-900"),
     // 2 mục tạm gỡ khỏi bản deploy này vì repo GitHub đang CÔNG KHAI:
     //  - "AI Tính Giá Vốn" (kèm tab Kho Mẫu Hot): chứa 28 tên xưởng gia công
     //    thật + toàn bộ đơn giá đã thoả thuận -> lộ cơ cấu giá vốn cho đối thủ.
