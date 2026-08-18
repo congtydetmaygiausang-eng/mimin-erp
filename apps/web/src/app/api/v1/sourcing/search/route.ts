@@ -327,6 +327,7 @@ async function resolveCenter(location: string, provided?: { latitude?: unknown; 
   }
 
   // Fallback to Nominatim
+  try {
     const params = new URLSearchParams({ q: `${location}, Việt Nam`, format: "jsonv2", limit: "5", countrycodes: "vn", addressdetails: "1", dedupe: "1" });
     const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": "MIMIN-ERP-Sourcing/1.0", "Accept-Language": "vi" }, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) return null;
