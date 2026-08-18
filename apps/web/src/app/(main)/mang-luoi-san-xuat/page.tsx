@@ -46,6 +46,7 @@ import {
 } from "@/lib/production-network";
 import { useProductionPartnerStore } from "@/lib/data/mang-luoi-store";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
+import MultiSelectDropdown from "@/components/ui/MultiSelectDropdown";
 
 const CATEGORY_META: Record<ProductionPartnerRole, {
   icon: typeof Users;
@@ -230,7 +231,7 @@ export default function MangLuoiSanXuatPage() {
   const [activeRole, setActiveRole] = useState<ProductionPartnerRole>("CUSTOMER");
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-  const [capabilityFilter, setCapabilityFilter] = useState("");
+  const [capabilityFilter, setCapabilityFilter] = useState<string[]>([]);
   const [radiusKm, setRadiusKm] = useState("");
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -281,8 +282,8 @@ export default function MangLuoiSanXuatPage() {
       if (!partner.roles.includes(activeRole)) return false;
       if (normalizedProvince && !normalizeSearchValue(partner.province).includes(normalizedProvince)) return false;
       if (
-        normalizedCapability
-        && !partner.capabilities.some((capability) => normalizeSearchValue(capability).includes(normalizedCapability))
+        capabilityFilter.length > 0
+        && !capabilityFilter.every((cap) => partner.capabilities.some((pc) => normalizeSearchValue(pc) === normalizeSearchValue(cap)))
       ) return false;
       if (maximumDistance !== null) {
         if (!currentLocation || partner.latitude === null || partner.longitude === null) return false;
@@ -447,12 +448,14 @@ export default function MangLuoiSanXuatPage() {
             Tỉnh / thành
             <input value={provinceFilter} onChange={(event) => setProvinceFilter(event.target.value)} className="input mt-1" placeholder="VD: Bình Dương" />
           </label>
-          <label className="text-xs font-medium">
+          <label className="text-xs font-medium relative block">
             Năng lực cần tìm
-            <input value={capabilityFilter} onChange={(event) => setCapabilityFilter(event.target.value)} list="category-list" className="input mt-1" placeholder="Nhập hoặc chọn..." />
-            <datalist id="category-list">
-              {MANG_LUOI_DANH_MUC[activeRole].map(item => <option key={item} value={item} />)}
-            </datalist>
+            <MultiSelectDropdown
+              options={MANG_LUOI_DANH_MUC[activeRole]}
+              selected={capabilityFilter}
+              onChange={setCapabilityFilter}
+              placeholder="Nhấn để chọn..."
+            />
           </label>
           <label className="text-xs font-medium">
             Trong bán kính (km)
