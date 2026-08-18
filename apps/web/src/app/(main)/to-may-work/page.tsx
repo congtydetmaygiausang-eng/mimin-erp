@@ -7,13 +7,14 @@
 import { useState } from "react";
 import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 
 export default function UiMayPage() {
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const { dsLenhCat, capNhatCongDoan } = useLenhCat();
   const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
   const [lyDoLoi, setLyDoLoi] = useState<Record<string, string>>({});
@@ -30,8 +31,30 @@ export default function UiMayPage() {
     }) || [];
   }
 
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
+
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+      
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   // Lọc LC có công đoạn may CỦA TÔI
-  // Ổ KHÓA: Cắt và In/Thêu (nếu có) phải XONG thì mới hiện ở May
   const lcCoMay = dsLenhCat.filter(lc =>
     ["DangCat", "HoanThanh", "ChuyenTiep"].includes(lc.trangThai)
   ).filter(lc => {
@@ -64,39 +87,8 @@ export default function UiMayPage() {
   }
 
   function handleHoanThanh(lc: any, pc: any) {
-    const key = `${lc.id}-${pc.id}`;
-    const chiTiet = mauInputs[key] || {};
-    
-    let sl = 0;
-    let loi = 0;
-    const chiTietMau = [];
-    
-    if (Object.keys(chiTiet).length > 0) {
-      for (const m of Object.values(chiTiet)) {
-        sl += (m.soLuongDat || 0);
-        loi += (m.soLuongLoi || 0);
-        chiTietMau.push(m);
-      }
-    } else {
-      sl = pc.soLuong ?? lc.tongSL;
-      loi = 0;
-    }
-    
-    const lyDo = lyDoLoi[key] ?? "";
-    
-    capNhatCongDoan(lc.id, pc.id, { 
-      trangThaiCD: "cho_qc", 
-      soLuongHoanThanh: sl, 
-      soLuongLoi: loi,
-      lyDoLoi: lyDo,
-      chiTietMau
-    });
-    toast.success(`✅ Đã giao QC: ${sl} SP (Lỗi: ${loi})`);
-  }
-
-  function handleGiaoQC(lc: any, pc: any) {
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh" });
-    toast.success(`➡️ Giao QC: ${lc.id}`);
+    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "cho_qc" });
+    toast.success(`✅ Đã giao QC: ${pc.tenCongDoan}`);
   }
 
   return (
@@ -139,30 +131,23 @@ export default function UiMayPage() {
             const catDone = catTT === "hoan_thanh";
 
             return (
-              <div key={lc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                {/* Header */}
-                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                  <div>
-                    <span className="font-black text-teal-700 font-mono">{lc.id}</span>
-                    <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
-                    <span className="ml-2 text-xs text-slate-400">{lc.maSP} · {lc.tongSL?.toLocaleString()} SP</span>
-                  </div>
-                  <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
-                </div>
-
-                {/* Trạng thái cắt */}
-                {!catDone && (
-                  <div className="px-5 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 font-bold flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" /> Đang chờ Tổ Cắt hoàn thành ({TRANG_THAI_CD_LABELS[catTT as TrangThaiCongDoan] || "Chờ giao"})
-                  </div>
-                )}
-
-                {/* May công đoạn */}
-                <div className="p-5 space-y-4">
+              <LenhCatCardV2 
+                key={lc.id} 
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                renderStatus={
+                  !catDone ? (
+                    <div className="px-3 py-1 bg-amber-50 border border-amber-200 text-xs text-amber-700 font-bold flex items-center gap-1.5 rounded-full">
+                      <Clock className="w-3 h-3" /> Chờ Tổ Cắt ({TRANG_THAI_CD_LABELS[catTT as TrangThaiCongDoan] || "Chờ giao"})
+                    </div>
+                  ) : null
+                }
+              >
+                {/* Các công đoạn May */}
+                <div className="space-y-3">
                   {mayPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
-                    const key = `${lc.id}-${pc.id}`;
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -176,37 +161,21 @@ export default function UiMayPage() {
                           </span>
                         </div>
 
-                        {/* Input SL khi đang làm */}
-                        {tt === "dang_lam" && (
-                          <KhaiBaoSoLuongTheoMau
-                            dsMau={lc.dsMau || []}
-                            value={mauInputs[key] || {}}
-                            onChange={(val) => setMauInputs(p => ({ ...p, [key]: val }))}
-                            showLyDoLoi={true}
-                            lyDoLoi={lyDoLoi[key]}
-                            onLyDoLoiChange={(val) => setLyDoLoi(p => ({ ...p, [key]: val }))}
-                          />
-                        )}
-
                         {/* Buttons */}
                         <div className="flex gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 flex items-center justify-center gap-1.5">
-                              <Package className="w-4 h-4" /> Nhận hàng may
+                                    disabled={!catDone}
+                                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                              Nhận máy & Bắt đầu làm
                             </button>
                           )}
+                          
                           {tt === "dang_lam" && (
-                            <>
-                              <button onClick={() => handleHoanThanh(lc, pc)}
-                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm">
-                                <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Giao QC
-                              </button>
-                              <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}
-                                className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-bold text-sm">
-                                <AlertTriangle className="w-4 h-4" />
-                              </button>
-                            </>
+                            <button onClick={() => handleHoanThanh(lc, pc)}
+                                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600">
+                              <CheckCircle2 className="w-4 h-4 inline mr-1" /> Báo hoàn thành công đoạn
+                            </button>
                           )}
                           {tt === "hoan_thanh" && (
                             <div className="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
@@ -226,10 +195,22 @@ export default function UiMayPage() {
                     );
                   })}
                 </div>
-              </div>
+              </LenhCatCardV2>
             );
           })}
         </div>
+      )}
+
+      {/* Modal nhập liệu cho màu */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal 
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={getMayPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 
 export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
 export { PromptModal, type PromptModalProps } from "./PromptModal";
+
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { Skeleton, SkeletonCard, SkeletonTable, type SkeletonProps } from "./Skeleton";
 export { MobileCard, MobileCardList, type MobileCardProps, type MobileCardField } from "./MobileCardView";
@@ -11,6 +12,9 @@ export { RoleBadge, type RoleBadgeProps } from "./RoleBadge";
 export { ScopeBadge, type ScopeBadgeProps } from "./ScopeBadge";
 export { CrudModal, type FieldDef } from "./CrudModal";
 export { ImageUploader, type UploadedFile } from "./ImageUploader";
+export { LenhCatColorCards } from "./LenhCatColorCards";
+export { LenhCatCardV2 } from "./LenhCatCardV2";
+export { ChiTietMauHistoryModal } from "./ChiTietMauHistoryModal";
 export { KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "./KhaiBaoSoLuongTheoMau";
 
 // Re-export formatVND helpers từ real-data (dùng nhiều nơi)

@@ -142,6 +142,40 @@ export default function LenhCatPage() {
                   });
                 }
               }}
+              onSaveTyLe={(mauIdx, newTyLe) => {
+                const newDsMau = [...(lc.dsMau || [])];
+                if (newDsMau[mauIdx]) {
+                  newDsMau[mauIdx].tyLeSizeChiTiet = newTyLe;
+                  
+                  // Tự động tính lại tổng SL thực tế của khâu Cắt
+                  let totalThucTe = 0;
+                  newDsMau.forEach(mau => {
+                    if (mau.tyLeSizeChiTiet) {
+                      const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k => k.toLowerCase().includes("cat"));
+                      if (catKey && mau.tyLeSizeChiTiet[catKey]) {
+                        totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
+                      }
+                    }
+                  });
+
+                  suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!);
+                  toast.success("Đã cập nhật tỷ lệ size thành công!");
+                }
+              }}
+              onSaveGiaCong={(slThucTe, dsPhanCong, newDsMau) => {
+                const updatePayload: any = { phanCong: dsPhanCong };
+                
+                if (newDsMau) {
+                  updatePayload.dsMau = newDsMau;
+                  // Xác định xem đang lưu áo hay quần để cập nhật tổng SL thực tế
+                  const hasMayAo = dsPhanCong.some(pc => pc.tenCongDoan.toLowerCase().includes("may áo"));
+                  if (hasMayAo) updatePayload.tongSLThucTeAo = slThucTe;
+                  else updatePayload.tongSLThucTeQuan = slThucTe;
+                }
+                
+                suaLenhCat(lc.id, updatePayload, user!);
+                toast.success("Đã cập nhật giao việc và chi tiết size gia công thành công!");
+              }}
             />
           ))}
         </div>

@@ -6,8 +6,10 @@
 import { useState } from "react";
 import { ShieldCheck, CheckCircle2, XCircle, AlertTriangle, ClipboardCheck, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
+import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { DateDisplay, KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
+import { useSession } from "@/components/session-provider";
 
 const LOAI_LOI_OPTIONS = [
   "Lỗi rập / kích thước", "Lỗi đường may", "Lỗi vải (lủng, rách)", 
@@ -144,7 +146,12 @@ export default function UiQCPage() {
                 </div>
               </div>
 
-              <div className="p-5 space-y-4">
+              {/* Danh sách màu */}
+              <div className="pt-2 bg-slate-50 border-b border-slate-100">
+                <LenhCatColorCards lc={lc} />
+              </div>
+
+              <div className="p-5 space-y-4 bg-white">
                 {/* Công đoạn may đã xong */}
                 <div className="flex flex-wrap gap-2">
                   {mayPCs.map((pc: any) => (

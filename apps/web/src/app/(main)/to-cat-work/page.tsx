@@ -10,16 +10,20 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { useKho } from "@/lib/data/kho-store";
 import { formatVND } from "@/lib/data/real-data";
-import { DateDisplay } from "@/components/ui";
+import { DateDisplay, CrudModal } from "@/components/ui";
+import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
+import { GiaCongModal } from "@/components/modals/GiaCongModal";
+import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useSession } from "@/components/session-provider";
-import { CatThucTeInput } from "./components/CatThucTeInput";
 
 export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { themGiaoDich } = useKho();
   const { user } = useSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showThucTeInput, setShowThucTeInput] = useState<string | null>(null);
+
+  const [modalGiaCong, setModalGiaCong] = useState<{ id: string, type: "ao" | "quan" } | null>(null);
+  const [modalTyLeMau, setModalTyLeMau] = useState<{ id: string, mauIdx: number } | null>(null);
 
   function getPhanCongCat(lc: any) {
     return lc.phanCong?.find((pc: any) => {
@@ -100,7 +104,6 @@ export default function CongViecCatPage() {
       suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
       capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: totalThucTe });
       toast.success(`✅ Lưu thông số và hoàn thành: ${totalThucTe} SP`);
-      setShowThucTeInput(null);
     } else {
       // Trường hợp xác nhận đơn giản nếu không nhập chi tiết
       const sl = totalThucTe || lc.tongSLThucTe || lc.tongSL;
@@ -179,35 +182,46 @@ export default function CongViecCatPage() {
             const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && tt !== "hoan_thanh";
             const isExpanded = selectedId === lc.id;
 
+            const isBo = lc.loaiSP?.toLowerCase().includes("bo");
+            const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
+            const isQuan = lc.loaiSP?.toLowerCase().includes("quan") || isBo;
+
             return (
               <div key={lc.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${isLate ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-200"}`}>
                 {/* Card header */}
-                <div className={`px-4 py-3 flex items-center justify-between ${style.bg}`}>
-                  <div>
+                <div className={`px-4 py-3 flex items-center justify-between ${style.bg} border-b border-current/10`}>
+                  <div className="flex items-center gap-2">
                     <span className="font-black text-teal-700 font-mono text-sm">{lc.id}</span>
-                    <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-bold ${style.bg} ${style.text} border border-current/20`}>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${style.bg} ${style.text} border border-current/20 flex items-center`}>
                       <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${style.dot}`} />
                       {TRANG_THAI_CD_LABELS[tt]}
                     </span>
+                    {isLate && <AlertTriangle className="w-4 h-4 text-rose-500" />}
                   </div>
-                  {isLate && <AlertTriangle className="w-4 h-4 text-rose-500" />}
+                  <div className="flex items-center gap-2">
+                    {isAo && (
+                      <button
+                        onClick={() => setModalGiaCong({ id: lc.id, type: "ao" })}
+                        className="px-3 py-1 bg-white border border-violet-200 text-violet-700 rounded-lg text-xs font-bold hover:bg-violet-50 transition-colors shadow-sm"
+                      >
+                        Gia công áo
+                      </button>
+                    )}
+                    {isQuan && (
+                      <button
+                        onClick={() => setModalGiaCong({ id: lc.id, type: "quan" })}
+                        className="px-3 py-1 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-50 transition-colors shadow-sm"
+                      >
+                        Gia công quần
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-4 space-y-3">
-                  {/* Ảnh + tên SP */}
-                  <div className="flex gap-3">
-                    <div className="w-16 h-16 rounded-xl bg-slate-100 shrink-0 overflow-hidden flex items-center justify-center">
-                      {lc.dsMau?.[0]?.img ? (
-                        <img src={lc.dsMau[0].img} alt="SP" className="w-full h-full object-cover" />
-                      ) : (
-                        <Scissors className="w-6 h-6 text-slate-300" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-black text-slate-900 text-lg leading-tight">{lc.tenSP}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Mã: {lc.maSP} · {lc.tongSL?.toLocaleString()} SP</div>
-                      <div className="text-xs text-slate-500">Size: {lc.tiLeSize}</div>
-                    </div>
+                  {/* Các màu vải (Cards ngang) */}
+                  <div className="-mx-4 sm:-mx-5 mt-2">
+                    <LenhCatColorCards lc={lc} onClickColor={(idx) => setModalTyLeMau({ id: lc.id, mauIdx: idx })} />
                   </div>
 
                   {/* Thợ cắt */}
@@ -249,39 +263,6 @@ export default function CongViecCatPage() {
                     <div className="text-xs bg-slate-50 rounded-lg px-3 py-2 text-slate-600 border border-slate-200">
                       📝 <span className="font-bold">Ghi chú kỹ thuật:</span> {lc.ghiChuKyThuat}
                     </div>
-                  )}
-
-                  {/* Màu sắc trải/phối */}
-                  {lc.dsMau && lc.dsMau.length > 0 && (
-                    <div className="border-t border-slate-100 pt-3 mt-3">
-                      <div className="text-xs font-bold text-slate-600 mb-2">🎨 Chi tiết màu sắc (Trải/Phối):</div>
-                      <div className="flex flex-col gap-2">
-                        {lc.dsMau.map((mau, idx) => (
-                          <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2 flex items-center gap-3">
-                            {mau.img && <img src={mau.img} alt={mau.ten} className="w-8 h-8 rounded object-cover border border-slate-200" />}
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[12px] font-black text-slate-700">{mau.ten}</span>
-                                <span className="text-[11px] font-bold text-emerald-600">SL: {mau.slDuKien} SP</span>
-                              </div>
-                              <div className="text-[10px] text-slate-500 mt-0.5">Mã vải: {mau.maVai} • Định mức: {mau.dinhMuc} kg/SP</div>
-                              {mau.maVaiQuan && (
-                                <div className="text-[10px] text-slate-500 mt-0.5">Vải quần: {mau.maVaiQuan} • Định mức quần: {mau.dinhMucQuan} kg/SP</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Form nhập thông số thực tế */}
-                  {showThucTeInput === lc.id && (
-                    <CatThucTeInput 
-                      lc={lc} 
-                      onCancel={() => setShowThucTeInput(null)} 
-                      onSave={(newDsMau, totalThucTe) => handleHoanThanh(lc, newDsMau, totalThucTe)} 
-                    />
                   )}
 
                   {/* Chi tiết 4 bước cắt */}
@@ -348,12 +329,6 @@ export default function CongViecCatPage() {
                                   >
                                     {isExpanded ? "Đóng" : "Chuyển tiếp (Hoàn thành)"}
                                   </button>
-                                  {isExpanded && (
-                                    <button
-                                      onClick={() => setShowThucTeInput(lc.id)}
-                                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 shadow-sm shadow-emerald-200 uppercase tracking-wide flex items-center gap-1"
-                                    >Nhập thực tế <CheckCircle2 className="w-4 h-4" /></button>
-                                  )}
                                 </>
                               )}
                             </div>
@@ -382,6 +357,47 @@ export default function CongViecCatPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Modals for this LC */}
+                {modalGiaCong?.id === lc.id && (
+                  <GiaCongModal
+                    lc={lc}
+                    type={modalGiaCong.type}
+                    onClose={() => setModalGiaCong(null)}
+                    onSave={(slThucTe, dsPhanCong) => {
+                      // Save outsourcing changes
+                      suaLenhCat(lc.id, { 
+                        phanCong: dsPhanCong,
+                        ...(modalGiaCong.type === "ao" ? { tongSLThucTeAo: slThucTe } : { tongSLThucTeQuan: slThucTe })
+                      }, user as any);
+                    }}
+                  />
+                )}
+
+                {modalTyLeMau?.id === lc.id && (
+                  <TyLeSizeModal
+                    lc={lc}
+                    mauIdx={modalTyLeMau.mauIdx}
+                    onClose={() => setModalTyLeMau(null)}
+                    onSave={(mauIdx, newTyLe) => {
+                      const newDsMau = [...(lc.dsMau || [])];
+                      newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: newTyLe };
+                      
+                      // Tự động tính lại tổng SL thực tế của khâu Cắt
+                      let totalThucTe = 0;
+                      newDsMau.forEach(mau => {
+                        if (mau.tyLeSizeChiTiet) {
+                          const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k => k.toLowerCase().includes("cat"));
+                          if (catKey && mau.tyLeSizeChiTiet[catKey]) {
+                            totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
+                          }
+                        }
+                      });
+
+                      suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
+                    }}
+                  />
+                )}
               </div>
             );
           })}
