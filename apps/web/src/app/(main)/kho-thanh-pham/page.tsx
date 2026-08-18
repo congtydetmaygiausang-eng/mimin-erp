@@ -268,7 +268,9 @@ export default function KhoThanhPhamPage() {
   };
 
   // Chuyển 1 nhóm sản phẩm (theo maSP) từ Kho thành phẩm sang Danh mục sản phẩm để bán.
-  // Ảnh lấy từ dsMau của lệnh cắt gốc (lsx) - giữ nguyên, không cần upload lại.
+  // Lấy tên màu + ảnh từ chính các card màu trong Kho thành phẩm (group.items) - đây là
+  // nguồn đáng tin cậy vì đã được sửa/tách đúng qua "Tách theo màu"; lệnh cắt gốc (lc.dsMau)
+  // chỉ dùng để tham khảo định mức, vì có thể thiếu tên/ảnh ở 1 vài màu.
   const handleDangBan = async (giaBan: number, giaVon: number) => {
     const group = dangBanGroup;
     if (!group) return;
@@ -277,9 +279,16 @@ export default function KhoThanhPhamPage() {
     const lc = dsLenhCat.find((l) => l.id === lsx);
     const mauTuLC = lc?.dsMau || [];
 
-    const dsMauForSanPham: MauTieuChuan[] = mauTuLC.length > 0
-      ? mauTuLC.map((m) => ({ ten: m.ten, maSKU: m.maSKU || `${group.maSP}-${m.ten}`, dinhMuc: m.dinhMuc || 0, img: m.img || "" }))
-      : Array.from(new Set(group.items.map((i) => i.mau))).map((mau) => ({ ten: mau, maSKU: `${group.maSP}-${mau}`, dinhMuc: 0, img: "" }));
+    const dsMauForSanPham: MauTieuChuan[] = group.items.map((item) => {
+      const mauGoc = mauTuLC.find((m) => m.ten === item.mau);
+      return {
+        ten: item.mau,
+        maSKU: mauGoc?.maSKU || `${group.maSP}-${item.mau}`,
+        dinhMuc: mauGoc?.dinhMuc || 0,
+        img: item.hinhAnh?.[0] || mauGoc?.img || "",
+        video: item.video,
+      };
+    });
 
     // Ảnh đại diện cho card thư viện (SanPham.hinhAnh là 1 URL, khác dsMau[].img theo màu) -
     // lấy ảnh màu đầu tiên có ảnh, fallback ảnh đã upload riêng trong Kho thành phẩm.
@@ -500,10 +509,8 @@ export default function KhoThanhPhamPage() {
       {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
       {editing && <ProductFormModal sp={editing} initialImage={productImages[editing.id]} onClose={() => setEditing(null)} onSave={handleEdit} />}
       {dangBanGroup && (() => {
-        const lc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.lsx);
-        const mauTuLC = lc?.dsMau || [];
-        const soMauCoAnh = mauTuLC.filter((m) => m.img).length;
-        const tongSoMau = mauTuLC.length || new Set(dangBanGroup.items.map((i) => i.mau)).size;
+        const soMauCoAnh = dangBanGroup.items.filter((i) => i.hinhAnh?.[0]).length;
+        const tongSoMau = dangBanGroup.items.length;
         const existing = dsDanhMuc.find((sp) => sp.id === dangBanGroup.maSP);
         return (
           <DangBanModal
