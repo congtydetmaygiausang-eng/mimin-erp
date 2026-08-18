@@ -53,6 +53,8 @@ export type DoiTacGiaCong = {
   thoiHanThanhToan?: number;  // Số ngày thanh toán (mặc định 30)
   phuongThucTT?: PhuongThucTT;
   rating?: number;            // 1-5 sao
+  // === 2026-08-18 - Chuyen mon chi tiet (chon nhieu) ===
+  chuyenMonChiTiet?: string[];
 };
 
 // ============ HELPER: Parse CCCD từ ghiChú ============

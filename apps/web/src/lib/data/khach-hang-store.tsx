@@ -24,6 +24,8 @@ export type KhachHangDBModel = {
   rating?: number;
   // === 2026-08-08 - Facebook URL ===
   facebook_url?: string;
+  // === 2026-08-18 - Nhu cau chinh ===
+  nhu_cau_chinh?: string[];
 };
 
 export type KhachHangUI = {
@@ -44,6 +46,8 @@ export type KhachHangUI = {
   hanMucNo?: number;
   // === 2026-08-08 - Facebook URL ===
   facebookUrl?: string;
+  // === 2026-08-18 - Nhu cau chinh ===
+  nhuCauChinh?: string[];
 };
 
 // P1 - 2026-08-07 - Enum phan loai KH
@@ -66,6 +70,7 @@ function mapToDB(ui: KhachHangUI): any {
     ghi_chu: ui.ghiChu || "",
     trang_thai: ui.trangThai || "Thường",
     facebook_url: ui.facebookUrl || "", // 2026-08-08
+    nhu_cau_chinh: ui.nhuCauChinh || [], // 2026-08-18
   };
 }
 
@@ -98,6 +103,7 @@ function mapToUI(db: any): KhachHangUI {
     rating: r,
     mst: mst,
     facebookUrl: db.facebook_url || "", // 2026-08-08
+    nhuCauChinh: Array.isArray(db.nhu_cau_chinh) ? db.nhu_cau_chinh : [], // 2026-08-18
   };
 }
 
@@ -113,8 +119,8 @@ const Ctx = createContext<KhachHangContextType | null>(null);
 const STORAGE_KEY = "mimin_khach_hang_v1";
 
 const KHACH_HANG_MOCK: KhachHangUI[] = [
-  { maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0901234567", email: "hanoi@may.vn", diaChi: "Hà Nội", congNo: 15000000, rating: 5, ghiChu: "Khách VIP", loai: "Công ty" },
-  { maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0901234568", email: "saigon@shop.vn", diaChi: "TPHCM", congNo: 0, rating: 4, ghiChu: "Khách lẻ", loai: "Shop" },
+  { maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0901234567", email: "hanoi@may.vn", diaChi: "Hà Nội", congNo: 15000000, rating: 5, ghiChu: "Khách VIP", loai: "Công ty", nhuCauChinh: [] },
+  { maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0901234568", email: "saigon@shop.vn", diaChi: "TPHCM", congNo: 0, rating: 4, ghiChu: "Khách lẻ", loai: "Shop", nhuCauChinh: [] },
 ];
 
 export function KhachHangProvider({ children }: { children: ReactNode }) {
