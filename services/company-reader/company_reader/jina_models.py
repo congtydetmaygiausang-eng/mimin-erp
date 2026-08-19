@@ -18,6 +18,8 @@ class JinaReadStatus(StrEnum):
     TOO_LARGE = "TOO_LARGE"
     INVALID_RESPONSE = "INVALID_RESPONSE"
     NETWORK_ERROR = "NETWORK_ERROR"
+    RATE_LIMITED = "RATE_LIMITED"
+    CIRCUIT_OPEN = "CIRCUIT_OPEN"
 
 
 @dataclass(frozen=True, slots=True)

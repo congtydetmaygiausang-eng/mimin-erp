@@ -29,6 +29,14 @@ from .jina_models import (
     JinaReadStatus,
 )
 from .jina_reader import JinaReaderClient
+from .runtime_guardrails import (
+    CircuitBreaker,
+    FixedWindowRateLimiter,
+    GuardedJinaReaderClient,
+    MemoryTTLCache,
+    RateLimitDecision,
+    ReaderMetrics,
+)
 from .url_policy import UrlPolicy, UrlPolicyError
 from .segmentation_models import (
     EntitySegmentationResult,
@@ -53,6 +61,7 @@ __all__ = [
     "CanonicalFieldSelector",
     "CanonicalFieldStatus",
     "CanonicalProfileStatus",
+    "CircuitBreaker",
     "CompanyCandidateBundle",
     "CompanyCandidateExtractor",
     "CompanyEntitySegmenter",
@@ -69,14 +78,19 @@ __all__ = [
     "FetchStatus",
     "FallbackDecision",
     "FallbackOutcome",
+    "FixedWindowRateLimiter",
     "FieldCandidate",
     "MatchKeyType",
     "JinaFallbackCoordinator",
     "JinaReadEvidence",
     "JinaReadStatus",
     "JinaReaderClient",
+    "GuardedJinaReaderClient",
+    "MemoryTTLCache",
     "PairResolution",
     "ResolutionDecision",
+    "RateLimitDecision",
+    "ReaderMetrics",
     "ResolvedCompanyGroup",
     "SafeFetcher",
     "SegmentationStatus",

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from .extraction_models import ExtractedDocument, ExtractionStatus
 from .jina_models import FallbackDecision, FallbackOutcome, JinaReadStatus
-from .jina_reader import JinaReaderClient
+from .runtime_guardrails import JinaReader
 from .models import FetchEvidence, FetchStatus
 
 
@@ -25,7 +25,7 @@ ALLOWED_EXTRACTION_FAILURES = frozenset({
 
 @dataclass(frozen=True, slots=True)
 class JinaFallbackCoordinator:
-    client: JinaReaderClient
+    client: JinaReader
     min_primary_chars: int = 120
     min_jina_chars: int = 80
 

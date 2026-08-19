@@ -16,7 +16,8 @@ Python service cô lập để đọc và chuẩn hóa nguồn công khai về d
 | JT5 | Đối chiếu liên nguồn bằng MST/domain chính thức và chặn xung đột bắc cầu | Hoàn thành |
 | JT6 | Jina Reader fallback có kiểm soát, giới hạn và khóa provenance | Hoàn thành |
 | JT7 | Lựa chọn trường chuẩn, đồng thuận nguồn và cổng duyệt xung đột | Hoàn thành |
-| JT8+ | Cache/rate limit, observability và tích hợp production | Chưa kích hoạt |
+| JT8 | Cache TTL, rate limit, circuit breaker, request coalescing và metrics an toàn | Hoàn thành |
+| JT9+ | Kho phân tán, service API và tích hợp production | Chưa kích hoạt |
 
 JT1 chỉ tải nội dung; không đoán dữ liệu doanh nghiệp, không ghi Supabase và không
 thay đổi kết quả tìm kiếm hiện tại của MIMIN ERP.
@@ -32,6 +33,9 @@ Trafilatura đủ tốt không bị thay thế, và API production vẫn chưa g
 
 JT7 tạo hồ sơ chuẩn có giải thích nhưng trạng thái cao nhất vẫn là chờ con người
 duyệt. Không có dữ liệu nào được tự động xuất bản hoặc ghi vào production.
+
+JT8 thêm hàng rào vận hành trong bộ nhớ quanh Jina. Đây chưa phải rate limit phân
+tán và chưa được nối vào request path hiện tại của MIMIN ERP.
 
 ## Chạy kiểm thử
 

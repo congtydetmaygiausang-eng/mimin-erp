@@ -163,4 +163,5 @@
 | 2026-08-19 20:00 | Codex | company-reader JT5 | Đối chiếu thực thể liên nguồn bằng MST/domain chính thức, chặn MST mâu thuẫn và cầu nối xung đột | codex/jt5-strong-key-resolution | 🟢 DONE |
 | 2026-08-19 21:00 | Codex | company-reader JT6 | Thêm Jina Reader fallback theo allowlist, khóa URL/hash, giới hạn chi phí và không thay dữ liệu Trafilatura tốt | codex/jt6-jina-fallback | 🟢 DONE |
 | 2026-08-19 22:00 | Codex | company-reader JT7 | Chọn trường chuẩn theo bằng chứng độc lập, giữ phương án thay thế và chặn hồ sơ có MST mâu thuẫn | codex/jt7-canonical-field-selection | 🟢 DONE |
+| 2026-08-19 23:00 | Codex | company-reader JT8 | Thêm cache TTL, rate limit theo caller, circuit breaker, chống gọi trùng và metrics không chứa dữ liệu nhạy cảm | codex/jt8-guardrails-observability | 🟢 DONE |
 **Last updated**: 2026-08-01 (Mavis tạo file)

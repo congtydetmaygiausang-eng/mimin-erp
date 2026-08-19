@@ -13,7 +13,7 @@
       "properties": {
         "requested_url": {"type": "string"},
         "normalized_target_url": {"type": ["string", "null"]},
-        "status": {"enum": ["OK", "NOT_CONFIGURED", "BLOCKED", "HTTP_ERROR", "TIMEOUT", "TOO_LARGE", "INVALID_RESPONSE", "NETWORK_ERROR"]},
+        "status": {"enum": ["OK", "NOT_CONFIGURED", "BLOCKED", "HTTP_ERROR", "TIMEOUT", "TOO_LARGE", "INVALID_RESPONSE", "NETWORK_ERROR", "RATE_LIMITED", "CIRCUIT_OPEN"]},
         "provider": {"const": "jina-reader"},
         "http_status": {"type": ["integer", "null"]},
         "title": {"type": ["string", "null"]},
