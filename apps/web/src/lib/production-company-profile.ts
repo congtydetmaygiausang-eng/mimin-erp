@@ -280,6 +280,18 @@ export async function ensureCompanyProfileFromSearch(
       if (sourceError) throw new Error(sourceError.message);
     }
   }
+  const evidenceRows=(candidate.fieldEvidence??[]).flatMap((evidence)=>{
+    const url=safeHttpsUrl(evidence.sourceUrl),value=evidence.fieldValue.trim();
+    return url&&value?[{organization_id:PRODUCTION_ORGANIZATION_ID,company_profile_id:data.id,
+      field_name:evidence.fieldName,field_value:value,source_url:url,
+      source_excerpt:evidence.sourceExcerpt.trim().slice(0,4_000)||null,
+      confidence:Math.round(Math.max(0,Math.min(100,evidence.confidence))),
+      verification_status:"UNVERIFIED",is_selected:true,created_by:userId}]:[];
+  });
+  if(evidenceRows.length){
+    const{error:evidenceError}=await supabase.from("production_company_field_evidence").upsert(evidenceRows,{onConflict:"company_profile_id,field_name,field_value,source_url"});
+    if(evidenceError)throw new Error(evidenceError.message);
+  }
   return data.id as string;
 }
 
