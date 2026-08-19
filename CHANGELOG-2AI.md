@@ -145,4 +145,6 @@
 
 **Maintained by**: Mavis + Antigravity
 **Approved by**: Anh Sang (POLOMIMIN)
+
+| 2026-08-19 10:30 | Codex | sourcing T2 | Thu thập Tavily phân loại nguồn, lưu raw content có giới hạn và metadata kiểm toán | codex/company-profile-t2-tavily-harvest | 🟢 DONE |
 **Last updated**: 2026-08-01 (Mavis tạo file)

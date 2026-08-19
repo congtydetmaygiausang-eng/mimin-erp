@@ -65,6 +65,10 @@ export interface ProductionCompanySource {
   sourceProvider: string;
   sourceUrl: string;
   sourceTitle: string;
+  sourceExcerpt: string;
+  rawContent: string;
+  relevanceScore: number;
+  searchQuery: string;
   verificationStatus: "UNVERIFIED" | "PARTIAL" | "VERIFIED" | "REJECTED";
   capturedAt: string;
 }
@@ -163,6 +167,8 @@ interface CompanySourceRow {
   id: string; source_type: ProductionCompanySource["sourceType"]; source_provider: string | null;
   source_url: string; source_title: string | null;
   verification_status: ProductionCompanySource["verificationStatus"]; captured_at: string;
+  source_excerpt?: string | null; raw_content?: string | null;
+  relevance_score?: number | null; search_query?: string | null;
 }
 
 interface CompanyFieldEvidenceRow {
@@ -262,11 +268,15 @@ export async function ensureCompanyProfileFromSearch(
     const rows = sources.flatMap((source) => {
       const url = safeHttpsUrl(source.url);
       return url ? [{ organization_id: PRODUCTION_ORGANIZATION_ID, company_profile_id: data.id,
-        source_type: "SEARCH", source_provider: provider, source_url: url,
-        source_title: source.title || null, verification_status: "UNVERIFIED", created_by: userId }] : [];
+        source_type: source.sourceType ?? "SEARCH", source_provider: source.sourceProvider ?? provider, source_url: url,
+        source_title: source.title || null, source_excerpt: source.excerpt?.slice(0, 4_000) || null,
+        raw_content: source.rawContent?.slice(0, 50_000) || null,
+        relevance_score: typeof source.relevanceScore === "number" ? Math.max(0, Math.min(1, source.relevanceScore)) : null,
+        search_query: source.searchQuery?.slice(0, 300) || null,
+        verification_status: "UNVERIFIED", created_by: userId }] : [];
     });
     if (rows.length) {
-      const { error: sourceError } = await supabase.from("production_company_sources").upsert(rows, { onConflict: "company_profile_id,source_url", ignoreDuplicates: true });
+      const { error: sourceError } = await supabase.from("production_company_sources").upsert(rows, { onConflict: "company_profile_id,source_url" });
       if (sourceError) throw new Error(sourceError.message);
     }
   }
@@ -286,6 +296,8 @@ export async function loadCompanyProfile(id: string): Promise<{ profile: Product
     sources: (sourcesResult.data ?? []).map((row) => ({ id: (row as CompanySourceRow).id,
       sourceType: (row as CompanySourceRow).source_type, sourceProvider: (row as CompanySourceRow).source_provider ?? "",
       sourceUrl: (row as CompanySourceRow).source_url, sourceTitle: (row as CompanySourceRow).source_title ?? "",
+      sourceExcerpt: (row as CompanySourceRow).source_excerpt ?? "", rawContent: (row as CompanySourceRow).raw_content ?? "",
+      relevanceScore: Number((row as CompanySourceRow).relevance_score ?? 0), searchQuery: (row as CompanySourceRow).search_query ?? "",
       verificationStatus: (row as CompanySourceRow).verification_status, capturedAt: (row as CompanySourceRow).captured_at })),
   };
 }
