@@ -14,7 +14,8 @@ Python service cô lập để đọc và chuẩn hóa nguồn công khai về d
 | JT3 | Phát hiện ứng viên thông tin công ty kèm đoạn trích và chống ghép chéo | Hoàn thành |
 | JT4 | Phân đoạn nhiều công ty, khóa MST và vùng ứng viên chưa phân giải | Hoàn thành |
 | JT5 | Đối chiếu liên nguồn bằng MST/domain chính thức và chặn xung đột bắc cầu | Hoàn thành |
-| JT6+ | Jina fallback, lựa chọn trường và tích hợp production | Chưa kích hoạt |
+| JT6 | Jina Reader fallback có kiểm soát, giới hạn và khóa provenance | Hoàn thành |
+| JT7+ | Lựa chọn trường, cache/rate limit và tích hợp production | Chưa kích hoạt |
 
 JT1 chỉ tải nội dung; không đoán dữ liệu doanh nghiệp, không ghi Supabase và không
 thay đổi kết quả tìm kiếm hiện tại của MIMIN ERP.
@@ -24,6 +25,9 @@ nghiệp và bảo toàn provenance; chưa ghi hoặc thay đổi dữ liệu pr
 
 JT5 chỉ đối chiếu các thực thể JT4 trong bộ nhớ. Mã số thuế mâu thuẫn luôn chặn
 gộp; điện thoại chỉ tạo đề xuất duyệt và không phải khóa tự động.
+
+JT6 chỉ dùng Jina khi fetch/extraction chính thất bại theo allowlist. Nội dung
+Trafilatura đủ tốt không bị thay thế, và API production vẫn chưa gọi lớp này.
 
 ## Chạy kiểm thử
 

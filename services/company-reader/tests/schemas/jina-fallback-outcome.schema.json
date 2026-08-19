@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mimin.vn/schemas/jina-fallback-outcome.schema.json",
+  "title": "JT6 Jina Fallback Outcome",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "selected_document", "jina_evidence", "reason"],
+  "properties": {
+    "decision": {"enum": ["PRIMARY_ACCEPTED", "JINA_ACCEPTED", "JINA_FAILED", "FALLBACK_NOT_ALLOWED"]},
+    "selected_document": {"type": "object"},
+    "jina_evidence": {
+      "type": ["object", "null"],
+      "properties": {
+        "requested_url": {"type": "string"},
+        "normalized_target_url": {"type": ["string", "null"]},
+        "status": {"enum": ["OK", "NOT_CONFIGURED", "BLOCKED", "HTTP_ERROR", "TIMEOUT", "TOO_LARGE", "INVALID_RESPONSE", "NETWORK_ERROR"]},
+        "provider": {"const": "jina-reader"},
+        "http_status": {"type": ["integer", "null"]},
+        "title": {"type": ["string", "null"]},
+        "description": {"type": ["string", "null"]},
+        "content": {"type": ["string", "null"]},
+        "content_sha256": {"type": ["string", "null"]},
+        "bytes_read": {"type": "integer", "minimum": 0},
+        "content_truncated": {"type": "boolean"},
+        "error_code": {"type": ["string", "null"]},
+        "error_detail": {"type": ["string", "null"]}
+      },
+      "required": ["requested_url", "normalized_target_url", "status", "provider", "http_status", "title", "description", "content", "content_sha256", "bytes_read", "content_truncated", "error_code", "error_detail"]
+    },
+    "reason": {"type": ["string", "null"]}
+  }
+}

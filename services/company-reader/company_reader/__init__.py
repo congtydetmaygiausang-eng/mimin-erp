@@ -10,10 +10,18 @@ from .candidate_models import (
 )
 from .extraction_models import ExtractedDocument, ExtractionStatus
 from .extractor import TrafilaturaExtractor
+from .fallback import JinaFallbackCoordinator
 from .entity_segmenter import CompanyEntitySegmenter
 from .entity_resolver import CompanyEntityResolver
 from .fetcher import SafeFetcher
 from .models import FetchEvidence, FetchStatus
+from .jina_models import (
+    FallbackDecision,
+    FallbackOutcome,
+    JinaReadEvidence,
+    JinaReadStatus,
+)
+from .jina_reader import JinaReaderClient
 from .url_policy import UrlPolicy, UrlPolicyError
 from .segmentation_models import (
     EntitySegmentationResult,
@@ -47,8 +55,14 @@ __all__ = [
     "ExtractionStatus",
     "FetchEvidence",
     "FetchStatus",
+    "FallbackDecision",
+    "FallbackOutcome",
     "FieldCandidate",
     "MatchKeyType",
+    "JinaFallbackCoordinator",
+    "JinaReadEvidence",
+    "JinaReadStatus",
+    "JinaReaderClient",
     "PairResolution",
     "ResolutionDecision",
     "ResolvedCompanyGroup",
