@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mimin.vn/schemas/entity-segmentation-result.schema.json",
+  "title": "JT4 Entity Segmentation Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_url", "text_sha256", "status", "entities",
+    "unresolved_candidates", "input_candidate_count",
+    "assigned_candidate_count", "warnings"
+  ],
+  "properties": {
+    "source_url": {"type": ["string", "null"]},
+    "text_sha256": {"type": ["string", "null"]},
+    "status": {
+      "enum": ["SINGLE_ENTITY", "MULTI_ENTITY", "NO_SEGMENTS", "INPUT_MISMATCH", "SKIPPED_CANDIDATE_ERROR"]
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["entity_id", "start", "end", "status", "candidates", "legal_names", "tax_codes", "strong_keys", "warnings"],
+        "properties": {
+          "entity_id": {"type": "string", "pattern": "^ENT-[a-f0-9]{16}$"},
+          "start": {"type": "integer", "minimum": 0},
+          "end": {"type": "integer", "minimum": 0},
+          "status": {"enum": ["STRONG_IDENTITY", "WEAK_IDENTITY", "REVIEW_REQUIRED"]},
+          "candidates": {"type": "array", "items": {"type": "object"}},
+          "legal_names": {"type": "array", "items": {"type": "string"}},
+          "tax_codes": {"type": "array", "items": {"type": "string"}},
+          "strong_keys": {"type": "array", "items": {"type": "string"}},
+          "warnings": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "unresolved_candidates": {"type": "array", "items": {"type": "object"}},
+    "input_candidate_count": {"type": "integer", "minimum": 0},
+    "assigned_candidate_count": {"type": "integer", "minimum": 0},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  }
+}

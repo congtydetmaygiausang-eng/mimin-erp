@@ -159,4 +159,5 @@
 | 2026-08-19 13:30 | Codex | sourcing T5 | Gộp thực thể bằng khóa mạnh, chặn gộp khi MST mâu thuẫn và đếm nguồn độc lập | codex/company-profile-t5-entity-resolution | 🟢 DONE |
 | 2026-08-19 14:30 | Codex | sourcing T6 | Chấm độ tin cậy từng trường và áp dụng cổng chất lượng hồ sơ đa nguồn | codex/company-profile-t6-quality-gate | 🟢 DONE |
 | 2026-08-19 15:30 | Codex | sourcing T7 | Hiển thị cổng chất lượng, kiểm chứng từng trường và cảnh báo hồ sơ xung đột | codex/company-profile-t7-review-ui | 🟢 DONE |
+| 2026-08-19 19:00 | Codex | company-reader JT4 | Phân đoạn nhiều doanh nghiệp theo neo tên/MST, khóa provenance và bảo toàn ứng viên chưa phân giải | codex/jt4-company-entity-segmentation | 🟢 DONE |
 **Last updated**: 2026-08-01 (Mavis tạo file)
