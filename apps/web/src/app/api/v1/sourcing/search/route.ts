@@ -27,6 +27,7 @@ const ROLE_EVIDENCE_TERMS: Record<string, string[]> = {
 type SourceEvidenceType = "SEARCH"|"OFFICIAL"|"REGISTRY"|"MAP"|"SOCIAL"|"OTHER";
 type FieldEvidenceName="LEGAL_NAME"|"TRADE_NAME"|"SHORT_NAME"|"TAX_CODE"|"REGISTERED_ADDRESS"|"FACTORY_ADDRESS"|"OFFICE_ADDRESS"|"PHONE"|"ZALO"|"EMAIL"|"WEBSITE"|"FACEBOOK"|"LEGAL_REPRESENTATIVE"|"BUSINESS_LINE"|"CAPABILITY"|"COMPANY_INTRODUCTION"|"FOUNDED_YEAR"|"OPERATING_STATUS";
 interface CandidateFieldEvidence {fieldName:FieldEvidenceName;fieldValue:string;sourceUrl:string;sourceExcerpt:string;confidence:number}
+interface CandidateEntityResolution {canonicalKey:string;matchedBy:string[];mergedRecords:number;conflicts:string[]}
 interface CandidateSource { url:string;title:string;sourceType?:SourceEvidenceType;sourceProvider?:string;excerpt?:string;rawContent?:string;relevanceScore?:number;searchQuery?:string }
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number; score?:number; sourceType?:SourceEvidenceType; provider?:string; searchQuery?:string }
 interface SearchCenter {
@@ -64,11 +65,11 @@ interface DistanceEvidence {
   destination: { latitude: number | null; longitude: number | null; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
   addressConsistency: "MATCHED" | "UNVERIFIED" | "CONFLICT";
 }
-interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[]; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
+interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[];entityResolution?:CandidateEntityResolution; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number; persistentHits: number; staleFallbacks: number; providerRequests: number }
 interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
-interface PostProcessedCandidates { candidates: Candidate[]; breakdown: LocationBreakdown; excludedByStrictMode: number }
+interface PostProcessedCandidates { candidates: Candidate[]; breakdown: LocationBreakdown; excludedByStrictMode: number; entityResolution:{inputRecords:number;clusters:number;mergedRecords:number;taxConflictsPrevented:number} }
 interface LocationQualityAudit { runId: string; algorithmVersion: "L7-HAVERSINE-1"; grade: "HIGH" | "MEDIUM" | "LOW"; coordinateCoveragePercent: number; staleFallbackUsed: boolean; warnings: string[]; evaluatedAt: string }
 
 function normalized(value: string): string {
@@ -119,17 +120,30 @@ function overlapRatio(needle: Set<string>, haystack: Set<string>): number {
   return matches / needle.size;
 }
 
-function sameEntity(left: Candidate, right: Candidate): boolean {
-  const leftPhone = digits(left.phone), rightPhone = digits(right.phone);
-  if (leftPhone.length >= 8 && leftPhone === rightPhone) return true;
-  if (left.email && left.email.toLowerCase() === right.email.toLowerCase()) return true;
-  const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
-  if (leftDomain && leftDomain === rightDomain) return true;
+interface EntityMatch {matched:boolean;matchedBy:string;conflicts:string[]}
+function validTaxCode(value:string):string{const tax=digits(value);return tax.length===10||tax.length===13?tax:""}
+function phoneSet(value:string):Set<string>{return new Set((value.match(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/g)??[]).map(digits).filter((item)=>item.length>=9&&item.length<=12))}
+function canonicalEntityKey(item:Candidate):string{
+  const tax=validTaxCode(item.taxCode);if(tax)return`tax:${tax}`;
+  const domain=domainOf(item.website);if(domain&&!DIRECTORY_DOMAINS.some((entry)=>domain===entry||domain.endsWith(`.${entry}`)))return`web:${domain}`;
+  const phone=Array.from(phoneSet(item.phone)).sort()[0];if(phone)return`phone:${phone}`;
+  return`name:${normalized(item.legalName)}|address:${normalized(item.address)}`;
+}
+function sameEntity(left: Candidate, right: Candidate): EntityMatch {
   const leftName = normalized(left.legalName), rightName = normalized(right.legalName);
-  if (leftName.length >= 5 && leftName === rightName) return true;
-  const names = overlapRatio(tokenSet(leftName), tokenSet(rightName));
+  const nameSimilarity=overlapRatio(tokenSet(leftName),tokenSet(rightName));
+  const leftTax=validTaxCode(left.taxCode),rightTax=validTaxCode(right.taxCode);
+  if(leftTax&&rightTax&&leftTax!==rightTax)return{matched:false,matchedBy:"",conflicts:nameSimilarity>=0.8?[`Tên gần giống nhưng MST mâu thuẫn: ${leftTax} / ${rightTax}`]:[]};
+  if(leftTax&&leftTax===rightTax)return{matched:true,matchedBy:"TAX_CODE",conflicts:[]};
+  const leftPhones=phoneSet(left.phone),rightPhones=phoneSet(right.phone);
+  if(Array.from(leftPhones).some((phone)=>rightPhones.has(phone)))return{matched:true,matchedBy:"PHONE",conflicts:[]};
+  if (left.email && right.email && left.email.toLowerCase() === right.email.toLowerCase()) return{matched:true,matchedBy:"EMAIL",conflicts:[]};
+  const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
+  if (leftDomain && leftDomain === rightDomain&&!DIRECTORY_DOMAINS.some((entry)=>leftDomain===entry||leftDomain.endsWith(`.${entry}`))) return{matched:true,matchedBy:"WEBSITE",conflicts:[]};
   const addresses = overlapRatio(tokenSet(left.address), tokenSet(right.address));
-  return names >= 0.8 && addresses >= 0.5;
+  if(leftName.length>=5&&leftName===rightName&&addresses>=0.35)return{matched:true,matchedBy:"NAME_ADDRESS",conflicts:[]};
+  if(nameSimilarity>=0.85&&addresses>=0.65)return{matched:true,matchedBy:"FUZZY_NAME_ADDRESS",conflicts:[]};
+  return{matched:false,matchedBy:"",conflicts:[]};
 }
 
 function mergeText(left: string, right: string): string { return right.length > left.length ? right : left; }
@@ -176,21 +190,31 @@ function coordinateAddressConsistency(candidate: Candidate): "MATCHED" | "UNVERI
 
 function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter, radiusKm: number, locationMode: "PREFER" | "STRICT", learning: LearningProfile): PostProcessedCandidates {
   const clusters: Candidate[] = [];
+  let taxConflictsPrevented=0;
   for (const item of candidates) {
-    const existing = clusters.find((candidate) => sameEntity(candidate, item));
+    const comparisons=clusters.map((candidate)=>({candidate,match:sameEntity(candidate,item)}));
+    const matched=comparisons.find((entry)=>entry.match.matched);
+    if(!matched&&comparisons.some((entry)=>entry.match.conflicts.length>0))taxConflictsPrevented+=1;
+    const existing = matched?.candidate;
     const source = { url: item.sourceUrl, title: item.sourceTitle };
     if (!existing) {
-      clusters.push({ ...item, sources: item.sources?.length ? item.sources : [source] });
+      clusters.push({ ...item, sources: item.sources?.length ? item.sources : [source],entityResolution:{canonicalKey:canonicalEntityKey(item),matchedBy:["SINGLE_RECORD"],mergedRecords:1,conflicts:[]} });
       continue;
     }
     existing.legalName = mergeText(existing.legalName, item.legalName);
     existing.address = mergeText(existing.address, item.address);
     existing.province = mergeText(existing.province, item.province);
     existing.district = mergeText(existing.district, item.district);
-    existing.phone = mergeText(existing.phone, item.phone);
-    existing.email = mergeText(existing.email, item.email);
-    existing.taxCode = mergeText(existing.taxCode, item.taxCode);
-    existing.website = mergeText(existing.website, item.website);
+    existing.phones=Array.from(new Set([...(existing.phones??Array.from(phoneSet(existing.phone))),...(item.phones??Array.from(phoneSet(item.phone)))])).slice(0,5);
+    existing.phone=existing.phones.join(" - ");
+    existing.email = existing.email || item.email;
+    existing.taxCode = existing.taxCode || item.taxCode;
+    existing.website = existing.website || item.website;
+    existing.tradeName=existing.tradeName||item.tradeName;existing.shortName=existing.shortName||item.shortName;
+    existing.registeredAddress=existing.registeredAddress||item.registeredAddress;existing.factoryAddress=existing.factoryAddress||item.factoryAddress;existing.officeAddress=existing.officeAddress||item.officeAddress;
+    existing.zaloPhone=existing.zaloPhone||item.zaloPhone;existing.facebookUrl=existing.facebookUrl||item.facebookUrl;existing.legalRepresentative=existing.legalRepresentative||item.legalRepresentative;
+    existing.businessLines=Array.from(new Set([...(existing.businessLines??[]),...(item.businessLines??[])])).slice(0,20);
+    existing.companyIntroduction=existing.companyIntroduction||item.companyIntroduction;existing.foundedYear=existing.foundedYear??item.foundedYear;existing.operatingStatus=existing.operatingStatus||item.operatingStatus;
     if (existing.latitude !== null && existing.longitude !== null && item.latitude !== null && item.longitude !== null) {
       const separationKm = distanceKm({ latitude: existing.latitude, longitude: existing.longitude }, item.latitude, item.longitude);
       if (coordinatePriority(item.coordinateSource) > coordinatePriority(existing.coordinateSource)) {
@@ -218,6 +242,7 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     existing.capabilities = Array.from(new Set([...existing.capabilities, ...item.capabilities])).slice(0, 20);
     existing.fieldEvidence=Array.from(new Map([...(existing.fieldEvidence??[]),...(item.fieldEvidence??[])].map((entry)=>[`${entry.fieldName}|${evidenceText(entry.fieldValue)}|${entry.sourceUrl}`,entry])).values()).slice(0,80);
     existing.confidence = Math.max(existing.confidence, item.confidence);
+    existing.entityResolution={canonicalKey:canonicalEntityKey(existing),matchedBy:Array.from(new Set([...(existing.entityResolution?.matchedBy??[]),matched?.match.matchedBy??""])).filter(Boolean),mergedRecords:(existing.entityResolution?.mergedRecords??1)+1,conflicts:Array.from(new Set([...(existing.entityResolution?.conflicts??[]),...(matched?.match.conflicts??[])]))};
     existing.verifiedFields = Array.from(new Set([...(existing.verifiedFields ?? []), ...(item.verifiedFields ?? [])]));
     for (const entry of item.sources?.length ? item.sources : [source]) {
       if (!existing.sources?.some((current) => current.url === entry.url)) existing.sources?.push(entry);
@@ -236,7 +261,7 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const textLocationScore = Math.round(overlapRatio(locationTokens, tokenSet(`${item.address} ${item.province} ${item.district}`)) * 15);
     const locationScore = addressConsistency === "CONFLICT" ? 0 : measuredDistance === null ? textLocationScore : isWithinRadius(measuredDistance, radiusKm) ? Math.max(5, Math.round(15 * (1 - measuredDistance / Math.max(radiusKm, 1)))) : 0;
     const contact = Math.min(15, (item.phone ? 6 : 0) + (item.email ? 3 : 0) + (item.website ? 3 : 0) + (item.taxCode ? 2 : 0) + (item.address ? 1 : 0));
-    const sourceCount = item.sources?.length ?? 1;
+    const sourceCount = new Set((item.sources?.length?item.sources:[{url:item.sourceUrl}]).map((source)=>domainOf(source.url)||source.url)).size;
     const verifiedFields = item.verifiedFields ?? [];
     const verifiedStatus = verificationStatus(verifiedFields, sourceCount);
     const evidence = Math.min(15, sourceCount * 5);
@@ -276,9 +301,9 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
   };
   if (locationMode === "STRICT") {
     const strictCandidates = ordered.filter((item) => item.locationStatus === "INSIDE").slice(0, 30);
-    return { candidates: strictCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.unknown + breakdown.conflict };
+    return { candidates: strictCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.unknown + breakdown.conflict,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
   }
-  return { candidates: ordered.slice(0, 30), breakdown, excludedByStrictMode: 0 };
+  return { candidates: ordered.slice(0, 30), breakdown, excludedByStrictMode: 0,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
 }
 
 const LOCATION_NOISE_WORDS = new Set(["quan", "huyen", "phuong", "xa", "thi", "tran", "thanh", "pho", "tinh", "viet", "nam"]);
@@ -1117,6 +1142,7 @@ export async function POST(req: NextRequest) {
       coordinateConflicts: processed.breakdown.conflict,
       locationBreakdown: processed.breakdown,
       strictExcluded: processed.excludedByStrictMode,
+      entityResolution:processed.entityResolution,
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
       rejectedNoiseCandidates: enrichment.candidates.length - businessCandidates.length,
