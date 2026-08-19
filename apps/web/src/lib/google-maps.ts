@@ -41,7 +41,7 @@ export function googleMapsAddress(location: GoogleMapsLocation): string {
 export function googleMapsSearchUrl(location: GoogleMapsLocation): string {
   const address = googleMapsAddress(location);
   const query = address
-    ? [location.legalName.trim(), address].filter(Boolean).join(", ")
+    ? address
     : location.legalName.trim() || (location.latitude !== null && location.latitude !== undefined && location.longitude !== null && location.longitude !== undefined
       ? `${location.latitude},${location.longitude}`
       : "Việt Nam");
