@@ -201,6 +201,16 @@ function safeHttpsUrl(value: string): string {
   return "";
 }
 
+function isSchemaCompatibilityError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === "PGRST204" || error.code === "42703" || /schema cache|column .* does not exist|could not find the .* column/i.test(error.message ?? "");
+}
+
+function isLegacyEvidenceSchemaError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return isSchemaCompatibilityError(error) || ["23502", "23514", "42P10"].includes(error.code ?? "") || /tax_code|provider|normalized_value|updated_by|unique constraint/i.test(error.message ?? "");
+}
+
 async function fingerprint(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value.toLowerCase().trim()));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -251,15 +261,31 @@ export async function ensureCompanyProfileFromSearch(
     raw_data: candidate,
     updated_by: userId,
   };
+  const legacyProfileValues = {
+    organization_id: PRODUCTION_ORGANIZATION_ID, identity_key: identityKey, role,
+    legal_name: candidate.legalName.trim(), tax_code: candidate.taxCode?.trim() || null,
+    phone: candidate.phone.trim() || null, email: candidate.email?.trim() || null,
+    website: candidate.website.trim() || null, address: candidate.address.trim() || null,
+    province: candidate.province.trim() || null, district: candidate.district.trim() || null,
+    latitude: candidate.latitude, longitude: candidate.longitude, capabilities: candidate.capabilities,
+    profile_status: "DRAFT", verification_status: candidate.verificationStatus === "VERIFIED" ? "VERIFIED" : candidate.verificationStatus === "PARTIAL" ? "REVIEWED" : "DISCOVERED",
+    summary: candidate.companyIntroduction?.trim() || null, source_provider: provider,
+    source_url: sourceUrl || null, raw_data: candidate, updated_by: userId,
+  };
   const existing = await supabase.from("production_company_profiles")
     .select("id")
     .eq("organization_id", PRODUCTION_ORGANIZATION_ID)
     .eq("identity_key", identityKey)
     .maybeSingle();
   if (existing.error) throw new Error(existing.error.message);
-  const profileResult = existing.data
+  let profileResult = existing.data
     ? await supabase.from("production_company_profiles").update(profileValues).eq("id", existing.data.id).select("id").single()
     : await supabase.from("production_company_profiles").insert({ ...profileValues, created_by: userId }).select("id").single();
+  if (isSchemaCompatibilityError(profileResult.error)) {
+    profileResult = existing.data
+      ? await supabase.from("production_company_profiles").update(legacyProfileValues).eq("id", existing.data.id).select("id").single()
+      : await supabase.from("production_company_profiles").insert({ ...legacyProfileValues, created_by: userId }).select("id").single();
+  }
   const { data, error } = profileResult;
   if (error || !data) throw new Error(error?.message || "Không tạo được hồ sơ công ty");
 
@@ -276,7 +302,11 @@ export async function ensureCompanyProfileFromSearch(
         verification_status: "UNVERIFIED", created_by: userId }] : [];
     });
     if (rows.length) {
-      const { error: sourceError } = await supabase.from("production_company_sources").upsert(rows, { onConflict: "company_profile_id,source_url" });
+      let { error: sourceError } = await supabase.from("production_company_sources").upsert(rows, { onConflict: "company_profile_id,source_url" });
+      if (isSchemaCompatibilityError(sourceError)) {
+        const legacyRows = rows.map(({ source_excerpt: _excerpt, raw_content: _raw, relevance_score: _score, search_query: _query, ...row }) => row);
+        ({ error: sourceError } = await supabase.from("production_company_sources").upsert(legacyRows, { onConflict: "company_profile_id,source_url" }));
+      }
       if (sourceError) throw new Error(sourceError.message);
     }
   }
@@ -290,7 +320,7 @@ export async function ensureCompanyProfileFromSearch(
   });
   if(evidenceRows.length){
     const{error:evidenceError}=await supabase.from("production_company_field_evidence").upsert(evidenceRows,{onConflict:"company_profile_id,field_name,field_value,source_url"});
-    if(evidenceError)throw new Error(evidenceError.message);
+    if(evidenceError&&!isLegacyEvidenceSchemaError(evidenceError))throw new Error(evidenceError.message);
   }
   return data.id as string;
 }
