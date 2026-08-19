@@ -12,6 +12,8 @@ export interface DiscoveryCandidate {
   province: string;
   district: string;
   phone: string;
+  email: string;
+  taxCode: string;
   website: string;
   latitude: number | null;
   longitude: number | null;
@@ -19,6 +21,8 @@ export interface DiscoveryCandidate {
   sourceUrl: string;
   externalId: string;
   status: DiscoveryStatus;
+  matchedPartnerId: string;
+  reviewedAt: string;
   discoveredAt: string;
 }
 
@@ -38,15 +42,24 @@ interface CandidateRow {
   address: string | null; province: string | null; district: string | null;
   phone: string | null; website: string | null; latitude: number | null; longitude: number | null;
   source_provider: string; source_url: string; external_id: string;
-  status: DiscoveryStatus; discovered_at: string;
+  status: DiscoveryStatus; matched_partner_id: string | null; raw_data: unknown;
+  reviewed_at: string | null; discovered_at: string;
+}
+
+function rawText(rawData: unknown, key: "email" | "taxCode"): string {
+  if (!rawData || typeof rawData !== "object") return "";
+  const value = (rawData as Record<string, unknown>)[key];
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function mapRow(row: CandidateRow): DiscoveryCandidate {
   return { id: row.id, role: row.role, searchQuery: row.search_query, legalName: row.legal_name,
     address: row.address ?? "", province: row.province ?? "", district: row.district ?? "",
-    phone: row.phone ?? "", website: row.website ?? "", latitude: row.latitude,
+    phone: row.phone ?? "", email: rawText(row.raw_data,"email"), taxCode: rawText(row.raw_data,"taxCode"),
+    website: row.website ?? "", latitude: row.latitude,
     longitude: row.longitude, sourceProvider: row.source_provider, sourceUrl: row.source_url,
-    externalId: row.external_id, status: row.status, discoveredAt: row.discovered_at };
+    externalId: row.external_id, status: row.status, matchedPartnerId: row.matched_partner_id ?? "",
+    reviewedAt: row.reviewed_at ?? "", discoveredAt: row.discovered_at };
 }
 
 export async function loadDiscoveryCandidates(): Promise<DiscoveryCandidate[]> {
@@ -144,4 +157,33 @@ export async function importAICandidates(
 
 export interface SearchDistanceEvidence { method:"HAVERSINE";unit:"KM";calculatedAt:string;radiusKm:number;rawDistanceKm:number|null;center:{latitude:number;longitude:number;label:string;source:"GPS"|"ADDRESS"};destination:{latitude:number|null;longitude:number|null;coordinateSource?:"SOURCE"|"NOMINATIM";coordinateConfidence?:"HIGH"|"MEDIUM"|"LOW";geocodedAddress?:string};addressConsistency:"MATCHED"|"UNVERIFIED"|"CONFLICT" }
 export interface DirectSearchCandidate { legalName:string;address:string;legacyAddress?:string;addressStandard?:"HCM_POST_MERGER_2025";province:string;district:string;phone:string;email?:string;taxCode?:string;website:string;latitude:number|null;longitude:number|null;capabilities:string[];sourceUrl:string;sourceTitle:string;confidence:number;sourceCount?:number;sources?:Array<{url:string;title:string}>;matchReasons?:string[];distanceKm?:number|null;locationStatus?:"INSIDE"|"OUTSIDE"|"UNKNOWN"|"CONFLICT";locationReason?:string;distanceEvidence?:SearchDistanceEvidence;verifiedFields?:string[];verificationStatus?:"VERIFIED"|"PARTIAL"|"UNVERIFIED";lastVerifiedAt?:string;coordinateSource?:"MANUAL"|"SOURCE"|"WEBSITE"|"NOMINATIM";coordinateConfidence?:"HIGH"|"MEDIUM"|"LOW";geocodedAddress?:string;geocodedAt?:string;geocodeStatus?:"VERIFIED"|"REJECTED"|"NOT_ATTEMPTED";coordinateBoundingBox?:[number,number,number,number];coordinateConflictReason?:string;geocodeCacheStatus?:"MEMORY"|"PERSISTENT"|"PROVIDER"|"STALE_FALLBACK" }
-export async function saveDirectSearchCandidates(items:DirectSearchCandidate[],role:ProductionPartnerRole,query:string,provider:string):Promise<void>{if(!supabase)throw new Error("Chưa kết nối Supabase");const rows=await Promise.all(items.slice(0,30).map(async item=>({organization_id:PRODUCTION_ORGANIZATION_ID,role,search_query:query,legal_name:textValue(item.legalName,200),address:textValue(item.address),province:textValue(item.province,100),district:textValue(item.district,100),phone:textValue(item.phone,50),website:textValue(item.website),latitude:item.latitude,longitude:item.longitude,source_provider:`DIRECT_${provider}`,source_url:item.sourceUrl,external_id:await fingerprint(`${provider}|${item.sourceUrl}|${item.legalName}`),raw_data:item})));const{error}=await supabase.from("production_discovery_candidates").upsert(rows,{onConflict:"organization_id,source_provider,external_id",ignoreDuplicates:true});if(error)throw error}
+
+function normalizedIdentity(value:string):string{return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()}
+function identityKeys(item:Pick<DirectSearchCandidate,"legalName"|"address"|"phone"|"website"|"sourceUrl">&{taxCode?:string}):string[]{return[
+  item.taxCode?`tax:${item.taxCode.replace(/\D/g,"")}`:"",
+  item.phone?`phone:${item.phone.replace(/\D/g,"")}`:"",
+  item.website?`web:${normalizedIdentity(item.website.replace(/^https?:\/\//i,"").replace(/^www\./i,""))}`:"",
+  item.legalName&&item.address?`name:${normalizedIdentity(item.legalName)}|${normalizedIdentity(item.address)}`:"",
+  item.sourceUrl&&item.legalName?`source:${normalizedIdentity(item.sourceUrl)}|${normalizedIdentity(item.legalName)}`:"",
+].filter(key=>Boolean(key)&&!key.endsWith(":"))}
+
+export function directCandidateSaveKey(item:DirectSearchCandidate):string{return `${normalizedIdentity(item.sourceUrl)}|${normalizedIdentity(item.legalName)}|${normalizedIdentity(item.address)}`}
+export function isDirectCandidateSaved(item:DirectSearchCandidate,saved:DiscoveryCandidate[]):boolean{const keys=new Set(identityKeys(item));return saved.some(candidate=>identityKeys({...candidate,sourceUrl:candidate.sourceUrl}).some(key=>keys.has(key)))}
+
+export interface SaveDirectCandidatesResult{savedCount:number;skippedCount:number;savedKeys:string[];existingKeys:string[]}
+export async function saveDirectSearchCandidates(items:DirectSearchCandidate[],role:ProductionPartnerRole,query:string,provider:string):Promise<SaveDirectCandidatesResult>{
+  if(!supabase)throw new Error("Chưa kết nối Supabase");
+  const limited=items.slice(0,30);
+  const existing=await loadDiscoveryCandidates();
+  const knownKeys=new Set(existing.flatMap(candidate=>identityKeys({...candidate,sourceUrl:candidate.sourceUrl})));
+  const accepted:DirectSearchCandidate[]=[];
+  const existingKeys:string[]=[];
+  for(const item of limited){
+    const keys=identityKeys(item);
+    if(keys.some(key=>knownKeys.has(key))){existingKeys.push(directCandidateSaveKey(item));continue}
+    accepted.push(item);keys.forEach(key=>knownKeys.add(key));
+  }
+  const rows=await Promise.all(accepted.map(async item=>({organization_id:PRODUCTION_ORGANIZATION_ID,role,search_query:query,legal_name:textValue(item.legalName,200),address:textValue(item.address),province:textValue(item.province,100),district:textValue(item.district,100),phone:textValue(item.phone,50),website:textValue(item.website),latitude:item.latitude,longitude:item.longitude,source_provider:`DIRECT_${provider}`,source_url:item.sourceUrl,external_id:await fingerprint(`${provider}|${item.sourceUrl}|${item.legalName}`),raw_data:item})));
+  if(rows.length){const{error}=await supabase.from("production_discovery_candidates").upsert(rows,{onConflict:"organization_id,source_provider,external_id",ignoreDuplicates:true});if(error)throw error}
+  return{savedCount:accepted.length,skippedCount:existingKeys.length,savedKeys:accepted.map(directCandidateSaveKey),existingKeys};
+}

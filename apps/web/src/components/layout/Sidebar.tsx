@@ -149,6 +149,8 @@ const NAV: NavItem[] = [
     activeBg: "bg-cyan-900/40", activeSubBg: "bg-cyan-400/20 text-white",
     subItems: [
       { href: "/mang-luoi-san-xuat", label: "Trang chủ sản xuất", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/tim-kiem", label: "Tìm công ty", icon: Search, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/cong-ty-da-luu", label: "Công ty đã lưu", icon: Building2, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
     ]
   },
   {
