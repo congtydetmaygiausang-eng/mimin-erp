@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mimin.vn/schemas/company-reader-golden-case.schema.json",
+  "title": "MIMIN Company Reader Golden Case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "category", "url", "expectedOutcome", "reviewStatus",
+    "expected", "mustNotContain", "reviewedAt", "reviewedBy", "reviewNote"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^JT0-[A-Z]+-[0-9]{3}$" },
+    "category": {
+      "enum": [
+        "REGISTRY_PROFILE", "OFFICIAL_WEBSITE", "MULTI_COMPANY_SOURCE",
+        "NOISE_OR_BLOCKED", "CONFLICT_OR_PARTIAL", "FETCH_LIMITED"
+      ]
+    },
+    "url": { "type": "string", "pattern": "^https://" },
+    "expectedOutcome": {
+      "enum": ["COMPANY", "SOURCE_ONLY", "REJECT", "FETCH_LIMITED"]
+    },
+    "reviewStatus": { "enum": ["APPROVED", "PENDING_REVIEW"] },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "legalName": { "type": ["string", "null"], "maxLength": 300 },
+        "taxCode": { "type": ["string", "null"], "pattern": "^(?:[0-9]{10}(?:-[0-9]{3})?)?$" },
+        "registeredAddress": { "type": ["string", "null"], "maxLength": 1000 },
+        "phone": { "type": ["string", "null"], "maxLength": 30 },
+        "website": { "type": ["string", "null"], "maxLength": 1000 },
+        "operatingStatus": { "type": ["string", "null"], "maxLength": 300 },
+        "strongKey": { "enum": ["TAX_CODE", "OFFICIAL_DOMAIN", "PHONE", null] },
+        "sourceBoundary": { "type": ["string", "null"], "maxLength": 500 }
+      }
+    },
+    "mustNotContain": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 2 },
+      "uniqueItems": true
+    },
+    "reviewedAt": { "type": ["string", "null"], "format": "date-time" },
+    "reviewedBy": { "type": ["string", "null"], "maxLength": 100 },
+    "reviewNote": { "type": "string", "minLength": 5, "maxLength": 1000 }
+  }
+}
+
