@@ -150,4 +150,5 @@
 | 2026-08-19 11:30 | Codex | sourcing T3 | Làm sạch cứng tên pháp lý và địa chỉ bưu chính trước khi nhận hồ sơ | codex/company-profile-t3-identity-cleaning | 🟢 DONE |
 | 2026-08-19 12:30 | Codex | sourcing T4 | DeepSeek trích xuất hồ sơ có dẫn chứng và kiểm chứng lại theo URL nguồn | codex/company-profile-t4-deepseek-evidence | 🟢 DONE |
 | 2026-08-19 13:30 | Codex | sourcing T5 | Gộp thực thể bằng khóa mạnh, chặn gộp khi MST mâu thuẫn và đếm nguồn độc lập | codex/company-profile-t5-entity-resolution | 🟢 DONE |
+| 2026-08-19 14:30 | Codex | sourcing T6 | Chấm độ tin cậy từng trường và áp dụng cổng chất lượng hồ sơ đa nguồn | codex/company-profile-t6-quality-gate | 🟢 DONE |
 **Last updated**: 2026-08-01 (Mavis tạo file)
