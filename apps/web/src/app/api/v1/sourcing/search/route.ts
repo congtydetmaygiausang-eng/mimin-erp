@@ -28,6 +28,8 @@ type SourceEvidenceType = "SEARCH"|"OFFICIAL"|"REGISTRY"|"MAP"|"SOCIAL"|"OTHER";
 type FieldEvidenceName="LEGAL_NAME"|"TRADE_NAME"|"SHORT_NAME"|"TAX_CODE"|"REGISTERED_ADDRESS"|"FACTORY_ADDRESS"|"OFFICE_ADDRESS"|"PHONE"|"ZALO"|"EMAIL"|"WEBSITE"|"FACEBOOK"|"LEGAL_REPRESENTATIVE"|"BUSINESS_LINE"|"CAPABILITY"|"COMPANY_INTRODUCTION"|"FOUNDED_YEAR"|"OPERATING_STATUS";
 interface CandidateFieldEvidence {fieldName:FieldEvidenceName;fieldValue:string;sourceUrl:string;sourceExcerpt:string;confidence:number}
 interface CandidateEntityResolution {canonicalKey:string;matchedBy:string[];mergedRecords:number;conflicts:string[]}
+interface CandidateFieldConfidence {fieldName:FieldEvidenceName;selectedValue:string;score:number;independentSources:number;status:"UNVERIFIED"|"PARTIAL"|"VERIFIED"|"CONFLICT";alternatives:string[]}
+interface CandidateProfileQuality {score:number;completeness:number;evidenceCoverage:number;conflictCount:number;grade:"STRONG"|"REVIEW"|"WEAK"|"CONFLICT"}
 interface CandidateSource { url:string;title:string;sourceType?:SourceEvidenceType;sourceProvider?:string;excerpt?:string;rawContent?:string;relevanceScore?:number;searchQuery?:string }
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number; score?:number; sourceType?:SourceEvidenceType; provider?:string; searchQuery?:string }
 interface SearchCenter {
@@ -65,7 +67,7 @@ interface DistanceEvidence {
   destination: { latitude: number | null; longitude: number | null; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
   addressConsistency: "MATCHED" | "UNVERIFIED" | "CONFLICT";
 }
-interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[];entityResolution?:CandidateEntityResolution; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
+interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[];fieldConfidence?:CandidateFieldConfidence[];profileQuality?:CandidateProfileQuality;entityResolution?:CandidateEntityResolution; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number; persistentHits: number; staleFallbacks: number; providerRequests: number }
 interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
@@ -263,25 +265,29 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const contact = Math.min(15, (item.phone ? 6 : 0) + (item.email ? 3 : 0) + (item.website ? 3 : 0) + (item.taxCode ? 2 : 0) + (item.address ? 1 : 0));
     const sourceCount = new Set((item.sources?.length?item.sources:[{url:item.sourceUrl}]).map((source)=>domainOf(source.url)||source.url)).size;
     const verifiedFields = item.verifiedFields ?? [];
-    const verifiedStatus = verificationStatus(verifiedFields, sourceCount);
-    const evidence = Math.min(15, sourceCount * 5);
+    const fieldConfidence = buildFieldConfidence(item);
+    const profileQuality = buildProfileQuality(item, fieldConfidence);
+    const verifiedStatus = evidenceVerificationStatus(fieldConfidence, verificationStatus(verifiedFields, sourceCount));
+    const evidence = fieldConfidence.length ? Math.min(15, Math.round(profileQuality.evidenceCoverage * 0.15)) : Math.min(15, sourceCount * 5);
     const completeness = Math.min(10, [item.province, item.district, item.capabilities.length ? "yes" : "", item.latitude !== null ? "yes" : ""].filter(Boolean).length * 2.5);
     const aiScore = Math.round(Math.max(0, Math.min(100, item.confidence)) / 10);
     const learnedText = tokenSet(`${item.address} ${item.province} ${item.district} ${item.capabilities.join(" ")}`);
     const preferredMatches = learning.applied ? learning.preferredTerms.filter((term) => learnedText.has(term)).length : 0;
     const avoidedMatches = learning.applied ? learning.avoidedTerms.filter((term) => learnedText.has(term)).length : 0;
     const learningAdjustment = Math.max(-8, Math.min(8, preferredMatches * 2 - avoidedMatches * 2));
-    const confidence = Math.max(0, Math.min(100, Math.round(relevance + locationScore + contact + evidence + completeness + aiScore + learningAdjustment)));
+    const rankingScore = Math.max(0, Math.min(100, Math.round(relevance + locationScore + contact + evidence + completeness + aiScore + learningAdjustment)));
+    const confidence = fieldConfidence.length ? Math.round(rankingScore * 0.75 + profileQuality.score * 0.25) : rankingScore;
     const matchReasons = [
       relevance >= 20 ? "Phù hợp nhu cầu" : "Cần kiểm tra thêm năng lực",
       measuredDistance !== null ? `${measuredDistance.toFixed(1)} km · ${locationStatus === "INSIDE" ? "Trong bán kính" : "Ngoài bán kính"}` : locationStatus === "CONFLICT" ? "Địa chỉ và tọa độ mâu thuẫn" : locationScore >= 8 ? "Đúng khu vực theo địa chỉ · chưa xác minh km" : "Chưa có tọa độ để tính km",
       sourceCount >= 2 ? `${sourceCount} nguồn xác nhận` : "1 nguồn tham khảo",
       item.phone || item.website ? "Có thông tin liên hệ" : "Thiếu thông tin liên hệ",
       verifiedStatus === "VERIFIED" ? "Đã đối chiếu nhiều nguồn" : verifiedStatus === "PARTIAL" ? "Đã đối chiếu một phần" : "Chưa đủ bằng chứng",
+      profileQuality.grade === "STRONG" ? `Hồ sơ mạnh ${profileQuality.score}/100` : profileQuality.grade === "CONFLICT" ? `Có ${profileQuality.conflictCount} xung đột cần duyệt` : `Chất lượng hồ sơ ${profileQuality.score}/100`,
       ...(learningAdjustment >= 2 ? ["Phù hợp lịch sử lựa chọn"] : learningAdjustment <= -2 ? ["Khác mẫu thường ưu tiên"] : []),
     ];
     const distanceEvidence: DistanceEvidence = { method: "HAVERSINE", unit: "KM", calculatedAt: new Date().toISOString(), radiusKm, rawDistanceKm: measuredDistance, center: { latitude: center.latitude, longitude: center.longitude, label: center.label, source: center.source }, destination: { latitude: item.latitude, longitude: item.longitude, coordinateSource: item.coordinateSource, coordinateConfidence: item.coordinateConfidence, geocodedAddress: item.geocodedAddress }, addressConsistency };
-    return { ...item, confidence, sourceCount, matchReasons, verifiedFields, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus, locationReason, distanceEvidence };
+    return { ...item, confidence, sourceCount, matchReasons, verifiedFields, fieldConfidence, profileQuality, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus, locationReason, distanceEvidence };
   });
   const locationRank: Record<NonNullable<Candidate["locationStatus"]>, number> = { INSIDE: 0, OUTSIDE: 1, UNKNOWN: 2, CONFLICT: 3 };
   const ordered = ranked.sort((left, right) => {
@@ -1022,6 +1028,49 @@ function evidenceValue(item:Record<string,unknown>,key:string,field:FieldEvidenc
   return evidence.some((entry)=>entry.fieldName===field&&evidenceText(entry.fieldValue)===evidenceText(value))?value:"";
 }
 
+function sourceAuthority(type:SourceEvidenceType|undefined):number{return type==="REGISTRY"?75:type==="OFFICIAL"?62:type==="MAP"?55:type==="SOCIAL"?38:type==="SEARCH"?32:25}
+function buildFieldConfidence(candidate:Candidate):CandidateFieldConfidence[]{
+  const sourceMap=new Map((candidate.sources??[]).map((source)=>[canonicalSourceUrl(source.url),source]));
+  const byField=new Map<FieldEvidenceName,CandidateFieldEvidence[]>();
+  for(const evidence of candidate.fieldEvidence??[])byField.set(evidence.fieldName,[...(byField.get(evidence.fieldName)??[]),evidence]);
+  return Array.from(byField.entries()).map(([fieldName,entries])=>{
+    const groups=new Map<string,CandidateFieldEvidence[]>();
+    for(const entry of entries){const key=evidenceText(entry.fieldValue);if(key)groups.set(key,[...(groups.get(key)??[]),entry]);}
+    const ranked=Array.from(groups.values()).map((group)=>{
+      const domains=new Set(group.map((entry)=>domainOf(entry.sourceUrl)||canonicalSourceUrl(entry.sourceUrl)));
+      const authority=Math.max(...group.map((entry)=>sourceAuthority(sourceMap.get(canonicalSourceUrl(entry.sourceUrl))?.sourceType)),0);
+      const evidenceAverage=group.reduce((total,entry)=>total+entry.confidence,0)/Math.max(group.length,1);
+      const score=Math.min(98,Math.round(authority+Math.min(20,Math.max(0,domains.size-1)*12)+Math.min(10,evidenceAverage/10)));
+      return{value:group[0].fieldValue,score,independentSources:domains.size};
+    }).sort((left,right)=>right.score-left.score||right.independentSources-left.independentSources||left.value.localeCompare(right.value,"vi"));
+    const selected=ranked[0],alternatives=ranked.slice(1).map((item)=>item.value);
+    const materialConflict=ranked.slice(1).some((item)=>item.score>=55&&selected.score-item.score<=20);
+    const status:CandidateFieldConfidence["status"]=materialConflict?"CONFLICT":selected.score>=80?"VERIFIED":selected.score>=55?"PARTIAL":"UNVERIFIED";
+    return{fieldName,selectedValue:selected.value,score:materialConflict?Math.max(0,selected.score-20):selected.score,independentSources:selected.independentSources,status,alternatives};
+  }).sort((left,right)=>right.score-left.score||left.fieldName.localeCompare(right.fieldName));
+}
+
+function buildProfileQuality(candidate:Candidate,fields:CandidateFieldConfidence[]):CandidateProfileQuality{
+  const available=[candidate.legalName,candidate.taxCode,candidate.registeredAddress||candidate.address,candidate.phone,candidate.email,candidate.website,candidate.legalRepresentative,candidate.businessLines?.length?"yes":"",candidate.capabilities.length?"yes":"",candidate.companyIntroduction].filter(Boolean).length;
+  const completeness=Math.min(100,Math.round(available/10*100)),covered=new Set(fields.filter((field)=>field.status!=="UNVERIFIED").map((field)=>field.fieldName));
+  const evidenceCoverage=Math.min(100,Math.round(covered.size/10*100)),conflictCount=fields.filter((field)=>field.status==="CONFLICT").length+(candidate.entityResolution?.conflicts.length??0);
+  const fieldAverage=fields.length?fields.reduce((total,field)=>total+field.score,0)/fields.length:0;
+  const score=Math.max(0,Math.min(100,Math.round(completeness*.35+evidenceCoverage*.25+fieldAverage*.4-conflictCount*12)));
+  const grade:CandidateProfileQuality["grade"]=conflictCount?"CONFLICT":score>=80?"STRONG":score>=55?"REVIEW":"WEAK";
+  return{score,completeness,evidenceCoverage,conflictCount,grade};
+}
+
+function evidenceVerificationStatus(fields:CandidateFieldConfidence[],fallback:Candidate["verificationStatus"]):NonNullable<Candidate["verificationStatus"]>{
+  if(!fields.length)return fallback??"UNVERIFIED";
+  const field=(name:FieldEvidenceName)=>fields.find((item)=>item.fieldName===name);
+  const legal=field("LEGAL_NAME"),anchor=[field("TAX_CODE"),field("REGISTERED_ADDRESS")].filter((item):item is CandidateFieldConfidence=>Boolean(item)).sort((left,right)=>right.score-left.score)[0];
+  const contact=[field("PHONE"),field("EMAIL"),field("WEBSITE")].filter((item):item is CandidateFieldConfidence=>Boolean(item)).sort((left,right)=>right.score-left.score)[0];
+  const criticalConflict=[legal,anchor,contact].some((item)=>item?.status==="CONFLICT");if(criticalConflict)return"UNVERIFIED";
+  if((legal?.score??0)>=70&&(anchor?.score??0)>=70&&(contact?.score??0)>=55)return"VERIFIED";
+  if((legal?.score??0)>=55&&((anchor?.score??0)>=55||(contact?.score??0)>=55))return"PARTIAL";
+  return"UNVERIFIED";
+}
+
 async function normalizeWithDeepSeek(query: string, location: string, sources: SourceResult[]): Promise<Candidate[]> {
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return fallbackCandidates(query, sources);
@@ -1143,6 +1192,13 @@ export async function POST(req: NextRequest) {
       locationBreakdown: processed.breakdown,
       strictExcluded: processed.excludedByStrictMode,
       entityResolution:processed.entityResolution,
+      qualityGate: {
+        strong: candidates.filter((item) => item.profileQuality?.grade === "STRONG").length,
+        review: candidates.filter((item) => item.profileQuality?.grade === "REVIEW").length,
+        weak: candidates.filter((item) => item.profileQuality?.grade === "WEAK").length,
+        conflicts: candidates.filter((item) => item.profileQuality?.grade === "CONFLICT").length,
+        averageScore: candidates.length ? Math.round(candidates.reduce((total, item) => total + (item.profileQuality?.score ?? 0), 0) / candidates.length) : 0,
+      },
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
       rejectedNoiseCandidates: enrichment.candidates.length - businessCandidates.length,
