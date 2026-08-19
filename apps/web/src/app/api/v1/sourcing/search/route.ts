@@ -872,6 +872,44 @@ async function searchOpenStreetMap(query: string, location: string): Promise<Sou
   return data.map((item) => ({ title: item.display_name.split(",")[0], url: `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`, content: item.display_name, latitude: Number(item.lat), longitude: Number(item.lon) }));
 }
 
+interface GooglePlaceResult {
+  name?: string;
+  formatted_address?: string;
+  place_id?: string;
+  business_status?: string;
+  geometry?: { location?: { lat?: number; lng?: number } };
+}
+
+async function searchGooglePlaces(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  if (!key) return [];
+  const placeQueries = Array.from(new Set([
+    `${query} ${location}`,
+    ...queries.slice(0, 2),
+  ])).slice(0, 3);
+  const batches = await Promise.allSettled(placeQueries.map(async (searchQuery) => {
+    const params = new URLSearchParams({ query: `${searchQuery}, Việt Nam`, key, language: "vi", region: "vn" });
+    const response = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`, { signal: AbortSignal.timeout(12_000) });
+    if (!response.ok) throw new Error(`Google Places HTTP ${response.status}`);
+    const data = await response.json() as { status?: string; error_message?: string; results?: GooglePlaceResult[] };
+    if (data.status && !["OK", "ZERO_RESULTS"].includes(data.status)) throw new Error(`Google Places ${data.status}`);
+    return (data.results ?? [])
+      .filter((place) => place.business_status !== "CLOSED_PERMANENTLY" && place.name && place.place_id)
+      .map((place) => ({
+        title: place.name ?? "",
+        url: `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(place.place_id ?? "")}`,
+        content: place.formatted_address ?? "",
+        latitude: place.geometry?.location?.lat,
+        longitude: place.geometry?.location?.lng,
+      }));
+  }));
+  if (batches.length && batches.every((batch) => batch.status === "rejected")) {
+    const firstFailure = batches.find((batch): batch is PromiseRejectedResult => batch.status === "rejected");
+    throw firstFailure?.reason instanceof Error ? firstFailure.reason : new Error("Google Places request failed");
+  }
+  return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
+}
+
 function providerErrorCode(reason: unknown): string {
   if (reason instanceof Error) {
     const httpStatus = reason.message.match(/HTTP (\d{3})/)?.[1];
@@ -882,19 +920,22 @@ function providerErrorCode(reason: unknown): string {
 }
 
 async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[]; providerHealth: Array<{ name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED"; count: number; code?: string }> }> {
-  const [tavily, gemini] = await Promise.allSettled([searchTavily(queries), searchGemini(query, location, queries)]);
+  const [tavily, gemini, googlePlaces] = await Promise.allSettled([searchTavily(queries), searchGemini(query, location, queries), searchGooglePlaces(query, location, queries)]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
     ...(gemini.status === "fulfilled" ? gemini.value : []),
+    ...(googlePlaces.status === "fulfilled" ? googlePlaces.value : []),
   ];
   const unique = Array.from(new Map(sources.filter((item) => !blockedSource(item.url) && !noiseListing(`${item.title} ${item.content}`)).map((item) => [item.url, item])).values());
   const providers = [
     tavily.status === "fulfilled" && tavily.value.length ? "TAVILY" : "",
     gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
+    googlePlaces.status === "fulfilled" && googlePlaces.value.length ? "GOOGLE_PLACES" : "",
   ].filter(Boolean);
   const providerHealth = [
     { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" as const : tavily.status === "rejected" ? "ERROR" as const : tavily.value.length ? "OK" as const : "EMPTY" as const, count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
     { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
+    { name: "Google Places", status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" as const : googlePlaces.status === "rejected" ? "ERROR" as const : googlePlaces.value.length ? "OK" as const : "EMPTY" as const, count: googlePlaces.status === "fulfilled" ? googlePlaces.value.length : 0, code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined },
   ];
   if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 100), providerHealth };
   const fallback = await searchOpenStreetMap(query, location);
