@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-19 17:35 | Codex | mang-luoi-san-xuat | Giả lập production và gỡ nghẽn tìm kiếm: chạy đủ 10 truy vấn Tavily, chuẩn hóa tối đa 96 nguồn theo 3 lô DeepSeek song song, buộc bằng chứng năng lực đặc trưng và loại tên nền tảng | codex/expand-company-search-recall | 🟢 DONE |
 | 2026-08-19 17:10 | Codex | mang-luoi-san-xuat | Rà soát tìm công ty: chuẩn hóa số Việt Nam, loại MST/số ngắn khỏi điện thoại, chỉ nhận số có ngữ cảnh liên hệ, thu gọn cảnh báo xung đột và lọc tên bài viết chung chung | codex/audit-company-search-phone-conflicts | 🟢 DONE |
 | 2026-08-19 14:10 | Codex | mang-luoi-san-xuat | Xếp hạng nguồn làm giàu theo độ uy tín và độ đầy đủ; trích xuất bằng chứng độc lập từng nguồn, chọn giá trị tốt nhất theo từng trường và chống ghép chéo thông tin công ty | codex/improve-company-source-enrichment | 🟢 DONE |
 | 2026-08-19 12:30 | Codex | mang-luoi-san-xuat | Q6: kiểm thử hồi quy Q1-Q5; xác nhận test dữ liệu, TypeScript strict và build production 128/128 trang đạt, gồm trang Công ty đã lưu và hồ sơ công ty | codex/q6-regression-verification | 🟢 DONE |
