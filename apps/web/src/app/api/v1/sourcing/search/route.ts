@@ -699,6 +699,10 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
     const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string }> };
     return (data.results ?? []).map((item) => ({ title: item.title ?? "", url: item.url ?? "", content: item.content ?? "" })).filter((item) => item.url);
   }));
+  if (batches.length && batches.every((batch) => batch.status === "rejected")) {
+    const firstFailure = batches.find((batch): batch is PromiseRejectedResult => batch.status === "rejected");
+    throw firstFailure?.reason instanceof Error ? firstFailure.reason : new Error("Tavily request failed");
+  }
   return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
 }
 
@@ -806,14 +810,46 @@ function geminiApiKeys(): string[] {
   ].filter(Boolean)));
 }
 
+const geminiModelCache = new Map<string, { expiresAt: number; models: string[] }>();
+
+async function supportedGeminiModels(key: string): Promise<string[]> {
+  const cached = geminiModelCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.models;
+  try {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100", {
+      headers: { "x-goog-api-key": key },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return [];
+    const data = await response.json() as { models?: Array<{ name?: string; supportedGenerationMethods?: string[] }> };
+    const models = (data.models ?? [])
+      .filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
+      .map((model) => model.name?.replace(/^models\//, "").trim() ?? "")
+      .filter((model) => /^gemini-/i.test(model));
+    geminiModelCache.set(key, { expiresAt: Date.now() + 60 * 60 * 1000, models });
+    return models;
+  } catch {
+    return [];
+  }
+}
+
+function orderedGeminiModels(available: string[]): string[] {
+  const configured = (process.env.GEMINI_SEARCH_MODEL ?? "").trim().replace(/^models\//, "");
+  const preferred = [configured, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
+    .filter(Boolean);
+  const discovered = available
+    .filter((model) => /flash/i.test(model) && !/(image|tts|live|preview)/i.test(model))
+    .sort((left, right) => Number(/2\.5/.test(right)) - Number(/2\.5/.test(left)) || left.localeCompare(right));
+  const candidates = Array.from(new Set([...preferred, ...discovered]));
+  return available.length ? candidates.filter((model) => available.includes(model)).slice(0, 5) : candidates.slice(0, 4);
+}
+
 async function searchGemini(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
   const keys = geminiApiKeys();
   if (!keys.length) return [];
-  const primaryModel = process.env.GEMINI_SEARCH_MODEL || "gemini-2.5-flash";
-  const fallbackModel = "gemini-2.5-flash-lite";
-  const models = Array.from(new Set([primaryModel.trim(), fallbackModel].filter(Boolean)));
   let lastError: unknown = null;
   for (const key of keys) {
+    const models = orderedGeminiModels(await supportedGeminiModels(key));
     for (const [index, model] of models.entries()) {
       try {
         const results = await requestGeminiSearch(key, model, query, location, queries, index === 0 ? 18_000 : 14_000);

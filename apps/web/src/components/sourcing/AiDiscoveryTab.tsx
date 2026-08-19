@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BadgeCheck, Bookmark, BookmarkCheck, Building2, Calculator, Check, CheckCircle2, CheckSquare, ExternalLink, Eye, Globe2, Hash, Mail, Map, MapPin, Navigation, Phone, RefreshCw, Search, Sparkles, Square, X } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ interface ResolvedSearchCenter {
 interface SearchCache {
   query: string;
   location: string;
+  locationType?: "DISTRICT" | "GPS";
   role: ProductionPartnerRole;
   radiusKm: number;
   locationMode: "PREFER" | "STRICT";
@@ -140,6 +141,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [manualKeyword, setManualKeyword] = useState("");
   const [locationType, setLocationType] = useState<"DISTRICT" | "GPS">("DISTRICT");
   const [location, setLocation] = useState("");
+  const lastDistrictLocation = useRef("");
+  const gpsRequestId = useRef(0);
   const [items, setItems] = useState<DiscoveryCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [directResults, setDirectResults] = useState<DirectSearchCandidate[]>([]);
@@ -171,11 +174,13 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         const cached=JSON.parse(raw) as Partial<SearchCache>;
         if(typeof cached.query==="string")setQuery(cached.query);
         if(typeof cached.location==="string"){
+          const restoredType=cached.locationType==="GPS"||cached.location==="Vị trí hiện tại (GPS)"?"GPS":"DISTRICT";
+          setLocationType(restoredType);
           setLocation(cached.location);
-          if (cached.location === "Vị trí hiện tại (GPS)" || cached.center) setLocationType("GPS");
+          if(restoredType==="DISTRICT")lastDistrictLocation.current=cached.location;
         }
         if(typeof cached.radiusKm==="number")setRadiusKm(cached.radiusKm);
-        if(cached.center)setCenter(cached.center);
+        if(cached.center&&(cached.locationType==="GPS"||cached.location==="Vị trí hiện tại (GPS)"))setCenter(cached.center);
         if(Array.isArray(cached.directResults))setDirectResults(cached.directResults);
         if(typeof cached.directProvider==="string")setDirectProvider(cached.directProvider);
         if(cached.resolvedCenter)setResolvedCenter(cached.resolvedCenter);
@@ -187,9 +192,9 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   },[]);
   useEffect(()=>{
     if(!cacheReady)return;
-    const cached:SearchCache={query,location,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics};
+    const cached:SearchCache={query,location,locationType,role,radiusKm,locationMode,center:locationType==="GPS"?center:null,directResults,directProvider,resolvedCenter,learningSummary,diagnostics};
     try{sessionStorage.setItem(SEARCH_CACHE_KEY,JSON.stringify(cached))}catch{/* Trình duyệt có thể chặn hoặc hết dung lượng sessionStorage. */}
-  },[cacheReady,query,location,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics]);
+  },[cacheReady,query,location,locationType,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.data?.type !== "MIMIN_AI_IMPORT") return;
@@ -207,11 +212,12 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const search = async (silent = false): Promise<DirectSearchCandidate[]|null> => {
     const combinedQuery = [query, manualKeyword].filter(Boolean).join(", ");
     if (!combinedQuery.trim() || !location.trim()) { toast.error("Nhập nội dung và khu vực cần tìm"); return null; }
+    if(locationType==="GPS"&&!center){toast.error("Đang chờ lấy tọa độ GPS. Anh thử lại sau vài giây.");return null;}
     setLoading(true);
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
-      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:combinedQuery.trim(),location:location.trim(),role,center,radiusKm,locationMode}) });
+      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:combinedQuery.trim(),location:location.trim(),role,center:locationType==="GPS"?center:null,radiusKm,locationMode}) });
       const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:SearchDiagnostics;candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       const candidates = data.candidates??[];
@@ -222,7 +228,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); return null; }
     finally { setLoading(false); }
   };
-  const useCurrentLocation=()=>{if(!navigator.geolocation)return toast.error("Thiết bị không hỗ trợ định vị");setLocationType("GPS");setLocation("Vị trí hiện tại (GPS)");navigator.geolocation.getCurrentPosition(position=>{setCenter({latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy});toast.success(`Đã lấy vị trí GPS · sai số khoảng ${Math.round(position.coords.accuracy)} m`)},()=>toast.error("Không lấy được vị trí. Hãy cấp quyền định vị cho trình duyệt."),{enableHighAccuracy:true,timeout:10000,maximumAge:60000})};
+  const cancelCurrentLocation=()=>{gpsRequestId.current+=1;setLocationType("DISTRICT");setCenter(null);setResolvedCenter(null);setLocation(lastDistrictLocation.current)};
+  const useCurrentLocation=()=>{if(!navigator.geolocation)return toast.error("Thiết bị không hỗ trợ định vị");const requestId=gpsRequestId.current+1;gpsRequestId.current=requestId;if(locationType==="DISTRICT"&&location)lastDistrictLocation.current=location;setLocationType("GPS");setCenter(null);setLocation("Vị trí hiện tại (GPS)");navigator.geolocation.getCurrentPosition(position=>{if(gpsRequestId.current!==requestId)return;setCenter({latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy});toast.success(`Đã lấy vị trí GPS · sai số khoảng ${Math.round(position.coords.accuracy)} m`)},()=>{if(gpsRequestId.current!==requestId)return;cancelCurrentLocation();toast.error("Không lấy được vị trí. Hãy cấp quyền định vị cho trình duyệt.")},{enableHighAccuracy:true,timeout:10000,maximumAge:60000})};
   const review = async (id: string, status: "APPROVED" | "REJECTED") => {
     try { if (status === "APPROVED") await approveDiscoveryCandidate(id); else await setDiscoveryStatus(id, status); await refresh(); toast.success(status === "APPROVED" ? "Đã duyệt vào danh mục đối tác" : "Đã loại ứng viên"); }
     catch { toast.error("Không cập nhật được trạng thái"); }
@@ -294,11 +301,11 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           {locationType === "GPS" ? (
             <div className="flex items-center justify-between input mt-1 bg-slate-50 border-emerald-200">
               <span className="text-emerald-700 font-medium flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> Đang dùng tọa độ GPS</span>
-              <button onClick={() => {setLocationType("DISTRICT"); setCenter(null); setLocation("");}} className="text-rose-500 hover:text-rose-700" title="Hủy định vị"><X className="w-4 h-4"/></button>
+              <button onClick={cancelCurrentLocation} className="text-rose-500 hover:text-rose-700" title="Hủy định vị"><X className="w-4 h-4"/></button>
             </div>
           ) : (
             <div className="space-y-1">
-              <select className="input mt-1" value={location} onChange={(e) => {setLocation(e.target.value); setCenter(null);}}>
+              <select className="input mt-1" value={location} onChange={(e) => {lastDistrictLocation.current=e.target.value;setLocation(e.target.value);setCenter(null);setResolvedCenter(null);}}>
                 <option value="">Chọn Quận/Huyện tại TP.HCM...</option>
                 {HCM_DISTRICTS.map(d => <option key={d} value={`${d}, TP.HCM`}>{d}</option>)}
               </select>
@@ -309,7 +316,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label>
         <label className="text-xs font-medium">Chế độ<div className="input mt-1 flex items-center">Ưu tiên gần · mở rộng nếu thiếu</div></label>
         <div className="flex flex-col gap-1 justify-end">
-          <button type="button" className={`btn-secondary inline-flex justify-center items-center gap-2 ${locationType === "GPS" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`} onClick={locationType === "GPS" ? () => {setLocationType("DISTRICT"); setCenter(null); setLocation("");} : useCurrentLocation}>
+          <button type="button" className={`btn-secondary inline-flex justify-center items-center gap-2 ${locationType === "GPS" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`} onClick={locationType === "GPS" ? cancelCurrentLocation : useCurrentLocation}>
             <Navigation className="w-4 h-4"/>{locationType === "GPS" ? "Đang dùng GPS • Hủy" : "Vị trí hiện tại"}
           </button>
           {center && <p className="text-[10px] text-emerald-700 text-center">số {Math.round(center.accuracy??0)} m</p>}
