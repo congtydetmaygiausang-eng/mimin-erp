@@ -1,0 +1,3 @@
+# JT2 extraction engine. Pin exact version for reproducible company evidence.
+trafilatura==2.2.0
+
