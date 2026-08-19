@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { extractVietnamPhones } from "@/lib/vietnam-phone";
 import { PRODUCTION_ORGANIZATION_ID, type ProductionPartnerRole } from "@/lib/production-network";
 
 export type DiscoveryStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -162,13 +163,13 @@ export type DirectCandidateEvidenceField="LEGAL_NAME"|"TRADE_NAME"|"SHORT_NAME"|
 export interface DirectCandidateFieldEvidence {fieldName:DirectCandidateEvidenceField;fieldValue:string;sourceUrl:string;sourceExcerpt:string;confidence:number}
 export interface DirectCandidateEntityResolution {canonicalKey:string;matchedBy:string[];mergedRecords:number;conflicts:string[]}
 export interface DirectCandidateFieldConfidence {fieldName:DirectCandidateEvidenceField;selectedValue:string;score:number;independentSources:number;status:"UNVERIFIED"|"PARTIAL"|"VERIFIED"|"CONFLICT";alternatives:string[]}
-export interface DirectCandidateProfileQuality {score:number;completeness:number;evidenceCoverage:number;conflictCount:number;grade:"STRONG"|"REVIEW"|"WEAK"|"CONFLICT"}
+export interface DirectCandidateProfileQuality {score:number;completeness:number;evidenceCoverage:number;conflictCount:number;conflictFields?:DirectCandidateEvidenceField[];grade:"STRONG"|"REVIEW"|"WEAK"|"CONFLICT"}
 export interface DirectSearchCandidate { legalName:string;tradeName?:string;shortName?:string;address:string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string;legacyAddress?:string;addressStandard?:"HCM_POST_MERGER_2025";province:string;district:string;phone:string;phones?:string[];zaloPhone?:string;email?:string;taxCode?:string;website:string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:DirectCandidateFieldEvidence[];fieldConfidence?:DirectCandidateFieldConfidence[];profileQuality?:DirectCandidateProfileQuality;entityResolution?:DirectCandidateEntityResolution;latitude:number|null;longitude:number|null;capabilities:string[];sourceUrl:string;sourceTitle:string;confidence:number;sourceCount?:number;sources?:DirectCandidateSource[];matchReasons?:string[];distanceKm?:number|null;locationStatus?:"INSIDE"|"OUTSIDE"|"UNKNOWN"|"CONFLICT";locationReason?:string;distanceEvidence?:SearchDistanceEvidence;verifiedFields?:string[];verificationStatus?:"VERIFIED"|"PARTIAL"|"UNVERIFIED";lastVerifiedAt?:string;coordinateSource?:"MANUAL"|"SOURCE"|"WEBSITE"|"NOMINATIM";coordinateConfidence?:"HIGH"|"MEDIUM"|"LOW";geocodedAddress?:string;geocodedAt?:string;geocodeStatus?:"VERIFIED"|"REJECTED"|"NOT_ATTEMPTED";coordinateBoundingBox?:[number,number,number,number];coordinateConflictReason?:string;geocodeCacheStatus?:"MEMORY"|"PERSISTENT"|"PROVIDER"|"STALE_FALLBACK" }
 
 function normalizedIdentity(value:string):string{return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()}
 function identityKeys(item:Pick<DirectSearchCandidate,"legalName"|"address"|"phone"|"website"|"sourceUrl">&{taxCode?:string}):string[]{return[
   item.taxCode?`tax:${item.taxCode.replace(/\D/g,"")}`:"",
-  item.phone?`phone:${item.phone.replace(/\D/g,"")}`:"",
+  extractVietnamPhones(item.phone,1)[0]?`phone:${extractVietnamPhones(item.phone,1)[0]}`:"",
   item.website?`web:${normalizedIdentity(item.website.replace(/^https?:\/\//i,"").replace(/^www\./i,""))}`:"",
   item.legalName&&item.address?`name:${normalizedIdentity(item.legalName)}|${normalizedIdentity(item.address)}`:"",
   item.sourceUrl&&item.legalName?`source:${normalizedIdentity(item.sourceUrl)}|${normalizedIdentity(item.legalName)}`:"",

@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { PRODUCTION_ORGANIZATION_ID, type ProductionPartnerRole } from "@/lib/production-network";
 import type { DirectSearchCandidate } from "@/lib/production-discovery";
+import { extractVietnamPhones, normalizeVietnamPhone } from "@/lib/vietnam-phone";
 
 export type CompanyProfileStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
 export type CompanyVerificationStatus = "DISCOVERED" | "REVIEWED" | "VERIFIED";
@@ -224,7 +225,8 @@ export async function ensureCompanyProfileFromSearch(
   if (!supabase) throw new Error("Chưa kết nối Supabase");
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error("Phiên đăng nhập đã hết hạn");
-  const identityKey = await fingerprint([candidate.taxCode, candidate.legalName, candidate.address, candidate.phone].filter(Boolean).join("|"));
+  const verifiedPhones=Array.from(new Set([...(candidate.phones??[]).map(normalizeVietnamPhone),...extractVietnamPhones(candidate.phone)].filter(Boolean))).slice(0,5);
+  const identityKey = await fingerprint([candidate.taxCode, candidate.legalName, candidate.address, verifiedPhones[0]].filter(Boolean).join("|"));
   const sourceUrl = safeHttpsUrl(candidate.sourceUrl);
   const profileValues = {
     organization_id: PRODUCTION_ORGANIZATION_ID,
@@ -234,15 +236,15 @@ export async function ensureCompanyProfileFromSearch(
     trade_name: candidate.tradeName?.trim() || null,
     short_name: candidate.shortName?.trim() || null,
     tax_code: candidate.taxCode?.trim() || null,
-    phone: candidate.phone.trim() || null,
+    phone: verifiedPhones[0] || null,
     email: candidate.email?.trim() || null,
     website: candidate.website.trim() || null,
     address: candidate.address.trim() || null,
     registered_address: candidate.registeredAddress?.trim() || candidate.address.trim() || null,
     factory_address: candidate.factoryAddress?.trim() || null,
     office_address: candidate.officeAddress?.trim() || null,
-    phones: candidate.phones?.map((value) => value.trim()).filter(Boolean) ?? (candidate.phone.trim() ? [candidate.phone.trim()] : []),
-    zalo_phone: candidate.zaloPhone?.trim() || null,
+    phones: verifiedPhones,
+    zalo_phone: normalizeVietnamPhone(candidate.zaloPhone??"") || null,
     facebook_url: safeHttpsUrl(candidate.facebookUrl ?? "") || null,
     legal_representative: candidate.legalRepresentative?.trim() || null,
     business_lines: candidate.businessLines?.map((value) => value.trim()).filter(Boolean) ?? [],
