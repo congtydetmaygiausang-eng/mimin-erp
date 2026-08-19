@@ -20,7 +20,15 @@ const HCM_DISTRICTS = [
   "Huyện Hóc Môn", "Huyện Củ Chi", "Huyện Nhà Bè", "Huyện Bình Chánh", "Huyện Cần Giờ"
 ];
 
-const SEARCH_CACHE_KEY = "mimin:sourcing-search:v1";
+const SEARCH_CACHE_KEY = "mimin:sourcing-search:v2";
+
+interface SearchCriteriaSnapshot {
+  query: string;
+  location: string;
+  role: ProductionPartnerRole;
+  radiusKm: number;
+  searchedAt: string;
+}
 
 interface ResolvedSearchCenter {
   label: string;
@@ -45,6 +53,7 @@ interface SearchCache {
   resolvedCenter: ResolvedSearchCenter|null;
   learningSummary: {approvedCount:number;rejectedCount:number;applied:boolean}|null;
   diagnostics: SearchDiagnostics|null;
+  resultCriteria: SearchCriteriaSnapshot|null;
 }
 
 interface SearchDiagnostics { collectedSources:number;normalizedCandidates:number;finalCandidates:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;locationBreakdown?:{inside:number;outside:number;unknown:number;conflict:number};strictExcluded?:number;strictLocationFallback?:boolean;enrichmentSources?:number;enrichedCandidates?:number;rejectedNoiseCandidates?:number;qualityGate?:{strong:number;review:number;weak:number;conflicts:number;averageScore:number};geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number;persistentHits?:number;staleFallbacks?:number;providerRequests?:number};locationQuality?:{runId:string;algorithmVersion:string;grade:"HIGH"|"MEDIUM"|"LOW";coordinateCoveragePercent:number;staleFallbackUsed:boolean;warnings:string[];evaluatedAt:string};providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}> }
@@ -166,6 +175,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [resolvedCenter, setResolvedCenter] = useState<ResolvedSearchCenter|null>(null);
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [diagnostics, setDiagnostics] = useState<SearchDiagnostics|null>(null);
+  const [resultCriteria, setResultCriteria] = useState<SearchCriteriaSnapshot|null>(null);
   const [aiText, setAiText] = useState("");
   const [aiProvider, setAiProvider] = useState("AI_IMPORT");
   const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
@@ -195,15 +205,16 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         if(cached.resolvedCenter)setResolvedCenter(cached.resolvedCenter);
         if(cached.learningSummary)setLearningSummary(cached.learningSummary);
         if(cached.diagnostics)setDiagnostics(cached.diagnostics);
+        if(cached.resultCriteria)setResultCriteria(cached.resultCriteria);
       }
     }catch{sessionStorage.removeItem(SEARCH_CACHE_KEY)}
     finally{setCacheReady(true)}
   },[]);
   useEffect(()=>{
     if(!cacheReady)return;
-    const cached:SearchCache={query,location,locationType,role,radiusKm,locationMode,center:locationType==="GPS"?center:null,directResults,directProvider,resolvedCenter,learningSummary,diagnostics};
+    const cached:SearchCache={query,location,locationType,role,radiusKm,locationMode,center:locationType==="GPS"?center:null,directResults,directProvider,resolvedCenter,learningSummary,diagnostics,resultCriteria};
     try{sessionStorage.setItem(SEARCH_CACHE_KEY,JSON.stringify(cached))}catch{/* Trình duyệt có thể chặn hoặc hết dung lượng sessionStorage. */}
-  },[cacheReady,query,location,locationType,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics]);
+  },[cacheReady,query,location,locationType,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics,resultCriteria]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.data?.type !== "MIMIN_AI_IMPORT") return;
@@ -231,6 +242,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       const candidates = data.candidates??[];
       setDirectResults(candidates); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(data.diagnostics??null);
+      setResultCriteria({query:combinedQuery.trim(),location:location.trim(),role,radiusKm,searchedAt:new Date().toISOString()});
       if (!silent) toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${candidates.length} kết quả`);
       return candidates;
     }
@@ -281,14 +293,18 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     }
     finally { setVerifyingLocation(""); }
   };
+  const currentCombinedQuery = [query, manualKeyword].filter(Boolean).join(", ").trim();
+  const resultRadiusKm = resultCriteria?.radiusKm ?? radiusKm;
+  const resultsAreStale = Boolean(directResults.length && (!resultCriteria || resultCriteria.query !== currentCombinedQuery || resultCriteria.location !== location.trim() || resultCriteria.role !== role || resultCriteria.radiusKm !== radiusKm));
   const directResultSections = [
-    { status: "INSIDE", title: `Trong bán kính ${radiusKm} km`, description: "Đã xác minh tọa độ · xếp từ gần đến xa" },
+    { status: "INSIDE", title: `Trong bán kính ${resultRadiusKm} km`, description: "Đã xác minh tọa độ · xếp từ gần đến xa" },
     { status: "OUTSIDE", title: "Gợi ý mở rộng ngoài bán kính", description: "Chỉ hiển thị trong chế độ Ưu tiên gần" },
     { status: "UNKNOWN", title: "Chưa xác minh tọa độ", description: "Không được coi là nằm trong bán kính" },
     { status: "CONFLICT", title: "Cần kiểm tra mâu thuẫn vị trí", description: "Không dùng để tính khoảng cách" },
   ].map((section) => ({ ...section, items: directResults.filter((item) => item.locationStatus === section.status || (section.status === "UNKNOWN" && !item.locationStatus)) })).filter((section) => section.items.length);
 
   return <div className="space-y-5 animate-fade-in">
+    {resultsAreStale&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"><b>Đây là kết quả của lần tìm trước.</b> Anh đã thay đổi năng lực, khu vực hoặc bán kính; hãy bấm <b>Tìm tự động</b> để chạy lại. Kết quả cũ không được gắn nhãn theo bộ lọc mới.</div>}
     {learningSummary&&<div className="text-xs px-1 opacity-70">{learningSummary.applied?`AI đang học từ ${learningSummary.approvedCount} kết quả đã duyệt và ${learningSummary.rejectedCount} kết quả đã loại.`:`Cần ít nhất 3 quyết định duyệt/loại để AI bắt đầu học. Hiện có ${learningSummary.approvedCount+learningSummary.rejectedCount}.`}</div>}
     {diagnostics?.locationQuality&&<div className={`rounded-lg border px-3 py-2 text-xs ${diagnostics.locationQuality.grade==="HIGH"?"border-emerald-300 bg-emerald-50 text-emerald-900":diagnostics.locationQuality.grade==="MEDIUM"?"border-amber-300 bg-amber-50 text-amber-900":"border-red-300 bg-red-50 text-red-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><b>Chất lượng định vị: {diagnostics.locationQuality.grade==="HIGH"?"Cao":diagnostics.locationQuality.grade==="MEDIUM"?"Trung bình":"Thấp"} · phủ tọa độ {diagnostics.locationQuality.coordinateCoveragePercent}%</b><span className="font-mono text-[10px]">Mã lượt: {diagnostics.locationQuality.runId.slice(0,8)} · {diagnostics.locationQuality.algorithmVersion}</span></div>{diagnostics.locationQuality.warnings.length>0&&<ul className="mt-1 list-disc pl-4">{diagnostics.locationQuality.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul>}</div>}
     {diagnostics&&<div className="card p-4 space-y-3"><div className="flex flex-wrap gap-2">{diagnostics.providers.map(item=><span key={item.name} className="text-xs rounded-full border px-3 py-1" style={{borderColor:"var(--border)"}}>{item.name}: {item.status==="OK"?`${item.count} nguồn`:item.status==="EMPTY"?"không có kết quả":item.status==="DISABLED"?"chưa cấu hình":`tạm lỗi${item.code?` (${item.code})`:""}`}</span>)}{typeof diagnostics.enrichmentSources==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Làm giàu: {diagnostics.enrichmentSources} nguồn · bổ sung {diagnostics.enrichedCandidates??0} hồ sơ</span>}{Boolean(diagnostics.rejectedNoiseCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-amber-300 text-amber-700">Đã loại {diagnostics.rejectedNoiseCandidates} kết quả rao vặt/không đủ hồ sơ công ty</span>}{diagnostics.geocoding&&<span className="text-xs rounded-full border px-3 py-1 border-sky-300 text-sky-700">Định vị: xác minh {diagnostics.geocoding.verified+diagnostics.geocoding.retainedFromSource}/{diagnostics.geocoding.attempted+diagnostics.geocoding.retainedFromSource} hồ sơ</span>}</div>{diagnostics.qualityGate&&<div className="rounded-lg border bg-brand-500/5 p-3 text-xs" style={{borderColor:"var(--border)"}}><div className="flex flex-wrap items-center justify-between gap-2"><b className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-brand-700"/>Cổng chất lượng hồ sơ · trung bình {diagnostics.qualityGate.averageScore}/100</b><div className="flex flex-wrap gap-2"><span className="text-emerald-700">Mạnh {diagnostics.qualityGate.strong}</span><span className="text-amber-700">Cần duyệt {diagnostics.qualityGate.review}</span><span className="text-slate-600">Yếu {diagnostics.qualityGate.weak}</span><span className="text-red-700">Xung đột {diagnostics.qualityGate.conflicts}</span></div></div></div>}{diagnostics.strictLocationFallback&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Chưa có hồ sơ nào đủ tọa độ để xác nhận trong {radiusKm} km. Hệ thống đang hiển thị hồ sơ chưa có tọa độ để anh kiểm tra; các hồ sơ này không được tính là nằm trong bán kính.</div>}<div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center"><div><b>{diagnostics.collectedSources}</b><p className="text-[11px] opacity-60">Nguồn thu thập</p></div><div><b>{diagnostics.finalCandidates}</b><p className="text-[11px] opacity-60">Hồ sơ sau gộp</p></div><div><b>{diagnostics.verified}</b><p className="text-[11px] opacity-60">Đối chiếu nhiều nguồn</p></div><div><b>{diagnostics.partial}</b><p className="text-[11px] opacity-60">Đối chiếu một phần</p></div><div><b>{diagnostics.insideRadius}</b><p className="text-[11px] opacity-60">Trong bán kính</p></div><div><b>{diagnostics.unknownCoordinates}</b><p className="text-[11px] opacity-60">Thiếu tọa độ</p></div></div></div>}
