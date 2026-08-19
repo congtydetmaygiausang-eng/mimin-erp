@@ -253,7 +253,7 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
 
   const queryTokens = tokenSet(query);
   const locationTokens = tokenSet(location);
-  const ranked = clusters.map((item) => {
+  const ranked = clusters.map(applySelectedEvidence).map((item) => {
     const searchable = tokenSet(`${item.legalName} ${item.address} ${item.capabilities.join(" ")}`);
     const relevance = Math.round(overlapRatio(queryTokens, searchable) * 35);
     const addressConsistency = coordinateAddressConsistency(item);
@@ -783,48 +783,79 @@ function firstVietnamPhone(value: string): string {
   }) ?? "";
 }
 
+function sourceInformationScore(source: SourceResult, candidate: Candidate): number {
+  const content = `${source.title} ${source.content} ${source.rawContent ?? ""}`;
+  const sourceDomain = domainOf(source.url), officialDomain = domainOf(candidate.website);
+  const type = source.sourceType ?? classifySource(source.url, source.title, source.content);
+  const identityMatch = Math.max(overlapRatio(tokenSet(candidate.legalName), tokenSet(content)), candidate.taxCode && digits(content).includes(digits(candidate.taxCode)) ? 1 : 0);
+  const fields = [firstVietnamPhone(content), content.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] ?? "", content.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] ?? "", content.match(/(?:địa chỉ(?: thuế)?|trụ sở(?: chính)?|văn phòng|xưởng(?: \d+)?)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1] ?? ""].filter(Boolean).length;
+  const authority = officialDomain && sourceDomain === officialDomain ? 90 : sourceAuthority(type);
+  const directoryPenalty = DIRECTORY_DOMAINS.some((domain) => sourceDomain === domain || sourceDomain.endsWith(`.${domain}`)) ? 8 : 0;
+  return Math.round(authority + identityMatch * 25 + fields * 6 - directoryPenalty);
+}
+
+function evidenceFromContactSource(candidate: Candidate, source: SourceResult): CandidateFieldEvidence[] {
+  const body = `${source.title}\n${source.content}\n${source.rawContent ?? ""}`;
+  const identityMatch = overlapRatio(tokenSet(candidate.legalName), tokenSet(body));
+  const taxMatch = Boolean(candidate.taxCode && digits(body).includes(digits(candidate.taxCode)));
+  if (identityMatch < 0.55 && !taxMatch) return [];
+  const sourceUrl = canonicalSourceUrl(source.url), type = source.sourceType ?? classifySource(source.url, source.title, source.content);
+  const isOfficialDomain = Boolean(domainOf(candidate.website) && domainOf(candidate.website) === domainOf(source.url));
+  const confidence = Math.min(92, Math.round((isOfficialDomain ? 82 : sourceAuthority(type)) + Math.max(identityMatch, taxMatch ? 1 : 0) * 18));
+  const excerpt = (value: string) => { const index = body.toLowerCase().indexOf(value.toLowerCase()); return (index >= 0 ? body.slice(Math.max(0, index - 90), index + value.length + 130) : body.slice(0, 350)).trim(); };
+  const result: CandidateFieldEvidence[] = [];
+  const add = (fieldName: FieldEvidenceName, fieldValue: string) => { const value = fieldValue.trim(); if (value) result.push({ fieldName, fieldValue: value, sourceUrl, sourceExcerpt: excerpt(value), confidence }); };
+  Array.from(new Set((body.match(/(?:\+?84|0)(?:[\s().-]*\d){8,10}/g) ?? []).map((value) => value.trim()).filter((value) => { const length = digits(value).length; return length >= 9 && length <= 12; }))).slice(0, 5).forEach((value) => add("PHONE", value));
+  add("EMAIL", body.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() ?? "");
+  add("TAX_CODE", body.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] ?? "");
+  add("REGISTERED_ADDRESS", postalAddress(body.match(/(?:địa chỉ thuế|trụ sở(?: chính)?|địa chỉ đăng ký)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1] ?? ""));
+  if (!result.some((entry) => entry.fieldName === "REGISTERED_ADDRESS")) add("OFFICE_ADDRESS", postalAddress(body.match(/(?:địa chỉ|văn phòng|xưởng(?: \d+)?)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1] ?? ""));
+  const sourceDomain = domainOf(source.url), candidateDomain = domainOf(candidate.website);
+  const explicitWebsite = body.match(/(?:website|web|trang web)\s*[:#-]?\s*((?:https?:\/\/|www\.)[^\s,;<>]+)/i)?.[1]?.replace(/[.)\]]+$/, "") ?? "";
+  if (explicitWebsite) add("WEBSITE", explicitWebsite);
+  else if (sourceDomain && !DIRECTORY_DOMAINS.some((domain) => sourceDomain === domain || sourceDomain.endsWith(`.${domain}`)) && (!candidateDomain || sourceDomain === candidateDomain)) add("WEBSITE", `https://${sourceDomain}`);
+  const introduction = source.content.replace(/\s+/g, " ").trim().slice(0, 600);
+  if ((type === "OFFICIAL" || isOfficialDomain) && introduction.length >= 80) add("COMPANY_INTRODUCTION", introduction);
+  return result;
+}
+
 function extractContactEvidence(candidate: Candidate, sources: SourceResult[]): Candidate {
   const relevant = sources.filter((source) => {
     const haystack = tokenSet(`${source.title} ${source.content} ${source.rawContent ?? ""}`);
     return overlapRatio(tokenSet(candidate.legalName), haystack) >= 0.55 || (candidate.taxCode && digits(`${source.content} ${source.rawContent ?? ""}`).includes(digits(candidate.taxCode)));
-  });
+  }).sort((left, right) => sourceInformationScore(right, candidate) - sourceInformationScore(left, candidate));
   if (!relevant.length) return candidate;
-  const evidence = relevant.map((source) => `${source.title}\n${source.content}\n${source.rawContent ?? ""}\n${source.url}`).join("\n").slice(0, 60_000);
-  const email = candidate.email || evidence.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() || "";
-  const phone = candidate.phone || firstVietnamPhone(evidence);
-  const taxCode = candidate.taxCode || evidence.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] || "";
-  const explicitWebsite = evidence.match(/(?:website|web|trang web)\s*[:#-]?\s*((?:https?:\/\/|www\.)[^\s,;<>]+)/i)?.[1]?.replace(/[.)\]]+$/, "") || "";
-  const officialSource = relevant.find((source) => {
-    const domain = domainOf(source.url);
-    return domain && !DIRECTORY_DOMAINS.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
-  });
-  const website = candidate.website || explicitWebsite || officialSource?.url || "";
-  const extractedAddress = evidence.match(/(?:địa chỉ(?: thuế)?|trụ sở(?: chính)?|văn phòng|xưởng(?: \d+)?)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1]?.trim() || "";
-  const address = postalAddress(candidate.address) || postalAddress(extractedAddress);
-  const newlyVerified = [phone ? "phone" : "", email ? "email" : "", taxCode ? "taxCode" : "", website ? "website" : "", address ? "address" : ""].filter(Boolean);
-  const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), ...newlyVerified]));
+  const extractedEvidence = relevant.flatMap((source) => evidenceFromContactSource(candidate, source));
+  const fieldEvidence = Array.from(new Map([...(candidate.fieldEvidence ?? []), ...extractedEvidence].map((entry) => [`${entry.fieldName}|${evidenceText(entry.fieldValue)}|${entry.sourceUrl}`, entry])).values()).slice(0, 120);
   const sourceLinks = Array.from(new Map([
     ...(candidate.sources ?? [candidateSource({ url:candidate.sourceUrl,title:candidate.sourceTitle,content:"",provider:"WEB" })]),
     ...relevant.map(candidateSource),
-  ].map((source) => [source.url, source])).values()).slice(0, 8);
-  return { ...candidate, address, phone, email, taxCode, website, sources: sourceLinks, verifiedFields, confidence: Math.min(100, candidate.confidence + Math.min(10, newlyVerified.length * 2)), lastVerifiedAt: new Date().toISOString() };
+  ].map((source) => [source.url, source])).values()).sort((left, right) => {
+    const leftRaw = relevant.find((source) => canonicalSourceUrl(source.url) === left.url), rightRaw = relevant.find((source) => canonicalSourceUrl(source.url) === right.url);
+    return (rightRaw ? sourceInformationScore(rightRaw, candidate) : 0) - (leftRaw ? sourceInformationScore(leftRaw, candidate) : 0);
+  }).slice(0, 12);
+  const enriched = applySelectedEvidence({ ...candidate, fieldEvidence, sources: sourceLinks });
+  const fieldNames = new Set(fieldEvidence.map((entry) => entry.fieldName));
+  const newlyVerified = [["phone", "PHONE"], ["email", "EMAIL"], ["taxCode", "TAX_CODE"], ["website", "WEBSITE"], ["address", fieldNames.has("REGISTERED_ADDRESS") ? "REGISTERED_ADDRESS" : "OFFICE_ADDRESS"]] as const;
+  const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), ...newlyVerified.filter(([, field]) => fieldNames.has(field)).map(([name]) => name)]));
+  return { ...enriched, verifiedFields, confidence: Math.min(100, candidate.confidence + Math.min(12, extractedEvidence.length * 2)), lastVerifiedAt: new Date().toISOString() };
 }
 
 async function enrichCandidatesWithContacts(candidates: Candidate[], location: string): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
   const key = process.env.TAVILY_API_KEY;
   if (!key) return { candidates, sourceCount: 0, enrichedCount: 0 };
-  const targets = candidates.filter((item) => !item.phone || !item.email || !item.website || !item.taxCode || !item.address).slice(0, 10);
+  const targets = candidates.filter((item) => !item.phone || !item.email || !item.website || !item.taxCode || !item.address || !item.companyIntroduction).slice(0, 15);
   const batches = await Promise.allSettled(targets.map(async (candidate) => {
     const identity = [candidate.legalName, candidate.taxCode, candidate.district || candidate.province || location].filter(Boolean).join(" ");
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: key, query: `\"${identity}\" điện thoại email website mã số thuế địa chỉ`, search_depth: "advanced", max_results: 5, chunks_per_source: 3, include_raw_content: "text", include_answer: false, country: "vietnam" }),
+      body: JSON.stringify({ api_key: key, query: `\"${identity}\" (điện thoại OR email OR website OR \"mã số thuế\" OR \"địa chỉ\" OR \"giới thiệu công ty\")`, search_depth: "advanced", max_results: 8, chunks_per_source: 3, include_raw_content: "text", include_answer: false, country: "vietnam", exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
       signal: AbortSignal.timeout(20_000),
     });
     if (!response.ok) throw new Error(`Tavily enrichment HTTP ${response.status}`);
     const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string; raw_content?: string }> };
-    const sources = (data.results ?? []).map((item) => ({ title: item.title ?? "", url: item.url ?? "", content: item.content ?? "", rawContent: item.raw_content ?? "" })).filter((item) => item.url);
+    const sources = (data.results ?? []).map((item) => ({ title: item.title ?? "", url: canonicalSourceUrl(item.url ?? ""), content: item.content ?? "", rawContent: item.raw_content ?? "", sourceType:classifySource(item.url ?? "",item.title ?? "",item.content ?? ""),provider:"TAVILY_ENRICHMENT" })).filter((item) => item.url&&!blockedSource(item.url));
     return { candidate, sources };
   }));
   const enrichments = batches.flatMap((batch) => batch.status === "fulfilled" ? [batch.value] : []);
@@ -1060,6 +1091,25 @@ function buildFieldConfidence(candidate:Candidate):CandidateFieldConfidence[]{
     const status:CandidateFieldConfidence["status"]=materialConflict?"CONFLICT":selected.score>=80?"VERIFIED":selected.score>=55?"PARTIAL":"UNVERIFIED";
     return{fieldName,selectedValue:selected.value,score:materialConflict?Math.max(0,selected.score-20):selected.score,independentSources:selected.independentSources,status,alternatives};
   }).sort((left,right)=>right.score-left.score||left.fieldName.localeCompare(right.fieldName));
+}
+
+function applySelectedEvidence(candidate:Candidate):Candidate{
+  const fields=buildFieldConfidence(candidate),selected=(name:FieldEvidenceName)=>fields.find((field)=>field.fieldName===name&&field.status!=="CONFLICT")?.selectedValue??"";
+  const phones=Array.from(new Set((candidate.fieldEvidence??[]).filter((evidence)=>evidence.fieldName==="PHONE"&&evidence.confidence>=55).sort((left,right)=>right.confidence-left.confidence).map((evidence)=>firstVietnamPhone(evidence.fieldValue)).filter(Boolean))).slice(0,5);
+  const registeredAddress=postalAddress(selected("REGISTERED_ADDRESS"))||candidate.registeredAddress||"";
+  const officeAddress=postalAddress(selected("OFFICE_ADDRESS"))||candidate.officeAddress||"";
+  const factoryAddress=postalAddress(selected("FACTORY_ADDRESS"))||candidate.factoryAddress||"";
+  const address=registeredAddress||factoryAddress||officeAddress||postalAddress(candidate.address);
+  const businessLines=Array.from(new Set([...fields.filter((field)=>field.fieldName==="BUSINESS_LINE"&&field.status!=="CONFLICT").map((field)=>field.selectedValue),...(candidate.businessLines??[])])).slice(0,20);
+  return{...candidate,
+    legalName:cleanCompanyLegalName(selected("LEGAL_NAME")||candidate.legalName),tradeName:selected("TRADE_NAME")||candidate.tradeName,shortName:selected("SHORT_NAME")||candidate.shortName,
+    taxCode:selected("TAX_CODE")||candidate.taxCode,registeredAddress,factoryAddress,officeAddress,address,
+    phones:phones.length?phones:candidate.phones,phone:phones.length?phones.join(" - "):candidate.phone,zaloPhone:selected("ZALO")||candidate.zaloPhone,
+    email:selected("EMAIL")||candidate.email,website:selected("WEBSITE")||candidate.website,facebookUrl:selected("FACEBOOK")||candidate.facebookUrl,
+    legalRepresentative:selected("LEGAL_REPRESENTATIVE")||candidate.legalRepresentative,businessLines,
+    companyIntroduction:selected("COMPANY_INTRODUCTION")||candidate.companyIntroduction,operatingStatus:selected("OPERATING_STATUS")||candidate.operatingStatus,
+    fieldConfidence:fields,
+  };
 }
 
 function buildProfileQuality(candidate:Candidate,fields:CandidateFieldConfidence[]):CandidateProfileQuality{
