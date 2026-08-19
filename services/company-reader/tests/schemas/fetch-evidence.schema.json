@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mimin.vn/schemas/company-reader/fetch-evidence.schema.json",
+  "title": "JT1 FetchEvidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requested_url", "final_url", "status", "http_status", "content_type",
+    "charset", "body_text", "body_sha256", "bytes_read", "fetched_at",
+    "redirect_chain", "response_headers", "error_code", "error_detail"
+  ],
+  "properties": {
+    "requested_url": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "final_url": {"type": ["string", "null"], "maxLength": 2048},
+    "status": {
+      "enum": ["OK", "BLOCKED", "HTTP_ERROR", "TIMEOUT", "TOO_LARGE", "UNSUPPORTED_CONTENT", "NETWORK_ERROR"]
+    },
+    "http_status": {"type": ["integer", "null"], "minimum": 100, "maximum": 599},
+    "content_type": {"type": ["string", "null"], "maxLength": 100},
+    "charset": {"type": ["string", "null"], "maxLength": 50},
+    "body_text": {"type": ["string", "null"], "maxLength": 2000000},
+    "body_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "bytes_read": {"type": "integer", "minimum": 0, "maximum": 2000000},
+    "fetched_at": {"type": ["string", "null"], "format": "date-time"},
+    "redirect_chain": {
+      "type": "array", "maxItems": 3,
+      "items": {"type": "string", "maxLength": 2048}
+    },
+    "response_headers": {
+      "type": "object",
+      "propertyNames": {"enum": ["content-type", "content-length", "etag", "last-modified", "cache-control"]},
+      "additionalProperties": {"type": "string", "maxLength": 500}
+    },
+    "error_code": {"type": ["string", "null"], "maxLength": 80},
+    "error_detail": {"type": ["string", "null"], "maxLength": 300}
+  }
+}
+

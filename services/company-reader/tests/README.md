@@ -13,8 +13,10 @@ runtime của MIMIN ERP và không được ghi vào các bảng danh mục chí
 ## Thành phần
 
 - `schemas/golden-case.schema.json`: JSON Schema cho một test case.
+- `schemas/fetch-evidence.schema.json`: hợp đồng đầu ra Safe Fetch của JT1.
 - `fixtures/golden-cases.json`: 50 URL/ca kiểm thử đã phân nhóm.
 - `validate_golden.py`: validator không cần package bên ngoài.
+- `test_url_policy.py`, `test_fetcher.py`: kiểm thử JT1 hoàn toàn offline.
 - `QUALITY-GATE.md`: ngưỡng chất lượng và quy trình duyệt fixture.
 
 ## Chạy kiểm tra
@@ -34,4 +36,3 @@ không thay đổi theo website bên ngoài.
 3. Không thêm dữ liệu đoán; trường chưa xác minh để `null` hoặc bỏ khỏi `fields`.
 4. Test case `COMPANY` phải có ít nhất một khóa mạnh: MST, website chính thức hoặc điện thoại.
 5. Test case bị chặn/rác không được chứa trường công ty được coi là đã xác minh.
-

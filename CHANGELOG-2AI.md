@@ -29,6 +29,7 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-19 19:00 | Codex | company-reader | JT1: Safe Fetch Gateway Python cô lập, chỉ HTTPS/443, chặn SSRF theo URL+DNS từng redirect, timeout 12 giây, giới hạn 2 MB/content type và hợp đồng bằng chứng; 15 test offline | codex/jt1-company-reader-safe-fetch | 🟢 DONE |
 | 2026-08-19 18:20 | Codex | company-reader | JT0: khóa data contract, quality gate và golden corpus 50 ca cho nguồn pháp lý, website chính thức, trang nhiều công ty, nguồn rác/chặn, dữ liệu mâu thuẫn và lỗi fetch; chưa nối runtime | codex/jt0-company-reader-golden | 🟢 DONE |
 | 2026-08-19 17:35 | Codex | mang-luoi-san-xuat | Giả lập production và gỡ nghẽn tìm kiếm: chạy đủ 10 truy vấn Tavily, chuẩn hóa tối đa 96 nguồn theo 3 lô DeepSeek song song, buộc bằng chứng năng lực đặc trưng và loại tên nền tảng | codex/expand-company-search-recall | 🟢 DONE |
 | 2026-08-19 17:10 | Codex | mang-luoi-san-xuat | Rà soát tìm công ty: chuẩn hóa số Việt Nam, loại MST/số ngắn khỏi điện thoại, chỉ nhận số có ngữ cảnh liên hệ, thu gọn cảnh báo xung đột và lọc tên bài viết chung chung | codex/audit-company-search-phone-conflicts | 🟢 DONE |
