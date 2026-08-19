@@ -11,6 +11,7 @@ from .candidate_models import (
 from .extraction_models import ExtractedDocument, ExtractionStatus
 from .extractor import TrafilaturaExtractor
 from .entity_segmenter import CompanyEntitySegmenter
+from .entity_resolver import CompanyEntityResolver
 from .fetcher import SafeFetcher
 from .models import FetchEvidence, FetchStatus
 from .url_policy import UrlPolicy, UrlPolicyError
@@ -20,6 +21,14 @@ from .segmentation_models import (
     EntitySegmentStatus,
     SegmentationStatus,
 )
+from .resolution_models import (
+    CompanyResolutionResult,
+    EntityReference,
+    MatchKeyType,
+    PairResolution,
+    ResolutionDecision,
+    ResolvedCompanyGroup,
+)
 
 __all__ = [
     "CandidateBundleStatus",
@@ -27,15 +36,22 @@ __all__ = [
     "CompanyCandidateBundle",
     "CompanyCandidateExtractor",
     "CompanyEntitySegmenter",
+    "CompanyEntityResolver",
+    "CompanyResolutionResult",
     "EvidenceOrigin",
     "EntitySegmentationResult",
     "EntitySegment",
     "EntitySegmentStatus",
+    "EntityReference",
     "ExtractedDocument",
     "ExtractionStatus",
     "FetchEvidence",
     "FetchStatus",
     "FieldCandidate",
+    "MatchKeyType",
+    "PairResolution",
+    "ResolutionDecision",
+    "ResolvedCompanyGroup",
     "SafeFetcher",
     "SegmentationStatus",
     "TrafilaturaExtractor",
