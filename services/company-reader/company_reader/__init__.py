@@ -8,6 +8,13 @@ from .candidate_models import (
     EvidenceOrigin,
     FieldCandidate,
 )
+from .canonical_models import (
+    CanonicalCompanyProfile,
+    CanonicalFieldDecision,
+    CanonicalFieldStatus,
+    CanonicalProfileStatus,
+)
+from .canonical_selector import CanonicalFieldSelector
 from .extraction_models import ExtractedDocument, ExtractionStatus
 from .extractor import TrafilaturaExtractor
 from .fallback import JinaFallbackCoordinator
@@ -41,6 +48,11 @@ from .resolution_models import (
 __all__ = [
     "CandidateBundleStatus",
     "CandidateField",
+    "CanonicalCompanyProfile",
+    "CanonicalFieldDecision",
+    "CanonicalFieldSelector",
+    "CanonicalFieldStatus",
+    "CanonicalProfileStatus",
     "CompanyCandidateBundle",
     "CompanyCandidateExtractor",
     "CompanyEntitySegmenter",

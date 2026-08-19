@@ -121,6 +121,7 @@ class CompanyEntityResolver:
             official_domains=tuple(sorted(domains)),
             phones=values(CandidateField.PHONE),
             addresses=values(CandidateField.ADDRESS),
+            candidates=entity.candidates,
         )
 
     def _compare(self, left: EntityReference, right: EntityReference) -> PairResolution:

@@ -34,6 +34,7 @@ class EntityReference:
     official_domains: tuple[str, ...] = field(default_factory=tuple)
     phones: tuple[str, ...] = field(default_factory=tuple)
     addresses: tuple[str, ...] = field(default_factory=tuple)
+    candidates: tuple[FieldCandidate, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -45,6 +46,7 @@ class EntityReference:
             "official_domains": list(self.official_domains),
             "phones": list(self.phones),
             "addresses": list(self.addresses),
+            "candidates": [candidate.to_dict() for candidate in self.candidates],
         }
 
 
