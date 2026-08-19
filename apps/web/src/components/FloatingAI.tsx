@@ -66,7 +66,11 @@ export function FloatingAI() {
         body: JSON.stringify({
           user_id: "sang@mimin.vn",
           messages: [{ role: "user", content: text }],
-          hint_agent: isKhoRoute ? "agent-kho" : undefined,
+          // API đọc field "agent_id", không phải "hint_agent" - trước đây gửi
+          // sai tên field nên gợi ý ép agent-kho bị rớt âm thầm, luôn rơi về
+          // định tuyến theo từ khoá. "lan" là agent thật đang phụ trách Kho ở
+          // bộ 6 agent V6 (agent-kho cũ đã gộp vào lan).
+          agent_id: isKhoRoute ? "lan" : undefined,
         }),
       });
 
@@ -96,7 +100,10 @@ export function FloatingAI() {
               id: `ai-${Date.now()}`,
               role: "assistant",
               content: typeof content === "string" ? content : JSON.stringify(content),
-              agent: { id: "agent-tai-chinh", name: "MIN AI Tài chính", provider: "gemini", model: "gemini-1.5-pro" },
+              // "ha" là agent duy nhất dùng Gemini ở bộ 6 agent V6 hiện tại
+              // (agent-tai-chinh cũ đã gộp vào ha) - trước đây hardcode nhãn cũ
+              // nên badge luôn hiện sai tên dù thực tế Hà đã trả lời.
+              agent: { id: "ha", name: "Hà", provider: "gemini", model: "gemini-1.5-pro" },
               timestamp: Date.now(),
             },
           ]);
@@ -107,7 +114,10 @@ export function FloatingAI() {
               id: `ai-${Date.now()}`,
               role: "assistant",
               content: fullText,
-              agent: { id: "agent-tai-chinh", name: "MIN AI Tài chính", provider: "gemini", model: "gemini-1.5-pro" },
+              // "ha" là agent duy nhất dùng Gemini ở bộ 6 agent V6 hiện tại
+              // (agent-tai-chinh cũ đã gộp vào ha) - trước đây hardcode nhãn cũ
+              // nên badge luôn hiện sai tên dù thực tế Hà đã trả lời.
+              agent: { id: "ha", name: "Hà", provider: "gemini", model: "gemini-1.5-pro" },
               timestamp: Date.now(),
             },
           ]);

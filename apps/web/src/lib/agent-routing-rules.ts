@@ -40,8 +40,8 @@ export const ROUTE_RULES: RouteRule[] = [
     agentId: "minh",
     taskTypes: ["san-xuat", "qc", "ky-thuat"],
     keywords: {
-      high: ["lệnh cắt", "khsx", "kế hoạch sản xuất", "chuyền may", "công đoạn", "may áo", "may quần", "qc", "kiểm tra chất lượng", "lỗi", "phế phẩm", "máy may", "sự cố máy", "hỏng máy"],
-      medium: ["sản xuất", "lsx", "cắt vải", "tiến độ may", "chuyền", "công đoạn", "hàng lỗi", "đạt chất lượng", "định mức", "kỹ thuật", "quy trình may"],
+      high: ["lệnh cắt", "khsx", "kế hoạch sản xuất", "chuyền may", "công đoạn", "may áo", "may quần", "qc", "kiểm tra chất lượng", "lỗi", "phế phẩm", "máy may", "sự cố máy", "hỏng máy", "gia công ngoài", "xưởng gia công"],
+      medium: ["sản xuất", "lsx", "cắt vải", "tiến độ may", "chuyền", "công đoạn", "hàng lỗi", "đạt chất lượng", "định mức", "kỹ thuật", "quy trình may", "gia công", "bàn giao gia công", "sản lượng gia công", "tiền công gia công"],
       low: ["thợ may", "công nhân may", "lịch sản xuất", "hoàn thiện", "ủi", "gấp", "thiết bị", "sửa chữa"],
     },
     patterns: [
@@ -50,6 +50,7 @@ export const ROUTE_RULES: RouteRule[] = [
       /lỗi.*?(sản phẩm|may)/i,
       /qc.*?(báo cáo|check)/i,
       /máy may.*?(hỏng|trục trặc|sự cố)/i,
+      /gia công.*?(ngoài|xưởng|bàn giao|sản lượng|tiền công)/i,
     ],
   },
   // ============ KHO & BÁN HÀNG (Lan) ============
@@ -105,14 +106,16 @@ export const ROUTE_RULES: RouteRule[] = [
     agentId: "mimin-help",
     taskTypes: ["phan-tich", "general"],
     keywords: {
-      high: ["tối ưu", "phân tích logic", "dự báo", "mô hình", "hướng dẫn", "cách dùng", "help", "lỗi hệ thống"],
-      medium: ["giải thích", "tại sao", "nguyên nhân", "đề xuất", "phân tích", "tài liệu"],
+      high: ["tối ưu", "phân tích logic", "dự báo", "mô hình", "hướng dẫn", "cách dùng", "help", "lỗi hệ thống", "báo cáo tổng hợp", "bảng điều hành", "real-time", "realtime"],
+      medium: ["giải thích", "tại sao", "nguyên nhân", "đề xuất", "phân tích", "tài liệu", "báo cáo", "cảnh báo"],
       low: ["phức tạp", "khó", "cần suy nghĩ", "làm sao"],
     },
     patterns: [
       /tối ưu/i,
       /phân tích.*?(định mức|quy trình|sản xuất|chi phí)/i,
       /hướng dẫn.*?(cách|sử dụng)/i,
+      /báo cáo.*?(tổng hợp|toàn hệ thống)/i,
+      /bảng điều hành/i,
     ],
   },
 ];
@@ -277,14 +280,16 @@ export function formatRouteForMavis(userInput: string): string {
 // ROUTING EXAMPLES (test cases)
 // ============================================
 export const ROUTING_EXAMPLES: Array<{ input: string; expected: string }> = [
-  { input: "Tồn kho vải còn bao nhiêu?", expected: "agent-kho" },
-  { input: "Tính lương tháng 7 cho thợ may", expected: "agent-ke-toan" },
-  { input: "Báo cáo tài chính quý 3 file Excel", expected: "agent-tai-chinh" },
-  { input: "Tạo lệnh cắt mới cho đơn M758", expected: "agent-san-xuat" },
-  { input: "Lỗi hàng QC tuần này", expected: "agent-theo-doi-cd" },
-  { input: "Đơn hàng mới từ khách sỉ", expected: "agent-ban-hang" },
-  { input: "Máy may số 5 bị hỏng", expected: "agent-ky-thuat-may" },
-  { input: "Phân tích định mức vải tối ưu", expected: "agent-deepseek" },
-  { input: "Chấm công cho Sang hôm qua", expected: "agent-nhan-su" },
-  { input: "Trời hôm nay đẹp nhỉ", expected: "orchestrator (general)" },
+  { input: "Tồn kho vải còn bao nhiêu?", expected: "lan" },
+  { input: "Tính lương tháng 7 cho thợ may", expected: "ha" },
+  { input: "Báo cáo tài chính quý 3 file Excel", expected: "ha" },
+  { input: "Tạo lệnh cắt mới cho đơn M758", expected: "minh" },
+  { input: "Lỗi hàng QC tuần này", expected: "minh" },
+  { input: "Đơn hàng mới từ khách sỉ", expected: "lan" },
+  { input: "Máy may số 5 bị hỏng", expected: "minh" },
+  { input: "Phân tích định mức vải tối ưu", expected: "mimin-help" },
+  { input: "Chấm công cho Sang hôm qua", expected: "ha" },
+  { input: "Bàn giao gia công ngoài tuần này", expected: "minh" },
+  { input: "Báo cáo tổng hợp toàn hệ thống hôm nay", expected: "mimin-help" },
+  { input: "Trời hôm nay đẹp nhỉ", expected: "mavis (general)" },
 ];

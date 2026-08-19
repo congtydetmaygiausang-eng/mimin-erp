@@ -7,6 +7,7 @@ import { PERSONALITY_SYSTEM } from "@/lib/agent-personality";
 import { PROJECT_MANAGER_CONFIG } from "@/lib/agent-project-manager";
 import { routeTask } from "@/lib/agent-routing-rules";
 import { getAllTools, getToolsForDomain } from "@/lib/ai-tools";
+import { trackUsage } from "@/lib/agent-usage-tracker";
 
 // Đảm bảo không bị timeout trên Vercel nếu request hơi lâu
 export const maxDuration = 60;
@@ -81,7 +82,7 @@ function buildConversationSummary(messages: any[]): string {
 function buildSystemPrompt(persona: any, conversationSummary: string): string {
   // Chỉ dùng PERSONALITY_SYSTEM (core rules) + persona cụ thể
   // Bỏ PROJECT_MANAGER_CONFIG nếu không cần cho agent đó
-  const needsPMConfig = ["mimin-orchestrator", "mavis"].includes(persona.agent_id);
+  const needsPMConfig = persona.agent_id === "mavis";
   
   const parts = [
     ORCHESTRATOR_INTRO,
@@ -303,10 +304,10 @@ export async function POST(req: NextRequest) {
 
     if (!agentId) {
       routeResult = routeTask(userInput);
-      agentId = routeResult.primary?.agentId || "mimin-orchestrator";
+      agentId = routeResult.primary?.agentId || "mavis";
     }
 
-    const persona = AGENT_PERSONAS[agentId] || AGENT_PERSONAS["mimin-orchestrator"];
+    const persona = AGENT_PERSONAS[agentId] || AGENT_PERSONAS["mavis"];
     const provider = persona.provider as ProviderName;
 
     // ============================================
@@ -355,6 +356,7 @@ export async function POST(req: NextRequest) {
       const fullMessages = convertToSimpleMessages(messages as UIMessage[], 20);
 
       // Fix 1: gọi với tools support
+      const startedAt = Date.now();
       try {
         const text = await callOpenAICompatibleWithTools(
           "deepseek",
@@ -364,6 +366,8 @@ export async function POST(req: NextRequest) {
           fullMessages,
           persona.allowed_domains
         );
+
+        trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: false, model: persona.model });
 
         return NextResponse.json({
           agent: { id: agentId, name: persona.name, provider, model: persona.model },
@@ -375,6 +379,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         // DeepSeek lỗi (hết quota, API down...) -> fallback sang Gemini thay vì trả 500
         console.warn("[orchestrator] DeepSeek call failed, fallback to Gemini:", err);
+        trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: true, error_message: String(err), model: persona.model });
         return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
       }
     }
@@ -391,6 +396,7 @@ export async function POST(req: NextRequest) {
       
       const fullMessages = convertToSimpleMessages(messages as UIMessage[], 20);
 
+      const startedAt = Date.now();
       try {
         const text = await callOpenAICompatibleWithTools(
           "minimax",
@@ -400,6 +406,8 @@ export async function POST(req: NextRequest) {
           fullMessages,
           persona.allowed_domains
         );
+
+        trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: false, model: persona.model });
 
         return NextResponse.json({
           agent: { id: agentId, name: persona.name, provider, model: persona.model },
@@ -411,6 +419,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         // MiniMax lỗi (hết quota, API down...) -> fallback sang Gemini thay vì trả 500
         console.warn("[orchestrator] MiniMax call failed, fallback to Gemini:", err);
+        trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: true, error_message: String(err), model: persona.model });
         return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
       }
     }
