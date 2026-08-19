@@ -23,8 +23,33 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Chỉ giữ phần địa chỉ bưu chính, loại mô tả bài viết và thông tin liên hệ nối phía sau. */
+export function cleanVietnamPostalAddress(value: string): string {
+  const compact = value
+    .replace(/https?:\/\/\S+|www\.\S+/gi, " ")
+    .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, " ")
+    .replace(/^[\s,;:-]*(?:địa chỉ(?: thuế)?|trụ sở(?: chính)?|văn phòng|xưởng)\s*[:#-]?\s*/i, "")
+    .replace(/^[\s,;:-]*(?:tại|tọa lạc tại)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!compact) return "";
+
+  const stopAtNarrative = compact.replace(
+    /(?:[.;]\s*|\s+)(?:là một trong|tình trạng|trạng thái|ngày (?:cập nhật|hoạt động)|người đại diện|ngành nghề|chuyên |hãy |đến với|uy tín hàng đầu|sản phẩm|dịch vụ|điện thoại|hotline|phone|email|website|facebook|zalo|mã số thuế|mst)\b[\s\S]*$/i,
+    "",
+  );
+  const throughCountry = stopAtNarrative.match(/^([\s\S]*?\bViệt Nam\b)/i)?.[1];
+  const throughCity = stopAtNarrative.match(
+    /^([\s\S]*?\b(?:Thành phố Hồ Chí Minh|TP\.?\s*Hồ Chí Minh|TP\.?\s*HCM|TPHCM|Hồ Chí Minh|Hà Nội|Đà Nẵng|Cần Thơ|Hải Phòng)\b)/i,
+  )?.[1];
+  return (throughCountry ?? throughCity ?? stopAtNarrative)
+    .replace(/\s*\((?:TPHCM|TP\.\s*HCM)\)\s*$/i, "")
+    .replace(/^[,;:\s]+|[,;:.\s]+$/g, "")
+    .trim();
+}
+
 export function standardizeVietnamAddress(value: string): StandardizedAddress {
-  const legacyAddress = value.replace(/\s+/g, " ").replace(/\s+,/g, ",").trim();
+  const legacyAddress = cleanVietnamPostalAddress(value).replace(/\s+,/g, ",").trim();
   if (!legacyAddress || !/(?:hóc môn|thành phố hồ chí minh|tp\.?\s*hcm)/i.test(legacyAddress)) return { currentAddress: legacyAddress };
   const mapping = HOC_MON_2025_COMMUNES.find(({ former }) => new RegExp(`\\b${escapeRegExp(former)}\\b`, "i").test(legacyAddress));
   if (!mapping) return { currentAddress: legacyAddress };

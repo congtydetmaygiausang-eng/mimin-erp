@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { standardizeVietnamAddress } from "@/lib/vietnam-address";
+import { cleanVietnamPostalAddress, standardizeVietnamAddress } from "@/lib/vietnam-address";
 
 const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPLIER", "PACKAGING_FINISHER"]);
 const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
@@ -364,7 +364,7 @@ function cleanCandidateAddress(value: string): string {
 }
 
 function postalAddress(value: string): string {
-  const cleaned = cleanCandidateAddress(value)
+  const cleaned = cleanVietnamPostalAddress(cleanCandidateAddress(value))
     .replace(/\b(?:điện thoại|hotline|phone|email|website|facebook|zalo|mã số thuế|mst)\b[\s\S]*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
