@@ -141,9 +141,13 @@ export default function LenhCatPage() {
               onChangeStatus={async (tt) => {
                 await capNhatTrangThai(lc.id, tt, null);
                 if (tt === "DangCat") {
-                  toast.success(`✂️ Đang Cắt — Đã tự động xuất kho vải & phụ liệu cho ${lc.id}`, {
-                    description: "Vào Kho Vải / Kho Phụ Liệu để xem lịch sử giao dịch.",
-                    duration: 5000,
+                  // Đổi trạng thái ở đây KHÔNG trừ kho - kho vải/phụ liệu chỉ bị trừ
+                  // khi tổ cắt bấm "Nhận việc" ở trang Cắt (to-cat-work). Toast trước
+                  // đây báo "đã tự động xuất kho" ngay tại nút này là SAI (đã bị gỡ
+                  // khỏi capNhatTrangThai từ trước để tránh trừ kho 2 lần).
+                  toast.success(`✂️ ${lc.id} đã chuyển sang Đang Cắt`, {
+                    description: "Kho vải/phụ liệu chưa bị trừ ở bước này - sẽ trừ khi tổ cắt bấm \"Nhận việc\" ở trang Cắt.",
+                    duration: 6000,
                   });
                 }
               }}

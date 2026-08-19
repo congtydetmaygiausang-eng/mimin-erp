@@ -87,6 +87,15 @@ export default function DonHangPage() {
       return;
     }
     const newTrangThai = flow[idx + 1];
+    // Đổi trạng thái tay ở đây KHÔNG đụng đến công nợ/thanh toán (chỉ themThanhToan
+    // mới trừ công nợ). Cảnh báo để không hiểu nhầm "Hoàn thành" = đã thu đủ tiền.
+    const conLai = calcConLai(dh);
+    if (newTrangThai === "Hoàn thành" && conLai > 0) {
+      toast.warning(
+        `Đơn ${dh.maDH} còn nợ ${formatVNDShort(conLai)} chưa thu. Đánh dấu "Hoàn thành" không tự trừ công nợ khách hàng - chỉ ghi nhận thanh toán mới trừ.`,
+        { duration: 8000 }
+      );
+    }
     doiTrangThai(dh.id, newTrangThai);
     toast.success(`Đã chuyển: ${dh.trangThai} → ${newTrangThai}`);
   };

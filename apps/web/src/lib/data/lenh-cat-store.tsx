@@ -10,6 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { logWorkflow } from "../audit-log";
 import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
 import type { AppUser } from "@/components/session-provider";
+import { usePhanCong } from "./cong-no-store";
 
 export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron" | "AoPolo" | "PhuKien";
 export type LoaiLenh = "HangNha" | "HangDat";
@@ -370,6 +371,7 @@ const LenhCatContext = createContext<LenhCatStore | null>(null);
 const DUMMY_DATA: LenhCat[] = [];
 
 export function LenhCatProvider({ children }: { children: ReactNode }) {
+  const { upsertTuLenhCat } = usePhanCong();
   const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>([]);
   const [dsMauCongDoan, setDsMauCongDoan] = useState<MauCongDoanItem[]>([]);
   const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
@@ -618,11 +620,17 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     catChiTiet?: CatChiTiet;
     chiTietMau?: any;
   }) => {
-    let updatedPhanCong: any = null;
-    setDsLenhCat(prev => {
-      const next = prev.map(lc => {
-        if (lc.id !== lenhId) return lc;
-        const newPhanCong = lc.phanCong.map((pc: any) =>
+    // Tính TRƯỚC, đồng bộ, từ closure `dsLenhCat` hiện tại - KHÔNG được gán biến
+    // ngoài bên trong callback của setDsLenhCat rồi đọc lại ngay sau đó. Callback
+    // updater không đảm bảo chạy đồng bộ tại chỗ gọi (không phải hợp đồng API công
+    // khai của React, chỉ là 1 tối ưu nội bộ đôi khi có đôi khi không) - kiểm tra
+    // thật trên Supabase cho thấy cách làm cũ CHỈ đồng bộ đúng lần gọi capNhatCongDoan
+    // ĐẦU TIÊN trong 1 chuỗi bấm liên tiếp, các lần sau (kể cả "Hoàn thành") bị rơi
+    // mất - state React cục bộ vẫn đúng nên không ai để ý, nhưng Supabase (và công
+    // nợ công đoạn) thì sai.
+    const lcCurrent = dsLenhCat.find(x => x.id === lenhId);
+    const newPhanCong = lcCurrent
+      ? lcCurrent.phanCong.map((pc: any) =>
           pc.id === congDoanId
             ? {
                 ...pc,
@@ -642,76 +650,51 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                   : pc.ngayHoanThanh,
               }
             : pc
-        );
-        updatedPhanCong = newPhanCong;
-        return { ...lc, phanCong: newPhanCong };
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        )
+      : null;
 
-      // ========== ĐỒNG BỘ CÔNG NỢ KHI HOÀN THÀNH ==========
-      if (data.trangThaiCD === 'hoan_thanh') {
-        try {
-          const pcKey = "mimin_phan_cong_v2";
-          let congNoArr = JSON.parse(localStorage.getItem(pcKey) || "[]");
-          
-          const lc = next.find(x => x.id === lenhId);
-          if (lc) {
-            const pc = lc.phanCong.find((x: any) => x.id === congDoanId);
-            if (pc && pc.nguoiMa) {
-              // Kiem tra xem da co trong cong no chua
-              const existingIndex = congNoArr.findIndex((c: any) => 
-                c.lenhCatId === lenhId && 
-                (c.congDoan === pc.tenCongDoan || c.nguoiPhuTrach?.ma === pc.nguoiMa)
-              );
-
-              const soLuongHT = data.soLuongHoanThanh ?? pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL;
-              
-              if (existingIndex >= 0) {
-                // Update trangThai
-                congNoArr[existingIndex].trangThai = "Hoàn thành";
-                congNoArr[existingIndex].soLuongGiao = soLuongHT;
-              } else {
-                // Add new
-                const nextNum = congNoArr.length + 1;
-                const newId = `PC-${lenhId.replace("LC-", "")}-${String(nextNum).padStart(2, "0")}`;
-                congNoArr.push({
-                  id: newId,
-                  lenhCatId: lenhId,
-                  congDoan: pc.tenCongDoan || "Gia công",
-                  nguoiPhuTrach: {
-                    loai: pc.nguoiMa.startsWith("GC") ? "Đối tác gia công" : "Nhân viên nội bộ",
-                    ma: pc.nguoiMa,
-                    ten: pc.nguoiTen || "Chưa rõ"
-                  },
-                  donGiaGiao: pc.donGia || 0,
-                  soLuongGiao: soLuongHT,
-                  donVi: "SP",
-                  ngayGiao: pc.ngayNhanViec || new Date().toISOString().slice(0, 10),
-                  ngayXongDuKien: new Date().toISOString().slice(0, 10),
-                  trangThai: "Hoàn thành",
-                  daThanhToan: pc.daThanhToan || 0,
-                  ghiChu: "Tự động đồng bộ từ Lệnh cắt"
-                });
-              }
-              localStorage.setItem(pcKey, JSON.stringify(congNoArr));
-            }
-          }
-        } catch(e) {
-          console.error("Lỗi đồng bộ công nợ:", e);
-        }
+    let congNoSyncInfo: {
+      lenhCatId: string; congDoan: string; nguoiMa: string; nguoiTen: string;
+      donGia: number; soLuongGiao: number; ngayGiao?: string; daThanhToan?: number;
+    } | null = null;
+    if (data.trangThaiCD === 'hoan_thanh' && lcCurrent && newPhanCong) {
+      const pc = newPhanCong.find((x: any) => x.id === congDoanId);
+      if (pc && pc.nguoiMa) {
+        congNoSyncInfo = {
+          lenhCatId: lenhId,
+          congDoan: pc.tenCongDoan || "Gia công",
+          nguoiMa: pc.nguoiMa,
+          nguoiTen: pc.nguoiTen || "Chưa rõ",
+          donGia: pc.donGia || 0,
+          soLuongGiao: data.soLuongHoanThanh ?? pc.soLuongHoanThanh ?? pc.soLuong ?? lcCurrent.tongSL,
+          ngayGiao: pc.ngayNhanViec,
+          daThanhToan: pc.daThanhToan || 0,
+        };
       }
-      
+    }
+
+    setDsLenhCat(prev => {
+      const next = prev.map(lc => lc.id === lenhId && newPhanCong ? { ...lc, phanCong: newPhanCong } : lc);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
 
+    // Đồng bộ công nợ công đoạn qua store thật (=> lên Supabase) - KHÔNG ghi thẳng
+    // localStorage["mimin_phan_cong_v2"] nữa, vì làm vậy sẽ bị useSupabaseSync ghi
+    // đè mất ở lần tải trang kế tiếp (Supabase là nguồn sự thật, không biết dòng
+    // này tồn tại vì chưa từng được đẩy lên).
+    if (congNoSyncInfo) {
+      upsertTuLenhCat(congNoSyncInfo);
+    }
+
     // Đồng bộ Supabase (nguồn sự thật) - thiếu bước này thì effect load-lại-từ-Supabase
     // khi mount trang sẽ ghi đè mất thay đổi công đoạn vừa lưu (chỉ có ở localStorage).
-    if (updatedPhanCong) {
+    if (newPhanCong) {
       (async () => {
         try {
           const { supabase } = await import("@/lib/supabase/client");
           if (supabase) {
-            const { error } = await supabase.from("lenh_cat").update({ phan_cong: updatedPhanCong }).eq("id", lenhId);
+            const { error } = await supabase.from("lenh_cat").update({ phan_cong: newPhanCong }).eq("id", lenhId);
             if (error) console.error("[LenhCat] Đồng bộ phan_cong lên Supabase thất bại:", error);
           }
         } catch (e) {
@@ -719,7 +702,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
         }
       })();
     }
-  }, []);
+  }, [upsertTuLenhCat, dsLenhCat]);
 
   const reset = useCallback(() => {
     setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));

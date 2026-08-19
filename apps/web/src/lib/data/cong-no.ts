@@ -21,7 +21,10 @@ export type CongDoanKey = "Cắt" | "Thêu" | "In" | "May áo" | "May quần" | 
 export type PhanCongCongDoan = {
   id: string;
   lenhCatId: string;       // Liên kết với lệnh cắt (LC-M758, LC-M873)
-  congDoan: CongDoanKey;
+  // Chuỗi tự do (thực tế tên công đoạn lấy từ Lệnh cắt: "Cắt áo", "QC (Kiểm hàng)",
+  // "Đóng gói", "Khuy nút"... không khớp 6 giá trị cố định của CongDoanKey - giữ
+  // CongDoanKey cho dropdown tạo tay ở modal, nhưng field lưu trữ phải nhận mọi giá trị).
+  congDoan: CongDoanKey | string;
   nguoiPhuTrach: NguoiPhuTrach;
   donGiaGiao: number;       // đơn giá giao (đ/sp hoặc đ/bộ)
   soLuongGiao: number;      // SL giao (sản phẩm)
@@ -252,7 +255,7 @@ export function congNoTheoNguoi(p: PhanCongCongDoan[]) {
 
 // Công nợ theo công đoạn
 export function congNoTheoCongDoan(p: PhanCongCongDoan[]) {
-  const grouped: Record<string, { congDoan: CongDoanKey; thanhTien: number; daThanhToan: number; conNo: number; soLuong: number }> = {};
+  const grouped: Record<string, { congDoan: CongDoanKey | string; thanhTien: number; daThanhToan: number; conNo: number; soLuong: number }> = {};
   for (const pc of p) {
     if (!grouped[pc.congDoan]) {
       grouped[pc.congDoan] = { congDoan: pc.congDoan, thanhTien: 0, daThanhToan: 0, conNo: 0, soLuong: 0 };

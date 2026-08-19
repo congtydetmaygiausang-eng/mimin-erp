@@ -5,16 +5,21 @@ import { type PhanCongCongDoan, type CongDoanKey, type NguoiPhuTrach } from "./c
 import { layDanhSachNguoiPT } from "./cong-no";
 import { useSupabaseSync, camelToSnake } from "@/lib/supabase/client";
 
-// Bảng phan_cong trên Supabase có 2 cột phẳng `nguoi_ma` (NOT NULL) + `nguoi_ten`
-// nằm ngoài model app (app chỉ có object `nguoiPhuTrach`). camelToSnake không tự
-// sinh được 2 cột này -> mọi upsert đều fail NOT NULL và chỉ báo ở console.
-// Rút thẳng từ nguoiPhuTrach khi ghi lên.
+// Bảng phan_cong trên Supabase có 4 cột phẳng `nguoi_ma` (NOT NULL), `nguoi_ten`,
+// `nguoi_loai`, `nguoi_sdt` nằm ngoài model app (app chỉ có object `nguoiPhuTrach`).
+// camelToSnake không tự sinh được các cột này (nó lồng thành object `nguoi_phu_trach`)
+// -> mọi upsert đều fail NOT NULL và chỉ báo ở console. Rút thẳng từ nguoiPhuTrach khi
+// ghi lên. `nguoi_loai` bắt buộc phải có để FK điều kiện phân biệt "Nhân viên nội bộ"
+// (khớp nhan_su) với "Đối tác gia công" (khớp nha_cung_cap) - thiếu cột này thì mọi
+// dòng "Đối tác gia công" đều bị FK từ chối vì bị kiểm tra nhầm với bảng nhan_su.
 function phanCongToRow(pc: PhanCongCongDoan) {
   return {
     ...camelToSnake(pc),
     id: pc.id,
     nguoi_ma: pc.nguoiPhuTrach?.ma || "",
     nguoi_ten: pc.nguoiPhuTrach?.ten || "",
+    nguoi_loai: pc.nguoiPhuTrach?.loai || "",
+    nguoi_sdt: pc.nguoiPhuTrach?.sdt || "",
   };
 }
 
@@ -25,6 +30,16 @@ type StoreContext = {
   themPhanCong: (pc: Omit<PhanCongCongDoan, "id">) => void;
   capNhatPhanCong: (id: string, patch: Partial<PhanCongCongDoan>) => void;
   xoaPhanCong: (id: string) => void;
+  upsertTuLenhCat: (params: {
+    lenhCatId: string;
+    congDoan: string;
+    nguoiMa: string;
+    nguoiTen: string;
+    donGia: number;
+    soLuongGiao: number;
+    ngayGiao?: string;
+    daThanhToan?: number;
+  }) => void;
   reset: () => void;
   layTheoLenh: (lenhCatId: string) => PhanCongCongDoan[];
   isLate: (pc: PhanCongCongDoan) => boolean;
@@ -79,6 +94,59 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
     setPhanCong((prev) => prev.filter((p) => p.id !== id));
   }, [setPhanCong]);
 
+  /**
+   * Tạo/cập nhật 1 dòng công nợ công đoạn khi 1 công đoạn trong Lệnh cắt được
+   * đánh dấu hoàn thành. Trước đây lenh-cat-store ghi thẳng vào
+   * localStorage["mimin_phan_cong_v2"] bằng JSON.parse/stringify, không qua
+   * setPhanCong (=useSupabaseSync) nên KHÔNG lên Supabase - lần useSupabaseSync
+   * tải lại từ Supabase (nguồn sự thật) sẽ ghi đè mất dòng vừa tạo. Dùng
+   * setPhanCong ở đây để đẩy đúng lên Supabase và tìm bản ghi trùng trên state
+   * mới nhất (tránh đọc closure cũ).
+   */
+  const upsertTuLenhCat = useCallback((params: {
+    lenhCatId: string;
+    congDoan: string;
+    nguoiMa: string;
+    nguoiTen: string;
+    donGia: number;
+    soLuongGiao: number;
+    ngayGiao?: string;
+    daThanhToan?: number;
+  }) => {
+    setPhanCong((prev) => {
+      const idx = prev.findIndex(
+        (c) => c.lenhCatId === params.lenhCatId &&
+          (c.congDoan === params.congDoan || c.nguoiPhuTrach?.ma === params.nguoiMa)
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], trangThai: "Hoàn thành", soLuongGiao: params.soLuongGiao };
+        return next;
+      }
+      const nextNum = prev.length + 1;
+      const newId = `PC-${params.lenhCatId.replace("LC-", "")}-${String(nextNum).padStart(2, "0")}`;
+      const newPc: PhanCongCongDoan = {
+        id: newId,
+        lenhCatId: params.lenhCatId,
+        congDoan: params.congDoan || "Gia công",
+        nguoiPhuTrach: {
+          loai: params.nguoiMa.startsWith("GC") ? "Đối tác gia công" : "Nhân viên nội bộ",
+          ma: params.nguoiMa,
+          ten: params.nguoiTen || "Chưa rõ",
+        },
+        donGiaGiao: params.donGia || 0,
+        soLuongGiao: params.soLuongGiao,
+        donVi: "SP",
+        ngayGiao: params.ngayGiao || new Date().toISOString().slice(0, 10),
+        ngayXongDuKien: new Date().toISOString().slice(0, 10),
+        trangThai: "Hoàn thành",
+        daThanhToan: params.daThanhToan || 0,
+        ghiChu: "Tự động đồng bộ từ Lệnh cắt",
+      };
+      return [...prev, newPc];
+    });
+  }, [setPhanCong]);
+
   const reset = useCallback(() => {
     setPhanCong([]);
   }, [setPhanCong]);
@@ -96,7 +164,7 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ phanCong, themThanhToan, themPhanCong, capNhatPhanCong, xoaPhanCong, reset, layTheoLenh, isLate }}
+      value={{ phanCong, themThanhToan, themPhanCong, capNhatPhanCong, xoaPhanCong, upsertTuLenhCat, reset, layTheoLenh, isLate }}
     >
       {children}
     </Ctx.Provider>
