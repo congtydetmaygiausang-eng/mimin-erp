@@ -15,10 +15,12 @@ runtime của MIMIN ERP và không được ghi vào các bảng danh mục chí
 - `schemas/golden-case.schema.json`: JSON Schema cho một test case.
 - `schemas/fetch-evidence.schema.json`: hợp đồng đầu ra Safe Fetch của JT1.
 - `schemas/extracted-document.schema.json`: hợp đồng nội dung sạch của JT2.
+- `schemas/company-candidate-bundle.schema.json`: hợp đồng ứng viên + bằng chứng JT3.
 - `fixtures/golden-cases.json`: 50 URL/ca kiểm thử đã phân nhóm.
 - `validate_golden.py`: validator không cần package bên ngoài.
 - `test_url_policy.py`, `test_fetcher.py`: kiểm thử JT1 hoàn toàn offline.
 - `test_extractor.py`: kiểm thử adapter Trafilatura bằng HTML nội bộ.
+- `test_candidate_extractor.py`: kiểm thử trường dữ liệu, bằng chứng và chống ghép chéo.
 - `QUALITY-GATE.md`: ngưỡng chất lượng và quy trình duyệt fixture.
 
 ## Chạy kiểm tra

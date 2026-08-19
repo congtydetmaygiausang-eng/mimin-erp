@@ -11,7 +11,8 @@ Python service cô lập để đọc và chuẩn hóa nguồn công khai về d
 | JT0 | Data contract, quality gate, golden corpus 50 ca | Hoàn thành |
 | JT1 | Safe Fetch Gateway: URL policy, SSRF, redirect, timeout, dung lượng | Hoàn thành |
 | JT2 | Trích xuất nội dung sạch và metadata bằng Trafilatura 2.2.0 | Hoàn thành |
-| JT3+ | Nhận diện công ty, bằng chứng từng trường, Jina fallback, tích hợp | Chưa kích hoạt |
+| JT3 | Phát hiện ứng viên thông tin công ty kèm đoạn trích và chống ghép chéo | Hoàn thành |
+| JT4+ | Phân đoạn công ty, đối chiếu khóa mạnh, Jina fallback, tích hợp | Chưa kích hoạt |
 
 JT1 chỉ tải nội dung; không đoán dữ liệu doanh nghiệp, không ghi Supabase và không
 thay đổi kết quả tìm kiếm hiện tại của MIMIN ERP.
