@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cleanVietnamPostalAddress, standardizeVietnamAddress } from "@/lib/vietnam-address";
+import { cleanCompanyLegalName, cleanCompanyPostalAddress, isCompanyIdentityName } from "@/lib/company-identity-cleaner";
 
 const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPLIER", "PACKAGING_FINISHER"]);
 const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
@@ -382,7 +383,8 @@ function cleanCandidateAddress(value: string): string {
 }
 
 function postalAddress(value: string): string {
-  const cleaned = cleanVietnamPostalAddress(cleanCandidateAddress(value))
+  const deterministic = cleanCompanyPostalAddress(value);
+  const cleaned = cleanVietnamPostalAddress(cleanCandidateAddress(deterministic))
     .replace(/\b(?:điện thoại|hotline|phone|email|website|facebook|zalo|mã số thuế|mst)\b[\s\S]*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -423,8 +425,8 @@ function appendCityIfMissing(address: string, location: string): string {
 }
 
 function isGenericCompanyName(value: string): boolean {
-  const name = value.trim();
-  if (!name || /^(?:trang chủ|home|giới thiệu|liên hệ)$/i.test(name)) return true;
+  const name = cleanCompanyLegalName(value);
+  if (!name || !isCompanyIdentityName(name) || /^(?:trang chủ|home|giới thiệu|liên hệ)$/i.test(name)) return true;
   return /\b(?:là gì|ưu điểm|nhược điểm|các mẫu|top \d+|danh sách \d+|ở đâu|giá bao nhiêu)\b/i.test(name) || noiseListing(name);
 }
 
@@ -962,7 +964,7 @@ async function searchSources(query: string, location: string, queries: string[])
 }
 
 function fallbackCandidates(query: string, sources: SourceResult[]): Candidate[] {
-  return sources.filter((source) => !isGenericCompanyName(source.title)).slice(0, 20).map((source) => ({ legalName: source.title, address: postalAddress(source.content), province: "", district: "", phone: "", email: "", taxCode: "", website: "", latitude: source.latitude ?? null, longitude: source.longitude ?? null, capabilities: [query], sourceUrl: source.url, sourceTitle: source.title, sources:[candidateSource(source)], confidence: 50, verifiedFields: source.latitude !== undefined ? ["coordinates"] : [], verificationStatus: "UNVERIFIED", lastVerifiedAt: new Date().toISOString() }));
+  return sources.filter((source) => !isGenericCompanyName(source.title)).slice(0, 20).map((source) => ({ legalName: cleanCompanyLegalName(source.title), address: postalAddress(source.content), province: "", district: "", phone: "", email: "", taxCode: "", website: "", latitude: source.latitude ?? null, longitude: source.longitude ?? null, capabilities: [query], sourceUrl: source.url, sourceTitle: source.title, sources:[candidateSource(source)], confidence: 50, verifiedFields: source.latitude !== undefined ? ["coordinates"] : [], verificationStatus: "UNVERIFIED", lastVerifiedAt: new Date().toISOString() }));
 }
 
 async function normalizeWithDeepSeek(query: string, location: string, sources: SourceResult[]): Promise<Candidate[]> {
@@ -1001,7 +1003,8 @@ async function normalizeWithDeepSeek(query: string, location: string, sources: S
     const websiteDomain = domainOf(rawWebsite);
     const website = websiteDomain && (domainOf(source.url) === websiteDomain || sourceLower.includes(websiteDomain)) ? rawWebsite : "";
     const address = postalAddress(text(item.address, 500));
-    const legalName = text(item.legalName, 200);
+    const legalName = cleanCompanyLegalName(text(item.legalName, 200));
+    if(!legalName)return[];
     const verifiedFields = [
       overlapRatio(tokenSet(legalName), tokenSet(sourceLower)) >= 0.6 ? "legalName" : "",
       overlapRatio(tokenSet(address), tokenSet(sourceLower)) >= 0.6 ? "address" : "",
@@ -1035,7 +1038,8 @@ export async function POST(req: NextRequest) {
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
     const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
-    const businessCandidates = enrichment.candidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query)).map((candidate) => {
+    const cleanedCandidates=enrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
+    const businessCandidates = cleanedCandidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query)).map((candidate) => {
       const standardized = standardizeVietnamAddress(candidate.address);
       const fullAddress = appendCityIfMissing(standardized.currentAddress, location);
       return { ...candidate, address: fullAddress, legacyAddress: standardized.legacyAddress, addressStandard: standardized.standard, district: standardized.standard ? "" : candidate.district };
@@ -1074,6 +1078,7 @@ export async function POST(req: NextRequest) {
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
       rejectedNoiseCandidates: enrichment.candidates.length - businessCandidates.length,
+      rejectedInvalidIdentity: enrichment.candidates.length-cleanedCandidates.length,
       geocoding: geocoding.summary,
       locationQuality,
       providers: source.providerHealth,
