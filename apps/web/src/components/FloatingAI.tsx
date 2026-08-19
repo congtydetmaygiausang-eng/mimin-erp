@@ -65,8 +65,8 @@ const THEME: Record<RouteMode, ModeTheme> = {
   },
   vy: {
     agentId: "vy",
-    botName: "Vy - Tư vấn KH",
-    subtitle: "Tư vấn & Chăm sóc Khách hàng",
+    botName: "Vy - MIMIN Care AI",
+    subtitle: "Chuyên gia tư vấn bán hàng & CSKH",
     BubbleIcon: MessageSquare,
     iconTextClass: "text-white",
     bubbleGradient: "from-pink-500 via-rose-500 to-rose-600 shadow-rose-500/40",

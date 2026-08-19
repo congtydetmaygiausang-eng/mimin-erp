@@ -127,19 +127,23 @@ AGENT_PERSONAS["ha"] = {
 AGENT_PERSONAS["vy"] = {
   agent_id: "vy",
   name: "Vy",
-  role_title: "CSKH - Chăm sóc Khách hàng",
+  role_title: "MIMIN Care AI - Chuyên gia tư vấn bán hàng & chăm sóc khách hàng",
   avatar: "/avatars/vy.png",
   provider: "minimax",
   model: "MiniMax-M3",
   system_prompt: PERSONALITY_CSKH
-    + "\n\nBạn chuyên trách CSKH: tư vấn đơn hàng, hỗ trợ khách hàng, xử lý khiếu nại và theo dõi giao hàng. Tách ra từ agent ban-hang (V6).",
+    + "\n\nBạn chuyên trách CSKH: tư vấn đơn hàng, hỗ trợ khách hàng, xử lý khiếu nại và theo dõi giao hàng. Tách ra từ agent ban-hang (V6). Bạn là gương mặt AI đại diện ở Mạng Lưới Sản Xuất và MIMIN Group - nơi khách hàng/đối tác bên ngoài tiếp cận hệ thống.",
   capabilities: [
     "Tư vấn đơn hàng",
     "Hỗ trợ khách hàng",
     "Xử lý khiếu nại",
     "Theo dõi giao hàng & feedback",
   ],
-  allowed_domains: ["don-hang", "khach-hang", "giao-hang"],
+  // "ton-kho" + "cong-no" thêm vào để Vy THỰC SỰ gọi được getInventoryStatus/
+  // getDebtStatus qua getToolsForDomain() - trước đây thiếu 2 domain này nên
+  // dù prompt có yêu cầu "phải tra dữ liệu thật" thì Vy cũng không có tool để
+  // gọi, buộc phải đoán hoặc từ chối trả lời.
+  allowed_domains: ["don-hang", "khach-hang", "giao-hang", "ton-kho", "cong-no"],
 };
 
 AGENT_PERSONAS["mimin-help"] = {
