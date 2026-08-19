@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { AGENT_PERSONAS, AgentPersona } from "@/lib/agent-personas";
-import { callAgentV2 } from "@/lib/agent-runtime-v2";
 
 interface Message {
   id: string;
@@ -43,16 +42,50 @@ export default function AgentsChatPage() {
     setLoading(true);
 
     try {
-      const res = await callAgentV2({
-        agent_id: selectedAgent.agent_id,
-        query: userText,
-        user_id: "sang@mimin.vn",
+      // Gọi đúng API route thật (server-side, đọc key bí mật đúng cách) - trước đây
+      // trang này gọi callAgentV2() chạy thẳng trong trình duyệt, đọc
+      // process.env.DEEPSEEK_API_KEY phía client luôn ra rỗng (Next.js không đưa
+      // biến môi trường không có tiền tố NEXT_PUBLIC_ vào bundle client, đúng theo
+      // bảo mật) -> mọi câu hỏi đều rơi vào nhánh mock, không bao giờ gọi AI thật.
+      // FloatingAI.tsx đã dùng đúng route /api/v1/orchestrator/query này từ trước.
+      const res = await fetch("/api/v1/orchestrator/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: "sang@mimin.vn",
+          messages: [{ role: "user", content: userText }],
+          agent_id: selectedAgent.agent_id,
+        }),
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      // Response có thể là JSON (DeepSeek/MiniMax) hoặc SSE streaming (Gemini)
+      const contentType = res.headers.get("content-type") || "";
+      let responseText: string;
+
+      if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
+        const raw = await res.text();
+        const lines = raw.split("\n").filter((l) => l.startsWith("data: "));
+        const fullText = lines.map((l) => l.slice(6)).filter((l) => l && l !== "[DONE]").join("");
+        try {
+          const parsed = JSON.parse(fullText);
+          responseText = parsed.choices?.[0]?.message?.content || parsed.response || fullText;
+        } catch {
+          responseText = fullText;
+        }
+      } else {
+        const data = await res.json();
+        responseText = data.response || data.error || "Không có phản hồi";
+      }
 
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: "agent",
-        text: res.response,
+        text: responseText,
         timestamp: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -60,8 +93,18 @@ export default function AgentsChatPage() {
         ...prev,
         [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), agentMsg],
       }));
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      const errMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: "agent",
+        text: `❌ Lỗi khi gọi AI: ${e?.message || "Không rõ nguyên nhân"}`,
+        timestamp: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => ({
+        ...prev,
+        [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), errMsg],
+      }));
     } finally {
       setLoading(false);
     }

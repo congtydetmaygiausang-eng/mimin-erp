@@ -12,6 +12,14 @@ import { trackUsage } from "@/lib/agent-usage-tracker";
 // Đảm bảo không bị timeout trên Vercel nếu request hơi lâu
 export const maxDuration = 60;
 
+// @ai-sdk/google (hàm google() dùng bên dưới) mặc định chỉ đọc biến môi trường
+// GOOGLE_GENERATIVE_AI_API_KEY, nhưng .env của dự án đang đặt tên GEMINI_API_KEY
+// - khiến agent Hà (Gemini) và nhánh fallback Gemini (khi DeepSeek/MiniMax lỗi)
+// đều báo "Không có API key nào được cấu hình" dù key thật đã có sẵn.
+if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY && process.env.GEMINI_API_KEY) {
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY = process.env.GEMINI_API_KEY;
+}
+
 // convertToModelMessages (AI SDK v5) bắt buộc mỗi message phải có `.parts`.
 // Nhiều client cũ (FloatingAI, ai-assistant page) vẫn gửi format cũ
 // { role, content: "string" } không có `.parts` -> convertToModelMessages
