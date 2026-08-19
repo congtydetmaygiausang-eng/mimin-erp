@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Bookmark, BookmarkCheck, Building2, Calculator, Check, CheckCircle2, ExternalLink, Eye, Globe2, Hash, Mail, Map, MapPin, Navigation, Phone, RefreshCw, Search, Sparkles, X } from "lucide-react";
+import { BadgeCheck, Bookmark, BookmarkCheck, Building2, Calculator, Check, CheckCircle2, CheckSquare, ExternalLink, Eye, Globe2, Hash, Mail, Map, MapPin, Navigation, Phone, RefreshCw, Search, Sparkles, Square, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
-import { approveDiscoveryCandidate, importAICandidates, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
+import { approveDiscoveryCandidate, directCandidateSaveKey, importAICandidates, isDirectCandidateSaved, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
+import { googleMapsSearchUrl } from "@/lib/google-maps";
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { supabase } from "@/lib/supabase/client";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
@@ -102,21 +103,18 @@ function SearchProgressModal({ loading }: { loading: boolean }) {
   );
 }
 
-function SupplierResultCard({ item, opening, verifying, saving, onViewDetails, onVerifyLocation, onSaveOne }: { item: DirectSearchCandidate; opening: boolean; verifying: boolean; saving: boolean; onViewDetails: () => void; onVerifyLocation: () => void; onSaveOne: () => void }) {
+function SupplierResultCard({ item, opening, verifying, saving, selected, saved, onToggle, onViewDetails, onVerifyLocation, onSaveOne }: { item: DirectSearchCandidate; opening: boolean; verifying: boolean; saving: boolean; selected: boolean; saved: boolean; onToggle: () => void; onViewDetails: () => void; onVerifyLocation: () => void; onSaveOne: () => void }) {
   const [showCalculation, setShowCalculation] = useState(false);
   const contact = contactDetails(item);
   const sources = item.sources?.length ? item.sources : [{ url: item.sourceUrl, title: item.sourceTitle }];
   const status = item.locationStatus ?? "UNKNOWN";
   const locationBadge = LOCATION_BADGES[status];
   const distanceLabel = status === "INSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `${item.distanceKm.toFixed(1)} km từ tâm` : status === "OUTSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `Ngoài bán kính · ${item.distanceKm.toFixed(1)} km` : locationBadge.label;
-  const mapQuery = item.address ? `${item.legalName}, ${item.address}` : item.legalName;
-  const mapsUrl = item.latitude !== null && item.latitude !== undefined && item.longitude !== null && item.longitude !== undefined
-    ? `https://www.google.com/maps?q=${item.latitude},${item.longitude}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+  const mapsUrl = googleMapsSearchUrl(item);
   const evidence = item.distanceEvidence;
   return <article className="rounded-xl border p-4 space-y-3" style={{borderColor:"var(--border)"}}>
     <div className="flex justify-between gap-3">
-      <div className="min-w-0"><div className="flex items-start gap-2"><Building2 className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600"/><b className="leading-snug">{item.legalName}</b></div><div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>{item.verificationStatus==="VERIFIED"?"Đã đối chiếu nhiều nguồn":item.verificationStatus==="PARTIAL"?"Đã đối chiếu một phần":"Chưa đủ bằng chứng"}</div></div>
+      <div className="flex min-w-0 items-start gap-2"><button type="button" onClick={onToggle} disabled={saved} className="mt-0.5 text-brand-700 disabled:text-emerald-600" aria-label={saved?"Công ty đã lưu":selected?"Bỏ chọn công ty":"Chọn công ty"}>{saved?<BookmarkCheck className="w-4 h-4"/>:selected?<CheckSquare className="w-4 h-4"/>:<Square className="w-4 h-4"/>}</button><div className="min-w-0"><div className="flex items-start gap-2"><Building2 className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600"/><b className="leading-snug">{item.legalName}</b></div><div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>{item.verificationStatus==="VERIFIED"?"Đã đối chiếu nhiều nguồn":item.verificationStatus==="PARTIAL"?"Đã đối chiếu một phần":"Chưa đủ bằng chứng"}</div></div></div>
       <span className="text-xs text-brand-700 shrink-0">{item.confidence}% phù hợp</span>
     </div>
     <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${locationBadge.className}`}><Navigation className="w-3.5 h-3.5"/>{distanceLabel}
@@ -132,7 +130,7 @@ function SupplierResultCard({ item, opening, verifying, saving, onViewDetails, o
     <div className="flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div>
     <div className="flex flex-wrap gap-2"><a className="btn-secondary inline-flex items-center gap-2 text-xs" href={mapsUrl} target="_blank" rel="noopener noreferrer"><Map className="w-4 h-4"/>Google Maps</a><button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={()=>setShowCalculation((current)=>!current)}><Calculator className="w-4 h-4"/>{showCalculation?"Ẩn cách tính":"Xem cách tính"}</button><button type="button" disabled={verifying} className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={onVerifyLocation}><RefreshCw className={`w-4 h-4 ${verifying?"animate-spin":""}`}/>{verifying?"Đang xác minh...":"Xác minh lại vị trí"}</button></div>
     {showCalculation&&<div className="rounded-lg border bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1"><p><b>Phương pháp:</b> {evidence?.method==="HAVERSINE"?"Haversine · khoảng cách đường chim bay":"Chưa có phép tính"}</p><p><b>Bán kính áp dụng:</b> {evidence?`${evidence.radiusKm} km`:"Chưa có"}</p><p><b>Tâm:</b> {evidence?`${evidence.center.latitude.toFixed(6)}, ${evidence.center.longitude.toFixed(6)} · ${evidence.center.label}`:"Chưa xác định"}</p><p><b>Công ty:</b> {evidence?.destination.latitude!==null&&evidence?.destination.latitude!==undefined&&evidence.destination.longitude!==null&&evidence.destination.longitude!==undefined?`${evidence.destination.latitude.toFixed(6)}, ${evidence.destination.longitude.toFixed(6)}`:"Chưa có tọa độ"}</p><p><b>Nguồn tọa độ:</b> {evidence?.destination.coordinateSource??"Chưa xác minh"} · độ tin cậy {evidence?.destination.coordinateConfidence??"chưa có"}</p><p><b>Kết luận:</b> {item.locationReason??locationBadge.label}</p>{evidence&&<p><b>Thời điểm tính:</b> {new Date(evidence.calculatedAt).toLocaleString("vi-VN")}</p>}</div>}
-    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3 text-xs">{sources.slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div><div className="flex gap-2"><button type="button" disabled={saving} onClick={onSaveOne} className={`btn-secondary inline-flex items-center gap-1.5 text-xs ${saving ? "opacity-60" : ""}`}>{saving ? <><BookmarkCheck className="w-4 h-4 text-emerald-600"/>Đang lưu...</> : <><Bookmark className="w-4 h-4"/>Lưu công ty này</>}</button><button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-2 text-xs"><Eye className="w-4 h-4"/>{opening?"Đang mở...":"Xem chi tiết"}</button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3 text-xs">{sources.slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div><div className="flex gap-2"><button type="button" disabled={saving||saved} onClick={onSaveOne} className={`btn-secondary inline-flex items-center gap-1.5 text-xs ${saving||saved ? "opacity-60" : ""}`}>{saved?<><BookmarkCheck className="w-4 h-4 text-emerald-600"/>Đã lưu</>:saving ? <><BookmarkCheck className="w-4 h-4 text-emerald-600"/>Đang lưu...</> : <><Bookmark className="w-4 h-4"/>Lưu công ty này</>}</button><button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-2 text-xs"><Eye className="w-4 h-4"/>{opening?"Đang mở...":"Xem chi tiết"}</button></div></div>
   </article>;
 }
 
@@ -150,7 +148,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [verifyingLocation, setVerifyingLocation] = useState("");
   const [savingCard, setSavingCard] = useState("");
   const [radiusKm, setRadiusKm] = useState(20);
-  const [locationMode, setLocationMode] = useState<"PREFER"|"STRICT">("PREFER");
+  const locationMode = "PREFER" as const;
+  const [selectedResultKeys, setSelectedResultKeys] = useState<Set<string>>(new Set());
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
   const [resolvedCenter, setResolvedCenter] = useState<ResolvedSearchCenter|null>(null);
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
@@ -176,7 +175,6 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           if (cached.location === "Vị trí hiện tại (GPS)" || cached.center) setLocationType("GPS");
         }
         if(typeof cached.radiusKm==="number")setRadiusKm(cached.radiusKm);
-        if(cached.locationMode==="PREFER"||cached.locationMode==="STRICT")setLocationMode(cached.locationMode);
         if(cached.center)setCenter(cached.center);
         if(Array.isArray(cached.directResults))setDirectResults(cached.directResults);
         if(typeof cached.directProvider==="string")setDirectProvider(cached.directProvider);
@@ -218,8 +216,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       const candidates = data.candidates??[];
       setDirectResults(candidates); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(data.diagnostics??null);
-      if (!silent && locationMode === "STRICT" && !candidates.length) toast.warning(`Không có hồ sơ đã xác minh trong bán kính ${radiusKm} km`);
-      else if (!silent) toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${candidates.length} kết quả`);
+      if (!silent) toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${candidates.length} kết quả`);
       return candidates;
     }
     catch (error) { toast.error(error instanceof Error ? error.message : "Tìm kiếm thất bại"); return null; }
@@ -237,13 +234,13 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     catch (error) { toast.error(error instanceof Error ? error.message : "Không nhập được dữ liệu AI"); }
     finally { setLoading(false); }
   };
-  const saveDirectResults = async()=>{try{await saveDirectSearchCandidates(directResults,role,`${query} | ${location}`,directProvider);setDirectResults([]);await refresh();toast.success("Dã lưu kết quả vào vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
+  const saveDirectResults = async()=>{const selected=directResults.filter(item=>selectedResultKeys.has(directCandidateSaveKey(item)));const candidates=selected.length?selected:directResults.filter(item=>!isDirectCandidateSaved(item,items));try{const result=await saveDirectSearchCandidates(candidates,role,`${query} | ${location}`,directProvider);await refresh();setSelectedResultKeys(new Set());if(result.savedCount)toast.success(`Đã lưu ${result.savedCount} công ty vào Công ty đã lưu`);else toast.info("Các công ty đã có trong vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
   const saveOneResult = async (item: DirectSearchCandidate, key: string) => {
     setSavingCard(key);
     try {
-      await saveDirectSearchCandidates([item], role, `${query} | ${location}`, directProvider);
+      const result=await saveDirectSearchCandidates([item], role, `${query} | ${location}`, directProvider);
       await refresh();
-      toast.success(`Đã lưu "${item.legalName}" vào vùng chờ`);
+      if(result.savedCount)toast.success(`Đã lưu "${item.legalName}" vào Công ty đã lưu`);else toast.info("Công ty này đã được lưu trước đó");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Không lưu được"); }
     finally { setSavingCard(""); }
   };
@@ -277,16 +274,6 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
 
   return <div className="space-y-5 animate-fade-in">
     {learningSummary&&<div className="text-xs px-1 opacity-70">{learningSummary.applied?`AI đang học từ ${learningSummary.approvedCount} kết quả đã duyệt và ${learningSummary.rejectedCount} kết quả đã loại.`:`Cần ít nhất 3 quyết định duyệt/loại để AI bắt đầu học. Hiện có ${learningSummary.approvedCount+learningSummary.rejectedCount}.`}</div>}
-    {locationMode==="STRICT"&&Boolean(diagnostics?.strictExcluded)&&directResults.length===0&&(
-      <div className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="flex-1">
-          <p className="font-semibold">⚠️ Chế độ Nghiêm ngặt loại hết {diagnostics?.strictExcluded} hồ sơ vì thiếu tọa độ xác minh</p>
-          <p className="text-xs mt-1 opacity-80">Phần lớn kết quả AI thu thập được chưa có tọa độ GPS đủ chính xác để khẳng định nằm trong {radiusKm} km. Chuyển sang chế độ <b>Mở rộng</b> để xem toàn bộ hồ sơ phù hợp (có thể gồm cả ngoài bán kính).</p>
-        </div>
-        <button type="button" className="btn-secondary shrink-0 text-xs" onClick={() => setLocationMode("PREFER")}>Chuyển sang Mở rộng</button>
-      </div>
-    )}
-    {locationMode==="STRICT"&&Boolean(diagnostics?.strictExcluded)&&directResults.length>0&&<div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">Chế độ nghiêm ngặt đã loại {diagnostics?.strictExcluded} hồ sơ ngoài bán kính, thiếu tọa độ hoặc có mâu thuẫn. Danh sách chỉ giữ hồ sơ đã xác minh trong {radiusKm} km.</div>}
     {diagnostics?.locationQuality&&<div className={`rounded-lg border px-3 py-2 text-xs ${diagnostics.locationQuality.grade==="HIGH"?"border-emerald-300 bg-emerald-50 text-emerald-900":diagnostics.locationQuality.grade==="MEDIUM"?"border-amber-300 bg-amber-50 text-amber-900":"border-red-300 bg-red-50 text-red-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><b>Chất lượng định vị: {diagnostics.locationQuality.grade==="HIGH"?"Cao":diagnostics.locationQuality.grade==="MEDIUM"?"Trung bình":"Thấp"} · phủ tọa độ {diagnostics.locationQuality.coordinateCoveragePercent}%</b><span className="font-mono text-[10px]">Mã lượt: {diagnostics.locationQuality.runId.slice(0,8)} · {diagnostics.locationQuality.algorithmVersion}</span></div>{diagnostics.locationQuality.warnings.length>0&&<ul className="mt-1 list-disc pl-4">{diagnostics.locationQuality.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul>}</div>}
     {diagnostics&&<div className="card p-4 space-y-3"><div className="flex flex-wrap gap-2">{diagnostics.providers.map(item=><span key={item.name} className="text-xs rounded-full border px-3 py-1" style={{borderColor:"var(--border)"}}>{item.name}: {item.status==="OK"?`${item.count} nguồn`:item.status==="EMPTY"?"không có kết quả":item.status==="DISABLED"?"chưa cấu hình":`tạm lỗi${item.code?` (${item.code})`:""}`}</span>)}{typeof diagnostics.enrichmentSources==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Làm giàu: {diagnostics.enrichmentSources} nguồn · bổ sung {diagnostics.enrichedCandidates??0} hồ sơ</span>}{Boolean(diagnostics.rejectedNoiseCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-amber-300 text-amber-700">Đã loại {diagnostics.rejectedNoiseCandidates} kết quả rao vặt/không đủ hồ sơ công ty</span>}{diagnostics.geocoding&&<span className="text-xs rounded-full border px-3 py-1 border-sky-300 text-sky-700">Định vị: xác minh {diagnostics.geocoding.verified+diagnostics.geocoding.retainedFromSource}/{diagnostics.geocoding.attempted+diagnostics.geocoding.retainedFromSource} hồ sơ</span>}</div>{diagnostics.strictLocationFallback&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Chưa có hồ sơ nào đủ tọa độ để xác nhận trong {radiusKm} km. Hệ thống đang hiển thị hồ sơ chưa có tọa độ để anh kiểm tra; các hồ sơ này không được tính là nằm trong bán kính.</div>}<div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center"><div><b>{diagnostics.collectedSources}</b><p className="text-[11px] opacity-60">Nguồn thu thập</p></div><div><b>{diagnostics.finalCandidates}</b><p className="text-[11px] opacity-60">Hồ sơ sau gộp</p></div><div><b>{diagnostics.verified}</b><p className="text-[11px] opacity-60">Đối chiếu nhiều nguồn</p></div><div><b>{diagnostics.partial}</b><p className="text-[11px] opacity-60">Đối chiếu một phần</p></div><div><b>{diagnostics.insideRadius}</b><p className="text-[11px] opacity-60">Trong bán kính</p></div><div><b>{diagnostics.unknownCoordinates}</b><p className="text-[11px] opacity-60">Thiếu tọa độ</p></div></div></div>}
     <div className="card p-5 space-y-4 relative z-20">
@@ -320,7 +307,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           )}
         </label>
         <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label>
-        <label className="text-xs font-medium">Chế độ<select className="input mt-1" value={locationMode} onChange={e=>setLocationMode(e.target.value as "PREFER"|"STRICT")}><option value="PREFER">Tìm trong bán kính (Mở rộng thêm nếu thiếu)</option><option value="STRICT">Nghiêm ngặt (Tuyệt đối không lấy xưởng xa)</option></select></label>
+        <label className="text-xs font-medium">Chế độ<div className="input mt-1 flex items-center">Ưu tiên gần · mở rộng nếu thiếu</div></label>
         <div className="flex flex-col gap-1 justify-end">
           <button type="button" className={`btn-secondary inline-flex justify-center items-center gap-2 ${locationType === "GPS" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`} onClick={locationType === "GPS" ? () => {setLocationType("DISTRICT"); setCenter(null); setLocation("");} : useCurrentLocation}>
             <Navigation className="w-4 h-4"/>{locationType === "GPS" ? "Đang dùng GPS • Hủy" : "Vị trí hiện tại"}
@@ -345,12 +332,11 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         <li><b>Bán kính & Chế độ:</b> 
           <ul className="list-circle pl-4 mt-1">
             <li><i>Mở rộng thêm nếu thiếu:</i> AI sẽ rà soát từ gần đến xa, lấy cả các xưởng ngoài bán kính nếu rất phù hợp.</li>
-            <li><i>Nghiêm ngặt:</i> Loại bỏ tuyệt đối mọi xưởng nằm ngoài vòng tròn (Dùng khi cần tìm gấp, không muốn đi xa).</li>
           </ul>
         </li>
       </ul>
     </div>)}
-    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {directResults.length} kết quả vào vùng chờ</button></div>{directResultSections.map((section)=><section key={section.status} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.status}-${index}`;return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
+    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {selectedResultKeys.size||directResults.filter(item=>!isDirectCandidateSaved(item,items)).length} công ty</button></div>{directResultSections.map((section)=><section key={section.status} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.status}-${index}`;const saveKey=directCandidateSaveKey(item);const saved=isDirectCandidateSaved(item,items);return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} selected={selectedResultKeys.has(saveKey)} saved={saved} onToggle={()=>setSelectedResultKeys(current=>{const next=new Set(current);if(next.has(saveKey))next.delete(saveKey);else next.add(saveKey);return next})} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
       <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />

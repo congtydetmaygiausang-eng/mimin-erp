@@ -167,6 +167,8 @@ const NAV: NavItem[] = [
     ...cardStyle("from-sky-500", "to-indigo-600", "from-sky-50", "to-indigo-50", "text-sky-900"),
     subItems: [
       { href: "/mang-luoi-san-xuat", label: "Trang chủ sản xuất", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/tim-kiem", label: "Tìm công ty", icon: Search, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/cong-ty-da-luu", label: "Công ty đã lưu", icon: Building2, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
     ]
   },
   {

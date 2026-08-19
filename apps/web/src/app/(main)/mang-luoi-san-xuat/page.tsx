@@ -393,6 +393,9 @@ export default function MangLuoiSanXuatPage() {
         icon={<Building2 className="w-5 h-5" />}
         actions={
           <div className="flex gap-2">
+            <Link href="/mang-luoi-san-xuat/cong-ty-da-luu" className="btn-secondary inline-flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Công ty đã lưu
+            </Link>
             <button onClick={() => void refresh()} className="btn-secondary inline-flex items-center gap-2">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Làm mới
             </button>

@@ -9,16 +9,12 @@ import PageHeader from "@/components/ui/PageHeader";
 import { CompanyRegistryVerification } from "@/components/production-network/CompanyRegistryVerification";
 import { calculateCompanyTrust, type CompanyTrustAssessment } from "@/lib/company-trust-score";
 import { createCompanyTrustAssessment, discoverCompanyImages, extractCompanyDocument, loadCompanyAuditEvents, loadCompanyDocumentExtractions, loadCompanyDocuments, loadCompanyImages, loadCompanyManualChecks, loadCompanyProfile, loadCompanyTrustAssessments, reviewCompanyDocument, reviewCompanyDocumentExtraction, reviewCompanyImage, updateCompanyManualCheck, uploadCompanyDocument, type CompanyDocumentType, type CompanyManualCheckType, type ProductionCompanyAuditEvent, type ProductionCompanyDocument, type ProductionCompanyDocumentExtraction, type ProductionCompanyImage, type ProductionCompanyManualCheck, type ProductionCompanyProfile, type ProductionCompanySource, type ProductionCompanyTrustAssessment } from "@/lib/production-company-profile";
+import { googleMapsSearchUrl } from "@/lib/google-maps";
 
 const TABS = ["Thông tin & Liên hệ", "Đánh giá & Xác minh", "Tài liệu", "Nguồn AI"] as const;
 type CompanyTab = typeof TABS[number];
 const IMAGE_CATEGORY_LABELS: Record<ProductionCompanyImage["category"], string> = { LOGO:"Logo", FACADE:"Mặt tiền", FACTORY:"Nhà xưởng", MACHINERY:"Máy móc", PRODUCT:"Sản phẩm", CERTIFICATE:"Chứng nhận", OTHER:"Khác" };
 const DOCUMENT_LABELS:Record<CompanyDocumentType,string>={BUSINESS_LICENSE:"Đăng ký kinh doanh",TAX_REGISTRATION:"Đăng ký thuế",BRAND_LICENSE:"Giấy phép thương hiệu",CERTIFICATE:"Chứng nhận",FACTORY_LICENSE:"Giấy phép nhà xưởng",OTHER:"Khác"};
-
-function googleMapsUrl(profile:ProductionCompanyProfile):string{
-  const query=profile.latitude!==null&&profile.longitude!==null?`${profile.latitude},${profile.longitude}`:[profile.legalName,profile.address,profile.district,profile.province].filter(Boolean).join(", ");
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
 
 function zaloPhone(phone:string):string{
   const digits=phone.replace(/\D/g,"");
@@ -162,7 +158,7 @@ function CompanyProfileContent() {
   if (loading) return <div className="card p-10 text-center opacity-60">Đang tải hồ sơ công ty...</div>;
   if (error || !profile) return <div className="card p-10 text-center"><h2 className="font-bold text-rose-700">Không mở được hồ sơ</h2><p className="mt-2 text-sm opacity-70">{error}</p><Link href="/mang-luoi-san-xuat" className="btn-secondary inline-flex mt-4">Quay lại trang chủ</Link></div>;
 
-  const mapsUrl=googleMapsUrl(profile);
+  const mapsUrl=googleMapsSearchUrl(profile);
   const zaloNumber=zaloPhone(profile.phone);
   const maturity=profileMaturity(profile,sources,images,documents,documentExtractions);
   const trust=calculateCompanyTrust({profile,sources,images,documents,extractions:documentExtractions,auditEvents,manualChecks});

@@ -29,6 +29,12 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-19 12:30 | Codex | mang-luoi-san-xuat | Q6: kiểm thử hồi quy Q1-Q5; xác nhận test dữ liệu, TypeScript strict và build production 128/128 trang đạt, gồm trang Công ty đã lưu và hồ sơ công ty | codex/q6-regression-verification | 🟢 DONE |
+| 2026-08-19 11:45 | Codex | mang-luoi-san-xuat | Q5: thiết kế lại thẻ kết quả theo 5 vùng, tách điểm phù hợp khỏi độ tin cậy, lưới liên hệ có icon màu, hiệu ứng nhẹ và menu thao tác phụ | codex/q5-professional-result-cards | 🟢 DONE |
+| 2026-08-19 11:00 | Codex | mang-luoi-san-xuat | Q4: lưu từng công ty hoặc chọn nhiều, giữ kết quả sau lưu, đánh dấu đã lưu và chặn trùng theo MST/điện thoại/website/tên-địa chỉ/nguồn | codex/q4-selective-company-save | 🟢 DONE |
+| 2026-08-19 10:15 | Codex | mang-luoi-san-xuat | Q3: tạo danh mục Công ty đã lưu quản lý vùng chờ Supabase theo trạng thái, vai trò, thiếu/trùng, tìm kiếm, phân trang và duyệt/loại/khôi phục | codex/q3-saved-company-management | 🟢 DONE |
+| 2026-08-19 09:35 | Codex | mang-luoi-san-xuat | Q2: dùng chung URL Google Maps theo tên + địa chỉ chuẩn hóa, không ưu tiên tọa độ; thêm chỉ đường và sao chép địa chỉ trong hồ sơ | codex/q2-company-google-maps | 🟢 DONE |
+| 2026-08-19 09:00 | Codex | mang-luoi-san-xuat | Q1: ẩn lọc nghiêm ngặt khỏi giao diện, cố định ưu tiên gần và tách rõ kết quả trong/ngoài/chưa xác minh; giữ backend STRICT để tương thích | codex/q1-prefer-near-location-mode | 🟢 DONE |
 | 2026-08-17 21:20 | Codex | mang-luoi-san-xuat | Google Maps tìm bằng tên công ty + địa chỉ; chuẩn hóa 12 đơn vị Hóc Môn cũ sang 4 xã sau sắp xếp 2025 và giữ địa chỉ cũ dự phòng | codex/fix-google-maps-post-merger-address | 🟢 DONE |
 | 2026-08-17 20:45 | Codex | mang-luoi-san-xuat | Chặn domain rao vặt/việc làm và chỉ giữ hồ sơ doanh nghiệp đúng vai trò, có bằng chứng nhận diện | codex/filter-sourcing-noise-domains | 🟢 DONE |
 | 2026-08-17 20:15 | Codex | mang-luoi-san-xuat | Sửa địa chỉ nguồn tìm kiếm: chỉ nhận cấu trúc bưu chính, chặn mô tả bài viết và bỏ fallback nội dung nguồn | codex/fix-sourcing-company-address | 🟢 DONE |
