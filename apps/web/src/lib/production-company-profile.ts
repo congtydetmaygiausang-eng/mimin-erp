@@ -4,16 +4,47 @@ import type { DirectSearchCandidate } from "@/lib/production-discovery";
 
 export type CompanyProfileStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
 export type CompanyVerificationStatus = "DISCOVERED" | "REVIEWED" | "VERIFIED";
+export type CompanyEvidenceVerificationStatus = "UNVERIFIED" | "PARTIAL" | "VERIFIED" | "REJECTED";
+export type CompanyEvidenceField = "LEGAL_NAME" | "TRADE_NAME" | "SHORT_NAME" | "TAX_CODE" |
+  "REGISTERED_ADDRESS" | "FACTORY_ADDRESS" | "OFFICE_ADDRESS" | "PHONE" | "ZALO" | "EMAIL" |
+  "WEBSITE" | "FACEBOOK" | "LEGAL_REPRESENTATIVE" | "BUSINESS_LINE" | "CAPABILITY" |
+  "COMPANY_INTRODUCTION" | "FOUNDED_YEAR" | "OPERATING_STATUS";
+
+export interface ProductionCompanyFieldEvidence {
+  id: string;
+  fieldName: CompanyEvidenceField;
+  fieldValue: string;
+  sourceId: string;
+  sourceUrl: string;
+  sourceExcerpt: string;
+  confidence: number;
+  verificationStatus: CompanyEvidenceVerificationStatus;
+  isSelected: boolean;
+  capturedAt: string;
+}
 
 export interface ProductionCompanyProfile {
   id: string;
   role: ProductionPartnerRole;
   legalName: string;
+  tradeName: string;
+  shortName: string;
   taxCode: string;
   phone: string;
   email: string;
   website: string;
   address: string;
+  registeredAddress: string;
+  factoryAddress: string;
+  officeAddress: string;
+  phones: string[];
+  zaloPhone: string;
+  facebookUrl: string;
+  legalRepresentative: string;
+  businessLines: string[];
+  companyIntroduction: string;
+  foundedYear: number | null;
+  operatingStatus: string;
   province: string;
   district: string;
   latitude: number | null;
@@ -116,7 +147,12 @@ interface DiscoveredCompanyImage {
 
 interface CompanyProfileRow {
   id: string; role: ProductionPartnerRole; legal_name: string; tax_code: string | null;
+  trade_name?: string | null; short_name?: string | null;
   phone: string | null; email: string | null; website: string | null; address: string | null;
+  registered_address?: string | null; factory_address?: string | null; office_address?: string | null;
+  phones?: string[] | null; zalo_phone?: string | null; facebook_url?: string | null;
+  legal_representative?: string | null; business_lines?: string[] | null;
+  company_introduction?: string | null; founded_year?: number | null; operating_status?: string | null;
   province: string | null; district: string | null; latitude: number | null; longitude: number | null;
   capabilities: string[] | null; profile_status: CompanyProfileStatus;
   verification_status: CompanyVerificationStatus; summary: string | null;
@@ -129,9 +165,23 @@ interface CompanySourceRow {
   verification_status: ProductionCompanySource["verificationStatus"]; captured_at: string;
 }
 
+interface CompanyFieldEvidenceRow {
+  id: string; field_name: CompanyEvidenceField; field_value: string;
+  source_id: string | null; source_url: string | null; source_excerpt: string | null;
+  confidence: number; verification_status: CompanyEvidenceVerificationStatus;
+  is_selected: boolean; captured_at: string;
+}
+
 function mapProfile(row: CompanyProfileRow): ProductionCompanyProfile {
   return { id: row.id, role: row.role, legalName: row.legal_name, taxCode: row.tax_code ?? "",
+    tradeName: row.trade_name ?? "", shortName: row.short_name ?? "",
     phone: row.phone ?? "", email: row.email ?? "", website: row.website ?? "", address: row.address ?? "",
+    registeredAddress: row.registered_address ?? row.address ?? "", factoryAddress: row.factory_address ?? "",
+    officeAddress: row.office_address ?? "", phones: row.phones ?? (row.phone ? [row.phone] : []),
+    zaloPhone: row.zalo_phone ?? "", facebookUrl: row.facebook_url ?? "",
+    legalRepresentative: row.legal_representative ?? "", businessLines: row.business_lines ?? [],
+    companyIntroduction: row.company_introduction ?? row.summary ?? "", foundedYear: row.founded_year ?? null,
+    operatingStatus: row.operating_status ?? "",
     province: row.province ?? "", district: row.district ?? "", latitude: row.latitude, longitude: row.longitude,
     capabilities: row.capabilities ?? [], profileStatus: row.profile_status, verificationStatus: row.verification_status,
     summary: row.summary ?? "", sourceProvider: row.source_provider ?? "", sourceUrl: row.source_url ?? "",
@@ -165,11 +215,24 @@ export async function ensureCompanyProfileFromSearch(
     identity_key: identityKey,
     role,
     legal_name: candidate.legalName.trim(),
+    trade_name: candidate.tradeName?.trim() || null,
+    short_name: candidate.shortName?.trim() || null,
     tax_code: candidate.taxCode?.trim() || null,
     phone: candidate.phone.trim() || null,
     email: candidate.email?.trim() || null,
     website: candidate.website.trim() || null,
     address: candidate.address.trim() || null,
+    registered_address: candidate.registeredAddress?.trim() || candidate.address.trim() || null,
+    factory_address: candidate.factoryAddress?.trim() || null,
+    office_address: candidate.officeAddress?.trim() || null,
+    phones: candidate.phones?.map((value) => value.trim()).filter(Boolean) ?? (candidate.phone.trim() ? [candidate.phone.trim()] : []),
+    zalo_phone: candidate.zaloPhone?.trim() || null,
+    facebook_url: safeHttpsUrl(candidate.facebookUrl ?? "") || null,
+    legal_representative: candidate.legalRepresentative?.trim() || null,
+    business_lines: candidate.businessLines?.map((value) => value.trim()).filter(Boolean) ?? [],
+    company_introduction: candidate.companyIntroduction?.trim() || null,
+    founded_year: candidate.foundedYear ?? null,
+    operating_status: candidate.operatingStatus?.trim() || null,
     province: candidate.province.trim() || null,
     district: candidate.district.trim() || null,
     latitude: candidate.latitude,
@@ -225,6 +288,22 @@ export async function loadCompanyProfile(id: string): Promise<{ profile: Product
       sourceUrl: (row as CompanySourceRow).source_url, sourceTitle: (row as CompanySourceRow).source_title ?? "",
       verificationStatus: (row as CompanySourceRow).verification_status, capturedAt: (row as CompanySourceRow).captured_at })),
   };
+}
+
+export async function loadCompanyFieldEvidence(profileId: string): Promise<ProductionCompanyFieldEvidence[]> {
+  if (!supabase) throw new Error("Chưa kết nối Supabase");
+  const { data, error } = await supabase.from("production_company_field_evidence").select("*")
+    .eq("organization_id", PRODUCTION_ORGANIZATION_ID).eq("company_profile_id", profileId)
+    .order("is_selected", { ascending: false }).order("confidence", { ascending: false })
+    .order("captured_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((raw) => {
+    const row = raw as CompanyFieldEvidenceRow;
+    return { id: row.id, fieldName: row.field_name, fieldValue: row.field_value,
+      sourceId: row.source_id ?? "", sourceUrl: row.source_url ?? "", sourceExcerpt: row.source_excerpt ?? "",
+      confidence: Number(row.confidence), verificationStatus: row.verification_status,
+      isSelected: row.is_selected, capturedAt: row.captured_at };
+  });
 }
 
 export async function loadCompanyImages(profileId: string): Promise<ProductionCompanyImage[]> {
