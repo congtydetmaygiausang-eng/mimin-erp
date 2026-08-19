@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mimin.vn/schemas/company-read-response.schema.json",
+  "title": "JT9 Company Reader Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "profiles", "sources", "warnings"],
+  "properties": {
+    "request_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{8,64}$"},
+    "profiles": {
+      "type": "array",
+      "maxItems": 25,
+      "items": {"$ref": "canonical-company-profile.schema.json"}
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_url", "status", "fetch_status", "extraction_status", "fallback_decision", "entity_count", "error_code"],
+        "properties": {
+          "source_url": {"type": "string", "format": "uri"},
+          "status": {"enum": ["PROCESSED", "NO_ENTITY", "FAILED"]},
+          "fetch_status": {"type": "string"},
+          "extraction_status": {"type": "string"},
+          "fallback_decision": {"type": "string"},
+          "entity_count": {"type": "integer", "minimum": 0},
+          "error_code": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  }
+}

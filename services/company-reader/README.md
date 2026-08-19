@@ -17,7 +17,8 @@ Python service cô lập để đọc và chuẩn hóa nguồn công khai về d
 | JT6 | Jina Reader fallback có kiểm soát, giới hạn và khóa provenance | Hoàn thành |
 | JT7 | Lựa chọn trường chuẩn, đồng thuận nguồn và cổng duyệt xung đột | Hoàn thành |
 | JT8 | Cache TTL, rate limit, circuit breaker, request coalescing và metrics an toàn | Hoàn thành |
-| JT9+ | Kho phân tán, service API và tích hợp production | Chưa kích hoạt |
+| JT9 | Dark-launch ASGI API, service auth, request bounds và adapter Redis | Hoàn thành, mặc định tắt |
+| JT10+ | Private ingress, Redis production, canary và tích hợp MIMIN ERP | Chưa kích hoạt |
 
 JT1 chỉ tải nội dung; không đoán dữ liệu doanh nghiệp, không ghi Supabase và không
 thay đổi kết quả tìm kiếm hiện tại của MIMIN ERP.
@@ -36,6 +37,11 @@ duyệt. Không có dữ liệu nào được tự động xuất bản hoặc g
 
 JT8 thêm hàng rào vận hành trong bộ nhớ quanh Jina. Đây chưa phải rate limit phân
 tán và chưa được nối vào request path hiện tại của MIMIN ERP.
+
+JT9 đóng gói pipeline thành service API nội bộ nhưng giữ feature flag mặc định
+tắt. Adapter Redis được cung cấp theo dependency injection; JT9 không tự kết nối
+hạ tầng, không bật CORS, không ghi Supabase và chưa nối vào MIMIN ERP. Xem
+[`docs/JT9-DARK-LAUNCH-SERVICE.md`](docs/JT9-DARK-LAUNCH-SERVICE.md).
 
 ## Chạy kiểm thử
 

@@ -15,6 +15,7 @@ from .canonical_models import (
     CanonicalProfileStatus,
 )
 from .canonical_selector import CanonicalFieldSelector
+from .api import CompanyReaderASGI
 from .extraction_models import ExtractedDocument, ExtractionStatus
 from .extractor import TrafilaturaExtractor
 from .fallback import JinaFallbackCoordinator
@@ -52,6 +53,9 @@ from .resolution_models import (
     ResolutionDecision,
     ResolvedCompanyGroup,
 )
+from .distributed_guardrails import RedisEvidenceCache, RedisFixedWindowRateLimiter
+from .service import CompanyReaderPipeline
+from .service_models import CompanyReadResponse, SourceProcessingReport, SourceProcessingStatus
 
 __all__ = [
     "CandidateBundleStatus",
@@ -64,6 +68,9 @@ __all__ = [
     "CircuitBreaker",
     "CompanyCandidateBundle",
     "CompanyCandidateExtractor",
+    "CompanyReadResponse",
+    "CompanyReaderASGI",
+    "CompanyReaderPipeline",
     "CompanyEntitySegmenter",
     "CompanyEntityResolver",
     "CompanyResolutionResult",
@@ -91,9 +98,13 @@ __all__ = [
     "ResolutionDecision",
     "RateLimitDecision",
     "ReaderMetrics",
+    "RedisEvidenceCache",
+    "RedisFixedWindowRateLimiter",
     "ResolvedCompanyGroup",
     "SafeFetcher",
     "SegmentationStatus",
+    "SourceProcessingReport",
+    "SourceProcessingStatus",
     "TrafilaturaExtractor",
     "UrlPolicy",
     "UrlPolicyError",

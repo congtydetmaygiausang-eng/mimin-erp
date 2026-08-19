@@ -26,6 +26,15 @@ class JinaReader(Protocol):
     def read(self, raw_url: str) -> JinaReadEvidence: ...
 
 
+class EvidenceCache(Protocol):
+    def get(self, key: str) -> JinaReadEvidence | None: ...
+    def set(self, key: str, value: JinaReadEvidence, ttl_seconds: float) -> None: ...
+
+
+class RateLimiter(Protocol):
+    def acquire(self, caller_key: str) -> RateLimitDecision: ...
+
+
 @dataclass(frozen=True, slots=True)
 class RateLimitDecision:
     allowed: bool
@@ -183,8 +192,8 @@ class GuardedJinaReaderClient:
         base: JinaReaderClient,
         *,
         caller_id: str,
-        cache: MemoryTTLCache[JinaReadEvidence] | None = None,
-        limiter: FixedWindowRateLimiter | None = None,
+        cache: EvidenceCache | None = None,
+        limiter: RateLimiter | None = None,
         breaker: CircuitBreaker | None = None,
         metrics: ReaderMetrics | None = None,
         success_ttl_seconds: float = 86_400.0,
