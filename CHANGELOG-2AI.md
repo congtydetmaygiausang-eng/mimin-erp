@@ -151,4 +151,5 @@
 | 2026-08-19 12:30 | Codex | sourcing T4 | DeepSeek trích xuất hồ sơ có dẫn chứng và kiểm chứng lại theo URL nguồn | codex/company-profile-t4-deepseek-evidence | 🟢 DONE |
 | 2026-08-19 13:30 | Codex | sourcing T5 | Gộp thực thể bằng khóa mạnh, chặn gộp khi MST mâu thuẫn và đếm nguồn độc lập | codex/company-profile-t5-entity-resolution | 🟢 DONE |
 | 2026-08-19 14:30 | Codex | sourcing T6 | Chấm độ tin cậy từng trường và áp dụng cổng chất lượng hồ sơ đa nguồn | codex/company-profile-t6-quality-gate | 🟢 DONE |
+| 2026-08-19 15:30 | Codex | sourcing T7 | Hiển thị cổng chất lượng, kiểm chứng từng trường và cảnh báo hồ sơ xung đột | codex/company-profile-t7-review-ui | 🟢 DONE |
 **Last updated**: 2026-08-01 (Mavis tạo file)
