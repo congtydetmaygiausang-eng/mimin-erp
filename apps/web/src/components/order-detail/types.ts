@@ -109,6 +109,11 @@ export type Order = {
   shipping?: OrderShipping;
   /** Trạng thái thanh toán tổng */
   trangThaiThanhToan?: TrangThaiThanhToan;
+  /**
+   * Đã trừ tồn kho thành phẩm cho đơn này chưa. Đặt = true ngay khi đơn chuyển
+   * sang "Đã giao" để không trừ kho lần thứ hai nếu đơn được sửa/đổi trạng thái lại.
+   */
+  daTruKho?: boolean;
 };
 
 export function calcTotalQty(items: OrderItem[]): number {

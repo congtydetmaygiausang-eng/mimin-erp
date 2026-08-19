@@ -51,6 +51,7 @@ import {
   Sliders,
   Calculator,
   Search,
+  Wind,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -88,11 +89,28 @@ type NavItem = {
   noAccentBar?: boolean; // bỏ thanh viền trái - dùng cho group kiểu thẻ card
 };
 
+// Kiểu "thẻ kính mờ" (glassmorphism) dùng chung cho mọi nhóm - trong suốt +
+// backdrop-blur để thấy mờ mờ nền tối phía sau, chỉ đổi màu chip icon + màu
+// mục con đang active theo từng nhóm.
+function cardStyle(chipFrom: string, chipTo: string, subFrom: string, subTo: string, subText: string): Partial<NavItem> {
+  return {
+    noAccentBar: true,
+    iconChip: `w-7 h-7 bg-gradient-to-br ${chipFrom} ${chipTo} text-white shadow-sm`,
+    idleBg: "bg-white/15 backdrop-blur-md ring-1 ring-white/25 shadow-lg shadow-black/20 hover:bg-white/25",
+    idleText: "text-white",
+    activeBg: "bg-white/30 backdrop-blur-md ring-1 ring-white/40 shadow-xl shadow-black/25",
+    activeText: "text-white",
+    subBg: "bg-black/25 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30",
+    subIdleText: "text-slate-100 hover:bg-white/15 hover:text-white",
+    activeSubBg: `bg-gradient-to-r ${subFrom} ${subTo} ${subText} ring-1 ring-black/5`,
+  };
+}
+
 const NAV: NavItem[] = [
   {
     label: "Tổng Quan", icon: LayoutDashboard, isGroup: true,
     color: "border-cyan-400", iconColor: "text-cyan-300",
-    activeBg: "bg-cyan-900/40", activeSubBg: "bg-cyan-400/20 text-white",
+    ...cardStyle("from-cyan-500", "to-blue-600", "from-cyan-50", "to-blue-50", "text-cyan-900"),
     subItems: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, iconColor: "text-cyan-400", permModule: "dashboard" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX", icon: Factory, iconColor: "text-sky-400", permModule: "bang-dieu-hanh-sx" },
@@ -103,7 +121,7 @@ const NAV: NavItem[] = [
   {
     label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
     color: "border-teal-400", iconColor: "text-teal-300",
-    activeBg: "bg-teal-900/40", activeSubBg: "bg-teal-400/20 text-white",
+    ...cardStyle("from-teal-500", "to-emerald-600", "from-teal-50", "to-emerald-50", "text-teal-900"),
     subItems: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, iconColor: "text-teal-400", permModule: "ke-hoach-sx" },
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, iconColor: "text-cyan-400", permModule: "lenh-cat" },
@@ -112,7 +130,7 @@ const NAV: NavItem[] = [
       { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, iconColor: "text-green-400", permModule: "to-may" },
       { href: "/to-qc-work", label: "QC – Kiểm tra chất lượng", icon: ShieldCheck, iconColor: "text-blue-400", permModule: "kiem-tra-chat-luong" },
       { href: "/ui-khuy-nut", label: "Khuy nút – Việc của tôi", icon: ClipboardList, iconColor: "text-amber-400", permModule: "to-khuy-nut" },
-      { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: ClipboardList, iconColor: "text-orange-400", permModule: "to-ui" },
+      { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: Wind, iconColor: "text-orange-400", permModule: "to-ui" },
       { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, iconColor: "text-pink-400", permModule: "to-dong-goi" },
       { href: "/to-ht-work", label: "Hoàn Thiện (Tổng hợp)", icon: CheckCircle2, iconColor: "text-teal-300", permModule: "hoan-thien" },
       { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, iconColor: "text-rose-400", permModule: "gia-cong-ngoai" },
@@ -122,7 +140,7 @@ const NAV: NavItem[] = [
   {
     label: "Kho & Giao Hàng", icon: Boxes, isGroup: true,
     color: "border-emerald-400", iconColor: "text-emerald-300",
-    activeBg: "bg-emerald-900/40", activeSubBg: "bg-emerald-400/20 text-white",
+    ...cardStyle("from-emerald-500", "to-green-600", "from-emerald-50", "to-green-50", "text-emerald-900"),
     subItems: [
       { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, iconColor: "text-emerald-400", permModule: "kho-vai" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, iconColor: "text-orange-400", permModule: "kho-phu-lieu" },
@@ -133,7 +151,7 @@ const NAV: NavItem[] = [
   {
     label: "Kế Toán & Mua Bán", icon: Wallet, isGroup: true,
     color: "border-amber-400", iconColor: "text-amber-300",
-    activeBg: "bg-amber-900/30", activeSubBg: "bg-amber-400/20 text-white",
+    ...cardStyle("from-amber-500", "to-orange-600", "from-amber-50", "to-orange-50", "text-amber-900"),
     subItems: [
       { href: "/cham-cong", label: "Chấm công", icon: Calendar, iconColor: "text-amber-400", permModule: "cham-cong" },
       { href: "/bang-luong", label: "Bảng lương", icon: Wallet, iconColor: "text-yellow-400", permModule: "bang-luong" },
@@ -146,7 +164,7 @@ const NAV: NavItem[] = [
     // @codex Phân hệ mới dùng quyền NCC sẵn có để không sửa permission matrix của Mavis.
     label: "Mạng Lưới Sản Xuất", icon: Link2, isGroup: true,
     color: "border-cyan-400", iconColor: "text-cyan-300",
-    activeBg: "bg-cyan-900/40", activeSubBg: "bg-cyan-400/20 text-white",
+    ...cardStyle("from-sky-500", "to-indigo-600", "from-sky-50", "to-indigo-50", "text-sky-900"),
     subItems: [
       { href: "/mang-luoi-san-xuat", label: "Trang chủ sản xuất", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
       { href: "/mang-luoi-san-xuat/tim-kiem", label: "Tìm công ty", icon: Search, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
@@ -156,7 +174,7 @@ const NAV: NavItem[] = [
   {
     label: "Danh Mục Dữ Liệu", icon: Building2, isGroup: true,
     color: "border-violet-400", iconColor: "text-violet-300",
-    activeBg: "bg-violet-900/40", activeSubBg: "bg-violet-400/20 text-white",
+    ...cardStyle("from-violet-500", "to-purple-600", "from-violet-50", "to-purple-50", "text-violet-900"),
     subItems: [
       { href: "/danh-muc-sp", label: "Danh mục sản phẩm", icon: Shirt, iconColor: "text-violet-400", permModule: "danh-muc-sp" },
       { href: "/nhan-su", label: "Nhân sự", icon: Users, iconColor: "text-blue-400", permModule: "nhan-su" },
@@ -169,21 +187,10 @@ const NAV: NavItem[] = [
   },
   {
     // === MIMIN Group - nhóm tính năng mới ===
-    // Thiết kế kiểu "thẻ card trắng nổi" trên nền sidebar tối: nền gradient trắng-xám
-    // + viền sáng + đổ bóng để tách khỏi nền. Điểm nhấn màu thương hiệu (teal) dồn
-    // hết vào chip icon, tránh nhiều điểm màu cạnh tranh nhau. Vì nền sáng nên chữ
-    // và icon đều phải là tông tối.
+    // Dùng chung kiểu "thẻ kính mờ" (glassmorphism) với các nhóm khác qua cardStyle().
     label: "MIMIN Group", icon: Sparkles, isGroup: true,
-    noAccentBar: true,
     color: "border-teal-400",
-    iconChip: "w-7 h-7 bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-sm shadow-cyan-900/40",
-    idleBg: "bg-gradient-to-br from-white via-slate-50 to-slate-200 ring-1 ring-white/60 shadow-lg shadow-black/25 hover:from-white hover:via-white hover:to-slate-100",
-    idleText: "text-slate-800",
-    activeBg: "bg-gradient-to-br from-white via-white to-slate-100 ring-1 ring-white/80 shadow-xl shadow-black/30",
-    activeText: "text-slate-900",
-    subBg: "bg-white/95 ring-1 ring-black/5 shadow-lg shadow-black/25",
-    subIdleText: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-    activeSubBg: "bg-gradient-to-r from-teal-50 to-cyan-50 text-teal-900 ring-1 ring-teal-200",
+    ...cardStyle("from-teal-500", "to-cyan-600", "from-teal-50", "to-cyan-50", "text-teal-900"),
     // 2 mục tạm gỡ khỏi bản deploy này vì repo GitHub đang CÔNG KHAI:
     //  - "AI Tính Giá Vốn" (kèm tab Kho Mẫu Hot): chứa 28 tên xưởng gia công
     //    thật + toàn bộ đơn giá đã thoả thuận -> lộ cơ cấu giá vốn cho đối thủ.
@@ -195,12 +202,13 @@ const NAV: NavItem[] = [
       { href: "/huong-dan-vai-tro", label: "Sơ đồ HD sử dụng", icon: Users, iconColor: "text-amber-500", permModule: "so-do-chien-luoc" },
       { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
       { href: "/cong-thuc-dinh-muc", label: "Công thức định mức", icon: Calculator, iconColor: "text-teal-600", permModule: "lenh-cat" },
+      { href: "/bang-tin", label: "Bảng tin", icon: MessageSquare, iconColor: "text-pink-500", permModule: "so-do-chien-luoc" },
     ]
   },
   {
     label: "Hệ Thống (Dev)", icon: Settings, isGroup: true,
     color: "border-rose-400", iconColor: "text-rose-300",
-    activeBg: "bg-rose-900/40", activeSubBg: "bg-rose-400/20 text-white",
+    ...cardStyle("from-rose-500", "to-pink-600", "from-rose-50", "to-pink-50", "text-rose-900"),
     subItems: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản", icon: Users, iconColor: "text-rose-400", permModule: "cai-dat" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh", icon: Sliders, iconColor: "text-orange-400", permModule: "cai-dat" },

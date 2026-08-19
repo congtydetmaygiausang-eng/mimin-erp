@@ -24,6 +24,8 @@ export type KhachHangDBModel = {
   rating?: number;
   // === 2026-08-08 - Facebook URL ===
   facebook_url?: string;
+  // === 2026-08-18 - Nhu cau chinh ===
+  nhu_cau_chinh?: string[];
 };
 
 export type KhachHangUI = {
@@ -44,6 +46,8 @@ export type KhachHangUI = {
   hanMucNo?: number;
   // === 2026-08-08 - Facebook URL ===
   facebookUrl?: string;
+  // === 2026-08-18 - Nhu cau chinh ===
+  nhuCauChinh?: string[];
 };
 
 // P1 - 2026-08-07 - Enum phan loai KH
@@ -66,6 +70,7 @@ function mapToDB(ui: KhachHangUI): any {
     ghi_chu: ui.ghiChu || "",
     trang_thai: ui.trangThai || "Thường",
     facebook_url: ui.facebookUrl || "", // 2026-08-08
+    nhu_cau_chinh: ui.nhuCauChinh || [], // 2026-08-18
   };
 }
 
@@ -98,6 +103,7 @@ function mapToUI(db: any): KhachHangUI {
     rating: r,
     mst: mst,
     facebookUrl: db.facebook_url || "", // 2026-08-08
+    nhuCauChinh: Array.isArray(db.nhu_cau_chinh) ? db.nhu_cau_chinh : [], // 2026-08-18
   };
 }
 
@@ -106,6 +112,8 @@ type KhachHangContextType = {
   themKhachHang: (kh: KhachHangUI) => Promise<boolean>;
   suaKhachHang: (kh: KhachHangUI) => Promise<boolean>;
   xoaKhachHang: (idOrMaKH: string) => Promise<boolean>;
+  /** Cộng/trừ công nợ an toàn theo mã KH (đọc lại số dư mới nhất trước khi ghi) */
+  congTruCongNo: (maKH: string, diff: number) => Promise<boolean>;
   loading: boolean;
 };
 
@@ -113,25 +121,15 @@ const Ctx = createContext<KhachHangContextType | null>(null);
 const STORAGE_KEY = "mimin_khach_hang_v1";
 
 const KHACH_HANG_MOCK: KhachHangUI[] = [
-  { maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0901234567", email: "hanoi@may.vn", diaChi: "Hà Nội", congNo: 15000000, rating: 5, ghiChu: "Khách VIP", loai: "Công ty" },
-  { maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0901234568", email: "saigon@shop.vn", diaChi: "TPHCM", congNo: 0, rating: 4, ghiChu: "Khách lẻ", loai: "Shop" },
+  { maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0901234567", email: "hanoi@may.vn", diaChi: "Hà Nội", congNo: 15000000, rating: 5, ghiChu: "Khách VIP", loai: "Công ty", nhuCauChinh: [] },
+  { maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0901234568", email: "saigon@shop.vn", diaChi: "TPHCM", congNo: 0, rating: 4, ghiChu: "Khách lẻ", loai: "Shop", nhuCauChinh: [] },
 ];
 
 export function KhachHangProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<KhachHangUI[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setList(parsed);
-        }
-      }
-    } catch (err) {}
-  }, []);
+  // Bỏ load localStorage - khách hàng 700+ rows quá lớn, dùng Supabase trực tiếp
 
   useEffect(() => {
     let mounted = true;
@@ -149,10 +147,9 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
           if (data && data.length > 0) {
             const mapped = data.map((d: any) => mapToUI(d));
             setList(mapped);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+            // Không lưu localStorage - 700+ rows quá lớn
           } else {
             setList(KHACH_HANG_MOCK);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(KHACH_HANG_MOCK));
             Promise.all(KHACH_HANG_MOCK.map(kh => 
               supabaseUpsert("khach_hang", mapToDB(kh))
             )).catch(() => {});
@@ -169,11 +166,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const themKhachHang = useCallback(async (kh: KhachHangUI) => {
-    setList(prev => {
-      const newList = [kh, ...prev];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-      return newList;
-    });
+    setList(prev => [kh, ...prev]);
     if (isSupabaseEnabled) {
       try {
         await supabaseUpsert("khach_hang", mapToDB(kh));
@@ -184,11 +177,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const suaKhachHang = useCallback(async (kh: KhachHangUI) => {
-    setList(prev => {
-      const newList = prev.map(x => x.maKH === kh.maKH ? kh : x);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-      return newList;
-    });
+    setList(prev => prev.map(x => x.maKH === kh.maKH ? kh : x));
     if (isSupabaseEnabled) {
       try {
         await supabase!.from("khach_hang").update(mapToDB(kh)).eq("ma_kh", kh.maKH);
@@ -198,12 +187,52 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  /**
+   * Cộng/trừ công nợ theo MÃ khách hàng, đọc lại số dư mới nhất từ máy chủ ngay
+   * trước khi ghi.
+   *
+   * Trước đây công nợ được tính bằng cách đọc kh.congNo từ state trong máy rồi
+   * ghi đè cả dòng. Hai đơn của cùng 1 khách lưu gần nhau (2 tab, hoặc bấm nhanh
+   * trước khi state kịp cập nhật) sẽ cùng đọc một số dư cũ, đơn sau ghi đè đơn
+   * trước -> mất công nợ của 1 đơn mà không báo lỗi gì.
+   */
+  const congTruCongNo = useCallback(async (maKH: string, diff: number) => {
+    if (!maKH || !diff) return true;
+
+    let soDuHienTai: number | null = null;
+    if (isSupabaseEnabled && supabase) {
+      try {
+        const { data } = await supabase.from("khach_hang").select("cong_no").eq("ma_kh", maKH).limit(1).maybeSingle();
+        if (data) soDuHienTai = Number((data as any).cong_no) || 0;
+      } catch (err) {
+        console.error("[KhachHang] Không đọc được công nợ mới nhất:", err);
+      }
+    }
+
+    let daGhi = false;
+    setList(prev => prev.map(x => {
+      if (x.maKH !== maKH) return x;
+      const goc = soDuHienTai ?? (x.congNo || 0);
+      daGhi = true;
+      return { ...x, congNo: goc + diff };
+    }));
+    if (!daGhi) return false;
+
+    if (isSupabaseEnabled && supabase) {
+      try {
+        const goc = soDuHienTai ?? 0;
+        await supabase.from("khach_hang").update({ cong_no: goc + diff }).eq("ma_kh", maKH);
+        return true;
+      } catch (err) {
+        console.error("[KhachHang] Lỗi cập nhật công nợ:", err);
+        return false;
+      }
+    }
+    return true;
+  }, []);
+
   const xoaKhachHang = useCallback(async (maKH: string) => {
-    setList(prev => {
-      const newList = prev.filter(x => x.maKH !== maKH);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
-      return newList;
-    });
+    setList(prev => prev.filter(x => x.maKH !== maKH));
     if (isSupabaseEnabled) {
       try {
         await supabase!.from("khach_hang").delete().eq("ma_kh", maKH);
@@ -214,7 +243,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ list, themKhachHang, suaKhachHang, xoaKhachHang, loading }}>
+    <Ctx.Provider value={{ list, themKhachHang, suaKhachHang, xoaKhachHang, congTruCongNo, loading }}>
       {children}
     </Ctx.Provider>
   );

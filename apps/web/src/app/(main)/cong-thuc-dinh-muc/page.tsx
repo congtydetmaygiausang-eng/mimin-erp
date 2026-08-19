@@ -27,51 +27,57 @@ interface SavedConfig {
   createdBy?: string;
 }
 
-// --- INDEXEDDB UTILS ---
-const DB_NAME = "MiminERP_DinhMuc";
-const STORE_NAME = "configs";
-const DB_VERSION = 1;
+import { supabase } from "@/lib/supabase/client";
 
-function getDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
+// --- SUPABASE UTILS ---
 async function saveConfigsToDB(configs: SavedConfig[]) {
-  const db = await getDB();
-  return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    store.clear().onsuccess = () => {
-      configs.forEach(c => store.put(c));
-    };
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  if (!supabase) return;
+  
+  // Lấy các bản ghi được truyền vào (thường chỉ lưu 1 bản ghi mới/đang sửa)
+  const rows = configs.map(c => ({
+    id: c.id,
+    name: c.name,
+    data: c,
+    created_by: null, // Bỏ qua liên kết user cứng, có thể mở rộng sau
+    created_at: new Date().toISOString()
+  }));
+
+  try {
+    const { error } = await supabase.from('cong_thuc_dinh_muc').upsert(rows);
+    if (error) console.error("Lỗi upsert Supabase:", error);
+  } catch (err) {
+    console.error("Lỗi saveConfigsToDB:", err);
+  }
 }
 
 async function loadConfigsFromDB(): Promise<SavedConfig[]> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.getAll();
-    request.onsuccess = () => {
-      resolve((request.result as SavedConfig[]).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-    };
-    request.onerror = () => reject(request.error);
-  });
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('cong_thuc_dinh_muc')
+      .select('data, created_at')
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    if (!data) return [];
+    
+    return data.map((row: any) => row.data as SavedConfig);
+  } catch (err) {
+    console.error("Lỗi tải Supabase:", err);
+    return [];
+  }
 }
-// --- END INDEXEDDB ---
+
+async function deleteConfigFromDB(id: string) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('cong_thuc_dinh_muc').delete().eq('id', id);
+    if (error) console.error("Lỗi delete Supabase:", error);
+  } catch (err) {
+    console.error("Lỗi deleteConfigFromDB:", err);
+  }
+}
+// --- END SUPABASE UTILS ---
 
 export default function CongThucDinhMucPage() {
   const { user } = useSession();
@@ -238,15 +244,15 @@ export default function CongThucDinhMucPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Bạn có chắc chắn muốn xoá định mức này?")) return;
     const updated = savedConfigs.filter(c => c.id !== id);
     
-    saveConfigsToDB(updated).then(() => {
-      setSavedConfigs(updated);
-      toast.success("Đã xoá thành công!");
-      if (editingId === id) resetForm();
-    });
+    setSavedConfigs(updated);
+    toast.success("Xoá thành công!");
+    if (editingId === id) resetForm();
+
+    await deleteConfigFromDB(id);
     try { localStorage.setItem("mimin_cong_thuc_dinh_muc", JSON.stringify(updated)); } catch(e){}
   };
 

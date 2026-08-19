@@ -481,7 +481,10 @@ interface DanhMucSPContextType {
 const STORAGE_KEY = "mimin_danh_muc_sp";
 const DanhMucSPContext = createContext<DanhMucSPContextType | undefined>(undefined);
 
-/** Helper: build Supabase snake_case payload từ SanPham (camelCase) */
+/** Helper: build Supabase snake_case payload từ SanPham (camelCase).
+ * KHONG gui ghi_chu/ngay_tao - bang san_pham that khong co 2 cot nay, gui len
+ * se bi PostgREST tu choi ca insert (PGRST204 "column not found in schema
+ * cache"), lam that bai am tham toan bo viec tao/dang ban san pham. */
 function buildDBPayload(sp: SanPham) {
   return {
     ma_sp: sp.id,
@@ -493,8 +496,6 @@ function buildDBPayload(sp: SanPham) {
     ti_le_size: sp.tiLeSize,
     bang_size: sp.bangSize,
     ds_mau: sp.dsMau,
-    ghi_chu: sp.ghiChu,
-    ngay_tao: sp.ngayTao,
     trang_thai: sp.trangThai || "con-hang",
     da_ban: sp.daBan || 0,
     ncc: sp.ncc || "",
@@ -609,8 +610,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
          if (data.tiLeSize !== undefined) snakeData.ti_le_size = data.tiLeSize;
          if (data.bangSize !== undefined) snakeData.bang_size = data.bangSize;
          if (data.dsMau !== undefined) snakeData.ds_mau = data.dsMau;
-         if (data.ghiChu !== undefined) snakeData.ghi_chu = data.ghiChu;
-         if (data.ngayTao !== undefined) snakeData.ngay_tao = data.ngayTao;
+         // ghi_chu/ngay_tao KHONG gui - xem ghi chu tren buildDBPayload
          // === FIELDS BI THIEU TRUOC DAY (FIX) ===
          if (data.hinhAnh !== undefined) snakeData.hinh_anh = data.hinhAnh;
          if (data.trangThai !== undefined) snakeData.trang_thai = data.trangThai;

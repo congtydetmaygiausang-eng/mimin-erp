@@ -22,6 +22,7 @@ export type NhaCungCapModel = {
   trang_thai?: string;
   rating?: number; // P2 - 2026-08-07 - tach ra column rieng (truoc day luu trong ghi_chu text)
   facebook_url?: string; // 2026-08-08 - them link FB
+  danh_muc_chi_tiet?: string[]; // 2026-08-18 - Danh muc chi tiet chon nhieu
 };
 
 // Convert UI model to DB model
@@ -46,6 +47,7 @@ export function toDBNhaCungCap(ncc: NhaCungCapModel) {
     don_gia: ncc.don_gia || "",
     rating: ncc.rating || 4,
     facebook_url: ncc.facebook_url || "", // 2026-08-08
+    danh_muc_chi_tiet: ncc.danh_muc_chi_tiet || [], // 2026-08-18
   };
 }
 
@@ -73,6 +75,7 @@ export function fromDBNhaCungCap(row: any): NhaCungCapModel {
     trang_thai: row.trang_thai || "",
     rating,
     facebook_url: row.facebook_url || "", // 2026-08-08
+    danh_muc_chi_tiet: Array.isArray(row.danh_muc_chi_tiet) ? row.danh_muc_chi_tiet : [], // 2026-08-18
   };
 }
 
@@ -102,6 +105,7 @@ const DEFAULT_SEED: NhaCungCapModel[] = NCCS.map((n, i) => ({
   ghi_chu: `Hợp tác từ 2020. Rating:${4 + (i % 2) * 0.5}`,
   trang_thai: "Đang hợp tác",
   rating: 4 + (i % 2) * 0.5,
+  danh_muc_chi_tiet: [],
 }));
 
 export function NhaCungCapProvider({ children }: { children: ReactNode }) {

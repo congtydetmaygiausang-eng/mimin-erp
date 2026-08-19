@@ -84,6 +84,16 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          const originalSetItem = window.localStorage.setItem;
+          window.localStorage.setItem = function(key, value) {
+            try {
+              originalSetItem.apply(this, [key, value]);
+            } catch (e) {
+              console.warn('LocalStorage quota exceeded for key:', key);
+            }
+          };
+        `}} />
         {/* PWA Meta Tags */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

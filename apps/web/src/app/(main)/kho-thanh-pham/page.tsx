@@ -1,17 +1,26 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Box, Download, Sparkles, Plus } from "lucide-react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { STORAGE_KEY, fromStorage, saveStorage, generateSanPhamFromWorkflow, type SanPhamTP } from "./data";
+import { useLenhCat } from "@/lib/data/lenh-cat-store";
+import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
+import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase } from "@/lib/supabase/sync-helper";
+import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
 import { ProductTable } from "./components/ProductTable";
 import { ProductFormModal } from "./components/ProductFormModal";
 import { MasterDetailsModal } from "./components/MasterDetailsModal";
+import { DangBanModal } from "./components/DangBanModal";
+import { VariantDetailModal } from "./components/VariantDetailModal";
 
 export default function KhoThanhPhamPage() {
-  const [dsSanPham, setDsSanPham] = useState<SanPhamTP[]>([]);
+  const { dsLenhCat, capNhatTrangThai } = useLenhCat();
+  const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
+  const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
+  const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
+  const [openVariant, setOpenVariant] = useState<SanPhamTP | null>(null);
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | SanPhamTP["trangThai"]>("all");
   const [filterLoai, setFilterLoai] = useState<"all" | string>("all");
@@ -47,21 +56,69 @@ export default function KhoThanhPhamPage() {
     }
   };
 
-  // Load data
+  // Load từ localStorage trước (không trắng màn hình), rồi đọc lại 2 chiều từ Supabase
+  // (nguồn chính). Dùng fromSupabaseRow/toSupabaseRow thủ công thay vì
+  // camelToSnake/snakeToCamel tự động vì "maSP"/"tenSP" có hoa liền (SP) bị
+  // convert sai chiều đọc về (ma_sp -> maSp thay vì maSP).
   useEffect(() => {
-    let ds = fromStorage<SanPhamTP[]>(STORAGE_KEY, []);
-    if (ds.length === 0) {
-      ds = generateSanPhamFromWorkflow();
-      saveStorage(STORAGE_KEY, ds);
-    }
-    setDsSanPham(ds);
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as SanPhamTP[];
+        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed);
+      }
+    } catch {}
+
+    if (!checkSupabase()) return;
+    let mounted = true;
+    (async () => {
+      const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham");
+      if (!mounted) return;
+      if (rows.length > 0) {
+        const remote = rows.map(fromSupabaseRow);
+        setDsSanPhamState((prev) => {
+          const remoteIds = new Set(remote.map((r) => r.id));
+          const localOnly = prev.filter((r) => !remoteIds.has(r.id));
+          const merged = [...remote, ...localOnly];
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+          return merged;
+        });
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
 
-  // Save on change
-  const update = (newDs: SanPhamTP[]) => {
-    setDsSanPham(newDs);
-    saveStorage(STORAGE_KEY, newDs);
-  };
+  // Đơn hàng chuyển sang "Đã giao" sẽ trừ tồn kho ở nơi khác (don-hang-store) rồi
+  // phát sự kiện này - nạp lại từ localStorage để số tồn trên màn hình đúng ngay.
+  useEffect(() => {
+    const onChanged = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as SanPhamTP[];
+        if (Array.isArray(parsed)) setDsSanPhamState(parsed);
+      } catch {}
+    };
+    window.addEventListener(KHO_TP_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(KHO_TP_CHANGED_EVENT, onChanged);
+  }, []);
+
+  // Save on change: ghi localStorage ngay + đồng bộ Supabase cho các dòng thay đổi/mới/xoá
+  const update = useCallback((newDs: SanPhamTP[]) => {
+    setDsSanPhamState((prev) => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newDs)); } catch {}
+      if (checkSupabase()) {
+        const prevIds = new Set(prev.map((r) => r.id));
+        const newIds = new Set(newDs.map((r) => r.id));
+        const deletedIds = prev.filter((r) => !newIds.has(r.id)).map((r) => r.id);
+        Promise.all([
+          ...newDs.map((row) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(row))),
+          ...deletedIds.map((id) => supabaseDelete("kho_thanh_pham", id)),
+        ]).catch((err) => console.error("[KhoThanhPham] sync error:", err));
+      }
+      return newDs;
+    });
+  }, []);
 
   // Filter + search + sort
   const filtered = useMemo(() => {
@@ -166,6 +223,145 @@ export default function KhoThanhPhamPage() {
     toast.success(`Đã tạo ${ds.length} sản phẩm từ workflow`);
   };
 
+  const handleSaveVariant = (updated: SanPhamTP) => {
+    update(dsSanPham.map((s) => (s.id === updated.id ? updated : s)));
+    toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
+  };
+
+  // Tách/đồng bộ lại 1 nhóm sản phẩm thành card riêng cho MỖI MÀU, dựa trên
+  // dsMau + số lượng thật của khâu Đóng gói ở lệnh cắt gốc. Dùng cho các bản ghi
+  // cũ bị gộp "Nhiều màu" (nhập kho trước khi sửa lỗi gộp màu) - giữ lại ảnh/giá
+  // đã nhập riêng nếu tên màu trùng khớp với card cũ.
+  const handleRebuildFromLC = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
+    const lsx = group.items[0]?.lsx || group.maSP;
+    const lc = dsLenhCat.find((l) => l.id === lsx);
+    if (!lc || !lc.dsMau || lc.dsMau.length === 0) {
+      toast.error("Không tìm thấy dữ liệu màu từ lệnh cắt gốc để tách");
+      return;
+    }
+    const maSPMoi = lc.maSP || group.maSP;
+    const doiMaMsg = maSPMoi !== group.maSP ? ` Mã SP sẽ đổi từ "${group.maSP}" thành "${maSPMoi}" (mã lệnh cắt vs mã sản phẩm thật).` : "";
+    if (!confirm(`Tách "${group.maSP}" thành ${lc.dsMau.length} card theo màu (dựa trên lệnh cắt gốc ${lc.id}).${doiMaMsg}`)) return;
+
+    const dongGoiPCs = (lc.phanCong || []).filter(
+      (pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")
+    );
+    const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+    const viTri = group.items.find((i) => i.viTri)?.viTri || "";
+    const ngayNhap = group.items[0]?.ngayNhap || new Date().toISOString().slice(0, 10);
+
+    // Giá vốn 1 SP từ lệnh cắt gốc - dùng khi bản ghi cũ chưa có (donGia = 0)
+    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+
+    const newSPs: SanPhamTP[] = lc.dsMau.map((m: any, idx: number) => {
+      const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+      const old = group.items.find((i) => i.mau === m.ten);
+      const sl = ct?.soLuongDat ?? old?.soLuong ?? Math.round((lc.tongSL || 0) / lc.dsMau.length);
+      const donGia = old?.donGia || giaVon1SP;
+      return {
+        id: old?.id || `SP-${Date.now()}-${idx}`,
+        maSP: lc.maSP || group.maSP,
+        tenSP: group.tenSP,
+        phanLoai: old?.phanLoai || "Áo",
+        mau: m.ten,
+        size: "Nhiều size",
+        lsx,
+        ngayNhap,
+        soLuong: sl,
+        donGia,
+        giaTri: sl * donGia,
+        viTri,
+        trangThai: old?.trangThai || "con",
+        hinhAnh: old?.hinhAnh?.length ? old.hinhAnh : m.img ? [m.img] : [],
+        imgQuan: old?.imgQuan || m.imgQuan || undefined,
+        video: old?.video,
+        giaBanLe: old?.giaBanLe,
+        giaBanSi: old?.giaBanSi,
+        chiTietSize: ct?.sizes || m.phanBoSize || old?.chiTietSize || [],
+      };
+    });
+
+    const otherItems = dsSanPham.filter((s) => s.maSP !== group.maSP);
+    update([...newSPs, ...otherItems]);
+    toast.success(`Đã tách ${maSPMoi} thành ${newSPs.length} card theo màu`);
+  };
+
+  // Chuyển 1 nhóm sản phẩm (theo maSP) từ Kho thành phẩm sang Danh mục sản phẩm để bán.
+  // Lấy tên màu + ảnh từ chính các card màu trong Kho thành phẩm (group.items) - đây là
+  // nguồn đáng tin cậy vì đã được sửa/tách đúng qua "Tách theo màu"; lệnh cắt gốc (lc.dsMau)
+  // chỉ dùng để tham khảo định mức, vì có thể thiếu tên/ảnh ở 1 vài màu.
+  const handleDangBan = async (giaBan: number, giaVon: number) => {
+    const group = dangBanGroup;
+    if (!group) return;
+
+    const lsx = group.items[0]?.lsx;
+    const lc = dsLenhCat.find((l) => l.id === lsx);
+    const mauTuLC = lc?.dsMau || [];
+
+    const dsMauForSanPham: MauTieuChuan[] = group.items.map((item) => {
+      const mauGoc = mauTuLC.find((m) => m.ten === item.mau);
+      return {
+        ten: item.mau,
+        maSKU: mauGoc?.maSKU || `${group.maSP}-${item.mau}`,
+        dinhMuc: mauGoc?.dinhMuc || 0,
+        img: item.hinhAnh?.[0] || mauGoc?.img || "",
+        video: item.video,
+      };
+    });
+
+    // Ảnh đại diện cho card thư viện (SanPham.hinhAnh là 1 URL, khác dsMau[].img theo màu) -
+    // lấy ảnh màu đầu tiên có ảnh, fallback ảnh đã upload riêng trong Kho thành phẩm.
+    const anhDaiDien = dsMauForSanPham.find((m) => m.img)?.img || group.items.find((i) => i.hinhAnh?.[0])?.hinhAnh?.[0] || "";
+
+    // Kiểm tra trực tiếp Supabase thay vì dùng dsDanhMuc cache (có thể chưa tải xong
+    // lúc bấm nút, dẫn tới nhầm "chưa có" -> tạo bản ghi trùng thay vì cập nhật).
+    let existingId: string | undefined = dsDanhMuc.find((sp) => sp.id === group.maSP)?.id;
+    if (!existingId) {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        if (supabase) {
+          const { data } = await supabase.from("san_pham").select("ma_sp").eq("ma_sp", group.maSP).limit(1).maybeSingle();
+          if (data) existingId = group.maSP;
+        }
+      } catch (e) {
+        console.error("Lỗi kiểm tra sản phẩm đã tồn tại trong Danh mục", e);
+      }
+    }
+
+    if (existingId) {
+      const existing = dsDanhMuc.find((sp) => sp.id === existingId);
+      suaSP(existingId, {
+        giaBanDuKien: giaBan,
+        giaVonDuKien: giaVon || existing?.giaVonDuKien || 0,
+        dsMau: dsMauForSanPham,
+        tenSP: group.tenSP || existing?.tenSP || group.maSP,
+        hinhAnh: anhDaiDien || existing?.hinhAnh || "",
+      });
+      toast.success(`Đã cập nhật ${group.maSP} trong Danh mục sản phẩm`);
+    } else {
+      themSP({
+        id: group.maSP,
+        tenSP: group.tenSP || lc?.tenSP || group.maSP,
+        loaiSP: lc?.loaiSP || "BoTru",
+        giaBanDuKien: giaBan,
+        giaVonDuKien: giaVon || 0,
+        tiLeSize: lc?.tiLeSize || "",
+        bangSize: {
+          sizes: lc?.dsMau?.[0]?.phanBoSize?.map((s) => s.size) || [],
+          ratios: (lc?.tiLeSize || "").split(":").map((n) => parseInt(n) || 0),
+          riSo: (lc?.tiLeSize || "").split(":").reduce((s, n) => s + (parseInt(n) || 0), 0),
+        },
+        dsMau: dsMauForSanPham,
+        ghiChu: lsx ? `Từ lệnh cắt ${lsx}` : "",
+        ngayTao: new Date().toISOString().slice(0, 10),
+        trangThai: "con-hang",
+        hinhAnh: anhDaiDien,
+      });
+      toast.success(`Đã đăng bán ${group.maSP} vào Danh mục sản phẩm`);
+    }
+    setDangBanGroup(null);
+  };
+
   const exportCSV = () => {
     const rows = [["Mã SP", "Tên SP", "Màu", "Size", "LSX", "SL", "Đơn giá", "Giá trị", "Vị trí", "Trạng thái"]];
     filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, s.lsx, String(s.soLuong), String(s.donGia), String(s.giaTri), s.viTri, s.trangThai]));
@@ -180,10 +376,89 @@ export default function KhoThanhPhamPage() {
     toast.success("Đã xuất CSV");
   };
 
+  // Tính toán Lệnh cắt chờ nhập kho ("Nhap" = bản nháp, chưa chốt lệnh)
+  const dsChoNhapKho = useMemo(() => {
+    return dsLenhCat.filter(lc => {
+      if (lc.trangThai === "HoanThanh" || lc.trangThai === "Nhap") return false;
+      const htPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói"));
+      if (!htPCs || htPCs.length === 0) return false;
+      return htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+    });
+  }, [dsLenhCat]);
+
+  // Nhập kho từ lệnh cắt (luồng dự phòng của trang này - luồng chính ở ui-dong-goi).
+  // Trước đây hàm này đọc pc.chiTietMau như object lồng (chiTietMau[tênMàu][size])
+  // trong khi dữ liệu thật là MẢNG {mau, soLuongDat, soLuongLoi, sizes[]}, nên
+  // Object.keys trả về "0","1"... và số lượng luôn = 0 -> luôn báo "Không tìm thấy".
+  // Nay đọc đúng cấu trúc và tạo 1 dòng cho MỖI MÀU, khớp với luồng ui-dong-goi.
+  const handleNhapKhoFromLC = (lc: any) => {
+    const dongGoiPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")) || [];
+    const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+    const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
+    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+    const ngayNhap = new Date().toISOString().slice(0, 10);
+
+    const newSps: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
+      const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+      const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+      return {
+        id: `TP-${Date.now().toString(36)}-${idx}`,
+        maSP: lc.maSP || lc.id,
+        tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
+        phanLoai: "Áo",
+        mau: m.ten,
+        size: "Nhiều size",
+        lsx: lc.id,
+        ngayNhap,
+        soLuong: sl,
+        donGia: giaVon1SP,
+        giaTri: sl * giaVon1SP,
+        viTri: "Khu A1",
+        trangThai: "con",
+        hinhAnh: m.img ? [m.img] : [],
+        imgQuan: m.imgQuan || undefined,
+        chiTietSize: ct?.sizes || m.phanBoSize || [],
+      } as SanPhamTP;
+    }).filter((sp: SanPhamTP) => sp.soLuong > 0);
+
+    if (newSps.length > 0) {
+      update([...newSps, ...dsSanPham]);
+      capNhatTrangThai(lc.id, "HoanThanh", null);
+      toast.success(`Đã nhập kho ${newSps.length} màu từ ${lc.id}!`);
+    } else {
+      toast.error("Không tìm thấy chi tiết màu/số lượng đóng gói đạt!");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/30 to-rose-50/30 p-3 md:p-5">
       <div className="max-w-7xl mx-auto space-y-4">
         <StatsHeader stats={stats} />
+
+        {/* Lệnh Cắt chờ nhập kho */}
+        {dsChoNhapKho.length > 0 && (
+          <div className="bg-white/60 backdrop-blur-md rounded-2xl border border-amber-200 p-4 shadow-sm space-y-3">
+            <h2 className="text-sm font-bold text-amber-700 flex items-center gap-2">
+              <Package className="w-4 h-4" /> Có {dsChoNhapKho.length} lệnh cắt hoàn thành đóng gói, chờ nhập kho thành phẩm:
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {dsChoNhapKho.map(lc => (
+                <div key={lc.id} className="bg-white rounded-xl border border-amber-100 p-3 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="font-bold text-slate-800 text-sm">{lc.id} - {lc.tenSP}</div>
+                    <div className="text-xs text-slate-500 mt-1">SL yêu cầu: <span className="font-semibold text-sky-600">{lc.tongSL?.toLocaleString('vi-VN')}</span></div>
+                  </div>
+                  <button
+                    onClick={() => handleNhapKhoFromLC(lc)}
+                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                  >
+                    Chi tiết nhập kho <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <FilterBar
           search={search} setSearch={setSearch}
@@ -227,6 +502,10 @@ export default function KhoThanhPhamPage() {
               handleXuatKho={handleXuatKho}
               update={update}
               dsSanPham={dsSanPham}
+              onDangBan={setDangBanGroup}
+              onOpenVariant={setOpenVariant}
+              onRebuildFromLC={handleRebuildFromLC}
+              dsLenhCat={dsLenhCat}
             />
           ) : (
             <ProductTable
@@ -246,6 +525,40 @@ export default function KhoThanhPhamPage() {
       {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={productImages} onClose={() => setShowMasterDetails(null)} />}
       {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
       {editing && <ProductFormModal sp={editing} initialImage={productImages[editing.id]} onClose={() => setEditing(null)} onSave={handleEdit} />}
+      {dangBanGroup && (() => {
+        const soMauCoAnh = dangBanGroup.items.filter((i) => i.hinhAnh?.[0]).length;
+        const tongSoMau = dangBanGroup.items.length;
+        const existing = dsDanhMuc.find((sp) => sp.id === dangBanGroup.maSP);
+        // Giá vốn thật: ưu tiên đơn giá đã ghi lúc nhập kho, sau đó tới bảng COGS
+        // của lệnh cắt gốc.
+        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.lsx);
+        const giaVonTuLenhCat = Math.round(
+          dangBanGroup.items.find((i) => i.donGia > 0)?.donGia ||
+          lcGoc?.bangCOGS?.giaVonBinhQuan ||
+          lcGoc?.bangCOGS?.giaVon1SP ||
+          0
+        );
+        return (
+          <DangBanModal
+            group={dangBanGroup}
+            soMauCoAnh={soMauCoAnh}
+            tongSoMau={tongSoMau}
+            daCoTrongDanhMuc={!!existing}
+            giaBanMacDinh={existing?.giaBanDuKien}
+            giaVonMacDinh={existing?.giaVonDuKien}
+            giaVonTuLenhCat={giaVonTuLenhCat}
+            onClose={() => setDangBanGroup(null)}
+            onConfirm={handleDangBan}
+          />
+        );
+      })()}
+      {openVariant && (
+        <VariantDetailModal
+          sp={openVariant}
+          onClose={() => setOpenVariant(null)}
+          onSave={handleSaveVariant}
+        />
+      )}
 
       {/* Hidden file input for upload (image + video) */}
       <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />

@@ -1,11 +1,15 @@
 // ============ LENH CAT CARD + STAT CARD ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
-import { ReactNode } from "react";
-import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2 } from "lucide-react";
+import React, { ReactNode } from "react";
+import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE, LOAI_SP_LABELS, type LenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
+import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
+import { GiaCongModal } from "@/components/modals/GiaCongModal";
+import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
+import { useState } from "react";
 
 // ============ STAT CARD ============
 export function StatCard({ icon, label, value, sub, color }: {
@@ -48,254 +52,189 @@ export function StatCard({ icon, label, value, sub, color }: {
   );
 }
 
-// ============ LENH CAT CARD ============
-export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus }: {
+export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCong, onSaveTyLe }: {
   lc: LenhCat;
-  onEdit: () => void;
-  onDelete: () => void;
-  onChangeStatus: (tt: TrangThaiLenhCat) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onChangeStatus?: (tt: TrangThaiLenhCat) => void;
+  // newDsMau: GiaCongModal có gửi kèm dsMau đã sửa (chi tiết size theo màu).
+  // Trước đây prop này chỉ khai 2 tham số và callback bên dưới cũng chỉ truyền 2,
+  // nên dsMau bị rơi mất -> tongSLThucTeAo/Quan không bao giờ được cập nhật.
+  onSaveGiaCong?: (slThucTe: number, dsPhanCong: any, newDsMau?: any[]) => void;
+  onSaveTyLe?: (mauIdx: number, newTyLe: any) => void;
 }) {
-  const s = TRANG_THAI_LC_STYLE[lc.trangThai];
-  const cogs = lc.bangCOGS;
+  const s = TRANG_THAI_LC_STYLE[lc.trangThai] || { bg: "bg-slate-100", color: "text-slate-600" };
   const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && lc.trangThai !== "HoanThanh";
+  const isBo = lc.loaiSP?.toLowerCase().includes("bo");
+  const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
+  const isQuan = lc.loaiSP?.toLowerCase().includes("quan") || isBo;
+
+  const [modalGiaCong, setModalGiaCong] = useState<"ao" | "quan" | null>(null);
+  const [modalTyLeMauIdx, setModalTyLeMauIdx] = useState<number | null>(null);
+
+  // Helper tìm người phụ trách cắt
+  const pcCat = lc.phanCong?.find(p => p.tenCongDoan.toLowerCase().includes("cắt"));
+  const thoCat = pcCat?.nguoiTen || <span className="italic text-slate-400">Chưa giao</span>;
 
   return (
-    <div className={`bg-white rounded-3xl p-8 shadow-md border-2 border-slate-200 hover:shadow-xl transition-all duration-200 ${isLate ? "ring-2 ring-rose-500/40" : ""}`}>
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Left Image */}
-        <div 
-          className="w-full lg:w-[480px] xl:w-[560px] shrink-0 bg-slate-50 rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center border border-slate-100"
-          onClick={onEdit}
-        >
-          {lc.dsMau?.[0]?.img ? (
-            <img src={lc.dsMau[0].img} alt="SP" className="w-full h-full object-cover min-h-[480px] lg:min-h-full aspect-[4/5] lg:aspect-auto" />
-          ) : (
-            <Shirt className="w-20 h-20 text-slate-300" />
-          )}
+    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 ${isLate ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-200 hover:shadow-lg"}`}>
+      
+      {/* Header */}
+      <div className={`px-4 py-3 flex items-center justify-between ${s.bg} border-b border-current/10`}>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-black text-teal-700 font-mono">{lc.id}</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${s.bg} ${s.color} border border-current/20`}>
+            {TRANG_THAI_LC_LABELS[lc.trangThai]}
+          </span>
+          {isLate && <AlertCircle className="w-4 h-4 text-rose-500" />}
         </div>
         
-        {/* Right Content */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          {/* Header row */}
-          <div className="flex items-start justify-between mb-2">
-            <span className="text-lg font-black text-teal-700 font-mono tracking-tight">{lc.id}</span>
-            <div className="flex items-center gap-2">
-              {isLate && <AlertCircle className="w-5 h-5 text-rose-600" />}
-              <span className={`text-xs px-3 py-1 rounded-full ${s.bg} ${s.color} font-bold tracking-wide`}>
-                {TRANG_THAI_LC_LABELS[lc.trangThai]}
-              </span>
-            </div>
-          </div>
-          
-          <h3 
-            className="font-black text-3xl lg:text-4xl text-slate-900 leading-tight mb-2.5 cursor-pointer hover:text-sky-600 transition-colors"
-            onClick={onEdit}
-          >
-            {lc.tenSP}
-          </h3>
-          
-          <div className="flex items-center gap-2 text-sm text-slate-500 font-medium mb-4">
-            <span>{LOAI_SP_LABELS[lc.loaiSP]}</span>
-            <span>·</span>
-            <span>Mã: <span className="font-bold text-slate-800">{lc.maSP}</span></span>
-            {lc.daCoSoDo && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 ml-1.5 bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-black tracking-wide">
-                <CheckCircle2 className="w-3.5 h-3.5" /> ĐÃ SƠ ĐỒ
-              </span>
-            )}
-          </div>
-
-          {/* Stats Row */}
-          <div className="flex items-center justify-between border-y-2 border-slate-100 py-4 mb-4">
-            <div className="flex flex-col items-center justify-center flex-1 gap-1">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium"><Package className="w-4 h-4 text-slate-400"/> Tổng SL</div>
-              <div className="text-lg font-black text-slate-900 tabular-nums">{(lc.tongSL || 0).toLocaleString()}</div>
-            </div>
-            <div className="w-px h-10 bg-slate-200 shrink-0"></div>
-            <div className="flex flex-col items-center justify-center flex-1 gap-1">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium"><Shirt className="w-4 h-4 text-slate-400"/> Tỉ lệ size</div>
-              <div className="text-lg font-black text-slate-900 tabular-nums">{lc.tiLeSize || "--"}</div>
-            </div>
-            <div className="w-px h-10 bg-slate-200 shrink-0"></div>
-            <div className="flex flex-col items-center justify-center flex-1 gap-1">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium"><Calendar className="w-4 h-4 text-slate-400"/> Hạn</div>
-              <div className="text-[15px] font-black text-slate-900 tabular-nums leading-none mt-1">
-                <DateDisplay value={lc.hanHoanThanh} format="dd/MM" />
-              </div>
-              <div className="text-[10px] text-sky-500 font-medium leading-none mt-1">
-                <DateDisplay value={lc.hanHoanThanh} showRelative />
-              </div>
-            </div>
-          </div>
-
-          {/* COGS Section */}
-          {cogs && (
-            <div className="space-y-1.5 mb-4">
-              <div className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                <Calculator className="w-4 h-4 text-slate-400" /> Bảng giá vốn
-              </div>
-
-              {cogs.tongTienVai != null && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" /> Vải
-                  </span>
-                  <span className="font-bold text-slate-800 tabular-nums">{formatVND(cogs.tongTienVai / Math.max(1, lc.tongSL || 1))}/SP</span>
-                </div>
-              )}
-              {cogs.tongTienPhuLieu != null && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" /> Phụ liệu
-                  </span>
-                  <span className="font-bold text-slate-800 tabular-nums">{formatVND(cogs.tongTienPhuLieu / Math.max(1, lc.tongSL || 1))}/SP</span>
-                </div>
-              )}
-              {cogs.giaCong1SP != null && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Gia công
-                  </span>
-                  <span className="font-bold text-slate-800 tabular-nums">{formatVND(cogs.giaCong1SP)}/SP</span>
-                </div>
-              )}
-              {cogs.tongChiPhiCoDinh != null && cogs.tongChiPhiCoDinh > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" /> Chi phí cố định
-                  </span>
-                  <span className="font-bold text-slate-800 tabular-nums">{formatVND(cogs.tongChiPhiCoDinh)}/SP</span>
-                </div>
-              )}
-
-              <div className="border-t border-dashed border-slate-200 pt-2.5 mt-2.5">
-                <div className="flex items-center justify-between text-sm mb-1.5">
-                  <span className="font-black text-slate-700 flex items-center gap-1.5">
-                    <Calculator className="w-4 h-4 text-violet-500" /> Giá vốn / SP
-                  </span>
-                  <span className="font-black text-violet-600 tabular-nums text-lg">
-                    {formatVND(cogs.giaVon1SP ?? cogs.giaVonBinhQuan)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-500 pl-5 ml-0.5">Tổng lô ({lc.tongSL?.toLocaleString()} SP)</span>
-                  <span className="font-black text-emerald-600 tabular-nums text-lg">
-                    {formatVND(cogs.tongGiaVon ?? ((cogs.giaVon1SP ?? cogs.giaVonBinhQuan) * (lc.tongSL || 1)))}
-                  </span>
-                </div>
-              </div>
-            </div>
+        <div className="flex items-center gap-2">
+          {isAo && (
+            <button
+              onClick={() => setModalGiaCong("ao")}
+              className="px-3 py-1 bg-white border border-violet-200 text-violet-700 rounded-lg text-xs font-bold hover:bg-violet-50 transition-colors shadow-sm"
+            >
+              Gia công áo
+            </button>
           )}
+          {isQuan && (
+            <button
+              onClick={() => setModalGiaCong("quan")}
+              className="px-3 py-1 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-50 transition-colors shadow-sm"
+            >
+              Gia công quần
+            </button>
+          )}
+        </div>
+      </div>
 
-          {/* Outsourcing list */}
-          {lc.phanCong && lc.phanCong.length > 0 && (
-            <div className="flex flex-col gap-2 mt-auto">
-              {lc.phanCong
-                .filter(pc => {
-                  const name = pc.tenCongDoan.toLowerCase();
-                  return name.includes('may') || name.includes('thêu') || name.includes('in');
-                })
-                .map((pc, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm bg-white px-3.5 py-2 rounded-md border-2 border-slate-200">
-                  <span className="font-bold text-slate-600">{pc.tenCongDoan}</span>
-                  {pc.nguoiTen ? (
-                    <span className="font-bold text-slate-800 line-clamp-1">{pc.nguoiTen}</span>
-                  ) : (
-                    <span className="italic text-slate-400">Chưa giao</span>
-                  )}
-                </div>
+      {/* Content */}
+      <div className="p-4 space-y-4">
+        {/* Row: SP Name & Loại */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-black text-xl text-slate-900 leading-tight mb-1 cursor-pointer hover:text-sky-600 transition-colors" onClick={onEdit}>
+              {lc.tenSP}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
+                {LOAI_SP_LABELS[lc.loaiSP] || "Sản phẩm"}
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-medium border border-slate-200">
+                Mã: <span className="font-bold text-slate-800 ml-1">{lc.maSP || "---"}</span>
+              </span>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <div className="text-[10px] font-bold text-slate-500 uppercase">Tổng SL</div>
+            <div className="text-xl font-black text-slate-900 tabular-nums leading-none mt-0.5">
+              {(lc.tongSL || 0).toLocaleString()} <span className="text-xs text-slate-400 font-medium">SP</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Row: Thông tin chi tiết */}
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <div className="text-slate-500 text-[11px] font-bold mb-0.5">Thợ cắt</div>
+            <div className="font-bold text-slate-800">{thoCat}</div>
+          </div>
+          <div>
+            <div className="text-slate-500 text-[11px] font-bold mb-0.5 flex items-center gap-1"><Calendar className="w-3 h-3"/> Hạn hoàn thành</div>
+            <div className={`font-bold ${isLate ? 'text-rose-600' : 'text-slate-800'}`}>
+              <DateDisplay value={lc.hanHoanThanh} format="dd/MM/yyyy" showRelative />
+            </div>
+          </div>
+        </div>
+
+        {/* Workflow Stages (Quy trình sản xuất) */}
+        {lc.phanCong && lc.phanCong.length > 0 && (
+          <div className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Quy trình:</span>
+            {[...lc.phanCong].sort((a, b) => {
+              const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
+              const aRank = STAGE_ORDER.findIndex(k => a.id.toLowerCase().includes(k));
+              const bRank = STAGE_ORDER.findIndex(k => b.id.toLowerCase().includes(k));
+              return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
+            }).map((pc, i) => {
+              const tt = (pc.trangThaiCD as any) || "cho_giao";
+              const ttStyles: any = {
+                cho_giao: "bg-slate-100 text-slate-500 border-slate-200",
+                dang_lam: "bg-sky-100 text-sky-700 border-sky-300",
+                cho_qc: "bg-amber-100 text-amber-700 border-amber-300",
+                hoan_thanh: "bg-emerald-100 text-emerald-700 border-emerald-300",
+                co_loi: "bg-rose-100 text-rose-700 border-rose-300"
+              };
+              const s = ttStyles[tt] || ttStyles.cho_giao;
+              return (
+                <React.Fragment key={pc.id}>
+                  <div className={`px-2 py-0.5 rounded border text-[10px] font-bold ${s} whitespace-nowrap`}>
+                    {pc.tenCongDoan}
+                  </div>
+                  {i < lc.phanCong!.length - 1 && <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Color Cards */}
+        <div className="-mx-4 sm:-mx-4">
+          <LenhCatColorCards lc={lc} onClickColor={(idx) => setModalTyLeMauIdx(idx)} />
+        </div>
+      </div>
+
+      {/* Footer Actions (Chỉ hiện khi ở trang chủ Lệnh Cắt, tuỳ biến) */}
+      {(onEdit || onDelete || onChangeStatus) && (
+        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+          {onEdit && (
+            <button onClick={onEdit} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all text-xs">
+              <Edit3 className="w-3.5 h-3.5" /> Xem/Sửa
+            </button>
+          )}
+          {onChangeStatus && (
+            <select
+              value={lc.trangThai}
+              onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold text-slate-700 text-xs focus:ring-2 focus:ring-sky-500/30"
+            >
+              {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
+                <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
               ))}
-            </div>
+            </select>
+          )}
+          {onDelete && (
+            <button onClick={onDelete} className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold transition-all flex items-center gap-1.5 text-xs">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Footer Actions */}
-      <div className="pt-6 mt-6 border-t-2 border-slate-100">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 flex flex-wrap items-center gap-3">
-            <button
-              className="min-w-[110px] h-[58px] rounded-2xl border-2 border-cyan-300 bg-white text-slate-700 font-bold flex items-center justify-center transition-all hover:border-cyan-400 hover:shadow-sm text-[11px] leading-tight"
-              title="In phiếu gia công"
-            >
-              <div className="flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                <span>In</span>
-                <span>phiếu</span>
-              </div>
-            </button>
+      {/* Modals */}
+      {modalGiaCong && (
+        <GiaCongModal
+          lc={lc}
+          type={modalGiaCong}
+          onClose={() => setModalGiaCong(null)}
+          onSave={(slThucTe, dsPhanCong, newDsMau) => {
+            if (onSaveGiaCong) onSaveGiaCong(slThucTe, dsPhanCong, newDsMau);
+          }}
+        />
+      )}
 
-            <button
-              className="min-w-[110px] h-[58px] rounded-2xl border-2 border-cyan-300 bg-white text-slate-700 font-bold flex items-center justify-center transition-all hover:border-cyan-400 hover:shadow-sm text-[11px] leading-tight"
-              title="Chia sẻ Zalo"
-            >
-              <div className="flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span>Chia</span>
-                <span>sé</span>
-              </div>
-            </button>
-
-            <button
-              className="min-w-[110px] h-[58px] rounded-2xl border-2 border-cyan-300 bg-white text-slate-700 font-bold flex items-center justify-center transition-all hover:border-cyan-400 hover:shadow-sm text-[11px] leading-tight"
-              title="Lưu nháp"
-            >
-              <div className="flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span>Lưu</span>
-                <span>nháp</span>
-              </div>
-            </button>
-
-            <button
-              className="min-w-[110px] h-[58px] rounded-2xl border-2 border-cyan-300 bg-white text-slate-700 font-bold flex items-center justify-center transition-all hover:border-cyan-400 hover:shadow-sm text-[11px] leading-tight"
-              title="Hoàn tất lệnh"
-            >
-              <div className="flex flex-col items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-cyan-500" />
-                <span>Hoàn</span>
-                <span>tất</span>
-              </div>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              className="min-w-[72px] h-[58px] rounded-full bg-gradient-to-br from-violet-600 to-violet-500 text-white font-black flex items-center justify-center shadow-lg shadow-violet-400/30 hover:scale-[1.02] transition-all -translate-y-1.5"
-              title="Chuyển khâu"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-center justify-end gap-2">
-          <button
-            onClick={onEdit}
-            className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm hover:shadow-md text-[10px]"
-          >
-            <Edit3 className="w-3.5 h-3.5" /> Xem/Sửa
-          </button>
-
-          <select
-            value={lc.trangThai}
-            onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
-            className="px-3 py-1.5 rounded-lg border-2 border-slate-300 bg-white font-semibold text-slate-700 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-transparent transition-all text-[10px]"
-          >
-            {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
-              <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
-            ))}
-          </select>
-
-          <button
-            onClick={onDelete}
-            className="px-3 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-700 text-white font-bold flex items-center justify-center transition-all shadow-sm hover:shadow-md"
-            title="Xoá lệnh cắt"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+      {modalTyLeMauIdx !== null && (
+        <TyLeSizeModal
+          lc={lc}
+          mauIdx={modalTyLeMauIdx}
+          onClose={() => setModalTyLeMauIdx(null)}
+          onSave={(mauIdx, newTyLe) => {
+            if (onSaveTyLe) onSaveTyLe(mauIdx, newTyLe);
+          }}
+        />
+      )}
     </div>
   );
 }

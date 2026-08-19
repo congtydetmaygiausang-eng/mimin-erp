@@ -130,7 +130,7 @@ export function ModalPhanCongMoi({ onClose, onSubmit }: { onClose: () => void; o
 
   const dsNguoi = useMemo(() => layDanhSachNguoiPT(), []);
   const [form, setForm] = useState({
-    lenhCatId: "LC-M758",
+    lenhCatId: "",
     congDoan: "May áo" as CongDoanKey,
     nguoiMa: dsNguoi[0]?.ma || "",
     donGiaGiao: 0,

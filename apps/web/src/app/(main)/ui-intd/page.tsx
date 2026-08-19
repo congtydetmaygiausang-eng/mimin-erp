@@ -5,18 +5,18 @@
 // Nhận bán thành phẩm từ Cắt, hoàn thành chuyển cho May
 
 import { useState } from "react";
-import { Palette, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, Shirt } from "lucide-react";
+import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay } from "@/components/ui";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo"];
 
 export default function UiInTheuPage() {
-  const { dsLenhCat, capNhatCongDoan } = useLenhCat();
-  const [slInput, setSlInput] = useState<Record<string, number>>({});
-  const [loiInput, setLoiInput] = useState<Record<string, number>>({});
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { user } = useSession();
 
   function getIntdPC(lc: any) {
@@ -51,46 +51,87 @@ export default function UiInTheuPage() {
     return catPC?.trangThaiCD ?? "cho_giao";
   }
 
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
+
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+
+      if (data.sizes && data.sizes.length > 0) {
+        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
+        if (mauIdx >= 0) {
+          const newDsMau = [...(lc.dsMau || [])];
+          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
+          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+        }
+      }
+
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     toast.success(`🎨 Nhận hàng In/Thêu: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
   function handleHoanThanh(lc: any, pc: any) {
-    const key = `${lc.id}-${pc.id}`;
-    const sl = slInput[key] ?? pc.soLuong ?? lc.tongSL;
-    const loi = loiInput[key] ?? 0;
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl, soLuongLoi: loi });
-    toast.success(`✅ Chuyển tiếp thành công: ${sl} SP (Lỗi: ${loi})`);
-  }
+    // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
+    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+    if (!kiemTra.ok) {
+      toast.error(kiemTra.loi!, { duration: 6000 });
+      return;
+    }
+    const tongDat = kiemTra.slDat;
+    const tongLoi = kiemTra.slLoi;
 
-  function handleGiaoQC(lc: any, pc: any) {
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh" });
-    toast.success(`➡️ Giao QC: ${lc.id}`);
+    capNhatCongDoan(lc.id, pc.id, {
+      trangThaiCD: "hoan_thanh",
+      soLuongHoanThanh: tongDat,
+      soLuongLoi: tongLoi
+    });
+    toast.success(`✅ Chuyển tiếp thành công: ${tongDat} SP (Lỗi: ${tongLoi})`);
   }
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <Palette className="w-7 h-7 text-violet-500" /> Tổ In / Thêu – Công việc
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">{lcCoIntd.length} lệnh đang chờ / đang làm</p>
-      </div>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+            <Palette className="w-7 h-7 text-violet-600" /> Tổ In / Thêu – Công việc
+          </h1>
+          <p className="text-sm font-bold text-slate-600 mt-1">{lcCoIntd.length} lệnh đang chờ / đang làm</p>
+        </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Đang làm", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
-          { label: "Chờ nhận", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600" },
-          { label: "Hoàn thành", value: lcCoIntd.filter(lc => getIntdPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-600" },
-          { label: "Có lỗi", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-600" },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500">{k.label}</div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
-          </div>
-        ))}
+        {/* KPI */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Đang làm", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
+            { label: "Chờ nhận", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-700" },
+            { label: "Hoàn thành", value: lcCoIntd.filter(lc => getIntdPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-700" },
+            { label: "Có lỗi", value: lcCoIntd.filter(lc => getIntdPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-700" },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">{k.label}</div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Danh sách lệnh cắt */}
@@ -101,38 +142,29 @@ export default function UiInTheuPage() {
           <div className="text-sm mt-1">Đang chờ nhận thêm hàng từ Cắt...</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="space-y-4">
           {lcCoIntd.map(lc => {
             const intdPCs = getIntdPC(lc);
             const catTT = getCatTT(lc);
             const catDone = catTT === "hoan_thanh";
 
             return (
-              <div key={lc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                {/* Header */}
-                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                  <div>
-                    <span className="font-black text-purple-700 font-mono">{lc.id}</span>
-                    <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
-                    <span className="ml-2 text-xs text-slate-400">{lc.maSP} · {lc.tongSL?.toLocaleString()} SP</span>
-                  </div>
-                  <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
-                </div>
-
-                {/* Trạng thái cắt */}
-                {!catDone && (
-                  <div className="px-5 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 font-bold flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" /> Đang chờ Tổ Cắt hoàn thành ({TRANG_THAI_CD_LABELS[catTT as TrangThaiCongDoan] || "Chờ giao"})
-                  </div>
-                )}
-
-                {/* In/Thêu công đoạn */}
-                <div className="p-5 space-y-4">
-                  {/* Các công đoạn In/Thêu của lô này */}
+              <LenhCatCardV2
+                key={lc.id}
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                renderStatus={
+                  !catDone ? (
+                    <div className="px-3 py-1 bg-amber-50 border border-amber-200 text-xs text-amber-700 font-bold flex items-center gap-1.5 rounded-full">
+                      <Clock className="w-3 h-3" /> Chờ Tổ Cắt ({TRANG_THAI_CD_LABELS[catTT as TrangThaiCongDoan] || "Chờ giao"})
+                    </div>
+                  ) : null
+                }
+              >
+                <div className="space-y-3">
                   {intdPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
-                    const key = `${lc.id}-${pc.id}`;
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -145,24 +177,6 @@ export default function UiInTheuPage() {
                             {TRANG_THAI_CD_LABELS[tt]}
                           </span>
                         </div>
-
-                        {/* Input SL khi đang làm */}
-                        {tt === "dang_lam" && (
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div>
-                              <div className="text-xs font-bold text-slate-600 mb-1">SP đã in/thêu xong:</div>
-                              <input type="number" value={slInput[key] ?? ""} onChange={e => setSlInput(p => ({ ...p, [key]: +e.target.value }))}
-                                placeholder={String(pc.soLuong || lc.tongSL)}
-                                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400/30" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-600 mb-1">SP lỗi:</div>
-                              <input type="number" value={loiInput[key] ?? ""} onChange={e => setLoiInput(p => ({ ...p, [key]: +e.target.value }))}
-                                placeholder="0"
-                                className="w-full px-3 py-1.5 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400/30" />
-                            </div>
-                          </div>
-                        )}
 
                         {/* Buttons */}
                         <div className="flex gap-2">
@@ -204,10 +218,22 @@ export default function UiInTheuPage() {
                     );
                   })}
                 </div>
-              </div>
+              </LenhCatCardV2>
             );
           })}
         </div>
+      )}
+
+      {/* Modal nhập liệu cho màu */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={getIntdPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );

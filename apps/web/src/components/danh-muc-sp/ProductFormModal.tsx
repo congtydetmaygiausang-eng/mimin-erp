@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
-import { type SanPham } from "@/lib/data/danh-muc-sp-store";
+import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { type SizeRatioPreset, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 
@@ -13,6 +13,7 @@ interface ProductFormModalProps {
 }
 
 export default function ProductFormModal({ onClose, onSave, initialData }: ProductFormModalProps) {
+  const { dsSanPham } = useDanhMucSP();
   const [mounted, setMounted] = useState(false);
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [isCreatingRatio, setIsCreatingRatio] = useState(false);
@@ -83,7 +84,19 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       toast.error("Vui lòng nhập Mã SP và Tên SP!");
       return;
     }
-    
+
+    // Chặn trùng mã SP khi TẠO MỚI. Bảng san_pham dùng id (UUID) làm khoá chính
+    // còn ma_sp chỉ là cột text không ràng buộc duy nhất, nên gõ trùng mã cũ sẽ
+    // tạo ra 2 sản phẩm cùng mã trong danh mục, làm chia đôi số liệu bán hàng.
+    if (!initialData) {
+      const maMoi = maSP.trim().toUpperCase();
+      const trung = dsSanPham.find((sp) => (sp.id || "").toUpperCase() === maMoi);
+      if (trung) {
+        toast.error(`Mã SP "${maMoi}" đã tồn tại: ${trung.tenSP}. Vui lòng dùng mã khác hoặc sửa sản phẩm đang có.`);
+        return;
+      }
+    }
+
     // Match with selected preset or fallback
     const preset = allPresets.find(p => p.value === tiLeSize);
     let bangSize;

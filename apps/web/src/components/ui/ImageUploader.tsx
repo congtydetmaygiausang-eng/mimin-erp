@@ -41,7 +41,7 @@ export function ImageUploader({
 
   const filesOfCategory = files.filter((f) => f.category === category);
 
-  const handleFiles = async (fileList: FileList | null) => {
+  const handleFiles = async (fileList: FileList | null | undefined) => {
     if (!fileList) return;
     const newFiles: UploadedFile[] = [];
     for (const file of Array.from(fileList)) {
@@ -56,7 +56,7 @@ export function ImageUploader({
       });
       newFiles.push({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name: file.name,
+        name: file.name || 'image.png',
         type: file.type,
         size: file.size,
         dataUrl,
@@ -66,6 +66,13 @@ export function ImageUploader({
     }
     onChange([...files, ...newFiles]);
     toast.success(`Đã upload ${newFiles.length} file`);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+      e.preventDefault();
+      handleFiles(e.clipboardData.files);
+    }
   };
 
   const remove = (id: string) => {
@@ -88,12 +95,14 @@ export function ImageUploader({
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
         onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-        className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-brand-500/5 transition"
+        onPaste={handlePaste}
+        tabIndex={0} // Để có thể focus và bắt sự kiện paste
+        className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-brand-500/5 transition focus:outline-none focus:border-brand-500 focus:bg-brand-500/5"
         style={{ borderColor: "var(--border)" }}
       >
         <Upload className="w-6 h-6 mx-auto mb-1 opacity-50" />
         <div className="text-xs opacity-70">
-          Kéo thả hoặc <span className="text-brand-500 font-medium">click để chọn file</span>
+          Kéo thả, dán (Ctrl+V) hoặc <span className="text-brand-500 font-medium">click để chọn file</span>
         </div>
         <div className="text-[10px] opacity-50 mt-0.5">
           {accept.replace(/\./g, "").split(",").slice(0, 5).join(", ")} · Max {(maxSize / 1024 / 1024).toFixed(0)}MB

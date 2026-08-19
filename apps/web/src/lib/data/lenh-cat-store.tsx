@@ -10,7 +10,6 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { logWorkflow } from "../audit-log";
 import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
 import type { AppUser } from "@/components/session-provider";
-import { xuatKhoChoLenhCat } from "@/lib/inventory-engine";
 
 export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron" | "AoPolo" | "PhuKien";
 export type LoaiLenh = "HangNha" | "HangDat";
@@ -72,6 +71,10 @@ export type MauVai = {
   // Màu phối - danh sách TÊN MÀU dùng để phối (viền, phối màu...), không gắn mã vải trong kho.
   // CHỈ mang tính tham khảo, KHÔNG tính vào định mức/tiền vải (chỉ vải chính maVai/maVaiQuan mới tính).
   mauPhoi?: string[];
+
+  // Tracking tỉ lệ size chi tiết theo từng khâu (Cắt, May Áo, May Quần, In/Thêu, Ủi/QC...)
+  // Key: id khâu (vidu: "cat", "mayAo") -> Value: list size distribution
+  tyLeSizeChiTiet?: Record<string, { size: string; sl: number }[]>;
 };
 
 export type LenhCatPhuLieu = {
@@ -112,6 +115,7 @@ export const TRANG_THAI_CD_STYLE: Record<TrangThaiCongDoan, { bg: string; text: 
 export type CatChiTietTrangThai = "cho_lam" | "hoan_thanh" | "khong_can";
 
 export type CatChiTiet = {
+  nhanLieu: CatChiTietTrangThai;
   traiVai: CatChiTietTrangThai;
   catHang: CatChiTietTrangThai;
   epNhan: CatChiTietTrangThai;
@@ -139,6 +143,13 @@ type CongDoanBase = {
   ngayHoanThanh?: string;          // Ngày hoàn thành thực tế
   // Chi tiết 4 bước dành riêng cho khâu Cắt
   catChiTiet?: CatChiTiet;
+  // Khai báo chi tiết số lượng theo màu (Mới)
+  chiTietMau?: {
+    mau: string;
+    soLuongNhan: number;
+    soLuongDat: number;
+    soLuongLoi: number;
+  }[];
 };
 
 
@@ -187,6 +198,8 @@ export type LenhCat = {
   tenSP: string;
   tongSL: number;
   tongSLThucTe?: number;
+  tongSLThucTeAo?: number;
+  tongSLThucTeQuan?: number;
   hanHoanThanh: string;
   tiLeSize: string; // VD 1:2:2:1
   // Màu sắc & Vải
@@ -252,48 +265,56 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-AO-TRON",
     ten: "Áo tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   },
   {
     id: "MCD-AO-TRU",
     ten: "Áo trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   },
   {
     id: "MCD-BO-TRON",
     ten: "Bộ tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   },
   {
     id: "MCD-BO-TRU",
     ten: "Bộ trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   }
 ];
@@ -320,7 +341,7 @@ export function generateLenhCatId(existing: LenhCat[]): string {
 
 interface LenhCatStore {
   dsLenhCat: LenhCat[];
-  themLenhCat: (lenh: LenhCat, nguoiTao: AppUser) => void;
+  themLenhCat: (lenh: LenhCat, nguoiTao: AppUser) => Promise<void>;
   suaLenhCat: (id: string, lenh: Partial<LenhCat>, nguoiSua: AppUser) => void;
   xoaLenhCat: (id: string, nguoiXoa: AppUser) => void;
   dsMauCongDoan: MauCongDoanItem[];
@@ -338,6 +359,7 @@ interface LenhCatStore {
     thanhTien?: number;
     conLai?: number;
     catChiTiet?: CatChiTiet;
+    chiTietMau?: any;
   }) => void;
   reset: () => void;
   loading: boolean;
@@ -375,6 +397,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
               tenSP: item.ten_sp,
               tongSL: item.tong_sl,
               tongSLThucTe: item.tong_sl_thuc_te,
+              tongSLThucTeAo: item.tong_sl_thuc_te_ao,
+              tongSLThucTeQuan: item.tong_sl_thuc_te_quan,
               hanHoanThanh: item.han_hoan_thanh,
               tiLeSize: item.ti_le_size,
               dsMau: item.ds_mau || [],
@@ -459,16 +483,31 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const themLenhCat = useCallback(async (lenh: LenhCat, u: AppUser) => {
+    // Chốt chặn cuối: upsert theo id nên nếu mã bị trùng sẽ GHI ĐÈ mất lệnh cũ.
+    // Kiểm tra thẳng trên Supabase (không tin cache client vì có thể chưa tải xong
+    // hoặc người khác vừa tạo) - trùng thì báo lỗi, KHÔNG ghi đè.
+    {
+      const { supabase: sb } = await import("@/lib/supabase/client");
+      if (sb) {
+        const { data: trung } = await sb.from("lenh_cat").select("id").eq("id", lenh.id).limit(1).maybeSingle();
+        if (trung) {
+          throw new Error(`Mã lệnh cắt ${lenh.id} đã tồn tại. Vui lòng tải lại trang rồi tạo lại để lấy mã mới.`);
+        }
+      }
+    }
+
     setDsLenhCat((prev) => [lenh, ...prev]); // Optimistic
     logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
     const { supabase } = await import("@/lib/supabase/client");
     if (!supabase) throw new Error("Supabase chưa kết nối");
     const { error } = await supabase!.from("lenh_cat").upsert({
       id: lenh.id, loai_lenh: lenh.loaiLenh, khach_hang: lenh.khachHang, loai_sp: lenh.loaiSP, ma_sp: lenh.maSP,
-      ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe, han_hoan_thanh: lenh.hanHoanThanh,
-      ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu, mau_cong_doan: lenh.mauCongDoan,
-      phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi, chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS,
-      phu_trach_cat: lenh.phuTrachCat, phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
+      ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe,
+      tong_sl_thuc_te_ao: lenh.tongSLThucTeAo, tong_sl_thuc_te_quan: lenh.tongSLThucTeQuan,
+      han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
+      mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
+      chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
+      phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
       phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao
     });
     if (error) throw error;
@@ -487,6 +526,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.tenSP !== undefined)             updateData.ten_sp = lenh.tenSP;
       if (lenh.tongSL !== undefined)            updateData.tong_sl = lenh.tongSL;
       if (lenh.tongSLThucTe !== undefined)      updateData.tong_sl_thuc_te = lenh.tongSLThucTe;
+      if (lenh.tongSLThucTeAo !== undefined)    updateData.tong_sl_thuc_te_ao = lenh.tongSLThucTeAo;
+      if (lenh.tongSLThucTeQuan !== undefined)  updateData.tong_sl_thuc_te_quan = lenh.tongSLThucTeQuan;
       if (lenh.hanHoanThanh !== undefined)      updateData.han_hoan_thanh = lenh.hanHoanThanh;
       if (lenh.tiLeSize !== undefined)          updateData.ti_le_size = lenh.tiLeSize;
       if (lenh.dsMau !== undefined)             updateData.ds_mau = lenh.dsMau;
@@ -550,21 +591,16 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       return prev.map(x => x.id === id ? { ...x, trangThai: tt } : x);
     });
 
-    // 🔑 AUTO XUẤT KHO: khi chuyển sang Đang Cắt (từ bất kỳ trạng thái nào)
-    if (tt === "DangCat" && lenhHienTai && lenhHienTai.trangThai !== "DangCat") {
-      try {
-        const ketQua = xuatKhoChoLenhCat({
-          id: lenhHienTai.id,
-          tongSL: lenhHienTai.tongSL,
-          dsMau: lenhHienTai.dsMau,
-          dsPhuLieu: lenhHienTai.dsPhuLieu,
-        }, u);
-        const soLoai = ketQua.length;
-        console.info(`[LeHCat] Tự động xuất kho ${lenhHienTai.id}: ${soLoai} loại vật tư`);
-      } catch(e) {
-        console.error("[LenhCat] Auto xuất kho thất bại:", e);
-      }
-    }
+    // ĐÃ BỎ auto-xuất-kho ở đây (trước gọi xuatKhoChoLenhCat của inventory-engine).
+    // Lý do: có 2 luồng trừ kho chạy song song cho cùng 1 lần bắt đầu cắt ->
+    //   (1) handleNhanViec ở to-cat-work/page.tsx: ghi qua useKho().themGiaoDich
+    //       (có React state + đồng bộ Supabase)
+    //   (2) xuatKhoChoLenhCat: ghi thẳng localStorage "mimin_kho_vai_v2" bằng
+    //       ghiXuatKho(), không qua React state, không lên Supabase
+    // Cả 2 ghi cùng 1 key nên useEffect lưu state của kho-store sẽ ghi đè, XOÁ MẤT
+    // các dòng do (2) tạo -> vừa trừ kho 2 lần vừa mất dữ liệu.
+    // Nay giữ DUY NHẤT luồng (1), và đã port công thức đúng của (2) sang
+    // (định mức × slDuKien từng màu + % hao hụt + đơn giá thật) tại to-cat-work.
 
     try {
       const { supabase } = await import("@/lib/supabase/client");
@@ -580,7 +616,9 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     thanhTien?: number;
     conLai?: number;
     catChiTiet?: CatChiTiet;
+    chiTietMau?: any;
   }) => {
+    let updatedPhanCong: any = null;
     setDsLenhCat(prev => {
       const next = prev.map(lc => {
         if (lc.id !== lenhId) return lc;
@@ -595,6 +633,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 thanhTien: data.thanhTien ?? pc.thanhTien,
                 conLai: data.conLai ?? pc.conLai,
                 catChiTiet: data.catChiTiet ?? pc.catChiTiet,
+                chiTietMau: data.chiTietMau ?? pc.chiTietMau,
                 ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
                   ? new Date().toISOString().slice(0, 10)
                   : pc.ngayNhanViec,
@@ -604,6 +643,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
               }
             : pc
         );
+        updatedPhanCong = newPhanCong;
         return { ...lc, phanCong: newPhanCong };
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -663,6 +703,22 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       
       return next;
     });
+
+    // Đồng bộ Supabase (nguồn sự thật) - thiếu bước này thì effect load-lại-từ-Supabase
+    // khi mount trang sẽ ghi đè mất thay đổi công đoạn vừa lưu (chỉ có ở localStorage).
+    if (updatedPhanCong) {
+      (async () => {
+        try {
+          const { supabase } = await import("@/lib/supabase/client");
+          if (supabase) {
+            const { error } = await supabase.from("lenh_cat").update({ phan_cong: updatedPhanCong }).eq("id", lenhId);
+            if (error) console.error("[LenhCat] Đồng bộ phan_cong lên Supabase thất bại:", error);
+          }
+        } catch (e) {
+          console.error("[LenhCat] Đồng bộ phan_cong lên Supabase lỗi:", e);
+        }
+      })();
+    }
   }, []);
 
   const reset = useCallback(() => {

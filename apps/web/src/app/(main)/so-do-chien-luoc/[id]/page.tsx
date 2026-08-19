@@ -10,6 +10,7 @@ import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Un
 import { toast } from "sonner";
 import Link from "next/link";
 import { toPng } from "html-to-image";
+import { supabase } from "@/lib/supabase/client";
 
 // Lưu sơ đồ vào localStorage riêng theo id dự án. Trước đây nút "Lưu lại" chỉ
 // hiện thông báo chứ KHÔNG lưu gì -> tải ảnh lên xong reload là mất sạch.
@@ -70,29 +71,48 @@ function SoDoCanvasInner() {
   // Lịch sử để Hoàn tác (Ctrl+Z). Dùng ref chứ không dùng state: chỉ cần đọc/ghi
   // khi có thao tác, không cần render lại mỗi lần đẩy snapshot.
   const lichSuRef = useRef<{ nodes: any[]; edges: any[] }[]>([]);
+  const clipboardRef = useRef<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
 
   // Khởi tạo data: ưu tiên bản đã lưu của người dùng, chưa có mới lấy mẫu sẵn
   useEffect(() => {
-    const daLuu = docTatCa()[id];
-    if (daLuu) {
-      setProjName(daLuu.name);
-      setNodes(daLuu.nodes || []);
-      setEdges(daLuu.edges || []);
+    const loadData = async () => {
+      try {
+        if (supabase) {
+          const { data, error } = await supabase.from('so_do_chien_luoc').select('*').eq('id', id).single();
+          if (data) {
+            setProjName(data.name);
+            setNodes(data.nodes || []);
+            setEdges(data.edges || []);
+            setIsReady(true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi fetch Supabase, fallback về localStorage", err);
+      }
+      
+      const daLuu = docTatCa()[id];
+      if (daLuu) {
+        setProjName(daLuu.name);
+        setNodes(daLuu.nodes || []);
+        setEdges(daLuu.edges || []);
+        setIsReady(true);
+        return;
+      }
+      const existing = MOCK_PROJECTS.find(p => p.id === id);
+      if (existing) {
+        setProjName(existing.name);
+        setNodes(existing.nodes);
+        setEdges(existing.edges);
+      } else {
+        setProjName(id.startsWith("new-") ? "Dự án mới" : "Sơ đồ không tên");
+        setNodes([
+          { id: "1", position: { x: 400, y: 100 }, data: { label: "Tên Dự Án", type: "title" }, type: "miminNode" }
+        ]);
+      }
       setIsReady(true);
-      return;
-    }
-    const existing = MOCK_PROJECTS.find(p => p.id === id);
-    if (existing) {
-      setProjName(existing.name);
-      setNodes(existing.nodes);
-      setEdges(existing.edges);
-    } else {
-      setProjName(id.startsWith("new-") ? "Dự án mới" : "Sơ đồ không tên");
-      setNodes([
-        { id: "1", position: { x: 400, y: 100 }, data: { label: "Tên Dự Án", type: "title" }, type: "miminNode" }
-      ]);
-    }
-    setIsReady(true);
+    };
+    loadData();
   }, [id, setNodes, setEdges]);
 
   // Xử lý nối dây
@@ -175,12 +195,29 @@ function SoDoCanvasInner() {
     toast.success(`Đã đổi ${dangChon.length} khối sang màu ${MAU_KHOI[mau].ten}`);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const all = docTatCa();
     all[id] = { name: projName, nodes, edges };
+    
+    let savedToDB = false;
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('so_do_chien_luoc').upsert({
+          id,
+          name: projName,
+          nodes,
+          edges
+        });
+        if (!error) savedToDB = true;
+      }
+    } catch(err) {
+      console.error(err);
+    }
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-      toast.success("Đã lưu sơ đồ!");
+      if (savedToDB) toast.success("Đã lưu và đồng bộ sơ đồ lên Cloud!");
+      else toast.success("Đã lưu sơ đồ vào máy địa phương!");
     } catch {
       toast.error("Bộ nhớ trình duyệt đã đầy - hãy bớt ảnh trong sơ đồ rồi lưu lại.");
     }
@@ -286,57 +323,55 @@ function SoDoCanvasInner() {
 
       if (ctrl && e.key.toLowerCase() === "z") { e.preventDefault(); hoanTac(); return; }
       if (ctrl && e.key.toLowerCase() === "d") { e.preventDefault(); nhanDoiDangChon(); return; }
+      if (ctrl && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        const selectedNodes = nodes.filter(n => n.selected);
+        if (selectedNodes.length > 0) {
+          clipboardRef.current = { nodes: selectedNodes, edges: [] }; // Tạm thời chỉ copy nodes
+          toast.success(`Đã copy ${selectedNodes.length} khối`);
+        }
+        return;
+      }
+      if (ctrl && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        if (clipboardRef.current.nodes.length > 0) {
+          luuLichSu();
+          const newNodes = clipboardRef.current.nodes.map(n => ({
+            ...n,
+            id: `${n.type}_${Date.now()}_${Math.random()}`,
+            position: { x: n.position.x + 30, y: n.position.y + 30 },
+            selected: false,
+          }));
+          setNodes(nds => [...nds, ...newNodes]);
+          toast.success(`Đã dán ${newNodes.length} khối`);
+        }
+        return;
+      }
       if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); xoaDangChon(); return; }
       if (e.key === "F2") { e.preventDefault(); doiTenDangChon(); return; }
       if (e.key === "Escape") { boChon(); setHienPhimTat(false); return; }
     };
 
     const onPaste = async (e: ClipboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      const dangGo = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
-      if (dangGo) return; // Nếu đang gõ text thì cho phép paste text bình thường
-
-      // Xử lý dán link ảnh hoặc text thông thường
-      const text = e.clipboardData?.getData("text");
-      if (text) {
-        luuLichSu();
-        if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|svg)$/i)) {
-          // Paste URL hình ảnh
-          setNodes((nds: any[]) => [...nds, {
-            id: `img_${Date.now()}`,
-            position: { x: Math.random() * 200 + 200, y: Math.random() * 200 + 200 },
-            data: { label: "Ảnh dán", imageSrc: text },
-            type: "miminImageNode",
-          }]);
-          toast.success("Đã dán ảnh từ link");
-        } else {
-          // Paste text thường -> tạo khối chữ
-          setNodes((nds: any[]) => [...nds, {
-            id: `node_${Date.now()}`,
-            position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
-            data: { label: text, type: "normal" },
-            type: "miminNode",
-          }]);
-          toast.success("Đã dán văn bản thành khối mới");
-        }
-        e.preventDefault();
-        return;
-      }
-
       // Xử lý dán file ảnh (copy từ màn hình/thư mục)
+      const files: File[] = Array.from(e.clipboardData?.files || []);
       const items = e.clipboardData?.items;
-      if (!items) return;
       
-      const files: File[] = [];
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith("image/")) {
-          const file = items[i].getAsFile();
-          if (file) files.push(file);
+      if (files.length === 0 && items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith("image/")) {
+            const file = items[i].getAsFile();
+            if (file) files.push(file);
+          }
         }
       }
+
+      // DEBUG
+      // toast.info(`Dán: ${files.length} file ảnh, có chữ không: ${!!e.clipboardData?.getData("text")}`);
 
       if (files.length > 0) {
         e.preventDefault();
+        e.stopPropagation();
         luuLichSu();
         
         // Kiểm tra có node ảnh được chọn không -> nếu có chỉ 1 ảnh thì paste vào node đó
@@ -381,14 +416,46 @@ function SoDoCanvasInner() {
         }
         setNodes((nds: any[]) => [...nds, ...nodesMoi]);
         toast.success(`Đã dán ${nodesMoi.length} ảnh`);
+        return;
+      }
+
+      // Nếu không có file ảnh, thì check dangGo để quyết định xử lý text
+      const el = e.target as HTMLElement | null;
+      const dangGo = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      if (dangGo) return; // Đang ở trong ô gõ chữ thì để mặc định paste chữ
+
+      // Nếu không có file ảnh, kiểm tra xem có chữ hoặc link không
+      const text = e.clipboardData?.getData("text");
+      if (text) {
+        e.preventDefault();
+        luuLichSu();
+        if (text.match(/^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|svg)$/i)) {
+          // Paste URL hình ảnh
+          setNodes((nds: any[]) => [...nds, {
+            id: `img_${Date.now()}`,
+            position: { x: Math.random() * 200 + 200, y: Math.random() * 200 + 200 },
+            data: { label: "Ảnh dán", imageSrc: text },
+            type: "miminImageNode",
+          }]);
+          toast.success("Đã dán ảnh từ link");
+        } else {
+          // Paste text thường -> tạo khối chữ
+          setNodes((nds: any[]) => [...nds, {
+            id: `node_${Date.now()}`,
+            position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 100 },
+            data: { label: text, type: "normal" },
+            type: "miminNode",
+          }]);
+          toast.success("Đã dán văn bản thành khối mới");
+        }
       }
     };
 
     window.addEventListener("keydown", onKey);
-    window.addEventListener("paste", onPaste);
+    document.addEventListener("paste", onPaste, { capture: true });
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("paste", onPaste);
+      document.removeEventListener("paste", onPaste, { capture: true });
     };
   });
 

@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   Users,
 } from "lucide-react";
@@ -44,6 +45,9 @@ import {
   type ProductionPartnerRole,
   type VerificationStatus,
 } from "@/lib/production-network";
+import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
+import MultiSelectDropdown from "@/components/ui/MultiSelectDropdown";
+import { AiDiscoveryTab } from "@/components/sourcing/AiDiscoveryTab";
 
 const CATEGORY_META: Record<ProductionPartnerRole, {
   icon: typeof Users;
@@ -226,9 +230,10 @@ export default function MangLuoiSanXuatPage() {
   const { user } = useSession();
   const [partners, setPartners] = useState<ProductionPartner[]>([]);
   const [activeRole, setActiveRole] = useState<ProductionPartnerRole>("CUSTOMER");
+  const [currentTab, setCurrentTab] = useState<"LOCAL" | "AI_DISCOVERY">("LOCAL");
   const [search, setSearch] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
-  const [capabilityFilter, setCapabilityFilter] = useState("");
+  const [capabilityFilter, setCapabilityFilter] = useState<string[]>([]);
   const [radiusKm, setRadiusKm] = useState("");
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -273,14 +278,14 @@ export default function MangLuoiSanXuatPage() {
   const filteredPartners = useMemo(() => {
     const normalizedSearch = normalizeSearchValue(search);
     const normalizedProvince = normalizeSearchValue(provinceFilter);
-    const normalizedCapability = normalizeSearchValue(capabilityFilter);
+
     const maximumDistance = nullableNumber(radiusKm);
     return partners.filter((partner) => {
       if (!partner.roles.includes(activeRole)) return false;
       if (normalizedProvince && !normalizeSearchValue(partner.province).includes(normalizedProvince)) return false;
       if (
-        normalizedCapability
-        && !partner.capabilities.some((capability) => normalizeSearchValue(capability).includes(normalizedCapability))
+        capabilityFilter.length > 0
+        && !capabilityFilter.every((cap) => partner.capabilities.some((pc) => normalizeSearchValue(pc) === normalizeSearchValue(cap)))
       ) return false;
       if (maximumDistance !== null) {
         if (!currentLocation || partner.latitude === null || partner.longitude === null) return false;
@@ -388,13 +393,16 @@ export default function MangLuoiSanXuatPage() {
         icon={<Building2 className="w-5 h-5" />}
         actions={
           <div className="flex gap-2">
+            <Link href="/mang-luoi-san-xuat/cong-ty-da-luu" className="btn-secondary inline-flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Công ty đã lưu
+            </Link>
             <button onClick={() => void refresh()} className="btn-secondary inline-flex items-center gap-2">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Làm mới
             </button>
             {mayCreate && (
-              <><Link href="/mang-luoi-san-xuat/cong-ty-da-luu" className="btn-secondary inline-flex items-center gap-2"><Building2 className="w-4 h-4" /> Công ty đã lưu</Link><Link href="/mang-luoi-san-xuat/tim-kiem" className="btn-secondary inline-flex items-center gap-2"><Search className="w-4 h-4" /> Tìm tự động</Link><button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
+              <button onClick={openCreate} className="btn-primary inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" /> Thêm đối tác
-              </button></>
+              </button>
             )}
           </div>
         }
@@ -406,12 +414,17 @@ export default function MangLuoiSanXuatPage() {
           const Icon = meta.icon;
           const active = activeRole === role;
           return (
-            <button
-              key={role}
-              onClick={() => setActiveRole(role)}
-              className={`text-left rounded-2xl border bg-gradient-to-br p-4 transition shadow-sm ${meta.cardClass} ${active ? "ring-2 ring-brand-500 shadow-md" : "hover:-translate-y-0.5"}`}
-            >
-              <div className="flex items-start justify-between gap-3">
+              <button
+                key={role}
+                onClick={() => {
+                  setActiveRole(role);
+                  setCapabilityFilter([]);
+                  setSearch("");
+                }}
+                className={`text-left rounded-2xl border bg-gradient-to-br p-4 transition relative ${meta.cardClass} ${active ? "ring-4 ring-brand-600 shadow-xl scale-[1.02] brightness-105" : "shadow-sm opacity-60 hover:opacity-100 grayscale-[0.3] hover:grayscale-0"}`}
+              >
+                {active && <CheckCircle2 className="absolute top-4 right-4 w-6 h-6 text-brand-600 animate-in fade-in zoom-in" />}
+                <div className="flex items-start justify-between gap-3 pr-8">
                 <div className={`w-11 h-11 rounded-xl bg-white/70 flex items-center justify-center ${meta.iconClass}`}>
                   <Icon className="w-6 h-6" />
                 </div>
@@ -424,7 +437,26 @@ export default function MangLuoiSanXuatPage() {
         })}
       </div>
 
-      <div className="card p-4">
+      <div className="flex gap-4 border-b border-slate-200">
+        <button
+          onClick={() => setCurrentTab("LOCAL")}
+          className={`pb-2 px-2 text-sm font-semibold transition-colors ${currentTab === "LOCAL" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
+        >
+          🗃️ Dữ liệu nội bộ
+        </button>
+        <button
+          onClick={() => setCurrentTab("AI_DISCOVERY")}
+          className={`pb-2 px-2 text-sm font-semibold transition-colors ${currentTab === "AI_DISCOVERY" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
+        >
+          🤖 Tìm nguồn mới (AI)
+        </button>
+      </div>
+
+      {currentTab === "AI_DISCOVERY" ? (
+        <AiDiscoveryTab role={activeRole} />
+      ) : (
+        <>
+          <div className="card p-4 relative z-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h2 className="font-bold text-lg">{ROLE_LABELS[activeRole]}</h2>
@@ -445,9 +477,14 @@ export default function MangLuoiSanXuatPage() {
             Tỉnh / thành
             <input value={provinceFilter} onChange={(event) => setProvinceFilter(event.target.value)} className="input mt-1" placeholder="VD: Bình Dương" />
           </label>
-          <label className="text-xs font-medium">
+          <label className="text-xs font-medium relative block">
             Năng lực cần tìm
-            <input value={capabilityFilter} onChange={(event) => setCapabilityFilter(event.target.value)} className="input mt-1" placeholder="VD: vải cotton, thêu" />
+            <MultiSelectDropdown
+              options={MANG_LUOI_DANH_MUC[activeRole]}
+              selected={capabilityFilter}
+              onChange={setCapabilityFilter}
+              placeholder="Nhấn để chọn..."
+            />
           </label>
           <label className="text-xs font-medium">
             Trong bán kính (km)
@@ -460,10 +497,10 @@ export default function MangLuoiSanXuatPage() {
             </button>
           </div>
         </div>
-        {(provinceFilter || capabilityFilter || radiusKm) && (
+        {(provinceFilter || capabilityFilter.length > 0 || radiusKm) && (
           <div className="mt-3 flex items-center gap-2 text-xs text-brand-700">
             <SlidersHorizontal className="w-4 h-4" /> Đang áp dụng bộ lọc nâng cao
-            <button type="button" className="underline" onClick={() => { setProvinceFilter(""); setCapabilityFilter(""); setRadiusKm(""); }}>Xóa bộ lọc</button>
+            <button type="button" className="underline" onClick={() => { setProvinceFilter(""); setCapabilityFilter([]); setRadiusKm(""); }}>Xóa bộ lọc</button>
           </div>
         )}
       </div>
@@ -471,10 +508,18 @@ export default function MangLuoiSanXuatPage() {
       {loading ? (
         <div className="card p-10 text-center opacity-70">Đang tải mạng lưới sản xuất...</div>
       ) : filteredPartners.length === 0 ? (
-        <div className="card p-10 text-center">
-          <Building2 className="w-12 h-12 mx-auto text-slate-300" />
+        <div className="card p-10 text-center flex flex-col items-center justify-center">
+          <Building2 className="w-12 h-12 text-slate-300" />
           <h3 className="mt-3 font-bold">Chưa có đối tác trong danh mục này</h3>
-          <p className="mt-1 text-sm opacity-60">Thêm thủ công ở Giai đoạn 1; công cụ tìm kiếm tự động sẽ được bổ sung ở Giai đoạn 3.</p>
+          <p className="mt-1 text-sm opacity-60">Không tìm thấy hồ sơ nào khớp với bộ lọc của anh.</p>
+          {(search || provinceFilter || capabilityFilter.length > 0) && (
+            <button 
+              onClick={() => setCurrentTab("AI_DISCOVERY")} 
+              className="mt-4 btn-primary inline-flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" /> Dùng AI tìm nguồn mới ngay
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -531,6 +576,8 @@ export default function MangLuoiSanXuatPage() {
             </article>
           ))}
         </div>
+      )}
+      </>
       )}
 
       <CrudModal

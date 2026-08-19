@@ -1,18 +1,21 @@
 "use client";
 
-// ============ UI ĐÓNG GÓI (/ui-dong-goi) ============  
+// ============ UI ĐÓNG GÓI (/ui-dong-goi) ============
 // Nhận hàng từ Ủi đạt, Đóng gói, giao Kho Thành Phẩm
 
 import { useState } from "react";
 import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay } from "@/components/ui";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
+import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
+import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
 
 export default function UiDongGoiPage() {
-  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
-  const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
@@ -43,26 +46,59 @@ export default function UiDongGoiPage() {
     return true; // Nếu không có ủi thì hiển thị (Dự phòng)
   });
 
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
+
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+
+      if (data.sizes && data.sizes.length > 0) {
+        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
+        if (mauIdx >= 0) {
+          const newDsMau = [...(lc.dsMau || [])];
+          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
+          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+        }
+      }
+
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
-    const key = `${lc.id}-${pc.id}`;
-    setHtInput(p => ({ ...p, [key]: { dat: pc.soLuong || lc.tongSL, loi: 0, lyDo: "" } }));
     toast.success(`🧺 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
   function handleXong(lc: any, pc: any) {
-    const input = htInput[`${lc.id}-${pc.id}`] || {};
-    const slDat = input.dat ?? pc.soLuong ?? lc.tongSL;
-    const slLoi = input.loi ?? 0;
-    const lyDo = input.lyDo ?? "";
-    
+    // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
+    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+    if (!kiemTra.ok) {
+      toast.error(kiemTra.loi!, { duration: 6000 });
+      return;
+    }
+    const { slDat, slLoi } = kiemTra;
+
     const thanhTienDat = slDat * (pc.donGia || 0);
 
-    capNhatCongDoan(lc.id, pc.id, { 
-      trangThaiCD: "hoan_thanh", 
+    capNhatCongDoan(lc.id, pc.id, {
+      trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
-      lyDoLoi: lyDo,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -81,26 +117,29 @@ export default function UiDongGoiPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <Package className="w-7 h-7 text-amber-500" /> Đóng gói nhập kho – Việc của tôi
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">{lcHT.length} lô đang cần Đóng gói & Nhập kho</p>
-      </div>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+            <Package className="w-7 h-7 text-amber-600" /> Đóng gói nhập kho – Việc của tôi
+          </h1>
+          <p className="text-sm font-bold text-slate-600 mt-1">{lcHT.length} lô đang cần Đóng gói & Nhập kho</p>
+        </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Đang làm", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600" },
-          { label: "Chờ nhận", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600" },
-          { label: "Hoàn thành", value: lcHT.filter(lc => getHTPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-600" },
-          { label: "Có lỗi", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-600" },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500">{k.label}</div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
-          </div>
-        ))}
+        {/* KPI */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Đang làm", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-700" },
+            { label: "Chờ nhận", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-800" },
+            { label: "Hoàn thành", value: lcHT.filter(lc => getHTPC(lc).every((pc: any) => pc.trangThaiCD === "hoan_thanh")).length, color: "text-emerald-700" },
+            { label: "Có lỗi", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "co_loi")).length, color: "text-rose-700" },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">{k.label}</div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {lcHT.length === 0 ? (
@@ -117,29 +156,22 @@ export default function UiDongGoiPage() {
             const isLCDone = lc.trangThai === "HoanThanh";
 
             return (
-              <div key={lc.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${isLCDone ? "border-emerald-200" : "border-slate-200"}`}>
-                {/* Header */}
-                <div className={`px-5 py-4 border-b flex items-center justify-between ${isLCDone ? "bg-emerald-50 border-emerald-100" : "bg-sky-50 border-sky-100"}`}>
-                  <div>
-                    <span className="font-black text-teal-700 font-mono">{lc.id}</span>
-                    <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
-                    <span className="ml-2 text-xs text-slate-400">{lc.tongSL?.toLocaleString()} SP</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {isLCDone && (
-                      <span className="text-xs bg-emerald-500 text-white font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
-                      </span>
-                    )}
-                    <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
-                  </div>
-                </div>
-
-                <div className="p-5 space-y-3">
+              <LenhCatCardV2
+                key={lc.id}
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                renderStatus={
+                  isLCDone ? (
+                    <span className="text-xs bg-emerald-500 text-white font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
+                    </span>
+                  ) : null
+                }
+              >
+                <div className="space-y-3">
                   {htPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
-                    const key = `${lc.id}-${pc.id}`;
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -152,41 +184,6 @@ export default function UiDongGoiPage() {
                             {TRANG_THAI_CD_LABELS[tt]}
                           </span>
                         </div>
-
-                        {tt === "dang_lam" && (
-                          <div className="mb-4 space-y-3 bg-white p-3 rounded-lg border border-slate-100">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-500 mb-1">Số lượng nhận</div>
-                                <div className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700">
-                                  {pc.soLuong || lc.tongSL}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-emerald-600 mb-1">Số lượng đạt *</div>
-                                <input type="number"
-                                  value={htInput[key]?.dat ?? (pc.soLuong || lc.tongSL)}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], dat: +e.target.value } }))}
-                                  className="w-full px-3 py-1.5 border border-emerald-300 rounded-lg text-sm font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/30" />
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-rose-600 mb-1">Số lượng lỗi</div>
-                                <input type="number"
-                                  value={htInput[key]?.loi ?? 0}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], loi: +e.target.value } }))}
-                                  className="w-full px-3 py-1.5 border border-rose-300 rounded-lg text-sm font-bold text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-400/30" />
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-600 mb-1">Lý do lỗi</div>
-                                <input type="text"
-                                  value={htInput[key]?.lyDo ?? ""}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], lyDo: e.target.value } }))}
-                                  placeholder="Vd: Thủng lỗ..."
-                                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/30" />
-                              </div>
-                            </div>
-                          </div>
-                        )}
 
                         <div className="flex gap-2">
                           {tt === "cho_giao" && (
@@ -208,7 +205,7 @@ export default function UiDongGoiPage() {
                               </div>
                               {(pc.soLuongLoi > 0) && (
                                 <div className="text-xs text-rose-600 font-semibold pl-6">
-                                  ⚠️ Lỗi: {pc.soLuongLoi} SP - {pc.lyDoLoi}
+                                  ⚠️ Lỗi: {pc.soLuongLoi} SP
                                 </div>
                               )}
                             </div>
@@ -243,33 +240,59 @@ export default function UiDongGoiPage() {
                             return;
                           }
                           capNhatTrangThai(lc.id, "HoanThanh", null);
-                          
-                          // Thêm vào kho thành phẩm
-                          try {
-                            const khoKey = "mimin_kho_thanh_pham_v2";
-                            const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
-                            const newSP = {
-                              id: `SP-${Date.now()}`,
-                              maSP: lc.id,
+
+                          // Thêm vào kho thành phẩm: 1 dòng riêng cho MỖI MÀU (không gộp
+                          // "Nhiều màu") - lấy ảnh từ dsMau gốc, số lượng thật từ chiTietMau
+                          // của khâu Đóng gói (nếu có), fallback chia đều theo tổng SL.
+                          const dongGoiPCs = getHTPC(lc);
+                          const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+                          const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
+
+                          // Giá vốn 1 SP đã được tính sẵn lúc tạo lệnh cắt (vải + phụ liệu
+                          // + gia công + chi phí cố định). Trước đây bị gán cứng donGia: 0
+                          // nên cột "Giá trị" của Kho thành phẩm luôn hiện 0đ.
+                          const giaVon1SP = Math.round(
+                            lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0
+                          );
+
+                          const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
+                            const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+                            const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+                            return {
+                              id: `SP-${Date.now()}-${idx}`,
+                              maSP: lc.maSP || lc.id,
                               tenSP: lc.tenSP,
                               phanLoai: "Áo",
-                              mau: "Nhiều màu",
+                              mau: m.ten,
                               size: "Nhiều size",
                               lsx: lc.id,
                               ngayNhap: new Date().toISOString().split("T")[0],
-                              soLuong: lc.tongSL,
-                              donGia: 0,
-                              giaTri: 0,
+                              soLuong: sl,
+                              donGia: giaVon1SP,
+                              giaTri: sl * giaVon1SP,
                               viTri: khuVuc[lc.id],
-                              trangThai: "con"
+                              trangThai: "con",
+                              hinhAnh: m.img ? [m.img] : [],
+                              imgQuan: m.imgQuan || undefined,
+                              chiTietSize: ct?.sizes || m.phanBoSize || [],
                             };
-                            currentKho.push(newSP);
+                          });
+
+                          try {
+                            const khoKey = "mimin_kho_thanh_pham_v2";
+                            const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
+                            currentKho.push(...newSPs);
                             localStorage.setItem(khoKey, JSON.stringify(currentKho));
                           } catch (e) {
-                            console.error("Lỗi khi thêm vào kho thành phẩm", e);
+                            console.error("Lỗi khi thêm vào kho thành phẩm (local)", e);
                           }
+                          newSPs.forEach((sp) => {
+                            supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(sp)).catch((e) =>
+                              console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
+                            );
+                          });
 
-                          toast.success(`📦 Đã nhập kho ${lc.id} tại ${khuVuc[lc.id]}`);
+                          toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) tại ${khuVuc[lc.id]}`);
                         }}
                         className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02]"
                       >
@@ -278,10 +301,22 @@ export default function UiDongGoiPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </LenhCatCardV2>
             );
           })}
         </div>
+      )}
+
+      {/* Modal nhập liệu cho màu */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );

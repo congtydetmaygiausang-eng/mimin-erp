@@ -35,7 +35,7 @@ export const PROVIDER_CONFIGS: Record<AIProvider, ProviderEndpoint> = {
 };
 
 export function getProviderForAgent(agentId: string): AgentPersona {
-  return AGENT_PERSONAS[agentId] || AGENT_PERSONAS["mimin-orchestrator"];
+  return AGENT_PERSONAS[agentId] || AGENT_PERSONAS["mavis"];
 }
 
 export function getApiKeyForProvider(provider: AIProvider): string {

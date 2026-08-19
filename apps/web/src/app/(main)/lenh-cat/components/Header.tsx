@@ -14,7 +14,7 @@ interface HeaderProps {
 export function PremiumHeader({ stats, onReset, onCreate }: HeaderProps) {
   return (
     <>
-      <div className="relative w-full rounded-2xl overflow-hidden shadow-xl mb-6" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
+      <div className="relative w-full rounded-2xl overflow-hidden shadow-xl mb-6" style={{ background: "linear-gradient(135deg, #115e59 0%, #0f766e 35%, #075985 75%, #0369a1 100%)" }}>
 
         <div className="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="text-white drop-shadow-md">

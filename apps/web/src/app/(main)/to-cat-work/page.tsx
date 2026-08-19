@@ -5,20 +5,24 @@
 // Xem lệnh cắt được giao, cập nhật trạng thái, xem sơ đồ cắt
 
 import { useState } from "react";
-import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriangle, ChevronDown, Eye } from "lucide-react";
+import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriangle, Eye, Ruler } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { useKho } from "@/lib/data/kho-store";
-import { formatVND } from "@/lib/data/real-data";
-import { DateDisplay } from "@/components/ui";
+import { KHO_VAI, KHO_VAT_TU } from "@/lib/data/real-data";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { GiaCongModal } from "@/components/modals/GiaCongModal";
+import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useSession } from "@/components/session-provider";
 
 export default function CongViecCatPage() {
-  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
+  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { themGiaoDich } = useKho();
   const { user } = useSession();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [slInput, setSlInput] = useState<Record<string, number>>({});
+
+  const [modalGiaCong, setModalGiaCong] = useState<{ id: string, type: "ao" | "quan" } | null>(null);
+  const [modalTyLeMau, setModalTyLeMau] = useState<{ id: string, mauIdx: number } | null>(null);
+  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: any } | null>(null);
 
   function getPhanCongCat(lc: any) {
     return lc.phanCong?.find((pc: any) => {
@@ -47,56 +51,82 @@ export default function CongViecCatPage() {
     if (!pc) return;
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     capNhatTrangThai(lc.id, "DangCat", null);
-    
-    // Tự động xuất kho vải & phụ liệu
+
+    // Tự động xuất kho vải & phụ liệu.
+    // Công thức: định mức × SL DỰ KIẾN CỦA TỪNG MÀU × (1 + hao hụt%).
+    // KHÔNG dùng lc.tongSL cho mỗi màu - làm vậy lệnh 2 màu sẽ trừ vải gấp đôi,
+    // 3 màu gấp ba (mỗi màu trừ theo tổng SL của cả lệnh).
     try {
       const ngay = new Date().toISOString().split("T")[0];
-      
+      const nguoiThucHien = user?.name || "Tổ Cắt";
+      const round2 = (n: number) => Math.round(n * 100) / 100;
+
       // 1. Xuất vải
       lc.dsMau?.forEach((mau: any) => {
+        const slMau = mau.slDuKien || 0;
+        if (!slMau) return;
+        const haoHut = mau.haoHut ?? 5; // % hao hụt mặc định 5%
+
         if (mau.maVai && mau.dinhMuc) {
+          const vai = KHO_VAI.find((v) => v.maVT === mau.maVai);
+          const soLuong = round2(mau.dinhMuc * slMau * (1 + haoHut / 100));
+          const donGia = vai?.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: mau.maVai, tenVT: `Vải ${mau.ten}`,
-            soLuong: mau.dinhMuc * (lc.tongSL || 0),
-            donVi: "kg", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
-            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động cho LC ${lc.id}`
+            ngay, loai: "XUAT", loaiKho: "vai", maVT: mau.maVai, tenVT: vai?.tenVT || `Vải ${mau.ten}`,
+            soLuong,
+            donVi: vai?.dvt || "kg", donGia, thanhTien: round2(soLuong * donGia),
+            nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien, ghiChu: `Xuất tự động LC ${lc.id} - màu ${mau.ten}: ${slMau} SP × ${mau.dinhMuc} + ${haoHut}% hao hụt`
           });
         }
         if (mau.maVaiQuan && mau.dinhMucQuan) {
+          const vaiQuan = KHO_VAI.find((v) => v.maVT === mau.maVaiQuan);
+          const soLuong = round2(mau.dinhMucQuan * slMau * (1 + haoHut / 100));
+          const donGia = vaiQuan?.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: mau.maVaiQuan, tenVT: `Vải Quần ${mau.ten}`,
-            soLuong: mau.dinhMucQuan * (lc.tongSL || 0),
-            donVi: "kg", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
-            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động (Quần) cho LC ${lc.id}`
+            ngay, loai: "XUAT", loaiKho: "vai", maVT: mau.maVaiQuan, tenVT: vaiQuan?.tenVT || `Vải Quần ${mau.ten}`,
+            soLuong,
+            donVi: vaiQuan?.dvt || "kg", donGia, thanhTien: round2(soLuong * donGia),
+            nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien, ghiChu: `Xuất tự động (Quần) LC ${lc.id} - màu ${mau.ten}: ${slMau} SP × ${mau.dinhMucQuan} + ${haoHut}% hao hụt`
           });
         }
       });
 
-      // 2. Xuất phụ liệu
+      // 2. Xuất phụ liệu (số lượng đã là tổng cho cả lệnh, không nhân theo màu)
       lc.dsPhuLieu?.forEach((pl: any) => {
         if (pl.maPL && pl.soLuong) {
+          const vt = KHO_VAT_TU.find((v) => v.maVT === pl.maPL);
+          const donGia = vt?.donGia || pl.donGia || 0;
           themGiaoDich({
-            ngay, loai: "XUAT", maVT: pl.maPL, tenVT: pl.tenPL,
+            ngay, loai: "XUAT", loaiKho: "phu-lieu", maVT: pl.maPL, tenVT: pl.tenPL,
             soLuong: pl.soLuong,
-            donVi: pl.dvt || "cái", donGia: 0, thanhTien: 0, nguonNhap: `Lệnh cắt ${lc.id}`,
-            nguoiThucHien: "Tổ Cắt", ghiChu: `Xuất tự động cho LC ${lc.id}`
+            donVi: vt?.dvt || pl.dvt || "cái", donGia, thanhTien: round2(pl.soLuong * donGia),
+            nguonNhap: `Lệnh cắt ${lc.id}`,
+            nguoiThucHien, ghiChu: `Xuất tự động cho LC ${lc.id}`
           });
         }
       });
-      
+
       toast.success(`✂️ Đã nhận việc và tự động xuất vật tư cho: ${lc.id}`);
     } catch (e) {
       toast.error(`⚠️ Có lỗi khi xuất kho tự động!`);
     }
   }
 
-  function handleHoanThanh(lc: any) {
+  function handleHoanThanh(lc: any, newDsMau?: any[], totalThucTe?: number) {
     const pc = getPhanCongCat(lc);
     if (!pc) return;
-    const sl = slInput[lc.id] || lc.tongSL;
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });
-    toast.success(`✅ Chuyển tiếp thành công: ${sl} SP`);
-    setSelectedId(null);
+
+    if (newDsMau && typeof totalThucTe === 'number') {
+      suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: totalThucTe });
+      toast.success(`✅ Lưu thông số và hoàn thành: ${totalThucTe} SP`);
+    } else {
+      const sl = totalThucTe || lc.tongSLThucTe || lc.tongSL;
+      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });
+      toast.success(`✅ Chuyển tiếp thành công: ${sl} SP`);
+    }
   }
 
   function handleCoLoi(lc: any) {
@@ -112,41 +142,78 @@ export default function CongViecCatPage() {
     if (current === "cho_lam") next = "hoan_thanh";
     else if (current === "hoan_thanh") next = "khong_can";
     else if (current === "khong_can") next = "cho_lam";
-    
+
     capNhatCongDoan(lenhId, congDoanId, {
       catChiTiet: { ...currentChiTiet, [key]: next }
     });
   }
 
+  // Lưu thông tin nhận/đạt/lỗi theo màu cho khâu Cắt (dùng chung modal với Tổ May/Ủi/QC)
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
+
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+
+      if (data.sizes && data.sizes.length > 0) {
+        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
+        if (mauIdx >= 0) {
+          const newDsMau = [...(lc.dsMau || [])];
+          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
+          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+        }
+      }
+
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-            <Scissors className="w-7 h-7 text-sky-500" /> Tổ Cắt – Công việc
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {lcCoCat.length} lệnh cắt · {tongSLChuaCat.toLocaleString()} SP chưa cắt
-          </p>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Lệnh được giao", value: lcCoCat.length, icon: Package, color: "text-sky-600" },
-          { label: "Đang cắt", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "dang_lam").length, icon: Clock, color: "text-amber-600" },
-          { label: "Đã cắt xong", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "hoan_thanh").length, icon: CheckCircle2, color: "text-emerald-600" },
-          { label: "Có lỗi", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "co_loi").length, icon: AlertTriangle, color: "text-rose-600" },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500 flex items-center gap-1">
-              <k.icon className="w-3 h-3" /> {k.label}
-            </div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+              <Scissors className="w-7 h-7 text-sky-600" /> Tổ Cắt – Công việc
+            </h1>
+            <p className="text-sm font-bold text-slate-600 mt-1">
+              {lcCoCat.length} lệnh cắt · {tongSLChuaCat.toLocaleString()} SP chưa cắt
+            </p>
           </div>
-        ))}
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Lệnh được giao", value: lcCoCat.length, icon: Package, color: "text-sky-600" },
+            { label: "Đang cắt", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "dang_lam").length, icon: Clock, color: "text-amber-600" },
+            { label: "Đã cắt xong", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "hoan_thanh").length, icon: CheckCircle2, color: "text-emerald-700" },
+            { label: "Có lỗi", value: lcCoCat.filter(lc => getPhanCongCat(lc)?.trangThaiCD === "co_loi").length, icon: AlertTriangle, color: "text-rose-700" },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                <k.icon className="w-3.5 h-3.5" /> {k.label}
+              </div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Danh sách lệnh cắt */}
@@ -156,60 +223,78 @@ export default function CongViecCatPage() {
           <div className="font-bold">Chưa có lệnh cắt nào được giao</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="space-y-4">
           {lcCoCat.map(lc => {
             const pc = getPhanCongCat(lc) as any;
             const tt = (pc?.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
             const style = TRANG_THAI_CD_STYLE[tt];
             const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && tt !== "hoan_thanh";
-            const isExpanded = selectedId === lc.id;
+
+            const isBo = lc.loaiSP?.toLowerCase().includes("bo");
+            const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
+            const isQuan = lc.loaiSP?.toLowerCase().includes("quan") || isBo;
+
+            const catChiTiet = pc?.catChiTiet || { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" };
+            const steps = [
+              { key: "nhanLieu", label: "Nhận liệu" },
+              { key: "traiVai", label: "Trải vải" },
+              { key: "catHang", label: "Cắt hàng" },
+              { key: "epNhan", label: "Ép nhãn" },
+              { key: "epKeo", label: "Ép keo" },
+            ] as const;
+            const isAllDone = Object.values(catChiTiet).every((val: any) => val === "hoan_thanh" || val === "khong_can");
 
             return (
-              <div key={lc.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${isLate ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-200"}`}>
-                {/* Card header */}
-                <div className={`px-4 py-3 flex items-center justify-between ${style.bg}`}>
-                  <div>
-                    <span className="font-black text-teal-700 font-mono text-sm">{lc.id}</span>
-                    <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-bold ${style.bg} ${style.text} border border-current/20`}>
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${style.dot}`} />
-                      {TRANG_THAI_CD_LABELS[tt]}
-                    </span>
-                  </div>
-                  {isLate && <AlertTriangle className="w-4 h-4 text-rose-500" />}
-                </div>
-
-                <div className="p-4 space-y-3">
-                  {/* Ảnh + tên SP */}
-                  <div className="flex gap-3">
-                    <div className="w-16 h-16 rounded-xl bg-slate-100 shrink-0 overflow-hidden flex items-center justify-center">
-                      {lc.dsMau?.[0]?.img ? (
-                        <img src={lc.dsMau[0].img} alt="SP" className="w-full h-full object-cover" />
-                      ) : (
-                        <Scissors className="w-6 h-6 text-slate-300" />
+              <LenhCatCardV2
+                key={lc.id}
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                renderStatus={
+                  <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${style.bg} ${style.text} border border-current/20 flex items-center gap-1`}>
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                    {TRANG_THAI_CD_LABELS[tt]}
+                    {isLate && <AlertTriangle className="w-3.5 h-3.5 ml-0.5" />}
+                  </span>
+                }
+              >
+                <div className="space-y-4">
+                  {/* Gia công áo/quần + thợ cắt + hạn */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {isAo && (
+                        <button
+                          onClick={() => setModalGiaCong({ id: lc.id, type: "ao" })}
+                          className="px-3 py-1.5 bg-white border border-violet-200 text-violet-700 rounded-lg text-xs font-bold hover:bg-violet-50 transition-colors shadow-sm"
+                        >
+                          Gia công áo
+                        </button>
                       )}
+                      {isQuan && (
+                        <button
+                          onClick={() => setModalGiaCong({ id: lc.id, type: "quan" })}
+                          className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-50 transition-colors shadow-sm"
+                        >
+                          Gia công quần
+                        </button>
+                      )}
+                      {lc.dsMau?.map((m: any, mIdx: number) => (
+                        <button
+                          key={mIdx}
+                          onClick={() => setModalTyLeMau({ id: lc.id, mauIdx: mIdx })}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-sky-200 text-sky-700 rounded-lg text-xs font-bold hover:bg-sky-50 transition-colors shadow-sm"
+                          title={`Xem/sửa chi tiết số lượng theo size - màu ${m.ten}`}
+                        >
+                          <Ruler className="w-3.5 h-3.5" /> Size {m.ten}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <div className="font-black text-slate-900 text-lg leading-tight">{lc.tenSP}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Mã: {lc.maSP} · {lc.tongSL?.toLocaleString()} SP</div>
-                      <div className="text-xs text-slate-500">Size: {lc.tiLeSize}</div>
+                    <div className="text-sm text-right">
+                      <span className="text-slate-500 mr-1.5">Thợ cắt:</span>
+                      <span className="font-bold text-slate-800">{pc?.nguoiTen || <span className="italic text-slate-400">Chưa giao</span>}</span>
                     </div>
                   </div>
 
-                  {/* Thợ cắt */}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 font-medium">Thợ cắt:</span>
-                    <span className="font-bold text-slate-800">{pc?.nguoiTen || <span className="italic text-slate-400">Chưa giao</span>}</span>
-                  </div>
-
-                  {/* Hạn */}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 flex items-center gap-1"><Calendar className="w-3 h-3" /> Hạn hoàn thành:</span>
-                    <span className={`font-bold ${isLate ? "text-rose-600" : "text-slate-700"}`}>
-                      <DateDisplay value={lc.hanHoanThanh} format="dd/MM/yyyy" showRelative />
-                    </span>
-                  </div>
-
-                  {/* Sơ đồ cắt */}
+                  {/* Sơ đồ cắt + ghi chú */}
                   {lc.daCoSoDo && (
                     <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
                       <FileText className="w-3 h-3" />
@@ -236,76 +321,30 @@ export default function CongViecCatPage() {
                     </div>
                   )}
 
-                  {/* Màu sắc trải/phối */}
-                  {lc.dsMau && lc.dsMau.length > 0 && (
-                    <div className="border-t border-slate-100 pt-3 mt-3">
-                      <div className="text-xs font-bold text-slate-600 mb-2">🎨 Chi tiết màu sắc (Trải/Phối):</div>
-                      <div className="flex flex-col gap-2">
-                        {lc.dsMau.map((mau, idx) => (
-                          <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2 flex items-center gap-3">
-                            {mau.img && <img src={mau.img} alt={mau.ten} className="w-8 h-8 rounded object-cover border border-slate-200" />}
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[12px] font-black text-slate-700">{mau.ten}</span>
-                                <span className="text-[11px] font-bold text-emerald-600">SL: {mau.slDuKien} SP</span>
-                              </div>
-                              <div className="text-[10px] text-slate-500 mt-0.5">Mã vải: {mau.maVai} • Định mức: {mau.dinhMuc} kg/SP</div>
-                              {mau.maVaiQuan && (
-                                <div className="text-[10px] text-slate-500 mt-0.5">Vải quần: {mau.maVaiQuan} • Định mức quần: {mau.dinhMucQuan} kg/SP</div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Input SL khi hoàn thành */}
-                  {isExpanded && (
-                    <div className="border-t border-slate-100 pt-3 space-y-2">
-                      <div className="text-xs font-bold text-slate-600">Số SP thực tế đã cắt:</div>
-                      <input
-                        type="number"
-                        value={slInput[lc.id] ?? lc.tongSL}
-                        onChange={e => setSlInput(prev => ({ ...prev, [lc.id]: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
-                        max={lc.tongSL}
-                      />
-                    </div>
-                  )}
-
-                  {/* Chi tiết 4 bước cắt */}
+                  {/* Chi tiết 5 bước cắt (kể cả Nhận liệu) */}
                   {tt === "dang_lam" && (
-                    <div className="border-t border-slate-100 pt-3 mt-3">
+                    <div className="border-t border-slate-100 pt-3">
                       <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Tiến độ chi tiết (Bấm để đổi)</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(() => {
-                          const catChiTiet = pc?.catChiTiet || { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" };
-                          const steps = [
-                            { key: "traiVai", label: "Trải vải" },
-                            { key: "catHang", label: "Cắt hàng" },
-                            { key: "epNhan", label: "Ép nhãn" },
-                            { key: "epKeo", label: "Ép keo" }
-                          ] as const;
-                          return steps.map(({ key, label }) => {
-                            const val = catChiTiet[key as keyof typeof catChiTiet];
-                            const color = val === "hoan_thanh" ? "bg-emerald-100 text-emerald-700 border-emerald-300" 
-                                        : val === "khong_can" ? "bg-slate-100 text-slate-400 border-slate-200 line-through" 
-                                        : "bg-white text-slate-600 border-slate-300";
-                            return (
-                              <button 
-                                key={key} 
-                                onClick={() => handleToggleChiTiet(lc.id, pc.id, key, catChiTiet)} 
-                                className={`px-2 py-2 rounded-lg border text-xs font-bold transition-all hover:brightness-95 flex items-center justify-center gap-1.5 shadow-sm ${color}`}
-                              >
-                                {val === "hoan_thanh" && <CheckCircle2 className="w-3.5 h-3.5" />}
-                                {label}
-                                {val === "khong_can" && " (Bỏ qua)"}
-                              </button>
-                            );
-                          });
-                        })()}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {steps.map(({ key, label }) => {
+                          const val = catChiTiet[key as keyof typeof catChiTiet];
+                          const color = val === "hoan_thanh" ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                                      : val === "khong_can" ? "bg-slate-100 text-slate-400 border-slate-200 line-through"
+                                      : "bg-white text-slate-600 border-slate-300";
+                          return (
+                            <button
+                              key={key}
+                              onClick={() => handleToggleChiTiet(lc.id, pc.id, key, catChiTiet)}
+                              className={`px-2 py-2 rounded-lg border text-xs font-bold transition-all hover:brightness-95 flex items-center justify-center gap-1.5 shadow-sm ${color}`}
+                            >
+                              {val === "hoan_thanh" && <CheckCircle2 className="w-3.5 h-3.5" />}
+                              {label}
+                              {val === "khong_can" && " (Bỏ qua)"}
+                            </button>
+                          );
+                        })}
                       </div>
+                      <p className="text-[11px] text-slate-400 mt-2">Bấm vào từng màu ở trên để nhập số lượng nhận / đạt / lỗi theo màu.</p>
                     </div>
                   )}
 
@@ -321,34 +360,25 @@ export default function CongViecCatPage() {
                     )}
                     {tt === "dang_lam" && (
                       <>
-                        {(() => {
-                          const catChiTiet = pc?.catChiTiet || { traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" };
-                          const isAllDone = Object.values(catChiTiet).every(val => val === "hoan_thanh" || val === "khong_can");
-                          return (
-                            <div className="flex-1 flex gap-2">
-                              {!isAllDone ? (
-                                <div className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-sm text-center border border-slate-200 cursor-not-allowed">
-                                  Hoàn thành các bước trên
-                                </div>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => setSelectedId(isExpanded ? null : lc.id)}
-                                    className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
-                                  >
-                                    {isExpanded ? "Xác nhận & Chuyển" : "Chuyển tiếp (Hoàn thành)"}
-                                  </button>
-                                  {isExpanded && (
-                                    <button
-                                      onClick={() => handleHoanThanh(lc)}
-                                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-sm shadow-emerald-200"
-                                    >✓</button>
-                                  )}
-                                </>
-                              )}
+                        <div className="flex-1 flex gap-2">
+                          {!isAllDone ? (
+                            <div className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-sm text-center border border-slate-200 cursor-not-allowed">
+                              Hoàn thành các bước trên
                             </div>
-                          );
-                        })()}
+                          ) : (
+                            <button
+                              onClick={() => {
+                                // Ưu tiên tổng SL Đạt đã nhập theo màu (ChiTietMauHistoryModal),
+                                // nếu chưa nhập màu nào thì dùng SL thực tế / tổng SL của lệnh.
+                                const tongDat = (pc?.chiTietMau || []).reduce((s: number, m: any) => s + (m.soLuongDat || 0), 0);
+                                handleHoanThanh(lc, undefined, tongDat > 0 ? tongDat : undefined);
+                              }}
+                              className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
+                            >
+                              <CheckCircle2 className="w-4 h-4" /> Chuyển tiếp (Hoàn thành)
+                            </button>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleCoLoi(lc)}
                           className="px-4 py-2.5 rounded-xl bg-rose-50 text-rose-600 font-bold text-sm hover:bg-rose-100 border border-rose-200 shadow-sm"
@@ -360,6 +390,7 @@ export default function CongViecCatPage() {
                     {tt === "hoan_thanh" && (
                       <div className="flex-1 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200 flex items-center justify-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4" /> Đã cắt xong {pc?.soLuongHoanThanh || lc.tongSL} SP
+                        {pc?.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
                       </div>
                     )}
                     {tt === "co_loi" && (
@@ -372,10 +403,66 @@ export default function CongViecCatPage() {
                     )}
                   </div>
                 </div>
-              </div>
+
+                {/* Modals for this LC */}
+                {modalGiaCong?.id === lc.id && (
+                  <GiaCongModal
+                    lc={lc}
+                    type={modalGiaCong.type}
+                    onClose={() => setModalGiaCong(null)}
+                    onSave={(slThucTe, dsPhanCong, newDsMau) => {
+                      suaLenhCat(lc.id, {
+                        phanCong: dsPhanCong,
+                        ...(newDsMau ? { dsMau: newDsMau } : {}),
+                        ...(modalGiaCong.type === "ao" ? { tongSLThucTeAo: slThucTe } : { tongSLThucTeQuan: slThucTe })
+                      }, user as any);
+                    }}
+                  />
+                )}
+
+                {modalTyLeMau?.id === lc.id && (
+                  <TyLeSizeModal
+                    lc={lc}
+                    mauIdx={modalTyLeMau.mauIdx}
+                    onClose={() => setModalTyLeMau(null)}
+                    onSave={(mauIdx, newTyLe) => {
+                      const newDsMau = [...(lc.dsMau || [])];
+                      newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: newTyLe };
+
+                      // Tự động tính lại tổng SL thực tế của khâu Cắt
+                      let totalThucTe = 0;
+                      newDsMau.forEach(mau => {
+                        if (mau.tyLeSizeChiTiet) {
+                          const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k => k.toLowerCase().includes("cat"));
+                          if (catKey && mau.tyLeSizeChiTiet[catKey]) {
+                            totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
+                          }
+                        }
+                      });
+
+                      suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
+                    }}
+                  />
+                )}
+              </LenhCatCardV2>
             );
           })}
         </div>
+      )}
+
+      {/* Modal nhập nhận/đạt/lỗi theo màu cho khâu Cắt */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={(() => {
+            const pc = getPhanCongCat(selectedMau.lc) as any;
+            return pc && pc.trangThaiCD === "dang_lam" ? [pc] : [];
+          })()}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );

@@ -1,18 +1,20 @@
 "use client";
 
-// ============ UI HOÀN THIỆN (/ui-hoan-thien) ============  
+// ============ UI HOÀN THIỆN (/ui-hoan-thien) ============
 // Nhận hàng từ QC đạt, Ủi + Gấp + Đóng gói, giao Kho Thành Phẩm
 
 import { useState } from "react";
-import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box } from "lucide-react";
+import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { DateDisplay } from "@/components/ui";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { kiemTraTruocHoanThanh, thongKeLoiLenhCat } from "@/lib/data/cong-doan-helper";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
 export default function UiHoanThienPage() {
-  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai } = useLenhCat();
-  const [htInput, setHtInput] = useState<Record<string, { dat?: number; loi?: number; lyDo?: string }>>({});
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const [soThung, setSoThung] = useState<Record<string, number>>({});
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
@@ -22,7 +24,7 @@ export default function UiHoanThienPage() {
       const isHT = pc.id === "ui" || pc.id === "dongGoi" ||
                    pc.tenCongDoan?.toLowerCase().includes("ủi") ||
                    pc.tenCongDoan?.toLowerCase().includes("đóng gói");
-                   
+
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isHT && isMyTask;
@@ -38,7 +40,7 @@ export default function UiHoanThienPage() {
     if (htPCs.length === 0) return false;
 
     // 2. Tất cả công đoạn gia công trước đó (Cắt, May, In...) phải hoàn thành thì mới "đủ bộ"
-    const prevPCs = lc.phanCong?.filter((pc: any) => 
+    const prevPCs = lc.phanCong?.filter((pc: any) =>
       !(pc.id === "ui" || pc.id === "dongGoi" ||
         pc.tenCongDoan?.toLowerCase().includes("ủi") ||
         pc.tenCongDoan?.toLowerCase().includes("đóng gói"))
@@ -48,26 +50,65 @@ export default function UiHoanThienPage() {
     return prevPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
   });
 
+  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
+    if (!selectedMau) return;
+    const { lc } = selectedMau;
+    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
+    if (!pc) return;
+
+    try {
+      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
+      let newChiTiet = [...(pc.chiTietMau || [])];
+
+      if (existingIdx >= 0) {
+        newChiTiet[existingIdx] = data;
+      } else {
+        newChiTiet.push(data);
+      }
+
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+
+      if (data.sizes && data.sizes.length > 0) {
+        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
+        if (mauIdx >= 0) {
+          const newDsMau = [...(lc.dsMau || [])];
+          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
+          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+        }
+      }
+
+      toast.success(`Đã lưu thông tin màu ${data.mau}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
-    const key = `${lc.id}-${pc.id}`;
-    setHtInput(p => ({ ...p, [key]: { dat: pc.soLuong || lc.tongSL, loi: 0, lyDo: "" } }));
     toast.success(`🧺 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
   function handleXong(lc: any, pc: any) {
-    const input = htInput[`${lc.id}-${pc.id}`] || {};
-    const slDat = input.dat ?? pc.soLuong ?? lc.tongSL;
-    const slLoi = input.loi ?? 0;
-    const lyDo = input.lyDo ?? "";
-    
+    const key = `${lc.id}-${pc.id}`;
+
+    // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
+    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+    if (!kiemTra.ok) {
+      toast.error(kiemTra.loi!, { duration: 6000 });
+      return;
+    }
+    const { slDat, slLoi } = kiemTra;
+
+    const numThung = soThung[key] ?? 0;
+    const lyDoKemThung = numThung > 0 ? `Đóng được: ${numThung} thùng` : "";
+
     const thanhTienDat = slDat * (pc.donGia || 0);
 
-    capNhatCongDoan(lc.id, pc.id, { 
-      trangThaiCD: "hoan_thanh", 
+    capNhatCongDoan(lc.id, pc.id, {
+      trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
-      lyDoLoi: lyDo,
+      lyDoLoi: lyDoKemThung,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -90,31 +131,96 @@ export default function UiHoanThienPage() {
     return dangLam ? s + (lc.tongSL || 0) : s;
   }, 0);
 
+  // Chỉ hiện lệnh đã có khai báo thật ở ít nhất 1 khâu, ưu tiên lệnh lỗi nhiều lên đầu
+  const thongKeLoi = lcHT
+    .map(thongKeLoiLenhCat)
+    .filter((tk) => tk.chiTiet.length > 0)
+    .sort((a, b) => b.tongLoi - a.tongLoi);
+
   return (
     <div className="space-y-5 animate-fade-in">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2">
-          <ClipboardList className="w-7 h-7 text-sky-500" /> Hoàn Thiện – Công việc
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Ủi · Gấp mác · Đóng gói · Kiểm tra cuối
-        </p>
+      {/* Transparent Glassmorphism Header Card */}
+      <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+            <ClipboardList className="w-7 h-7 text-sky-600" /> Hoàn Thiện – Công việc
+          </h1>
+          <p className="text-sm font-bold text-slate-600 mt-1">
+            Ủi · Gấp mác · Đóng gói · Kiểm tra cuối
+          </p>
+        </div>
+
+        {/* KPI */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Lô đang hoàn thiện", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-700", icon: Clock },
+            { label: "SP đang xử lý", value: tongSPDangHT, color: "text-sky-700", icon: Shirt },
+            { label: "Lô chờ nhận", value: lcHT.filter(lc => getHTPC(lc).every((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-800", icon: Package },
+            { label: "Lô hoàn thành", value: lcHT.filter(lc => lc.trangThai === "HoanThanh").length, color: "text-emerald-700", icon: CheckCircle2 },
+          ].map(k => (
+            <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                <k.icon className="w-3.5 h-3.5" /> {k.label}
+              </div>
+              <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value.toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Lô đang hoàn thiện", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-600", icon: Clock },
-          { label: "SP đang xử lý", value: tongSPDangHT, color: "text-sky-600", icon: Shirt },
-          { label: "Lô chờ nhận", value: lcHT.filter(lc => getHTPC(lc).every((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-600", icon: Package },
-          { label: "Lô hoàn thành", value: lcHT.filter(lc => lc.trangThai === "HoanThanh").length, color: "text-emerald-600", icon: CheckCircle2 },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <div className="text-xs text-slate-500 flex items-center gap-1"><k.icon className="w-3 h-3" /> {k.label}</div>
-            <div className={`text-2xl font-black mt-1 ${k.color}`}>{k.value.toLocaleString()}</div>
+      {/* Tổng hợp hao hụt theo khâu - trước đây số lỗi chỉ nằm rời trong từng
+          phiếu công đoạn, không có chỗ nào cộng lại để quản lý nhìn ra khâu nào
+          đang lỗi nhiều. */}
+      {thongKeLoi.length > 0 && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-white p-5 shadow-sm space-y-3">
+          <h2 className="text-sm font-black text-slate-700 uppercase tracking-wide flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" /> Tổng hợp hao hụt theo khâu
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse min-w-[560px]">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200">
+                  <th className="py-2 pr-3 font-bold">Lệnh cắt</th>
+                  <th className="py-2 px-3 font-bold text-right">SL cắt</th>
+                  <th className="py-2 px-3 font-bold text-right">Tổng lỗi</th>
+                  <th className="py-2 px-3 font-bold text-right">% lỗi</th>
+                  <th className="py-2 pl-3 font-bold">Khâu lỗi nhiều nhất</th>
+                </tr>
+              </thead>
+              <tbody>
+                {thongKeLoi.map((tk) => (
+                  <tr key={tk.maLenhCat} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2 pr-3">
+                      <div className="font-bold text-slate-800">{tk.maLenhCat}</div>
+                      <div className="text-xs text-slate-500">{tk.tenSP}</div>
+                    </td>
+                    <td className="py-2 px-3 text-right font-semibold text-slate-700 tabular-nums">
+                      {tk.tongSLCat.toLocaleString("vi-VN")}
+                    </td>
+                    <td className={`py-2 px-3 text-right font-black tabular-nums ${tk.tongLoi > 0 ? "text-rose-600" : "text-slate-400"}`}>
+                      {tk.tongLoi.toLocaleString("vi-VN")}
+                    </td>
+                    <td className={`py-2 px-3 text-right font-bold tabular-nums ${tk.tiLeLoiChung >= 5 ? "text-rose-600" : tk.tiLeLoiChung > 0 ? "text-amber-600" : "text-slate-400"}`}>
+                      {tk.tiLeLoiChung.toFixed(1)}%
+                    </td>
+                    <td className="py-2 pl-3 text-slate-600">
+                      {tk.khauLoiNhieuNhat ? (
+                        <span>
+                          <b className="text-slate-800">{tk.khauLoiNhieuNhat.tenCongDoan}</b>
+                          {" – "}{tk.khauLoiNhieuNhat.slLoi.toLocaleString("vi-VN")} SP
+                          {tk.khauLoiNhieuNhat.nguoiTen ? ` (${tk.khauLoiNhieuNhat.nguoiTen})` : ""}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Không có lỗi</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {lcHT.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
@@ -130,25 +236,19 @@ export default function UiHoanThienPage() {
             const isLCDone = lc.trangThai === "HoanThanh";
 
             return (
-              <div key={lc.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${isLCDone ? "border-emerald-200" : "border-slate-200"}`}>
-                {/* Header */}
-                <div className={`px-5 py-4 border-b flex items-center justify-between ${isLCDone ? "bg-emerald-50 border-emerald-100" : "bg-sky-50 border-sky-100"}`}>
-                  <div>
-                    <span className="font-black text-teal-700 font-mono">{lc.id}</span>
-                    <span className="ml-3 font-bold text-slate-800 text-lg">{lc.tenSP}</span>
-                    <span className="ml-2 text-xs text-slate-400">{lc.tongSL?.toLocaleString()} SP</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {isLCDone && (
-                      <span className="text-xs bg-emerald-500 text-white font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
-                      </span>
-                    )}
-                    <DateDisplay value={lc.hanHoanThanh} format="dd/MM" showRelative />
-                  </div>
-                </div>
-
-                <div className="p-5 space-y-3">
+              <LenhCatCardV2
+                key={lc.id}
+                lc={lc}
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                renderStatus={
+                  isLCDone ? (
+                    <span className="text-xs bg-emerald-500 text-white font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
+                    </span>
+                  ) : null
+                }
+              >
+                <div className="space-y-3">
                   {htPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
@@ -167,37 +267,13 @@ export default function UiHoanThienPage() {
                         </div>
 
                         {tt === "dang_lam" && (
-                          <div className="mb-4 space-y-3 bg-white p-3 rounded-lg border border-slate-100">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-500 mb-1">Số lượng nhận</div>
-                                <div className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700">
-                                  {pc.soLuong || lc.tongSL}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-emerald-600 mb-1">Số lượng đạt *</div>
-                                <input type="number"
-                                  value={htInput[key]?.dat ?? (pc.soLuong || lc.tongSL)}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], dat: +e.target.value } }))}
-                                  className="w-full px-3 py-1.5 border border-emerald-300 rounded-lg text-sm font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/30" />
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-rose-600 mb-1">Số lượng lỗi</div>
-                                <input type="number"
-                                  value={htInput[key]?.loi ?? 0}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], loi: +e.target.value } }))}
-                                  className="w-full px-3 py-1.5 border border-rose-300 rounded-lg text-sm font-bold text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-400/30" />
-                              </div>
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-600 mb-1">Lý do lỗi</div>
-                                <input type="text"
-                                  value={htInput[key]?.lyDo ?? ""}
-                                  onChange={e => setHtInput(p => ({ ...p, [key]: { ...p[key], lyDo: e.target.value } }))}
-                                  placeholder="Vd: Thủng lỗ..."
-                                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400/30" />
-                              </div>
-                            </div>
+                          <div className="mb-3">
+                            <div className="text-[11px] font-bold text-sky-600 mb-1">Số thùng/kiện</div>
+                            <input type="number"
+                              value={soThung[key] ?? ""}
+                              onChange={e => setSoThung(p => ({ ...p, [key]: +e.target.value }))}
+                              placeholder="0"
+                              className="w-full px-3 py-2 border border-sky-300 rounded-lg text-sm font-bold text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
                           </div>
                         )}
 
@@ -265,10 +341,22 @@ export default function UiHoanThienPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </LenhCatCardV2>
             );
           })}
         </div>
+      )}
+
+      {/* Modal nhập liệu cho màu */}
+      {selectedMau && (
+        <ChiTietMauHistoryModal
+          isOpen={!!selectedMau}
+          onClose={() => setSelectedMau(null)}
+          lc={selectedMau.lc}
+          mau={selectedMau.mau}
+          currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          onSave={handleSaveColorModal}
+        />
       )}
     </div>
   );
