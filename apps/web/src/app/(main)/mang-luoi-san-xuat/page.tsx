@@ -45,7 +45,6 @@ import {
   type ProductionPartnerRole,
   type VerificationStatus,
 } from "@/lib/production-network";
-import { useProductionPartnerStore } from "@/lib/data/mang-luoi-store";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 import MultiSelectDropdown from "@/components/ui/MultiSelectDropdown";
 import { AiDiscoveryTab } from "@/components/sourcing/AiDiscoveryTab";
