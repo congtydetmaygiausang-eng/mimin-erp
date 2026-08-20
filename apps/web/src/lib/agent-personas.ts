@@ -50,6 +50,8 @@ AGENT_PERSONAS["mavis"] = {
   agent_id: "mavis",
   name: "Mavis",
   role_title: "Điều phối Tổng quan (Orchestrator)",
+  // Ảnh thật do anh Sang cung cấp 2026-08-20 (robot thỏ trắng-đỏ) - trước đó
+  // trỏ tới file chưa từng tồn tại, luôn vỡ ảnh.
   avatar: "/avatars/mavis.png",
   provider: "deepseek",
   model: "deepseek-chat",
@@ -88,7 +90,8 @@ AGENT_PERSONAS["lan"] = {
   agent_id: "lan",
   name: "Lan",
   role_title: "Kho & Bán hàng",
-  avatar: "📦",
+  // Ảnh thật do anh Sang cung cấp 2026-08-20 (bé gái tóc tím, kính, mũ "N").
+  avatar: "/avatars/lan.png",
   provider: "minimax",
   model: "MiniMax-M3",
   system_prompt: [
@@ -109,7 +112,8 @@ AGENT_PERSONAS["ha"] = {
   agent_id: "ha",
   name: "Hà",
   role_title: "Tài chính - Kế toán - Nhân sự",
-  avatar: "💰",
+  // Ảnh thật do anh Sang cung cấp 2026-08-20 (robot kem/tím, trái tim ngực).
+  avatar: "/avatars/ha.png",
   provider: "gemini",
   model: "gemini-3.6-flash",
   system_prompt: [
