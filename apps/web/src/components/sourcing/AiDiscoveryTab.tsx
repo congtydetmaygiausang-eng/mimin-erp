@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase/client";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 import MultiSelectDropdown from "@/components/ui/MultiSelectDropdown";
 import { extractVietnamPhones, formatVietnamPhone, normalizeVietnamPhone } from "@/lib/vietnam-phone";
+import { runCompanyReaderShadow } from "@/lib/company-reader-shadow";
 
 const HCM_DISTRICTS = [
   "Quận 1", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 8", "Quận 10", "Quận 11", "Quận 12",
@@ -245,7 +246,15 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:SearchDiagnostics;candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       const candidates = data.candidates??[];
-      setDirectResults(candidates); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(data.diagnostics??null);
+      const readerShadow = await runCompanyReaderShadow(candidates.map((candidate) => candidate.sourceUrl));
+      const diagnostics = data.diagnostics ?? null;
+      if (diagnostics) diagnostics.providers = [...diagnostics.providers, {
+        name: "Trafilatura shadow",
+        status: readerShadow.status === "SHADOW_PROCESSED" ? "OK" : readerShadow.status === "DISABLED" ? "DISABLED" : "ERROR",
+        count: readerShadow.sourceCount,
+        code: readerShadow.code,
+      }];
+      setDirectResults(candidates); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(diagnostics);
       setResultCriteria({query:combinedQuery.trim(),location:location.trim(),role,radiusKm,searchedAt:new Date().toISOString()});
       if (!silent) toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${candidates.length} kết quả`);
       return candidates;

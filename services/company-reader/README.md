@@ -19,7 +19,8 @@ Python service cô lập để đọc và chuẩn hóa nguồn công khai về d
 | JT8 | Cache TTL, rate limit, circuit breaker, request coalescing và metrics an toàn | Hoàn thành |
 | JT9 | Dark-launch ASGI API, service auth, request bounds và adapter Redis | Hoàn thành, mặc định tắt |
 | JT10 | Production fail-closed, client allowlist, Redis injection, shadow/canary/live | Hoàn thành, chưa kích hoạt |
-| JT11+ | Hạ tầng private ingress, Redis thật và tích hợp MIMIN ERP | Chưa kích hoạt |
+| Hạ tầng shadow | Container production, Redis readiness, Render private Blueprint | Đã chuẩn bị, chưa tạo tài nguyên |
+| JT11+ | Caller nội bộ, shadow telemetry và tích hợp MIMIN ERP | Chưa kích hoạt |
 
 JT1 chỉ tải nội dung; không đoán dữ liệu doanh nghiệp, không ghi Supabase và không
 thay đổi kết quả tìm kiếm hiện tại của MIMIN ERP.
@@ -48,6 +49,16 @@ JT10 thêm readiness, allowlist caller, chế độ shadow/canary/live xác đ�
 buộc Redis injection khi khai báo production. Không có kết nối hạ tầng hoặc đường
 gọi frontend nào được tự bật. Xem
 [`docs/JT10-PRODUCTION-CANARY.md`](docs/JT10-PRODUCTION-CANARY.md).
+
+Nền tảng triển khai shadow dùng container Python không đặc quyền, Render private
+service và Render Key Value/Valkey cùng vùng Singapore. Redis phải kết nối thành
+công thì `/readyz` mới trả thành công. Blueprint giữ rollout ở `shadow/0%`, không
+có public URL và chưa nối vào MIMIN ERP. Xem
+[`docs/RENDER-SHADOW-DEPLOYMENT.md`](docs/RENDER-SHADOW-DEPLOYMENT.md).
+
+Có thể chạy shadow trước trên máy cá nhân bằng Python hoặc Docker Compose. Bản
+Docker ghép Company Reader với Valkey, chỉ publish API vào `127.0.0.1` và vẫn giữ
+rollout `shadow/0%`. Xem [`docs/LOCAL-SHADOW.md`](docs/LOCAL-SHADOW.md).
 
 ## Chạy kiểm thử
 
