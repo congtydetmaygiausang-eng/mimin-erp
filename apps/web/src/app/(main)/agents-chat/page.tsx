@@ -13,6 +13,22 @@ interface Message {
   timestamp: string;
 }
 
+// Ảnh avatar là ảnh nhân vật full-thân chụp trên phông màu riêng của từng
+// agent (studio gray cho Mavis, cam nhạt cho Minh...) - object-cover center
+// mặc định sẽ cắt trúng bụng/chân thay vì mặt. Card lớn dùng object-top +
+// mask-image mờ dần phía dưới, nền card khớp tông màu ảnh gốc để chỗ mờ
+// không bị lộ viền cắt cứng, tạo cảm giác "đã xoá phông" mà không cần tách
+// nền pixel thật (không có công cụ tách nền AI trong môi trường này).
+const AGENT_CARD_BG: Record<string, string> = {
+  mavis: "bg-gradient-to-b from-slate-300 to-slate-400",
+  minh: "bg-gradient-to-b from-orange-100 to-orange-200",
+  lan: "bg-gradient-to-b from-stone-300 to-stone-400",
+  ha: "bg-gradient-to-b from-pink-100 to-purple-200",
+  vy: "bg-gradient-to-b from-slate-50 to-slate-200",
+  "mimin-help": "bg-gradient-to-b from-rose-50 to-rose-100",
+};
+const AVATAR_FADE_MASK = "linear-gradient(to bottom, black 58%, transparent 96%)";
+
 export default function AgentsChatPage() {
   const { user } = useSession();
   const agentsList = Object.values(AGENT_PERSONAS);
@@ -161,37 +177,52 @@ export default function AgentsChatPage() {
             <ArrowLeft className="w-3.5 h-3.5" /> Dashboard Agents
           </Link>
           <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            <Bot className="w-5 h-5 text-sky-500" /> Chat 9 Nhân viên AI
+            <Bot className="w-5 h-5 text-sky-500" /> Chat {agentsList.length} Nhân viên AI
           </h2>
           <p className="text-xs text-slate-500">Chọn nhân viên AI để trao đổi trực tiếp</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
           {agentsList.map((agent) => {
             const isSelected = selectedAgent.agent_id === agent.agent_id;
+            const isImg = agent.avatar.startsWith("/avatars/");
+            const isReplyingHere = loading && isSelected;
             return (
               <button
                 key={agent.agent_id}
                 onClick={() => setSelectedAgent(agent)}
-                className={`w-full text-left p-3 rounded-xl transition flex items-center gap-3 ${
-                  isSelected ? "bg-sky-50 border border-sky-200 shadow-sm" : "hover:bg-slate-50"
+                className={`w-full text-left rounded-2xl transition flex items-stretch overflow-hidden border ${
+                  isSelected ? "border-sky-300 shadow-md ring-2 ring-sky-100" : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
                 }`}
               >
-                <div className="text-2xl w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
-                  {agent.avatar.startsWith("/avatars/") ? (
-                    <img src={agent.avatar} alt={agent.name} className="w-full h-full object-cover" />
+                <div className={`relative w-20 shrink-0 overflow-hidden ${AGENT_CARD_BG[agent.agent_id] || "bg-slate-100"}`}>
+                  {isImg ? (
+                    <img
+                      src={agent.avatar}
+                      alt={agent.name}
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      style={{ maskImage: AVATAR_FADE_MASK, WebkitMaskImage: AVATAR_FADE_MASK }}
+                    />
                   ) : (
-                    agent.avatar
+                    <div className="w-full h-full flex items-center justify-center text-4xl">{agent.avatar}</div>
+                  )}
+                  {isReplyingHere && (
+                    <span className="absolute inset-0 ring-4 ring-sky-400/70 rounded-none animate-pulse" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
+                <div className={`flex-1 min-w-0 p-3 flex flex-col justify-center gap-1 ${isSelected ? "bg-sky-50" : "bg-white"}`}>
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-sm text-slate-900 truncate">{agent.name}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono uppercase">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono uppercase shrink-0">
                       {agent.provider}
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 truncate">{agent.role_title}</div>
+                  {isReplyingHere && (
+                    <div className="text-[11px] text-sky-600 font-medium flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 animate-spin" /> Đang trả lời...
+                    </div>
+                  )}
                 </div>
               </button>
             );
@@ -201,25 +232,28 @@ export default function AgentsChatPage() {
 
       {/* Giao diện Chat chính */}
       <div className="flex-1 flex flex-col">
-        {/* Header Agent đang chọn */}
-        <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl w-11 h-11 rounded-full bg-sky-50 flex items-center justify-center border border-sky-100 overflow-hidden">
+        {/* Header Agent đang chọn - "hero card" full chiều rộng, theo đúng tông
+            màu phông ảnh của agent (khớp card bên sidebar) thay vì thanh nhỏ
+            trung tính trước đây - bấm card nào bên trái, cả khung chat đổi
+            "danh tính" theo agent đó. */}
+        <div className={`relative overflow-hidden border-b border-slate-200 shadow-sm ${AGENT_CARD_BG[selectedAgent.agent_id] || "bg-white"}`}>
+          <div className="relative flex items-center gap-4 px-6 py-5">
+            <div className="w-20 h-20 rounded-2xl bg-white/40 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/70 shadow-md text-4xl">
               {selectedAgent.avatar.startsWith("/avatars/") ? (
-                <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover" />
+                <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
               ) : (
                 selectedAgent.avatar
               )}
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                {selectedAgent.name} <span className="text-xs text-slate-500 font-normal">({selectedAgent.role_title})</span>
+              <h3 className="font-extrabold text-slate-900 text-xl flex items-center gap-2 drop-shadow-sm">
+                {selectedAgent.name} <span className="text-sm text-slate-700 font-medium">({selectedAgent.role_title})</span>
               </h3>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="flex items-center gap-1 text-emerald-600 font-medium">
+              <div className="flex items-center gap-2 text-xs text-slate-700 mt-1">
+                <span className="flex items-center gap-1 text-emerald-700 font-semibold bg-white/50 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Sẵn sàng
                 </span>
-                <span>• Model: <b>{selectedAgent.model}</b></span>
+                <span className="bg-white/50 px-2 py-0.5 rounded-full">Model: <b>{selectedAgent.model}</b></span>
               </div>
             </div>
           </div>
@@ -229,10 +263,17 @@ export default function AgentsChatPage() {
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {currentMessages.map((msg) => {
             const isUser = msg.sender === "user";
+            const isAgentImg = !isUser && selectedAgent.avatar.startsWith("/avatars/");
             return (
               <div key={msg.id} className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? "bg-slate-200 text-slate-700" : "bg-sky-500 text-white"}`}>
-                  {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${isUser ? "bg-slate-200 text-slate-700" : "bg-sky-500 text-white"}`}>
+                  {isUser ? (
+                    <User className="w-4 h-4" />
+                  ) : isAgentImg ? (
+                    <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
+                  ) : (
+                    <Bot className="w-4 h-4" />
+                  )}
                 </div>
                 <div className={`max-w-xl rounded-2xl p-4 text-sm ${isUser ? "bg-sky-500 text-white" : "bg-white border border-slate-200 text-slate-800 shadow-sm"}`}>
                   <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
@@ -245,8 +286,13 @@ export default function AgentsChatPage() {
           })}
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0 animate-pulse">
-                <Bot className="w-4 h-4" />
+              <div className="relative w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0 overflow-hidden">
+                {selectedAgent.avatar.startsWith("/avatars/") ? (
+                  <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
+                ) : (
+                  <Bot className="w-4 h-4" />
+                )}
+                <span className="absolute inset-0 rounded-full ring-2 ring-sky-400 animate-ping" />
               </div>
               <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs text-slate-500 shadow-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-sky-500 animate-spin" />
