@@ -95,7 +95,7 @@ function SearchProgressModal({ loading }: { loading: boolean }) {
   if (!loading) return null;
   const steps = [
     "Khởi tạo luồng tìm kiếm AI...",
-    "Quét nguồn dữ liệu từ Google & Tavily...",
+    "Quét nguồn dữ liệu từ Brave, Google & Tavily...",
     "Agent DeepSeek/Gemini đang phân tích hồ sơ...",
     "Định vị GPS & tính toán khoảng cách...",
     "Đang tổng hợp kết quả..."
