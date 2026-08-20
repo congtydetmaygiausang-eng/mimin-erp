@@ -782,7 +782,7 @@ async function verify(req: NextRequest) {
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } });
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
-  return ALLOWED_APP_ROLES.has(String(data.user.app_metadata?.role ?? "")) ? { user: data.user, client } : null;
+  return ALLOWED_APP_ROLES.has(String(data.user.app_metadata?.role ?? "")) ? { user: data.user, client, token, url, key } : null;
 }
 
 const COMPANY_READER_FIELDS = new Set(["LEGAL_NAME","TAX_CODE","ADDRESS","PHONE","EMAIL","WEBSITE","INTRODUCTION"]);
@@ -803,7 +803,7 @@ function companyReaderSourceScore(source:SourceResult):number{
 }
 
 function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):SourceResult|null{
-  if(!Array.isArray(profile.fields)||profile.status==="BLOCKED")return null;
+  if(!Array.isArray(profile.fields)||profile.status!=="READY_FOR_REVIEW")return null;
   const accepted=profile.fields.filter((field)=>
     COMPANY_READER_FIELDS.has(String(field.field??""))&&
     COMPANY_READER_ACCEPTED_FIELD_STATUS.has(String(field.status??""))&&
@@ -830,22 +830,29 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):S
   };
 }
 
-async function enrichSourcesWithCompanyReader(client:SupabaseClient,sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
-  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED!=="true")return{items:[],health:{name:"Trafilatura",status:"DISABLED",count:0}};
+async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
+  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED!=="true"||process.env.COMPANY_READER_ENRICHMENT_MODE!=="LIVE")return{items:[],health:{name:"Trafilatura",status:"DISABLED",count:0,code:"LIVE_NOT_ENABLED"}};
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Trafilatura",status:"EMPTY",count:0}};
   const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
   const timeoutMs=Math.max(2_000,Math.min(12_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"8000")||8_000));
-  let timeoutId:ReturnType<typeof setTimeout>|undefined;
+  const controller=new AbortController();
+  const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
   try{
     const operation=Promise.allSettled(batches.map(async(batch,index)=>{
       const requestId=`search_${crypto.randomUUID().replaceAll("-","").slice(0,20)}_${index}`;
-      const {data,error}=await client.functions.invoke("company-reader-gateway",{body:{request_id:requestId,urls:batch}});
-      if(error)throw new Error("GATEWAY_ERROR");
-      return data as CompanyReaderResponse;
+      const response=await fetch(`${auth.url.replace(/\/$/,"")}/functions/v1/company-reader-gateway`,{
+        method:"POST",
+        headers:{Authorization:`Bearer ${auth.token}`,apikey:auth.key,"Content-Type":"application/json"},
+        body:JSON.stringify({request_id:requestId,urls:batch}),
+        signal:controller.signal,
+        cache:"no-store",
+      });
+      const data=await response.json().catch(()=>({error:"INVALID_GATEWAY_RESPONSE"})) as CompanyReaderResponse;
+      if(!response.ok)throw new Error(typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}`);
+      return data;
     }));
-    const timeout=new Promise<never>((_,reject)=>{timeoutId=setTimeout(()=>reject(new Error("TIMEOUT")),timeoutMs)});
-    const settled=await Promise.race([operation,timeout]);
+    const settled=await operation;
     const responses=settled.filter((result):result is PromiseFulfilledResult<CompanyReaderResponse>=>result.status==="fulfilled").map((result)=>result.value);
     const profiles=responses.flatMap((response)=>Array.isArray(response.profiles)?response.profiles:[]);
     const items=profiles.map(companyReaderProfileSource).filter((item):item is SourceResult=>Boolean(item));
@@ -853,7 +860,7 @@ async function enrichSourcesWithCompanyReader(client:SupabaseClient,sources:Sour
     return{items,health:{name:"Trafilatura",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}};
   }catch(error){
     return{items:[],health:{name:"Trafilatura",status:"ERROR",count:0,code:error instanceof Error?error.message:"UNAVAILABLE"}};
-  }finally{if(timeoutId)clearTimeout(timeoutId)}
+  }finally{clearTimeout(timeoutId)}
 }
 
 async function loadLearningProfile(client: SupabaseClient, role: string): Promise<LearningProfile> {
@@ -1515,7 +1522,8 @@ export async function POST(req: NextRequest) {
     const learning = await loadLearningProfile(auth.client, body.role);
     const searchQueries = await buildQueryPlan(query, location, body.role, learning, radiusKm);
     const source = await searchSources(query, location, searchQueries);
-    const companyReader = await enrichSourcesWithCompanyReader(auth.client, source.items);
+    const companyReader = await enrichSourcesWithCompanyReader(auth, source.items);
+    // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
     const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, discoverySources);
     const supplementalCandidates = deterministicSourceCandidates(query, body.role, discoverySources);
