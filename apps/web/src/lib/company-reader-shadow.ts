@@ -9,37 +9,42 @@ export interface CompanyReaderShadowResult {
 }
 
 export async function runCompanyReaderShadow(sourceUrls: string[]): Promise<CompanyReaderShadowResult> {
-  if (process.env.NEXT_PUBLIC_COMPANY_READER_SHADOW_ENABLED !== "true") return { status: "DISABLED", profileCount: 0, sourceCount: 0, warningCount: 0 };
+  if (process.env.NEXT_PUBLIC_COMPANY_READER_SHADOW_ENABLED === "false") return { status: "DISABLED", profileCount: 0, sourceCount: 0, warningCount: 0 };
   if (!supabase) return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: "SUPABASE_DISABLED" };
+  const client = supabase;
   const urls = Array.from(new Set(sourceUrls.filter((url) => {
     try { return new URL(url).protocol === "https:"; } catch { return false; }
-  }))).slice(0, 5);
+  }))).slice(0, 15);
   if (!urls.length) return { status: "DISABLED", profileCount: 0, sourceCount: 0, warningCount: 0 };
 
-  const requestId = `mimin_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+  const batches = Array.from({ length: Math.ceil(urls.length / 5) }, (_, index) => urls.slice(index * 5, (index + 1) * 5));
   try {
-    if (process.env.NEXT_PUBLIC_COMPANY_READER_SHADOW_TRANSPORT === "local") {
-      const endpoint = process.env.NEXT_PUBLIC_COMPANY_READER_LOCAL_GATEWAY_URL || "http://127.0.0.1:8766/v1/company-reader/shadow";
-      const local = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_id: requestId, urls }),
-      });
-      const response = await local.json() as { status?: string; profile_count?: number; source_count?: number; warning_count?: number; error?: string };
-      if (!local.ok) return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: response.error ?? "LOCAL_GATEWAY_ERROR" };
-      return { status: response.status === "SHADOW_PROCESSED" ? "SHADOW_PROCESSED" : "ERROR", profileCount: response.profile_count ?? 0, sourceCount: response.source_count ?? 0, warningCount: response.warning_count ?? 0 };
-    }
-    const { data, error } = await supabase.functions.invoke("company-reader-gateway", { body: { request_id: requestId, urls } });
-    if (error) return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: "GATEWAY_ERROR" };
-    const response = data as { status?: string; profile_count?: number; source_count?: number; warning_count?: number };
+    const responses = await Promise.all(batches.map(async (batch, index) => {
+      const requestId = `mimin_${crypto.randomUUID().replaceAll("-", "").slice(0, 20)}_${index}`;
+      if (process.env.NEXT_PUBLIC_COMPANY_READER_SHADOW_TRANSPORT === "local") {
+        const endpoint = process.env.NEXT_PUBLIC_COMPANY_READER_LOCAL_GATEWAY_URL || "http://127.0.0.1:8766/v1/company-reader/shadow";
+        const local = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ request_id: requestId, urls: batch }),
+        });
+        const response = await local.json() as { status?: string; profile_count?: number; source_count?: number; warning_count?: number; error?: string };
+        if (!local.ok) throw new Error(response.error ?? "LOCAL_GATEWAY_ERROR");
+        return response;
+      }
+      const { data, error } = await client.functions.invoke("company-reader-gateway", { body: { request_id: requestId, urls: batch } });
+      if (error) throw new Error("GATEWAY_ERROR");
+      return data as { status?: string; profile_count?: number; source_count?: number; warning_count?: number };
+    }));
+    const processed = responses.filter((response) => response.status === "SHADOW_PROCESSED");
     return {
-      status: response.status === "SHADOW_PROCESSED" ? "SHADOW_PROCESSED" : "ERROR",
-      profileCount: response.profile_count ?? 0,
-      sourceCount: response.source_count ?? 0,
-      warningCount: response.warning_count ?? 0,
-      code: response.status === "SHADOW_PROCESSED" ? undefined : "UNEXPECTED_GATEWAY_RESPONSE",
+      status: processed.length === responses.length ? "SHADOW_PROCESSED" : "ERROR",
+      profileCount: processed.reduce((total, response) => total + (response.profile_count ?? 0), 0),
+      sourceCount: processed.reduce((total, response) => total + (response.source_count ?? 0), 0),
+      warningCount: processed.reduce((total, response) => total + (response.warning_count ?? 0), 0),
+      code: processed.length === responses.length ? undefined : "UNEXPECTED_GATEWAY_RESPONSE",
     };
-  } catch {
-    return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: "GATEWAY_UNAVAILABLE" };
+  } catch (error) {
+    return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: error instanceof Error ? error.message : "GATEWAY_UNAVAILABLE" };
   }
 }
