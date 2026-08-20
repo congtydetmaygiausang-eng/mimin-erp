@@ -902,7 +902,10 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
       body: JSON.stringify({ api_key: key, query: `${searchQuery} Việt Nam`, topic:"general", country:"vietnam", search_depth:advanced?"advanced":"basic", max_results:advanced?6:8, chunks_per_source:advanced?3:undefined, include_raw_content:advanced?"text":false, include_answer:false, exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
       signal: AbortSignal.timeout(18_000),
     });
-    if (!response.ok) throw new Error(`Tavily HTTP ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 432) throw new Error("Hết Quota (HTTP 432) - Vui lòng kiểm tra lại API Key");
+      throw new Error(`Tavily HTTP ${response.status}`);
+    }
     const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string; raw_content?:string; score?:number }> };
     return (data.results ?? []).map((item) => ({ title:(item.title??"").slice(0,500),url:canonicalSourceUrl(item.url??""),content:(item.content??"").slice(0,4_000),rawContent:(item.raw_content??"").slice(0,12_000),score:typeof item.score==="number"?item.score:undefined,sourceType:classifySource(item.url??"",item.title??"",item.content??""),provider:"TAVILY",searchQuery })).filter((item) => item.url);
   }));
@@ -1018,7 +1021,10 @@ async function enrichCandidatesWithContacts(candidates: Candidate[], location: s
       body: JSON.stringify({ api_key: key, query: `\"${identity}\" (điện thoại OR email OR website OR \"mã số thuế\" OR \"địa chỉ\" OR \"giới thiệu công ty\")`, search_depth: "advanced", max_results: 8, chunks_per_source: 3, include_raw_content: "text", include_answer: false, country: "vietnam", exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
       signal: AbortSignal.timeout(20_000),
     });
-    if (!response.ok) throw new Error(`Tavily enrichment HTTP ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 432) throw new Error("Hết Quota (HTTP 432)");
+      throw new Error(`Tavily enrichment HTTP ${response.status}`);
+    }
     const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string; raw_content?: string }> };
     const sources = (data.results ?? []).map((item) => ({ title: item.title ?? "", url: canonicalSourceUrl(item.url ?? ""), content: item.content ?? "", rawContent: item.raw_content ?? "", sourceType:classifySource(item.url ?? "",item.title ?? "",item.content ?? ""),provider:"TAVILY_ENRICHMENT" })).filter((item) => item.url&&!blockedSource(item.url));
     return { candidate, sources };
