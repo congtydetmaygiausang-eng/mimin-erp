@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:brave": "tsc -p tsconfig.brave-test.json && node --test .test-dist/brave-search.test.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.30",

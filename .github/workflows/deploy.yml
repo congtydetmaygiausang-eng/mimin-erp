@@ -26,6 +26,10 @@ jobs:
         working-directory: apps/web
         run: npx tsc --noEmit
 
+      - name: Brave Search regression tests
+        working-directory: apps/web
+        run: npm run test:brave
+
       - name: Production Build
         working-directory: apps/web
         env:
