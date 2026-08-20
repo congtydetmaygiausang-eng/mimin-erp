@@ -8,7 +8,9 @@ export interface CompanyReaderShadowResult {
   code?: string;
 }
 
-const COMPANY_READER_SHADOW_TIMEOUT_MS = 8_000;
+// Render Free can need roughly one minute to wake up. The gateway performs a
+// readiness probe before the bounded read, so the browser must not abort first.
+const COMPANY_READER_SHADOW_TIMEOUT_MS = 115_000;
 
 async function withTimeout<T>(operation: Promise<T>): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;

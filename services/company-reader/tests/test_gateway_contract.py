@@ -8,6 +8,7 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 RENDER_BLUEPRINT = REPOSITORY_ROOT / "services" / "company-reader" / "render.yaml"
 SUPABASE_GATEWAY = REPOSITORY_ROOT / "supabase" / "functions" / "company-reader-gateway" / "index.ts"
+AI_DISCOVERY_TAB = REPOSITORY_ROOT / "apps" / "web" / "src" / "components" / "sourcing" / "AiDiscoveryTab.tsx"
 
 
 class CompanyReaderGatewayContractTests(unittest.TestCase):
@@ -40,6 +41,28 @@ class CompanyReaderGatewayContractTests(unittest.TestCase):
         self.assertIn('key: COMPANY_READER_REQUIRE_SIGNATURE\n        value: "true"', blueprint)
         self.assertIn('"X-Mimin-Signature": signature', gateway)
         self.assertIn('"X-Mimin-Timestamp": timestamp', gateway)
+
+    def test_free_tier_cold_start_has_a_separate_readiness_budget(self) -> None:
+        gateway = SUPABASE_GATEWAY.read_text(encoding="utf-8")
+        shadow_client = (
+            REPOSITORY_ROOT / "apps" / "web" / "src" / "lib" / "company-reader-shadow.ts"
+        ).read_text(encoding="utf-8")
+
+        wake = int(re.search(r"READER_WAKE_TIMEOUT_MS\s*=\s*([\d_]+)", gateway).group(1).replace("_", ""))
+        read = int(re.search(r"READER_REQUEST_TIMEOUT_MS\s*=\s*([\d_]+)", gateway).group(1).replace("_", ""))
+        browser = int(re.search(r"COMPANY_READER_SHADOW_TIMEOUT_MS\s*=\s*([\d_]+)", shadow_client).group(1).replace("_", ""))
+
+        self.assertIn('fetch(`${readerUrl}/readyz`', gateway)
+        self.assertGreaterEqual(wake, 60_000)
+        self.assertGreaterEqual(read, 30_000)
+        self.assertGreaterEqual(browser, wake + read + 5_000)
+
+    def test_shadow_enrichment_never_blocks_primary_search(self) -> None:
+        discovery = AI_DISCOVERY_TAB.read_text(encoding="utf-8")
+
+        self.assertNotIn("await runCompanyReaderShadow", discovery)
+        self.assertIn("void runCompanyReaderShadow", discovery)
+        self.assertIn("shadowRequestId.current !== currentShadowRequestId", discovery)
 
 
 if __name__ == "__main__":

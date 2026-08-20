@@ -166,6 +166,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [location, setLocation] = useState("");
   const lastDistrictLocation = useRef("");
   const gpsRequestId = useRef(0);
+  const shadowRequestId = useRef(0);
   const [items, setItems] = useState<DiscoveryCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [directResults, setDirectResults] = useState<DirectSearchCandidate[]>([]);
@@ -238,6 +239,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     const combinedQuery = [query, manualKeyword].filter(Boolean).join(", ");
     if (!combinedQuery.trim() || !location.trim()) { toast.error("Nhập nội dung và khu vực cần tìm"); return null; }
     if(locationType==="GPS"&&!center){toast.error("Đang chờ lấy tọa độ GPS. Anh thử lại sau vài giây.");return null;}
+    const currentShadowRequestId = shadowRequestId.current + 1;
+    shadowRequestId.current = currentShadowRequestId;
     setLoading(true);
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
@@ -246,16 +249,22 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:SearchDiagnostics;candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       const candidates = data.candidates??[];
-      const readerShadow = await runCompanyReaderShadow(candidates.map((candidate) => candidate.sourceUrl));
       const diagnostics = data.diagnostics ?? null;
-      if (diagnostics) diagnostics.providers = [...diagnostics.providers, {
-        name: "Trafilatura shadow",
-        status: readerShadow.status === "SHADOW_PROCESSED" ? "OK" : readerShadow.status === "DISABLED" ? "DISABLED" : "ERROR",
-        count: readerShadow.sourceCount,
-        code: readerShadow.code,
-      }];
-      setDirectResults(candidates); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(diagnostics);
-      setResultCriteria({query:combinedQuery.trim(),location:location.trim(),role,radiusKm,searchedAt:new Date().toISOString()});
+      // Render the primary search immediately. Company Reader is shadow-only and
+      // must never hold the main result list behind a free-tier cold start.
+        setDirectResults(candidates); setDirectProvider(data.provider??""); setResolvedCenter(data.center??null); setLearningSummary(data.learning??null); setDiagnostics(diagnostics);
+        setResultCriteria({query:combinedQuery.trim(),location:location.trim(),role,radiusKm,searchedAt:new Date().toISOString()});
+        // Shadow enrichment is deliberately detached from the primary search.
+        // A request id prevents a slow previous run from updating a newer result set.
+        void runCompanyReaderShadow(candidates.map((candidate) => candidate.sourceUrl)).then((readerShadow) => {
+          if (shadowRequestId.current !== currentShadowRequestId || !diagnostics) return;
+          setDiagnostics({ ...diagnostics, providers: [...diagnostics.providers, {
+            name: "Trafilatura shadow",
+            status: readerShadow.status === "SHADOW_PROCESSED" ? "OK" : readerShadow.status === "DISABLED" ? "DISABLED" : "ERROR",
+            count: readerShadow.sourceCount,
+            code: readerShadow.code,
+          }] });
+        });
       if (!silent) toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${candidates.length} kết quả`);
       return candidates;
     }
