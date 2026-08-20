@@ -547,7 +547,12 @@ export function getFullMatrix(): Record<Role, Partial<Record<Module, string>>> {
   return getEffectivePermissions();
 }
 
-export const ALL_ROLES: Role[] = ["admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner"];
+// 5 role sản xuất chi tiết (cutting/printing/buttoning/ironing/packaging) đã có
+// quyền hợp lệ trong PERMISSIONS ở trên (thêm cùng đợt "to-cat"/"to-in-theu"/...)
+// nhưng bị bỏ sót khỏi mảng này -> không hiện trong UI quản trị phân quyền
+// (quan-ly-tai-khoan, phan-quyen-tuy-chinh), dù role vẫn hoạt động bình thường
+// khi đăng nhập trực tiếp.
+export const ALL_ROLES: Role[] = ["admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner", "cutting", "printing", "buttoning", "ironing", "packaging"];
 export const ALL_MODULES: Module[] = [
   "dashboard", "lenh-cat", "khach-hang", "ke-hoach-sx", "nhan-su",
   "kho-vai", "kho-phu-lieu", "kho-thanh-pham", "don-hang",
