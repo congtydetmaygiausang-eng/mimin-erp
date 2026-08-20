@@ -50,7 +50,16 @@ export async function runCompanyReaderShadow(sourceUrls: string[]): Promise<Comp
         return response;
       }
       const { data, error } = await withTimeout(client.functions.invoke("company-reader-gateway", { body: { request_id: requestId, urls: batch } }));
-      if (error) throw new Error("GATEWAY_ERROR");
+      if (error) {
+        let errCode = "GATEWAY_ERROR";
+        if (typeof (error as any).context?.json === "function") {
+          try {
+            const errBody = await (error as any).context.json();
+            if (errBody?.error) errCode = errBody.error;
+          } catch {}
+        }
+        throw new Error(errCode);
+      }
       return data as { status?: string; profile_count?: number; source_count?: number; warning_count?: number };
     }));
     const processed = responses.filter((response) => response.status === "SHADOW_PROCESSED");
@@ -62,6 +71,11 @@ export async function runCompanyReaderShadow(sourceUrls: string[]): Promise<Comp
       code: processed.length === responses.length ? undefined : "UNEXPECTED_GATEWAY_RESPONSE",
     };
   } catch (error) {
-    return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: error instanceof Error ? error.message : "GATEWAY_UNAVAILABLE" };
+    const code = error instanceof Error ? error.message : "GATEWAY_UNAVAILABLE";
+    const disabledCodes = new Set(["COMPANY_READER_NOT_CONFIGURED", "AUTH_NOT_CONFIGURED", "SUPABASE_DISABLED", "LOCAL_GATEWAY_ERROR", "GATEWAY_ERROR", "FunctionsFetchError"]);
+    if (disabledCodes.has(code)) {
+      return { status: "DISABLED", profileCount: 0, sourceCount: 0, warningCount: 0 };
+    }
+    return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code };
   }
 }
