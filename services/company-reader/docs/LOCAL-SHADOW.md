@@ -66,6 +66,20 @@ Invoke-RestMethod `
 Kết quả shadow hợp lệ trả HTTP `202`, chỉ có số lượng nguồn/hồ sơ và không trả dữ
 liệu công ty ra caller.
 
+## Gửi URL bằng shadow caller local
+
+Caller chỉ chấp nhận endpoint loopback để tránh vô tình gửi service token ra
+Internet:
+
+```powershell
+python -m company_reader.shadow_probe `
+  --request-id local_shadow_manual_001 `
+  https://example.com/
+```
+
+Có thể truyền tối đa năm URL trong một lần. Ở chế độ shadow, output chỉ gồm trạng
+thái và số lượng; hồ sơ chuẩn hóa không được đưa vào MIMIN ERP.
+
 ## Dừng Docker
 
 ```powershell
