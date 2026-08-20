@@ -127,21 +127,23 @@ export async function POST(req: NextRequest) {
       }
 
       case "approvePhieu": {
-        // TODO: implement phan_cong/lenh_cat approval workflow
-        result = {
-          approved: payload.hanhDong === "duyet",
-          phieuId: payload.phieuId,
-          loai: payload.loaiPhieu,
-          lyDo: payload.lyDo,
-        };
+        // Chưa triển khai workflow duyệt phan_cong/lenh_cat thật (cần xác định
+        // rõ bảng nào lưu trạng thái duyệt cho từng loaiPhieu trước khi làm).
+        // Trước đây trả về "approved: true" + ghi audit log "đã duyệt" dù
+        // KHÔNG đổi gì trong Supabase - người xem audit log tưởng đã duyệt
+        // thật. Giờ trả lỗi rõ ràng thay vì giả vờ thành công.
         logAudit({
           user: logUser,
           action: payload.hanhDong === "duyet" ? "approve" : "reject",
           module: "ai-agent",
-          description: `AI ${payload.hanhDong} ${payload.loaiPhieu} ${payload.phieuId}`,
-          success: true,
+          description: `AI thử ${payload.hanhDong} ${payload.loaiPhieu} ${payload.phieuId} nhưng tính năng chưa triển khai`,
+          success: false,
+          errorMessage: "approvePhieu chưa triển khai",
         });
-        break;
+        return NextResponse.json(
+          { error: `Tính năng duyệt/từ chối phiếu qua AI chưa được triển khai cho loại "${payload.loaiPhieu}". Vui lòng duyệt trực tiếp trên màn hình nghiệp vụ tương ứng.` },
+          { status: 501 }
+        );
       }
 
       default:

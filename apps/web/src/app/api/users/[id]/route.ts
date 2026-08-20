@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/api-auth";
 
 // Next.js 15 + output: export cần generateStaticParams cho dynamic routes
 // Return 1 placeholder để build pass
@@ -7,7 +8,10 @@ export function generateStaticParams() {
   return [{ id: "_" }];
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) return NextResponse.json({ error: "Supabase Admin is not configured" }, { status: 500 });
   const id = (await params).id;
   try {
@@ -29,7 +33,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) return NextResponse.json({ error: "Supabase Admin is not configured" }, { status: 500 });
   const id = (await params).id;
   try {
@@ -61,9 +68,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) return NextResponse.json({ error: "Supabase Admin is not configured" }, { status: 500 });
   const id = (await params).id;
+  if (id === auth.caller.id) {
+    return NextResponse.json({ error: "Không thể tự xoá tài khoản của chính mình" }, { status: 400 });
+  }
   try {
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });

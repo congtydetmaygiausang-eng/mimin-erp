@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { toSupabaseEmployeeRecord } from "@/lib/employee-records";
+import { requireAdmin, requireAuth } from "@/lib/api-auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
@@ -29,6 +30,11 @@ export async function GET() {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Xoá TOÀN BỘ bảng nhân sự (khi không truyền maNV) là thao tác admin-only -
+    // trước đây không xác thực gì cả, ai gọi được URL cũng xoá sạch nhan_su.
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: "Supabase service role chưa cấu hình" }, { status: 500 });
     }
@@ -57,6 +63,9 @@ export async function DELETE(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.ok) return auth.response;
+
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: "Supabase service role chưa cấu hình" }, { status: 500 });
     }

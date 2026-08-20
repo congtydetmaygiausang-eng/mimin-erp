@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
 import { ROLE_LABELS, ROLE_COLORS, ALL_ROLES } from "@/lib/permissions";
+import { authFetch } from "@/lib/auth-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ export default function QuanLyTaiKhoanPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/users", { cache: "no-store" });
+      const res = await authFetch("/api/admin/users", { cache: "no-store" });
       if (!res.ok) throw new Error("API failed");
       const json = await res.json();
       if (json.error) {
@@ -290,7 +291,7 @@ function UserCard({ u, onEdit, onDeleted, onToggled }: {
   const handleToggle = async () => {
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/users/${u.id}`, {
+      const res = await authFetch(`/api/admin/users/${u.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !u.isActive }),
@@ -309,7 +310,7 @@ function UserCard({ u, onEdit, onDeleted, onToggled }: {
     if (!confirm(`Xóa tài khoản ${u.email}?\n\nLưu ý: Xóa trong CẢ auth.users và bảng users. Không thể hoàn tác.`)) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+      const res = await authFetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
       const json = await res.json();
       if (json.error) toast.error("Lỗi: " + json.error);
       else { toast.success("Đã xóa TK"); onDeleted(); }
@@ -377,7 +378,7 @@ function EditUserModal({ user, onClose, onSaved }: {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
+      const res = await authFetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -459,7 +460,7 @@ function CreateUserModal({ onClose, onCreated }: {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await authFetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
