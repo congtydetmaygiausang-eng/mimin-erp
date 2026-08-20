@@ -4,26 +4,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit-log";
 import { canCreate, canEdit, canDelete, type Role, type Module } from "@/lib/permissions";
+import { requireAuth } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/agent/execute
-// Body: { action: 'createLenhCat' | 'updateCongDoan' | 'deletePhieu' | 'approvePhieu', payload: {...}, user: { id, email, role } }
+// Body: { action: 'createLenhCat' | 'updateCongDoan' | 'deletePhieu' | 'approvePhieu', payload: {...} }
+// LƯU Ý BẢO MẬT: các tool AI (lib/ai-tools.ts) để model tự điền "role" trong
+// tham số gọi tool - giá trị đó CHỈ dùng để hiện lời nhắc sớm trong chat, KHÔNG
+// được tin ở đây. Trước đây route này lấy thẳng "role" từ body.user do CLIENT
+// tự gửi lên - ai gọi endpoint này trực tiếp (không qua UI) đều tự xưng role
+// bất kỳ, kể cả "admin", để tạo/sửa/xoá dữ liệu. Giờ role dùng để check quyền
+// LUÔN lấy từ access token Supabase Auth thật đã xác minh.
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase Admin chua cau hinh" }, { status: 500 });
   }
 
   try {
     const body = await req.json();
-    const { action, payload, user } = body;
+    const { action, payload } = body;
 
-    if (!action || !payload || !user) {
-      return NextResponse.json({ error: "Thieu action/payload/user" }, { status: 400 });
+    if (!action || !payload) {
+      return NextResponse.json({ error: "Thieu action/payload" }, { status: 400 });
     }
 
-    const role = user.role as Role;
-    const logUser = { id: user.id, email: user.email, name: user.name || user.email, role, title: role, source: "supabase" as const };
+    const role = auth.caller.role as Role;
+    const logUser = { id: auth.caller.id, email: auth.caller.email, name: auth.caller.email, role, title: role, source: "supabase" as const };
 
     // Re-check permission
     const modMap: Record<string, Module> = {
@@ -76,7 +86,7 @@ export async function POST(req: NextRequest) {
           trang_thai: "Moi",
           loai_lenh: "Cat vai",
           ngay_tao: new Date().toISOString(),
-          nguoi_tao: user.email,
+          nguoi_tao: auth.caller.email,
         }).select().single();
 
         if (error) throw new Error(error.message);
