@@ -80,6 +80,20 @@ python -m company_reader.shadow_probe `
 Có thể truyền tối đa năm URL trong một lần. Ở chế độ shadow, output chỉ gồm trạng
 thái và số lượng; hồ sơ chuẩn hóa không được đưa vào MIMIN ERP.
 
+## Chạy quality gate cục bộ
+
+Mỗi batch bị giới hạn tối đa 10 lượt để tránh gây tải lớn lên website nguồn:
+
+```powershell
+python -m company_reader.shadow_batch `
+  --runs 3 `
+  "https://masothue.com/0318507560-cong-ty-tnhh-det-may-giau-sang"
+```
+
+Báo cáo chỉ có số lượt thành công/thất bại, tổng nguồn/hồ sơ/cảnh báo và p50/p95.
+Không chuyển sang canary chỉ dựa trên một batch; cần tối thiểu 200 lượt shadow
+trong ít nhất 7 ngày như runbook triển khai quy định.
+
 ## Dừng Docker
 
 ```powershell
