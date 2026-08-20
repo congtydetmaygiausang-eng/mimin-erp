@@ -14,23 +14,26 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { AGENT_PERSONAS, AGENT_IDS_V6 } from "@/lib/agent-personas";
+import { AGENT_PERSONAS, AGENT_IDS } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
 
-// AgentPersona (agent-personas.ts) khong co color/icon rieng cho 6 agent V6 -
-// map cuc bo o day de header hien thi dung, khong dung mac dinh chung chung.
-const V6_STYLE: Record<string, { color: string; icon: string }> = {
-  mavis: { color: "from-violet-500 to-purple-600", icon: "🧭" },
-  minh: { color: "from-sky-500 to-cyan-600", icon: "✂️" },
-  lan: { color: "from-emerald-500 to-teal-600", icon: "📦" },
-  ha: { color: "from-amber-500 to-orange-600", icon: "💰" },
-  vy: { color: "from-pink-500 to-rose-600", icon: "💬" },
-  "mimin-help": { color: "from-slate-500 to-slate-600", icon: "❓" },
+// Map style for 10 agents
+const AGENT_STYLE: Record<string, { color: string; icon: string }> = {
+  "mimin-orchestrator": { color: "from-violet-500 to-purple-600", icon: "🧭" },
+  "agent-san-xuat": { color: "from-sky-500 to-cyan-600", icon: "✂️" },
+  "agent-kho": { color: "from-emerald-500 to-teal-600", icon: "📦" },
+  "agent-ke-toan": { color: "from-amber-500 to-orange-600", icon: "💰" },
+  "agent-nhan-su": { color: "from-rose-500 to-pink-600", icon: "👤" },
+  "agent-deepseek": { color: "from-indigo-500 to-blue-600", icon: "🧠" },
+  "agent-ban-hang": { color: "from-fuchsia-500 to-purple-600", icon: "💬" },
+  "agent-tai-chinh": { color: "from-emerald-600 to-green-700", icon: "📈" },
+  "agent-theo-doi-cd": { color: "from-teal-500 to-emerald-500", icon: "✅" },
+  "agent-ky-thuat-may": { color: "from-slate-500 to-gray-600", icon: "🔧" },
 };
 
 // ============================================
 // /agents/[id] - Agent detail page
-// Hien thi chi tiet 1 agent V6 (mavis, minh, lan, ha, vy, mimin-help)
+// Hien thi chi tiet 1 agent
 // + shortcut chat
 // ============================================
 
@@ -39,9 +42,8 @@ export default function AgentDetailPage() {
   const router = useRouter();
   const agentId = params?.id as string;
 
-  // Fix #3.5: Validate agentId thuoc 6 V6 personas, neu sai -> redirect /agents
-  // Dung client-side check de tranh prerender bug (notFound() server-side gay loi)
-  const isValidId = agentId ? (AGENT_IDS_V6 as readonly string[]).includes(agentId) : false;
+  // Validate agentId thuoc 10 personas, neu sai -> redirect /agents
+  const isValidId = agentId ? (AGENT_IDS as readonly string[]).includes(agentId) : false;
 
   useEffect(() => {
     if (agentId && !isValidId) {
@@ -62,7 +64,7 @@ export default function AgentDetailPage() {
           ID: <code className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">{agentId}</code>
         </p>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          Chi ho tro 6 agents V6: mavis, minh, lan, ha, vy, mimin-help
+          Chi ho tro 9 MIN AI Agents va Orchestrator
         </p>
         <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">
           Dang chuyen huong ve danh sach agents...
@@ -80,7 +82,7 @@ export default function AgentDetailPage() {
 
   // Fallback visual neu agentId khong co trong persona
   const basePersona = AGENT_PERSONAS[agentId];
-  const style = V6_STYLE[agentId] || { color: "from-slate-500 to-slate-600", icon: "❓" };
+  const style = AGENT_STYLE[agentId] || { color: "from-slate-500 to-slate-600", icon: "❓" };
   const persona = {
     name: basePersona?.name || agentId,
     role: basePersona?.role_title || "Unknown agent",
@@ -118,7 +120,7 @@ export default function AgentDetailPage() {
         className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
       >
         <ArrowLeft className="w-4 h-4" />
-        Quay lai danh sach 6 agents
+        Quay lai danh sach agents
       </button>
 
       {/* Header card with gradient */}
@@ -202,8 +204,8 @@ export default function AgentDetailPage() {
         >
           <Settings className="w-5 h-5 text-slate-600" />
           <div>
-            <div className="font-bold text-sm">Quan ly 6 agents</div>
-            <div className="text-xs text-slate-500">Xem tat ca agents V6 (Mavis/Minh/Lan/Ha/Vy/MIMIN Help)</div>
+            <div className="font-bold text-sm">Quan ly agents</div>
+            <div className="text-xs text-slate-500">Xem tat ca cac MIN AI agents</div>
           </div>
         </Link>
       </div>
