@@ -64,10 +64,8 @@ AGENT_PERSONAS["minh"] = {
   agent_id: "minh",
   name: "Minh",
   role_title: "Sản xuất E2E (Cắt → May → QC → Kho TP)",
-  // File ảnh /avatars/minh.png chưa từng tồn tại (đổi tên từ persona cũ, không
-  // ai thêm ảnh mới) -> vỡ ảnh trên /agents-chat. Dùng emoji, khớp icon đang
-  // hiển thị đúng trên /agents (Dashboard) để nhất quán.
-  avatar: "✂️",
+  // Ảnh thật do anh Sang cung cấp 2026-08-20 (robot cam-trắng cầm điện thoại).
+  avatar: "/avatars/minh.png",
   provider: "deepseek",
   model: "deepseek-chat",
   system_prompt: [
@@ -135,7 +133,8 @@ AGENT_PERSONAS["vy"] = {
   agent_id: "vy",
   name: "Vy",
   role_title: "MIMIN Care AI - Chuyên gia tư vấn bán hàng & chăm sóc khách hàng",
-  avatar: "💬",
+  // Ảnh thật do anh Sang cung cấp 2026-08-20 (robot trắng-cam có cánh thiên thần).
+  avatar: "/avatars/vy.png",
   provider: "minimax",
   model: "MiniMax-M3",
   system_prompt: PERSONALITY_CSKH
