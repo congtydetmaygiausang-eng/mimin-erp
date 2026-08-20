@@ -56,6 +56,10 @@ công thì `/readyz` mới trả thành công. Blueprint giữ rollout ở `shad
 có public URL và chưa nối vào MIMIN ERP. Xem
 [`docs/RENDER-SHADOW-DEPLOYMENT.md`](docs/RENDER-SHADOW-DEPLOYMENT.md).
 
+Có thể chạy shadow trước trên máy cá nhân bằng Python hoặc Docker Compose. Bản
+Docker ghép Company Reader với Valkey, chỉ publish API vào `127.0.0.1` và vẫn giữ
+rollout `shadow/0%`. Xem [`docs/LOCAL-SHADOW.md`](docs/LOCAL-SHADOW.md).
+
 ## Chạy kiểm thử
 
 ```powershell
