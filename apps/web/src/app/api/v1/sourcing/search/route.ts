@@ -69,12 +69,16 @@ interface DistanceEvidence {
   destination: { latitude: number | null; longitude: number | null; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
   addressConsistency: "MATCHED" | "UNVERIFIED" | "CONFLICT";
 }
-interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[];fieldConfidence?:CandidateFieldConfidence[];profileQuality?:CandidateProfileQuality;entityResolution?:CandidateEntityResolution; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
+interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[];fieldConfidence?:CandidateFieldConfidence[];profileQuality?:CandidateProfileQuality;entityResolution?:CandidateEntityResolution; resultTier?:"EXACT"|"RELATED"; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number; persistentHits: number; staleFallbacks: number; providerRequests: number }
 interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
 interface PostProcessedCandidates { candidates: Candidate[]; breakdown: LocationBreakdown; excludedByStrictMode: number; entityResolution:{inputRecords:number;clusters:number;mergedRecords:number;taxConflictsPrevented:number} }
 interface LocationQualityAudit { runId: string; algorithmVersion: "L7-HAVERSINE-1"; grade: "HIGH" | "MEDIUM" | "LOW"; coordinateCoveragePercent: number; staleFallbackUsed: boolean; warnings: string[]; evaluatedAt: string }
+
+const MAX_DISCOVERY_SOURCES = 180;
+const MAX_NORMALIZATION_SOURCES = 160;
+const NORMALIZATION_BATCH_SIZE = 32;
 
 function normalized(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(cong ty|tnhh|co phan|cp|mot thanh vien|mtv|san xuat|thuong mai|dich vu)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
@@ -308,10 +312,10 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     conflict: ordered.filter((item) => item.locationStatus === "CONFLICT").length,
   };
   if (locationMode === "STRICT") {
-    const strictCandidates = ordered.filter((item) => item.locationStatus === "INSIDE").slice(0, 30);
+    const strictCandidates = ordered.filter((item) => item.locationStatus === "INSIDE").slice(0, 50);
     return { candidates: strictCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.unknown + breakdown.conflict,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
   }
-  return { candidates: ordered.slice(0, 30), breakdown, excludedByStrictMode: 0,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
+  return { candidates: ordered.slice(0, 50), breakdown, excludedByStrictMode: 0,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
 }
 
 const LOCATION_NOISE_WORDS = new Set(["quan", "huyen", "phuong", "xa", "thi", "tran", "thanh", "pho", "tinh", "viet", "nam"]);
@@ -486,6 +490,17 @@ function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: 
   return identityEvidence >= 2 || Boolean(candidate.taxCode) || (businessName && identityEvidence >= 1) || (officialWebsite && identityEvidence >= 1);
 }
 
+function isRelatedBusinessCandidate(candidate: Candidate, role: string, query: string): boolean {
+  if (blockedSource(candidate.sourceUrl) || isGenericCompanyName(candidate.legalName) || noiseListing(candidate.sourceTitle)) return false;
+  const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
+  if (identityEvidence < 2 && !candidate.taxCode) return false;
+  const evidence = normalized(`${candidate.legalName} ${candidate.capabilities.join(" ")} ${(candidate.businessLines ?? []).join(" ")} ${candidate.companyIntroduction ?? ""} ${candidate.sourceTitle}`);
+  const roleRelevant = (ROLE_EVIDENCE_TERMS[role] ?? []).some((term) => evidence.includes(normalized(term)));
+  const queryTokens = tokenSet(query);
+  const evidenceTokens = tokenSet(evidence);
+  return roleRelevant && overlapRatio(queryTokens, evidenceTokens) >= 0.2;
+}
+
 function candidateGeocodeQueries(candidate: Candidate, searchLocation: string): string[] {
   const address = cleanCandidateAddress(candidate.address);
   if (!address) return [];
@@ -642,6 +657,9 @@ async function geocodeCandidate(candidate: Candidate, searchLocation: string, ca
 async function geocodeCandidates(candidates: Candidate[], searchLocation: string): Promise<{ candidates: Candidate[]; summary: CandidateGeocodingSummary }> {
   const cacheClient = geocodeCacheClient();
   const retainedFromSource = candidates.filter((candidate) => candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")).length;
+  // Giữ ngân sách định vị tách biệt với ngân sách thu thập nguồn. Bán kính lớn
+  // được mở rộng ở tầng truy vấn, không được nhân đôi số request bản đồ trong
+  // cùng một Vercel invocation vì Google/Nominatim có thể làm vượt timeout.
   const targets = candidates.filter((candidate) => !(candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")) && cleanCandidateAddress(candidate.address)).slice(0, 10);
   const targetSet = new Set(targets);
   const geocoded = new Map<Candidate, Candidate>();
@@ -658,30 +676,58 @@ function radiusSearchAreas(location: string, radiusKm: number): string[] {
   const normalizedLocationValue = normalized(location);
   const isHcm = /(?:tp\s*hcm|tphcm|ho chi minh|tan phu|tan binh|binh tan|go vap|phu nhuan|binh thanh|hoc mon|cu chi|nha be|binh chanh|can gio|thu duc|quan \d+)/.test(normalizedLocationValue);
   if (!isHcm || radiusKm <= 10) return [location];
-  if (radiusKm <= 20) return [location, "các quận lân cận TP.HCM", "TP.HCM"];
-  if (radiusKm <= 30) return [location, "TP.HCM", "Bình Dương giáp TP.HCM", "Đồng Nai giáp TP.HCM"];
-  return [location, "TP.HCM", "Bình Dương", "Đồng Nai", "Long An"];
+  const hcmInnerClusters = [
+    "Quận 12, Gò Vấp, Tân Bình, TP.HCM",
+    "Bình Tân, Tân Phú, Quận 6, TP.HCM",
+    "Bình Thạnh, Phú Nhuận, Quận 3, TP.HCM",
+    "Thủ Đức, TP.HCM",
+    "Bình Chánh, TP.HCM",
+  ];
+  if (radiusKm <= 20) return [location, ...hcmInnerClusters.slice(0, 3)];
+  const hcmOuterClusters = ["Hóc Môn, Củ Chi, TP.HCM", "Nhà Bè, Quận 7, TP.HCM", ...hcmInnerClusters];
+  if (radiusKm <= 30) return [location, ...hcmOuterClusters];
+  return [
+    location,
+    ...hcmOuterClusters,
+    "Dĩ An, Thuận An, Bình Dương",
+    "Thủ Dầu Một, Bình Dương",
+    "Đức Hòa, Long An",
+    "Biên Hòa, Đồng Nai",
+    "Trảng Bàng, Tây Ninh",
+  ];
+}
+
+function queryBudgetForRadius(radiusKm: number): number {
+  if (radiusKm <= 10) return 10;
+  if (radiusKm <= 20) return 12;
+  if (radiusKm <= 30) return 14;
+  return 16;
 }
 
 function fallbackQueryPlan(query: string, location: string, role: string, radiusKm: number): string[] {
   const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
   const areas = radiusSearchAreas(location, radiusKm);
+  const budget = queryBudgetForRadius(radiusKm);
   return Array.from(new Set([
     `${query} ${location}`,
     `${query} tại ${location} công ty xưởng`,
     `${query} gần ${location} địa chỉ điện thoại`,
-    ...areas.slice(1).map((area) => `${query} công ty nhà sản xuất ${area}`),
+    ...areas.slice(1).flatMap((area, index) => [
+      `${query} công ty nhà sản xuất ${area}`,
+      index < 4 ? `${query} nhà cung cấp địa chỉ điện thoại ${area}` : "",
+    ]),
     ...roleTerms.slice(0, 2).map((term, index) => `${term} ${query} ${areas[index % areas.length]}`),
     `${query} doanh nghiệp mã số thuế ${location}`,
     `${query} nhà máy xưởng địa chỉ hotline ${location}`,
     `${query} manufacturer supplier ${location} Vietnam`,
-  ])).slice(0, 10);
+  ].filter(Boolean))).slice(0, budget);
 }
 
 async function buildQueryPlan(query: string, location: string, role: string, learning: LearningProfile, radiusKm: number): Promise<string[]> {
+  const budget = queryBudgetForRadius(radiusKm);
   const learnedQueries = learning.applied ? learning.preferredTerms.slice(0, 3).map((term) => `${query} ${term} ${location}`) : [];
   const searchAreas = radiusSearchAreas(location, radiusKm);
-  const fallback = Array.from(new Set([...fallbackQueryPlan(query, location, role, radiusKm), ...learnedQueries])).slice(0, 10);
+  const fallback = Array.from(new Set([...fallbackQueryPlan(query, location, role, radiusKm), ...learnedQueries])).slice(0, budget);
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return fallback;
   try {
@@ -707,7 +753,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim().slice(0, 180))
       .filter((item) => item.length >= 4);
-    return Array.from(new Set([...fallback.slice(0, 4), ...aiQueries, ...fallback.slice(4)])).slice(0, 10);
+    return Array.from(new Set([...fallback.slice(0, 4), ...aiQueries, ...fallback.slice(4)])).slice(0, budget);
   } catch {
     return fallback;
   }
@@ -766,7 +812,7 @@ async function loadLearningProfile(client: SupabaseClient, role: string): Promis
 async function searchTavily(queries: string[]): Promise<SourceResult[]> {
   const key = process.env.TAVILY_API_KEY;
   if (!key) return [];
-  const batches = await Promise.allSettled(queries.slice(0, 10).map(async (searchQuery, index) => {
+  const batches = await Promise.allSettled(queries.slice(0, 16).map(async (searchQuery, index) => {
     const advanced=index>=3;
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
@@ -786,8 +832,8 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
 }
 
 function braveMaximumQueries(): number {
-  const configured = Number(process.env.BRAVE_SEARCH_MAX_QUERIES ?? "6");
-  return Number.isFinite(configured) ? Math.max(1, Math.min(10, Math.trunc(configured))) : 6;
+  const configured = Number(process.env.BRAVE_SEARCH_MAX_QUERIES ?? "16");
+  return Number.isFinite(configured) ? Math.max(1, Math.min(16, Math.trunc(configured))) : 16;
 }
 
 async function searchBrave(queries: string[]): Promise<SourceResult[]> {
@@ -1015,6 +1061,29 @@ interface GooglePlaceResult {
   geometry?: { location?: { lat?: number; lng?: number } };
 }
 
+interface GooglePlaceNewResult {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  businessStatus?: string;
+  location?: { latitude?: number; longitude?: number };
+}
+
+function googlePlaceSource(place: GooglePlaceNewResult): SourceResult | null {
+  const title = place.displayName?.text?.trim() ?? "";
+  const placeId = place.id?.trim() ?? "";
+  if (!title || !placeId || place.businessStatus === "CLOSED_PERMANENTLY") return null;
+  return {
+    title,
+    url: `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`,
+    content: place.formattedAddress ?? "",
+    latitude: place.location?.latitude,
+    longitude: place.location?.longitude,
+    provider: "GOOGLE_PLACES",
+    sourceType: "MAP",
+  };
+}
+
 async function searchGooglePlaces(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key) return [];
@@ -1023,6 +1092,23 @@ async function searchGooglePlaces(query: string, location: string, queries: stri
     ...queries.slice(0, 2),
   ])).slice(0, 3);
   const batches = await Promise.allSettled(placeQueries.map(async (searchQuery) => {
+    const modernResponse = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.businessStatus,places.location",
+      },
+      body: JSON.stringify({ textQuery: `${searchQuery}, Việt Nam`, languageCode: "vi", regionCode: "VN", maxResultCount: 20 }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (modernResponse.ok) {
+      const modernData = await modernResponse.json() as { places?: GooglePlaceNewResult[] };
+      return (modernData.places ?? []).map(googlePlaceSource).filter((item): item is SourceResult => Boolean(item));
+    }
+    if (![403, 404].includes(modernResponse.status)) throw new Error(`Google Places HTTP ${modernResponse.status}`);
+
+    // Tương thích các project Google Cloud chỉ mới bật Places API (Legacy).
     const params = new URLSearchParams({ query: `${searchQuery}, Việt Nam`, key, language: "vi", region: "vn" });
     const response = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`, { signal: AbortSignal.timeout(12_000) });
     if (!response.ok) throw new Error(`Google Places HTTP ${response.status}`);
@@ -1036,6 +1122,8 @@ async function searchGooglePlaces(query: string, location: string, queries: stri
         content: place.formatted_address ?? "",
         latitude: place.geometry?.location?.lat,
         longitude: place.geometry?.location?.lng,
+        provider: "GOOGLE_PLACES",
+        sourceType: "MAP" as const,
       }));
   }));
   if (batches.length && batches.every((batch) => batch.status === "rejected")) {
@@ -1049,6 +1137,8 @@ function providerErrorCode(reason: unknown): string {
   if (reason instanceof Error) {
     const httpStatus = reason.message.match(/HTTP (\d{3})/)?.[1];
     if (httpStatus) return `HTTP ${httpStatus}`;
+    const providerStatus = reason.message.match(/Google Places ([A-Z_]+)/)?.[1];
+    if (providerStatus) return providerStatus;
     if (reason.name === "TimeoutError" || /timeout/i.test(reason.message)) return "TIMEOUT";
   }
   return "REQUEST_FAILED";
@@ -1075,7 +1165,7 @@ async function searchSources(query: string, location: string, queries: string[])
     { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
     { name: "Google Places", status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" as const : googlePlaces.status === "rejected" ? "ERROR" as const : googlePlaces.value.length ? "OK" as const : "EMPTY" as const, count: googlePlaces.status === "fulfilled" ? googlePlaces.value.length : 0, code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined },
   ];
-  if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, 100), providerHealth };
+  if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, MAX_DISCOVERY_SOURCES), providerHealth };
   const fallback = await searchOpenStreetMap(query, location);
   return { provider: "OPENSTREETMAP", items: fallback, providerHealth: [...providerHealth, { name: "OpenStreetMap", status: fallback.length ? "OK" : "EMPTY", count: fallback.length }] };
 }
@@ -1250,14 +1340,27 @@ async function normalizeSourceBatch(query: string, location: string, sources: So
 }
 
 async function normalizeWithDeepSeek(query: string, location: string, sources: SourceResult[]): Promise<Candidate[]> {
-  if (sources.length <= 32) return normalizeSourceBatch(query, location, sources);
+  if (sources.length <= NORMALIZATION_BATCH_SIZE) return normalizeSourceBatch(query, location, sources);
   const ranked = [...sources].sort((left, right) => {
     const leftRelevance = overlapRatio(tokenSet(query), tokenSet(`${left.title} ${left.content} ${left.rawContent ?? ""}`));
     const rightRelevance = overlapRatio(tokenSet(query), tokenSet(`${right.title} ${right.content} ${right.rawContent ?? ""}`));
     return rightRelevance - leftRelevance || (right.score ?? 0) - (left.score ?? 0);
   });
-  const batches = [ranked.slice(0, 32), ranked.slice(32, 64), ranked.slice(64, 96)].filter((batch) => batch.length);
-  const normalized = await Promise.allSettled(batches.map((batch) => normalizeSourceBatch(query, location, batch)));
+  const firstByDomain = new Map<string, SourceResult>();
+  for (const source of ranked) {
+    const key = domainOf(source.url) || source.url;
+    if (!firstByDomain.has(key)) firstByDomain.set(key, source);
+  }
+  const diverseFirst = Array.from(firstByDomain.values());
+  const selectedKeys = new Set(diverseFirst.map((source) => source.url));
+  const selected = [...diverseFirst, ...ranked.filter((source) => !selectedKeys.has(source.url))].slice(0, MAX_NORMALIZATION_SOURCES);
+  const batches = Array.from({ length: Math.ceil(selected.length / NORMALIZATION_BATCH_SIZE) }, (_, index) =>
+    selected.slice(index * NORMALIZATION_BATCH_SIZE, (index + 1) * NORMALIZATION_BATCH_SIZE),
+  );
+  const normalized: PromiseSettledResult<Candidate[]>[] = [];
+  for (let index = 0; index < batches.length; index += 2) {
+    normalized.push(...await Promise.allSettled(batches.slice(index, index + 2).map((batch) => normalizeSourceBatch(query, location, batch))));
+  }
   const candidates = normalized.flatMap((result) => result.status === "fulfilled" ? result.value : []);
   return candidates.length ? candidates : fallbackCandidates(query, ranked);
 }
@@ -1281,7 +1384,15 @@ export async function POST(req: NextRequest) {
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
     const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
     const cleanedCandidates=enrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
-    const businessCandidates = cleanedCandidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query)).map((candidate) => {
+    const exactCandidates = cleanedCandidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query));
+    const exactKeys = new Set(exactCandidates.map((candidate) => `${candidate.sourceUrl}|${normalized(candidate.legalName)}`));
+    const relatedCandidates = cleanedCandidates.filter((candidate) =>
+      !exactKeys.has(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) && isRelatedBusinessCandidate(candidate, body.role ?? "", query),
+    );
+    const businessCandidates = [
+      ...exactCandidates.map((candidate) => ({ ...candidate, resultTier: "EXACT" as const })),
+      ...relatedCandidates.map((candidate) => ({ ...candidate, resultTier: "RELATED" as const })),
+    ].map((candidate) => {
       const standardized = standardizeVietnamAddress(candidate.address);
       const fullAddress = appendCityIfMissing(standardized.currentAddress, location);
       return { ...candidate, address: fullAddress, legacyAddress: standardized.legacyAddress, addressStandard: standardized.standard, district: standardized.standard ? "" : candidate.district };
@@ -1305,9 +1416,10 @@ export async function POST(req: NextRequest) {
     };
     const diagnostics = {
       plannedQueries: searchQueries.length,
-      executedTavilyQueries: process.env.TAVILY_API_KEY ? Math.min(searchQueries.length, 10) : 0,
+      executedTavilyQueries: process.env.TAVILY_API_KEY ? Math.min(searchQueries.length, 16) : 0,
       executedBraveQueries: process.env.BRAVE_SEARCH_API_KEY ? Math.min(searchQueries.length, braveMaximumQueries()) : 0,
-      normalizationBatches: Math.max(1, Math.ceil(Math.min(source.items.length, 96) / 32)),
+      normalizationBatches: Math.max(1, Math.ceil(Math.min(source.items.length, MAX_NORMALIZATION_SOURCES) / NORMALIZATION_BATCH_SIZE)),
+      normalizationSourceLimit: MAX_NORMALIZATION_SOURCES,
       collectedSources: source.items.length,
       sourceTypeBreakdown: source.items.reduce<Record<SourceEvidenceType,number>>((counts,item)=>{
         const type=item.sourceType??classifySource(item.url,item.title,item.content);counts[type]+=1;return counts;
@@ -1332,6 +1444,8 @@ export async function POST(req: NextRequest) {
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
       rejectedNoiseCandidates: enrichment.candidates.length - businessCandidates.length,
+      exactCandidates: exactCandidates.length,
+      relatedCandidates: relatedCandidates.length,
       rejectedInvalidIdentity: enrichment.candidates.length-cleanedCandidates.length,
       geocoding: geocoding.summary,
       locationQuality,

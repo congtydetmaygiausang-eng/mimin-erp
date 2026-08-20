@@ -86,4 +86,22 @@ describe("searchBraveWeb", () => {
     assert.equal(results.length, 1);
     assert.equal(results[0].title, "Công ty thành công");
   });
+
+  it("supports sixteen distinct area queries for a 50 km search", async () => {
+    let callCount = 0;
+    const fetcher = (async () => {
+      callCount += 1;
+      return successfulResponse(`Công ty ${callCount}`);
+    }) as typeof fetch;
+
+    const results = await searchBraveWeb({
+      apiKey: "test-key",
+      queries: Array.from({ length: 20 }, (_, index) => `vải cotton khu vực ${index}`),
+      maxQueries: 16,
+      fetcher,
+    });
+
+    assert.equal(callCount, 16);
+    assert.equal(results.length, 16);
+  });
 });

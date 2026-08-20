@@ -63,7 +63,7 @@ export async function searchBraveWeb(options: BraveSearchOptions): Promise<Brave
   const apiKey = options.apiKey.trim();
   if (!apiKey) return [];
 
-  const maximumQueries = boundedInteger(options.maxQueries, 6, 1, 10);
+  const maximumQueries = boundedInteger(options.maxQueries, 6, 1, 16);
   const resultsPerQuery = boundedInteger(options.resultsPerQuery, 10, 1, 20);
   const timeoutMs = boundedInteger(options.timeoutMs, 12_000, 1_000, 30_000);
   const fetcher = options.fetcher ?? fetch;
