@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2, Trash2, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AGENT_PERSONAS, AgentPersona, getDefaultAgentIdForRole } from "@/lib/agent-personas";
 import { useSession } from "@/components/session-provider";
 
@@ -71,16 +72,30 @@ function loadStoredMessages(): { savedAt: number; messages: Record<string, Messa
 
 export default function AgentsChatPage() {
   const { user } = useSession();
+  const searchParams = useSearchParams();
   const agentsList = Object.values(AGENT_PERSONAS);
   const [selectedAgent, setSelectedAgent] = useState<AgentPersona>(agentsList[0]);
   const [autoSelected, setAutoSelected] = useState(false);
 
-  // Vào trang thì tự mở đúng agent phụ trách vai trò đang đăng nhập (VD kế
-  // toán -> Hà, kho -> Lan) thay vì luôn mặc định Mavis cho mọi người. Chỉ tự
-  // chọn 1 LẦN lúc session load xong - nếu người dùng tự bấm sang tab khác
-  // thì tôn trọng lựa chọn đó, không tự đổi lại.
+  // Gộp làm 1 effect (không tách 2 effect riêng): tách riêng bị race - cả 2
+  // effect cùng chạy trong 1 lượt render với "autoSelected" đọc từ closure
+  // CŨ (false), nên effect theo vai trò luôn ghi đè mất kết quả của effect
+  // đọc ?agent= dù nó chạy sau và set autoSelected=true trước đó. Bấm card
+  // agent ở Dashboard Agents (/agents) hoặc nút "Chat với..." ở trang chi
+  // tiết đều điều hướng sang đây kèm ?agent=<id> - ưu tiên param này cao
+  // nhất; chỉ dùng agent mặc định theo vai trò khi KHÔNG có param.
   useEffect(() => {
-    if (autoSelected || !user) return;
+    if (autoSelected) return;
+    const agentIdFromUrl = searchParams.get("agent");
+    if (agentIdFromUrl) {
+      const match = agentsList.find((a) => a.agent_id === agentIdFromUrl);
+      if (match) {
+        setSelectedAgent(match);
+        setAutoSelected(true);
+      }
+      return;
+    }
+    if (!user) return;
     const defaultId = getDefaultAgentIdForRole(user.role);
     const match = agentsList.find((a) => a.agent_id === defaultId);
     if (match) setSelectedAgent(match);

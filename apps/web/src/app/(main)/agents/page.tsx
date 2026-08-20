@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bot, Search, Cpu, DollarSign, Clock, ChevronRight, AlertCircle, Activity } from "lucide-react";
+import { Bot, Search, Cpu, DollarSign, Clock, ChevronRight, AlertCircle, Activity, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { AGENT_PERSONAS, AGENT_IDS_V6, type AgentPersona } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
@@ -167,7 +167,11 @@ function AgentCard({ row, loading }: { row: AgentRow; loading: boolean }) {
   const hasImg = persona.avatar.startsWith("/avatars/");
 
   return (
-    <Link href={`/agents/${persona.agent_id}`}>
+    // Bấm card = vào thẳng chat riêng với agent này - trước đây trỏ tới
+    // /agents/[id] (trang thống kê calls/latency/cost), phải bấm thêm nút
+    // "Chat với ..." mới vào chat được, anh Sang muốn bấm 1 phát vào chat
+    // luôn, không qua trang trung gian.
+    <Link href={`/agents-chat?agent=${persona.agent_id}`}>
       <div className="card-hover group cursor-pointer overflow-hidden rounded-2xl border border-slate-200">
         {/* Avatar lớn - tông màu dịu khớp phông ảnh gốc, KHÔNG phủ gradient rực cả card nữa */}
         <div className={`relative h-44 ${cardBg}`}>
@@ -241,7 +245,7 @@ function AgentCard({ row, loading }: { row: AgentRow; loading: boolean }) {
 
           <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
             <span className="text-[10px] text-slate-500 group-hover:text-indigo-600 font-semibold flex items-center gap-1">
-              Chi tiết <ChevronRight className="w-3 h-3" />
+              <MessageSquare className="w-3 h-3" /> Chat ngay <ChevronRight className="w-3 h-3" />
             </span>
           </div>
         </div>
