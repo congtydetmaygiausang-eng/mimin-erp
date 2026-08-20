@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logAudit } from "@/lib/audit-log";
-import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
+import { streamText, generateText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
 import { google } from "@ai-sdk/google";
 import { AGENT_PERSONAS } from "@/lib/agent-personas";
 import { findUserByEmail } from "@/lib/users";
@@ -326,7 +326,7 @@ function convertToSimpleMessages(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { user_id, messages = [], agent_id: requestedAgentId } = body;
+    const { user_id, messages = [], agent_id: requestedAgentId, image } = body;
 
     if (!user_id || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -397,6 +397,48 @@ export async function POST(req: NextRequest) {
       module: "cai-dat",
       description: `[${persona.name}] ${userInput.slice(0, 150)}`,
     });
+
+    // ============================================
+    // ẢNH ĐÍNH KÈM - chỉ Gemini trong stack này hỗ trợ vision qua AI SDK, nên
+    // bất kể agent đang chọn chạy provider nào (Minh/Lan/Vy = DeepSeek/
+    // MiniMax, không đọc được ảnh), câu hỏi kèm ảnh đều xử lý qua Gemini
+    // flash - vẫn giữ system_prompt của agent đang chọn để trả lời đúng
+    // "chất" của agent đó, không phải luôn là Hà.
+    // ============================================
+    if (image?.dataUrl) {
+      const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
+      if (!geminiKey) {
+        return NextResponse.json({ error: "Chưa cấu hình Gemini API key - cần để phân tích ảnh" }, { status: 500 });
+      }
+      const systemPromptBase = buildSystemPrompt(persona, conversationSummary, user_id);
+      const startedAt = Date.now();
+      try {
+        const result = await generateText({
+          model: google("gemini-3.6-flash"),
+          system: systemPromptBase + "\n\nNgười dùng vừa gửi kèm 1 ảnh. Hãy quan sát kỹ nội dung ảnh rồi trả lời đúng câu hỏi/yêu cầu, mô tả cụ thể những gì thấy được (số liệu, chữ, mã hàng, lỗi vải... tuỳ ảnh) thay vì chung chung.",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: userInput || "Anh/chị gửi ảnh này, em phân tích giúp." },
+                { type: "image", image: image.dataUrl as string },
+              ],
+            },
+          ],
+        });
+        trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: false, model: "gemini-3.6-flash" });
+        return NextResponse.json({
+          agent: { id: agentId, name: persona.name, provider: "gemini", model: "gemini-3.6-flash" },
+          response: result.text,
+        });
+      } catch (err) {
+        trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: true, error_message: String(err), model: "gemini-3.6-flash" });
+        return NextResponse.json(
+          { error: `Lỗi khi phân tích ảnh: ${err instanceof Error ? err.message : String(err)}` },
+          { status: 500 }
+        );
+      }
+    }
 
     // ============================================
     // 2. SWITCH BY PROVIDER

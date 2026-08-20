@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2, Trash2, Volume2, VolumeX } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2, Trash2, Volume2, VolumeX, Paperclip, X, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AGENT_PERSONAS, AgentPersona, getDefaultAgentIdForRole } from "@/lib/agent-personas";
@@ -12,7 +12,16 @@ interface Message {
   sender: "user" | "agent";
   text: string;
   timestamp: string;
+  imageUrl?: string; // ảnh đính kèm (nếu tin nhắn user gửi kèm ảnh) - hiện lại làm bằng chứng đã gửi đúng ảnh gì
+  attachmentName?: string; // tên file Excel đính kèm (nếu có) - hiện badge nhỏ, không hiện cả bảng dữ liệu vào bong bóng chat
 }
+
+// Đính kèm đang chờ gửi - Excel được đọc thành text (gửi kèm câu hỏi qua
+// đường text bình thường, chạy được với cả 3 provider); ảnh gửi base64 qua
+// nhánh vision riêng (chỉ Gemini đọc được ảnh trong stack này).
+type PendingAttachment =
+  | { type: "excel"; fileName: string; textContext: string }
+  | { type: "image"; fileName: string; dataUrl: string; mimeType: string };
 
 // Ảnh avatar là ảnh nhân vật full-thân chụp trên phông màu riêng của từng
 // agent (studio gray cho Mavis, cam nhạt cho Minh...) - object-cover center
@@ -85,7 +94,12 @@ function markAgentMet(agentId: string) {
 // tin nhắn thật (handleSend) lẫn lời chào động theo dữ liệu (tier 3). Tách
 // riêng để không lặp lại đoạn parse SSE của nhánh Gemini (mỗi dòng "data: "
 // là 1 sự kiện nhỏ, không phải 1 khối JSON chat-completion duy nhất).
-async function callOrchestrator(userId: string, content: string, agentId: string): Promise<string> {
+async function callOrchestrator(
+  userId: string,
+  content: string,
+  agentId: string,
+  image?: { dataUrl: string; mimeType: string }
+): Promise<string> {
   const res = await fetch("/api/v1/orchestrator/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -93,6 +107,7 @@ async function callOrchestrator(userId: string, content: string, agentId: string
       user_id: userId,
       messages: [{ role: "user", content }],
       agent_id: agentId,
+      ...(image ? { image } : {}),
     }),
   });
 
@@ -203,6 +218,65 @@ export default function AgentsChatPage() {
   // lần mở chat theo đúng yêu cầu, không lưu vĩnh viễn như lịch sử hội thoại.
   const [dynamicGreetings, setDynamicGreetings] = useState<Record<string, string>>({});
   const [greetingLoadingId, setGreetingLoadingId] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<PendingAttachment | null>(null);
+  const [attaching, setAttaching] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Chọn file đính kèm - Excel (.xlsx/.xls/.csv) đọc thành text bảng để gửi
+  // kèm câu hỏi qua đường text bình thường (chạy được cả 3 provider). Ảnh
+  // đọc base64 để gửi qua nhánh vision riêng (chỉ Gemini đọc được ảnh).
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // cho phép chọn lại đúng file đó lần sau
+    if (!file) return;
+
+    const isExcel = /\.(xlsx|xls|csv)$/i.test(file.name);
+    const isImage = file.type.startsWith("image/");
+
+    setFileError(null);
+    if (!isExcel && !isImage) {
+      setFileError("Chỉ hỗ trợ file Excel (.xlsx, .xls, .csv) hoặc ảnh (jpg, png...).");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError("File quá lớn (tối đa 10MB).");
+      return;
+    }
+
+    setAttaching(true);
+    try {
+      if (isImage) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        setAttachment({ type: "image", fileName: file.name, dataUrl, mimeType: file.type });
+      } else {
+        // xlsx đọc được cả .csv luôn, không cần parser riêng.
+        const XLSX = await import("xlsx");
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const parts: string[] = [];
+        for (const sheetName of wb.SheetNames.slice(0, 5)) {
+          const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
+          // Giới hạn ~400 dòng/sheet để không gửi file khổng lồ vào prompt,
+          // tốn token vô ích và có thể vượt giới hạn context của model.
+          const lines = csv.split("\n").slice(0, 400);
+          parts.push(`--- Sheet "${sheetName}" ---\n${lines.join("\n")}`);
+        }
+        const textContext = `[File Excel đính kèm: "${file.name}"]\n${parts.join("\n\n")}`;
+        setAttachment({ type: "excel", fileName: file.name, textContext });
+      }
+    } catch (err) {
+      console.error(err);
+      setFileError(`Không đọc được file: ${err instanceof Error ? err.message : "lỗi không rõ"}`);
+    } finally {
+      setAttaching(false);
+    }
+  };
 
   // Đọc to 1 tin nhắn bằng Web Speech API (giọng trình duyệt - miễn phí,
   // không cần API key, làm được ngay). Huỷ câu đang đọc trước khi đọc câu
@@ -306,11 +380,19 @@ export default function AgentsChatPage() {
   }, [agentId, metAgents, hasRealHistory]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && !attachment) || loading) return;
     const userText = input.trim();
     const now = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    const currentAttachment = attachment;
 
-    const userMsg: Message = { id: Date.now().toString(), sender: "user", text: userText, timestamp: now };
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      sender: "user",
+      text: userText || (currentAttachment?.type === "image" ? "Phân tích ảnh này giúp em" : "Xem file đính kèm giúp em"),
+      timestamp: now,
+      imageUrl: currentAttachment?.type === "image" ? currentAttachment.dataUrl : undefined,
+      attachmentName: currentAttachment?.type === "excel" ? currentAttachment.fileName : undefined,
+    };
 
     setMessages((prev) => {
       const existing = prev[selectedAgent.agent_id] || [];
@@ -330,6 +412,7 @@ export default function AgentsChatPage() {
     markAgentMet(selectedAgent.agent_id);
     setMetAgents((prev) => (prev.has(selectedAgent.agent_id) ? prev : new Set(prev).add(selectedAgent.agent_id)));
     setInput("");
+    setAttachment(null);
     setLoading(true);
 
     try {
@@ -339,7 +422,19 @@ export default function AgentsChatPage() {
       // biến môi trường không có tiền tố NEXT_PUBLIC_ vào bundle client, đúng theo
       // bảo mật) -> mọi câu hỏi đều rơi vào nhánh mock, không bao giờ gọi AI thật.
       // FloatingAI.tsx đã dùng đúng route /api/v1/orchestrator/query này từ trước.
-      const responseText = await callOrchestrator(user?.email || "guest", userText, selectedAgent.agent_id);
+      // File Excel: nối text bảng đã đọc vào NỘI DUNG gửi cho AI (không hiện
+      // trong bong bóng chat, chỉ hiện badge tên file). Ảnh: gửi qua nhánh
+      // vision riêng của route (param image).
+      const contentToSend =
+        currentAttachment?.type === "excel"
+          ? `${currentAttachment.textContext}\n\nCâu hỏi: ${userMsg.text}`
+          : userMsg.text;
+      const responseText = await callOrchestrator(
+        user?.email || "guest",
+        contentToSend,
+        selectedAgent.agent_id,
+        currentAttachment?.type === "image" ? { dataUrl: currentAttachment.dataUrl, mimeType: currentAttachment.mimeType } : undefined
+      );
 
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -539,6 +634,14 @@ export default function AgentsChatPage() {
                   )}
                 </div>
                 <div className={`max-w-xl rounded-2xl p-4 text-sm ${isUser ? "bg-sky-500 text-white" : "bg-white border border-slate-200 text-slate-800 shadow-sm"}`}>
+                  {msg.imageUrl && (
+                    <img src={msg.imageUrl} alt="Ảnh đính kèm" className="max-w-full max-h-64 rounded-lg mb-2 border border-white/30" />
+                  )}
+                  {msg.attachmentName && (
+                    <div className={`flex items-center gap-1.5 text-xs mb-2 px-2 py-1 rounded-lg w-fit ${isUser ? "bg-white/15" : "bg-slate-100"}`}>
+                      <FileSpreadsheet className="w-3.5 h-3.5" /> {msg.attachmentName}
+                    </div>
+                  )}
                   <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                   <div className={`flex items-center gap-2 mt-1 ${isUser ? "justify-end" : "justify-between"}`}>
                     {!isUser && (
@@ -580,18 +683,60 @@ export default function AgentsChatPage() {
 
         {/* Khung nhập liệu */}
         <div className="p-4 bg-white border-t border-slate-200">
+          {fileError && (
+            <div className="flex items-center justify-between gap-2 mb-2 px-3 py-2 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
+              <span>{fileError}</span>
+              <button onClick={() => setFileError(null)} className="text-rose-400 hover:text-rose-700 shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          {attachment && (
+            <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl w-fit">
+              {attachment.type === "image" ? (
+                <img src={attachment.dataUrl} alt="preview" className="w-8 h-8 rounded object-cover" />
+              ) : (
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              )}
+              <span className="text-xs text-slate-700 max-w-[200px] truncate">{attachment.fileName}</span>
+              <button onClick={() => setAttachment(null)} className="text-slate-400 hover:text-rose-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={attaching}
+              title="Đính kèm ảnh hoặc file Excel để agent phân tích"
+              className="px-3 py-2.5 border border-slate-300 rounded-xl text-slate-500 hover:text-sky-600 hover:border-sky-300 transition disabled:opacity-50 shrink-0"
+            >
+              {attaching ? <Sparkles className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+            </button>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={`Hỏi ${selectedAgent.name} về ${selectedAgent.role_title.toLowerCase()}...`}
+              placeholder={
+                attachment
+                  ? attachment.type === "image"
+                    ? "Hỏi thêm về ảnh này (hoặc để trống, bấm Gửi)..."
+                    : "Hỏi thêm về file này (hoặc để trống, bấm Gửi)..."
+                  : `Hỏi ${selectedAgent.name} về ${selectedAgent.role_title.toLowerCase()}...`
+              }
               className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl outline-none focus:border-sky-500 text-sm"
             />
             <button
               onClick={handleSend}
-              disabled={loading || !input.trim()}
+              disabled={loading || (!input.trim() && !attachment)}
               className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold text-sm rounded-xl flex items-center gap-2 transition"
             >
               <Send className="w-4 h-4" /> Gửi
