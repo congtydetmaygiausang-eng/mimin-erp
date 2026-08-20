@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
+import { AGENT_PERSONAS } from "@/lib/agent-personas";
 
 interface ChatMessage {
   id: string;
@@ -116,6 +117,14 @@ export function FloatingAI() {
   const isVyRoute = !isKhoRoute && VY_ROUTES.some((r) => pathname?.startsWith(r));
   const mode: RouteMode = isKhoRoute ? "kho" : isVyRoute ? "vy" : "default";
   const theme = THEME[mode];
+
+  // Hiện đúng "nhân vật" thật của agent phụ trách (emoji riêng từng agent
+  // trong agent-personas.ts) thay vì icon Lucide chung chung - trước đây
+  // bong bóng nổi luôn hiện icon trừu tượng (Warehouse/MessageSquare/
+  // Sparkles), không phân biệt được đang nói chuyện với "ai". Bỏ qua giá trị
+  // "/avatars/..." (file ảnh chưa có thật, xem Mavis) - chỉ dùng emoji.
+  const agentAvatar = theme.agentId ? AGENT_PERSONAS[theme.agentId]?.avatar : undefined;
+  const hasCharacterAvatar = !!agentAvatar && !agentAvatar.startsWith("/");
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -266,7 +275,11 @@ export function FloatingAI() {
           )}
           {/* Main bubble */}
           <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${theme.bubbleGradient} shadow-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${theme.iconTextClass}`}>
-            <theme.BubbleIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" />
+            {hasCharacterAvatar ? (
+              <span className="text-3xl sm:text-4xl drop-shadow" role="img" aria-label={theme.botName}>{agentAvatar}</span>
+            ) : (
+              <theme.BubbleIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" />
+            )}
           </div>
           {/* Label tooltip */}
           <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
@@ -293,7 +306,11 @@ export function FloatingAI() {
             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-800" style={{ background: theme.headerBg }}>
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center shadow-inner">
-                  <theme.BubbleIcon className={`w-6 h-6 ${theme.iconTextClass}`} />
+                  {hasCharacterAvatar ? (
+                    <span className="text-xl" role="img" aria-label={theme.botName}>{agentAvatar}</span>
+                  ) : (
+                    <theme.BubbleIcon className={`w-6 h-6 ${theme.iconTextClass}`} />
+                  )}
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white shadow-sm" />
               </div>
@@ -331,7 +348,7 @@ export function FloatingAI() {
               {messages.length === 0 && (
                 <div className="flex gap-2.5">
                   <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.badgeGradient} flex items-center justify-center ${theme.iconTextClass} flex-shrink-0 mt-0.5 shadow-md`}>
-                    <Sparkles className="w-4 h-4" />
+                    {hasCharacterAvatar ? <span className="text-base" role="img" aria-label={theme.botName}>{agentAvatar}</span> : <Sparkles className="w-4 h-4" />}
                   </div>
                   <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-md text-sm leading-relaxed bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700/50">
                     <div className="whitespace-pre-wrap">{theme.welcomeText.split("**").map((part: string, i: number) =>
@@ -342,6 +359,12 @@ export function FloatingAI() {
               )}
               {messages.map((msg) => {
                 const textContent = msg.content || "";
+                // Ở mode "default" (Mavis/bộ định tuyến), agent trả lời thật
+                // sự (msg.agent) có thể khác agent mặc định của trang tuỳ
+                // câu hỏi - dùng avatar của AGENT THẬT đã trả lời, không phải
+                // avatar cố định của theme trang.
+                const msgAvatar = msg.agent?.id ? AGENT_PERSONAS[msg.agent.id]?.avatar : agentAvatar;
+                const msgHasAvatar = !!msgAvatar && !msgAvatar.startsWith("/");
                 const agentBadge = msg.agent ? (
                   <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-semibold opacity-70">
                     <Sparkles className="w-3 h-3" />
@@ -358,7 +381,7 @@ export function FloatingAI() {
                   <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     {msg.role === "assistant" && (
                       <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${theme.badgeGradient} flex items-center justify-center ${theme.iconTextClass} flex-shrink-0 mt-0.5 shadow-md`}>
-                        <Sparkles className="w-4 h-4" />
+                        {msgHasAvatar ? <span className="text-base" role="img" aria-label={msg.agent?.name}>{msgAvatar}</span> : <Sparkles className="w-4 h-4" />}
                       </div>
                     )}
                     <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${

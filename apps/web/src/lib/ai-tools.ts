@@ -202,12 +202,25 @@ export const getAllTools = () => {
   };
 };
 
+// Domain "thật" khai báo trong agent-personas.ts KHÔNG khớp với 4 domain hàm
+// này từng nhận diện (chỉ ton-kho/cong-no/ho-so-nhan-su/don-hang/all) - hậu
+// quả: Minh (domain lenh-cat/ke-hoach-san-xuat/tien-do-chuyen-may/...) và
+// MIMIN Help (domain phan-tich-logic/toi-uu-hoa/...) gần như 0 tool dùng
+// được dù allowed_domains đã khai báo đúng ý định. Nhóm các domain liên quan
+// để khớp đúng, không đổi allowed_domains gốc (giữ ý nghĩa mô tả rõ ràng).
+const PRODUCTION_DOMAINS = ["lenh-cat", "ke-hoach-san-xuat", "tien-do-chuyen-may", "chat-luong-qc", "thiet-bi-may", "gia-cong-ngoai"];
+const ANALYTICAL_DOMAINS = ["phan-tich-logic", "toi-uu-hoa", "help-desk", "bao-cao", "realtime", "bang-dieu-hanh-sx"];
+
 export const getToolsForDomain = (domains: string[]) => {
   // Trả về JSON definitions cho OpenAI compatible APIs (DeepSeek, MiniMax)
   const tools = [];
+  const hasAll = domains.includes("all");
+  const hasProduction = hasAll || domains.some((d) => PRODUCTION_DOMAINS.includes(d));
+  const hasAnalytical = hasAll || domains.some((d) => ANALYTICAL_DOMAINS.includes(d));
 
-  // Kho domains
-  if (domains.includes("ton-kho") || domains.includes("all")) {
+  // Kho domains - Minh (sản xuất) và MIMIN Help (phân tích chéo module) cũng
+  // cần tra tồn kho dù domain không ghi trực tiếp "ton-kho".
+  if (hasAll || domains.includes("ton-kho") || hasProduction || hasAnalytical) {
     tools.push({
       type: "function",
       function: {
@@ -224,7 +237,7 @@ export const getToolsForDomain = (domains: string[]) => {
   }
 
   // Kế toán, Tài chính, Bán hàng domains
-  if (domains.includes("cong-no") || domains.includes("all")) {
+  if (hasAll || domains.includes("cong-no") || hasAnalytical) {
     tools.push({
       type: "function",
       function: {
@@ -241,7 +254,7 @@ export const getToolsForDomain = (domains: string[]) => {
   }
 
   // Nhân sự domains
-  if (domains.includes("ho-so-nhan-su") || domains.includes("all")) {
+  if (hasAll || domains.includes("ho-so-nhan-su") || hasAnalytical) {
     tools.push({
       type: "function",
       function: {
@@ -273,7 +286,7 @@ export const getToolsForDomain = (domains: string[]) => {
   });
 
   // Action Tools (HITL)
-  if (domains.includes("don-hang") || domains.includes("all")) {
+  if (hasAll || domains.includes("don-hang")) {
     tools.push({
       type: "function",
       function: {
@@ -293,6 +306,86 @@ export const getToolsForDomain = (domains: string[]) => {
         }
       }
     });
+  }
+
+  // 4 tool hành động sản xuất (tạo lệnh cắt/sửa công đoạn/xoá phiếu/duyệt
+  // phiếu) TRƯỚC ĐÂY chỉ có trong getAllTools() (nhánh Gemini), domain nào
+  // cũng không có trong hàm này -> Minh (agent chính phụ trách sản xuất,
+  // chạy DeepSeek) không bao giờ gọi được dù đúng nghiệp vụ của mình.
+  if (hasProduction) {
+    tools.push(
+      {
+        type: "function",
+        function: {
+          name: "createLenhCat",
+          description: "Tạo lệnh cắt mới (chỉ admin/planner). Thực thi ngay và tự động gửi thông báo cho các bộ phận liên quan.",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              maKH: { type: "string", description: "Mã khách hàng" },
+              tenSP: { type: "string", description: "Tên sản phẩm" },
+              tongSL: { type: "number", description: "Tổng số lượng" },
+              hanHoanThanh: { type: "string", description: "Hạn hoàn thành (YYYY-MM-DD)" },
+              ghiChu: { type: "string", description: "Ghi chú (optional)" }
+            },
+            required: ["role", "maKH", "tenSP", "tongSL", "hanHoanThanh"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "updateCongDoan",
+          description: "Cập nhật trạng thái công đoạn (cắt/may/ủi/đóng gói). Trả về yêu cầu xác nhận (HITL).",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              phanCongId: { type: "string", description: "ID phân công cần cập nhật" },
+              trangThai: { type: "string", enum: ["Mới giao", "Đang làm", "Hoàn thành", "Tạm dừng", "Đã thanh toán"], description: "Trạng thái mới" },
+              ghiChu: { type: "string", description: "Ghi chú (optional)" }
+            },
+            required: ["role", "phanCongId", "trangThai"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "deletePhieu",
+          description: "Xóa phiếu (lệnh cắt, phân công, NCC...). CHỈ admin. CẢNH BÁO: không thể hoàn tác. Trả về yêu cầu xác nhận (HITL).",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              loaiPhieu: { type: "string", enum: ["lenh-cat", "phan-cong", "khach-hang", "nha-cung-cap"], description: "Loại phiếu cần xóa" },
+              phieuId: { type: "string", description: "ID phiếu cần xóa" },
+              lyDo: { type: "string", description: "Lý do xóa (bắt buộc, để audit)" }
+            },
+            required: ["role", "loaiPhieu", "phieuId", "lyDo"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "approvePhieu",
+          description: "Duyệt phiếu (lệnh cắt, NCC, bảng lương). Trả về yêu cầu xác nhận (HITL).",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              loaiPhieu: { type: "string", enum: ["lenh-cat", "nha-cung-cap", "bang-luong", "cong-no"], description: "Loại phiếu cần duyệt" },
+              phieuId: { type: "string", description: "ID phiếu cần duyệt" },
+              hanhDong: { type: "string", enum: ["duyet", "tu-choi"], description: "Hành động: duyệt hoặc từ chối" },
+              lyDo: { type: "string", description: "Lý do (bắt buộc nếu từ chối)" }
+            },
+            required: ["role", "loaiPhieu", "phieuId", "hanhDong"]
+          }
+        }
+      }
+    );
   }
 
   return tools;
