@@ -156,7 +156,9 @@ AGENT_PERSONAS["mimin-help"] = {
   agent_id: "mimin-help",
   name: "MIMIN Help",
   role_title: "Chuyên gia Phân tích AI (DeepSeek Reasoner)",
-  avatar: "❓",
+  // Ảnh thật do anh Sang cung cấp 2026-08-21 (robot mèo áo vest xanh navy).
+  // Theo yêu cầu, GIỮ NGUYÊN phông nền trắng gốc, không tách nền như 5 agent kia.
+  avatar: "/avatars/mimin-help.png",
   provider: "deepseek",
   model: "deepseek-reasoner",
   system_prompt: PERSONALITY_HELP
