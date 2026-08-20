@@ -28,6 +28,8 @@ export interface BraveSearchOptions {
 }
 
 const BRAVE_WEB_SEARCH_ENDPOINT = "https://api.search.brave.com/res/v1/web/search";
+const BRAVE_QUERY_MAX_CHARACTERS = 400;
+const BRAVE_QUERY_MAX_WORDS = 50;
 
 function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -47,6 +49,16 @@ function stringArray(value: unknown, maximumItems: number, maximumLength: number
     .slice(0, maximumItems);
 }
 
+function normalizeBraveQuery(value: string): string {
+  return `${value.trim()} Việt Nam`
+    .split(/\s+/u)
+    .filter(Boolean)
+    .slice(0, BRAVE_QUERY_MAX_WORDS)
+    .join(" ")
+    .slice(0, BRAVE_QUERY_MAX_CHARACTERS)
+    .trim();
+}
+
 export async function searchBraveWeb(options: BraveSearchOptions): Promise<BraveWebSearchItem[]> {
   const apiKey = options.apiKey.trim();
   if (!apiKey) return [];
@@ -59,22 +71,29 @@ export async function searchBraveWeb(options: BraveSearchOptions): Promise<Brave
 
   const batches = await Promise.allSettled(queries.map(async (query) => {
     const params = new URLSearchParams({
-      q: `${query} Việt Nam`,
+      q: normalizeBraveQuery(query),
       count: String(resultsPerQuery),
-      country: "vn",
       search_lang: "vi",
       safesearch: "moderate",
-      spellcheck: "1",
+      spellcheck: "true",
       extra_snippets: "true",
     });
-    const response = await fetcher(`${BRAVE_WEB_SEARCH_ENDPOINT}?${params}`, {
+    const request = (requestParams: URLSearchParams) => fetcher(`${BRAVE_WEB_SEARCH_ENDPOINT}?${requestParams}`, {
       headers: {
         Accept: "application/json",
         "Accept-Encoding": "gzip",
+        "X-Loc-Country": "VN",
         "X-Subscription-Token": apiKey,
       },
       signal: AbortSignal.timeout(timeoutMs),
     });
+    let response = await request(params);
+    if (response.status === 422) {
+      response = await request(new URLSearchParams({
+        q: params.get("q") ?? "",
+        count: String(resultsPerQuery),
+      }));
+    }
     if (!response.ok) throw new Error(`Brave HTTP ${response.status}`);
 
     const data = await response.json() as BraveWebSearchResponse;
