@@ -6,6 +6,9 @@ const corsHeaders = {
 
 interface GatewayRequest { request_id: string; urls: string[] }
 
+const READER_WAKE_TIMEOUT_MS = 60_000;
+const READER_REQUEST_TIMEOUT_MS = 45_000;
+
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 }
@@ -57,17 +60,26 @@ Deno.serve(async (request) => {
 
   try {
     const body = JSON.stringify(payload);
+    // Render Free sleeps when idle. Wake it through the readiness endpoint first
+    // so cold-start time does not consume the actual extraction budget.
+    const ready = await fetch(`${readerUrl}/readyz`, {
+      signal: AbortSignal.timeout(READER_WAKE_TIMEOUT_MS),
+    });
+    if (!ready.ok) return json(503, { error: "COMPANY_READER_NOT_READY" });
     const timestamp = Math.floor(Date.now() / 1_000).toString();
     const signature = await sign(readerToken, timestamp, body);
     const upstream = await fetch(`${readerUrl}/v1/company-reader/read`, {
       method: "POST",
       headers: { Authorization: `Bearer ${readerToken}`, "Content-Type": "application/json", "X-Mimin-Client": "mimin-supabase-gateway", "X-Mimin-Timestamp": timestamp, "X-Mimin-Signature": signature },
       body,
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(READER_REQUEST_TIMEOUT_MS),
     });
     const upstreamBody = await upstream.json().catch(() => ({ error: "INVALID_UPSTREAM_RESPONSE" }));
     return json(upstream.status, upstreamBody);
-  } catch {
-    return json(502, { error: "COMPANY_READER_UNAVAILABLE" });
+  } catch (error) {
+    const code = error instanceof DOMException && error.name === "TimeoutError"
+      ? "COMPANY_READER_TIMEOUT"
+      : "COMPANY_READER_UNAVAILABLE";
+    return json(502, { error: code });
   }
 });
