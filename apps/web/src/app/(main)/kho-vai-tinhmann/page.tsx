@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Package, AlertCircle, CheckCircle2, TrendingDown, TrendingUp,
-  Scissors, Calculator, FileText, RefreshCw, BarChart3, Plus, X
+  Scissors, Calculator, FileText, RefreshCw, BarChart3, Plus, X,
+  History, Search, ArrowDownToLine, ArrowUpFromLine, Filter
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
@@ -12,6 +13,7 @@ import {
   getAllInventory, truTonKho, nhapKho, resetInventory, resetInventoryToZero, updateVaiInfo,
   tinhMan, parseSize, goiYVai, syncInventoryWithSupabase,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
+  addNewVai, getVaiImages, saveVaiImage,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
 import { KHO_VAI, NHA_CUNG_CAP, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
@@ -29,7 +31,10 @@ const TINH_MAN_PHAN_LOAI = [
 export default function KhoVaiPage() {
   const { user } = useSession();
   const [inventory, setInventory] = useState<KhoVai[]>([]);
-  const [tab, setTab] = useState<"tonkho" | "tinhman" | "baocao" | "danhmuc">("tonkho");
+  const [tab, setTab] = useState<"tonkho" | "tinhman" | "baocao" | "danhmuc" | "lichsu">("tonkho");
+  const [searchVai, setSearchVai] = useState("");
+  const [filterLoaiGD, setFilterLoaiGD] = useState<"TAT_CA" | "NHAP" | "XUAT">("TAT_CA");
+  const [giaoDich, setGiaoDich] = useState<any[]>([]);
   const [selected, setSelected] = useState<string>("Áo thun cotton");
   const [soLuong, setSoLuong] = useState(500);
   const [sizeStr, setSizeStr] = useState("M, L, XL, 2XL");
@@ -39,6 +44,17 @@ export default function KhoVaiPage() {
   const [uploadingVT, setUploadingVT] = useState<string | null>(null);
   const [editingVT, setEditingVT] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
+  const [vaiImages, setVaiImages] = useState<Record<string, string>>({});
+  // Form tạo mã vải mới — bind thật
+  const [newVaiForm, setNewVaiForm] = useState({
+    tenVT: "",
+    mauSac: "",
+    donGia: 0,
+    tonToiThieu: 50,
+    ghiChu: "",
+    previewImg: "",
+  });
+  const newVaiImgRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,11 +63,11 @@ export default function KhoVaiPage() {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const url = ev.target?.result as string;
+        // Persist ảnh vào localStorage — không mất khi F5
+        saveVaiImage(uploadingVT, url);
+        setVaiImages(prev => ({ ...prev, [uploadingVT]: url }));
         setInventory(prev => prev.map(v => v.maVT === uploadingVT ? { ...v, imageUrl: url } as any : v));
-        // Mock save to KHO_VAI
-        const idx = KHO_VAI.findIndex(x => x.maVT === uploadingVT);
-        if (idx !== -1) (KHO_VAI as any)[idx].imageUrl = url;
-        toast.success("Đã tải ảnh lên thành công!");
+        toast.success("Đã tải ảnh lên và lưu thành công!");
       };
       reader.readAsDataURL(file);
     }
@@ -59,8 +75,18 @@ export default function KhoVaiPage() {
     setUploadingVT(null);
   };
 
+  const loadGiaoDich = () => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem("mimin_kho_vai_v2");
+      setGiaoDich(raw ? JSON.parse(raw) : []);
+    } catch { setGiaoDich([]); }
+  };
+
   useEffect(() => {
     setInventory(getAllInventory());
+    setVaiImages(getVaiImages()); // Load ảnh persistent từ localStorage
+    loadGiaoDich();
     syncInventoryWithSupabase().then(() => {
       setInventory(getAllInventory());
     });
@@ -68,6 +94,7 @@ export default function KhoVaiPage() {
 
   const refresh = () => {
     setInventory(getAllInventory());
+    loadGiaoDich();
   };
 
   // Tính màn
@@ -161,12 +188,13 @@ export default function KhoVaiPage() {
           </div>
 
           {/* Tabs (inline trong header gradient) */}
-          <div className="flex gap-2 bg-white/15 backdrop-blur-sm rounded-xl p-1.5 w-fit mt-5 border border-white/20">
+          <div className="flex flex-wrap gap-2 bg-white/15 backdrop-blur-sm rounded-xl p-1.5 w-fit mt-5 border border-white/20">
             {[
               { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
               { key: "tinhman", label: "Định mức vải", icon: <Calculator className="w-4 h-4" /> },
               { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
-              { key: "danhmuc", label: "Quản lý danh mục", icon: <Plus className="w-4 h-4" /> },
+              { key: "lichsu", label: "Lịch sử GD", icon: <History className="w-4 h-4" /> },
+              { key: "danhmuc", label: "Danh mục", icon: <Plus className="w-4 h-4" /> },
             ].map((t) => (
               <button
                 key={t.key}
@@ -178,6 +206,11 @@ export default function KhoVaiPage() {
                 }`}
               >
                 {t.icon} {t.label}
+                {t.key === "lichsu" && giaoDich.length > 0 && (
+                  <span className="bg-white/30 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {giaoDich.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -205,8 +238,27 @@ export default function KhoVaiPage() {
               <RefreshCw className="w-4 h-4" /> Refresh
             </button>
           </div>
+          {/* Search bar Tồn kho */}
+          <div className="card p-3 flex items-center gap-2">
+            <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Tìm tên vải, màu sắc..."
+              className="flex-1 text-sm bg-transparent outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400"
+              value={searchVai}
+              onChange={(e) => setSearchVai(e.target.value)}
+            />
+            {searchVai && (
+              <button onClick={() => setSearchVai("")} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <span className="text-xs text-slate-400 ml-2">
+              {inventory.filter(v => !searchVai || v.tenVT.toLowerCase().includes(searchVai.toLowerCase()) || v.mauSac?.toLowerCase().includes(searchVai.toLowerCase())).length}/{inventory.length} loại
+            </span>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-4">
-            {inventory.slice(0, 20).map((v, index) => {
+            {inventory.filter(v => !searchVai || v.tenVT.toLowerCase().includes(searchVai.toLowerCase()) || v.mauSac?.toLowerCase().includes(searchVai.toLowerCase())).map((v, index) => {
               const getTonKhoColor = (tonKho: number) => {
                 if (tonKho < 100) return "text-red-600 dark:text-red-500";
                 if (tonKho >= 300) return "text-emerald-600 dark:text-emerald-500";
@@ -235,12 +287,12 @@ export default function KhoVaiPage() {
                 <div className="flex gap-4 items-center mb-4">
                   <div 
                     className="w-16 h-16 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group/img flex items-center justify-center bg-slate-100 dark:bg-slate-800 transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: (v as any).imageUrl ? 'transparent' : getColorHex(v.mauSac) }}
+                    style={{ backgroundColor: (vaiImages[v.maVT] || (v as any).imageUrl) ? 'transparent' : getColorHex(v.mauSac) }}
                     onClick={() => { setUploadingVT(v.maVT); fileInputRef.current?.click(); }}
                     title="Bấm để tải ảnh lên"
                   >
-                    {(v as any).imageUrl ? (
-                      <img src={(v as any).imageUrl} alt={v.mauSac} className="w-full h-full object-cover" />
+                    {(vaiImages[v.maVT] || (v as any).imageUrl) ? (
+                      <img src={vaiImages[v.maVT] || (v as any).imageUrl} alt={v.mauSac} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-[10px] text-white/90 font-bold opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md">+Ảnh</span>
                     )}
@@ -363,9 +415,6 @@ export default function KhoVaiPage() {
               </div>
               );
             })}
-          </div>
-          <div className="p-4 text-sm text-slate-500 font-medium text-center mt-2">
-            Đang hiển thị 20/{inventory.length} loại vải
           </div>
         </>
       )}
@@ -523,102 +572,323 @@ export default function KhoVaiPage() {
         </>
       )}
 
+      {/* Tab: Lịch sử Giao dịch */}
+      {tab === "lichsu" && (
+        <>
+          {/* Filter bar */}
+          <div className="card p-3 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-400">
+              <Filter className="w-4 h-4" /> Lọc:
+            </div>
+            {(["TAT_CA", "NHAP", "XUAT"] as const).map((loai) => (
+              <button
+                key={loai}
+                onClick={() => setFilterLoaiGD(loai)}
+                className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${
+                  filterLoaiGD === loai
+                    ? loai === "NHAP" ? "bg-emerald-500 text-white shadow-sm" : loai === "XUAT" ? "bg-rose-500 text-white shadow-sm" : "bg-teal-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                }`}
+              >
+                {loai === "TAT_CA" ? "Tất cả" : loai === "NHAP" ? "📥 Nhập kho" : "📤 Xuất kho"}
+                {loai !== "TAT_CA" && (
+                  <span className="ml-1.5 opacity-80">
+                    ({giaoDich.filter(g => g.loai === loai).length})
+                  </span>
+                )}
+              </button>
+            ))}
+            <div className="flex items-center gap-2 ml-auto">
+              <Search className="w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Tìm mã vải, tên..."
+                className="text-sm bg-transparent outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400"
+                value={searchVai}
+                onChange={(e) => setSearchVai(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* KPI tổng hợp */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="card p-3 text-center">
+              <div className="text-xs text-slate-500 mb-1">Tổng GD</div>
+              <div className="text-2xl font-black text-slate-800 dark:text-white">{giaoDich.length}</div>
+            </div>
+            <div className="card p-3 text-center">
+              <div className="text-xs text-slate-500 mb-1 flex items-center justify-center gap-1"><ArrowDownToLine className="w-3 h-3 text-emerald-500" />Nhập</div>
+              <div className="text-2xl font-black text-emerald-600">{giaoDich.filter(g => g.loai === "NHAP").length}</div>
+            </div>
+            <div className="card p-3 text-center">
+              <div className="text-xs text-slate-500 mb-1 flex items-center justify-center gap-1"><ArrowUpFromLine className="w-3 h-3 text-rose-500" />Xuất</div>
+              <div className="text-2xl font-black text-rose-600">{giaoDich.filter(g => g.loai === "XUAT").length}</div>
+            </div>
+            <div className="card p-3 text-center">
+              <div className="text-xs text-slate-500 mb-1">Tổng giá trị nhập</div>
+              <div className="text-lg font-black text-violet-600">
+                {formatVNDShort(giaoDich.filter(g => g.loai === "NHAP").reduce((s: number, g: any) => s + (g.thanhTien || 0), 0))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bảng giao dịch */}
+          <div className="card overflow-hidden">
+            {giaoDich.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                <History className="w-12 h-12 mb-3 opacity-30" />
+                <p className="font-medium">Chưa có giao dịch nào</p>
+                <p className="text-sm mt-1">Nhập kho hoặc xuất kho để thấy lịch sử ở đây</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <tr>
+                      <th className="py-3 px-4 text-left font-semibold">Mã GD</th>
+                      <th className="py-3 px-4 text-left font-semibold">Loại</th>
+                      <th className="py-3 px-4 text-left font-semibold">Ngày</th>
+                      <th className="py-3 px-4 text-left font-semibold">Mã Vải</th>
+                      <th className="py-3 px-4 text-left font-semibold">Tên Vải</th>
+                      <th className="py-3 px-4 text-right font-semibold">SL (kg)</th>
+                      <th className="py-3 px-4 text-right font-semibold">Đơn giá</th>
+                      <th className="py-3 px-4 text-right font-semibold">Thành tiền</th>
+                      <th className="py-3 px-4 text-left font-semibold">Nguồn / Ghi chú</th>
+                      <th className="py-3 px-4 text-left font-semibold">Người TH</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {giaoDich
+                      .filter(g => {
+                        const matchLoai = filterLoaiGD === "TAT_CA" || g.loai === filterLoaiGD;
+                        const matchSearch = !searchVai || (g.maVT || "").toLowerCase().includes(searchVai.toLowerCase()) || (g.tenVT || "").toLowerCase().includes(searchVai.toLowerCase());
+                        return matchLoai && matchSearch;
+                      })
+                      .sort((a: any, b: any) => (b.ngay || "").localeCompare(a.ngay || ""))
+                      .map((g: any, idx: number) => (
+                        <tr key={g.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="py-2.5 px-4 font-mono text-xs text-slate-500">{g.id || `GD-${idx + 1}`}</td>
+                          <td className="py-2.5 px-4">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                              g.loai === "NHAP"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                : "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400"
+                            }`}>
+                              {g.loai === "NHAP" ? <ArrowDownToLine className="w-3 h-3" /> : <ArrowUpFromLine className="w-3 h-3" />}
+                              {g.loai}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{g.ngay || "—"}</td>
+                          <td className="py-2.5 px-4 font-mono text-xs text-teal-700 dark:text-teal-400">{g.maVT}</td>
+                          <td className="py-2.5 px-4 font-medium text-slate-800 dark:text-slate-200 max-w-[160px] truncate" title={g.tenVT}>{g.tenVT}</td>
+                          <td className="py-2.5 px-4 text-right font-bold">{(g.soLuong || 0).toLocaleString()} {g.donVi || "kg"}</td>
+                          <td className="py-2.5 px-4 text-right text-xs text-slate-500">{(g.donGia || 0).toLocaleString()}đ</td>
+                          <td className={`py-2.5 px-4 text-right font-bold ${
+                            g.loai === "NHAP" ? "text-emerald-600" : "text-rose-600"
+                          }`}>
+                            {formatVNDShort(g.thanhTien || 0)}
+                          </td>
+                          <td className="py-2.5 px-4 text-xs text-slate-500 max-w-[140px] truncate" title={g.nguonNhap || g.ghiChu}>
+                            {g.nguonNhap || g.ghiChu || "—"}
+                          </td>
+                          <td className="py-2.5 px-4 text-xs text-slate-500">{g.nguoiThucHien || "—"}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Tab: Quản lý danh mục */}
       {tab === "danhmuc" && (
-        <div className="card p-6 min-h-[400px]">
-          {!showTaoMa ? (
-            <div className="flex flex-col items-center justify-center text-center py-10">
-              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4 shadow-sm">
-                <Plus className="w-8 h-8" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">Thêm & Quản lý Mã Vải Mới</h2>
-              <p className="text-slate-500 max-w-md mx-auto mb-6">
-                Giao diện này cho phép anh tạo mã vải mới (VD: VAI-30), cập nhật tên vải, chọn hình ảnh màu sắc, và cài đặt mức tồn tối thiểu để AI tự động cảnh báo.
-              </p>
-              <button 
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-lg border border-blue-700/50" 
-                onClick={() => setShowTaoMa(true)}
-              >
-                <Plus className="w-6 h-6" /> Bắt đầu tạo mã vải
-              </button>
+        <div className="space-y-4">
+          {/* Danh sách vải hiện có */}
+          <div className="card p-4">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-3">
+              <Package className="w-4 h-4 text-teal-600" /> Danh sách mã vải ({inventory.length} loại)
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500">
+                  <tr>
+                    <th className="py-2 px-3 text-left">Mã Vải</th>
+                    <th className="py-2 px-3 text-left">Tên Vải</th>
+                    <th className="py-2 px-3 text-left">Màu</th>
+                    <th className="py-2 px-3 text-right">Tồn (kg)</th>
+                    <th className="py-2 px-3 text-right">Đơn giá</th>
+                    <th className="py-2 px-3 text-center">Ảnh</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {inventory.map(v => (
+                    <tr key={v.maVT} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="py-2 px-3 font-mono text-xs text-teal-700 dark:text-teal-400 font-bold">{v.maVT}</td>
+                      <td className="py-2 px-3 font-medium">{v.tenVT}</td>
+                      <td className="py-2 px-3 text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: getColorHex(v.mauSac) }} />
+                          {v.mauSac}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-right font-bold">{v.tonKho.toFixed(0)}</td>
+                      <td className="py-2 px-3 text-right text-xs">{v.donGia.toLocaleString()}đ</td>
+                      <td className="py-2 px-3 text-center">
+                        {vaiImages[v.maVT] ? (
+                          <img src={vaiImages[v.maVT]} className="w-8 h-8 rounded object-cover mx-auto" alt={v.tenVT} />
+                        ) : (
+                          <span className="text-slate-300 text-xs">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ) : (
-            <div className="max-w-2xl mx-auto animate-fade-in">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                  <Package className="w-5 h-5 text-blue-500" /> Tạo mã vải mới
-                </h3>
-                <button onClick={() => setShowTaoMa(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
-                  <X className="w-5 h-5 text-slate-500" />
-                </button>
-              </div>
-              
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Mã Vải (Tự động)</label>
-                    <input type="text" className="input-field bg-slate-50 dark:bg-slate-800 font-mono text-blue-600" value={`VAI-${(inventory.length + 1).toString().padStart(2, "0")}`} readOnly disabled />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Loại & ĐVT</label>
-                    <div className="flex gap-2">
-                      <input type="text" className="input-field w-1/2 bg-slate-50 dark:bg-slate-800" value="Vải" readOnly disabled />
-                      <input type="text" className="input-field w-1/2 bg-slate-50 dark:bg-slate-800" value="kg" readOnly disabled />
-                    </div>
-                  </div>
-                </div>
+          </div>
 
+          {/* Form tạo mã vải mới */}
+          <div className="card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-blue-600" /> Tạo mã vải mới
+              </h3>
+              <span className="text-xs text-slate-400 font-mono">Mã: VAI-{String(inventory.length + 1).padStart(2, "0")}</span>
+            </div>
+
+            {/* Ẩnh preview */}
+            <input
+              type="file"
+              ref={newVaiImgRef}
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => setNewVaiForm(f => ({ ...f, previewImg: ev.target?.result as string }));
+                reader.readAsDataURL(file);
+                if (newVaiImgRef.current) newVaiImgRef.current.value = "";
+              }}
+            />
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tên vải *</label>
-                  <input type="text" className="input-field" placeholder="Ví dụ: Vải Cotton 100%..." autoFocus />
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="VD: Vải Cotton 100%"
+                    value={newVaiForm.tenVT}
+                    onChange={(e) => setNewVaiForm(f => ({ ...f, tenVT: e.target.value }))}
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Màu sắc *</label>
-                    <input type="text" className="input-field" placeholder="Ví dụ: Đỏ tươi" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Ảnh màu vải</label>
-                    <button className="w-full px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors">
-                      <Plus className="w-4 h-4" /> Chọn ảnh tải lên
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Đơn giá dự kiến (đ/kg)</label>
-                    <input type="number" className="input-field" placeholder="0" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tồn kho tối thiểu (Cảnh báo)</label>
-                    <input type="number" className="input-field" placeholder="50" />
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Ghi chú thêm</label>
-                  <textarea className="input-field" rows={2} placeholder="Vải chính, lô mới..."></textarea>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Màu sắc *</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="VD: Đỏ tươi"
+                    value={newVaiForm.mauSac}
+                    onChange={(e) => setNewVaiForm(f => ({ ...f, mauSac: e.target.value }))}
+                  />
                 </div>
-
-                <div className="pt-4 flex justify-end gap-3 border-t border-slate-200 dark:border-slate-700">
-                  <button onClick={() => setShowTaoMa(false)} className="px-5 py-2 font-medium text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                    Hủy bỏ
-                  </button>
-                  <button 
-                    onClick={() => {
-                      toast.success("Đã tạo mã vải thành công!");
-                      setShowTaoMa(false);
-                    }} 
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all"
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Ảnh màu vải</label>
+                  <button
+                    type="button"
+                    onClick={() => newVaiImgRef.current?.click()}
+                    className="w-full input-field flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
-                    Lưu mã vải
+                    {newVaiForm.previewImg ? (
+                      <img src={newVaiForm.previewImg} className="w-8 h-8 rounded object-cover" alt="preview" />
+                    ) : (
+                      <Plus className="w-4 h-4 text-slate-400" />
+                    )}
+                    <span className="text-sm text-slate-500">{newVaiForm.previewImg ? "Đổi ảnh" : "Chọn ảnh tải lên"}</span>
                   </button>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Đơn giá (đ/kg)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="input-field"
+                    placeholder="0"
+                    value={newVaiForm.donGia || ""}
+                    onChange={(e) => setNewVaiForm(f => ({ ...f, donGia: Number(e.target.value) }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tồn tối thiểu (kg)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="input-field"
+                    placeholder="50"
+                    value={newVaiForm.tonToiThieu || ""}
+                    onChange={(e) => setNewVaiForm(f => ({ ...f, tonToiThieu: Number(e.target.value) }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Ghi chú</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Vải chính, lô mới..."
+                    value={newVaiForm.ghiChu}
+                    onChange={(e) => setNewVaiForm(f => ({ ...f, ghiChu: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setNewVaiForm({ tenVT: "", mauSac: "", donGia: 0, tonToiThieu: 50, ghiChu: "", previewImg: "" })}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  Xóa form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newVaiForm.tenVT.trim()) { toast.error("Vui lòng nhập tên vải"); return; }
+                    if (!newVaiForm.mauSac.trim()) { toast.error("Vui lòng nhập màu sắc"); return; }
+                    const maVT = `VAI-${String(inventory.length + 1).padStart(2, "0")}`;
+                    const ok = addNewVai({
+                      maVT,
+                      tenVT: newVaiForm.tenVT.trim(),
+                      mauSac: newVaiForm.mauSac.trim(),
+                      donGia: newVaiForm.donGia || 0,
+                      tonToiThieu: newVaiForm.tonToiThieu || 50,
+                      loai: "Vải",
+                      dvt: "kg",
+                      tonKho: 0,
+                    } as any);
+                    if (!ok) { toast.error(`Mã ${maVT} đã tồn tại!`); return; }
+                    // Lưu ảnh nếu có
+                    if (newVaiForm.previewImg) {
+                      saveVaiImage(maVT, newVaiForm.previewImg);
+                      setVaiImages(prev => ({ ...prev, [maVT]: newVaiForm.previewImg }));
+                    }
+                    toast.success(`✅ Đã tạo mã vải ${maVT}: ${newVaiForm.tenVT} — Lưu vào localStorage, tồn kho: 0kg (dùng nút Nhập để cập nhật số lượng)`);
+                    setNewVaiForm({ tenVT: "", mauSac: "", donGia: 0, tonToiThieu: 50, ghiChu: "", previewImg: "" });
+                    refresh();
+                  }}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Lưu mã vải
+                </button>
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 

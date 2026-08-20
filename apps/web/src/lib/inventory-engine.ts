@@ -338,6 +338,38 @@ export function updateVaiInfo(maVT: string, update: Partial<KhoVai>): boolean {
   return true;
 }
 
+/** Thêm mã vải mới vào inventory (dùng khi tạo mã vải mới từ tab Danh mục) */
+export function addNewVai(vai: Omit<KhoVai, "tonKho"> & { tonKho?: number }): boolean {
+  const inv = getInventory();
+  if (inv[vai.maVT]) return false; // đã tồn tại
+  inv[vai.maVT] = { ...vai, tonKho: vai.tonKho ?? 0 };
+  saveInventory(inv);
+  return true;
+}
+
+// ============ PERSISTENT ẢNH VẢI (localStorage, survive F5) ============
+const KHO_VAI_IMAGES_KEY = "mimin_kho_vai_images";
+
+export function getVaiImages(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(KHO_VAI_IMAGES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export function saveVaiImage(maVT: string, base64: string): void {
+  const imgs = getVaiImages();
+  imgs[maVT] = base64;
+  localStorage.setItem(KHO_VAI_IMAGES_KEY, JSON.stringify(imgs));
+}
+
+export function removeVaiImage(maVT: string): void {
+  const imgs = getVaiImages();
+  delete imgs[maVT];
+  localStorage.setItem(KHO_VAI_IMAGES_KEY, JSON.stringify(imgs));
+}
+
 function round(n: number, digits: number = 2): number {
   const f = Math.pow(10, digits);
   return Math.round(n * f) / f;

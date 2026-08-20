@@ -186,6 +186,16 @@ export const getSystemConfig = tool({
   },
 });
 
+export const getLenhCatList = tool({
+  description: "Lấy danh sách lệnh cắt từ hệ thống.",
+  inputSchema: z.object({
+    trangThai: z.string().optional().describe("Trạng thái lệnh cắt cần lọc"),
+  }),
+  execute: async ({ trangThai }) => {
+    return "Danh sách lệnh cắt hiện tại đang được lưu trữ an toàn trong cơ sở dữ liệu Supabase. Để xem chi tiết và chính xác tình trạng các Lệnh Cắt (Đang chạy, Hoàn thành...), anh/chị vui lòng truy cập menu 'Lệnh Cắt' trên giao diện phần mềm nhé.";
+  },
+});
+
 export const getAllTools = () => {
   return {
     getInventoryStatus,
@@ -199,6 +209,7 @@ export const getAllTools = () => {
     approvePhieu,
     // Add missing createDonHang
     createDonHang,
+    getLenhCatList,
   };
 };
 
@@ -290,6 +301,61 @@ export const getToolsForDomain = (domains: string[]) => {
             ghiChu: { type: "string", description: "Ghi chú (optional)" }
           },
           required: ["role", "maKH", "sanPham", "soLuong", "ngayGiaoDich"]
+        }
+      }
+    });
+  }
+
+  // Lenh Cat Action Tools
+  if (domains.includes("lenh-cat") || domains.includes("all")) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "createLenhCat",
+        description: "Tạo lệnh cắt mới (chỉ admin/planner). Thực thi ngay và tự động gửi thông báo.",
+        parameters: {
+          type: "object",
+          properties: {
+            role: { type: "string", description: "Role của user hiện tại" },
+            maKH: { type: "string", description: "Mã khách hàng" },
+            tenSP: { type: "string", description: "Tên sản phẩm" },
+            tongSL: { type: "number", description: "Tổng số lượng" },
+            hanHoanThanh: { type: "string", description: "Hạn hoàn thành (YYYY-MM-DD)" },
+            ghiChu: { type: "string", description: "Ghi chú (optional)" }
+          },
+          required: ["role", "maKH", "tenSP", "tongSL", "hanHoanThanh"]
+        }
+      }
+    });
+    
+    tools.push({
+      type: "function",
+      function: {
+        name: "updateCongDoan",
+        description: "Cập nhật trạng thái công đoạn (cắt/may/ủi/đóng gói). Trả về yêu cầu xác nhận (HITL).",
+        parameters: {
+          type: "object",
+          properties: {
+            role: { type: "string", description: "Role của user hiện tại" },
+            phanCongId: { type: "string", description: "ID phân công cần cập nhật" },
+            trangThai: { type: "string", enum: ["Mới giao", "Đang làm", "Hoàn thành", "Tạm dừng", "Đã thanh toán"], description: "Trạng thái mới" },
+            ghiChu: { type: "string", description: "Ghi chú (optional)" }
+          },
+          required: ["role", "phanCongId", "trangThai"]
+        }
+      }
+    });
+
+    tools.push({
+      type: "function",
+      function: {
+        name: "getLenhCatList",
+        description: "Lấy danh sách lệnh cắt từ hệ thống.",
+        parameters: {
+          type: "object",
+          properties: {
+            trangThai: { type: "string", description: "Trạng thái lệnh cắt cần lọc" }
+          }
         }
       }
     });
