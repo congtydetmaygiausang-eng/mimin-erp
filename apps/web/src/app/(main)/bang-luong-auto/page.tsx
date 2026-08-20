@@ -5,7 +5,8 @@ import {
   ChevronRight, AlertCircle, CheckCircle2, Award, DollarSign,
   Filter, Calculator, FileText, BarChart3, Clock,
 } from "lucide-react";
-import { tinhBangLuongThang, tongKetBangLuong, fmtVND, type BangLuongNV } from "@/lib/bang-luong-engine";
+import { fmtVND } from "@/lib/bang-luong-engine";
+import { useBangLuongData } from "@/lib/use-bang-luong";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
 import { CONG_NHAN_13 } from "@/lib/congnhan-13";
 
@@ -18,8 +19,12 @@ export default function BangLuongAutoPage() {
   const [filterModule, setFilterModule] = useState<string>("");
   const [search, setSearch] = useState("");
 
-  const bangLuong = useMemo(() => tinhBangLuongThang(thang, nam), [thang, nam]);
-  const tongKet = useMemo(() => tongKetBangLuong(bangLuong), [bangLuong]);
+  // Trước đây gọi tinhBangLuongThang(thang, nam) THIẾU tham số allPhieu (mặc
+  // định về mảng rỗng []), khiến sản lượng/tiền công của công nhân lương sản
+  // phẩm LUÔN tính ra 0đ. useBangLuongData lấy đúng dữ liệu thật từ Supabase
+  // (phan_cong, doi_soat, qc_records, khsx, hoan_thien) - cùng hook mà trang
+  // bang-luong (không auto) đã dùng đúng từ trước.
+  const { bangLuong, tongKet } = useBangLuongData(thang, nam);
 
   const filtered = useMemo(() => {
     return bangLuong.filter((bl) => {

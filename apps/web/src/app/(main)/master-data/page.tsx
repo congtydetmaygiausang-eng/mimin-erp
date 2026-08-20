@@ -202,7 +202,7 @@ function KHTab({ data, fmtVND, fmtFull }: any) {
               <div className="text-[10px] text-slate-500">Công nợ HT</div>
               <div className={`text-base font-bold ${k.congNoHT > 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtVND(k.congNoHT)}</div>
               <div className="text-[10px] text-slate-500 mt-2">DS năm</div>
-              <div className="text-xs font-bold text-indigo-600">{(k.doanhSoNam / 1_000_000).toFixed(0)} tr</div>
+              <div className="text-xs font-bold text-indigo-600">{fmtVND(k.doanhSoNam)}</div>
               <div className="flex gap-1 mt-2 justify-end">
                 <button className="text-[10px] px-2 py-1 bg-slate-100 rounded text-slate-600"><Edit2 className="w-3 h-3 inline" /></button>
                 <button className="text-[10px] px-2 py-1 bg-rose-50 text-rose-600 rounded"><Trash2 className="w-3 h-3 inline" /></button>

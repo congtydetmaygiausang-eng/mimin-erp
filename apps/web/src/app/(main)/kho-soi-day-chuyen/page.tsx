@@ -14,6 +14,7 @@ import {
   tinhGiaVonVai, KHU_KHO,
   type NhapSoi, type GiaCongDet, type GiaCongNhuom, type NhapKhoVaiTP
 } from "@/lib/yarn-warehouse";
+import { formatVNDShort } from "@/lib/data/real-data";
 import { useMemo } from "react";
 
 type Tab = "nhapsoi" | "det" | "nhuom" | "nhapkho" | "tonghop";
@@ -153,9 +154,9 @@ export default function KhoSoiDayChuyenPage() {
 
       {/* Stats tổng */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Stat icon={<Package className="w-4 h-4" />} label="Sợi nhập" value={`${(tongTienSoi / 1_000_000).toFixed(0)}tr`} sub={`${sois.length} phiếu`} color="blue" />
-        <Stat icon={<Truck className="w-4 h-4" />} label="Phí dệt" value={`${(tongTienDet / 1_000_000).toFixed(0)}tr`} sub={`${dets.length} phiếu`} color="violet" />
-        <Stat icon={<Palette className="w-4 h-4" />} label="Phí nhuộm" value={`${(tongTienNhuom / 1_000_000).toFixed(0)}tr`} sub={`${nhuoms.length} phiếu`} color="rose" />
+        <Stat icon={<Package className="w-4 h-4" />} label="Sợi nhập" value={formatVNDShort(tongTienSoi)} sub={`${sois.length} phiếu`} color="blue" />
+        <Stat icon={<Truck className="w-4 h-4" />} label="Phí dệt" value={formatVNDShort(tongTienDet)} sub={`${dets.length} phiếu`} color="violet" />
+        <Stat icon={<Palette className="w-4 h-4" />} label="Phí nhuộm" value={formatVNDShort(tongTienNhuom)} sub={`${nhuoms.length} phiếu`} color="rose" />
         <Stat icon={<Boxes className="w-4 h-4" />} label="Vải TP" value={`${tongKgVaiTP.toLocaleString()}kg`} sub={`${nhapKhos.length} phiếu`} color="emerald" />
         <Stat icon={<Calculator className="w-4 h-4" />} label="Giá vốn TB" value={`${giaVonTB.toFixed(0)}đ/kg`} sub="trung bình" color="amber" />
       </div>

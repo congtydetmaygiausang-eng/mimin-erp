@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Package, Truck, Palette, Boxes, CreditCard, GitBranch } from "lucide-react";
 import { getAllPhieuNhapSoi, getAllLenhDet, getAllMeNhuom, getAllLoVaiTP } from "@/lib/yarn-production-chain";
 import { baoCaoCongNoByDoiTuong } from "@/lib/master-data";
+import { formatVNDShort } from "@/lib/data/real-data";
 import { Stat } from "./ui-blocks";
 
 export function Dashboard() {
@@ -20,7 +21,7 @@ export function Dashboard() {
   return (
     <div className="space-y-3 p-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Stat n={pnss.length} label="Phiếu nhập sợi" sub={`${(tongNhapSoi / 1_000_000).toFixed(0)}tr`} color="blue" icon={Package} />
+        <Stat n={pnss.length} label="Phiếu nhập sợi" sub={formatVNDShort(tongNhapSoi)} color="blue" icon={Package} />
         <Stat n={lds.length} label="Lệnh dệt" sub={`${lds.filter((l) => l.trangThai !== "Hoàn thành").length} đang chạy`} color="violet" icon={Truck} />
         <Stat n={mns.length} label="Mẻ nhuộm" sub={`${mns.filter((m) => m.trangThai !== "Hoàn thành").length} đang nhuộm`} color="rose" icon={Palette} />
         <Stat n={ltps.length} label="Lô vải TP" sub={`${ltps.reduce((s, l) => s + l.tongKg, 0).toFixed(0)}kg`} color="emerald" icon={Boxes} />
