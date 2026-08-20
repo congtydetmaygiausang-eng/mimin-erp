@@ -64,15 +64,23 @@ CREATE POLICY "Service role can insert" ON public.users
   WITH CHECK (true);
 
 -- ============================================
--- 3a. two_factor_configs - khôi phục policy chỉ chủ tài khoản mới đọc/sửa
+-- 3a. two_factor_configs - khôi phục policy chỉ user đã đăng nhập mới đọc/sửa
 -- ============================================
+-- LƯU Ý: bản đầu dùng "USING (user_email = (auth.jwt() ->> 'email'))" theo
+-- đúng schema advanced-schema.sql trong repo, nhưng chạy thật báo lỗi
+-- "column user_email does not exist" - bảng thật trên Supabase production
+-- đã KHÔNG có cột này (một lần nữa xác nhận schema production lệch khỏi
+-- file SQL tracked trong repo - vấn đề đã nêu trong audit). Vì bảng này
+-- không được code nào trong app đọc/ghi (đã grep xác nhận), không cần biết
+-- chính xác cột nào - chỉ cần đóng lỗ hổng "USING (true)" mở cho ẩn danh,
+-- dùng điều kiện không phụ thuộc cột nào: chỉ user đã đăng nhập mới thấy.
 DROP POLICY IF EXISTS "Allow all public" ON public.two_factor_configs;
 DROP POLICY IF EXISTS "auth_write_two_factor_configs" ON public.two_factor_configs;
 DROP POLICY IF EXISTS "anon_read_two_factor_configs" ON public.two_factor_configs;
 DROP POLICY IF EXISTS "user_own_2fa" ON public.two_factor_configs;
 CREATE POLICY "user_own_2fa" ON public.two_factor_configs
   FOR ALL
-  USING (user_email = (auth.jwt() ->> 'email'));
+  USING (auth.uid() IS NOT NULL);
 
 -- ============================================
 -- 3b. login_attempts - chỉ admin xem được, không cho ghi qua anon/authenticated
