@@ -68,15 +68,34 @@ export default function AgentsChatPage() {
       let responseText: string;
 
       if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
+        // Nhánh Gemini dùng AI SDK v5 toUIMessageStreamResponse() - mỗi dòng
+        // "data: " là 1 SỰ KIỆN NHỎ ({"type":"text-delta","delta":"..."} ...),
+        // KHÔNG phải 1 khối JSON chat-completion duy nhất. Code cũ gộp hết các
+        // dòng lại rồi JSON.parse() cả khối -> luôn lỗi (nhiều JSON object dính
+        // liền nhau không phải JSON hợp lệ) -> rơi vào catch, hiển thị thẳng
+        // JSON thô lên màn hình thay vì nội dung câu trả lời thật. Phải parse
+        // TỪNG dòng, chỉ cộng dồn phần "delta" của các sự kiện "text-delta".
         const raw = await res.text();
         const lines = raw.split("\n").filter((l) => l.startsWith("data: "));
-        const fullText = lines.map((l) => l.slice(6)).filter((l) => l && l !== "[DONE]").join("");
-        try {
-          const parsed = JSON.parse(fullText);
-          responseText = parsed.choices?.[0]?.message?.content || parsed.response || fullText;
-        } catch {
-          responseText = fullText;
+        let streamedText = "";
+        for (const line of lines) {
+          const payload = line.slice(6).trim();
+          if (!payload || payload === "[DONE]") continue;
+          let evt: any;
+          try {
+            evt = JSON.parse(payload);
+          } catch {
+            continue; // dòng lỗi định dạng, bỏ qua - không làm gãy cả phản hồi
+          }
+          if (evt.type === "text-delta" && typeof evt.delta === "string") {
+            streamedText += evt.delta;
+          } else if (evt.type === "error") {
+            // Lỗi thật từ AI SDK (VD hết quota) - phải ném ra ngoài để catch()
+            // hiển thị rõ nguyên nhân, không được nuốt lỗi rồi báo chung chung.
+            throw new Error(evt.errorText || "Lỗi khi Gemini trả lời");
+          }
         }
+        responseText = streamedText || "Không có phản hồi";
       } else {
         const data = await res.json();
         responseText = data.response || data.error || "Không có phản hồi";

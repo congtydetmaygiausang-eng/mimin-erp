@@ -120,8 +120,12 @@ async function buildProviderConfig(agentId: string, conversationSummary = ""): P
 
   switch (persona.provider) {
     case "gemini":
+      // gemini-1.5-*-latest đã bị Google gỡ hẳn (404 "not found"). gemini-2.5-pro
+      // tuy còn liệt kê ở ListModels nhưng bị chặn cho "new users" (404 kèm thông
+      // báo chỉ đích danh model thay thế) - dùng đúng model Google khuyến nghị.
+      // Xác nhận qua lỗi API thật + ListModels ngày 2026-08-20.
       return {
-        model: google(persona.model.includes("pro") ? "gemini-1.5-pro-latest" : "gemini-1.5-flash-latest"),
+        model: google(persona.model.includes("pro") ? "gemini-3.1-pro-preview" : "gemini-3.6-flash"),
         systemPromptBase,
         modelName: persona.model,
       };
@@ -465,7 +469,7 @@ async function handleGeminiFallback(
   }
   
   const result = streamText({
-    model: google("gemini-1.5-flash-latest"),
+    model: google("gemini-3.6-flash"),
     system: config.systemPromptBase,
     messages: await convertToModelMessages(toUIMessages(messages)),
     tools: getAllTools(),
