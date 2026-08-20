@@ -163,11 +163,11 @@ export default function AgentsChatPage() {
     setMessages({});
   };
 
-  // Lời chào mở đầu (hiện trước khi gọi API) - dùng tên thật người đang đăng
-  // nhập thay vì "sếp" chung chung cho mọi người.
-  const greetTitle = user?.email === "sang@mimin.vn" ? "sếp Sang" : user?.name ? `anh/chị ${user.name.split(" ").slice(-1)[0]}` : "sếp";
+  // Lời chào mở đầu (hiện trước khi gọi API) - dùng đúng kịch bản tự giới
+  // thiệu do anh Sang viết tay cho từng agent (agent-personas.ts greeting),
+  // thay cho template chung chung trước đây.
   const currentMessages = messages[selectedAgent.agent_id] || [
-    { id: "init", sender: "agent", text: `Chào ${greetTitle}! Em là ${selectedAgent.name} (${selectedAgent.role_title}). Em có thể giúp gì cho ${greetTitle} hôm nay?`, timestamp: "Vừa xong" }
+    { id: "init", sender: "agent", text: selectedAgent.greeting, timestamp: "Vừa xong" }
   ];
 
   const handleSend = async () => {
@@ -355,13 +355,20 @@ export default function AgentsChatPage() {
             "danh tính" theo agent đó. */}
         <div className={`relative overflow-hidden border-b border-slate-200 shadow-sm ${AGENT_CARD_BG[selectedAgent.agent_id] || "bg-white"}`}>
           <div className="relative flex items-center gap-4 px-6 py-5">
-            <div className="w-20 h-20 rounded-2xl bg-white/40 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/70 shadow-md text-4xl">
+            <button
+              onClick={() => speak(selectedAgent.greeting, `intro-${selectedAgent.agent_id}`)}
+              title="Bấm để nghe agent tự giới thiệu"
+              className="relative w-20 h-20 rounded-2xl bg-white/40 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/70 shadow-md text-4xl cursor-pointer hover:ring-sky-300 transition group/avatar"
+            >
               {selectedAgent.avatar.startsWith("/avatars/") ? (
                 <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
               ) : (
                 selectedAgent.avatar
               )}
-            </div>
+              <span className="absolute inset-0 bg-black/0 group-hover/avatar:bg-black/20 flex items-center justify-center transition">
+                <Volume2 className={`w-6 h-6 text-white opacity-0 group-hover/avatar:opacity-100 transition ${speakingId === `intro-${selectedAgent.agent_id}` ? "opacity-100 animate-pulse" : ""}`} />
+              </span>
+            </button>
             <div>
               <h3 className="font-extrabold text-slate-900 text-xl flex items-center gap-2 drop-shadow-sm">
                 {selectedAgent.name} <span className="text-sm text-slate-700 font-medium">({selectedAgent.role_title})</span>
