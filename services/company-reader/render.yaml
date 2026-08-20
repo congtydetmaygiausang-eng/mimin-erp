@@ -18,7 +18,6 @@ services:
     healthCheckPath: /readyz
     dockerfilePath: ./services/company-reader/Dockerfile
     dockerContext: .
-    maxShutdownDelaySeconds: 30
     envVars:
       - key: REDIS_URL
         fromService:
