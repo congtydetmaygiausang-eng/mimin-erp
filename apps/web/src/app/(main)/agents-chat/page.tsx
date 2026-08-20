@@ -54,6 +54,33 @@ function stripMarkdownForSpeech(text: string): string {
     .trim();
 }
 
+// "Đã từng gặp agent này chưa" - QUYẾT ĐỊNH RIÊNG với lịch sử chat 24h ở trên:
+// lịch sử tin nhắn có thể tự xoá sau 1 ngày, nhưng KHÔNG có nghĩa là "quên"
+// đã từng làm việc với agent - giống nhân sự thật, không tự nhiên "quên mặt"
+// đồng nghiệp chỉ vì qua 1 ngày. Lưu riêng, không có hạn.
+const AGENTS_MET_KEY = "mimin_agents_met_v1";
+
+function loadMetAgents(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(AGENTS_MET_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markAgentMet(agentId: string) {
+  if (typeof window === "undefined") return;
+  const met = loadMetAgents();
+  if (met.has(agentId)) return;
+  met.add(agentId);
+  try {
+    localStorage.setItem(AGENTS_MET_KEY, JSON.stringify(Array.from(met)));
+  } catch {}
+}
+
 function loadStoredMessages(): { savedAt: number; messages: Record<string, Message[]> } | null {
   if (typeof window === "undefined") return null;
   try {
@@ -117,6 +144,7 @@ export default function AgentsChatPage() {
   const [loading, setLoading] = useState(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [autoRead, setAutoRead] = useState(false);
+  const [metAgents, setMetAgents] = useState<Set<string>>(() => loadMetAgents());
 
   // Đọc to 1 tin nhắn bằng Web Speech API (giọng trình duyệt - miễn phí,
   // không cần API key, làm được ngay). Huỷ câu đang đọc trước khi đọc câu
@@ -163,11 +191,17 @@ export default function AgentsChatPage() {
     setMessages({});
   };
 
-  // Lời chào mở đầu (hiện trước khi gọi API) - dùng đúng kịch bản tự giới
-  // thiệu do anh Sang viết tay cho từng agent (agent-personas.ts greeting),
-  // thay cho template chung chung trước đây.
+  // Lời chào mở đầu (hiện trước khi gọi API) - lần ĐẦU gặp agent này thì
+  // giới thiệu đầy đủ (greeting), lần sau chào ngắn đúng chất riêng
+  // (greetingShort) - không lặp lại y hệt như đang nói chuyện với 1 agent
+  // duy nhất đổi avatar.
   const currentMessages = messages[selectedAgent.agent_id] || [
-    { id: "init", sender: "agent", text: selectedAgent.greeting, timestamp: "Vừa xong" }
+    {
+      id: "init",
+      sender: "agent",
+      text: metAgents.has(selectedAgent.agent_id) ? selectedAgent.greetingShort : selectedAgent.greeting,
+      timestamp: "Vừa xong",
+    },
   ];
 
   const handleSend = async () => {
@@ -181,6 +215,8 @@ export default function AgentsChatPage() {
       ...prev,
       [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), userMsg],
     }));
+    markAgentMet(selectedAgent.agent_id);
+    setMetAgents((prev) => (prev.has(selectedAgent.agent_id) ? prev : new Set(prev).add(selectedAgent.agent_id)));
     setInput("");
     setLoading(true);
 
@@ -356,7 +392,12 @@ export default function AgentsChatPage() {
         <div className={`relative overflow-hidden border-b border-slate-200 shadow-sm ${AGENT_CARD_BG[selectedAgent.agent_id] || "bg-white"}`}>
           <div className="relative flex items-center gap-4 px-6 py-5">
             <button
-              onClick={() => speak(selectedAgent.greeting, `intro-${selectedAgent.agent_id}`)}
+              onClick={() =>
+                speak(
+                  metAgents.has(selectedAgent.agent_id) ? selectedAgent.greetingShort : selectedAgent.greeting,
+                  `intro-${selectedAgent.agent_id}`
+                )
+              }
               title="Bấm để nghe agent tự giới thiệu"
               className="relative w-20 h-20 rounded-2xl bg-white/40 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/70 shadow-md text-4xl cursor-pointer hover:ring-sky-300 transition group/avatar"
             >

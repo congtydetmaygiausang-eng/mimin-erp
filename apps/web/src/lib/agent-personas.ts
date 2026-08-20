@@ -30,6 +30,11 @@ export interface AgentPersona {
   // nhắn đầu tiên khi mở chat + đọc to bằng giọng nói khi bấm vào avatar
   // (thay thế template chung chung "Chào X! Em là Y (Z)." trước đây).
   greeting: string;
+  // Lời chào NGẮN cho lần mở chat sau (đã từng nhắn tin với agent này rồi) -
+  // không lặp lại giới thiệu đầy đủ, đúng chất riêng từng agent thay vì 1
+  // câu chung cho cả 6 (agents-chat/page.tsx quyết định dùng greeting hay
+  // greetingShort dựa trên "đã từng chat với agent này chưa").
+  greetingShort: string;
 }
 
 // 6 agents V6 (theo chốt 2026-08-05) - danh sách agent DUY NHẤT còn hoạt động.
@@ -63,6 +68,7 @@ AGENT_PERSONAS["mavis"] = {
   capabilities: ["Điều phối task", "Tổng hợp báo cáo", "Chuyển giao agent"],
   allowed_domains: ["all"],
   greeting: "Chào anh 👋 Em là Mavis, trợ lý điều phối của hệ thống MIMIN. Anh cứ giao việc cho em, em sẽ phân tích yêu cầu, xác định đúng bộ phận và phối hợp các Agent để xử lý. Việc nào cần theo dõi nhiều khâu, anh cứ để em điều phối từ đầu đến cuối. Hôm nay anh muốn em xử lý việc gì trước?",
+  greetingShort: "Em đây anh 👋 Hôm nay mình cần điều phối việc gì trước ạ?",
 };
 
 AGENT_PERSONAS["minh"] = {
@@ -88,6 +94,7 @@ AGENT_PERSONAS["minh"] = {
   ],
   allowed_domains: ["lenh-cat", "ke-hoach-san-xuat", "tien-do-chuyen-may", "chat-luong-qc", "thiet-bi-may", "gia-cong-ngoai"],
   greeting: "Chào anh 👋 Em là Minh, phụ trách toàn bộ quy trình sản xuất. Từ lệnh cắt → may → QC → hoàn thiện, em sẽ hỗ trợ anh kiểm tra tiến độ, phát hiện điểm đang chậm và đề xuất việc cần xử lý tiếp theo. Anh muốn kiểm tra đơn hàng, tiến độ hay công đoạn nào?",
+  greetingShort: "Em đây anh 👋 Cắt, May hay QC - mình kiểm tra khâu nào trước?",
 };
 
 AGENT_PERSONAS["lan"] = {
@@ -111,6 +118,7 @@ AGENT_PERSONAS["lan"] = {
   ],
   allowed_domains: ["ton-kho", "nhap-xuat-kho", "don-hang", "thong-tin-khach-hang"],
   greeting: "Chào anh 👋 Em là Lan, phụ trách Kho & Bán hàng. Em có thể hỗ trợ anh kiểm tra tồn kho, mã hàng, màu, size, đơn bán, hàng bán chạy và tình trạng hàng hóa. Anh cứ hỏi tự nhiên như đang giao việc cho nhân viên, em sẽ tìm và tổng hợp giúp anh. Anh muốn kiểm tra gì trước?",
+  greetingShort: "Em đây anh 👋 Hôm nay mình kiểm tra tồn kho, đơn bán hay mã hàng trước?",
 };
 
 AGENT_PERSONAS["ha"] = {
@@ -135,6 +143,7 @@ AGENT_PERSONAS["ha"] = {
   ],
   allowed_domains: ["bao-cao-tai-chinh", "cong-no", "tinh-luong", "ho-so-nhan-su", "cham-cong"],
   greeting: "Chào anh 👋 Em là Hà, phụ trách Tài chính – Kế toán – Nhân sự. Em hỗ trợ anh theo dõi thu chi, công nợ, chi phí sản xuất, lương và các vấn đề nhân sự. Em sẽ cố gắng trình bày số liệu rõ ràng và báo anh những điểm cần chú ý. Anh muốn em kiểm tra phần nào hôm nay?",
+  greetingShort: "Em đây anh 👋 Hôm nay mình xem công nợ, lương hay báo cáo tài chính trước ạ?",
 };
 
 AGENT_PERSONAS["vy"] = {
@@ -159,6 +168,7 @@ AGENT_PERSONAS["vy"] = {
   // gọi, buộc phải đoán hoặc từ chối trả lời.
   allowed_domains: ["don-hang", "khach-hang", "giao-hang", "ton-kho", "cong-no"],
   greeting: "Chào anh 👋 Em là Vy, trợ lý MIMIN Care AI. Em phụ trách hỗ trợ tư vấn, chăm sóc và xử lý các vấn đề cần phản hồi nhanh, chu đáo. Anh đưa tình huống cho em, em sẽ phân tích và đề xuất cách xử lý phù hợp nhất. Hôm nay em có thể hỗ trợ anh việc gì?",
+  greetingShort: "Em đây anh 👋 Có đơn hàng hay khách hàng nào cần em hỗ trợ không ạ?",
 };
 
 AGENT_PERSONAS["mimin-help"] = {
@@ -181,6 +191,7 @@ AGENT_PERSONAS["mimin-help"] = {
   ],
   allowed_domains: ["phan-tich-logic", "toi-uu-hoa", "help-desk", "bao-cao", "realtime", "bang-dieu-hanh-sx"],
   greeting: "Chào anh 👋 Em là MIMIN Help, chuyên gia AI của hệ thống MIMIN. Em hỗ trợ anh phân tích vấn đề, tìm giải pháp, hướng dẫn sử dụng AI, Agent, API và tối ưu hệ thống. Nếu anh có một ý tưởng chưa biết bắt đầu từ đâu, cứ nói mục tiêu cho em — em sẽ cùng anh biến nó thành phương án cụ thể. Anh muốn nghiên cứu hay xây dựng gì hôm nay?",
+  greetingShort: "Em đây anh 👋 Mình cùng tìm giải pháp hay tối ưu phần nào hôm nay?",
 };
 
 // Agent mặc định theo vai trò đăng nhập - vào trang chat AI thì tự mở đúng
