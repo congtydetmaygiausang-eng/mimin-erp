@@ -28,6 +28,7 @@
     "react-is": "^19.2.8",
     "react-textarea-autosize": "^8.5.9",
     "recharts": "^3.10.1",
+    "server-only": "^0.0.1",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.4",
     "xlsx": "^0.18.5",

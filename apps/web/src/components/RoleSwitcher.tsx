@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/components/session-provider";
 import { USERS } from "@/lib/users";
 import { ROLE_LABELS, ROLE_COLORS, type Role } from "@/lib/permissions";
 import { ChevronDown, UserCog, Check, Shield } from "lucide-react";
 
 export function RoleSwitcher() {
-  const { user, signIn, authSource } = useSession();
+  const { user, authSource, signOut } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!open) return;
@@ -23,9 +25,13 @@ export function RoleSwitcher() {
   // Chỉ hiển thị trong DEMO mode
   if (authSource !== "demo") return null;
 
-  const switchTo = async (email: string, password: string) => {
-    await signIn(email, password);
+  // Trước đây tự đăng nhập bằng mật khẩu thật đọc từ lib/users.ts (đã bị bundle
+  // xuống client). Giờ chỉ đăng xuất + chuyển sang /login kèm email điền sẵn -
+  // người test vẫn phải tự gõ mật khẩu, không còn mật khẩu nào nằm trong bundle.
+  const switchTo = async (email: string) => {
+    await signOut();
     setOpen(false);
+    router.push(`/login?email=${encodeURIComponent(email)}`);
   };
 
   const currentRole = (user?.role || "admin") as Role;
@@ -57,7 +63,7 @@ export function RoleSwitcher() {
               return (
                 <button
                   key={u.email}
-                  onClick={() => switchTo(u.email, u.password)}
+                  onClick={() => switchTo(u.email)}
                   className={`w-full px-3 py-2 flex items-center gap-2 hover:bg-white/40 dark:hover:bg-white/5 text-left ${
                     isActive ? "bg-brand-500/10" : ""
                   }`}
