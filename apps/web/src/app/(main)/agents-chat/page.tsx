@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { AGENT_PERSONAS, AgentPersona } from "@/lib/agent-personas";
+import { AGENT_PERSONAS, AgentPersona, getDefaultAgentIdForRole } from "@/lib/agent-personas";
 import { useSession } from "@/components/session-provider";
 
 interface Message {
@@ -17,6 +17,21 @@ export default function AgentsChatPage() {
   const { user } = useSession();
   const agentsList = Object.values(AGENT_PERSONAS);
   const [selectedAgent, setSelectedAgent] = useState<AgentPersona>(agentsList[0]);
+  const [autoSelected, setAutoSelected] = useState(false);
+
+  // Vào trang thì tự mở đúng agent phụ trách vai trò đang đăng nhập (VD kế
+  // toán -> Hà, kho -> Lan) thay vì luôn mặc định Mavis cho mọi người. Chỉ tự
+  // chọn 1 LẦN lúc session load xong - nếu người dùng tự bấm sang tab khác
+  // thì tôn trọng lựa chọn đó, không tự đổi lại.
+  useEffect(() => {
+    if (autoSelected || !user) return;
+    const defaultId = getDefaultAgentIdForRole(user.role);
+    const match = agentsList.find((a) => a.agent_id === defaultId);
+    if (match) setSelectedAgent(match);
+    setAutoSelected(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, autoSelected]);
+
   const [messages, setMessages] = useState<Record<string, Message[]>>({
     "mimin-orchestrator": [
       { id: "1", sender: "agent", text: "Xin chào! Tôi là Mavis, trợ lý AI điều phối tổng quan MIMIN ERP. Bạn cần hỗ trợ gì hôm nay?", timestamp: "10:00" },

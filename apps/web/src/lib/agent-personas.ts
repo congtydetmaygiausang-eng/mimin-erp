@@ -167,3 +167,28 @@ AGENT_PERSONAS["mimin-help"] = {
   ],
   allowed_domains: ["phan-tich-logic", "toi-uu-hoa", "help-desk", "bao-cao", "realtime", "bang-dieu-hanh-sx"],
 };
+
+// Agent mặc định theo vai trò đăng nhập - vào trang chat AI thì tự mở đúng
+// agent phụ trách phòng ban của mình (VD kế toán -> Hà), thay vì luôn mặc
+// định Mavis cho mọi người. Người dùng vẫn chuyển tab thủ công được bình
+// thường, đây chỉ là lựa chọn ban đầu khi mở trang.
+export const DEFAULT_AGENT_BY_ROLE: Record<string, AgentIdV6> = {
+  admin: "mavis",
+  planner: "minh",
+  warehouse: "lan",
+  sewing: "minh",
+  qc: "minh",
+  finishing: "minh",
+  accountant: "ha",
+  content: "mavis",
+  partner: "vy",
+  cutting: "minh",
+  printing: "minh",
+  buttoning: "minh",
+  ironing: "minh",
+  packaging: "minh",
+};
+
+export function getDefaultAgentIdForRole(role: string | undefined): AgentIdV6 {
+  return (role && DEFAULT_AGENT_BY_ROLE[role]) || "mavis";
+}
