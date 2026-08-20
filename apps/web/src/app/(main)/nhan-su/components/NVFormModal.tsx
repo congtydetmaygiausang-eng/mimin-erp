@@ -6,6 +6,7 @@ import { X, Plus, Edit2, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import type { NhanSuExt } from "../data";
 import { ImagePreviewModal } from "./ImagePreviewModal";
+import { authFetch } from "@/lib/auth-fetch";
 
 export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "edit"; nv?: NhanSuExt; existingCount: number; onClose: () => void; onSave: (n: NhanSuExt) => void }) {
   const [form, setForm] = useState<NhanSuExt>(nv || {
@@ -111,7 +112,7 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
         cccdBackImage: cccdBackUrl || form.cccdBackImage || "",
       } as NhanSuExt;
 
-      const response = await fetch("/api/employee-records", {
+      const response = await authFetch("/api/employee-records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(savedEmployee),

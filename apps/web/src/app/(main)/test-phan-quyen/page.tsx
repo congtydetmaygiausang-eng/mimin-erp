@@ -92,7 +92,10 @@ export default function TestPhanQuyenPage() {
     return acc;
   }, {});
 
-  const handleLogin = (email: string, password: string) => {
+  // LƯU Ý BẢO MẬT: hàm này KHÔNG kiểm tra mật khẩu (chỉ ghi thẳng session giả để
+  // test giao diện phân quyền) - trước đây còn hard-code sẵn mật khẩu thật
+  // "sang123"/"Mimin@123" trong nút bấm dù không hề dùng tới, đã gỡ bỏ.
+  const handleLogin = (email: string) => {
     // Detect role tu email
     const u = USERS_MIMIN_VN.find((x) => x.email === email);
     const role = u?.role || "sewing";
@@ -158,7 +161,7 @@ export default function TestPhanQuyenPage() {
   );
 }
 
-function Group({ title, users, color, onLogin }: { title: string; users: any[]; color: string; onLogin: (e: string, p: string) => void }) {
+function Group({ title, users, color, onLogin }: { title: string; users: any[]; color: string; onLogin: (e: string) => void }) {
   return (
     <div className="card p-4">
       <h2 className="font-bold text-sm mb-3 flex items-center gap-2">
@@ -168,7 +171,7 @@ function Group({ title, users, color, onLogin }: { title: string; users: any[]; 
         {users.map((u: any) => (
           <button
             key={u.email}
-            onClick={() => onLogin(u.email, u.password || (u.email === "sang@mimin.vn" ? "sang123" : "Mimin@123"))}
+            onClick={() => onLogin(u.email)}
             className="text-left p-3 bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md rounded-lg flex items-center gap-3"
           >
             <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-${color}-400 to-${color}-600 text-white flex items-center justify-center font-bold`}>

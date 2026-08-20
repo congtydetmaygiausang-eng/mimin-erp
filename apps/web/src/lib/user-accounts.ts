@@ -85,7 +85,10 @@ const DEFAULT_ACCOUNTS: UserAccount[] = USERS.map((u, i) => {
   return {
     id: `U${String(i + 1).padStart(3, "0")}`,
     email: u.email,
-    password: u.password,
+    // Không còn nguồn mật khẩu thật ở lib/users.ts (đã chuyển server-only) -
+    // danh sách này chỉ phục vụ màn quản lý tài khoản legacy, không dùng để
+    // xác thực đăng nhập thật (xem session-provider.tsx + /api/auth/login).
+    password: "",
     name: u.name,
     role: u.role as any,
     phongBan: roleToPhongBan[u.role] || "khac",

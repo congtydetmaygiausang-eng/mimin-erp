@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { AGENT_PERSONAS, AgentPersona } from "@/lib/agent-personas";
+import { useSession } from "@/components/session-provider";
 
 interface Message {
   id: string;
@@ -13,6 +14,7 @@ interface Message {
 }
 
 export default function AgentsChatPage() {
+  const { user } = useSession();
   const agentsList = Object.values(AGENT_PERSONAS);
   const [selectedAgent, setSelectedAgent] = useState<AgentPersona>(agentsList[0]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({
@@ -23,8 +25,11 @@ export default function AgentsChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Lời chào mở đầu (hiện trước khi gọi API) - dùng tên thật người đang đăng
+  // nhập thay vì "sếp" chung chung cho mọi người.
+  const greetTitle = user?.email === "sang@mimin.vn" ? "sếp Sang" : user?.name ? `anh/chị ${user.name.split(" ").slice(-1)[0]}` : "sếp";
   const currentMessages = messages[selectedAgent.agent_id] || [
-    { id: "init", sender: "agent", text: `Chào sếp! Em là ${selectedAgent.name} (${selectedAgent.role_title}). Em có thể giúp sếp công việc gì?`, timestamp: "Vừa xong" }
+    { id: "init", sender: "agent", text: `Chào ${greetTitle}! Em là ${selectedAgent.name} (${selectedAgent.role_title}). Em có thể giúp gì cho ${greetTitle} hôm nay?`, timestamp: "Vừa xong" }
   ];
 
   const handleSend = async () => {
@@ -52,7 +57,10 @@ export default function AgentsChatPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: "sang@mimin.vn",
+          // Trước đây hardcode "sang@mimin.vn" cho MỌI người dùng - bất kỳ ai
+          // đăng nhập chat cũng bị AI chào nhầm là "sếp Sang". Gửi đúng email
+          // người đang đăng nhập thật để API chào đúng tên.
+          user_id: user?.email || "guest",
           messages: [{ role: "user", content: userText }],
           agent_id: selectedAgent.agent_id,
         }),

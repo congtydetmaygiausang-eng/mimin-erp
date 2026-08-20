@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/components/session-provider";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Shirt, Eye, EyeOff, Sparkles, Zap, ChevronDown } from "lucide-react";
@@ -19,13 +19,18 @@ const BACKGROUNDS = [
 ];
 
 // 6 user nhanh pho bien nhat (hien thi duoi dang chip)
+// LƯU Ý BẢO MẬT: KHÔNG bao giờ đặt "password" thật vào mảng này - trang /login
+// là route CÔNG KHAI (không cần đăng nhập mới xem được), mọi giá trị ở đây bị
+// bundle thẳng xuống JS gửi cho bất kỳ ai mở trang, kể cả người chưa đăng nhập.
+// Trước đây có "password" thật ở đây (sang123, Mimin@123 dùng chung cho 44 NV)
+// - đã gỡ bỏ. Các chip này chỉ điền sẵn EMAIL, người dùng vẫn phải tự gõ mật khẩu.
 const QUICK_LOGIN = [
-  { email: "sang@mimin.vn",   password: "sang123",   name: "Anh Sang",   role: "admin",     icon: "👑", color: "bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30" },
-  { email: "giau@mimin.vn",   password: "Mimin@123", name: "Chị Giàu",   role: "planner",   icon: "📋", color: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30" },
-  { email: "vy@mimin.vn",     password: "Mimin@123", name: "Cẩm Vy",     role: "content",   icon: "🎨", color: "bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-500/30" },
-  { email: "hau@mimin.vn",    password: "Mimin@123", name: "Quốc Hậu",   role: "warehouse", icon: "📦", color: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
-  { email: "giang@mimin.vn",  password: "Mimin@123", name: "Giang",      role: "sewing",    icon: "✂️", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
-  { email: "nhi@mimin.vn",    password: "Mimin@123", name: "Mỹ Nhi",     role: "finishing", icon: "🧵", color: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30" },
+  { email: "sang@mimin.vn",   name: "Anh Sang",   role: "admin",     icon: "👑", color: "bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30" },
+  { email: "giau@mimin.vn",   name: "Chị Giàu",   role: "planner",   icon: "📋", color: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30" },
+  { email: "vy@mimin.vn",     name: "Cẩm Vy",     role: "content",   icon: "🎨", color: "bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-500/30" },
+  { email: "hau@mimin.vn",    name: "Quốc Hậu",   role: "warehouse", icon: "📦", color: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  { email: "giang@mimin.vn",  name: "Giang",      role: "sewing",    icon: "✂️", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  { email: "nhi@mimin.vn",    name: "Mỹ Nhi",     role: "finishing", icon: "🧵", color: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30" },
 ];
 
 // Tat ca 44 user @mimin.vn (dropdown) - phan theo role
@@ -87,10 +92,11 @@ const ALL_USERS = [
 export default function LoginPage() {
   const { signIn, user, loading: sessionLoading } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [email, setEmail] = useState("sang@mimin.vn");
-  const [password, setPassword] = useState("sang123");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
+  const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
@@ -105,34 +111,19 @@ export default function LoginPage() {
     }
   }, [user, sessionLoading, router]);
 
-  const handleQuickLogin = async (q: typeof QUICK_LOGIN[number]) => {
+  // Chỉ điền email, KHÔNG tự đăng nhập - trang này công khai, không được đoán/
+  // hard-code mật khẩu thật. Người dùng vẫn phải tự gõ mật khẩu của mình.
+  const handleQuickLogin = (q: typeof QUICK_LOGIN[number]) => {
     setEmail(q.email);
-    setPassword(q.password);
-    setLoading(true);
-    const res = await signIn(q.email, q.password);
-    setLoading(false);
-    if (res.ok) {
-      logAudit({
-        user: { id: q.email, email: q.email, name: q.name, role: q.role, title: q.role, source: "supabase" },
-        action: "login",
-        module: "auth",
-        description: `Đăng nhập nhanh: ${q.email} (${q.role})`,
-        success: true,
-      });
-      toast.success(`Đăng nhập nhanh: ${q.name}`);
-      // NCC partner → trang chu gia cong; cac role khac → dashboard
-      const target = q.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
-      router.replace(target);
-    } else {
-      toast.error(res.error || "Đăng nhập thất bại");
-    }
+    setPassword("");
+    toast.info(`Đã điền ${q.email} - nhập mật khẩu rồi bấm "Đăng nhập"`);
   };
 
   const handleSelectAllUser = (u: typeof ALL_USERS[number]) => {
     setEmail(u.email);
-    setPassword("Mimin@123");
+    setPassword("");
     setShowAllUsers(false);
-    toast.info(`Đã điền ${u.email} - bấm "Đăng nhập" để vào`);
+    toast.info(`Đã điền ${u.email} - nhập mật khẩu rồi bấm "Đăng nhập"`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -270,7 +261,7 @@ export default function LoginPage() {
             <div className="mt-4 pt-4 border-t border-white/10">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-semibold text-muted-foreground">Đăng nhập nhanh (click để vào luôn)</span>
+                <span className="text-xs font-semibold text-muted-foreground">Chọn nhanh tài khoản (chỉ điền email)</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {QUICK_LOGIN.map((q) => (

@@ -55,7 +55,7 @@ Hoặc trong app: **/nhan-su** (Quản lý nhân sự).
    DATABASE_URL=postgresql://postgres.nftlwdcsmlpeiazhuoho:YOUR_PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
    ```
 
-Password hiện tại trong `.env.local` là `HtUkba9rRPdDmigJ` — nếu vẫn dùng được thì không cần reset.
+Password hiện tại xem trong `.env.local` (KHÔNG commit giá trị thật vào tài liệu này) — nếu vẫn dùng được thì không cần reset.
 
 ---
 

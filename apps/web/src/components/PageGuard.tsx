@@ -63,6 +63,13 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/supabase-status", module: "cai-dat" },
   { match: "/canh-bao",        module: "bao-cao" },
   { match: "/cai-dat",         module: "cai-dat" },
+  // 3 route thiếu mapping - trước đây không route nào match nên PageGuard render
+  // thẳng, KHÔNG kiểm tra quyền gì cả. Cả 3 đều là trang tài chính/điều hành nhạy
+  // cảm (duyệt/khoá/thanh toán) - dữ liệu quyền cho các module này đã có sẵn đúng
+  // trong permissions.ts (PERMISSIONS), chỉ thiếu chỗ nối URL -> module.
+  { match: "/bang-dieu-hanh-sx", module: "bang-dieu-hanh-sx" },
+  { match: "/doi-soat-tien-cong", module: "doi-soat-tien-cong" },
+  { match: "/doi-soat",        module: "doi-soat-tien-cong" },
   { match: "/profile",         module: "dashboard" },
   { match: "/test-phan-quyen", module: "cai-dat" },
   { match: "/test-real-data",  module: "cai-dat" },
@@ -77,7 +84,10 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/lark-callback",   module: "cai-dat" },
 ];
 
-const PUBLIC_ROUTES = ["/login", "/test-phan-quyen", "/test-real-data", "/ui-cat", "/ui-khuy-nut", "/ui-ui", "/ui-dong-goi"];
+// /test-phan-quyen và /test-real-data đã có mapping module "cai-dat" (chỉ admin) ở
+// trên - trước đây bị liệt kê thêm ở đây nên PUBLIC_ROUTES bypass luôn, mọi role
+// đăng nhập đều xem được. Bỏ khỏi danh sách public để module check phía trên có hiệu lực.
+const PUBLIC_ROUTES = ["/login", "/ui-cat", "/ui-khuy-nut", "/ui-ui", "/ui-dong-goi"];
 
 function findRouteModule(pathname: string) {
   return ROUTE_TO_MODULE.find((r) => pathname === r.match || pathname.startsWith(r.match + "/"));

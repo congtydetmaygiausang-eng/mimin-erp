@@ -251,8 +251,16 @@ export const formatVND = (n: number) => {
 export const formatVNDShort = (n: number) => {
   const safe = Number(n) || 0;
   if (safe === 0) return "0";
-  if (safe >= 1_000_000_000) return (safe / 1_000_000_000).toFixed(2) + " tỷ";
-  if (safe >= 1_000_000) return (safe / 1_000_000).toFixed(0) + " tr";
+  // Trước đây dùng .toFixed(0) cho "tr" -> làm tròn cụt mất hết phần thập
+  // phân (VD 7.400.000đ hiển thị "7 tr" như đúng 7.000.000đ, sai lệch tới
+  // gần 1 triệu ở trường hợp xấu nhất). toLocaleString maximumFractionDigits
+  // giữ tối đa 1-2 chữ số thập phân khi cần, không thêm ".0" thừa khi số tròn.
+  if (safe >= 1_000_000_000) {
+    return (safe / 1_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 2 }) + " tỷ";
+  }
+  if (safe >= 1_000_000) {
+    return (safe / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) + " tr";
+  }
   return safe.toLocaleString("vi-VN") + " đ";
 };
 // ========== 7. KHO VẢI (29 loại vải) ==========

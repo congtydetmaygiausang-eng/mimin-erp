@@ -2,11 +2,15 @@
 // 2026-08-05 - Mavis
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/admin/users - list all users tu bang users (custom) + auth.users
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase Admin chua cau hinh" }, { status: 500 });
   }
@@ -32,6 +36,9 @@ export async function GET() {
 // POST /api/admin/users - tao user moi (auth.users + bang users)
 // Body: { email, password, name, role, chucVu, phongBan, maNV }
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase Admin chua cau hinh" }, { status: 500 });
   }

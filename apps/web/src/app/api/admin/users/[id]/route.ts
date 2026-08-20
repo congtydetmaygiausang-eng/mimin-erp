@@ -2,11 +2,15 @@
 // 2026-08-05 - Mavis
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 // PATCH /api/admin/users/[id] - cap nhat user
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase Admin chua cau hinh" }, { status: 500 });
   }
@@ -45,6 +49,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 // DELETE /api/admin/users/[id] - xoa user
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
+
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Supabase Admin chua cau hinh" }, { status: 500 });
   }
@@ -52,7 +59,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id: userId } = await params;
 
   // Khong cho xoa chinh minh
-  // (Caller phai check truoc)
+  if (userId === auth.caller.id) {
+    return NextResponse.json({ error: "Không thể tự xoá tài khoản của chính mình" }, { status: 400 });
+  }
 
   try {
     // 1. Xoa khoi bang users (custom) truoc

@@ -3,9 +3,10 @@
 import { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 import { mapCsvRowsToEmployees } from "@/lib/employee-import";
+import { authFetch } from "@/lib/auth-fetch";
 
 async function clearExistingEmployees() {
-  const response = await fetch("/api/employee-records", { method: "DELETE" });
+  const response = await authFetch("/api/employee-records", { method: "DELETE" });
   if (!response.ok) {
     throw new Error(await response.text());
   }
@@ -297,7 +298,7 @@ export default function ImportExcelPage() {
         const employees = mapCsvRowsToEmployees(okRows.map((row) => row.data), headerRow);
         const results = await Promise.allSettled(
           employees.map(async (employee) => {
-            const response = await fetch("/api/employee-records", {
+            const response = await authFetch("/api/employee-records", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(employee),

@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase, DEMO_USERS, isSupabaseEnabled, supabaseUpsert, supabaseFetchAll } from "@/lib/supabase/client";
-import { findUserByEmail } from "@/lib/users";
 import { checkRateLimit, recordLoginFailure, clearLoginFailures, getSessionWithTTL, clearSession, createSessionWithTTL } from "@/lib/security";
 import { is2FAEnabled, generate2FACode, verify2FACode } from "@/lib/two-factor";
 import { migrateLegacyKeys } from "@/lib/migrate-legacy-keys";
@@ -170,31 +169,46 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           }
           return { ok: true };
         }
-        if (error?.message?.includes("Invalid login")) {
-          return { ok: false, error: "Email hoặc mật khẩu không đúng" };
-        }
+        // Trước đây "Invalid login" return sớm ở đây, khiến các tài khoản chỉ
+        // tồn tại ở fallback demo (không có trong Supabase Auth) KHÔNG BAO GIỜ
+        // thử được bước fallback bên dưới - vì Supabase trả cùng 1 thông điệp
+        // "Invalid login credentials" cho mọi trường hợp sai (kể cả email không
+        // tồn tại, theo thiết kế bảo mật của Supabase). Bỏ early-return, để mọi
+        // lỗi từ Supabase đều rơi xuống thử tiếp fallback demo bên dưới.
       } catch {
         // network fail, fall through to demo
       }
     }
 
-    // Fallback 1: Unified users từ users.ts (canonical source - 19 + 13 + 7 mock = 26)
-    const userRecord = findUserByEmail(email);
-    if (userRecord && userRecord.password === password) {
-      const u: AppUser = {
-        id: userRecord.id,
-        email: userRecord.email,
-        name: userRecord.name,
-        role: userRecord.role,
-        title: userRecord.chucVu || userRecord.role,
-        source: "demo",
-      };
-      setUser(u);
-      setAuthSource("demo");
-      createSessionWithTTL(u);
-      clearLoginFailures(email);
-      updateUserActivity(email, true);
-      return { ok: true };
+    // Fallback 1: tài khoản demo/nội bộ - mật khẩu được so sánh SERVER-SIDE qua
+    // /api/auth/login (lib/users.server.ts, guard "server-only"). Trước đây so
+    // sánh thẳng trong trình duyệt với dữ liệu từ lib/users.ts, khiến toàn bộ
+    // mật khẩu thật của 18+ nhân viên bị bundle xuống JS gửi cho mọi client.
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        const { user: userRecord } = await res.json();
+        const u: AppUser = {
+          id: userRecord.id,
+          email: userRecord.email,
+          name: userRecord.name,
+          role: userRecord.role,
+          title: userRecord.chucVu || userRecord.role,
+          source: "demo",
+        };
+        setUser(u);
+        setAuthSource("demo");
+        createSessionWithTTL(u);
+        clearLoginFailures(email);
+        updateUserActivity(email, true);
+        return { ok: true };
+      }
+    } catch {
+      // network fail, fall through to legacy
     }
 
     // Fallback 2: Legacy DEMO_USERS từ supabase/client.ts (back-compat)

@@ -14,7 +14,7 @@ import {
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
-import { KHO_VAI, NHA_CUNG_CAP, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
+import { KHO_VAI, NHA_CUNG_CAP, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import { Portal } from "@/components/ui/Portal";
 
@@ -701,7 +701,7 @@ function VaiNhapKho({
       nguoiThucHien: form.nguoiThucHien,
     });
     if (r.ok) {
-      toast.success(`✅ Nhập kho ${vt.tenVT}: +${form.soLuong.toLocaleString()}kg (${formatVNDShort(thanhTien)})`);
+      toast.success(`✅ Nhập kho ${vt.tenVT}: +${form.soLuong.toLocaleString()}kg (${formatVND(thanhTien)})`);
       onSuccess();
       onClose();
     } else {
@@ -783,7 +783,7 @@ function VaiNhapKho({
               <div>
                 <label className="text-xs font-medium block mb-1">Thành tiền</label>
                 <div className="input w-full bg-emerald-500/10 text-emerald-700 font-bold flex items-center">
-                  {formatVNDShort(thanhTien)}
+                  {formatVND(thanhTien)}
                 </div>
               </div>
             </div>

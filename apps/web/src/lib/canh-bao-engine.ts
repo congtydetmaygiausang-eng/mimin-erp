@@ -11,6 +11,7 @@ import { ALL_REAL_PHIEU } from "./real-workflow-data";
 import { KH_SI_FULL } from "./master-data-full";
 import { NCC_FULL } from "./master-data-full";
 import { CONG_NHAN_13 } from "./congnhan-13";
+import { formatVNDShort } from "./data/real-data";
 
 export type LoaiCanhBao = "kho-sap-het" | "lsx-qua-han" | "cong-no-qua-han" | "cn-tre-sl" | "ncc-vuot-han-muc";
 export type MucDoCanhBao = "thap" | "trung-binh" | "cao";
@@ -144,7 +145,7 @@ export function tinhTatCaCanhBao(tasks?: any[], kho?: any[], congNo?: any[]): Ca
         loai: "ncc-vuot-han-muc",
         mucDo: ptVuot > 100 ? "cao" : ptVuot > 30 ? "trung-binh" : "thap",
         tieuDe: `NCC vượt hạn mức: ${ncc.ten}`,
-        noiDung: `Công nợ ${(ncc.congNo/1_000_000).toFixed(0)}tr vượt hạn mức ${(ncc.hanMuc/1_000_000).toFixed(0)}tr (${ptVuot.toFixed(0)}%). Vui lòng thanh toán hoặc đàm phán tăng hạn mức.`,
+        noiDung: `Công nợ ${formatVNDShort(ncc.congNo)} vượt hạn mức ${formatVNDShort(ncc.hanMuc)} (${ptVuot.toFixed(0)}%). Vui lòng thanh toán hoặc đàm phán tăng hạn mức.`,
         doiTuong: ncc.ten,
         thoiGian: new Date().toISOString(),
         giaTri: vuot,

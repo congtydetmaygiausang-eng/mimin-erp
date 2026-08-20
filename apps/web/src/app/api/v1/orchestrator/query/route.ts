@@ -3,11 +3,19 @@ import { logAudit } from "@/lib/audit-log";
 import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
 import { google } from "@ai-sdk/google";
 import { AGENT_PERSONAS } from "@/lib/agent-personas";
+import { findUserByEmail } from "@/lib/users";
+// Có 2 danh sách user song song không đồng bộ trong dự án: lib/users.ts (dùng
+// cho session-provider khi đăng nhập bằng mật khẩu thường) và
+// user-accounts-secure.ts (dùng riêng cho các nút "Đăng nhập nhanh" ở trang
+// login). VD "giau@mimin.vn" (Chị Giàu) CHỈ có trong danh sách thứ 2 - tra
+// thẳng users.ts sẽ không thấy. Import thêm để dò cả 2 nguồn khi tìm tên thật.
+import { USER_ACCOUNTS_SECURE } from "@/lib/user-accounts-secure";
 import { PERSONALITY_SYSTEM } from "@/lib/agent-personality";
 import { PROJECT_MANAGER_CONFIG } from "@/lib/agent-project-manager";
 import { routeTask } from "@/lib/agent-routing-rules";
 import { getAllTools, getToolsForDomain } from "@/lib/ai-tools";
 import { trackUsage } from "@/lib/agent-usage-tracker";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Đảm bảo không bị timeout trên Vercel nếu request hơi lâu
 export const maxDuration = 60;
@@ -50,16 +58,29 @@ interface ProviderConfig {
 // ============================================
 // CORE ORCHESTRATOR INTRO (ngắn gọn hơn)
 // ============================================
-const ORCHESTRATOR_INTRO = `
+// Trước đây là 1 chuỗi tĩnh chỉ hướng dẫn CHUNG CHUNG "gọi tên thật" mà không hề
+// biết tên thật là gì - vì client luôn gửi cứng user_id="sang@mimin.vn" nên mọi
+// người dùng (kể cả không phải sếp Sang) đều bị chào là "sếp Sang". Giờ tra thẳng
+// tên thật từ users.ts theo user_id (email) thật của người đang chat, đưa thẳng
+// vào prompt để model gọi đúng tên - không phải đoán.
+function buildOrchestratorIntro(userId: string): string {
+  const userRecord = findUserByEmail(userId)
+    || USER_ACCOUNTS_SECURE.find((u) => u.email === userId);
+  const isAdmin = userId === "sang@mimin.vn" || userId === "sang";
+  const whoLine = isAdmin
+    ? `Người đang chat: sếp Sang (admin) - gọi "sếp Sang" hoặc "anh MrKey Sang".`
+    : userRecord
+      ? `Người đang chat: ${userRecord.name} (email: ${userId}, vai trò: ${userRecord.chucVu || userRecord.role}) - gọi "anh/chị ${userRecord.name.split(" ").slice(-1)[0]}".`
+      : `Người đang chat: chưa xác định được tên thật (user_id: ${userId || "không rõ"}) - gọi chung là "sếp", KHÔNG bịa tên.`;
+
+  return `
 Bạn là MIMIN AI, trợ lý ảo thông minh của hệ thống quản lý sản xuất may mặc MIMIN ERP.
-Xưng "em", gọi user theo nguyên tắc:
-- user_id = "sang@mimin.vn" hoặc "sang" → gọi "sếp Sang" hoặc "anh MrKey Sang"  
-- user @mimin.vn khác → gọi "anh/chị <tên thật>"
-- Không rõ → gọi "sếp"
-- TUYỆT ĐỐI KHÔNG gọi "anh Cường" / "a Cường"
+Xưng "em". ${whoLine}
+TUYỆT ĐỐI KHÔNG gọi "anh Cường" / "a Cường".
 
 Giọng văn: chuyên nghiệp, ngắn gọn, thân thiện, phong cách "anh-em" casual.
 `;
+}
 
 // ============================================
 // CONVERSATION SUMMARY (Fix 5: summarize sau 10 messages)
@@ -87,13 +108,13 @@ function buildConversationSummary(messages: any[]): string {
 // ============================================
 // BUILD FULL SYSTEM PROMPT (Fix 3: tối ưu token)
 // ============================================
-function buildSystemPrompt(persona: any, conversationSummary: string): string {
+function buildSystemPrompt(persona: any, conversationSummary: string, userId: string): string {
   // Chỉ dùng PERSONALITY_SYSTEM (core rules) + persona cụ thể
   // Bỏ PROJECT_MANAGER_CONFIG nếu không cần cho agent đó
   const needsPMConfig = persona.agent_id === "mavis";
-  
+
   const parts = [
-    ORCHESTRATOR_INTRO,
+    buildOrchestratorIntro(userId),
     PERSONALITY_SYSTEM,
     needsPMConfig ? PROJECT_MANAGER_CONFIG : "",
     persona.system_prompt,
@@ -112,11 +133,11 @@ LUÔN trả lời bằng Tiếng Việt.
 // ============================================
 // BUILD PROVIDER CONFIG
 // ============================================
-async function buildProviderConfig(agentId: string, conversationSummary = ""): Promise<ProviderConfig | null> {
+async function buildProviderConfig(agentId: string, conversationSummary = "", userId = ""): Promise<ProviderConfig | null> {
   const persona = AGENT_PERSONAS[agentId];
   if (!persona) return null;
 
-  const systemPromptBase = buildSystemPrompt(persona, conversationSummary);
+  const systemPromptBase = buildSystemPrompt(persona, conversationSummary, userId);
 
   switch (persona.provider) {
     case "gemini":
@@ -150,6 +171,13 @@ async function buildProviderConfig(agentId: string, conversationSummary = ""): P
 // CALL DEEPSEEK / MINIMAX với TOOLS support (Fix 1)
 // Implement tool calling theo OpenAI function calling format
 // ============================================
+// MiniMax-M3 là model reasoning, nhét khối suy luận <think>...</think> thẳng vào
+// content (khác DeepSeek Reasoner - trả reasoning ở field riêng reasoning_content).
+// Không strip thì user thấy nguyên văn suy nghĩ nội bộ của AI lẫn vào câu trả lời.
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
+}
+
 async function callOpenAICompatibleWithTools(
   provider: ProviderName,
   apiKey: string,
@@ -242,14 +270,14 @@ async function callOpenAICompatibleWithTools(
 
     if (!secondRes.ok) {
       // Fallback: trả về câu trả lời gốc nếu second pass lỗi
-      return message?.content || "Không có phản hồi từ AI";
+      return stripThinkTags(message?.content || "Không có phản hồi từ AI");
     }
 
     const secondData = await secondRes.json();
-    return secondData.choices?.[0]?.message?.content || "Không có phản hồi từ AI";
+    return stripThinkTags(secondData.choices?.[0]?.message?.content || "Không có phản hồi từ AI");
   }
 
-  return message?.content || "Không có phản hồi từ AI";
+  return stripThinkTags(message?.content || "Không có phản hồi từ AI");
 }
 
 // ============================================
@@ -307,6 +335,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Trước đây endpoint này KHÔNG xác thực/giới hạn gì cả - ai gọi cũng được,
+    // không giới hạn số lượt, tốn tiền DeepSeek/MiniMax/Gemini thật không giới
+    // hạn. Chặn 2 lớp: (1) user_id phải khớp 1 tài khoản có thật (không chấp
+    // nhận chuỗi bịa tuỳ ý), (2) rate-limit theo user_id VÀ theo IP (đề phòng
+    // đổi user_id liên tục để né limit theo user_id).
+    const isKnownUser =
+      !!findUserByEmail(user_id) ||
+      USER_ACCOUNTS_SECURE.some((u) => u.email === user_id) ||
+      /@mimin\.vn$/i.test(user_id) ||
+      user_id === "guest";
+    if (!isKnownUser) {
+      return NextResponse.json({ error: "user_id không hợp lệ - vui lòng đăng nhập lại" }, { status: 401 });
+    }
+
+    const ip = getClientIp(req);
+    const perUser = checkRateLimit(`orchestrator:user:${user_id}`, { max: 15, windowMs: 60_000 });
+    if (!perUser.allowed) {
+      return NextResponse.json(
+        { error: `Bạn gửi quá nhiều tin nhắn, vui lòng đợi ${perUser.retryAfterSec}s` },
+        { status: 429 }
+      );
+    }
+    const perIp = checkRateLimit(`orchestrator:ip:${ip}`, { max: 40, windowMs: 60_000 });
+    if (!perIp.allowed) {
+      return NextResponse.json(
+        { error: `Quá nhiều yêu cầu từ mạng của bạn, vui lòng đợi ${perIp.retryAfterSec}s` },
+        { status: 429 }
+      );
+    }
+
     // Lấy nội dung từ message cuối
     const lastMessage = messages[messages.length - 1];
     const userInput = typeof lastMessage?.content === "string"
@@ -346,7 +404,7 @@ export async function POST(req: NextRequest) {
 
     // GEMINI - streaming + full tools (giữ nguyên, đã hoạt động tốt)
     if (provider === "gemini") {
-      const config = await buildProviderConfig(agentId, conversationSummary);
+      const config = await buildProviderConfig(agentId, conversationSummary, user_id);
       if (!config || !config.model) {
         return NextResponse.json({ error: "Gemini config error" }, { status: 500 });
       }
@@ -370,9 +428,9 @@ export async function POST(req: NextRequest) {
       const apiKey = process.env.DEEPSEEK_API_KEY || "";
       if (!apiKey) {
         // Fallback sang Gemini nếu không có DeepSeek key
-        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
+        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary, user_id);
       }
-      const config = await buildProviderConfig(agentId, conversationSummary);
+      const config = await buildProviderConfig(agentId, conversationSummary, user_id);
       if (!config) return NextResponse.json({ error: "Config error" }, { status: 500 });
       
       // Fix 2: truyền FULL conversation history (tối đa 20 messages gần nhất)
@@ -403,7 +461,7 @@ export async function POST(req: NextRequest) {
         // DeepSeek lỗi (hết quota, API down...) -> fallback sang Gemini thay vì trả 500
         console.warn("[orchestrator] DeepSeek call failed, fallback to Gemini:", err);
         trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: true, error_message: String(err), model: persona.model });
-        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
+        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary, user_id);
       }
     }
 
@@ -412,9 +470,9 @@ export async function POST(req: NextRequest) {
       const apiKey = process.env.MINIMAX_API_KEY || "";
       if (!apiKey) {
         // Fallback sang Gemini nếu không có MiniMax key
-        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
+        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary, user_id);
       }
-      const config = await buildProviderConfig(agentId, conversationSummary);
+      const config = await buildProviderConfig(agentId, conversationSummary, user_id);
       if (!config) return NextResponse.json({ error: "Config error" }, { status: 500 });
       
       const fullMessages = convertToSimpleMessages(messages as UIMessage[], 20);
@@ -443,7 +501,7 @@ export async function POST(req: NextRequest) {
         // MiniMax lỗi (hết quota, API down...) -> fallback sang Gemini thay vì trả 500
         console.warn("[orchestrator] MiniMax call failed, fallback to Gemini:", err);
         trackUsage({ agent_id: agentId, latency_ms: Date.now() - startedAt, cost_usd: 0, is_error: true, error_message: String(err), model: persona.model });
-        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary);
+        return handleGeminiFallback(agentId, messages as UIMessage[], conversationSummary, user_id);
       }
     }
 
@@ -464,7 +522,8 @@ export async function POST(req: NextRequest) {
 async function handleGeminiFallback(
   agentId: string,
   messages: any[],
-  conversationSummary: string
+  conversationSummary: string,
+  userId: string
 ): Promise<Response> {
   const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
   if (!geminiKey) {
@@ -473,8 +532,8 @@ async function handleGeminiFallback(
       { status: 500 }
     );
   }
-  
-  const config = await buildProviderConfig(agentId, conversationSummary);
+
+  const config = await buildProviderConfig(agentId, conversationSummary, userId);
   if (!config) {
     return NextResponse.json({ error: "Gemini fallback config error" }, { status: 500 });
   }

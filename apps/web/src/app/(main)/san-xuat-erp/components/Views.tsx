@@ -6,6 +6,7 @@ import { CreditCard, FileText, TrendingDown, DollarSign, Boxes, Calculator } fro
 import { toast } from "sonner";
 import { baoCaoCongNoByDoiTuong, thanhToanCongNo, type BaoCaoCongNo } from "@/lib/master-data";
 import { getAllPhieuNhapSoi, getAllLenhDet, getAllMeNhuom, getAllLoVaiTP } from "@/lib/yarn-production-chain";
+import { formatVNDShort } from "@/lib/data/real-data";
 import { Card, KPICard, Row } from "./ui-blocks";
 
 // ============ CONG NO VIEW ============
@@ -128,7 +129,7 @@ export function BaoCaoView() {
       <div className="card p-3">
         <h3 className="font-semibold text-sm mb-2">📊 Thống kê</h3>
         <div className="space-y-1 text-xs">
-          <Row label="Phiếu nhập sợi" value={`${pnss.length} phiếu`} sub={`${(tongSoi / 1_000_000).toFixed(0)}tr`} />
+          <Row label="Phiếu nhập sợi" value={`${pnss.length} phiếu`} sub={formatVNDShort(tongSoi)} />
           <Row label="Lệnh dệt" value={`${lds.length} lệnh`} sub={`${lds.filter((l) => l.trangThai === "Hoàn thành").length} hoàn thành`} />
           <Row label="Mẻ nhuộm" value={`${mns.length} mẻ`} sub={`${mns.reduce((s, m) => s + m.danhSachMau.length, 0)} màu`} />
           <Row label="Lô vải TP" value={`${ltps.length} lô`} sub={`${(tongGiaTriTP / 1_000_000).toFixed(1)}tr`} />

@@ -21,6 +21,7 @@ import {
   type MeSoiTongQuan,
 } from "@/lib/yarn-me-soi-engine";
 import { truyNguocLo } from "@/lib/yarn-production-chain";
+import { formatVNDShort } from "@/lib/data/real-data";
 
 type Screen =
   | "dashboard"
@@ -174,7 +175,7 @@ function Dashboard({ user, goTo }: any) {
         <BarChart3 className="w-5 h-5" /> Dashboard - Tổng quan 11 bước
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Stat n={pnss.length} label="Phiếu nhập sợi" sub={`${(pnss.reduce((s, p) => s + p.thanhTien, 0) / 1_000_000).toFixed(0)}tr`} color="blue" />
+        <Stat n={pnss.length} label="Phiếu nhập sợi" sub={formatVNDShort(pnss.reduce((s, p) => s + p.thanhTien, 0))} color="blue" />
         <Stat n={lds.length} label="Lệnh dệt" sub={`${lds.filter((l) => l.trangThai !== "Hoàn thành").length} đang chạy`} color="violet" />
         <Stat n={mns.length} label="Mẻ nhuộm" sub={`${mns.filter((m) => m.trangThai !== "Hoàn thành").length} đang nhuộm`} color="rose" />
         <Stat n={ltps.length} label="Lô vải TP" sub={`${ltps.reduce((s, l) => s + l.tongKg, 0).toFixed(0)}kg`} color="emerald" />
