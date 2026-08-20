@@ -1186,7 +1186,10 @@ function deterministicSourceCandidates(query: string, role: string, sources: Sou
   return sources.flatMap((source) => {
     if (blockedSource(source.url) || noiseListing(`${source.title} ${source.content}`)) return [];
     const legalName = cleanCompanyLegalName(source.title);
-    if (isGenericCompanyName(legalName)) return [];
+    // Không dùng tiêu đề bài viết chung làm tên công ty. Các thương hiệu/xưởng
+    // không có tên pháp lý rõ ràng vẫn được DeepSeek xử lý ở tầng chính.
+    const hasFormalIdentity = /\b(?:công\s*ty|cty|tnhh|trách nhiệm hữu hạn|cổ phần|doanh nghiệp tư nhân|dntn|hộ kinh doanh)\b/i.test(legalName);
+    if (isGenericCompanyName(legalName) || !hasFormalIdentity) return [];
     const body = `${source.title}\n${source.content}\n${source.rawContent ?? ""}`;
     const bodyTokens = tokenSet(body);
     const queryRelevant = overlapRatio(queryTokens, bodyTokens) >= 0.5;
@@ -1197,12 +1200,14 @@ function deterministicSourceCandidates(query: string, role: string, sources: Sou
     const email = body.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() ?? "";
     const taxCode = body.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] ?? "";
     const address = postalAddress(body);
-    const type = source.sourceType ?? classifySource(source.url, source.title, source.content);
-    const sourceDomain = domainOf(source.url);
-    const website = type === "OFFICIAL" && sourceDomain ? `https://${sourceDomain}` : "";
-    const verifiedFields = [address ? "address" : "", phone ? "phone" : "", email ? "email" : "", taxCode ? "taxCode" : "", website ? "website" : "", source.latitude !== undefined && source.longitude !== undefined ? "coordinates" : ""].filter(Boolean);
-    const identityEvidence = [address, phone, email, taxCode, website].filter(Boolean).length;
-    if (identityEvidence < 2 && !taxCode && !(website && identityEvidence >= 1)) return [];
+    // Không suy domain của trang nguồn thành website công ty: một bài báo hoặc
+    // danh bạ có thể chứa nhiều doanh nghiệp và sẽ làm gộp nhầm theo domain.
+    const website = "";
+    const verifiedFields = [address ? "address" : "", phone ? "phone" : "", email ? "email" : "", taxCode ? "taxCode" : "", source.latitude !== undefined && source.longitude !== undefined ? "coordinates" : ""].filter(Boolean);
+    const identityEvidence = [address, phone, email, taxCode].filter(Boolean).length;
+    if (identityEvidence < 2 && !taxCode) return [];
+    const matchedCapability = Array.from(queryTokens).filter((token) => bodyTokens.has(token)).join(" ");
+    if (!matchedCapability) return [];
     const sourceLink = candidateSource(source);
     return [{
       legalName,
@@ -1216,7 +1221,7 @@ function deterministicSourceCandidates(query: string, role: string, sources: Sou
       website,
       latitude: source.latitude ?? null,
       longitude: source.longitude ?? null,
-      capabilities: [query],
+      capabilities: [matchedCapability],
       sourceUrl: source.url,
       sourceTitle: source.title,
       sources: [sourceLink],
