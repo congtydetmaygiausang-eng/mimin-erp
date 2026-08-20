@@ -1,7 +1,7 @@
 services:
   - type: keyvalue
     name: mimin-company-reader-cache
-    plan: starter
+    plan: free
     region: singapore
     ipAllowList: []
     maxmemoryPolicy: allkeys-lru
@@ -13,7 +13,7 @@ services:
   - type: web
     name: mimin-company-reader
     runtime: docker
-    plan: starter
+    plan: free
     region: singapore
     healthCheckPath: /readyz
     dockerfilePath: ./services/company-reader/Dockerfile
