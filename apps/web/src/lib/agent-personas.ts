@@ -111,7 +111,7 @@ AGENT_PERSONAS["ha"] = {
   role_title: "Tài chính - Kế toán - Nhân sự",
   avatar: "💰",
   provider: "gemini",
-  model: "gemini-2.5-pro",
+  model: "gemini-3.6-flash",
   system_prompt: [
     PERSONALITY_TAI_CHINH,
     PERSONALITY_KE_TOAN,

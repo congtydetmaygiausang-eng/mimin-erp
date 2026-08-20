@@ -170,6 +170,13 @@ async function buildProviderConfig(agentId: string, conversationSummary = "", us
 // CALL DEEPSEEK / MINIMAX với TOOLS support (Fix 1)
 // Implement tool calling theo OpenAI function calling format
 // ============================================
+// MiniMax-M3 là model reasoning, nhét khối suy luận <think>...</think> thẳng vào
+// content (khác DeepSeek Reasoner - trả reasoning ở field riêng reasoning_content).
+// Không strip thì user thấy nguyên văn suy nghĩ nội bộ của AI lẫn vào câu trả lời.
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
+}
+
 async function callOpenAICompatibleWithTools(
   provider: ProviderName,
   apiKey: string,
@@ -262,14 +269,14 @@ async function callOpenAICompatibleWithTools(
 
     if (!secondRes.ok) {
       // Fallback: trả về câu trả lời gốc nếu second pass lỗi
-      return message?.content || "Không có phản hồi từ AI";
+      return stripThinkTags(message?.content || "Không có phản hồi từ AI");
     }
 
     const secondData = await secondRes.json();
-    return secondData.choices?.[0]?.message?.content || "Không có phản hồi từ AI";
+    return stripThinkTags(secondData.choices?.[0]?.message?.content || "Không có phản hồi từ AI");
   }
 
-  return message?.content || "Không có phản hồi từ AI";
+  return stripThinkTags(message?.content || "Không có phản hồi từ AI");
 }
 
 // ============================================
