@@ -270,20 +270,26 @@ export const getToolsForDomain = (domains: string[]) => {
     });
   }
 
-  // General tools
-  tools.push({
-    type: "function",
-    function: {
-      name: "getSystemConfig",
-      description: "Đọc cấu hình hệ thống MIMIN ERP hiện tại",
-      parameters: {
-        type: "object",
-        properties: {
-          section: { type: "string", enum: ["all", "version", "agents", "modules", "rbac", "supabase", "build"] }
+  // getSystemConfig lộ kiến trúc nội bộ (danh sách agent + provider/model,
+  // RBAC roles, Supabase project ref, email admin) - TRƯỚC ĐÂY không gate
+  // theo domain nên mọi agent kể cả Vy (tiếp khách hàng NGOÀI) đều gọi
+  // được. Chỉ giữ cho Mavis (domain "all") và MIMIN Help (domain phân
+  // tích/help-desk) - 2 agent thực sự cần biết context hệ thống.
+  if (hasAll || hasAnalytical) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "getSystemConfig",
+        description: "Đọc cấu hình hệ thống MIMIN ERP hiện tại",
+        parameters: {
+          type: "object",
+          properties: {
+            section: { type: "string", enum: ["all", "version", "agents", "modules", "rbac", "supabase", "build"] }
+          }
         }
       }
-    }
-  });
+    });
+  }
 
   // Action Tools (HITL)
   if (hasAll || domains.includes("don-hang")) {
@@ -414,8 +420,10 @@ export const getAllToolsForDomain = (domains: string[]) => {
     tools.getStaffList = getStaffList;
   }
 
-  // General tool - giữ nguyên không gate theo domain, khớp hành vi getToolsForDomain()
-  tools.getSystemConfig = getSystemConfig;
+  // Chỉ Mavis (all) và MIMIN Help (analytical) - xem lý do ở getToolsForDomain() phía trên
+  if (hasAll || hasAnalytical) {
+    tools.getSystemConfig = getSystemConfig;
+  }
 
   if (hasAll || domains.includes("don-hang")) {
     tools.createDonHang = createDonHang;
