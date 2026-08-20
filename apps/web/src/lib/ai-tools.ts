@@ -4,6 +4,33 @@ import { KHO_VAI, KHO_VAT_TU, NHAN_SU, DOI_TAC } from "./data/real-data";
 import { PHAN_CONG } from "./data/cong-no";
 import { AGENT_PERSONAS } from "./agent-personas";
 import { ALL_MODULES, ROLE_LABELS, getFullMatrix, canCreate, canEdit, canDelete, type Role, type Module } from "./permissions";
+import { supabaseAdmin } from "./supabase/admin";
+
+// KHO_VAI/KHO_VAT_TU/NHAN_SU/DOI_TAC/PHAN_CONG ở trên là snapshot Excel tĩnh
+// (2026-07-23), không đổi theo thời gian - agent trả lời sai lệch với dữ liệu
+// thật trên Supabase. 3 tool bên dưới ưu tiên đọc trực tiếp từ Supabase (nguồn
+// chính) qua supabaseAdmin, chỉ rơi về snapshot tĩnh khi thiếu env (dev local
+// chưa cấu hình SUPABASE_SERVICE_ROLE_KEY) - và luôn nói rõ trong câu trả lời
+// khi đang dùng dữ liệu mẫu để không đánh lừa người hỏi.
+const DU_LIEU_MAU = " (dữ liệu mẫu - chưa kết nối được Supabase)";
+
+// Tồn kho thật = baseline snapshot (hầu hết = 0) + cộng dồn NHAP/XUAT từ bảng
+// giao_dich_kho - đúng công thức tinhTonKho() trong kho-store.tsx để khớp số
+// với trang kho-vai-tinhmann/kho-phu-lieu người dùng đang thấy trên UI.
+async function tonKhoTuGiaoDich(loaiKho: "vai" | "phu-lieu", baseList: { maVT: string; tonKho: number }[]) {
+  const map = new Map<string, number>(baseList.map((v) => [v.maVT, v.tonKho || 0]));
+  if (!supabaseAdmin) return { map, stale: true };
+  const { data, error } = await supabaseAdmin
+    .from("giao_dich_kho")
+    .select("ma_vt, loai, so_luong")
+    .eq("loai_kho", loaiKho);
+  if (error || !data) return { map, stale: true };
+  for (const r of data as any[]) {
+    const delta = r.loai === "XUAT" ? -(Number(r.so_luong) || 0) : (Number(r.so_luong) || 0);
+    map.set(r.ma_vt, (map.get(r.ma_vt) ?? 0) + delta);
+  }
+  return { map, stale: false };
+}
 
 // Hàm helper định dạng tiền VND
 function formatVND(amount: number) {
@@ -32,20 +59,25 @@ export const getInventoryStatus = tool({
     const result: string[] = [];
 
     if (category === "vai" || category === "all") {
+      const { map: tonMap, stale } = await tonKhoTuGiaoDich("vai", KHO_VAI);
       const totalVai = KHO_VAI.length;
-      const tongKhoiLuong = KHO_VAI.reduce((sum, item) => sum + (item.tonKho || 0), 0);
-      result.push(`Kho vải hiện có ${totalVai} mã, tổng khối lượng tồn là ${tongKhoiLuong} kg.`);
+      const tongKhoiLuong = Array.from(tonMap.values()).reduce((sum, v) => sum + v, 0);
+      result.push(`Kho vải hiện có ${totalVai} mã, tổng khối lượng tồn là ${tongKhoiLuong.toLocaleString("vi-VN")} kg${stale ? DU_LIEU_MAU : ""}.`);
 
-      // Top 3 tồn nhiều nhất
-      const topVai = [...KHO_VAI].sort((a, b) => (b.tonKho || 0) - (a.tonKho || 0)).slice(0, 3);
+      // Top 3 tồn nhiều nhất (tính từ giao dịch kho thật)
+      const topVai = [...KHO_VAI]
+        .map((v) => ({ ...v, tonKho: tonMap.get(v.maVT) ?? 0 }))
+        .sort((a, b) => b.tonKho - a.tonKho)
+        .slice(0, 3);
       result.push("Top 3 mã vải tồn nhiều nhất:");
-      topVai.forEach(v => result.push(`- ${v.tenVT} (${v.maVT}): ${v.tonKho || 0} ${v.dvt}`));
+      topVai.forEach(v => result.push(`- ${v.tenVT} (${v.maVT}): ${v.tonKho.toLocaleString("vi-VN")} ${v.dvt}`));
     }
 
     if (category === "phu_lieu" || category === "all") {
+      const { map: tonMap, stale } = await tonKhoTuGiaoDich("phu-lieu", KHO_VAT_TU);
       const totalPhuLieu = KHO_VAT_TU.length;
-      const tongTon = KHO_VAT_TU.reduce((sum, item) => sum + (item.tonKho || 0), 0);
-      result.push(`Kho phụ liệu hiện có ${totalPhuLieu} mã, tổng tồn kho ${tongTon} đơn vị.`);
+      const tongTon = Array.from(tonMap.values()).reduce((sum, v) => sum + v, 0);
+      result.push(`Kho phụ liệu hiện có ${totalPhuLieu} mã, tổng tồn kho ${tongTon.toLocaleString("vi-VN")} đơn vị${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     return result.join("\n");
@@ -60,40 +92,53 @@ export const getDebtStatus = tool({
   execute: async ({ entityType = "all" }) => {
     const result: string[] = [];
 
+    // Đọc phan_cong + nha_cung_cap (đối tác gia công) thật từ Supabase; rơi về
+    // PHAN_CONG/DOI_TAC tĩnh (mẫu Excel) chỉ khi thiếu env Supabase.
+    let phanCong: { trangThai: string; daThanhToan: number; donGiaGiao: number; soLuongGiao: number }[] = PHAN_CONG;
+    let doiTac: { trangThai: string; congNo: number }[] = DOI_TAC.map(d => ({ trangThai: d.trangThai, congNo: 0 }));
+    let stale = true;
+
+    if (supabaseAdmin) {
+      const [pcRes, dtRes] = await Promise.all([
+        supabaseAdmin.from("phan_cong").select("trang_thai, da_thanh_toan, don_gia_giao, so_luong_giao"),
+        supabaseAdmin.from("nha_cung_cap").select("trang_thai, cong_no").eq("loai", "doi_tac_gia_cong"),
+      ]);
+      if (!pcRes.error && pcRes.data) {
+        phanCong = (pcRes.data as any[]).map(r => ({
+          trangThai: r.trang_thai,
+          daThanhToan: Number(r.da_thanh_toan) || 0,
+          donGiaGiao: Number(r.don_gia_giao) || 0,
+          soLuongGiao: Number(r.so_luong_giao) || 0,
+        }));
+        stale = false;
+      }
+      if (!dtRes.error && dtRes.data) {
+        doiTac = (dtRes.data as any[]).map(r => ({ trangThai: r.trang_thai, congNo: Number(r.cong_no) || 0 }));
+      }
+    }
+
     if (entityType === "nha_cung_cap" || entityType === "all") {
-      // Tính công nợ NCC dựa trên PHAN_CONG có daThanhToan < donGiaGiao*soLuongGiao
-      const phanCongChuaThanhToan = PHAN_CONG.filter(
-        pc => pc.trangThai !== "Đã thanh toán"
-      );
-      const tongDaThanhToan = phanCongChuaThanhToan.reduce(
-        (sum, pc) => sum + (pc.daThanhToan || 0), 0
-      );
-      const tongCanThanhToan = phanCongChuaThanhToan.reduce(
-        (sum, pc) => sum + ((pc.donGiaGiao || 0) * (pc.soLuongGiao || 0)), 0
-      );
-      const tongNoNCC = Math.max(0, tongCanThanhToan - tongDaThanhToan);
-      result.push(`Công nợ phải trả (từ phân công): Tổng cộng ${formatVND(tongNoNCC)} (chưa thanh toán ${phanCongChuaThanhToan.length} phiếu).`);
+      const tongNoNCC = doiTac.reduce((sum, d) => sum + Math.max(0, d.congNo), 0);
+      result.push(`Công nợ phải trả cho đối tác gia công: Tổng cộng ${formatVND(tongNoNCC)} (${doiTac.length} đối tác)${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     if (entityType === "gia_cong" || entityType === "all") {
-      // Tiền công gia công dựa trên PHAN_CONG
-      const phanCongHoanThanh = PHAN_CONG.filter(
+      const phanCongHoanThanh = phanCong.filter(
         pc => pc.trangThai === "Hoàn thành" || pc.trangThai === "Đã thanh toán"
       );
       const tongTienCong = phanCongHoanThanh.reduce(
-        (sum, pc) => sum + ((pc.donGiaGiao || 0) * (pc.soLuongGiao || 0)), 0
+        (sum, pc) => sum + (pc.donGiaGiao * pc.soLuongGiao), 0
       );
       const tongDaTra = phanCongHoanThanh.reduce(
-        (sum, pc) => sum + (pc.daThanhToan || 0), 0
+        (sum, pc) => sum + pc.daThanhToan, 0
       );
       const conNo = tongTienCong - tongDaTra;
-      result.push(`Công nợ tiền gia công: Đã làm ${formatVND(tongTienCong)}, đã trả ${formatVND(tongDaTra)}, còn nợ ${formatVND(conNo)}.`);
+      result.push(`Công nợ tiền gia công: Đã làm ${formatVND(tongTienCong)}, đã trả ${formatVND(tongDaTra)}, còn nợ ${formatVND(conNo)}${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     if (entityType === "khach_hang" || entityType === "all") {
-      // Đếm đối tác Đang hợp tác (coi là KH tiềm năng)
-      const khActive = DOI_TAC.filter(d => d.trangThai === "Đang hợp tác");
-      result.push(`Khách hàng: ${khActive.length} đối tác đang hợp tác trong hệ thống.`);
+      const dangHopTac = doiTac.filter(d => d.trangThai === "Đang hợp tác");
+      result.push(`Đối tác: ${dangHopTac.length} đơn vị đang hợp tác trong hệ thống${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     return result.join("\n");
@@ -106,12 +151,22 @@ export const getStaffList = tool({
     department: z.string().optional().describe("Tên phòng ban cần lọc, ví dụ: 'Sản xuất', 'Kho', 'May'"),
   }),
   execute: async ({ department }) => {
-    let list = NHAN_SU;
-    if (department) {
-      list = list.filter(nv => nv.boPhan.toLowerCase().includes(department.toLowerCase()));
+    let list: { hoTen: string; chucVu: string; boPhan: string }[] = NHAN_SU;
+    let stale = true;
+
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin.from("nhan_su").select("ho_ten, chuc_vu, bo_phan").order("stt");
+      if (!error && data) {
+        list = (data as any[]).map(d => ({ hoTen: d.ho_ten || "", chucVu: d.chuc_vu || "", boPhan: d.bo_phan || "" }));
+        stale = false;
+      }
     }
 
-    return `Tìm thấy ${list.length} nhân viên${department ? ` trong bộ phận ${department}` : ""}. Một số nhân viên: ` +
+    if (department) {
+      list = list.filter(nv => (nv.boPhan || "").toLowerCase().includes(department.toLowerCase()));
+    }
+
+    return `Tìm thấy ${list.length} nhân viên${department ? ` trong bộ phận ${department}` : ""}${stale ? DU_LIEU_MAU : ""}. Một số nhân viên: ` +
       list.slice(0, 5).map(nv => `${nv.hoTen} (${nv.chucVu})`).join(", ") + (list.length > 5 ? ", v.v." : "");
   },
 });
