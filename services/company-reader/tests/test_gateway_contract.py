@@ -11,6 +11,14 @@ SUPABASE_GATEWAY = REPOSITORY_ROOT / "supabase" / "functions" / "company-reader-
 
 
 class CompanyReaderGatewayContractTests(unittest.TestCase):
+    def test_render_exposes_authenticated_https_service_to_supabase_edge(self) -> None:
+        blueprint = RENDER_BLUEPRINT.read_text(encoding="utf-8")
+        service_name = blueprint.index("name: mimin-company-reader\n")
+        service_type = blueprint.rfind("- type:", 0, service_name)
+        self.assertGreaterEqual(service_type, 0, "Blueprint must define the Company Reader service")
+        self.assertEqual(blueprint[service_type:service_name].splitlines()[0].strip(), "- type: web", "Supabase Edge cannot reach a Render private service")
+        self.assertIn("healthCheckPath: /readyz", blueprint)
+
     def test_render_allowlist_accepts_supabase_gateway_client(self) -> None:
         blueprint = RENDER_BLUEPRINT.read_text(encoding="utf-8")
         gateway = SUPABASE_GATEWAY.read_text(encoding="utf-8")

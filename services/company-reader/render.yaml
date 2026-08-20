@@ -7,11 +7,15 @@ services:
     maxmemoryPolicy: allkeys-lru
     persistenceMode: off
 
-  - type: pserv
+  # Supabase Edge Functions run outside Render's private network, therefore the
+  # gateway needs an HTTPS endpoint. Access remains fail-closed behind the
+  # generated bearer token and X-Mimin-Client allowlist.
+  - type: web
     name: mimin-company-reader
     runtime: docker
     plan: starter
     region: singapore
+    healthCheckPath: /readyz
     dockerfilePath: ./services/company-reader/Dockerfile
     dockerContext: .
     maxShutdownDelaySeconds: 30
