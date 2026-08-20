@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { AGENT_PERSONAS, AgentPersona, getDefaultAgentIdForRole } from "@/lib/agent-personas";
 import { useSession } from "@/components/session-provider";
@@ -29,6 +29,29 @@ const AGENT_CARD_BG: Record<string, string> = {
 };
 const AVATAR_FADE_MASK = "linear-gradient(to bottom, black 58%, transparent 96%)";
 
+// Trước đây lịch sử chat chỉ nằm trong useState - refresh trang hoặc chuyển
+// tab là mất sạch. Anh Sang yêu cầu giữ lại lịch sử tối đa 1 ngày, tự xoá
+// sau đó, và có nút xoá tay bất cứ lúc nào. Lưu localStorage (không phải
+// Supabase - đây là UI state cá nhân, chưa cần đồng bộ nhiều thiết bị).
+const CHAT_HISTORY_KEY = "mimin_agents_chat_history_v1";
+const CHAT_HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
+
+function loadStoredMessages(): { savedAt: number; messages: Record<string, Message[]> } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt: number; messages: Record<string, Message[]> };
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > CHAT_HISTORY_TTL_MS) {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default function AgentsChatPage() {
   const { user } = useSession();
   const agentsList = Object.values(AGENT_PERSONAS);
@@ -48,13 +71,36 @@ export default function AgentsChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, autoSelected]);
 
-  const [messages, setMessages] = useState<Record<string, Message[]>>({
-    "mimin-orchestrator": [
-      { id: "1", sender: "agent", text: "Xin chào! Tôi là Mavis, trợ lý AI điều phối tổng quan MIMIN ERP. Bạn cần hỗ trợ gì hôm nay?", timestamp: "10:00" },
-    ],
+  const [messages, setMessages] = useState<Record<string, Message[]>>(() => {
+    const stored = loadStoredMessages();
+    return (
+      stored?.messages || {
+        "mimin-orchestrator": [
+          { id: "1", sender: "agent", text: "Xin chào! Tôi là Mavis, trợ lý AI điều phối tổng quan MIMIN ERP. Bạn cần hỗ trợ gì hôm nay?", timestamp: "10:00" },
+        ],
+      }
+    );
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Ghi lại mỗi khi tin nhắn đổi - giữ nguyên savedAt gốc nếu còn hạn (hết
+  // đúng 24h kể từ tin nhắn đầu, không phải "24h kể từ lần chat gần nhất").
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const existing = loadStoredMessages();
+    const savedAt = existing?.savedAt || Date.now();
+    try {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify({ savedAt, messages }));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  const handleClearHistory = () => {
+    if (!window.confirm("Xoá toàn bộ lịch sử chat với tất cả agent? Không thể hoàn tác.")) return;
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    setMessages({});
+  };
 
   // Lời chào mở đầu (hiện trước khi gọi API) - dùng tên thật người đang đăng
   // nhập thay vì "sếp" chung chung cho mọi người.
@@ -173,13 +219,22 @@ export default function AgentsChatPage() {
       {/* Sidebar Danh sách 9 Agent */}
       <div className="w-80 bg-white border-r border-slate-200 flex flex-col">
         <div className="p-4 border-b border-slate-200">
-          <Link href="/agents" className="text-xs text-sky-600 flex items-center gap-1 font-semibold mb-2 hover:underline">
-            <ArrowLeft className="w-3.5 h-3.5" /> Dashboard Agents
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link href="/agents" className="text-xs text-sky-600 flex items-center gap-1 font-semibold mb-2 hover:underline">
+              <ArrowLeft className="w-3.5 h-3.5" /> Dashboard Agents
+            </Link>
+            <button
+              onClick={handleClearHistory}
+              title="Xoá lịch sử chat (lưu tối đa 1 ngày)"
+              className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 mb-2 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Xoá lịch sử
+            </button>
+          </div>
           <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
             <Bot className="w-5 h-5 text-sky-500" /> Chat {agentsList.length} Nhân viên AI
           </h2>
-          <p className="text-xs text-slate-500">Chọn nhân viên AI để trao đổi trực tiếp</p>
+          <p className="text-xs text-slate-500">Chọn nhân viên AI để trao đổi trực tiếp · lưu lịch sử tối đa 1 ngày</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 space-y-3">

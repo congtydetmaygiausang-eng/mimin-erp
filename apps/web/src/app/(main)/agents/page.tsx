@@ -155,7 +155,13 @@ function AgentCard({ row, loading }: { row: AgentRow; loading: boolean }) {
         {/* Header with gradient */}
         <div className={`bg-gradient-to-br ${style.color} p-3 rounded-t-xl text-white`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-3xl">{style.icon}</span>
+            {persona.avatar.startsWith("/avatars/") ? (
+              <span className="w-12 h-12 rounded-xl bg-white/20 ring-2 ring-white/40 overflow-hidden shrink-0">
+                <img src={persona.avatar} alt={persona.name} className="w-full h-full object-cover object-top" />
+              </span>
+            ) : (
+              <span className="text-3xl">{style.icon}</span>
+            )}
             <span className="px-2 py-0.5 bg-white/20 backdrop-blur rounded text-[10px] font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full animate-pulse" />
               ● Active
