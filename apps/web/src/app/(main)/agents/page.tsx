@@ -8,14 +8,29 @@ import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-track
 
 // AgentPersona (agent-personas.ts) khong co color/icon rieng cho 6 agent V6 -
 // map cuc bo o day, dung chung voi /agents/[id] de nhat quan hien thi.
-const V6_STYLE: Record<string, { color: string; icon: string }> = {
-  mavis: { color: "from-violet-500 to-purple-600", icon: "🧭" },
-  minh: { color: "from-sky-500 to-cyan-600", icon: "✂️" },
-  lan: { color: "from-emerald-500 to-teal-600", icon: "📦" },
-  ha: { color: "from-amber-500 to-orange-600", icon: "💰" },
-  vy: { color: "from-pink-500 to-rose-600", icon: "💬" },
-  "mimin-help": { color: "from-slate-500 to-slate-600", icon: "❓" },
+// "color" giờ chỉ dùng làm điểm nhấn nhỏ (badge/border), KHÔNG phủ cả card
+// nữa - trước đây header card phủ gradient rực (violet-600, rose-600...) bị
+// chê "màu quá nổi bật, chói mắt". accentText dùng cho border/badge nhẹ.
+const V6_STYLE: Record<string, { color: string; icon: string; accentText: string }> = {
+  mavis: { color: "from-violet-500 to-purple-600", icon: "🧭", accentText: "text-violet-700" },
+  minh: { color: "from-sky-500 to-cyan-600", icon: "✂️", accentText: "text-sky-700" },
+  lan: { color: "from-emerald-500 to-teal-600", icon: "📦", accentText: "text-emerald-700" },
+  ha: { color: "from-amber-500 to-orange-600", icon: "💰", accentText: "text-amber-700" },
+  vy: { color: "from-pink-500 to-rose-600", icon: "💬", accentText: "text-rose-700" },
+  "mimin-help": { color: "from-slate-500 to-slate-600", icon: "❓", accentText: "text-slate-700" },
 };
+
+// Nền khu vực avatar - tông màu DỊU, khớp phông ảnh gốc của từng agent (đồng
+// bộ với trang agents-chat) thay vì gradient rực phủ cả card như trước.
+const AGENT_CARD_BG: Record<string, string> = {
+  mavis: "bg-gradient-to-b from-slate-200 to-slate-300",
+  minh: "bg-gradient-to-b from-orange-100 to-orange-200",
+  lan: "bg-gradient-to-b from-stone-200 to-stone-300",
+  ha: "bg-gradient-to-b from-pink-100 to-purple-200",
+  vy: "bg-gradient-to-b from-slate-50 to-slate-200",
+  "mimin-help": "bg-gradient-to-b from-rose-50 to-rose-100",
+};
+const AVATAR_FADE_MASK = "linear-gradient(to bottom, black 75%, transparent 100%)";
 
 interface AgentRow {
   persona: AgentPersona;
@@ -146,33 +161,39 @@ export default function AgentsDashboardPage() {
 // ============================================
 function AgentCard({ row, loading }: { row: AgentRow; loading: boolean }) {
   const { persona, summary } = row;
-  const style = V6_STYLE[persona.agent_id] || { color: "from-slate-500 to-slate-600", icon: "🤖" };
+  const style = V6_STYLE[persona.agent_id] || { color: "from-slate-500 to-slate-600", icon: "🤖", accentText: "text-slate-700" };
+  const cardBg = AGENT_CARD_BG[persona.agent_id] || "bg-gradient-to-b from-slate-100 to-slate-200";
   const hasErrors = (summary?.errorCount || 0) > 0;
+  const hasImg = persona.avatar.startsWith("/avatars/");
 
   return (
     <Link href={`/agents/${persona.agent_id}`}>
-      <div className="card-hover group cursor-pointer">
-        {/* Header with gradient */}
-        <div className={`bg-gradient-to-br ${style.color} p-3 rounded-t-xl text-white`}>
-          <div className="flex items-center justify-between mb-2">
-            {persona.avatar.startsWith("/avatars/") ? (
-              <span className="w-12 h-12 rounded-xl bg-white/20 ring-2 ring-white/40 overflow-hidden shrink-0">
-                <img src={persona.avatar} alt={persona.name} className="w-full h-full object-cover object-top" />
-              </span>
-            ) : (
-              <span className="text-3xl">{style.icon}</span>
-            )}
-            <span className="px-2 py-0.5 bg-white/20 backdrop-blur rounded text-[10px] font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full animate-pulse" />
-              ● Active
-            </span>
-          </div>
-          <h3 className="font-bold text-sm">{persona.name}</h3>
-          <p className="text-[10px] opacity-90">{persona.role_title}</p>
+      <div className="card-hover group cursor-pointer overflow-hidden rounded-2xl border border-slate-200">
+        {/* Avatar lớn - tông màu dịu khớp phông ảnh gốc, KHÔNG phủ gradient rực cả card nữa */}
+        <div className={`relative h-44 ${cardBg}`}>
+          {hasImg ? (
+            <img
+              src={persona.avatar}
+              alt={persona.name}
+              className="absolute inset-0 w-full h-full object-cover object-top"
+              style={{ maskImage: AVATAR_FADE_MASK, WebkitMaskImage: AVATAR_FADE_MASK }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-6xl">{style.icon}</div>
+          )}
+          <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-white/80 backdrop-blur rounded-full text-[10px] font-bold flex items-center gap-1 text-slate-700 shadow-sm">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            Active
+          </span>
+        </div>
+
+        <div className="px-3.5 pt-3 pb-1">
+          <h3 className={`font-bold text-base ${style.accentText}`}>{persona.name}</h3>
+          <p className="text-xs text-slate-500">{persona.role_title}</p>
         </div>
 
         {/* Body */}
-        <div className="p-3 space-y-2">
+        <div className="p-3.5 pt-2 space-y-2">
           <div className="flex items-center justify-between text-[10px] text-slate-500">
             <span className="flex items-center gap-1">
               <Cpu className="w-3 h-3" />
