@@ -3,23 +3,25 @@
 ## Kiến trúc giai đoạn đầu
 
 ```text
+Internet → HTTPS + Bearer + HMAC → mimin-company-reader (Render web service, Singapore)
 Render private network
-├── mimin-company-reader (Python private service, Singapore)
-└── mimin-company-reader-cache (Render Key Value/Valkey, Singapore)
+├── mimin-company-reader-cache (Render Key Value/Valkey, Singapore)
 ```
 
-Service không có public URL. Redis chặn toàn bộ kết nối Internet và chỉ dùng
-connection string nội bộ. MIMIN ERP chưa gọi service trong giai đoạn shadow.
+Python có URL HTTPS để Supabase Edge Function gọi nhưng từ chối mọi request thiếu
+Bearer token, client allowlist và chữ ký HMAC còn hạn 5 phút. Redis chặn toàn bộ
+kết nối Internet và chỉ dùng connection string nội bộ. Shadow không trả hồ sơ cho
+MIMIN ERP sử dụng.
 
 ## Tạo Blueprint
 
 1. Trên Render, tạo Blueprint từ repository `mimin-erp`.
 2. Chọn đường dẫn Blueprint `services/company-reader/render.yaml`.
 3. Render sẽ yêu cầu nhập `JINA_API_KEY`; nhập ở Dashboard, không dán vào Git.
-4. Kiểm tra chi phí trước khi bấm Apply: Blueprint dùng một private service
+4. Kiểm tra chi phí trước khi bấm Apply: Blueprint dùng một web service
    `starter` và một Key Value `starter`.
-5. Sau deploy, mở Shell của một service cùng private network để gọi `/healthz`
-   và `/readyz`. Private service không có URL Internet.
+5. Sau deploy, gọi `/healthz` và `/readyz` trên HTTPS URL. Thử request thiếu chữ
+   ký phải nhận `INVALID_REQUEST_SIGNATURE` trước khi cấu hình Supabase secrets.
 
 `COMPANY_READER_SERVICE_TOKEN` được Render tạo ngẫu nhiên. Chỉ copy token vào
 secret manager của caller nội bộ ở giai đoạn kết nối; không đưa vào Vercel

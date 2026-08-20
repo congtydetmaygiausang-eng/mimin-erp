@@ -36,6 +36,9 @@ class CompanyReaderGatewayContractTests(unittest.TestCase):
             client_match.group(1),
             "Render allowlist and Supabase gateway client ID must remain identical",
         )
+        self.assertIn('key: COMPANY_READER_REQUIRE_SIGNATURE\n        value: "true"', blueprint)
+        self.assertIn('"X-Mimin-Signature": signature', gateway)
+        self.assertIn('"X-Mimin-Timestamp": timestamp', gateway)
 
 
 if __name__ == "__main__":

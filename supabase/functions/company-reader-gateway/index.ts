@@ -21,6 +21,13 @@ function validRequest(value: unknown): value is GatewayRequest {
   });
 }
 
+async function sign(token: string, timestamp: string, body: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(token), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(`${timestamp}\n${body}`));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json(405, { error: "METHOD_NOT_ALLOWED" });
@@ -49,10 +56,13 @@ Deno.serve(async (request) => {
   if (!validRequest(payload)) return json(400, { error: "INVALID_REQUEST" });
 
   try {
+    const body = JSON.stringify(payload);
+    const timestamp = Math.floor(Date.now() / 1_000).toString();
+    const signature = await sign(readerToken, timestamp, body);
     const upstream = await fetch(`${readerUrl}/v1/company-reader/read`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${readerToken}`, "Content-Type": "application/json", "X-Mimin-Client": "mimin-supabase-gateway" },
-      body: JSON.stringify(payload),
+      headers: { Authorization: `Bearer ${readerToken}`, "Content-Type": "application/json", "X-Mimin-Client": "mimin-supabase-gateway", "X-Mimin-Timestamp": timestamp, "X-Mimin-Signature": signature },
+      body,
       signal: AbortSignal.timeout(25_000),
     });
     const body = await upstream.json().catch(() => ({ error: "INVALID_UPSTREAM_RESPONSE" }));

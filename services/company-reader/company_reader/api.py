@@ -6,6 +6,7 @@ import asyncio
 import hmac
 import json
 import re
+import time
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Protocol
 
@@ -34,6 +35,7 @@ class CompanyReaderASGI:
     configuration_error: str | None = None
     allowed_clients: frozenset[str] = frozenset()
     rollout: RolloutPolicy = RolloutPolicy()
+    require_signature: bool = False
 
     async def __call__(self, scope: dict[str, object], receive: Receive, send: Send) -> None:
         if scope.get("type") != "http":
@@ -80,6 +82,9 @@ class CompanyReaderASGI:
         body = await self._body(receive)
         if body is None:
             await self._json(send, 413, {"error": "PAYLOAD_TOO_LARGE"})
+            return
+        if self.require_signature and not self._valid_signature(headers, body):
+            await self._json(send, 401, {"error": "INVALID_REQUEST_SIGNATURE"})
             return
         request = self._request(body)
         if isinstance(request, str):
@@ -144,6 +149,19 @@ class CompanyReaderASGI:
         if not unique_urls or len(unique_urls) != len(urls):
             return "EMPTY_OR_DUPLICATE_URL"
         return request_id, unique_urls
+
+    def _valid_signature(self, headers: dict[str, str], body: bytes) -> bool:
+        timestamp = headers.get("x-mimin-timestamp", "")
+        signature = headers.get("x-mimin-signature", "")
+        try:
+            issued_at = int(timestamp)
+        except ValueError:
+            return False
+        if abs(int(time.time()) - issued_at) > 300:
+            return False
+        message = timestamp.encode("ascii") + b"\n" + body
+        expected = hmac.new(self.service_token.encode("utf-8"), message, "sha256").hexdigest()
+        return hmac.compare_digest(signature.lower(), expected)
 
     @staticmethod
     async def _json(

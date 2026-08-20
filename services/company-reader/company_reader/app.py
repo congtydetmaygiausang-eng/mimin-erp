@@ -36,6 +36,7 @@ def create_app_from_env(
     guardrail_mode = env.get("COMPANY_READER_GUARDRAIL_MODE", "memory").strip().lower()
     client_values = (value.strip() for value in env.get("COMPANY_READER_ALLOWED_CLIENTS", "").split(","))
     allowed_clients = frozenset(value for value in client_values if value)
+    require_signature = env.get("COMPANY_READER_REQUIRE_SIGNATURE", "false").strip().lower() == "true"
     rollout_mode_raw = env.get("COMPANY_READER_ROLLOUT_MODE", "shadow").strip().lower()
     try:
         rollout_mode = RolloutMode(rollout_mode_raw)
@@ -93,6 +94,7 @@ def create_app_from_env(
         configuration_error=configuration_error,
         allowed_clients=allowed_clients,
         rollout=rollout,
+        require_signature=require_signature,
     )
 
 

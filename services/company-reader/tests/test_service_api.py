@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import json
 import os
 import sys
+import time
 import unittest
 from pathlib import Path
 
@@ -119,6 +122,35 @@ class CompanyReaderASGITests(unittest.TestCase):
         self.assertEqual((status, payload["error"]), (400, "EMPTY_OR_DUPLICATE_URL"))
         status, _, payload = asyncio.run(invoke(app, body=b"x" * (MAX_BODY_BYTES + 1), headers=headers))
         self.assertEqual((status, payload["error"]), (413, "PAYLOAD_TOO_LARGE"))
+
+    def test_public_endpoint_requires_fresh_body_signature_when_enabled(self) -> None:
+        pipeline = FakePipeline()
+        app = CompanyReaderASGI(
+            pipeline, self.token, True,
+            allowed_clients=frozenset({"mimin-supabase-gateway"}),
+            rollout=RolloutPolicy(RolloutMode.LIVE, 100),
+            require_signature=True,
+        )
+        body = json.dumps({"request_id": "request_123", "urls": ["https://example.com/a"]}, separators=(",", ":")).encode()
+        base = (
+            (b"authorization", f"Bearer {self.token}".encode()),
+            (b"content-type", b"application/json"),
+            (b"x-mimin-client", b"mimin-supabase-gateway"),
+        )
+        status, _, payload = asyncio.run(invoke(app, body=body, headers=base))
+        self.assertEqual((status, payload["error"]), (401, "INVALID_REQUEST_SIGNATURE"))
+
+        timestamp = str(int(time.time()))
+        signature = hmac.new(self.token.encode(), timestamp.encode() + b"\n" + body, hashlib.sha256).hexdigest()
+        signed = (*base, (b"x-mimin-timestamp", timestamp.encode()), (b"x-mimin-signature", signature.encode()))
+        status, _, payload = asyncio.run(invoke(app, body=body, headers=signed))
+        self.assertEqual((status, payload["request_id"]), (200, "request_123"))
+
+        stale = str(int(time.time()) - 301)
+        stale_signature = hmac.new(self.token.encode(), stale.encode() + b"\n" + body, hashlib.sha256).hexdigest()
+        stale_headers = (*base, (b"x-mimin-timestamp", stale.encode()), (b"x-mimin-signature", stale_signature.encode()))
+        status, _, payload = asyncio.run(invoke(app, body=body, headers=stale_headers))
+        self.assertEqual((status, payload["error"]), (401, "INVALID_REQUEST_SIGNATURE"))
 
     def test_environment_factory_requires_explicit_safe_enablement(self) -> None:
         disabled = create_app_from_env({})
