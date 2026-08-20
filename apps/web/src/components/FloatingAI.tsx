@@ -7,6 +7,7 @@ import {
   Minimize2, Maximize2, Warehouse, ArrowUpRight
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "@/components/session-provider";
 
 interface ChatMessage {
   id: string;
@@ -109,6 +110,7 @@ export function FloatingAI() {
 
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useSession();
 
   const isKhoRoute = pathname?.includes("-kho") || pathname?.includes("trang-chu-kho");
   const isVyRoute = !isKhoRoute && VY_ROUTES.some((r) => pathname?.startsWith(r));
@@ -149,7 +151,11 @@ export function FloatingAI() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: "sang@mimin.vn",
+          // Trước đây hardcode "sang@mimin.vn" cho MỌI người dùng - bất kỳ ai
+          // đăng nhập chat cũng bị AI chào nhầm là "sếp Sang". Gửi đúng email
+          // người đang đăng nhập thật để API chào đúng tên (route.ts tra tên
+          // thật từ users.ts theo email này).
+          user_id: user?.email || "guest",
           messages: [{ role: "user", content: text }],
           // API đọc field "agent_id". Kho -> "lan", khu MIMIN Group/Trang chủ
           // sản xuất -> "vy", các khu còn lại để trống cho bộ định tuyến tự
