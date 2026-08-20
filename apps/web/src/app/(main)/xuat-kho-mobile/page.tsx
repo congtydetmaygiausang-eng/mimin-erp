@@ -175,32 +175,40 @@ function TaoPhieuXuatModal({ onClose, onSubmit }: any) {
 
   const dsSP = loaiKho === "vai" ? KHO_VAI : [];
 
-  const handleAiAutoFill = () => {
+  const handleAiAutoFill = async () => {
     if (!aiText.trim()) {
       toast.error("Vui lòng nhập nội dung cho AI");
       return;
     }
     setIsAiLoading(true);
-    // Fake AI Parsing processing
-    setTimeout(() => {
-      // Very basic fake parser based on text
-      if (aiText.toLowerCase().includes("vải")) setLoaiKho("vai");
-      if (aiText.toLowerCase().includes("phụ liệu")) setLoaiKho("phu-lieu");
-      
-      const numMatch = aiText.match(/\d+/g);
-      if (numMatch && numMatch[0]) setSoLuong(parseInt(numMatch[0]));
-      
-      const lsxMatch = aiText.match(/LSX-\d+/i);
-      if (lsxMatch) setLsx(lsxMatch[0].toUpperCase());
+    try {
+      const res = await fetch("/api/v1/ai-parse-kho-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: aiText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Lỗi không xác định");
 
-      setTenSP("Mặt hàng (AI Tự điền)");
-      setMaSP("SP-AI-001");
-      setDonGia(0);
-      
-      toast.success("AI đã bóc tách dữ liệu xuất kho thành công!");
+      let filledCount = 0;
+      if (data.loaiKho) { setLoaiKho(data.loaiKho); filledCount++; }
+      if (data.tenSP) { setTenSP(data.tenSP); filledCount++; }
+      if (data.maSP) { setMaSP(data.maSP); filledCount++; }
+      if (typeof data.soLuong === "number") { setSoLuong(data.soLuong); filledCount++; }
+      if (typeof data.donGia === "number") { setDonGia(data.donGia); filledCount++; }
+      if (data.lsx) { setLsx(data.lsx); filledCount++; }
+
+      if (filledCount === 0) {
+        toast.error("AI không nhận ra thông tin nào rõ ràng trong nội dung này, anh/chị điền tay giúp em nhé");
+      } else {
+        toast.success(`AI đã điền ${filledCount} trường - kiểm tra lại trước khi lưu nhé`);
+        setAiText("");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Lỗi khi gọi AI bóc tách");
+    } finally {
       setIsAiLoading(false);
-      setAiText("");
-    }, 1500);
+    }
   };
 
   const handleSubmit = () => {

@@ -543,12 +543,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
             if (cached) {
                try { setDsSanPham(JSON.parse(cached)); } catch(e) { setDsSanPham(MOCK_DANH_MUC); }
             } else {
+               // CHỈ hiện mock ở màn hình cho đỡ trống, KHÔNG tự ghi vào Supabase
+               // nữa - bảng "san_pham" thật rỗng (VD sau khi xoá hết để import lại
+               // dữ liệu thật) trước đây bị code này âm thầm nhét đầy sản phẩm demo
+               // vào production, không ai biết để mà xoá lại.
                setDsSanPham(MOCK_DANH_MUC);
-               // Auto seed MOCK vao DB
-               Promise.all(MOCK_DANH_MUC.map(async sp => {
-                 const dbPayload = buildDBPayload(sp);
-                 await client.from("san_pham").insert(dbPayload);
-               })).catch(() => {});
             }
           }
         } else {
