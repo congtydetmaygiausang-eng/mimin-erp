@@ -24,10 +24,11 @@ def document(
     title: str | None = None,
     description: str | None = None,
     status: ExtractionStatus = ExtractionStatus.OK,
+    source_url: str = "https://example.com/company",
 ) -> ExtractedDocument:
     digest = hashlib.sha256((text or "").encode()).hexdigest() if text is not None else None
     return ExtractedDocument(
-        source_url="https://example.com/company",
+        source_url=source_url,
         fetch_sha256="a" * 64,
         status=status,
         extractor="trafilatura",
@@ -173,6 +174,41 @@ Mã số thuế: 0311111111
         self.assertEqual(result.status, CandidateBundleStatus.OK)
         self.assertEqual(values(result, CandidateField.TAX_CODE), ["0316936282"])
         self.assertEqual(values(result, CandidateField.PHONE), ["0903491255"])
+        self.assertEqual(len(values(result, CandidateField.ADDRESS)), 1)
+
+    def test_masothue_pipe_table_keeps_one_identity_and_recovers_unlabelled_fields(self) -> None:
+        text = """CÔNG TY TNHH DỆT MAY GIÀU SANG
+| | | 0318507560 |
+| | | 12/39 Đường Xuân Thới Thượng 58C, Ấp 7, Xã Bà Điểm, TP Hồ Chí Minh, Việt Nam |
+GIAU SANG TEXTILES Co., LTD
+| | | HỒ MINH SANG |
+| | | 0774480916 |
+| | | 2024-06-12 |
+| | | Thuế cơ sở 12 Thành phố Hồ Chí Minh |
+| | | Công ty trách nhiệm hữu hạn ngoài NN |
+| | | Sản xuất vải dệt kim, vải đan móc và vải không dệt khác |"""
+        result = self.extractor.extract(document(
+            text,
+            title="0318507560 - CÔNG TY TNHH DỆT MAY GIÀU SANG",
+            source_url="https://masothue.com/0318507560-cong-ty-tnhh-det-may-giau-sang",
+        ))
+
+        self.assertEqual(result.status, CandidateBundleStatus.OK)
+        self.assertFalse(result.multi_entity)
+        self.assertEqual(result.distinct_legal_names, 1)
+        self.assertEqual(values(result, CandidateField.TAX_CODE), ["0318507560"])
+        self.assertEqual(values(result, CandidateField.PHONE), ["0774480916"])
+        self.assertEqual(len(values(result, CandidateField.ADDRESS)), 1)
+        self.assertNotIn(
+            "cong ty trach nhiem huu han ngoai nn",
+            values(result, CandidateField.LEGAL_NAME),
+        )
+
+    def test_address_abbreviation_does_not_create_false_conflict(self) -> None:
+        text = """CÔNG TY TNHH DỆT MAY GIÀU SANG
+Địa chỉ: 12/39 Đường Xuân Thới Thượng 58C, Ấp 7, Xã Bà Điểm, TP Hồ Chí Minh, Việt Nam
+| | | 12/39 Đường Xuân Thới Thượng 58C, Ấp 7, Xã Bà Điểm, Thành phố Hồ Chí Minh, Việt Nam |"""
+        result = self.extractor.extract(document(text))
         self.assertEqual(len(values(result, CandidateField.ADDRESS)), 1)
 
 

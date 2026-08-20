@@ -69,7 +69,8 @@ ROUTE_MARKER = re.compile(
 )
 ADDRESS_PROSE = re.compile(
     r"\b(?:cập nhật gần nhất|ngành\s*:|tình trạng|là một trong|sản phẩm|giá thành|"
-    r"ưu điểm|nhược điểm|quy trình|chuyên sản xuất|chuyên nhập khẩu|hàng đầu)\b",
+    r"ưu điểm|nhược điểm|quy trình|chuyên sản xuất|chuyên nhập khẩu|hàng đầu|"
+    r"thuế cơ sở|cơ quan thuế|quản lý bởi)\b",
     re.IGNORECASE,
 )
 STOP_LABEL = re.compile(
@@ -77,6 +78,12 @@ STOP_LABEL = re.compile(
     r"facebook|mã số thuế|mst|ngành nghề)\s*[:#-]?",
     re.IGNORECASE,
 )
+GENERIC_LEGAL_TYPE = re.compile(
+    r"^(?:cong ty )?(?:tnhh|trach nhiem huu han|co phan|doanh nghiep tu nhan)"
+    r"(?: mot thanh vien)?(?: ngoai nn|ngoai nha nuoc|nha nuoc|tu nhan)?$",
+    re.IGNORECASE,
+)
+TABLE_CELL = re.compile(r"(?:(?<=\|)|^)\s*([^|\n]+?)\s*(?=\||$)")
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,7 +173,7 @@ class CompanyCandidateExtractor:
         return result
 
     def _tax_codes(self, document: ExtractedDocument, text: str) -> list[FieldCandidate]:
-        return [
+        result = [
             self._candidate(
                 document, CandidateField.TAX_CODE, match.group(1),
                 self._normalize_tax_code(match.group(1)), 0.99,
@@ -175,6 +182,15 @@ class CompanyCandidateExtractor:
             )
             for match in TAX_CODE.finditer(text)
         ]
+        url_tax_code = self._tax_code_from_url(document.source_url)
+        if url_tax_code:
+            for match in re.finditer(rf"(?<!\d){re.escape(url_tax_code)}(?!\d)", text):
+                result.append(self._candidate(
+                    document, CandidateField.TAX_CODE, match.group(0), url_tax_code,
+                    0.98, EvidenceOrigin.MAIN_TEXT, text, match.start(), match.end(),
+                    ("SOURCE_URL_TAX_CODE_MATCH", "STANDALONE_IDENTITY_VALUE"),
+                ))
+        return result
 
     def _addresses(self, document: ExtractedDocument, text: str) -> list[FieldCandidate]:
         result: list[FieldCandidate] = []
@@ -185,9 +201,18 @@ class CompanyCandidateExtractor:
             start = match.start(1)
             end = start + len(value)
             result.append(self._candidate(
-                document, CandidateField.ADDRESS, value, self._identity_key(value),
+                document, CandidateField.ADDRESS, value, self._address_key(value),
                 0.91, EvidenceOrigin.MAIN_TEXT, text, start, end,
                 ("EXPLICIT_ADDRESS_LABEL", "POSTAL_STRUCTURE"),
+            ))
+        for value, start, end in self._table_cells(text):
+            cleaned = self._clean_address(value)
+            if not self._is_postal_address(cleaned):
+                continue
+            result.append(self._candidate(
+                document, CandidateField.ADDRESS, cleaned, self._address_key(cleaned),
+                0.82, EvidenceOrigin.MAIN_TEXT, text, start, start + len(cleaned),
+                ("TABLE_CELL_VALUE", "POSTAL_STRUCTURE"),
             ))
         return result
 
@@ -211,6 +236,18 @@ class CompanyCandidateExtractor:
                     0.94, EvidenceOrigin.MAIN_TEXT, text, start, end,
                     ("EXPLICIT_CONTACT_LABEL", "VALID_VN_PHONE"),
                 ))
+        for value, start, end in self._table_cells(text):
+            compact = re.sub(r"\s+", "", value)
+            if not PHONE.fullmatch(compact):
+                continue
+            normalized = self._normalize_vietnam_phone(compact)
+            if not normalized or normalized in tax_digits:
+                continue
+            result.append(self._candidate(
+                document, CandidateField.PHONE, value.strip(), normalized,
+                0.78, EvidenceOrigin.MAIN_TEXT, text, start, end,
+                ("TABLE_CELL_VALUE", "VALID_VN_PHONE"),
+            ))
         return result
 
     def _emails(self, document: ExtractedDocument, text: str) -> list[FieldCandidate]:
@@ -337,7 +374,24 @@ class CompanyCandidateExtractor:
         )
         if not re.search(r"[a-z0-9]{2,}", identity_tail):
             return ""
+        if GENERIC_LEGAL_TYPE.fullmatch(cls._identity_key(text)):
+            return ""
         return text
+
+    @classmethod
+    def _table_cells(cls, text: str) -> list[tuple[str, int, int]]:
+        cells: list[tuple[str, int, int]] = []
+        for match in TABLE_CELL.finditer(text):
+            value = cls._compact(match.group(1), 320)
+            if not value or re.fullmatch(r"[-: ]+", value):
+                continue
+            cells.append((value, match.start(1), match.end(1)))
+        return cells
+
+    @staticmethod
+    def _tax_code_from_url(source_url: str) -> str:
+        match = re.search(r"(?:^|/)(\d{10})(?:[-/?#]|$)", source_url)
+        return match.group(1) if match else ""
 
     @classmethod
     def _clean_address(cls, value: str) -> str:
@@ -396,7 +450,14 @@ class CompanyCandidateExtractor:
     def _identity_key(value: str) -> str:
         normalized = unicodedata.normalize("NFD", value.casefold())
         without_marks = "".join(character for character in normalized if unicodedata.category(character) != "Mn")
+        without_marks = without_marks.replace("đ", "d")
         return re.sub(r"[^a-z0-9]+", " ", without_marks).strip()
+
+    @classmethod
+    def _address_key(cls, value: str) -> str:
+        normalized = cls._identity_key(value)
+        normalized = re.sub(r"\btp\s*(?:hcm|ho chi minh)\b", "thanh pho ho chi minh", normalized)
+        return re.sub(r"\s+", " ", normalized).strip()
 
     @staticmethod
     def _compact(value: str, maximum: int) -> str:
