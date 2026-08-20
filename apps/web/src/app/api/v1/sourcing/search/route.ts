@@ -657,7 +657,10 @@ async function geocodeCandidate(candidate: Candidate, searchLocation: string, ca
 async function geocodeCandidates(candidates: Candidate[], searchLocation: string): Promise<{ candidates: Candidate[]; summary: CandidateGeocodingSummary }> {
   const cacheClient = geocodeCacheClient();
   const retainedFromSource = candidates.filter((candidate) => candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")).length;
-  const targets = candidates.filter((candidate) => !(candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")) && cleanCandidateAddress(candidate.address)).slice(0, 20);
+  // Giữ ngân sách định vị tách biệt với ngân sách thu thập nguồn. Bán kính lớn
+  // được mở rộng ở tầng truy vấn, không được nhân đôi số request bản đồ trong
+  // cùng một Vercel invocation vì Google/Nominatim có thể làm vượt timeout.
+  const targets = candidates.filter((candidate) => !(candidate.latitude !== null && candidate.longitude !== null && candidate.verifiedFields?.includes("coordinates")) && cleanCandidateAddress(candidate.address)).slice(0, 10);
   const targetSet = new Set(targets);
   const geocoded = new Map<Candidate, Candidate>();
   for (const candidate of targets) geocoded.set(candidate, await geocodeCandidate(candidate, searchLocation, cacheClient));

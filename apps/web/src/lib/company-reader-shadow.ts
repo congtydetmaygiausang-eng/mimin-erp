@@ -8,8 +8,22 @@ export interface CompanyReaderShadowResult {
   code?: string;
 }
 
+const COMPANY_READER_SHADOW_TIMEOUT_MS = 8_000;
+
+async function withTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("GATEWAY_TIMEOUT")), COMPANY_READER_SHADOW_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export async function runCompanyReaderShadow(sourceUrls: string[]): Promise<CompanyReaderShadowResult> {
-  if (process.env.NEXT_PUBLIC_COMPANY_READER_SHADOW_ENABLED === "false") return { status: "DISABLED", profileCount: 0, sourceCount: 0, warningCount: 0 };
+  if (process.env.NEXT_PUBLIC_COMPANY_READER_SHADOW_ENABLED !== "true") return { status: "DISABLED", profileCount: 0, sourceCount: 0, warningCount: 0 };
   if (!supabase) return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: "SUPABASE_DISABLED" };
   const client = supabase;
   const urls = Array.from(new Set(sourceUrls.filter((url) => {
@@ -27,12 +41,13 @@ export async function runCompanyReaderShadow(sourceUrls: string[]): Promise<Comp
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ request_id: requestId, urls: batch }),
+          signal: AbortSignal.timeout(COMPANY_READER_SHADOW_TIMEOUT_MS),
         });
         const response = await local.json() as { status?: string; profile_count?: number; source_count?: number; warning_count?: number; error?: string };
         if (!local.ok) throw new Error(response.error ?? "LOCAL_GATEWAY_ERROR");
         return response;
       }
-      const { data, error } = await client.functions.invoke("company-reader-gateway", { body: { request_id: requestId, urls: batch } });
+      const { data, error } = await withTimeout(client.functions.invoke("company-reader-gateway", { body: { request_id: requestId, urls: batch } }));
       if (error) throw new Error("GATEWAY_ERROR");
       return data as { status?: string; profile_count?: number; source_count?: number; warning_count?: number };
     }));
