@@ -1,10 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bot, Search, Cpu, DollarSign, Clock, ChevronRight, AlertCircle, Activity, MessageSquare } from "lucide-react";
+import { Bot, Search, Cpu, DollarSign, Clock, ChevronRight, AlertCircle, Activity, MessageSquare, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { AGENT_PERSONAS, AGENT_IDS_V6, type AgentPersona } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
+
+// Đọc to lời giới thiệu bằng Web Speech API (giọng trình duyệt) - giống hệt
+// agents-chat/page.tsx, tách riêng vì 2 trang không share state chat. Bỏ
+// markdown trước khi đọc để không đọc luôn ký tự định dạng.
+function stripMarkdownForSpeech(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-•]\s+/gm, "")
+    .replace(/\n{2,}/g, ". ")
+    .replace(/\n/g, " ")
+    .trim();
+}
 
 // AgentPersona (agent-personas.ts) khong co color/icon rieng cho 6 agent V6 -
 // map cuc bo o day, dung chung voi /agents/[id] de nhat quan hien thi.
@@ -43,6 +59,23 @@ export default function AgentsDashboardPage() {
     AGENT_IDS_V6.map((id) => ({ persona: AGENT_PERSONAS[id], summary: null }))
   );
   const [loading, setLoading] = useState(true);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+
+  const speakGreeting = (agentId: string, text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    if (speakingId === agentId) {
+      setSpeakingId(null);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(stripMarkdownForSpeech(text));
+    utterance.lang = "vi-VN";
+    utterance.rate = 1;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    setSpeakingId(agentId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   // Trang nay truoc day hien 26 "agent" gia (module-scoped, model Sonnet-4/
   // Haiku-3.5 khong co that) voi so lieu random moi 30s - khong khop voi he
@@ -141,7 +174,7 @@ export default function AgentsDashboardPage() {
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((r) => (
-            <AgentCard key={r.persona.agent_id} row={r} loading={loading} />
+            <AgentCard key={r.persona.agent_id} row={r} loading={loading} speakingId={speakingId} onSpeak={speakGreeting} />
           ))}
         </div>
 
@@ -159,12 +192,23 @@ export default function AgentsDashboardPage() {
 // ============================================
 // AGENT CARD
 // ============================================
-function AgentCard({ row, loading }: { row: AgentRow; loading: boolean }) {
+function AgentCard({
+  row,
+  loading,
+  speakingId,
+  onSpeak,
+}: {
+  row: AgentRow;
+  loading: boolean;
+  speakingId: string | null;
+  onSpeak: (agentId: string, text: string) => void;
+}) {
   const { persona, summary } = row;
   const style = V6_STYLE[persona.agent_id] || { color: "from-slate-500 to-slate-600", icon: "🤖", accentText: "text-slate-700" };
   const cardBg = AGENT_CARD_BG[persona.agent_id] || "bg-gradient-to-b from-slate-100 to-slate-200";
   const hasErrors = (summary?.errorCount || 0) > 0;
   const hasImg = persona.avatar.startsWith("/avatars/");
+  const isSpeaking = speakingId === persona.agent_id;
 
   return (
     // Bấm card = vào thẳng chat riêng với agent này - trước đây trỏ tới
@@ -185,6 +229,21 @@ function AgentCard({ row, loading }: { row: AgentRow; loading: boolean }) {
           ) : (
             <div className="w-full h-full flex items-center justify-center text-6xl">{style.icon}</div>
           )}
+          {/* Nút nghe lời giới thiệu - preventDefault/stopPropagation để không
+              bị Link cha điều hướng sang chat khi bấm nút này. */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSpeak(persona.agent_id, persona.greeting);
+            }}
+            title="Nghe agent tự giới thiệu"
+            className={`absolute top-2.5 left-2.5 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur shadow-sm transition ${
+              isSpeaking ? "bg-sky-600 text-white" : "bg-white/80 text-slate-700 hover:bg-white"
+            }`}
+          >
+            <Volume2 className={`w-4 h-4 ${isSpeaking ? "animate-pulse" : ""}`} />
+          </button>
           <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-white/80 backdrop-blur rounded-full text-[10px] font-bold flex items-center gap-1 text-slate-700 shadow-sm">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
             Active
