@@ -15,6 +15,7 @@ import { PROJECT_MANAGER_CONFIG } from "@/lib/agent-project-manager";
 import { routeTask } from "@/lib/agent-routing-rules";
 import { getAllTools, getToolsForDomain } from "@/lib/ai-tools";
 import { trackUsage } from "@/lib/agent-usage-tracker";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Đảm bảo không bị timeout trên Vercel nếu request hơi lâu
 export const maxDuration = 60;
@@ -331,6 +332,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Missing user_id or messages" },
         { status: 400 }
+      );
+    }
+
+    // Trước đây endpoint này KHÔNG xác thực/giới hạn gì cả - ai gọi cũng được,
+    // không giới hạn số lượt, tốn tiền DeepSeek/MiniMax/Gemini thật không giới
+    // hạn. Chặn 2 lớp: (1) user_id phải khớp 1 tài khoản có thật (không chấp
+    // nhận chuỗi bịa tuỳ ý), (2) rate-limit theo user_id VÀ theo IP (đề phòng
+    // đổi user_id liên tục để né limit theo user_id).
+    const isKnownUser =
+      !!findUserByEmail(user_id) ||
+      USER_ACCOUNTS_SECURE.some((u) => u.email === user_id) ||
+      /@mimin\.vn$/i.test(user_id) ||
+      user_id === "guest";
+    if (!isKnownUser) {
+      return NextResponse.json({ error: "user_id không hợp lệ - vui lòng đăng nhập lại" }, { status: 401 });
+    }
+
+    const ip = getClientIp(req);
+    const perUser = checkRateLimit(`orchestrator:user:${user_id}`, { max: 15, windowMs: 60_000 });
+    if (!perUser.allowed) {
+      return NextResponse.json(
+        { error: `Bạn gửi quá nhiều tin nhắn, vui lòng đợi ${perUser.retryAfterSec}s` },
+        { status: 429 }
+      );
+    }
+    const perIp = checkRateLimit(`orchestrator:ip:${ip}`, { max: 40, windowMs: 60_000 });
+    if (!perIp.allowed) {
+      return NextResponse.json(
+        { error: `Quá nhiều yêu cầu từ mạng của bạn, vui lòng đợi ${perIp.retryAfterSec}s` },
+        { status: 429 }
       );
     }
 
