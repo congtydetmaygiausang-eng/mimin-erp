@@ -165,4 +165,5 @@
 | 2026-08-19 22:00 | Codex | company-reader JT7 | Chọn trường chuẩn theo bằng chứng độc lập, giữ phương án thay thế và chặn hồ sơ có MST mâu thuẫn | codex/jt7-canonical-field-selection | 🟢 DONE |
 | 2026-08-19 23:00 | Codex | company-reader JT8 | Thêm cache TTL, rate limit theo caller, circuit breaker, chống gọi trùng và metrics không chứa dữ liệu nhạy cảm | codex/jt8-guardrails-observability | 🟢 DONE |
 | 2026-08-19 23:30 | Codex | company-reader JT9 | Dark-launch ASGI API mặc định tắt, service token, payload bounds, pipeline JT1–JT8 và adapter Redis injection | codex/jt9-dark-launch-service-api | 🟢 DONE |
+| 2026-08-20 09:00 | Codex | company-reader JT10 | Production fail-closed với Redis injection, caller allowlist, readiness và rollout shadow/canary/live có rollback | codex/jt10-production-canary-boundary | 🟢 DONE |
 **Last updated**: 2026-08-01 (Mavis tạo file)

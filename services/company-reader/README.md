@@ -18,7 +18,8 @@ Python service cô lập để đọc và chuẩn hóa nguồn công khai về d
 | JT7 | Lựa chọn trường chuẩn, đồng thuận nguồn và cổng duyệt xung đột | Hoàn thành |
 | JT8 | Cache TTL, rate limit, circuit breaker, request coalescing và metrics an toàn | Hoàn thành |
 | JT9 | Dark-launch ASGI API, service auth, request bounds và adapter Redis | Hoàn thành, mặc định tắt |
-| JT10+ | Private ingress, Redis production, canary và tích hợp MIMIN ERP | Chưa kích hoạt |
+| JT10 | Production fail-closed, client allowlist, Redis injection, shadow/canary/live | Hoàn thành, chưa kích hoạt |
+| JT11+ | Hạ tầng private ingress, Redis thật và tích hợp MIMIN ERP | Chưa kích hoạt |
 
 JT1 chỉ tải nội dung; không đoán dữ liệu doanh nghiệp, không ghi Supabase và không
 thay đổi kết quả tìm kiếm hiện tại của MIMIN ERP.
@@ -42,6 +43,11 @@ JT9 đóng gói pipeline thành service API nội bộ nhưng giữ feature flag
 tắt. Adapter Redis được cung cấp theo dependency injection; JT9 không tự kết nối
 hạ tầng, không bật CORS, không ghi Supabase và chưa nối vào MIMIN ERP. Xem
 [`docs/JT9-DARK-LAUNCH-SERVICE.md`](docs/JT9-DARK-LAUNCH-SERVICE.md).
+
+JT10 thêm readiness, allowlist caller, chế độ shadow/canary/live xác định và bắt
+buộc Redis injection khi khai báo production. Không có kết nối hạ tầng hoặc đường
+gọi frontend nào được tự bật. Xem
+[`docs/JT10-PRODUCTION-CANARY.md`](docs/JT10-PRODUCTION-CANARY.md).
 
 ## Chạy kiểm thử
 

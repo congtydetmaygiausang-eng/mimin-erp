@@ -9,6 +9,7 @@ import re
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Protocol
 
+from .rollout import RolloutPolicy
 from .service_models import CompanyReadResponse
 
 
@@ -31,6 +32,8 @@ class CompanyReaderASGI:
     service_token: str
     enabled: bool = False
     configuration_error: str | None = None
+    allowed_clients: frozenset[str] = frozenset()
+    rollout: RolloutPolicy = RolloutPolicy()
 
     async def __call__(self, scope: dict[str, object], receive: Receive, send: Send) -> None:
         if scope.get("type") != "http":
@@ -38,7 +41,17 @@ class CompanyReaderASGI:
         path = str(scope.get("path", ""))
         method = str(scope.get("method", "GET")).upper()
         if path == "/healthz" and method == "GET":
-            await self._json(send, 200, {"status": "ok", "enabled": self.enabled, "configured": self.configuration_error is None, "version": "JT9"})
+            await self._json(send, 200, {
+                "status": "ok",
+                "enabled": self.enabled,
+                "configured": self.configuration_error is None,
+                "version": "JT10",
+                "rollout_mode": self.rollout.mode.value,
+            })
+            return
+        if path == "/readyz" and method == "GET":
+            ready = self.enabled and self.configuration_error is None
+            await self._json(send, 200 if ready else 503, {"status": "ready" if ready else "not_ready"})
             return
         if path != "/v1/company-reader/read":
             await self._json(send, 404, {"error": "NOT_FOUND"})
@@ -57,6 +70,10 @@ class CompanyReaderASGI:
         if not hmac.compare_digest(headers.get("authorization", ""), expected):
             await self._json(send, 401, {"error": "UNAUTHORIZED"})
             return
+        client_id = headers.get("x-mimin-client", "")
+        if self.allowed_clients and client_id not in self.allowed_clients:
+            await self._json(send, 403, {"error": "CLIENT_NOT_ALLOWED"})
+            return
         if headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/json":
             await self._json(send, 415, {"error": "JSON_REQUIRED"})
             return
@@ -69,8 +86,21 @@ class CompanyReaderASGI:
             await self._json(send, 400, {"error": request})
             return
         request_id, urls = request
+        rollout = self.rollout.decide(request_id)
+        if not rollout.selected:
+            await self._json(send, 425, {"error": "CANARY_NOT_SELECTED"})
+            return
         # Fetch/extraction are synchronous by design; keep the ASGI event loop responsive.
         result = await asyncio.to_thread(self.pipeline.read, request_id, urls)
+        if not rollout.expose_profiles:
+            await self._json(send, 202, {
+                "request_id": request_id,
+                "status": "SHADOW_PROCESSED",
+                "profile_count": len(result.profiles),
+                "source_count": len(result.sources),
+                "warning_count": len(result.warnings),
+            })
+            return
         await self._json(send, 200, result.to_dict())
 
     @staticmethod

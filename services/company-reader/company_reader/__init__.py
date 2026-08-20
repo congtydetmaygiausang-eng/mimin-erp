@@ -56,6 +56,7 @@ from .resolution_models import (
 from .distributed_guardrails import RedisEvidenceCache, RedisFixedWindowRateLimiter
 from .service import CompanyReaderPipeline
 from .service_models import CompanyReadResponse, SourceProcessingReport, SourceProcessingStatus
+from .rollout import RolloutDecision, RolloutMode, RolloutPolicy
 
 __all__ = [
     "CandidateBundleStatus",
@@ -98,6 +99,9 @@ __all__ = [
     "ResolutionDecision",
     "RateLimitDecision",
     "ReaderMetrics",
+    "RolloutDecision",
+    "RolloutMode",
+    "RolloutPolicy",
     "RedisEvidenceCache",
     "RedisFixedWindowRateLimiter",
     "ResolvedCompanyGroup",
