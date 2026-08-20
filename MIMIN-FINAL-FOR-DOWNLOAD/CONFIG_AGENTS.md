@@ -36,7 +36,7 @@
 - **Lấy tại**: https://aistudio.google.com/apikey
 
 ### 3. 🟢 DEEPSEEK (đã có key, đang work)
-- **Key**: `sk-f9211be98edf4e97824677dda0292eeb` ✅
+- **Key**: xem trong `.env.local` (KHÔNG commit giá trị thật vào tài liệu này — key cũ từng lộ ở đây đã bị thu hồi)
 - **Model**: `deepseek-chat` (model `deepseek-v4-flash`)
 - **Status**: ✅ **HOẠT ĐỘNG** (dùng làm fallback)
 
