@@ -391,6 +391,46 @@ export const getToolsForDomain = (domains: string[]) => {
   return tools;
 };
 
+// Bản tương đương getToolsForDomain() ở trên nhưng trả về AI SDK tool()
+// object thật (không phải JSON schema) - dùng cho streamText() ở nhánh
+// Gemini. TRƯỚC ĐÂY nhánh Gemini luôn gọi getAllTools() bỏ qua domain hoàn
+// toàn, nên Hà (tài chính/kế toán/nhân sự, chạy Gemini) gọi được cả 4 tool
+// hành động sản xuất (createLenhCat/updateCongDoan/deletePhieu/approvePhieu)
+// dù không thuộc allowed_domains của mình - và bất kỳ agent nào fallback
+// sang Gemini (khi DeepSeek/MiniMax lỗi) cũng bị lộ tương tự.
+export const getAllToolsForDomain = (domains: string[]) => {
+  const tools: Record<string, any> = {};
+  const hasAll = domains.includes("all");
+  const hasProduction = hasAll || domains.some((d) => PRODUCTION_DOMAINS.includes(d));
+  const hasAnalytical = hasAll || domains.some((d) => ANALYTICAL_DOMAINS.includes(d));
+
+  if (hasAll || domains.includes("ton-kho") || hasProduction || hasAnalytical) {
+    tools.getInventoryStatus = getInventoryStatus;
+  }
+  if (hasAll || domains.includes("cong-no") || hasAnalytical) {
+    tools.getDebtStatus = getDebtStatus;
+  }
+  if (hasAll || domains.includes("ho-so-nhan-su") || hasAnalytical) {
+    tools.getStaffList = getStaffList;
+  }
+
+  // General tool - giữ nguyên không gate theo domain, khớp hành vi getToolsForDomain()
+  tools.getSystemConfig = getSystemConfig;
+
+  if (hasAll || domains.includes("don-hang")) {
+    tools.createDonHang = createDonHang;
+  }
+
+  if (hasProduction) {
+    tools.createLenhCat = createLenhCat;
+    tools.updateCongDoan = updateCongDoan;
+    tools.deletePhieu = deletePhieu;
+    tools.approvePhieu = approvePhieu;
+  }
+
+  return tools;
+};
+
 // ============================================
 // 4 ACTION TOOLS với HITL (Human-in-the-Loop)
 // Mỗi tool: check permission → return confirmation request

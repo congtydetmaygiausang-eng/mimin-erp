@@ -13,7 +13,7 @@ import { USER_ACCOUNTS_SECURE } from "@/lib/user-accounts-secure";
 import { PERSONALITY_SYSTEM } from "@/lib/agent-personality";
 import { PROJECT_MANAGER_CONFIG } from "@/lib/agent-project-manager";
 import { routeTask } from "@/lib/agent-routing-rules";
-import { getAllTools, getToolsForDomain } from "@/lib/ai-tools";
+import { getAllTools, getAllToolsForDomain, getToolsForDomain } from "@/lib/ai-tools";
 import { trackUsage } from "@/lib/agent-usage-tracker";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -412,7 +412,7 @@ export async function POST(req: NextRequest) {
         model: config.model,
         system: config.systemPromptBase,
         messages: await convertToModelMessages(toUIMessages(messages)),
-        tools: getAllTools(),
+        tools: getAllToolsForDomain(persona.allowed_domains),
         // Thiếu stopWhen -> streamText chỉ chạy ĐÚNG 1 bước: nếu model quyết định
         // gọi tool (VD hỏi công nợ/tồn kho), nó dừng luôn sau khi có kết quả tool,
         // KHÔNG tự tiếp tục sinh câu trả lời bằng lời - client nhận toàn sự kiện
@@ -537,12 +537,13 @@ async function handleGeminiFallback(
   if (!config) {
     return NextResponse.json({ error: "Gemini fallback config error" }, { status: 500 });
   }
-  
+
+  const fallbackPersona = AGENT_PERSONAS[agentId] || AGENT_PERSONAS["mavis"];
   const result = streamText({
     model: google("gemini-3.6-flash"),
     system: config.systemPromptBase,
     messages: await convertToModelMessages(toUIMessages(messages)),
-    tools: getAllTools(),
+    tools: getAllToolsForDomain(fallbackPersona.allowed_domains),
     stopWhen: stepCountIs(5),
   });
 
