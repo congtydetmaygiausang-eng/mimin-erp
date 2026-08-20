@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mimin.vn/schemas/company-resolution-result.schema.json",
+  "title": "JT5 Company Resolution Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["groups", "pair_resolutions", "unresolved_candidates", "input_entity_count", "output_member_count", "warnings"],
+  "properties": {
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["group_id", "decision", "members", "strong_keys", "conflicts"],
+        "properties": {
+          "group_id": {"type": "string", "pattern": "^GRP-[a-f0-9]{16}$"},
+          "decision": {"enum": ["AUTO_MERGED", "STANDALONE"]},
+          "members": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+          "strong_keys": {"type": "array", "items": {"type": "string"}},
+          "conflicts": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "pair_resolutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["left_entity_id", "right_entity_id", "decision", "matched_keys", "conflicts", "reasons"],
+        "properties": {
+          "left_entity_id": {"type": "string"},
+          "right_entity_id": {"type": "string"},
+          "decision": {"enum": ["AUTO_MERGED", "REVIEW_REQUIRED", "CONFLICT_BLOCKED", "STANDALONE"]},
+          "matched_keys": {"type": "array", "items": {"type": "string"}},
+          "conflicts": {"type": "array", "items": {"type": "string"}},
+          "reasons": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "unresolved_candidates": {"type": "array", "items": {"type": "object"}},
+    "input_entity_count": {"type": "integer", "minimum": 0},
+    "output_member_count": {"type": "integer", "minimum": 0},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  }
+}

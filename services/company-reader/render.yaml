@@ -1,0 +1,39 @@
+services:
+  - type: keyvalue
+    name: mimin-company-reader-cache
+    plan: starter
+    region: singapore
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+    persistenceMode: off
+
+  - type: pserv
+    name: mimin-company-reader
+    runtime: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./services/company-reader/Dockerfile
+    dockerContext: .
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: mimin-company-reader-cache
+          property: connectionString
+      - key: COMPANY_READER_ENABLED
+        value: "true"
+      - key: COMPANY_READER_DEPLOYMENT
+        value: production
+      - key: COMPANY_READER_GUARDRAIL_MODE
+        value: redis
+      - key: COMPANY_READER_ALLOWED_CLIENTS
+        value: mimin-supabase-gateway
+      - key: COMPANY_READER_ROLLOUT_MODE
+        value: shadow
+      - key: COMPANY_READER_CANARY_PERCENT
+        value: "0"
+      - key: COMPANY_READER_SERVICE_TOKEN
+        generateValue: true
+      - key: JINA_API_KEY
+        sync: false

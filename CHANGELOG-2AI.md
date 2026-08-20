@@ -29,6 +29,10 @@
 
 | Ngày | AI | Module | Mô tả | Branch | Status |
 |---|---|---|---|---|---|
+| 2026-08-19 20:20 | Codex | company-reader | JT3: phát hiện ứng viên tên/MST/địa chỉ/điện thoại/email/website/giới thiệu kèm URL, hash, excerpt và vị trí; chặn MST thành điện thoại, tên bài viết/địa chỉ văn xuôi và khóa tài liệu nhiều công ty để không ghép chéo | codex/jt3-company-evidence-candidates | 🟢 DONE |
+| 2026-08-19 19:40 | Codex | company-reader | JT2: khóa Trafilatura 2.2.0 để trích xuất nội dung sạch/metadata chỉ từ FetchEvidence JT1, ưu tiên precision, giới hạn 200.000 ký tự, không tự tải URL và có hợp đồng JSON; tổng 22 test offline | codex/jt2-company-reader-extraction | 🟢 DONE |
+| 2026-08-19 19:00 | Codex | company-reader | JT1: Safe Fetch Gateway Python cô lập, chỉ HTTPS/443, chặn SSRF theo URL+DNS từng redirect, timeout 12 giây, giới hạn 2 MB/content type và hợp đồng bằng chứng; 15 test offline | codex/jt1-company-reader-safe-fetch | 🟢 DONE |
+| 2026-08-19 18:20 | Codex | company-reader | JT0: khóa data contract, quality gate và golden corpus 50 ca cho nguồn pháp lý, website chính thức, trang nhiều công ty, nguồn rác/chặn, dữ liệu mâu thuẫn và lỗi fetch; chưa nối runtime | codex/jt0-company-reader-golden | 🟢 DONE |
 | 2026-08-19 17:35 | Codex | mang-luoi-san-xuat | Giả lập production và gỡ nghẽn tìm kiếm: chạy đủ 10 truy vấn Tavily, chuẩn hóa tối đa 96 nguồn theo 3 lô DeepSeek song song, buộc bằng chứng năng lực đặc trưng và loại tên nền tảng | codex/expand-company-search-recall | 🟢 DONE |
 | 2026-08-19 17:10 | Codex | mang-luoi-san-xuat | Rà soát tìm công ty: chuẩn hóa số Việt Nam, loại MST/số ngắn khỏi điện thoại, chỉ nhận số có ngữ cảnh liên hệ, thu gọn cảnh báo xung đột và lọc tên bài viết chung chung | codex/audit-company-search-phone-conflicts | 🟢 DONE |
 | 2026-08-19 14:10 | Codex | mang-luoi-san-xuat | Xếp hạng nguồn làm giàu theo độ uy tín và độ đầy đủ; trích xuất bằng chứng độc lập từng nguồn, chọn giá trị tốt nhất theo từng trường và chống ghép chéo thông tin công ty | codex/improve-company-source-enrichment | 🟢 DONE |
@@ -155,4 +159,11 @@
 | 2026-08-19 13:30 | Codex | sourcing T5 | Gộp thực thể bằng khóa mạnh, chặn gộp khi MST mâu thuẫn và đếm nguồn độc lập | codex/company-profile-t5-entity-resolution | 🟢 DONE |
 | 2026-08-19 14:30 | Codex | sourcing T6 | Chấm độ tin cậy từng trường và áp dụng cổng chất lượng hồ sơ đa nguồn | codex/company-profile-t6-quality-gate | 🟢 DONE |
 | 2026-08-19 15:30 | Codex | sourcing T7 | Hiển thị cổng chất lượng, kiểm chứng từng trường và cảnh báo hồ sơ xung đột | codex/company-profile-t7-review-ui | 🟢 DONE |
+| 2026-08-19 19:00 | Codex | company-reader JT4 | Phân đoạn nhiều doanh nghiệp theo neo tên/MST, khóa provenance và bảo toàn ứng viên chưa phân giải | codex/jt4-company-entity-segmentation | 🟢 DONE |
+| 2026-08-19 20:00 | Codex | company-reader JT5 | Đối chiếu thực thể liên nguồn bằng MST/domain chính thức, chặn MST mâu thuẫn và cầu nối xung đột | codex/jt5-strong-key-resolution | 🟢 DONE |
+| 2026-08-19 21:00 | Codex | company-reader JT6 | Thêm Jina Reader fallback theo allowlist, khóa URL/hash, giới hạn chi phí và không thay dữ liệu Trafilatura tốt | codex/jt6-jina-fallback | 🟢 DONE |
+| 2026-08-19 22:00 | Codex | company-reader JT7 | Chọn trường chuẩn theo bằng chứng độc lập, giữ phương án thay thế và chặn hồ sơ có MST mâu thuẫn | codex/jt7-canonical-field-selection | 🟢 DONE |
+| 2026-08-19 23:00 | Codex | company-reader JT8 | Thêm cache TTL, rate limit theo caller, circuit breaker, chống gọi trùng và metrics không chứa dữ liệu nhạy cảm | codex/jt8-guardrails-observability | 🟢 DONE |
+| 2026-08-19 23:30 | Codex | company-reader JT9 | Dark-launch ASGI API mặc định tắt, service token, payload bounds, pipeline JT1–JT8 và adapter Redis injection | codex/jt9-dark-launch-service-api | 🟢 DONE |
+| 2026-08-20 09:00 | Codex | company-reader JT10 | Production fail-closed với Redis injection, caller allowlist, readiness và rollout shadow/canary/live có rollback | codex/jt10-production-canary-boundary | 🟢 DONE |
 **Last updated**: 2026-08-01 (Mavis tạo file)

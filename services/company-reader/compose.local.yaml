@@ -1,0 +1,39 @@
+services:
+  cache:
+    image: valkey/valkey:8.1-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - company-reader-local
+
+  reader:
+    build:
+      context: ../..
+      dockerfile: services/company-reader/Dockerfile
+    depends_on:
+      cache:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://cache:6379/0
+      COMPANY_READER_ENABLED: "true"
+      COMPANY_READER_DEPLOYMENT: production
+      COMPANY_READER_GUARDRAIL_MODE: redis
+      COMPANY_READER_ALLOWED_CLIENTS: mimin-local-smoke
+      COMPANY_READER_ROLLOUT_MODE: shadow
+      COMPANY_READER_CANARY_PERCENT: "0"
+      COMPANY_READER_SERVICE_TOKEN: ${COMPANY_READER_SERVICE_TOKEN:?Set COMPANY_READER_SERVICE_TOKEN}
+      JINA_API_KEY: ${JINA_API_KEY:-}
+    ports:
+      - "127.0.0.1:8765:10000"
+    restart: unless-stopped
+    networks:
+      - company-reader-local
+
+networks:
+  company-reader-local:
+    name: mimin-company-reader-local

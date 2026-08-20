@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mimin.vn/schemas/company-reader/extracted-document.schema.json",
+  "title": "JT2 ExtractedDocument",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_url", "fetch_sha256", "status", "extractor", "extractor_version",
+    "title", "author", "description", "published_date", "hostname", "language",
+    "main_text", "text_sha256", "char_count", "word_count", "truncated",
+    "metadata", "error_code", "error_detail"
+  ],
+  "properties": {
+    "source_url": {"type": ["string", "null"], "maxLength": 2048},
+    "fetch_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "status": {"enum": ["OK", "EMPTY", "SKIPPED_FETCH_ERROR", "DEPENDENCY_MISSING", "EXTRACTION_ERROR"]},
+    "extractor": {"type": "string", "maxLength": 50},
+    "extractor_version": {"type": "string", "maxLength": 50},
+    "title": {"type": ["string", "null"], "maxLength": 500},
+    "author": {"type": ["string", "null"], "maxLength": 300},
+    "description": {"type": ["string", "null"], "maxLength": 1000},
+    "published_date": {"type": ["string", "null"], "maxLength": 50},
+    "hostname": {"type": ["string", "null"], "maxLength": 255},
+    "language": {"type": ["string", "null"], "maxLength": 30},
+    "main_text": {"type": ["string", "null"], "maxLength": 200000},
+    "text_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "char_count": {"type": "integer", "minimum": 0, "maximum": 200000},
+    "word_count": {"type": "integer", "minimum": 0},
+    "truncated": {"type": "boolean"},
+    "metadata": {
+      "type": "object",
+      "propertyNames": {"enum": ["pagetype", "license", "categories", "tags"]},
+      "additionalProperties": {"type": "string", "maxLength": 500}
+    },
+    "error_code": {"type": ["string", "null"], "maxLength": 80},
+    "error_detail": {"type": ["string", "null"], "maxLength": 300}
+  }
+}
+

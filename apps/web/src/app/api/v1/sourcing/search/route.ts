@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cleanVietnamPostalAddress, standardizeVietnamAddress } from "@/lib/vietnam-address";
 import { cleanCompanyLegalName, cleanCompanyPostalAddress, isCompanyIdentityName } from "@/lib/company-identity-cleaner";
 import { extractVietnamContactPhones, extractVietnamPhones, normalizeVietnamPhone } from "@/lib/vietnam-phone";
+import { searchBraveWeb } from "@/lib/brave-search";
 
 const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPLIER", "PACKAGING_FINISHER"]);
 const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
@@ -784,6 +785,35 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
   return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
 }
 
+function braveMaximumQueries(): number {
+  const configured = Number(process.env.BRAVE_SEARCH_MAX_QUERIES ?? "6");
+  return Number.isFinite(configured) ? Math.max(1, Math.min(10, Math.trunc(configured))) : 6;
+}
+
+async function searchBrave(queries: string[]): Promise<SourceResult[]> {
+  const key = process.env.BRAVE_SEARCH_API_KEY;
+  if (!key) return [];
+  const items = await searchBraveWeb({
+    apiKey: key,
+    queries,
+    maxQueries: braveMaximumQueries(),
+    resultsPerQuery: 10,
+    timeoutMs: 12_000,
+  });
+  return items.map((item) => {
+    const content = [item.description, ...item.extraSnippets].filter(Boolean).join("\n").slice(0, 8_000);
+    return {
+      title: item.title,
+      url: canonicalSourceUrl(item.url),
+      content,
+      score: Math.max(0.45, 0.88 - item.rank * 0.035),
+      sourceType: classifySource(item.url, item.title, content),
+      provider: "BRAVE",
+      searchQuery: item.query,
+    };
+  }).filter((item) => item.url);
+}
+
 const DIRECTORY_DOMAINS = ["masothue.com", "yellowpages.vn", "trangvangvietnam.com", "facebook.com", "linkedin.com", "google.com", "maps.google.com"];
 
 function firstVietnamPhone(value: string): string {
@@ -1025,20 +1055,23 @@ function providerErrorCode(reason: unknown): string {
 }
 
 async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[]; providerHealth: Array<{ name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED"; count: number; code?: string }> }> {
-  const [tavily, gemini, googlePlaces] = await Promise.allSettled([searchTavily(queries), searchGemini(query, location, queries), searchGooglePlaces(query, location, queries)]);
+  const [tavily, brave, gemini, googlePlaces] = await Promise.allSettled([searchTavily(queries), searchBrave(queries), searchGemini(query, location, queries), searchGooglePlaces(query, location, queries)]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
+    ...(brave.status === "fulfilled" ? brave.value : []),
     ...(gemini.status === "fulfilled" ? gemini.value : []),
     ...(googlePlaces.status === "fulfilled" ? googlePlaces.value : []),
   ];
   const unique = Array.from(new Map(sources.filter((item) => !blockedSource(item.url) && !noiseListing(`${item.title} ${item.content}`)).map((item) => [canonicalSourceUrl(item.url),{...item,url:canonicalSourceUrl(item.url)}])).values());
   const providers = [
     tavily.status === "fulfilled" && tavily.value.length ? "TAVILY" : "",
+    brave.status === "fulfilled" && brave.value.length ? "BRAVE" : "",
     gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
     googlePlaces.status === "fulfilled" && googlePlaces.value.length ? "GOOGLE_PLACES" : "",
   ].filter(Boolean);
   const providerHealth = [
     { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" as const : tavily.status === "rejected" ? "ERROR" as const : tavily.value.length ? "OK" as const : "EMPTY" as const, count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
+    { name: "Brave", status: !process.env.BRAVE_SEARCH_API_KEY ? "DISABLED" as const : brave.status === "rejected" ? "ERROR" as const : brave.value.length ? "OK" as const : "EMPTY" as const, count: brave.status === "fulfilled" ? brave.value.length : 0, code: brave.status === "rejected" ? providerErrorCode(brave.reason) : undefined },
     { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
     { name: "Google Places", status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" as const : googlePlaces.status === "rejected" ? "ERROR" as const : googlePlaces.value.length ? "OK" as const : "EMPTY" as const, count: googlePlaces.status === "fulfilled" ? googlePlaces.value.length : 0, code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined },
   ];
@@ -1273,6 +1306,7 @@ export async function POST(req: NextRequest) {
     const diagnostics = {
       plannedQueries: searchQueries.length,
       executedTavilyQueries: process.env.TAVILY_API_KEY ? Math.min(searchQueries.length, 10) : 0,
+      executedBraveQueries: process.env.BRAVE_SEARCH_API_KEY ? Math.min(searchQueries.length, braveMaximumQueries()) : 0,
       normalizationBatches: Math.max(1, Math.ceil(Math.min(source.items.length, 96) / 32)),
       collectedSources: source.items.length,
       sourceTypeBreakdown: source.items.reduce<Record<SourceEvidenceType,number>>((counts,item)=>{
