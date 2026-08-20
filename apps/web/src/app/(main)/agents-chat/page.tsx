@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
+import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2, Trash2, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { AGENT_PERSONAS, AgentPersona, getDefaultAgentIdForRole } from "@/lib/agent-personas";
 import { useSession } from "@/components/session-provider";
@@ -35,6 +35,23 @@ const AVATAR_FADE_MASK = "linear-gradient(to bottom, black 58%, transparent 96%)
 // Supabase - đây là UI state cá nhân, chưa cần đồng bộ nhiều thiết bị).
 const CHAT_HISTORY_KEY = "mimin_agents_chat_history_v1";
 const CHAT_HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Đọc to câu trả lời bằng Web Speech API (giọng trình duyệt, miễn phí, không
+// cần API key) - anh Sang chọn phương án này thay vì TTS AI trả phí. Markdown
+// (**đậm**, `code`, gạch đầu dòng...) trong câu trả lời phải bỏ trước khi đọc,
+// không thì giọng đọc luôn cả ký tự "sao sao" nghe rất kỳ.
+function stripMarkdownForSpeech(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-•]\s+/gm, "")
+    .replace(/\n{2,}/g, ". ")
+    .replace(/\n/g, " ")
+    .trim();
+}
 
 function loadStoredMessages(): { savedAt: number; messages: Record<string, Message[]> } | null {
   if (typeof window === "undefined") return null;
@@ -83,6 +100,35 @@ export default function AgentsChatPage() {
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [autoRead, setAutoRead] = useState(false);
+
+  // Đọc to 1 tin nhắn bằng Web Speech API (giọng trình duyệt - miễn phí,
+  // không cần API key, làm được ngay). Huỷ câu đang đọc trước khi đọc câu
+  // mới, tránh chồng giọng khi bấm liên tục.
+  const speak = (text: string, messageId: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    if (speakingId === messageId) {
+      setSpeakingId(null);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(stripMarkdownForSpeech(text));
+    utterance.lang = "vi-VN";
+    utterance.rate = 1;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    setSpeakingId(messageId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Tắt trang/đổi agent thì phải dừng giọng đọc đang phát dở, không để nó
+  // tự đọc tiếp trong nền sau khi người dùng đã rời màn hình.
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+  }, []);
 
   // Ghi lại mỗi khi tin nhắn đổi - giữ nguyên savedAt gốc nếu còn hạn (hết
   // đúng 24h kể từ tin nhắn đầu, không phải "24h kể từ lần chat gần nhất").
@@ -197,6 +243,7 @@ export default function AgentsChatPage() {
         ...prev,
         [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), agentMsg],
       }));
+      if (autoRead) speak(agentMsg.text, agentMsg.id);
     } catch (e: any) {
       console.error(e);
       const errMsg: Message = {
@@ -311,6 +358,19 @@ export default function AgentsChatPage() {
                 <span className="bg-white/50 px-2 py-0.5 rounded-full">Model: <b>{selectedAgent.model}</b></span>
               </div>
             </div>
+            <button
+              onClick={() => {
+                if (autoRead && typeof window !== "undefined") window.speechSynthesis?.cancel();
+                setAutoRead((v) => !v);
+              }}
+              title={autoRead ? "Đang tự động đọc câu trả lời - bấm để tắt" : "Bật tự động đọc câu trả lời bằng giọng nói"}
+              className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                autoRead ? "bg-sky-600 text-white shadow" : "bg-white/50 text-slate-700 hover:bg-white/70"
+              }`}
+            >
+              {autoRead ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              {autoRead ? "Đang đọc tự động" : "Đọc tự động"}
+            </button>
           </div>
         </div>
 
@@ -332,8 +392,21 @@ export default function AgentsChatPage() {
                 </div>
                 <div className={`max-w-xl rounded-2xl p-4 text-sm ${isUser ? "bg-sky-500 text-white" : "bg-white border border-slate-200 text-slate-800 shadow-sm"}`}>
                   <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
-                  <div className={`text-[10px] mt-1 text-right ${isUser ? "text-sky-100" : "text-slate-400"}`}>
-                    {msg.timestamp}
+                  <div className={`flex items-center gap-2 mt-1 ${isUser ? "justify-end" : "justify-between"}`}>
+                    {!isUser && (
+                      <button
+                        onClick={() => speak(msg.text, msg.id)}
+                        title={speakingId === msg.id ? "Dừng đọc" : "Đọc to tin nhắn này"}
+                        className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded transition ${
+                          speakingId === msg.id ? "bg-sky-100 text-sky-700" : "text-slate-400 hover:text-sky-600 hover:bg-sky-50"
+                        }`}
+                      >
+                        {speakingId === msg.id ? <Volume2 className="w-3 h-3 animate-pulse" /> : <Volume2 className="w-3 h-3" />}
+                      </button>
+                    )}
+                    <div className={`text-[10px] ${isUser ? "text-sky-100" : "text-slate-400"}`}>
+                      {msg.timestamp}
+                    </div>
                   </div>
                 </div>
               </div>
