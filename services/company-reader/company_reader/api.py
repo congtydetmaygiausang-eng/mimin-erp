@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import json
 import re
@@ -23,6 +24,10 @@ class Pipeline(Protocol):
     def read(self, request_id: str, urls: tuple[str, ...]) -> CompanyReadResponse: ...
 
 
+class RequestLimiter(Protocol):
+    def acquire(self, caller_key: str): ...
+
+
 Receive = Callable[[], Awaitable[dict[str, object]]]
 Send = Callable[[dict[str, object]], Awaitable[None]]
 
@@ -36,6 +41,7 @@ class CompanyReaderASGI:
     allowed_clients: frozenset[str] = frozenset()
     rollout: RolloutPolicy = RolloutPolicy()
     require_signature: bool = False
+    request_limiter: RequestLimiter | None = None
 
     async def __call__(self, scope: dict[str, object], receive: Receive, send: Send) -> None:
         if scope.get("type") != "http":
@@ -86,6 +92,12 @@ class CompanyReaderASGI:
         if self.require_signature and not self._valid_signature(headers, body):
             await self._json(send, 401, {"error": "INVALID_REQUEST_SIGNATURE"})
             return
+        if self.request_limiter is not None:
+            caller_key = hashlib.sha256(client_id.encode("utf-8")).hexdigest()
+            decision = self.request_limiter.acquire(caller_key)
+            if not decision.allowed:
+                await self._json(send, 429, {"error": "RATE_LIMITED"}, ((b"retry-after", str(max(1, int(decision.retry_after_seconds))).encode()),))
+                return
         request = self._request(body)
         if isinstance(request, str):
             await self._json(send, 400, {"error": request})

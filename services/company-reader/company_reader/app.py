@@ -72,6 +72,7 @@ def create_app_from_env(
     policy = UrlPolicy()
     cache = RedisEvidenceCache(redis_client) if redis_client is not None and guardrail_mode == "redis" else None
     limiter = RedisFixedWindowRateLimiter(redis_client) if redis_client is not None and guardrail_mode == "redis" else None
+    request_limiter = RedisFixedWindowRateLimiter(redis_client, requests_per_window=60, window_seconds=60, namespace="mimin:company-reader:api") if redis_client is not None and guardrail_mode == "redis" else None
     jina = GuardedJinaReaderClient(
         JinaReaderClient(policy=policy, api_key=env.get("JINA_API_KEY") or None),
         caller_id="company-reader-service",
@@ -95,6 +96,7 @@ def create_app_from_env(
         allowed_clients=allowed_clients,
         rollout=rollout,
         require_signature=require_signature,
+        request_limiter=request_limiter,
     )
 
 

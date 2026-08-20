@@ -65,8 +65,8 @@ Deno.serve(async (request) => {
       body,
       signal: AbortSignal.timeout(25_000),
     });
-    const body = await upstream.json().catch(() => ({ error: "INVALID_UPSTREAM_RESPONSE" }));
-    return json(upstream.status, body);
+    const upstreamBody = await upstream.json().catch(() => ({ error: "INVALID_UPSTREAM_RESPONSE" }));
+    return json(upstream.status, upstreamBody);
   } catch {
     return json(502, { error: "COMPANY_READER_UNAVAILABLE" });
   }

@@ -11,7 +11,8 @@ Render private network
 Python có URL HTTPS để Supabase Edge Function gọi nhưng từ chối mọi request thiếu
 Bearer token, client allowlist và chữ ký HMAC còn hạn 5 phút. Redis chặn toàn bộ
 kết nối Internet và chỉ dùng connection string nội bộ. Shadow không trả hồ sơ cho
-MIMIN ERP sử dụng.
+MIMIN ERP sử dụng. API còn áp dụng Redis fixed-window 60 request/phút cho client
+gateway; Render chấm dứt TLS ở ingress.
 
 ## Tạo Blueprint
 

@@ -11,8 +11,10 @@ thay đổi kết quả tìm kiếm hiện tại.
 - Production chỉ khởi động khi `COMPANY_READER_GUARDRAIL_MODE=redis` và tiến trình
   đã inject một Redis client dùng chung.
 - Mọi request cần Bearer token và `X-Mimin-Client` nằm trong allowlist.
-- Private ingress/TLS/mTLS phải được cấu hình ở load balancer; header allowlist
-  không thay thế network isolation.
+- Ưu tiên private ingress/TLS/mTLS khi caller cùng private network. Với Supabase
+  Edge nằm ngoài Render, ngoại lệ public HTTPS chỉ được phép khi đồng thời có:
+  bearer token, client allowlist, HMAC body/timestamp chống replay và Redis
+  request rate-limit. Header allowlist một mình không thay thế network isolation.
 - `/healthz` chỉ báo tiến trình; `/readyz` trả 200 duy nhất khi feature đã bật và
   cấu hình hợp lệ.
 - Không lưu URL, token hay nội dung công ty trong metric/key Redis. Cache và rate
