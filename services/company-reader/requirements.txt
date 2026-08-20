@@ -1,3 +1,4 @@
 # JT2 extraction engine. Pin exact version for reproducible company evidence.
 trafilatura==2.2.0
-
+redis==8.0.1
+uvicorn==0.48.0
