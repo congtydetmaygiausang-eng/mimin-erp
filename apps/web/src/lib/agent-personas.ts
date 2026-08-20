@@ -62,7 +62,10 @@ AGENT_PERSONAS["minh"] = {
   agent_id: "minh",
   name: "Minh",
   role_title: "Sản xuất E2E (Cắt → May → QC → Kho TP)",
-  avatar: "/avatars/minh.png",
+  // File ảnh /avatars/minh.png chưa từng tồn tại (đổi tên từ persona cũ, không
+  // ai thêm ảnh mới) -> vỡ ảnh trên /agents-chat. Dùng emoji, khớp icon đang
+  // hiển thị đúng trên /agents (Dashboard) để nhất quán.
+  avatar: "✂️",
   provider: "deepseek",
   model: "deepseek-chat",
   system_prompt: [
@@ -85,7 +88,7 @@ AGENT_PERSONAS["lan"] = {
   agent_id: "lan",
   name: "Lan",
   role_title: "Kho & Bán hàng",
-  avatar: "/avatars/lan.png",
+  avatar: "📦",
   provider: "minimax",
   model: "MiniMax-M3",
   system_prompt: [
@@ -106,9 +109,9 @@ AGENT_PERSONAS["ha"] = {
   agent_id: "ha",
   name: "Hà",
   role_title: "Tài chính - Kế toán - Nhân sự",
-  avatar: "/avatars/ha.png",
+  avatar: "💰",
   provider: "gemini",
-  model: "gemini-1.5-pro",
+  model: "gemini-2.5-pro",
   system_prompt: [
     PERSONALITY_TAI_CHINH,
     PERSONALITY_KE_TOAN,
@@ -128,7 +131,7 @@ AGENT_PERSONAS["vy"] = {
   agent_id: "vy",
   name: "Vy",
   role_title: "MIMIN Care AI - Chuyên gia tư vấn bán hàng & chăm sóc khách hàng",
-  avatar: "/avatars/vy.png",
+  avatar: "💬",
   provider: "minimax",
   model: "MiniMax-M3",
   system_prompt: PERSONALITY_CSKH
@@ -150,7 +153,7 @@ AGENT_PERSONAS["mimin-help"] = {
   agent_id: "mimin-help",
   name: "MIMIN Help",
   role_title: "Chuyên gia Phân tích AI (DeepSeek Reasoner)",
-  avatar: "/avatars/mimin-help.png",
+  avatar: "❓",
   provider: "deepseek",
   model: "deepseek-reasoner",
   system_prompt: PERSONALITY_HELP

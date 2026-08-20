@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logAudit } from "@/lib/audit-log";
-import { streamText, UIMessage, convertToModelMessages } from "ai";
+import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
 import { google } from "@ai-sdk/google";
 import { AGENT_PERSONAS } from "@/lib/agent-personas";
 import { PERSONALITY_SYSTEM } from "@/lib/agent-personality";
@@ -11,6 +11,14 @@ import { trackUsage } from "@/lib/agent-usage-tracker";
 
 // Đảm bảo không bị timeout trên Vercel nếu request hơi lâu
 export const maxDuration = 60;
+
+// @ai-sdk/google (hàm google() dùng bên dưới) mặc định chỉ đọc biến môi trường
+// GOOGLE_GENERATIVE_AI_API_KEY, nhưng .env của dự án đang đặt tên GEMINI_API_KEY
+// - khiến agent Hà (Gemini) và nhánh fallback Gemini (khi DeepSeek/MiniMax lỗi)
+// đều báo "Không có API key nào được cấu hình" dù key thật đã có sẵn.
+if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY && process.env.GEMINI_API_KEY) {
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY = process.env.GEMINI_API_KEY;
+}
 
 // convertToModelMessages (AI SDK v5) bắt buộc mỗi message phải có `.parts`.
 // Nhiều client cũ (FloatingAI, ai-assistant page) vẫn gửi format cũ
@@ -112,8 +120,17 @@ async function buildProviderConfig(agentId: string, conversationSummary = ""): P
 
   switch (persona.provider) {
     case "gemini":
+      // gemini-1.5-*-latest đã bị Google gỡ hẳn (404 "not found"). gemini-2.5-pro
+      // tuy còn liệt kê ở ListModels nhưng bị chặn cho "new users". Model pro
+      // (gemini-3.1-pro-preview) hiện KHÔNG dùng được trên tier free đang có -
+      // lỗi 429 kèm "limit: 0" (không phải hết quota tạm thời, mà tier free bị
+      // cấm hẳn model pro/preview) - đã xác nhận với cả key cũ lẫn key mới ngày
+      // 2026-08-20. Model flash thì gọi được bình thường trên tier free. Dùng
+      // flash cho MỌI agent Gemini cho tới khi tài khoản được nâng cấp gói trả
+      // phí trên Google Cloud (đổi API key không giải quyết được, giới hạn nằm
+      // ở gói tài khoản chứ không phải bản thân key).
       return {
-        model: google(persona.model.includes("pro") ? "gemini-1.5-pro-latest" : "gemini-1.5-flash-latest"),
+        model: google("gemini-3.6-flash"),
         systemPromptBase,
         modelName: persona.model,
       };
@@ -338,6 +355,12 @@ export async function POST(req: NextRequest) {
         system: config.systemPromptBase,
         messages: await convertToModelMessages(toUIMessages(messages)),
         tools: getAllTools(),
+        // Thiếu stopWhen -> streamText chỉ chạy ĐÚNG 1 bước: nếu model quyết định
+        // gọi tool (VD hỏi công nợ/tồn kho), nó dừng luôn sau khi có kết quả tool,
+        // KHÔNG tự tiếp tục sinh câu trả lời bằng lời - client nhận toàn sự kiện
+        // tool-call/tool-result, không có text-delta nào -> hiển thị "Không có
+        // phản hồi". Cho phép tối đa 5 bước để model gọi tool RỒI trả lời tiếp.
+        stopWhen: stepCountIs(5),
       });
       return result.toUIMessageStreamResponse();
     }
@@ -457,10 +480,11 @@ async function handleGeminiFallback(
   }
   
   const result = streamText({
-    model: google("gemini-1.5-flash-latest"),
+    model: google("gemini-3.6-flash"),
     system: config.systemPromptBase,
     messages: await convertToModelMessages(toUIMessages(messages)),
     tools: getAllTools(),
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse();

@@ -30,7 +30,7 @@ export const PROVIDER_CONFIGS: Record<AIProvider, ProviderEndpoint> = {
     provider: "gemini",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     apiKeyEnv: "GEMINI_API_KEY",
-    defaultModel: "gemini-1.5-flash",
+    defaultModel: "gemini-2.5-flash",
   },
 };
 

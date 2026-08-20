@@ -167,42 +167,44 @@ export function FloatingAI() {
       const contentType = res.headers.get("content-type") || "";
 
       if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
-        // Gemini streaming - đọc toàn bộ text
+        // Gemini streaming dùng AI SDK v5 toUIMessageStreamResponse() - mỗi dòng
+        // "data: " là 1 SỰ KIỆN NHỎ ({"type":"text-delta","delta":"..."} ...),
+        // KHÔNG phải 1 khối JSON chat-completion duy nhất. Code cũ gộp hết rồi
+        // JSON.parse() cả khối -> luôn lỗi (nhiều JSON object dính liền nhau) ->
+        // rơi vào catch, hiển thị thẳng JSON thô lên khung chat thay vì câu trả
+        // lời thật. Phải parse TỪNG dòng, chỉ cộng dồn phần "delta".
         const text = await res.text();
-        // Parse SSE format
         const lines = text.split("\n").filter((l) => l.startsWith("data: "));
-        const fullText = lines
-          .map((l) => l.slice(6))
-          .filter((l) => l && l !== "[DONE]")
-          .join("");
-        try {
-          const parsed = JSON.parse(fullText);
-          const content = parsed.choices?.[0]?.message?.content || parsed.response || fullText;
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `ai-${Date.now()}`,
-              role: "assistant",
-              content: typeof content === "string" ? content : JSON.stringify(content),
-              // "ha" là agent duy nhất dùng Gemini ở bộ 6 agent V6 hiện tại
-              // (agent-tai-chinh cũ đã gộp vào ha) - trước đây hardcode nhãn cũ
-              // nên badge luôn hiện sai tên dù thực tế Hà đã trả lời.
-              agent: { id: "ha", name: "Hà", provider: "gemini", model: "gemini-1.5-pro" },
-              timestamp: Date.now(),
-            },
-          ]);
-        } catch {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `ai-${Date.now()}`,
-              role: "assistant",
-              content: fullText,
-              agent: { id: "ha", name: "Hà", provider: "gemini", model: "gemini-1.5-pro" },
-              timestamp: Date.now(),
-            },
-          ]);
+        let streamedText = "";
+        let streamError = "";
+        for (const line of lines) {
+          const payload = line.slice(6).trim();
+          if (!payload || payload === "[DONE]") continue;
+          let evt: any;
+          try {
+            evt = JSON.parse(payload);
+          } catch {
+            continue;
+          }
+          if (evt.type === "text-delta" && typeof evt.delta === "string") {
+            streamedText += evt.delta;
+          } else if (evt.type === "error") {
+            streamError = evt.errorText || "Lỗi khi Gemini trả lời";
+          }
         }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            role: "assistant",
+            content: streamError ? `❌ Lỗi: ${streamError}` : (streamedText || "Không có phản hồi"),
+            // "ha" là agent duy nhất dùng Gemini ở bộ 6 agent V6 hiện tại
+            // (agent-tai-chinh cũ đã gộp vào ha) - trước đây hardcode nhãn cũ
+            // nên badge luôn hiện sai tên dù thực tế Hà đã trả lời.
+            agent: { id: "ha", name: "Hà", provider: "gemini", model: "gemini-3.1-pro-preview" },
+            timestamp: Date.now(),
+          },
+        ]);
       } else {
         // DeepSeek/Minimax JSON
         const data = await res.json();

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { AGENT_PERSONAS, AgentPersona } from "@/lib/agent-personas";
-import { callAgentV2 } from "@/lib/agent-runtime-v2";
 
 interface Message {
   id: string;
@@ -43,16 +42,69 @@ export default function AgentsChatPage() {
     setLoading(true);
 
     try {
-      const res = await callAgentV2({
-        agent_id: selectedAgent.agent_id,
-        query: userText,
-        user_id: "sang@mimin.vn",
+      // Gọi đúng API route thật (server-side, đọc key bí mật đúng cách) - trước đây
+      // trang này gọi callAgentV2() chạy thẳng trong trình duyệt, đọc
+      // process.env.DEEPSEEK_API_KEY phía client luôn ra rỗng (Next.js không đưa
+      // biến môi trường không có tiền tố NEXT_PUBLIC_ vào bundle client, đúng theo
+      // bảo mật) -> mọi câu hỏi đều rơi vào nhánh mock, không bao giờ gọi AI thật.
+      // FloatingAI.tsx đã dùng đúng route /api/v1/orchestrator/query này từ trước.
+      const res = await fetch("/api/v1/orchestrator/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: "sang@mimin.vn",
+          messages: [{ role: "user", content: userText }],
+          agent_id: selectedAgent.agent_id,
+        }),
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      // Response có thể là JSON (DeepSeek/MiniMax) hoặc SSE streaming (Gemini)
+      const contentType = res.headers.get("content-type") || "";
+      let responseText: string;
+
+      if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
+        // Nhánh Gemini dùng AI SDK v5 toUIMessageStreamResponse() - mỗi dòng
+        // "data: " là 1 SỰ KIỆN NHỎ ({"type":"text-delta","delta":"..."} ...),
+        // KHÔNG phải 1 khối JSON chat-completion duy nhất. Code cũ gộp hết các
+        // dòng lại rồi JSON.parse() cả khối -> luôn lỗi (nhiều JSON object dính
+        // liền nhau không phải JSON hợp lệ) -> rơi vào catch, hiển thị thẳng
+        // JSON thô lên màn hình thay vì nội dung câu trả lời thật. Phải parse
+        // TỪNG dòng, chỉ cộng dồn phần "delta" của các sự kiện "text-delta".
+        const raw = await res.text();
+        const lines = raw.split("\n").filter((l) => l.startsWith("data: "));
+        let streamedText = "";
+        for (const line of lines) {
+          const payload = line.slice(6).trim();
+          if (!payload || payload === "[DONE]") continue;
+          let evt: any;
+          try {
+            evt = JSON.parse(payload);
+          } catch {
+            continue; // dòng lỗi định dạng, bỏ qua - không làm gãy cả phản hồi
+          }
+          if (evt.type === "text-delta" && typeof evt.delta === "string") {
+            streamedText += evt.delta;
+          } else if (evt.type === "error") {
+            // Lỗi thật từ AI SDK (VD hết quota) - phải ném ra ngoài để catch()
+            // hiển thị rõ nguyên nhân, không được nuốt lỗi rồi báo chung chung.
+            throw new Error(evt.errorText || "Lỗi khi Gemini trả lời");
+          }
+        }
+        responseText = streamedText || "Không có phản hồi";
+      } else {
+        const data = await res.json();
+        responseText = data.response || data.error || "Không có phản hồi";
+      }
 
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: "agent",
-        text: res.response,
+        text: responseText,
         timestamp: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -60,8 +112,18 @@ export default function AgentsChatPage() {
         ...prev,
         [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), agentMsg],
       }));
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      const errMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: "agent",
+        text: `❌ Lỗi khi gọi AI: ${e?.message || "Không rõ nguyên nhân"}`,
+        timestamp: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => ({
+        ...prev,
+        [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), errMsg],
+      }));
     } finally {
       setLoading(false);
     }
