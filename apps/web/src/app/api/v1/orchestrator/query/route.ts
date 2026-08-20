@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logAudit } from "@/lib/audit-log";
-import { streamText, UIMessage, convertToModelMessages } from "ai";
+import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
 import { google } from "@ai-sdk/google";
 import { AGENT_PERSONAS } from "@/lib/agent-personas";
 import { PERSONALITY_SYSTEM } from "@/lib/agent-personality";
@@ -121,11 +121,16 @@ async function buildProviderConfig(agentId: string, conversationSummary = ""): P
   switch (persona.provider) {
     case "gemini":
       // gemini-1.5-*-latest đã bị Google gỡ hẳn (404 "not found"). gemini-2.5-pro
-      // tuy còn liệt kê ở ListModels nhưng bị chặn cho "new users" (404 kèm thông
-      // báo chỉ đích danh model thay thế) - dùng đúng model Google khuyến nghị.
-      // Xác nhận qua lỗi API thật + ListModels ngày 2026-08-20.
+      // tuy còn liệt kê ở ListModels nhưng bị chặn cho "new users". Model pro
+      // (gemini-3.1-pro-preview) hiện KHÔNG dùng được trên tier free đang có -
+      // lỗi 429 kèm "limit: 0" (không phải hết quota tạm thời, mà tier free bị
+      // cấm hẳn model pro/preview) - đã xác nhận với cả key cũ lẫn key mới ngày
+      // 2026-08-20. Model flash thì gọi được bình thường trên tier free. Dùng
+      // flash cho MỌI agent Gemini cho tới khi tài khoản được nâng cấp gói trả
+      // phí trên Google Cloud (đổi API key không giải quyết được, giới hạn nằm
+      // ở gói tài khoản chứ không phải bản thân key).
       return {
-        model: google(persona.model.includes("pro") ? "gemini-3.1-pro-preview" : "gemini-3.6-flash"),
+        model: google("gemini-3.6-flash"),
         systemPromptBase,
         modelName: persona.model,
       };
@@ -350,6 +355,12 @@ export async function POST(req: NextRequest) {
         system: config.systemPromptBase,
         messages: await convertToModelMessages(toUIMessages(messages)),
         tools: getAllTools(),
+        // Thiếu stopWhen -> streamText chỉ chạy ĐÚNG 1 bước: nếu model quyết định
+        // gọi tool (VD hỏi công nợ/tồn kho), nó dừng luôn sau khi có kết quả tool,
+        // KHÔNG tự tiếp tục sinh câu trả lời bằng lời - client nhận toàn sự kiện
+        // tool-call/tool-result, không có text-delta nào -> hiển thị "Không có
+        // phản hồi". Cho phép tối đa 5 bước để model gọi tool RỒI trả lời tiếp.
+        stopWhen: stepCountIs(5),
       });
       return result.toUIMessageStreamResponse();
     }
@@ -473,6 +484,7 @@ async function handleGeminiFallback(
     system: config.systemPromptBase,
     messages: await convertToModelMessages(toUIMessages(messages)),
     tools: getAllTools(),
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse();
