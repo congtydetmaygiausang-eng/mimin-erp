@@ -744,7 +744,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
         max_tokens: 900,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8 truy vấn tìm kiếm khác nhau, ngắn và cụ thể. Mọi truy vấn phải giữ nguyên sản phẩm/năng lực mục tiêu và hướng tới công ty, nhà máy, xưởng hoặc nhà cung cấp thật. Phân bổ truy vấn theo các khu vực được cung cấp để phủ đúng bán kính; không biến thành tìm kiếm chung toàn quốc. Bao phủ từ đồng nghĩa và tối đa 2 truy vấn tiếng Anh. Không dùng toán tử tìm kiếm khó hiểu." },
+          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8 truy vấn tìm kiếm ngắn và cụ thể. QUAN TRỌNG: 1. Phân tích ý định từ khóa của người dùng. Nếu là vật tư/sản phẩm (vd: 'vải cotton'), tự động thêm các tiền tố thực thể (Cửa hàng, Công ty, Xưởng, Hộ kinh doanh). 2. Phải kết hợp từ khóa với chính xác các khu vực trong mảng `searchAreas` được truyền vào. Tuyệt đối KHÔNG tự ý dùng 'TP.HCM' nếu người dùng đang tìm ở một Quận/Huyện cụ thể (VD: chỉ dùng Quận 10, Tân Bình). Không biến thành tìm kiếm chung toàn quốc. Bao phủ từ đồng nghĩa. Trả về đúng định dạng JSON." },
           { role: "user", content: JSON.stringify({ query, location, radiusKm, searchAreas, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
         ],
       }),
