@@ -81,6 +81,60 @@ function markAgentMet(agentId: string) {
   } catch {}
 }
 
+// Gọi /api/v1/orchestrator/query và trả về text thuần - dùng chung cho cả
+// tin nhắn thật (handleSend) lẫn lời chào động theo dữ liệu (tier 3). Tách
+// riêng để không lặp lại đoạn parse SSE của nhánh Gemini (mỗi dòng "data: "
+// là 1 sự kiện nhỏ, không phải 1 khối JSON chat-completion duy nhất).
+async function callOrchestrator(userId: string, content: string, agentId: string): Promise<string> {
+  const res = await fetch("/api/v1/orchestrator/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId,
+      messages: [{ role: "user", content }],
+      agent_id: agentId,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
+    const raw = await res.text();
+    const lines = raw.split("\n").filter((l) => l.startsWith("data: "));
+    let streamedText = "";
+    for (const line of lines) {
+      const payload = line.slice(6).trim();
+      if (!payload || payload === "[DONE]") continue;
+      let evt: any;
+      try {
+        evt = JSON.parse(payload);
+      } catch {
+        continue;
+      }
+      if (evt.type === "text-delta" && typeof evt.delta === "string") {
+        streamedText += evt.delta;
+      } else if (evt.type === "error") {
+        throw new Error(evt.errorText || "Lỗi khi Gemini trả lời");
+      }
+    }
+    return streamedText || "Không có phản hồi";
+  }
+
+  const data = await res.json();
+  return data.response || data.error || "Không có phản hồi";
+}
+
+// Lời chào "biết tình hình thật" (tier 3) - agent tự tra dữ liệu qua tool
+// của mình rồi chào ngắn gọn theo đúng chuyên môn, thay vì câu chào ngắn
+// tĩnh (greetingShort) không đổi. Chỉ áp dụng cho lần mở chat SAU (đã từng
+// gặp) - lần đầu vẫn dùng greeting tĩnh để giới thiệu danh tính trước đã.
+const DYNAMIC_GREETING_PROMPT =
+  "Đây là tin nhắn tự động khi mở lại phiên chat, KHÔNG phải câu hỏi thật của người dùng - không trả lời như đang trả lời câu hỏi. Nếu có tool tra cứu dữ liệu thuộc chuyên môn của bạn, hãy dùng thử để xem hôm nay có gì đáng chú ý không. Sau đó chào ngắn gọn 1-2 câu đúng phong cách riêng của bạn (KHÔNG giới thiệu lại tên/vai trò vì đã từng nói chuyện rồi), chủ động nhắc điểm đáng chú ý nếu tìm thấy, và hỏi hôm nay muốn xử lý gì trước. Trả lời ngắn gọn, không dùng markdown.";
+
 function loadStoredMessages(): { savedAt: number; messages: Record<string, Message[]> } | null {
   if (typeof window === "undefined") return null;
   try {
@@ -145,6 +199,10 @@ export default function AgentsChatPage() {
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [autoRead, setAutoRead] = useState(false);
   const [metAgents, setMetAgents] = useState<Set<string>>(() => loadMetAgents());
+  // Lời chào tier 3 (theo dữ liệu thật) - KHÔNG persist, phải gọi lại mỗi
+  // lần mở chat theo đúng yêu cầu, không lưu vĩnh viễn như lịch sử hội thoại.
+  const [dynamicGreetings, setDynamicGreetings] = useState<Record<string, string>>({});
+  const [greetingLoadingId, setGreetingLoadingId] = useState<string | null>(null);
 
   // Đọc to 1 tin nhắn bằng Web Speech API (giọng trình duyệt - miễn phí,
   // không cần API key, làm được ngay). Huỷ câu đang đọc trước khi đọc câu
@@ -191,18 +249,61 @@ export default function AgentsChatPage() {
     setMessages({});
   };
 
-  // Lời chào mở đầu (hiện trước khi gọi API) - lần ĐẦU gặp agent này thì
-  // giới thiệu đầy đủ (greeting), lần sau chào ngắn đúng chất riêng
-  // (greetingShort) - không lặp lại y hệt như đang nói chuyện với 1 agent
-  // duy nhất đổi avatar.
-  const currentMessages = messages[selectedAgent.agent_id] || [
-    {
-      id: "init",
-      sender: "agent",
-      text: metAgents.has(selectedAgent.agent_id) ? selectedAgent.greetingShort : selectedAgent.greeting,
-      timestamp: "Vừa xong",
-    },
-  ];
+  // Lời chào mở đầu (hiện trước khi gọi API):
+  // - Lần ĐẦU gặp agent: giới thiệu đầy đủ (greeting), không gọi AI.
+  // - Lần sau: đang tra dữ liệu (loading) -> chào "biết tình hình thật"
+  //   (dynamicGreetings, tier 3) nếu gọi được -> rơi về chào ngắn tĩnh
+  //   (greetingShort) nếu lỗi/chưa xong. Không lặp lại y hệt như đang nói
+  //   chuyện với 1 agent duy nhất đổi avatar.
+  const agentId = selectedAgent.agent_id;
+  const hasRealHistory = !!messages[agentId]?.length;
+  let initGreetingText = selectedAgent.greeting;
+  let greetingIsLoading = false;
+  if (metAgents.has(agentId)) {
+    if (dynamicGreetings[agentId]) {
+      initGreetingText = dynamicGreetings[agentId];
+    } else if (greetingLoadingId === agentId) {
+      greetingIsLoading = true;
+      initGreetingText = "";
+    } else {
+      initGreetingText = selectedAgent.greetingShort;
+    }
+  }
+  const currentMessages = hasRealHistory
+    ? messages[agentId]
+    : greetingIsLoading
+    ? []
+    : [{ id: "init", sender: "agent" as const, text: initGreetingText, timestamp: "Vừa xong" }];
+
+  // Chào theo dữ liệu thật (tier 3) - chỉ cho agent đã từng gặp, và chỉ khi
+  // chưa có hội thoại thật nào trong phiên hiện tại (không ghi đè lịch sử
+  // đang xem). Không lưu vào messages[] persisted - phải gọi lại MỖI LẦN mở
+  // chat như anh Sang yêu cầu, không phải 1 lần duy nhất rồi lưu mãi.
+  useEffect(() => {
+    if (!metAgents.has(agentId)) return;
+    if (hasRealHistory) return;
+    if (dynamicGreetings[agentId]) return;
+    if (greetingLoadingId === agentId) return;
+
+    let cancelled = false;
+    setGreetingLoadingId(agentId);
+    callOrchestrator(user?.email || "guest", DYNAMIC_GREETING_PROMPT, agentId)
+      .then((text) => {
+        if (cancelled || !text) return;
+        setDynamicGreetings((prev) => ({ ...prev, [agentId]: text }));
+        if (autoRead) speak(text, `dyn-greeting-${agentId}`);
+      })
+      .catch(() => {
+        // Im lặng rơi về greetingShort tĩnh - không cần báo lỗi cho 1 lời chào phụ.
+      })
+      .finally(() => {
+        if (!cancelled) setGreetingLoadingId((id) => (id === agentId ? null : id));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, metAgents, hasRealHistory]);
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -211,10 +312,21 @@ export default function AgentsChatPage() {
 
     const userMsg: Message = { id: Date.now().toString(), sender: "user", text: userText, timestamp: now };
 
-    setMessages((prev) => ({
-      ...prev,
-      [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), userMsg],
-    }));
+    setMessages((prev) => {
+      const existing = prev[selectedAgent.agent_id] || [];
+      // Chưa có hội thoại thật nào -> lời chào đang hiện (dài/ngắn/tier 3) sẽ
+      // biến mất ngay khi currentMessages chuyển sang đọc messages[] thật.
+      // Giữ nó lại làm tin nhắn đầu tiên của cuộc hội thoại hôm nay, tránh
+      // cảm giác lời chào vừa đọc xong bỗng dưng biến mất khỏi khung chat.
+      const greetingMsg: Message[] =
+        existing.length === 0 && initGreetingText
+          ? [{ id: `greeting-${selectedAgent.agent_id}`, sender: "agent", text: initGreetingText, timestamp: "Vừa xong" }]
+          : [];
+      return {
+        ...prev,
+        [selectedAgent.agent_id]: [...greetingMsg, ...existing, userMsg],
+      };
+    });
     markAgentMet(selectedAgent.agent_id);
     setMetAgents((prev) => (prev.has(selectedAgent.agent_id) ? prev : new Set(prev).add(selectedAgent.agent_id)));
     setInput("");
@@ -227,61 +339,7 @@ export default function AgentsChatPage() {
       // biến môi trường không có tiền tố NEXT_PUBLIC_ vào bundle client, đúng theo
       // bảo mật) -> mọi câu hỏi đều rơi vào nhánh mock, không bao giờ gọi AI thật.
       // FloatingAI.tsx đã dùng đúng route /api/v1/orchestrator/query này từ trước.
-      const res = await fetch("/api/v1/orchestrator/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // Trước đây hardcode "sang@mimin.vn" cho MỌI người dùng - bất kỳ ai
-          // đăng nhập chat cũng bị AI chào nhầm là "sếp Sang". Gửi đúng email
-          // người đang đăng nhập thật để API chào đúng tên.
-          user_id: user?.email || "guest",
-          messages: [{ role: "user", content: userText }],
-          agent_id: selectedAgent.agent_id,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-
-      // Response có thể là JSON (DeepSeek/MiniMax) hoặc SSE streaming (Gemini)
-      const contentType = res.headers.get("content-type") || "";
-      let responseText: string;
-
-      if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
-        // Nhánh Gemini dùng AI SDK v5 toUIMessageStreamResponse() - mỗi dòng
-        // "data: " là 1 SỰ KIỆN NHỎ ({"type":"text-delta","delta":"..."} ...),
-        // KHÔNG phải 1 khối JSON chat-completion duy nhất. Code cũ gộp hết các
-        // dòng lại rồi JSON.parse() cả khối -> luôn lỗi (nhiều JSON object dính
-        // liền nhau không phải JSON hợp lệ) -> rơi vào catch, hiển thị thẳng
-        // JSON thô lên màn hình thay vì nội dung câu trả lời thật. Phải parse
-        // TỪNG dòng, chỉ cộng dồn phần "delta" của các sự kiện "text-delta".
-        const raw = await res.text();
-        const lines = raw.split("\n").filter((l) => l.startsWith("data: "));
-        let streamedText = "";
-        for (const line of lines) {
-          const payload = line.slice(6).trim();
-          if (!payload || payload === "[DONE]") continue;
-          let evt: any;
-          try {
-            evt = JSON.parse(payload);
-          } catch {
-            continue; // dòng lỗi định dạng, bỏ qua - không làm gãy cả phản hồi
-          }
-          if (evt.type === "text-delta" && typeof evt.delta === "string") {
-            streamedText += evt.delta;
-          } else if (evt.type === "error") {
-            // Lỗi thật từ AI SDK (VD hết quota) - phải ném ra ngoài để catch()
-            // hiển thị rõ nguyên nhân, không được nuốt lỗi rồi báo chung chung.
-            throw new Error(evt.errorText || "Lỗi khi Gemini trả lời");
-          }
-        }
-        responseText = streamedText || "Không có phản hồi";
-      } else {
-        const data = await res.json();
-        responseText = data.response || data.error || "Không có phản hồi";
-      }
+      const responseText = await callOrchestrator(user?.email || "guest", userText, selectedAgent.agent_id);
 
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -312,10 +370,17 @@ export default function AgentsChatPage() {
     }
   };
 
+  // Vào chat qua ?agent=<id> (bấm card ở Dashboard Agents hoặc nút "Chat
+  // với...") -> xem như đang vào 1-1 riêng với agent đó, ẩn thanh 6 agent
+  // bên trái cho gọn màn hình (theo yêu cầu anh Sang), thay vì luôn hiện
+  // switcher. Vào thẳng /agents-chat (không kèm param) vẫn giữ switcher như
+  // cũ để người dùng tự do chuyển qua lại giữa các agent.
+  const isFocusedChat = !!searchParams.get("agent");
+
   return (
     <div className="flex h-[calc(100vh-80px)] bg-slate-50">
-      {/* Sidebar Danh sách 9 Agent */}
-      <div className="w-80 bg-white border-r border-slate-200 flex flex-col">
+      {/* Sidebar Danh sách 9 Agent - ẩn khi vào chat riêng 1 agent (focused) */}
+      <div className={`w-80 bg-white border-r border-slate-200 flex-col ${isFocusedChat ? "hidden" : "flex"}`}>
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <Link href="/agents" className="text-xs text-sky-600 flex items-center gap-1 font-semibold mb-2 hover:underline">
@@ -390,14 +455,19 @@ export default function AgentsChatPage() {
             trung tính trước đây - bấm card nào bên trái, cả khung chat đổi
             "danh tính" theo agent đó. */}
         <div className={`relative overflow-hidden border-b border-slate-200 shadow-sm ${AGENT_CARD_BG[selectedAgent.agent_id] || "bg-white"}`}>
+          {isFocusedChat && (
+            <div className="px-6 pt-3">
+              <Link
+                href="/agents"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-white/50 hover:bg-white/70 px-2.5 py-1 rounded-full transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Dashboard Agents
+              </Link>
+            </div>
+          )}
           <div className="relative flex items-center gap-4 px-6 py-5">
             <button
-              onClick={() =>
-                speak(
-                  metAgents.has(selectedAgent.agent_id) ? selectedAgent.greetingShort : selectedAgent.greeting,
-                  `intro-${selectedAgent.agent_id}`
-                )
-              }
+              onClick={() => speak(initGreetingText || selectedAgent.greetingShort, `intro-${selectedAgent.agent_id}`)}
               title="Bấm để nghe agent tự giới thiệu"
               className="relative w-20 h-20 rounded-2xl bg-white/40 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/70 shadow-md text-4xl cursor-pointer hover:ring-sky-300 transition group/avatar"
             >
@@ -439,6 +509,21 @@ export default function AgentsChatPage() {
 
         {/* Khung tin nhắn */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {greetingIsLoading && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+                {selectedAgent.avatar.startsWith("/avatars/") ? (
+                  <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
+                ) : (
+                  <div className="w-full h-full bg-sky-500 text-white flex items-center justify-center"><Bot className="w-4 h-4" /></div>
+                )}
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs text-slate-500 shadow-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-sky-500 animate-spin" />
+                <span>{selectedAgent.name} đang xem tình hình hôm nay...</span>
+              </div>
+            </div>
+          )}
           {currentMessages.map((msg) => {
             const isUser = msg.sender === "user";
             const isAgentImg = !isUser && selectedAgent.avatar.startsWith("/avatars/");
