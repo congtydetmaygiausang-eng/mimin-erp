@@ -18,6 +18,17 @@ export async function runCompanyReaderShadow(sourceUrls: string[]): Promise<Comp
 
   const requestId = `mimin_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
   try {
+    if (process.env.NEXT_PUBLIC_COMPANY_READER_SHADOW_TRANSPORT === "local") {
+      const endpoint = process.env.NEXT_PUBLIC_COMPANY_READER_LOCAL_GATEWAY_URL || "http://127.0.0.1:8766/v1/company-reader/shadow";
+      const local = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: requestId, urls }),
+      });
+      const response = await local.json() as { status?: string; profile_count?: number; source_count?: number; warning_count?: number; error?: string };
+      if (!local.ok) return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: response.error ?? "LOCAL_GATEWAY_ERROR" };
+      return { status: response.status === "SHADOW_PROCESSED" ? "SHADOW_PROCESSED" : "ERROR", profileCount: response.profile_count ?? 0, sourceCount: response.source_count ?? 0, warningCount: response.warning_count ?? 0 };
+    }
     const { data, error } = await supabase.functions.invoke("company-reader-gateway", { body: { request_id: requestId, urls } });
     if (error) return { status: "ERROR", profileCount: 0, sourceCount: 0, warningCount: 0, code: "GATEWAY_ERROR" };
     const response = data as { status?: string; profile_count?: number; source_count?: number; warning_count?: number };
