@@ -28,7 +28,7 @@ services:
       - key: COMPANY_READER_GUARDRAIL_MODE
         value: redis
       - key: COMPANY_READER_ALLOWED_CLIENTS
-        value: mimin-render-gateway
+        value: mimin-supabase-gateway
       - key: COMPANY_READER_ROLLOUT_MODE
         value: shadow
       - key: COMPANY_READER_CANARY_PERCENT
