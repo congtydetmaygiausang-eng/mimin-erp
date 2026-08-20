@@ -34,6 +34,10 @@ interface CandidateFieldConfidence {fieldName:FieldEvidenceName;selectedValue:st
 interface CandidateProfileQuality {score:number;completeness:number;evidenceCoverage:number;conflictCount:number;conflictFields:FieldEvidenceName[];grade:"STRONG"|"REVIEW"|"WEAK"|"CONFLICT"}
 interface CandidateSource { url:string;title:string;sourceType?:SourceEvidenceType;sourceProvider?:string;excerpt?:string;rawContent?:string;relevanceScore?:number;searchQuery?:string }
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number; score?:number; sourceType?:SourceEvidenceType; provider?:string; searchQuery?:string }
+interface CompanyReaderFieldDecision { field?:unknown;status?:unknown;selected_value?:unknown;confidence?:unknown;evidence?:Array<{source_url?:unknown;excerpt?:unknown}> }
+interface CompanyReaderProfile { status?:unknown;fields?:CompanyReaderFieldDecision[];source_count?:unknown }
+interface CompanyReaderResponse { status?:unknown;profiles?:CompanyReaderProfile[];profile_count?:unknown;source_count?:unknown;warning_count?:unknown;error?:unknown }
+interface CompanyReaderEnrichment { items:SourceResult[];health:{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string} }
 interface SearchCenter {
   latitude: number;
   longitude: number;
@@ -775,10 +779,88 @@ async function verify(req: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!token || !url || !key) return null;
-  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` } } });
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
-  return ALLOWED_APP_ROLES.has(String(data.user.app_metadata?.role ?? "")) ? { user: data.user, client } : null;
+  return ALLOWED_APP_ROLES.has(String(data.user.app_metadata?.role ?? "")) ? { user: data.user, client, token, url, key } : null;
+}
+
+const COMPANY_READER_FIELDS = new Set(["LEGAL_NAME","TAX_CODE","ADDRESS","PHONE","EMAIL","WEBSITE","INTRODUCTION"]);
+const COMPANY_READER_ACCEPTED_FIELD_STATUS = new Set(["CONSENSUS","SINGLE_SOURCE"]);
+
+function companyReaderMaximumUrls():number{
+  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"10");
+  return Number.isFinite(configured)?Math.max(1,Math.min(10,Math.floor(configured))):10;
+}
+
+function companyReaderSourceScore(source:SourceResult):number{
+  const text=`${source.title} ${source.content}`;
+  const identity=(/\b(?:công ty|doanh nghiệp|tnhh|cổ phần|mã số thuế|mst)\b/i.test(text)?4:0);
+  const contact=(/\b(?:địa chỉ|điện thoại|hotline|email|website|liên hệ)\b/i.test(text)?3:0);
+  const sourceTrust=source.sourceType==="REGISTRY"?4:source.sourceType==="OFFICIAL"?3:source.sourceType==="MAP"?2:0;
+  const missingDepth=source.rawContent?0:2;
+  return identity+contact+sourceTrust+missingDepth+(source.score??0);
+}
+
+function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):SourceResult|null{
+  if(!Array.isArray(profile.fields)||profile.status!=="READY_FOR_REVIEW")return null;
+  const accepted=profile.fields.filter((field)=>
+    COMPANY_READER_FIELDS.has(String(field.field??""))&&
+    COMPANY_READER_ACCEPTED_FIELD_STATUS.has(String(field.status??""))&&
+    typeof field.selected_value==="string"&&field.selected_value.trim()&&
+    typeof field.confidence==="number"&&field.confidence>=0.55,
+  );
+  const legalName=accepted.find((field)=>field.field==="LEGAL_NAME")?.selected_value;
+  const taxCode=accepted.find((field)=>field.field==="TAX_CODE")?.selected_value;
+  if(typeof legalName!=="string"&&!taxCode)return null;
+  const evidence=accepted.flatMap((field)=>field.evidence??[]);
+  const url=evidence.map((item)=>typeof item.source_url==="string"?canonicalSourceUrl(item.source_url):"").find(Boolean);
+  if(!url||blockedSource(url))return null;
+  const values=accepted.map((field)=>`${String(field.field)}: ${String(field.selected_value).trim()}`);
+  const excerpts=evidence.map((item)=>typeof item.excerpt==="string"?item.excerpt.trim():"").filter(Boolean).slice(0,6);
+  return {
+    title:typeof legalName==="string"?legalName.trim():`Doanh nghiệp ${String(taxCode)}`,
+    url,
+    content:Array.from(new Set([...values,...excerpts])).join("\n").slice(0,12_000),
+    rawContent:Array.from(new Set([...values,...excerpts])).join("\n").slice(0,50_000),
+    score:Math.min(1,Math.max(...accepted.map((field)=>Number(field.confidence)||0))),
+    sourceType:classifySource(url,String(legalName??""),values.join(" ")),
+    provider:"TRAFILATURA",
+    searchQuery:`company-reader-${index+1}`,
+  };
+}
+
+async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
+  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED!=="true"||process.env.COMPANY_READER_ENRICHMENT_MODE!=="LIVE")return{items:[],health:{name:"Trafilatura",status:"DISABLED",count:0,code:"LIVE_NOT_ENABLED"}};
+  const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
+  if(!urls.length)return{items:[],health:{name:"Trafilatura",status:"EMPTY",count:0}};
+  const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
+  const timeoutMs=Math.max(2_000,Math.min(12_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"8000")||8_000));
+  const controller=new AbortController();
+  const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const operation=Promise.allSettled(batches.map(async(batch,index)=>{
+      const requestId=`search_${crypto.randomUUID().replaceAll("-","").slice(0,20)}_${index}`;
+      const response=await fetch(`${auth.url.replace(/\/$/,"")}/functions/v1/company-reader-gateway`,{
+        method:"POST",
+        headers:{Authorization:`Bearer ${auth.token}`,apikey:auth.key,"Content-Type":"application/json"},
+        body:JSON.stringify({request_id:requestId,urls:batch}),
+        signal:controller.signal,
+        cache:"no-store",
+      });
+      const data=await response.json().catch(()=>({error:"INVALID_GATEWAY_RESPONSE"})) as CompanyReaderResponse;
+      if(!response.ok)throw new Error(typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}`);
+      return data;
+    }));
+    const settled=await operation;
+    const responses=settled.filter((result):result is PromiseFulfilledResult<CompanyReaderResponse>=>result.status==="fulfilled").map((result)=>result.value);
+    const profiles=responses.flatMap((response)=>Array.isArray(response.profiles)?response.profiles:[]);
+    const items=profiles.map(companyReaderProfileSource).filter((item):item is SourceResult=>Boolean(item));
+    const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
+    return{items,health:{name:"Trafilatura",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}};
+  }catch(error){
+    return{items:[],health:{name:"Trafilatura",status:"ERROR",count:0,code:error instanceof Error?error.message:"UNAVAILABLE"}};
+  }finally{clearTimeout(timeoutId)}
 }
 
 async function loadLearningProfile(client: SupabaseClient, role: string): Promise<LearningProfile> {
@@ -1440,8 +1522,11 @@ export async function POST(req: NextRequest) {
     const learning = await loadLearningProfile(auth.client, body.role);
     const searchQueries = await buildQueryPlan(query, location, body.role, learning, radiusKm);
     const source = await searchSources(query, location, searchQueries);
-    const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
-    const supplementalCandidates = deterministicSourceCandidates(query, body.role, source.items);
+    const companyReader = await enrichSourcesWithCompanyReader(auth, source.items);
+    // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
+    const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
+    const normalizedCandidates = await normalizeWithDeepSeek(query, location, discoverySources);
+    const supplementalCandidates = deterministicSourceCandidates(query, body.role, discoverySources);
     const normalizationPool = [...normalizedCandidates, ...supplementalCandidates];
     const enrichment = await enrichCandidatesWithContacts(normalizationPool, location);
     const cleanedCandidates=enrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
@@ -1481,8 +1566,8 @@ export async function POST(req: NextRequest) {
       executedBraveQueries: process.env.BRAVE_SEARCH_API_KEY ? Math.min(searchQueries.length, braveMaximumQueries()) : 0,
       normalizationBatches: Math.max(1, Math.ceil(Math.min(source.items.length, MAX_NORMALIZATION_SOURCES) / NORMALIZATION_BATCH_SIZE)),
       normalizationSourceLimit: MAX_NORMALIZATION_SOURCES,
-      collectedSources: source.items.length,
-      sourceTypeBreakdown: source.items.reduce<Record<SourceEvidenceType,number>>((counts,item)=>{
+      collectedSources: discoverySources.length,
+      sourceTypeBreakdown: discoverySources.reduce<Record<SourceEvidenceType,number>>((counts,item)=>{
         const type=item.sourceType??classifySource(item.url,item.title,item.content);counts[type]+=1;return counts;
       },{SEARCH:0,OFFICIAL:0,REGISTRY:0,MAP:0,SOCIAL:0,OTHER:0}),
       normalizedCandidates: normalizedCandidates.length,
@@ -1505,13 +1590,14 @@ export async function POST(req: NextRequest) {
       },
       enrichmentSources: enrichment.sourceCount,
       enrichedCandidates: enrichment.enrichedCount,
+      companyReaderEnrichmentSources: companyReader.items.length,
       rejectedNoiseCandidates: enrichment.candidates.length - businessCandidates.length,
       exactCandidates: exactCandidates.length,
       relatedCandidates: relatedCandidates.length,
       rejectedInvalidIdentity: enrichment.candidates.length-cleanedCandidates.length,
       geocoding: geocoding.summary,
       locationQuality,
-      providers: source.providerHealth,
+      providers: [...source.providerHealth,companyReader.health],
     };
     return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, diagnostics, candidates });
   } catch (error) {
