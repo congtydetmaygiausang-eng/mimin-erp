@@ -19,8 +19,9 @@ gateway; Render chấm dứt TLS ở ingress.
 1. Trên Render, tạo Blueprint từ repository `mimin-erp`.
 2. Chọn đường dẫn Blueprint `services/company-reader/render.yaml`.
 3. Render sẽ yêu cầu nhập `JINA_API_KEY`; nhập ở Dashboard, không dán vào Git.
-4. Kiểm tra chi phí trước khi bấm Apply: Blueprint dùng một web service
-   `starter` và một Key Value `starter`.
+4. Giai đoạn thử nghiệm dùng một web service `free` và một Key Value `free`.
+   Free web service có thể ngủ sau 15 phút không hoạt động; lượt gọi đầu sau khi
+   ngủ có thể chậm khoảng một phút. Chỉ nâng lên `starter` sau khi shadow đạt gate.
 5. Sau deploy, gọi `/healthz` và `/readyz` trên HTTPS URL. Thử request thiếu chữ
    ký phải nhận `INVALID_REQUEST_SIGNATURE` trước khi cấu hình Supabase secrets.
 
