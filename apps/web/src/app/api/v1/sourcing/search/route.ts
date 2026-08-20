@@ -1174,6 +1174,65 @@ function fallbackCandidates(query: string, sources: SourceResult[]): Candidate[]
   return sources.filter((source) => !isGenericCompanyName(source.title)).slice(0, 20).map((source) => ({ legalName: cleanCompanyLegalName(source.title), address: postalAddress(source.content), province: "", district: "", phone: "", email: "", taxCode: "", website: "", latitude: source.latitude ?? null, longitude: source.longitude ?? null, capabilities: [query], sourceUrl: source.url, sourceTitle: source.title, sources:[candidateSource(source)], confidence: 50, verifiedFields: source.latitude !== undefined ? ["coordinates"] : [], verificationStatus: "UNVERIFIED", lastVerifiedAt: new Date().toISOString() }));
 }
 
+/**
+ * Bổ sung hồ sơ có thể chứng minh trực tiếp từ nguồn tìm kiếm. DeepSeek vẫn là
+ * bộ chuẩn hóa chính, nhưng một nguồn doanh nghiệp rõ ràng không nên bị mất chỉ
+ * vì model bỏ qua nó trong một batch lớn. Bộ trích xuất này chỉ nhận nguồn có:
+ * tên doanh nghiệp, bằng chứng đúng năng lực và ít nhất một neo nhận diện.
+ */
+function deterministicSourceCandidates(query: string, role: string, sources: SourceResult[]): Candidate[] {
+  const queryTokens = tokenSet(query);
+  const roleTerms = ROLE_EVIDENCE_TERMS[role] ?? [];
+  return sources.flatMap((source) => {
+    if (blockedSource(source.url) || noiseListing(`${source.title} ${source.content}`)) return [];
+    const legalName = cleanCompanyLegalName(source.title);
+    // Không dùng tiêu đề bài viết chung làm tên công ty. Các thương hiệu/xưởng
+    // không có tên pháp lý rõ ràng vẫn được DeepSeek xử lý ở tầng chính.
+    const hasFormalIdentity = /\b(?:công\s*ty|cty|tnhh|trách nhiệm hữu hạn|cổ phần|doanh nghiệp tư nhân|dntn|hộ kinh doanh)\b/i.test(legalName);
+    if (isGenericCompanyName(legalName) || !hasFormalIdentity) return [];
+    const body = `${source.title}\n${source.content}\n${source.rawContent ?? ""}`;
+    const bodyTokens = tokenSet(body);
+    const queryRelevant = overlapRatio(queryTokens, bodyTokens) >= 0.5;
+    const roleRelevant = roleTerms.some((term) => normalized(body).includes(normalized(term)));
+    if (!queryRelevant || !roleRelevant) return [];
+
+    const phone = firstVietnamPhone(body);
+    const email = body.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() ?? "";
+    const taxCode = body.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] ?? "";
+    const address = postalAddress(body);
+    // Không suy domain của trang nguồn thành website công ty: một bài báo hoặc
+    // danh bạ có thể chứa nhiều doanh nghiệp và sẽ làm gộp nhầm theo domain.
+    const website = "";
+    const verifiedFields = [address ? "address" : "", phone ? "phone" : "", email ? "email" : "", taxCode ? "taxCode" : "", source.latitude !== undefined && source.longitude !== undefined ? "coordinates" : ""].filter(Boolean);
+    const identityEvidence = [address, phone, email, taxCode].filter(Boolean).length;
+    if (identityEvidence < 2 && !taxCode) return [];
+    const matchedCapability = Array.from(queryTokens).filter((token) => bodyTokens.has(token)).join(" ");
+    if (!matchedCapability) return [];
+    const sourceLink = candidateSource(source);
+    return [{
+      legalName,
+      address,
+      province: "",
+      district: "",
+      phone,
+      phones: phone ? [phone] : [],
+      email,
+      taxCode,
+      website,
+      latitude: source.latitude ?? null,
+      longitude: source.longitude ?? null,
+      capabilities: [matchedCapability],
+      sourceUrl: source.url,
+      sourceTitle: source.title,
+      sources: [sourceLink],
+      confidence: Math.max(55, Math.min(78, Math.round((source.score ?? 0.55) * 100))),
+      verifiedFields,
+      verificationStatus: verificationStatus(verifiedFields, 1),
+      lastVerifiedAt: new Date().toISOString(),
+    } satisfies Candidate];
+  }).slice(0, 40);
+}
+
 const FIELD_EVIDENCE_NAMES=new Set<FieldEvidenceName>(["LEGAL_NAME","TRADE_NAME","SHORT_NAME","TAX_CODE","REGISTERED_ADDRESS","FACTORY_ADDRESS","OFFICE_ADDRESS","PHONE","ZALO","EMAIL","WEBSITE","FACEBOOK","LEGAL_REPRESENTATIVE","BUSINESS_LINE","CAPABILITY","COMPANY_INTRODUCTION","FOUNDED_YEAR","OPERATING_STATUS"]);
 function evidenceText(value:string):string{return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()}
 function supportedFieldEvidence(raw:unknown,allowed:Map<string,SourceResult>):CandidateFieldEvidence[]{
@@ -1382,7 +1441,9 @@ export async function POST(req: NextRequest) {
     const searchQueries = await buildQueryPlan(query, location, body.role, learning, radiusKm);
     const source = await searchSources(query, location, searchQueries);
     const normalizedCandidates = await normalizeWithDeepSeek(query, location, source.items);
-    const enrichment = await enrichCandidatesWithContacts(normalizedCandidates, location);
+    const supplementalCandidates = deterministicSourceCandidates(query, body.role, source.items);
+    const normalizationPool = [...normalizedCandidates, ...supplementalCandidates];
+    const enrichment = await enrichCandidatesWithContacts(normalizationPool, location);
     const cleanedCandidates=enrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
     const exactCandidates = cleanedCandidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query));
     const exactKeys = new Set(exactCandidates.map((candidate) => `${candidate.sourceUrl}|${normalized(candidate.legalName)}`));
@@ -1425,6 +1486,7 @@ export async function POST(req: NextRequest) {
         const type=item.sourceType??classifySource(item.url,item.title,item.content);counts[type]+=1;return counts;
       },{SEARCH:0,OFFICIAL:0,REGISTRY:0,MAP:0,SOCIAL:0,OTHER:0}),
       normalizedCandidates: normalizedCandidates.length,
+      supplementedCandidates: supplementalCandidates.length,
       finalCandidates: candidates.length,
       verified: candidates.filter((item) => item.verificationStatus === "VERIFIED").length,
       partial: candidates.filter((item) => item.verificationStatus === "PARTIAL").length,
