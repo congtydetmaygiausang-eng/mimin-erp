@@ -1671,8 +1671,12 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
       return [];
     }
   }));
+  
+  normalized.push(...batchResults.map(r => r.status === "fulfilled" ? r.value : []));
+  if (i + 3 < targets.length) await new Promise(resolve => setTimeout(resolve, 800));
+}
 
-  return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
+return normalized.flat().filter((item) => item.legalName);
 }
 
 export async function POST(req: NextRequest) {
