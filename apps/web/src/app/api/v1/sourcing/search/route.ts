@@ -1575,6 +1575,77 @@ async function normalizeWithDeepSeek(query: string, location: string, sources: S
   return candidates.length ? candidates : fallbackCandidates(query, ranked);
 }
 
+async function normalizeDirectoriesWithGemini(query: string, location: string, sources: SourceResult[]): Promise<Candidate[]> {
+  const keys = geminiApiKeys();
+  if (!keys.length || !sources.length) return [];
+  const key = keys[0];
+  const model = "gemini-2.5-flash";
+
+  const batches = await Promise.allSettled(sources.slice(0, 15).map(async (source) => {
+    const text = (source.rawContent ?? source.content).slice(0, 80_000);
+    if (!text.trim()) return [];
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `Bạn là AI bóc tách dữ liệu danh bạ B2B. Hãy tìm và trích xuất TẤT CẢ các công ty xuất hiện trong văn bản này. Ưu tiên giữ lại các công ty có địa chỉ nằm tại ${location} hoặc các công ty cung cấp ${query}. Trả về định dạng JSON: {"candidates":[{"legalName":"", "address":"", "phone":"", "email":"", "taxCode":"", "capabilities":[""]}]}. Yêu cầu: Không bịa dữ liệu, chỉ lấy thông tin có trong văn bản. Text:\n${text}` }] }],
+        generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`Gemini directory normalization failed`);
+    const data = await response.json() as any;
+    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!answer) return [];
+    
+    try {
+      const parsed = JSON.parse(answer) as { candidates?: any[] };
+      return (parsed.candidates ?? []).slice(0, 50).flatMap((item) => {
+        if (!item || typeof item !== "object" || typeof item.legalName !== "string") return [];
+        const legalName = cleanCompanyLegalName(item.legalName);
+        if (isGenericCompanyName(legalName)) return [];
+        const rawPhone = firstVietnamPhone(item.phone ?? "");
+        const rawAddress = postalAddress(item.address ?? "");
+        const taxCode = typeof item.taxCode === "string" ? item.taxCode.trim().slice(0, 30) : "";
+        const email = typeof item.email === "string" ? item.email.trim().slice(0, 200) : "";
+        const capabilities = Array.isArray(item.capabilities) ? item.capabilities.filter((v: any) => typeof v === "string").slice(0, 5) : [];
+        if (!capabilities.length) capabilities.push(query);
+
+        const verifiedFields = [
+          rawAddress ? "address" : "",
+          rawPhone ? "phone" : "",
+          email ? "email" : "",
+          taxCode ? "taxCode" : "",
+        ].filter(Boolean);
+
+        return [{
+          legalName,
+          address: rawAddress,
+          province: "", district: "",
+          phone: rawPhone,
+          phones: rawPhone ? [rawPhone] : [],
+          email, taxCode, website: "",
+          latitude: source.latitude ?? null,
+          longitude: source.longitude ?? null,
+          capabilities,
+          sourceUrl: source.url,
+          sourceTitle: source.title,
+          sources: [candidateSource(source)],
+          confidence: 75,
+          verifiedFields,
+          verificationStatus: verificationStatus(verifiedFields, 1),
+          lastVerifiedAt: new Date().toISOString(),
+        } as Candidate];
+      });
+    } catch {
+      return [];
+    }
+  }));
+
+  return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const auth = await verify(req);
@@ -1594,9 +1665,17 @@ export async function POST(req: NextRequest) {
     const companyReader = await enrichSourcesWithCompanyReader(auth, source.items);
     // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
     const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
-    const normalizedCandidates = await normalizeWithDeepSeek(query, location, discoverySources);
+    const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com", "hosocongty.vn", "masothue.com", "thongtindoanhnghiep.co", "vn.kompass.com", "danhbacongty.vn", "yellowpages.vn"]);
+    const directorySources = discoverySources.filter((s) => directoryDomains.has(domainOf(s.url) ?? ""));
+    const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? ""));
+    
+    const [directoryCandidates, normalizedCandidates] = await Promise.all([
+      normalizeDirectoriesWithGemini(query, location, directorySources),
+      normalizeWithDeepSeek(query, location, normalSources)
+    ]);
+    
     const supplementalCandidates = deterministicSourceCandidates(query, body.role, discoverySources);
-    const normalizationPool = [...normalizedCandidates, ...supplementalCandidates];
+    const normalizationPool = [...directoryCandidates, ...normalizedCandidates, ...supplementalCandidates];
     const enrichment = await enrichCandidatesWithContacts(normalizationPool, location);
     const geminiEnrichment = await enrichCandidatesWithGemini(enrichment.candidates, discoverySources);
     const cleanedCandidates=geminiEnrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
@@ -1634,13 +1713,14 @@ export async function POST(req: NextRequest) {
       plannedQueries: searchQueries.length,
       executedTavilyQueries: process.env.TAVILY_API_KEY ? Math.min(searchQueries.length, 16) : 0,
       executedBraveQueries: process.env.BRAVE_SEARCH_API_KEY ? Math.min(searchQueries.length, braveMaximumQueries()) : 0,
-      normalizationBatches: Math.max(1, Math.ceil(Math.min(source.items.length, MAX_NORMALIZATION_SOURCES) / NORMALIZATION_BATCH_SIZE)),
+      normalizationBatches: Math.max(1, Math.ceil(Math.min(normalSources.length, MAX_NORMALIZATION_SOURCES) / NORMALIZATION_BATCH_SIZE)),
       normalizationSourceLimit: MAX_NORMALIZATION_SOURCES,
       collectedSources: discoverySources.length,
       sourceTypeBreakdown: discoverySources.reduce<Record<SourceEvidenceType,number>>((counts,item)=>{
         const type=item.sourceType??classifySource(item.url,item.title,item.content);counts[type]+=1;return counts;
       },{SEARCH:0,OFFICIAL:0,REGISTRY:0,MAP:0,SOCIAL:0,OTHER:0}),
       normalizedCandidates: normalizedCandidates.length,
+      directoryCandidates: directoryCandidates.length,
       supplementedCandidates: supplementalCandidates.length,
       finalCandidates: candidates.length,
       verified: candidates.filter((item) => item.verificationStatus === "VERIFIED").length,
