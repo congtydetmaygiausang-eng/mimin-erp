@@ -1510,10 +1510,10 @@ async function normalizeSourceBatch(query: string, location: string, sources: So
   if (!key) return fallbackCandidates(query, sources);
   const modelSources = sources.slice(0, 32).map((source) => {
     const raw = stripHtml(source.rawContent ?? "");
-    const rawSnippet = raw.length > 3500 ? `${raw.slice(0, 2000)}\n...[BỎ QUA GIỮA TRANG]...\n${raw.slice(-1500)}` : raw;
+    const footerSnippet = raw.length > 1000 ? `\n[FOOTER]\n${raw.slice(-1000)}` : (raw ? `\n[RAW]\n${raw}` : "");
     const content = source.content ?? "";
-    const contentSnippet = content.length > 2500 ? `${content.slice(0, 1500)}\n...[BỎ QUA GIỮA TRANG]...\n${content.slice(-1000)}` : content;
-    return { ...source, content: contentSnippet, rawContent: rawSnippet };
+    const contentSnippet = content.length > 2000 ? `${content.slice(0, 1200)}\n...\n${content.slice(-800)}` : content;
+    return { url: source.url, title: source.title, content: `${contentSnippet}${footerSnippet}` };
   });
   const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
     method: "POST",
