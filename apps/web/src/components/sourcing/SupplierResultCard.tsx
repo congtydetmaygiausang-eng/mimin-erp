@@ -22,12 +22,34 @@ import {
   Navigation,
   Phone,
   RefreshCw,
+  Scale,
   ShieldCheck,
   Square,
 } from "lucide-react";
 import { googleMapsSearchUrl } from "@/lib/google-maps";
 import { extractVietnamPhones, formatVietnamPhone, normalizeVietnamPhone } from "@/lib/vietnam-phone";
+import { supabase } from "@/lib/supabase/client";
 import type { DirectCandidateEvidenceField, DirectSearchCandidate } from "@/lib/production-discovery";
+
+interface LegalLookupProviderResult {
+  status: "SUCCESS" | "NOT_FOUND" | "ERROR";
+  record?: Record<string, string> | null;
+  error?: string;
+  cached?: boolean;
+}
+interface LegalLookupResponse {
+  taxCode: string;
+  vietQr: LegalLookupProviderResult;
+  maSoThue: LegalLookupProviderResult;
+  reconciliation: { overallStatus: "MATCH" | "PARTIAL" | "CONFLICT" | "INSUFFICIENT"; matchScore: number; matchedFields: number; partialFields: number; conflictFields: number; missingFields: number } | null;
+}
+
+const RECONCILIATION_STYLES = {
+  MATCH: { label: "Khớp", className: "border-emerald-300 bg-emerald-50 text-emerald-800" },
+  PARTIAL: { label: "Tương đồng một phần", className: "border-amber-300 bg-amber-50 text-amber-800" },
+  CONFLICT: { label: "Mâu thuẫn", className: "border-red-300 bg-red-50 text-red-800" },
+  INSUFFICIENT: { label: "Chưa đủ dữ liệu đối chiếu", className: "border-slate-300 bg-slate-50 text-slate-700" },
+} as const;
 
 export const FIELD_LABELS: Record<DirectCandidateEvidenceField, string> = {
   LEGAL_NAME: "Tên pháp lý", TRADE_NAME: "Tên thương mại", SHORT_NAME: "Tên viết tắt", TAX_CODE: "Mã số thuế",
@@ -96,7 +118,32 @@ export function SupplierResultCard({
 }) {
   const [showCalculation, setShowCalculation] = useState(false);
   const [showEvidence, setShowEvidence] = useState(false);
+  const [legalLookupLoading, setLegalLookupLoading] = useState(false);
+  const [legalLookupResult, setLegalLookupResult] = useState<LegalLookupResponse | null>(null);
+  const [legalLookupError, setLegalLookupError] = useState("");
   const contact = contactDetails(item);
+
+  const runLegalLookup = async () => {
+    if (!item.taxCode || legalLookupLoading) return;
+    setLegalLookupLoading(true);
+    setLegalLookupError("");
+    try {
+      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+      if (!token) throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
+      const response = await fetch("/api/v1/sourcing/company-registry/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ taxCode: item.taxCode }),
+      });
+      const data = (await response.json()) as LegalLookupResponse & { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Không tra cứu được pháp lý");
+      setLegalLookupResult(data);
+    } catch (error) {
+      setLegalLookupError(error instanceof Error ? error.message : "Không tra cứu được pháp lý");
+    } finally {
+      setLegalLookupLoading(false);
+    }
+  };
   const sources = item.sources?.length ? item.sources : [{ url: item.sourceUrl, title: item.sourceTitle }];
   const status = item.locationStatus ?? "UNKNOWN";
   const locationBadge = LOCATION_BADGES[status];
@@ -197,7 +244,42 @@ export function SupplierResultCard({
         <button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={() => setShowCalculation((current) => !current)}><Calculator className="w-4 h-4" />{showCalculation ? "Ẩn cách tính" : "Xem cách tính"}</button>
         {Boolean(item.fieldConfidence?.length) && <button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={() => setShowEvidence((current) => !current)}><ShieldCheck className="w-4 h-4" />{showEvidence ? "Ẩn kiểm chứng" : "Xem kiểm chứng"}</button>}
         {onVerifyLocation && <button type="button" disabled={verifying} className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={onVerifyLocation}><RefreshCw className={`w-4 h-4 ${verifying ? "animate-spin" : ""}`} />{verifying ? "Đang xác minh..." : "Xác minh lại vị trí"}</button>}
+        <button
+          type="button"
+          disabled={!item.taxCode || legalLookupLoading}
+          title={!item.taxCode ? "Chưa có mã số thuế để tra cứu" : undefined}
+          className="btn-secondary inline-flex items-center gap-2 text-xs disabled:opacity-50"
+          onClick={() => void runLegalLookup()}
+        >
+          <Scale className={`w-4 h-4 ${legalLookupLoading ? "animate-pulse" : ""}`} />{legalLookupLoading ? "Đang tra cứu..." : "Tra cứu pháp lý"}
+        </button>
       </div>
+      {legalLookupError && (
+        <p className="text-xs text-red-700 inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />{legalLookupError}</p>
+      )}
+      {legalLookupResult && (
+        <div className="rounded-lg border p-3 text-xs space-y-2" style={{ borderColor: "var(--border)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold inline-flex items-center gap-1.5"><Scale className="w-4 h-4" />Đối chiếu VietQR + MaSoThue · MST {legalLookupResult.taxCode}</span>
+            {legalLookupResult.reconciliation && (
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${RECONCILIATION_STYLES[legalLookupResult.reconciliation.overallStatus].className}`}>
+                {RECONCILIATION_STYLES[legalLookupResult.reconciliation.overallStatus].label} · {legalLookupResult.reconciliation.matchScore}/100
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <p className="font-medium">VietQR</p>
+              {legalLookupResult.vietQr.status === "SUCCESS" ? <p className="opacity-80">{legalLookupResult.vietQr.record?.legalName}</p> : legalLookupResult.vietQr.status === "NOT_FOUND" ? <p className="opacity-60">Không tìm thấy</p> : <p className="text-red-700">{legalLookupResult.vietQr.error ?? "Lỗi tra cứu"}</p>}
+            </div>
+            <div>
+              <p className="font-medium">MaSoThue</p>
+              {legalLookupResult.maSoThue.status === "SUCCESS" ? <p className="opacity-80">{legalLookupResult.maSoThue.record?.legalName}</p> : legalLookupResult.maSoThue.status === "NOT_FOUND" ? <p className="opacity-60">Không tìm thấy</p> : <p className="text-red-700">{legalLookupResult.maSoThue.error ?? "Lỗi tra cứu"}</p>}
+            </div>
+          </div>
+          <p className="opacity-60">Đây là bản xem nhanh, chưa lưu bằng chứng. Để lưu bằng chứng đối chiếu đầy đủ, bấm "Lưu công ty này" rồi "Xem chi tiết" để mở mục Đối chiếu pháp lý hai nguồn.</p>
+        </div>
+      )}
       {showCalculation && (
         <div className="rounded-lg border bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1">
           <p><b>Phương pháp:</b> {evidence?.method === "HAVERSINE" ? "Haversine · khoảng cách đường chim bay" : "Chưa có phép tính"}</p>
