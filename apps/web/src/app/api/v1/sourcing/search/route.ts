@@ -1047,7 +1047,7 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
   const keys = geminiApiKeys();
   if (!keys.length) return { candidates, sourceCount: 0, enrichedCount: 0 };
   const key = keys[0];
-  const model = "gemini-2.5-flash";
+  const model = "gemini-1.5-pro";
 
   const targets = candidates.filter((item) => !item.phone || !item.address).slice(0, 10);
   if (!targets.length) return { candidates, sourceCount: 0, enrichedCount: 0 };
@@ -1166,11 +1166,15 @@ async function supportedGeminiModels(key: string): Promise<string[]> {
 
 function orderedGeminiModels(available: string[]): string[] {
   const configured = (process.env.GEMINI_SEARCH_MODEL ?? "").trim().replace(/^models\//, "");
-  const preferred = [configured, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
+  const preferred = [configured, "gemini-1.5-pro", "gemini-2.0-pro-exp", "gemini-1.5-flash", "gemini-2.0-flash"]
     .filter(Boolean);
   const discovered = available
-    .filter((model) => /flash/i.test(model) && !/(image|tts|live|preview)/i.test(model))
-    .sort((left, right) => Number(/2\.5/.test(right)) - Number(/2\.5/.test(left)) || left.localeCompare(right));
+    .filter((model) => /(pro|flash)/i.test(model) && !/(image|tts|live|preview)/i.test(model))
+    .sort((left, right) => {
+      const isProLeft = /pro/i.test(left) ? 1 : 0;
+      const isProRight = /pro/i.test(right) ? 1 : 0;
+      return isProRight - isProLeft || left.localeCompare(right);
+    });
   const candidates = Array.from(new Set([...preferred, ...discovered]));
   return available.length ? candidates.filter((model) => available.includes(model)).slice(0, 5) : candidates.slice(0, 4);
 }
@@ -1588,7 +1592,7 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
   const keys = geminiApiKeys();
   if (!keys.length || !sources.length) return [];
   const key = keys[0];
-  const model = "gemini-2.5-flash";
+  const model = "gemini-1.5-pro";
 
   const batches = await Promise.allSettled(sources.slice(0, 15).map(async (source) => {
     const text = (source.rawContent ?? source.content).slice(0, 80_000);
