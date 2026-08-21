@@ -156,6 +156,37 @@ export async function importAICandidates(
   return rows.length;
 }
 
+// Nhập hàng loạt từ file Excel/CSV (Công ty đã lưu > Nhập Excel) - khác importAICandidates()
+// ở chỗ nhận sẵn mảng object đã parse phía client (XLSX.utils.sheet_to_json), không phải
+// JSON text dán tay, và giữ taxCode/email trong raw_data để mapRow() đọc lại được (2 cột
+// này không có cột riêng trong bảng, luôn đọc/ghi qua raw_data giống các nguồn AI khác).
+export interface ExcelCandidateInput {
+  legalName: string; address: string; phone: string; email: string; taxCode: string; website: string;
+}
+
+export async function importExcelCandidates(
+  rows: ExcelCandidateInput[], role: ProductionPartnerRole, fileName: string,
+): Promise<number> {
+  if (!supabase) throw new Error("Cần đăng nhập Supabase để nhập dữ liệu");
+  const valid = rows.filter((row) => row.legalName.trim());
+  if (valid.length === 0) throw new Error("Không có dòng nào có tên công ty hợp lệ");
+  if (valid.length > 200) throw new Error("Mỗi lần chỉ nhập tối đa 200 dòng");
+  const payload = await Promise.all(valid.map(async (row) => {
+    const identity = `EXCEL|${row.legalName}|${row.address}|${row.phone}|${row.taxCode}`.toLowerCase();
+    return {
+      organization_id: PRODUCTION_ORGANIZATION_ID, role, search_query: `Nhập Excel: ${fileName}`.slice(0, 200),
+      legal_name: row.legalName.slice(0, 200), address: row.address.slice(0, 500), province: "", district: "",
+      phone: row.phone.slice(0, 50), website: row.website.slice(0, 500),
+      latitude: null, longitude: null, source_provider: "EXCEL_IMPORT", source_url: "https://mimin-erp.vercel.app",
+      external_id: await fingerprint(identity), raw_data: { email: row.email, taxCode: row.taxCode },
+    };
+  }));
+  const { error } = await supabase.from("production_discovery_candidates").upsert(payload,
+    { onConflict: "organization_id,source_provider,external_id", ignoreDuplicates: true });
+  if (error) throw error;
+  return payload.length;
+}
+
 export interface SearchDistanceEvidence { method:"HAVERSINE";unit:"KM";calculatedAt:string;radiusKm:number;rawDistanceKm:number|null;center:{latitude:number;longitude:number;label:string;source:"GPS"|"ADDRESS"};destination:{latitude:number|null;longitude:number|null;coordinateSource?:"SOURCE"|"NOMINATIM";coordinateConfidence?:"HIGH"|"MEDIUM"|"LOW";geocodedAddress?:string};addressConsistency:"MATCHED"|"UNVERIFIED"|"CONFLICT" }
 export type CompanySourceType = "SEARCH"|"OFFICIAL"|"REGISTRY"|"MAP"|"SOCIAL"|"OTHER";
 export interface DirectCandidateSource {url:string;title:string;sourceType?:CompanySourceType;sourceProvider?:string;excerpt?:string;rawContent?:string;relevanceScore?:number;searchQuery?:string}
