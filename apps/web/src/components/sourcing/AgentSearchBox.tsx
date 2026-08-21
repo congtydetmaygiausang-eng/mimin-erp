@@ -22,7 +22,7 @@ import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 
-type PartnerTypeChip = "factory" | "supplier" | "customer";
+export type PartnerTypeChip = "factory" | "supplier" | "customer";
 
 const PARTNER_TYPE_OPTIONS: { value: PartnerTypeChip; label: string; role: ProductionPartnerRole }[] = [
   { value: "factory", label: "Xưởng sản xuất", role: "SATELLITE_PROCESSOR" },
@@ -57,9 +57,15 @@ interface ChatApiResponse {
   results?: { candidates: AgentCandidate[]; diagnostics: unknown[]; provider: string[] } | null;
 }
 
-export default function AgentSearchBox() {
+export default function AgentSearchBox({
+  defaultPartnerType,
+  lockPartnerType = false,
+}: {
+  defaultPartnerType?: PartnerTypeChip;
+  lockPartnerType?: boolean;
+} = {}) {
   const router = useRouter();
-  const [partnerType, setPartnerType] = useState<PartnerTypeChip | null>(null);
+  const [partnerType, setPartnerType] = useState<PartnerTypeChip | null>(defaultPartnerType ?? null);
   const [specialties, setSpecialties] = useState<Set<string>>(new Set());
   const [region, setRegion] = useState("");
   const [moq, setMoq] = useState<number | null>(null);
@@ -195,22 +201,28 @@ export default function AgentSearchBox() {
       </div>
 
       <div className="space-y-3">
-        <div>
-          <span className="block text-xs font-medium mb-1.5">1. Loại đối tác <span className="text-rose-500">*</span></span>
-          <div className="flex flex-wrap gap-1.5">
-            {PARTNER_TYPE_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                disabled={loading}
-                onClick={() => { setPartnerType(option.value); setSpecialties(new Set()); }}
-                className={`text-xs rounded-full border px-3 py-1.5 font-medium transition disabled:opacity-50 ${partnerType === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
-              >
-                {option.label}
-              </button>
-            ))}
+        {lockPartnerType ? (
+          <div className="text-xs font-medium">
+            Đang tìm: <span className="text-brand-700">{PARTNER_TYPE_OPTIONS.find((option) => option.value === partnerType)?.label ?? ""}</span>
           </div>
-        </div>
+        ) : (
+          <div>
+            <span className="block text-xs font-medium mb-1.5">1. Loại đối tác <span className="text-rose-500">*</span></span>
+            <div className="flex flex-wrap gap-1.5">
+              {PARTNER_TYPE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => { setPartnerType(option.value); setSpecialties(new Set()); }}
+                  className={`text-xs rounded-full border px-3 py-1.5 font-medium transition disabled:opacity-50 ${partnerType === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {partnerType && (
           <div>
