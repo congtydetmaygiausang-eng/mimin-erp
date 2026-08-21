@@ -28,6 +28,7 @@ export const maxDuration = 60;
 
 const MAX_TOOL_CALLS_PER_TURN = 4;
 const MAX_HISTORY_MESSAGES = 6;
+const MAX_ECHOED_RESULTS = 50;
 
 interface TurnResult {
   role: ProductionPartnerRole;
@@ -56,6 +57,23 @@ async function authenticateChatUser(req: NextRequest): Promise<ChatAuth | null> 
   if (error || !data.user) return null;
   const role = String(data.user.app_metadata?.role ?? "");
   return { user: data.user, client, role, sourcingAuth: { user: data.user, client, token, url, key } };
+}
+
+// Dựng lại "kết quả tìm kiếm gần nhất" từ dữ liệu client gửi kèm (chính là results.candidates
+// route này đã trả về ở lượt trước) - route không giữ state giữa các request nên
+// refine_last_search/save_partner_candidate cần nguồn này để hoạt động qua nhiều lượt chat.
+function parseEchoedResults(raw: unknown): TurnResult[] {
+  if (!Array.isArray(raw)) return [];
+  const out: TurnResult[] = [];
+  for (const entry of raw.slice(0, MAX_ECHOED_RESULTS)) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as Record<string, unknown>;
+    const role = record.role;
+    if (typeof role !== "string" || !(role in ROLE_LABELS)) continue;
+    const { role: _role, roleLabel: _roleLabel, resultIndex: _resultIndex, ...candidate } = record;
+    out.push({ role: role as ProductionPartnerRole, candidate: candidate as unknown as DirectSearchCandidate, searchQuery: "", provider: "" });
+  }
+  return out;
 }
 
 function partnerTypeToRoles(partnerType: unknown): ProductionPartnerRole[] {
@@ -161,6 +179,26 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "refine_last_search",
+      description:
+        "Lọc/sắp xếp lại kết quả search_partners GẦN NHẤT trong cuộc hội thoại này theo điều kiện mới - KHÔNG gọi API tìm kiếm mới, " +
+        "chỉ lọc trong dữ liệu đã có. Dùng khi người dùng thêm điều kiện cho đúng lượt tìm vừa rồi (VD: \"chỉ lấy cái có website\", " +
+        "\"sắp theo độ tin cậy\") thay vì muốn tìm một nhu cầu hoàn toàn mới.",
+      parameters: {
+        type: "object",
+        properties: {
+          min_confidence: { type: "number", description: "Chỉ giữ kết quả có độ tin cậy (confidence) từ mức này trở lên, 0-100" },
+          require_website: { type: "boolean", description: "true = chỉ giữ kết quả có website" },
+          require_phone: { type: "boolean", description: "true = chỉ giữ kết quả có số điện thoại" },
+          sort_by: { type: "string", enum: ["confidence", "distance"], description: "Tiêu chí sắp xếp lại" },
+        },
+        required: [],
+      },
+    },
+  },
 ] as const;
 
 const BASE_SYSTEM_PROMPT = `Bạn là AI Search Agent của MIMIN GROUP - trợ lý tìm kiếm đối tác cho chuỗi cung ứng may mặc (xưởng sản xuất, nhà cung cấp nguyên phụ liệu, khách hàng).
@@ -170,6 +208,8 @@ Nguyên tắc:
 - Khi người dùng muốn so sánh nhiều đối tác → gọi compare_partners.
 - Khi người dùng muốn đối tác tốt nhất/xếp hạng → gọi rank_partners.
 - Khi người dùng muốn lưu 1 kết quả tìm kiếm vào vùng chờ duyệt → gọi save_partner_candidate với đúng result_index.
+- Khi người dùng thêm/đổi điều kiện lọc cho ĐÚNG lượt tìm vừa rồi (không phải nhu cầu mới) → gọi refine_last_search, KHÔNG gọi search_partners lại (đỡ tốn API không cần thiết).
+- Nếu tool search_partners trả về internalMatches (đối tác đã có sẵn trong hệ thống khớp chuyên môn), báo cho người dùng biết TRƯỚC khi nói về kết quả tìm mới ngoài internet.
 - Sau khi có kết quả công cụ, trả lời ngắn gọn bằng tiếng Việt, nêu số lượng và 1-2 điểm nổi bật - KHÔNG liệt kê lại toàn bộ chi tiết vì giao diện đã hiển thị bảng kết quả riêng.
 - Nếu công cụ báo lỗi hoặc không đủ quyền, giải thích rõ lý do cho người dùng thay vì im lặng hoặc bịa kết quả.`;
 
@@ -190,6 +230,10 @@ async function executeToolCall(
   turnResults: TurnResult[],
 ): Promise<{ toolMessageContent: unknown; results?: ToolSearchResults }> {
   if (name === "search_partners") {
+    // Tìm mới thay thế hẳn "kết quả gần nhất" của cuộc hội thoại (kể cả kết quả được
+    // client gửi lại từ lượt trước) - refine_last_search sau lượt này phải lọc trên bộ
+    // kết quả MỚI, không lẫn với lượt tìm cũ.
+    turnResults.length = 0;
     if (!ALLOWED_APP_ROLES.has(auth.role)) {
       return { toolMessageContent: { error: "Tài khoản của anh/chị chưa được cấp quyền tìm kiếm AI (cần vai trò admin/planner/warehouse/accountant)." } };
     }
@@ -204,10 +248,24 @@ async function executeToolCall(
     const roles = partnerTypeToRoles(args.partner_type);
     const queryText = [specialty, product].filter(Boolean).join(", ");
 
+    // Search Router Phase 1, bước "Internal MIMIN Database": kiểm tra đối tác đã có trong hệ
+    // thống khớp chuyên môn TRƯỚC khi tốn tiền tìm ngoài internet. Không chặn tìm ngoài -
+    // chỉ cho DeepSeek biết đã có sẵn gì để báo người dùng, tránh gợi ý trùng.
+    let internalMatches: AgentPartnerDetail[] = [];
+    try {
+      const specialtyNeedle = specialty.toLowerCase();
+      const internalCandidates = await rankPartners(auth.client, roles, 50);
+      internalMatches = internalCandidates
+        .filter((partner) => partner.capabilities.some((capability) => capability.toLowerCase().includes(specialtyNeedle) || specialtyNeedle.includes(capability.toLowerCase())))
+        .slice(0, 5);
+    } catch (error) {
+      console.error("[mimin-group-agent] internal DB check failed:", error);
+    }
+
     const searchResults = await Promise.all(
       roles.map((role) =>
         runSourcingSearch(
-          { query: queryText, location, role, radiusKm, entryPoint: "AGENT_CHAT", rawQueryText: `[AI Agent] ${queryText} tại ${location}` },
+          { query: queryText, location, role, radiusKm, entryPoint: "AGENT_CHAT", rawQueryText: `[AI Agent] ${queryText} tại ${location}`, locationPriority: true },
           auth.sourcingAuth,
         ).catch((error) => {
           console.error(`[mimin-group-agent] search_partners role=${role} failed:`, error);
@@ -245,6 +303,13 @@ async function executeToolCall(
       confidence: item.candidate.confidence,
       tier: item.candidate.resultTier ?? "EXACT",
     }));
+    const internalDigest = internalMatches.map((partner) => ({
+      partnerId: partner.id,
+      legalName: partner.legalName,
+      phone: partner.phone || null,
+      capabilities: partner.capabilities,
+      score: partner.score,
+    }));
 
     const payload = {
       candidates: limited.map((item, i) => ({ ...item.candidate, role: item.role, roleLabel: ROLE_LABELS[item.role], resultIndex: startIndex + i })),
@@ -253,7 +318,13 @@ async function executeToolCall(
     };
 
     return {
-      toolMessageContent: { count: limited.length, truncatedForDisplay: limited.length > 20, results: digestResults },
+      toolMessageContent: {
+        internalMatches: internalDigest.length ? internalDigest : undefined,
+        internalNote: internalDigest.length ? "Đã có sẵn trong hệ thống - báo cho người dùng biết trước khi liệt kê kết quả tìm mới." : undefined,
+        count: limited.length,
+        truncatedForDisplay: limited.length > 20,
+        results: digestResults,
+      },
       results: payload,
     };
   }
@@ -304,6 +375,41 @@ async function executeToolCall(
     }
   }
 
+  if (name === "refine_last_search") {
+    if (turnResults.length === 0) {
+      return { toolMessageContent: { error: "Chưa có kết quả tìm kiếm nào trong cuộc hội thoại này để lọc lại. Hãy gọi search_partners trước." } };
+    }
+    let filtered = turnResults.map((item, index) => ({ item, index }));
+    const minConfidence = typeof args.min_confidence === "number" ? args.min_confidence : null;
+    if (minConfidence !== null) filtered = filtered.filter(({ item }) => item.candidate.confidence >= minConfidence);
+    if (args.require_website === true) filtered = filtered.filter(({ item }) => Boolean(item.candidate.website?.trim()));
+    if (args.require_phone === true) filtered = filtered.filter(({ item }) => Boolean(item.candidate.phone?.trim()));
+    const sortBy = typeof args.sort_by === "string" ? args.sort_by : null;
+    if (sortBy === "confidence") filtered = [...filtered].sort((a, b) => b.item.candidate.confidence - a.item.candidate.confidence);
+    else if (sortBy === "distance") filtered = [...filtered].sort((a, b) => (a.item.candidate.distanceKm ?? Infinity) - (b.item.candidate.distanceKm ?? Infinity));
+
+    const digestResults = filtered.slice(0, 20).map(({ item, index }) => ({
+      index,
+      legalName: item.candidate.legalName,
+      phone: item.candidate.phone || null,
+      address: item.candidate.address || null,
+      province: item.candidate.province || null,
+      confidence: item.candidate.confidence,
+      tier: item.candidate.resultTier ?? "EXACT",
+    }));
+
+    const payload: ToolSearchResults = {
+      candidates: filtered.map(({ item, index }) => ({ ...item.candidate, role: item.role, roleLabel: ROLE_LABELS[item.role], resultIndex: index })),
+      diagnostics: [],
+      provider: [],
+    };
+
+    return {
+      toolMessageContent: { count: filtered.length, results: digestResults, note: "Đã lọc lại từ kết quả tìm kiếm trước, không gọi API mới." },
+      results: payload,
+    };
+  }
+
   return { toolMessageContent: { error: `Tool ${name} không tồn tại` } };
 }
 
@@ -311,6 +417,7 @@ async function callDeepSeekWithTools(
   systemPrompt: string,
   messages: Array<{ role: string; content: string }>,
   auth: ChatAuth,
+  initialTurnResults: TurnResult[],
 ): Promise<{ reply: string; toolCalls: Array<{ name: string; args: Record<string, unknown> }>; results: ToolSearchResults | null }> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) throw new Error("Chưa cấu hình DEEPSEEK_API_KEY trên máy chủ");
@@ -340,7 +447,11 @@ async function callDeepSeekWithTools(
   let results: ToolSearchResults | null = null;
 
   if (message?.tool_calls?.length) {
-    const turnResults: TurnResult[] = [];
+    // Seed từ kết quả tìm kiếm gần nhất (client gửi lại) để refine_last_search/
+    // save_partner_candidate có dữ liệu tham chiếu ngay cả khi lượt tìm gốc là 1 request
+    // HTTP khác (route này không giữ state giữa các lượt chat) - search_partners sẽ tự
+    // reset mảng này nếu lượt hiện tại là 1 tìm kiếm mới (xem executeToolCall).
+    const turnResults: TurnResult[] = [...initialTurnResults];
     const calls = (message.tool_calls as Array<{ id: string; function: { name: string; arguments: string } }>).slice(0, MAX_TOOL_CALLS_PER_TURN);
     const toolMessages: Array<{ role: string; tool_call_id: string; content: string }> = [];
 
@@ -404,9 +515,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Quá nhiều yêu cầu từ mạng của anh/chị, vui lòng đợi ${perIp.retryAfterSec}s` }, { status: 429 });
     }
 
-    const body = await req.json() as { message?: string; history?: Array<{ role: string; content: string }> };
+    const body = await req.json() as { message?: string; history?: Array<{ role: string; content: string }>; lastResults?: unknown };
     const userMessage = (body.message ?? "").trim().slice(0, 1000);
     if (!userMessage) return NextResponse.json({ error: "Vui lòng nhập nội dung tìm kiếm" }, { status: 400 });
+
+    const initialTurnResults = parseEchoedResults(body.lastResults);
 
     const history = Array.isArray(body.history)
       ? body.history
@@ -427,7 +540,7 @@ export async function POST(req: NextRequest) {
     ]);
     const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
 
-    const { reply, toolCalls, results } = await callDeepSeekWithTools(systemPrompt, messages, auth);
+    const { reply, toolCalls, results } = await callDeepSeekWithTools(systemPrompt, messages, auth, initialTurnResults);
     return NextResponse.json({ reply, toolCalls, results });
   } catch (error) {
     console.error("[mimin-group-agent-chat] error:", error);

@@ -54,6 +54,13 @@ export interface SourcingSearchParams {
   entryPoint?: "AGENT_CHAT" | "QUICK_CHIP" | "ADVANCED_FORM";
   /** Original natural-language input, if different from the constructed `query`. Defaults to `query`. */
   rawQueryText?: string;
+  /**
+   * Search Router Phase 1: khi true, thử Google Places trước và chỉ fan-out
+   * Tavily/Brave/Gemini/OpenAI nếu Places chưa đủ ứng viên (tiết kiệm API call cho câu hỏi
+   * có yếu tố khu vực rõ). Mặc định false/undefined = hành vi cũ (luôn fan-out cả 5 nguồn
+   * song song) - không ảnh hưởng caller hiện tại (form nâng cao qua route.ts cũ).
+   */
+  locationPriority?: boolean;
 }
 
 export interface SourcingSearchResult {
@@ -1403,7 +1410,75 @@ function providerErrorCode(reason: unknown): string {
   return "REQUEST_FAILED";
 }
 
-async function searchSources(query: string, location: string, queries: string[]): Promise<{ provider: string; items: SourceResult[]; providerHealth: Array<{ name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED"; count: number; code?: string }> }> {
+type ProviderHealthEntry = { name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED" | "SKIPPED"; count: number; code?: string };
+
+// Ngưỡng số nguồn Google Places tối thiểu để coi là "đủ dữ liệu vị trí" và bỏ qua các nguồn
+// web-discovery còn lại (Tavily/Brave/Gemini/OpenAI) khi locationPriority=true. Xem plan
+// "Search Router Phase 1" - mục đích tiết kiệm API call cho câu hỏi có yếu tố khu vực rõ.
+const LOCATION_PRIORITY_SUFFICIENT_SOURCES = 8;
+
+function dedupeSources(sources: SourceResult[]): SourceResult[] {
+  return Array.from(new Map(sources.filter((item) => !blockedSource(item.url) && !noiseListing(`${item.title} ${item.content}`)).map((item) => [canonicalSourceUrl(item.url), { ...item, url: canonicalSourceUrl(item.url) }])).values());
+}
+
+async function searchSources(
+  query: string,
+  location: string,
+  queries: string[],
+  options?: { locationPriority?: boolean },
+): Promise<{ provider: string; items: SourceResult[]; providerHealth: ProviderHealthEntry[] }> {
+  const locationPriority = options?.locationPriority ?? false;
+
+  // Search Router Phase 1: khi câu hỏi có yếu tố vị trí (search_partners luôn có location bắt
+  // buộc), thử Google Places trước - nếu đã đủ ứng viên thì KHÔNG gọi 4 nguồn web-discovery
+  // còn lại (tiết kiệm chi phí thật, không phải tối ưu giả định). Đường gọi cũ (form nâng cao
+  // qua /api/v1/sourcing/search) không truyền locationPriority nên hành vi giữ nguyên y hệt
+  // trước đây - luôn fan-out cả 5 nguồn song song.
+  if (locationPriority) {
+    const placesSettled = await Promise.allSettled([searchGooglePlaces(query, location, queries)]);
+    const googlePlaces = placesSettled[0];
+    const placesItems = googlePlaces.status === "fulfilled" ? googlePlaces.value : [];
+    const placesUnique = dedupeSources(placesItems);
+    const placesHealth: ProviderHealthEntry = {
+      name: "Google Places",
+      status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" : googlePlaces.status === "rejected" ? "ERROR" : placesItems.length ? "OK" : "EMPTY",
+      count: placesItems.length,
+      code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined,
+    };
+
+    if (placesUnique.length >= LOCATION_PRIORITY_SUFFICIENT_SOURCES) {
+      const skipped = (name: string): ProviderHealthEntry => ({ name, status: "SKIPPED", count: 0, code: "SUFFICIENT_LOCATION_RESULTS" });
+      return {
+        provider: "GOOGLE_PLACES",
+        items: placesUnique.slice(0, MAX_DISCOVERY_SOURCES),
+        providerHealth: [placesHealth, skipped("Tavily"), skipped("Brave"), skipped("Gemini"), skipped("OpenAI")],
+      };
+    }
+
+    // Chưa đủ - fan-out phần còn lại như bình thường, gộp với Places đã có.
+    const [tavily, brave, gemini, openai] = await Promise.allSettled([searchTavily(queries), searchBrave(queries), searchGemini(query, location, queries), searchOpenAI(query, location, queries)]);
+    const sources = [...placesUnique, ...(tavily.status === "fulfilled" ? tavily.value : []), ...(brave.status === "fulfilled" ? brave.value : []), ...(gemini.status === "fulfilled" ? gemini.value : []), ...(openai.status === "fulfilled" ? openai.value : [])];
+    const unique = dedupeSources(sources);
+    const providers = [
+      "GOOGLE_PLACES",
+      tavily.status === "fulfilled" && tavily.value.length ? "TAVILY" : "",
+      brave.status === "fulfilled" && brave.value.length ? "BRAVE" : "",
+      gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
+      openai.status === "fulfilled" && openai.value.length ? "OPENAI_WEB_SEARCH" : "",
+    ].filter(Boolean);
+    const providerHealth: ProviderHealthEntry[] = [
+      placesHealth,
+      { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" : tavily.status === "rejected" ? "ERROR" : tavily.value.length ? "OK" : "EMPTY", count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
+      { name: "Brave", status: !process.env.BRAVE_SEARCH_API_KEY ? "DISABLED" : brave.status === "rejected" ? "ERROR" : brave.value.length ? "OK" : "EMPTY", count: brave.status === "fulfilled" ? brave.value.length : 0, code: brave.status === "rejected" ? providerErrorCode(brave.reason) : undefined },
+      { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" : gemini.status === "rejected" ? "ERROR" : gemini.value.length ? "OK" : "EMPTY", count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
+      { name: "OpenAI", status: !openAiApiKey() ? "DISABLED" : openai.status === "rejected" ? "ERROR" : openai.value.length ? "OK" : "EMPTY", count: openai.status === "fulfilled" ? openai.value.length : 0, code: openai.status === "rejected" ? providerErrorCode(openai.reason) : undefined },
+    ];
+    if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, MAX_DISCOVERY_SOURCES), providerHealth };
+    const fallback = await searchOpenStreetMap(query, location);
+    return { provider: "OPENSTREETMAP", items: fallback, providerHealth: [...providerHealth, { name: "OpenStreetMap", status: fallback.length ? "OK" : "EMPTY", count: fallback.length }] };
+  }
+
+  // Hành vi mặc định (giữ nguyên y hệt trước Phase 1) - luôn fan-out cả 5 nguồn song song.
   const [tavily, brave, gemini, googlePlaces, openai] = await Promise.allSettled([searchTavily(queries), searchBrave(queries), searchGemini(query, location, queries), searchGooglePlaces(query, location, queries), searchOpenAI(query, location, queries)]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
@@ -1412,7 +1487,7 @@ async function searchSources(query: string, location: string, queries: string[])
     ...(googlePlaces.status === "fulfilled" ? googlePlaces.value : []),
     ...(openai.status === "fulfilled" ? openai.value : []),
   ];
-  const unique = Array.from(new Map(sources.filter((item) => !blockedSource(item.url) && !noiseListing(`${item.title} ${item.content}`)).map((item) => [canonicalSourceUrl(item.url),{...item,url:canonicalSourceUrl(item.url)}])).values());
+  const unique = dedupeSources(sources);
   const providers = [
     tavily.status === "fulfilled" && tavily.value.length ? "TAVILY" : "",
     brave.status === "fulfilled" && brave.value.length ? "BRAVE" : "",
@@ -1420,12 +1495,12 @@ async function searchSources(query: string, location: string, queries: string[])
     googlePlaces.status === "fulfilled" && googlePlaces.value.length ? "GOOGLE_PLACES" : "",
     openai.status === "fulfilled" && openai.value.length ? "OPENAI_WEB_SEARCH" : "",
   ].filter(Boolean);
-  const providerHealth = [
-    { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" as const : tavily.status === "rejected" ? "ERROR" as const : tavily.value.length ? "OK" as const : "EMPTY" as const, count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
-    { name: "Brave", status: !process.env.BRAVE_SEARCH_API_KEY ? "DISABLED" as const : brave.status === "rejected" ? "ERROR" as const : brave.value.length ? "OK" as const : "EMPTY" as const, count: brave.status === "fulfilled" ? brave.value.length : 0, code: brave.status === "rejected" ? providerErrorCode(brave.reason) : undefined },
-    { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" as const : gemini.status === "rejected" ? "ERROR" as const : gemini.value.length ? "OK" as const : "EMPTY" as const, count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
-    { name: "Google Places", status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" as const : googlePlaces.status === "rejected" ? "ERROR" as const : googlePlaces.value.length ? "OK" as const : "EMPTY" as const, count: googlePlaces.status === "fulfilled" ? googlePlaces.value.length : 0, code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined },
-    { name: "OpenAI", status: !openAiApiKey() ? "DISABLED" as const : openai.status === "rejected" ? "ERROR" as const : openai.value.length ? "OK" as const : "EMPTY" as const, count: openai.status === "fulfilled" ? openai.value.length : 0, code: openai.status === "rejected" ? providerErrorCode(openai.reason) : undefined },
+  const providerHealth: ProviderHealthEntry[] = [
+    { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" : tavily.status === "rejected" ? "ERROR" : tavily.value.length ? "OK" : "EMPTY", count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
+    { name: "Brave", status: !process.env.BRAVE_SEARCH_API_KEY ? "DISABLED" : brave.status === "rejected" ? "ERROR" : brave.value.length ? "OK" : "EMPTY", count: brave.status === "fulfilled" ? brave.value.length : 0, code: brave.status === "rejected" ? providerErrorCode(brave.reason) : undefined },
+    { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" : gemini.status === "rejected" ? "ERROR" : gemini.value.length ? "OK" : "EMPTY", count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
+    { name: "Google Places", status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" : googlePlaces.status === "rejected" ? "ERROR" : googlePlaces.value.length ? "OK" : "EMPTY", count: googlePlaces.status === "fulfilled" ? googlePlaces.value.length : 0, code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined },
+    { name: "OpenAI", status: !openAiApiKey() ? "DISABLED" : openai.status === "rejected" ? "ERROR" : openai.value.length ? "OK" : "EMPTY", count: openai.status === "fulfilled" ? openai.value.length : 0, code: openai.status === "rejected" ? providerErrorCode(openai.reason) : undefined },
   ];
   if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, MAX_DISCOVERY_SOURCES), providerHealth };
   const fallback = await searchOpenStreetMap(query, location);
@@ -1835,7 +1910,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     if (!center) throw new SourcingSearchError("Không xác minh được vị trí trung tâm. Hãy nhập đầy đủ quận/huyện, tỉnh/thành phố hoặc dùng Vị trí hiện tại.", 422);
     const learning = await loadLearningProfile(auth.client, role);
     const searchQueries = await buildQueryPlan(query, location, role, learning, radiusKm);
-    const source = await searchSources(query, location, searchQueries);
+    const source = await searchSources(query, location, searchQueries, { locationPriority: params.locationPriority ?? false });
     const companyReader = await enrichSourcesWithCompanyReader(auth, source.items);
     // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
     const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);

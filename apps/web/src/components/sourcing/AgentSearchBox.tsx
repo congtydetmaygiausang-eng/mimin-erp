@@ -71,6 +71,7 @@ export default function AgentSearchBox() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [savingKey, setSavingKey] = useState("");
   const [openingKey, setOpeningKey] = useState("");
+  const [followUp, setFollowUp] = useState("");
   const requestId = useRef(0);
 
   const specialtyOptions = useMemo(() => (partnerType ? specialtyOptionsFor(partnerType) : []), [partnerType]);
@@ -120,7 +121,7 @@ export default function AgentSearchBox() {
       const response = await fetch("/api/v1/mimin-group/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: trimmed, history }),
+        body: JSON.stringify({ message: trimmed, history, lastResults: results }),
       });
       const data = (await response.json()) as ChatApiResponse;
       if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
@@ -144,6 +145,13 @@ export default function AgentSearchBox() {
       return;
     }
     void send(composedMessage);
+  };
+
+  const handleSendFollowUp = () => {
+    const trimmed = followUp.trim();
+    if (!trimmed) return;
+    void send(trimmed);
+    setFollowUp("");
   };
 
   const saveOne = async (item: AgentCandidate, key: string) => {
@@ -319,6 +327,29 @@ export default function AgentSearchBox() {
               <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Đang tìm kiếm...
             </div>
           )}
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              value={followUp}
+              onChange={(event) => setFollowUp(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !loading) {
+                  event.preventDefault();
+                  handleSendFollowUp();
+                }
+              }}
+              disabled={loading}
+              className="input text-xs flex-1"
+              placeholder="Hỏi thêm hoặc lọc lại kết quả vừa tìm (VD: chỉ lấy công ty có website)..."
+            />
+            <button
+              type="button"
+              onClick={handleSendFollowUp}
+              disabled={loading || !followUp.trim()}
+              className="btn-secondary text-xs shrink-0"
+            >
+              Gửi
+            </button>
+          </div>
         </div>
       )}
 
