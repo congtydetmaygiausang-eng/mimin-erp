@@ -5,22 +5,7 @@ import { Bot, Search, Cpu, DollarSign, Clock, ChevronRight, AlertCircle, Activit
 import Link from "next/link";
 import { AGENT_PERSONAS, AGENT_IDS_V6, type AgentPersona } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
-
-// Đọc to lời giới thiệu bằng Web Speech API (giọng trình duyệt) - giống hệt
-// agents-chat/page.tsx, tách riêng vì 2 trang không share state chat. Bỏ
-// markdown trước khi đọc để không đọc luôn ký tự định dạng.
-function stripMarkdownForSpeech(text: string): string {
-  return text
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^[-•]\s+/gm, "")
-    .replace(/\n{2,}/g, ". ")
-    .replace(/\n/g, " ")
-    .trim();
-}
+import { buildUtteranceForAgent } from "@/lib/agent-voice";
 
 // AgentPersona (agent-personas.ts) khong co color/icon rieng cho 6 agent V6 -
 // map cuc bo o day, dung chung voi /agents/[id] de nhat quan hien thi.
@@ -68,9 +53,7 @@ export default function AgentsDashboardPage() {
       setSpeakingId(null);
       return;
     }
-    const utterance = new SpeechSynthesisUtterance(stripMarkdownForSpeech(text));
-    utterance.lang = "vi-VN";
-    utterance.rate = 1;
+    const utterance = buildUtteranceForAgent(text, agentId);
     utterance.onend = () => setSpeakingId(null);
     utterance.onerror = () => setSpeakingId(null);
     setSpeakingId(agentId);

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AGENT_PERSONAS, AgentPersona, getDefaultAgentIdForRole } from "@/lib/agent-personas";
 import { useSession } from "@/components/session-provider";
+import { buildUtteranceForAgent } from "@/lib/agent-voice";
 
 interface Message {
   id: string;
@@ -46,22 +47,6 @@ const AVATAR_FADE_MASK = "linear-gradient(to bottom, black 58%, transparent 96%)
 const CHAT_HISTORY_KEY = "mimin_agents_chat_history_v1";
 const CHAT_HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
 
-// Đọc to câu trả lời bằng Web Speech API (giọng trình duyệt, miễn phí, không
-// cần API key) - anh Sang chọn phương án này thay vì TTS AI trả phí. Markdown
-// (**đậm**, `code`, gạch đầu dòng...) trong câu trả lời phải bỏ trước khi đọc,
-// không thì giọng đọc luôn cả ký tự "sao sao" nghe rất kỳ.
-function stripMarkdownForSpeech(text: string): string {
-  return text
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^[-•]\s+/gm, "")
-    .replace(/\n{2,}/g, ". ")
-    .replace(/\n/g, " ")
-    .trim();
-}
 
 // "Đã từng gặp agent này chưa" - QUYẾT ĐỊNH RIÊNG với lịch sử chat 24h ở trên:
 // lịch sử tin nhắn có thể tự xoá sau 1 ngày, nhưng KHÔNG có nghĩa là "quên"
@@ -288,9 +273,10 @@ export default function AgentsChatPage() {
       setSpeakingId(null);
       return;
     }
-    const utterance = new SpeechSynthesisUtterance(stripMarkdownForSpeech(text));
-    utterance.lang = "vi-VN";
-    utterance.rate = 1;
+    // Tốc độ/cao độ/giọng nam-nữ riêng theo từng agent (agent-voice.ts) - khớp
+    // tính cách đã viết trong agent-personality.ts, thay vì 1 giọng máy móc
+    // giống hệt nhau cho cả 6 agent.
+    const utterance = buildUtteranceForAgent(text, selectedAgent.agent_id);
     utterance.onend = () => setSpeakingId(null);
     utterance.onerror = () => setSpeakingId(null);
     setSpeakingId(messageId);
