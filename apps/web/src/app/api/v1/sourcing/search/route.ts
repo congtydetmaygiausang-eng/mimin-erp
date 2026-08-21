@@ -715,17 +715,17 @@ function fallbackQueryPlan(query: string, location: string, role: string, radius
   const targetDirectories = ["trangvangvietnam.com", "nhungtrangvang.com", "hosocongty.vn", "masothue.com"];
   return Array.from(new Set([
     `${query} ${location}`,
-    `${query} tại ${location} công ty xưởng`,
-    `${query} gần ${location} địa chỉ điện thoại`,
-    ...targetDirectories.map((dir) => `${query} ${location} site:${dir}`),
+    `công ty ${query} ${location}`,
+    `xưởng sản xuất ${query} tại ${location}`,
+    ...targetDirectories.map((dir) => `công ty ${query} ${location} site:${dir}`),
     ...areas.slice(1).flatMap((area, index) => [
-      `${query} công ty nhà sản xuất ${area}`,
-      index < 4 ? `${query} nhà cung cấp địa chỉ điện thoại ${area}` : "",
+      `nhà cung cấp ${query} ở ${area}`,
+      index < 4 ? `xưởng ${query} ${area}` : "",
     ]),
-    ...roleTerms.slice(0, 2).map((term, index) => `${term} ${query} ${areas[index % areas.length]}`),
-    `${query} doanh nghiệp mã số thuế ${location}`,
-    `${query} nhà máy xưởng địa chỉ hotline ${location}`,
-    `${query} manufacturer supplier ${location} Vietnam`,
+    ...roleTerms.slice(0, 2).map((term, index) => `${term} ${query} tại ${areas[index % areas.length]}`),
+    `địa chỉ bán ${query} ${location}`,
+    `danh sách công ty ${query} ${location}`,
+    `${query} manufacturer ${location} Vietnam`,
   ].filter(Boolean))).slice(0, Math.max(budget, 16));
 }
 
@@ -746,7 +746,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
         max_tokens: 900,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm ngắn. QUAN TRỌNG:\n1. Phân tích ý định từ khóa. Thêm tiền tố thực thể (Cửa hàng, Công ty, Xưởng).\n2. Kết hợp với chính xác khu vực trong `searchAreas`. Tuyệt đối KHÔNG tự ý dùng 'TP.HCM' nếu người dùng tìm Quận/Huyện.\n3. CHIẾN LƯỢC TÌM KIẾM THEO DANH BẠ: Phải sinh ra ít nhất 4 truy vấn sử dụng cú pháp `site:<domain>` để vét dữ liệu từ các danh bạ B2B uy tín. Các domain danh bạ bắt buộc dùng: trangvangvietnam.com, nhungtrangvang.com, hosocongty.vn, masothue.com, thongtindoanhnghiep.co, vn.kompass.com, danhbacongty.vn, yellowpages.vn. Ví dụ: 'xưởng vải cotton Tân Bình site:trangvangvietnam.com'.\nTrả về đúng định dạng JSON." },
+          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm ngắn. QUAN TRỌNG:\n1. Hành văn tự nhiên, giống hệt cách con người gõ tìm kiếm thực tế trên Google (VD: 'xưởng dệt vải cotton Tân Phú', 'công ty sản xuất vải cotton ở Tân Phú', thay vì 'vải cotton Tân Phú công ty').\n2. Kết hợp với chính xác khu vực trong `searchAreas`. Tuyệt đối KHÔNG tự ý dùng 'TP.HCM' nếu người dùng tìm Quận/Huyện.\n3. CHIẾN LƯỢC TÌM KIẾM THEO DANH BẠ: Phải sinh ra ít nhất 4 truy vấn sử dụng cú pháp `site:<domain>` để vét dữ liệu từ các danh bạ B2B uy tín. Các domain danh bạ bắt buộc dùng: trangvangvietnam.com, nhungtrangvang.com, hosocongty.vn, masothue.com, thongtindoanhnghiep.co, vn.kompass.com, danhbacongty.vn, yellowpages.vn. Ví dụ: 'công ty vải cotton Tân Phú site:trangvangvietnam.com'.\nTrả về đúng định dạng JSON." },
           { role: "user", content: JSON.stringify({ query, location, radiusKm, searchAreas, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
         ],
       }),
