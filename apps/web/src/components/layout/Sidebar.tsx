@@ -162,12 +162,17 @@ const NAV: NavItem[] = [
   },
   {
     // @codex Phân hệ mới dùng quyền NCC sẵn có để không sửa permission matrix của Mavis.
-    label: "Mạng Lưới Sản Xuất", icon: Link2, isGroup: true,
+    label: "MIMIN GROUP", icon: Link2, isGroup: true,
     color: "border-cyan-400", iconColor: "text-cyan-300",
     ...cardStyle("from-sky-500", "to-indigo-600", "from-sky-50", "to-indigo-50", "text-sky-900"),
     subItems: [
-      { href: "/mang-luoi-san-xuat", label: "Trang chủ sản xuất", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/tim-kiem", label: "Tìm công ty", icon: Search, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat", label: "Tổng quan", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/xuong-san-xuat", label: "Xưởng sản xuất", icon: Factory, iconColor: "text-violet-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/nha-cung-cap", label: "Nhà cung cấp", icon: Boxes, iconColor: "text-amber-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/nang-luc-chung-nhan", label: "Năng lực & Chứng nhận", icon: ShieldCheck, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/danh-gia-xep-hang", label: "Đánh giá & Xếp hạng", icon: Sparkles, iconColor: "text-pink-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/co-hoi-hop-tac", label: "Cơ hội hợp tác", icon: Link2, iconColor: "text-indigo-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/lich-su-tim-kiem", label: "Lịch sử tìm kiếm", icon: Search, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
       { href: "/mang-luoi-san-xuat/cong-ty-da-luu", label: "Công ty đã lưu", icon: Building2, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
     ]
   },
@@ -186,9 +191,10 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    // === MIMIN Group - nhóm tính năng mới ===
+    // === Công Cụ Nội Bộ - nhóm tính năng hướng dẫn/chiến lược nội bộ ===
+    // Đổi tên từ "MIMIN Group" để nhường tên đó cho phân hệ Mạng lưới đối tác (MIMIN GROUP).
     // Dùng chung kiểu "thẻ kính mờ" (glassmorphism) với các nhóm khác qua cardStyle().
-    label: "MIMIN Group", icon: Sparkles, isGroup: true,
+    label: "Công Cụ Nội Bộ", icon: Sparkles, isGroup: true,
     color: "border-teal-400",
     ...cardStyle("from-teal-500", "to-cyan-600", "from-teal-50", "to-cyan-50", "text-teal-900"),
     // 2 mục tạm gỡ khỏi bản deploy này vì repo GitHub đang CÔNG KHAI:
