@@ -147,6 +147,8 @@ function sameEntity(left: Candidate, right: Candidate): EntityMatch {
   const leftTax=validTaxCode(left.taxCode),rightTax=validTaxCode(right.taxCode);
   if(leftTax&&rightTax&&leftTax!==rightTax)return{matched:false,matchedBy:"",conflicts:nameSimilarity>=0.8?[`Tên gần giống nhưng MST mâu thuẫn: ${leftTax} / ${rightTax}`]:[]};
   if(leftTax&&leftTax===rightTax)return{matched:true,matchedBy:"TAX_CODE",conflicts:[]};
+  const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
+  const addresses = overlapRatio(tokenSet(left.address), tokenSet(right.address));
   const leftPhones=phoneSet(left.phone),rightPhones=phoneSet(right.phone);
   const sharedPhone = Array.from(leftPhones).find((phone)=>rightPhones.has(phone));
   if(sharedPhone&&!NOISE_PHONES.has(sharedPhone)){
@@ -154,9 +156,7 @@ function sameEntity(left: Candidate, right: Candidate): EntityMatch {
     if(nameSimilarity>=0.3||addresses>=0.3||sharedWebsite)return{matched:true,matchedBy:"PHONE",conflicts:[]};
   }
   if (left.email && right.email && left.email.toLowerCase() === right.email.toLowerCase()) return{matched:true,matchedBy:"EMAIL",conflicts:[]};
-  const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
   if (leftDomain && leftDomain === rightDomain&&!DIRECTORY_DOMAINS.some((entry)=>leftDomain===entry||leftDomain.endsWith(`.${entry}`))) return{matched:true,matchedBy:"WEBSITE",conflicts:[]};
-  const addresses = overlapRatio(tokenSet(left.address), tokenSet(right.address));
   if(leftName.length>=5&&leftName===rightName&&addresses>=0.35)return{matched:true,matchedBy:"NAME_ADDRESS",conflicts:[]};
   if(nameSimilarity>=0.85&&addresses>=0.65)return{matched:true,matchedBy:"FUZZY_NAME_ADDRESS",conflicts:[]};
   return{matched:false,matchedBy:"",conflicts:[]};
