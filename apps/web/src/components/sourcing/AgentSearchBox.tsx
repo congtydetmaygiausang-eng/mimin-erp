@@ -3,8 +3,15 @@
 // @codex MIMIN GROUP - ô tìm kiếm đối tác bằng AI Agent (tool-calling qua
 // /api/v1/mimin-group/agent/chat), đặt ở tab Tổng quan. Dùng chung SupplierResultCard
 // với AiDiscoveryTab để không lặp lại UI kết quả tìm kiếm.
+//
+// Bộ chọn điều kiện (chip đa lựa chọn kiểu bộ lọc cửa hàng online): người dùng bấm nhiều
+// chip (loại đối tác, chuyên môn, khu vực, MOQ) ghép thành 1 câu, có thể gõ thêm từ khóa tự
+// do, chỉ chạy tìm kiếm khi bấm "Tìm kiếm" (không tự tìm khi bấm từng chip). Mỗi lượt tìm
+// vẫn ghi vào ai_search_history như bình thường (search-engine.ts) - đó là cơ chế "học lại
+// nhu cầu" hiện có: loadLearningProfile() đọc lịch sử duyệt/loại để tinh chỉnh câu tìm tiếp
+// theo, và Search Profile (Cấu hình AI Agent) là nơi admin duyệt các tinh chỉnh đó.
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bot, RefreshCw, Search, Sparkles, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -13,19 +20,29 @@ import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
 import { directCandidateSaveKey, saveDirectSearchCandidates, type DirectSearchCandidate } from "@/lib/production-discovery";
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
+import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 
-const QUICK_CHIPS: string[] = [
-  "Tìm xưởng may áo polo ở TP.HCM",
-  "Tìm xưởng cắt ở TP.HCM",
-  "Tìm xưởng in ở TP.HCM",
-  "Tìm xưởng thêu ở TP.HCM",
-  "Tìm xưởng giặt ở TP.HCM",
-  "Tìm nhà cung cấp vải ở TP.HCM",
-  "Tìm nhà cung cấp bo cổ ở TP.HCM",
-  "Tìm nhà cung cấp dây kéo ở TP.HCM",
-  "Tìm nhà cung cấp nhãn mác ở TP.HCM",
-  "Tìm nhà cung cấp bao bì ở TP.HCM",
+type PartnerTypeChip = "factory" | "supplier" | "customer";
+
+const PARTNER_TYPE_OPTIONS: { value: PartnerTypeChip; label: string; role: ProductionPartnerRole }[] = [
+  { value: "factory", label: "Xưởng sản xuất", role: "SATELLITE_PROCESSOR" },
+  { value: "supplier", label: "Nhà cung cấp", role: "MATERIAL_SUPPLIER" },
+  { value: "customer", label: "Khách hàng", role: "CUSTOMER" },
 ];
+
+const REGION_OPTIONS = ["TP.HCM", "Bình Dương", "Đồng Nai", "Long An", "Hà Nội"];
+const MOQ_OPTIONS = [
+  { label: "100", value: 100 },
+  { label: "300", value: 300 },
+  { label: "500", value: 500 },
+  { label: "1.000+", value: 1000 },
+];
+
+function specialtyOptionsFor(partnerType: PartnerTypeChip): string[] {
+  if (partnerType === "factory") return MANG_LUOI_DANH_MUC.SATELLITE_PROCESSOR;
+  if (partnerType === "customer") return MANG_LUOI_DANH_MUC.CUSTOMER;
+  return Array.from(new Set([...MANG_LUOI_DANH_MUC.MATERIAL_SUPPLIER, ...MANG_LUOI_DANH_MUC.PACKAGING_FINISHER]));
+}
 
 type AgentCandidate = DirectSearchCandidate & { role: ProductionPartnerRole; roleLabel: string; resultIndex: number };
 
@@ -42,7 +59,11 @@ interface ChatApiResponse {
 
 export default function AgentSearchBox() {
   const router = useRouter();
-  const [input, setInput] = useState("");
+  const [partnerType, setPartnerType] = useState<PartnerTypeChip | null>(null);
+  const [specialties, setSpecialties] = useState<Set<string>>(new Set());
+  const [region, setRegion] = useState("");
+  const [moq, setMoq] = useState<number | null>(null);
+  const [extraKeywords, setExtraKeywords] = useState("");
   const [loading, setLoading] = useState(false);
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
   const [results, setResults] = useState<AgentCandidate[]>([]);
@@ -52,6 +73,39 @@ export default function AgentSearchBox() {
   const [openingKey, setOpeningKey] = useState("");
   const requestId = useRef(0);
 
+  const specialtyOptions = useMemo(() => (partnerType ? specialtyOptionsFor(partnerType) : []), [partnerType]);
+
+  const composedMessage = useMemo(() => {
+    if (!partnerType) return "";
+    const typeLabel = PARTNER_TYPE_OPTIONS.find((option) => option.value === partnerType)?.label ?? "";
+    const parts: string[] = [`Tìm ${typeLabel.toLowerCase()}`];
+    if (specialties.size) parts.push(`chuyên ${Array.from(specialties).join(", ")}`);
+    if (region.trim()) parts.push(`ở ${region.trim()}`);
+    if (moq !== null) parts.push(`MOQ tối thiểu ${moq.toLocaleString("vi-VN")}`);
+    let message = parts.join(" ");
+    if (extraKeywords.trim()) message = `${message}, ${extraKeywords.trim()}`;
+    return message;
+  }, [partnerType, specialties, region, moq, extraKeywords]);
+
+  const readyToSearch = Boolean(partnerType && region.trim());
+
+  const toggleSpecialty = (value: string) => {
+    setSpecialties((current) => {
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
+  const resetBuilder = () => {
+    setPartnerType(null);
+    setSpecialties(new Set());
+    setRegion("");
+    setMoq(null);
+    setExtraKeywords("");
+  };
+
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
@@ -59,7 +113,6 @@ export default function AgentSearchBox() {
     requestId.current = currentRequestId;
     const history = bubbles.slice(-6).map((bubble) => ({ role: bubble.role, content: bubble.content }));
     setBubbles((current) => [...current, { role: "user", content: trimmed }]);
-    setInput("");
     setLoading(true);
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
@@ -83,6 +136,14 @@ export default function AgentSearchBox() {
     } finally {
       if (requestId.current === currentRequestId) setLoading(false);
     }
+  };
+
+  const handleConfirmSearch = () => {
+    if (!readyToSearch) {
+      toast.error("Chọn ít nhất Loại đối tác và Khu vực trước khi tìm kiếm");
+      return;
+    }
+    void send(composedMessage);
   };
 
   const saveOne = async (item: AgentCandidate, key: string) => {
@@ -121,23 +182,124 @@ export default function AgentSearchBox() {
         </div>
         <div>
           <h2 className="font-bold">Tìm kiếm đối tác với AI</h2>
-          <p className="text-xs opacity-60">Nhập ngôn ngữ tự nhiên — AI Agent tự chuyển thành bộ lọc và tìm kiếm thật trên internet.</p>
+          <p className="text-xs opacity-60">Bấm chọn điều kiện bên dưới, có thể gõ thêm từ khóa, rồi bấm "Tìm kiếm".</p>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {QUICK_CHIPS.map((chip) => (
-          <button
-            key={chip}
-            type="button"
+      <div className="space-y-3">
+        <div>
+          <span className="block text-xs font-medium mb-1.5">1. Loại đối tác <span className="text-rose-500">*</span></span>
+          <div className="flex flex-wrap gap-1.5">
+            {PARTNER_TYPE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                disabled={loading}
+                onClick={() => { setPartnerType(option.value); setSpecialties(new Set()); }}
+                className={`text-xs rounded-full border px-3 py-1.5 font-medium transition disabled:opacity-50 ${partnerType === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {partnerType && (
+          <div>
+            <span className="block text-xs font-medium mb-1.5">2. Chuyên môn / sản phẩm (chọn nhiều)</span>
+            <div className="flex flex-wrap gap-1.5">
+              {specialtyOptions.map((option) => {
+                const active = specialties.has(option);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => toggleSpecialty(option)}
+                    className={`text-xs rounded-full border px-2.5 py-1 transition disabled:opacity-50 ${active ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <span className="block text-xs font-medium mb-1.5">3. Khu vực <span className="text-rose-500">*</span></span>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {REGION_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                disabled={loading}
+                onClick={() => setRegion(option)}
+                className={`text-xs rounded-full border px-2.5 py-1 transition disabled:opacity-50 ${region === option ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <input
+            value={region}
+            onChange={(event) => setRegion(event.target.value)}
             disabled={loading}
-            onClick={() => void send(chip)}
-            className="text-xs rounded-full border px-2.5 py-1 text-slate-600 hover:border-brand-300 hover:text-brand-700 disabled:opacity-50 dark:text-slate-300"
-            style={{ borderColor: "var(--border)" }}
+            className="input text-xs"
+            placeholder="Hoặc gõ khu vực khác (VD: Quận 12, TP.HCM)"
+          />
+        </div>
+
+        <div>
+          <span className="block text-xs font-medium mb-1.5">4. MOQ tối thiểu (không bắt buộc)</span>
+          <div className="flex flex-wrap gap-1.5">
+            {MOQ_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                disabled={loading}
+                onClick={() => setMoq((current) => (current === option.value ? null : option.value))}
+                className={`text-xs rounded-full border px-2.5 py-1 transition disabled:opacity-50 ${moq === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="block text-xs font-medium">
+          5. Từ khóa khác (không bắt buộc)
+          <input
+            value={extraKeywords}
+            onChange={(event) => setExtraKeywords(event.target.value)}
+            disabled={loading}
+            className="input mt-1 text-xs"
+            placeholder="VD: có chứng nhận OEKO-TEX, nhận đơn gấp..."
+          />
+        </label>
+
+        {composedMessage && (
+          <div className="rounded-lg bg-brand-500/5 border px-3 py-2 text-xs text-brand-800 dark:text-brand-200" style={{ borderColor: "var(--border)" }}>
+            <span className="opacity-70">Câu tìm kiếm sẽ gửi: </span>{composedMessage}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleConfirmSearch}
+            disabled={loading || !readyToSearch}
+            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
           >
-            {chip.replace("Tìm ", "")}
+            <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm kiếm"}
           </button>
-        ))}
+          {(partnerType || region || specialties.size > 0 || moq !== null || extraKeywords) && (
+            <button type="button" onClick={resetBuilder} disabled={loading} className="btn-secondary text-xs">
+              Xóa điều kiện
+            </button>
+          )}
+          {!readyToSearch && <span className="text-[11px] opacity-50">Chọn Loại đối tác + Khu vực để bật nút tìm kiếm</span>}
+        </div>
       </div>
 
       {bubbles.length > 0 && (
@@ -159,28 +321,6 @@ export default function AgentSearchBox() {
           )}
         </div>
       )}
-
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void send(input);
-        }}
-        className="flex gap-2"
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
-          <input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            className="input pl-9"
-            placeholder="VD: Tìm xưởng may áo polo ở TP.HCM, nhận đơn từ 500 áo, năng lực 20.000 áo/tháng"
-            disabled={loading}
-          />
-        </div>
-        <button type="submit" disabled={loading || !input.trim()} className="btn-primary inline-flex items-center gap-2 shrink-0">
-          <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm kiếm"}
-        </button>
-      </form>
 
       {results.length > 0 && (
         <div className="space-y-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
