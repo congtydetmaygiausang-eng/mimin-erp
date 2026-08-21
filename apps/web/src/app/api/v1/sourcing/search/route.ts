@@ -486,8 +486,8 @@ function appendCityIfMissing(address: string, location: string): string {
 function isGenericCompanyName(value: string): boolean {
   const name = cleanCompanyLegalName(value);
   if (!name || !isCompanyIdentityName(name) || /^(?:trang chủ|home|giới thiệu|liên hệ|instagram|facebook|linkedin|trang vàng)$/i.test(name)) return true;
-  if (/\b(?:là gì|ưu điểm|nhược điểm|các mẫu|top \d+|danh sách(?: \d+)?|ở đâu|giá bao nhiêu|uy tín nhất|tập trung|tại tp|tại huyện|tại quận|tham quan|giải pháp|chất lượng|hướng dẫn|cách chọn|kinh nghiệm|tư vấn|lựa chọn|những|nên hay không|có nên|tại sao|uy tín|giá tốt|nhập sỉ|giá rẻ|báo giá|sỉ lẻ|chuyên sỉ|cung cấp)\b/i.test(name) || noiseListing(name)) return true;
-  const genericTokens=new Set(["cong","san","xuat","thuong","mai","dich","vu","nhap","khau","phan","phoi","vai","det","soi","cotton","thun","may","ao","quan","khoac","nha","cung","cap","xuong","cua","hang","dai","ly","uy","tin","dep","chat","luong","cao","gia","tot","viet","nam","thanh","pho","huyen","quan","hcm","tphcm","chieu","tai","re","sieu","bao","lon","be","si","le","to","nho"]);
+  if (/\b(?:là gì|ưu điểm|nhược điểm|các mẫu|top \d+|danh sách(?: \d+)?|ở đâu|giá bao nhiêu|uy tín nhất|tập trung|tham quan|giải pháp|hướng dẫn|cách chọn|kinh nghiệm|tư vấn|lựa chọn|nên hay không|có nên|tại sao|tổng hợp|bảng giá)\b/i.test(name) || noiseListing(name)) return true;
+  const genericTokens=new Set(["cong","san","xuat","thuong","mai","dich","vu","nhap","khau","phan","phoi","vai","det","soi","cotton","thun","may","ao","quan","khoac","nha","cung","cap","xuong","cua","hang","dai","ly","uy","tin","chat","luong","cao","gia","tot","re","sieu","bao","lon","be","si","le","to","nho","chieu","tai","hcm","tphcm","ha","noi","da","nang"]);
   return Array.from(tokenSet(name)).filter((token)=>!genericTokens.has(token)).length===0;
 }
 
