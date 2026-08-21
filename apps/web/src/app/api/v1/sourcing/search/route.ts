@@ -125,11 +125,11 @@ function tokenSet(value: string): Set<string> {
   return new Set(normalized(value).split(" ").filter((token) => token.length > 2));
 }
 
-function overlapRatio(needle: Set<string>, haystack: Set<string>): number {
-  if (!needle.size) return 0;
+function overlapRatio(left: Set<string>, right: Set<string>): number {
+  if (!left.size || !right.size) return 0;
   let matches = 0;
-  needle.forEach((token) => { if (haystack.has(token)) matches += 1; });
-  return matches / needle.size;
+  left.forEach((token) => { if (right.has(token)) matches += 1; });
+  return matches / Math.max(left.size, right.size);
 }
 
 interface EntityMatch {matched:boolean;matchedBy:string;conflicts:string[]}
@@ -156,7 +156,9 @@ function sameEntity(left: Candidate, right: Candidate): EntityMatch {
     if(nameSimilarity>=0.3||addresses>=0.3||sharedWebsite)return{matched:true,matchedBy:"PHONE",conflicts:[]};
   }
   if (left.email && right.email && left.email.toLowerCase() === right.email.toLowerCase()) return{matched:true,matchedBy:"EMAIL",conflicts:[]};
-  if (leftDomain && leftDomain === rightDomain&&!DIRECTORY_DOMAINS.some((entry)=>leftDomain===entry||leftDomain.endsWith(`.${entry}`))) return{matched:true,matchedBy:"WEBSITE",conflicts:[]};
+  if (leftDomain && leftDomain === rightDomain && !DIRECTORY_DOMAINS.some((entry) => leftDomain === entry || leftDomain.endsWith(`.${entry}`))) {
+    if (nameSimilarity >= 0.15 || addresses >= 0.2) return { matched: true, matchedBy: "WEBSITE", conflicts: [] };
+  }
   if(leftName.length>=5&&leftName===rightName&&addresses>=0.35)return{matched:true,matchedBy:"NAME_ADDRESS",conflicts:[]};
   if(nameSimilarity>=0.85&&addresses>=0.65)return{matched:true,matchedBy:"FUZZY_NAME_ADDRESS",conflicts:[]};
   return{matched:false,matchedBy:"",conflicts:[]};
