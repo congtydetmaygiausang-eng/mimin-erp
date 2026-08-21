@@ -44,6 +44,19 @@ export const LOCATION_BADGES = {
   CONFLICT: { label: "Mâu thuẫn vị trí", className: "border-red-300 bg-red-50 text-red-700" },
 } as const;
 
+export const ENTITY_TYPE_LABELS = {
+  HOUSEHOLD_BUSINESS: { label: "Hộ kinh doanh", className: "border-sky-300 bg-sky-50 text-sky-700" },
+  COMPANY: { label: "Công ty · Doanh nghiệp", className: "border-sky-300 bg-sky-50 text-sky-700" },
+  INDIVIDUAL_SELLER: { label: "Cá nhân · Page bán hàng", className: "border-orange-300 bg-orange-50 text-orange-700" },
+  UNKNOWN: { label: "Chưa xác định loại hình", className: "border-slate-300 bg-slate-50 text-slate-600" },
+} as const;
+
+export const QUALIFICATION_TIER_STYLES = {
+  QUALIFIED: { label: "Đủ điều kiện", className: "border-emerald-300 bg-emerald-50 text-emerald-800" },
+  NEEDS_VERIFICATION: { label: "Cần xác minh thêm", className: "border-amber-300 bg-amber-50 text-amber-800" },
+  INCOMPLETE: { label: "Thiếu thông tin", className: "border-slate-300 bg-slate-50 text-slate-700" },
+} as const;
+
 export function contactDetails(item: DirectSearchCandidate) {
   const sourceText = item.address ?? "";
   const email = item.email || sourceText.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] || "";
@@ -118,6 +131,11 @@ export function SupplierResultCard({
               <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.resultTier === "RELATED" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-emerald-300 bg-emerald-50 text-emerald-800"}`}>
                 {item.resultTier === "RELATED" ? "Liên quan · cần xác minh" : "Đúng năng lực"}
               </span>
+              {item.entityType && (
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ENTITY_TYPE_LABELS[item.entityType].className}`}>
+                  {ENTITY_TYPE_LABELS[item.entityType].label}
+                </span>
+              )}
             </div>
             <div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1">
               <BadgeCheck className="w-3.5 h-3.5" />
@@ -149,6 +167,20 @@ export function SupplierResultCard({
           </div>
           {quality.grade === "CONFLICT" && (
             <p className="mt-1.5 inline-flex items-center gap-1"><Info className="w-3.5 h-3.5 shrink-0" />Cần kiểm tra: {conflictLabels.length ? conflictLabels.join(", ") : "danh tính doanh nghiệp"}.</p>
+          )}
+        </div>
+      )}
+      {item.qualificationTier && (
+        <div className={`rounded-lg border px-3 py-2 text-xs ${QUALIFICATION_TIER_STYLES[item.qualificationTier].className}`}>
+          <span className="inline-flex items-center gap-1.5 font-semibold">
+            <ShieldCheck className="w-4 h-4" />{QUALIFICATION_TIER_STYLES[item.qualificationTier].label}
+          </span>
+          {Boolean(item.qualificationReasons?.length) && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {item.qualificationReasons?.map((reason) => (
+                <span key={reason} className="rounded-full border border-current/30 px-2 py-0.5 text-[10px] opacity-80">{reason}</span>
+              ))}
+            </div>
           )}
         </div>
       )}
