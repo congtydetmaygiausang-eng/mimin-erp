@@ -174,6 +174,7 @@ const NAV: NavItem[] = [
       { href: "/mang-luoi-san-xuat/co-hoi-hop-tac", label: "Cơ hội hợp tác", icon: Link2, iconColor: "text-indigo-400", permModule: "nha-cung-cap" },
       { href: "/mang-luoi-san-xuat/lich-su-tim-kiem", label: "Lịch sử tìm kiếm", icon: Search, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
       { href: "/mang-luoi-san-xuat/cong-ty-da-luu", label: "Công ty đã lưu", icon: Building2, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/cau-hinh-agent", label: "Cấu hình AI Agent", icon: Bot, iconColor: "text-violet-400", permModule: "nha-cung-cap" },
     ]
   },
   {

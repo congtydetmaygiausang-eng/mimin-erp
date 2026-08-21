@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Building2, Factory, Boxes, Sparkles, Star, TrendingUp, Calendar, ShoppingCart } from "lucide-react";
+import { Bot, Building2, Factory, Boxes, Sparkles, Star, TrendingUp, Calendar, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import AgentSearchBox from "@/components/sourcing/AgentSearchBox";
@@ -154,6 +154,13 @@ export default function MiminGroupOverviewPage() {
             <p className="text-xs opacity-60 mt-1">Xem lại các lượt tìm kiếm và kết quả đã lưu</p>
           </div>
           <Sparkles className="w-8 h-8 text-cyan-400" />
+        </Link>
+        <Link href="/mang-luoi-san-xuat/cau-hinh-agent" className="card p-5 flex items-center justify-between hover:shadow-md transition">
+          <div>
+            <h3 className="font-bold">Cấu hình AI Agent</h3>
+            <p className="text-xs opacity-60 mt-1">Nạp hồ sơ công ty để AI hiểu ngữ cảnh sẵn</p>
+          </div>
+          <Bot className="w-8 h-8 text-violet-400" />
         </Link>
       </div>
     </div>

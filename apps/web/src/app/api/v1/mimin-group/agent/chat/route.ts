@@ -17,6 +17,8 @@ import {
   rankPartners,
   type AgentPartnerDetail,
 } from "@/lib/sourcing/agent-partner-data";
+import { agentConfigToPromptContext, getAgentConfig } from "@/lib/sourcing/agent-config";
+import { applyExclusionRules, getActiveProfile, listActiveProfiles, profilesToPromptContext } from "@/lib/sourcing/search-profiles";
 import { canView } from "@/lib/permissions";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
@@ -161,7 +163,7 @@ const TOOLS = [
   },
 ] as const;
 
-const SYSTEM_PROMPT = `Bạn là AI Search Agent của MIMIN GROUP - trợ lý tìm kiếm đối tác cho chuỗi cung ứng may mặc (xưởng sản xuất, nhà cung cấp nguyên phụ liệu, khách hàng).
+const BASE_SYSTEM_PROMPT = `Bạn là AI Search Agent của MIMIN GROUP - trợ lý tìm kiếm đối tác cho chuỗi cung ứng may mặc (xưởng sản xuất, nhà cung cấp nguyên phụ liệu, khách hàng).
 Nguyên tắc:
 - Khi người dùng muốn TÌM đối tác mới ngoài internet → gọi search_partners. Không tự bịa tên công ty, SĐT, địa chỉ.
 - Khi người dùng hỏi chi tiết 1 đối tác đã có trong hệ thống → gọi get_partner_detail.
@@ -222,8 +224,12 @@ async function executeToolCall(
       if (!result) continue;
       diagnosticsList.push(result.diagnostics);
       providerList.push(result.provider);
-      for (const candidate of result.candidates) {
-        merged.push({ role: roles[i], candidate: candidate as unknown as DirectSearchCandidate, searchQuery: `${queryText} | ${location}`, provider: result.provider });
+      // Lọc hậu kiểm nhẹ theo Search Profile ACTIVE (nếu có) của đúng vai trò này - profile
+      // DRAFT/không tồn tại thì không đổi gì so với hành vi trước đây.
+      const roleProfile = await getActiveProfile(auth.client, roles[i]);
+      const roleCandidates = applyExclusionRules(result.candidates as unknown as DirectSearchCandidate[], roleProfile);
+      for (const candidate of roleCandidates) {
+        merged.push({ role: roles[i], candidate, searchQuery: `${queryText} | ${location}`, provider: result.provider });
       }
     }
     const limited = merged.slice(0, limit);
@@ -415,7 +421,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Tính năng AI Search Agent chưa được cấu hình (thiếu DEEPSEEK_API_KEY)" }, { status: 503 });
     }
 
-    const { reply, toolCalls, results } = await callDeepSeekWithTools(SYSTEM_PROMPT, messages, auth);
+    const [agentConfig, activeProfiles] = await Promise.all([
+      getAgentConfig(auth.client),
+      listActiveProfiles(auth.client),
+    ]);
+    const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
+
+    const { reply, toolCalls, results } = await callDeepSeekWithTools(systemPrompt, messages, auth);
     return NextResponse.json({ reply, toolCalls, results });
   } catch (error) {
     console.error("[mimin-group-agent-chat] error:", error);
