@@ -154,20 +154,14 @@ function sameEntity(left: Candidate, right: Candidate): EntityMatch {
   const leftTax = validTaxCode(left.taxCode), rightTax = validTaxCode(right.taxCode);
   if(leftTax&&rightTax&&leftTax!==rightTax)return{matched:false,matchedBy:"",conflicts:nameSimilarity>=0.8?[`Tên gần giống nhưng MST mâu thuẫn: ${leftTax} / ${rightTax}`]:[]};
   if(leftTax&&leftTax===rightTax)return{matched:true,matchedBy:"TAX_CODE",conflicts:[]};
-  const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
   const addresses = symmetricOverlap(tokenSet(left.address), tokenSet(right.address));
   const leftPhones=phoneSet(left.phone),rightPhones=phoneSet(right.phone);
   const sharedPhone = Array.from(leftPhones).find((phone)=>rightPhones.has(phone));
   if(sharedPhone&&!NOISE_PHONES.has(sharedPhone)){
-    const sharedWebsite = leftDomain && leftDomain === rightDomain && !DIRECTORY_DOMAINS.some(d => leftDomain === d || leftDomain.endsWith(`.${d}`));
-    if(nameSimilarity>=0.3||addresses>=0.3||sharedWebsite)return{matched:true,matchedBy:"PHONE",conflicts:[]};
+    if(nameSimilarity>=0.15||addresses>=0.2)return{matched:true,matchedBy:"PHONE",conflicts:[]};
   }
   if (left.email && right.email && left.email.toLowerCase() === right.email.toLowerCase()) return{matched:true,matchedBy:"EMAIL",conflicts:[]};
-  if (leftDomain && leftDomain === rightDomain && !DIRECTORY_DOMAINS.some((entry) => leftDomain === entry || leftDomain.endsWith(`.${entry}`))) {
-    if (nameSimilarity >= 0.15 || addresses >= 0.2) return { matched: true, matchedBy: "WEBSITE", conflicts: [] };
-  }
   if(leftName.length>=5&&leftName===rightName&&addresses>=0.35)return{matched:true,matchedBy:"NAME_ADDRESS",conflicts:[]};
-  if(nameSimilarity>=0.85&&addresses>=0.65)return{matched:true,matchedBy:"FUZZY_NAME_ADDRESS",conflicts:[]};
   return{matched:false,matchedBy:"",conflicts:[]};
 }
 
@@ -511,8 +505,9 @@ function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: 
 
 function isRelatedBusinessCandidate(candidate: Candidate, role: string, query: string): boolean {
   if (blockedSource(candidate.sourceUrl) || isGenericCompanyName(candidate.legalName) || noiseListing(candidate.sourceTitle)) return false;
+  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
   const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
-  if (identityEvidence < 2 && !candidate.taxCode) return false;
+  if (identityEvidence < 2 && !candidate.taxCode && !(businessName && identityEvidence >= 1)) return false;
   const evidence = normalized(`${candidate.legalName} ${candidate.capabilities.join(" ")} ${(candidate.businessLines ?? []).join(" ")} ${candidate.companyIntroduction ?? ""} ${candidate.sourceTitle}`);
   const roleRelevant = (ROLE_EVIDENCE_TERMS[role] ?? []).some((term) => evidence.includes(normalized(term)));
   const queryTokens = tokenSet(query);
@@ -1020,36 +1015,8 @@ function extractContactEvidence(candidate: Candidate, sources: SourceResult[]): 
 }
 
 async function enrichCandidatesWithContacts(candidates: Candidate[], location: string): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
-  const key = process.env.TAVILY_API_KEY;
-  if (!key) return { candidates, sourceCount: 0, enrichedCount: 0 };
-  const targets = candidates.filter((item) => !item.phone || !item.email || !item.website || !item.taxCode || !item.address || !item.companyIntroduction).slice(0, 15);
-  const batches = await Promise.allSettled(targets.map(async (candidate) => {
-    const identity = [candidate.legalName, candidate.taxCode, candidate.district || candidate.province || location].filter(Boolean).join(" ");
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: key, query: `\"${identity}\" (điện thoại OR email OR website OR \"mã số thuế\" OR \"địa chỉ\" OR \"giới thiệu công ty\")`, search_depth: "advanced", max_results: 8, chunks_per_source: 3, include_raw_content: "text", include_answer: false, country: "vietnam", exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!response.ok) {
-      if (response.status === 432) throw new Error("Hết Quota (HTTP 432)");
-      throw new Error(`Tavily enrichment HTTP ${response.status}`);
-    }
-    const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string; raw_content?: string }> };
-    const sources = (data.results ?? []).map((item) => ({ title: item.title ?? "", url: canonicalSourceUrl(item.url ?? ""), content: item.content ?? "", rawContent: item.raw_content ?? "", sourceType:classifySource(item.url ?? "",item.title ?? "",item.content ?? ""),provider:"TAVILY_ENRICHMENT" })).filter((item) => item.url&&!blockedSource(item.url));
-    return { candidate, sources };
-  }));
-  const enrichments = batches.flatMap((batch) => batch.status === "fulfilled" ? [batch.value] : []);
-  const byCandidate = new Map(enrichments.map((entry) => [entry.candidate, entry.sources]));
-  let enrichedCount = 0;
-  const enriched = candidates.map((candidate) => {
-    const sources = byCandidate.get(candidate);
-    if (!sources?.length) return candidate;
-    const updated = extractContactEvidence(candidate, sources);
-    if ([updated.phone, updated.email, updated.website, updated.taxCode, updated.address].filter(Boolean).length > [candidate.phone, candidate.email, candidate.website, candidate.taxCode, candidate.address].filter(Boolean).length) enrichedCount += 1;
-    return updated;
-  });
-  return { candidates: enriched, sourceCount: enrichments.reduce((total, entry) => total + entry.sources.length, 0), enrichedCount };
+  // Disable aggressive Tavily enrichment to save API quota and speed up search
+  return { candidates, sourceCount: 0, enrichedCount: 0 };
 }
 
 async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: SourceResult[]): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
@@ -1714,8 +1681,9 @@ export async function POST(req: NextRequest) {
     // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
     const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
     const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com"]);
+    const isSeoArticle = (s: SourceResult) => /\/(?:top|danh-sach|huong-dan|bai-viet|tin-tuc|blog|kinh-nghiem|post|article|tong-hop)\b/i.test(s.url) || /\b(?:top \d+|danh sách(?: \d+)?|hướng dẫn|kinh nghiệm|tổng hợp|tại sao|có nên|uy tín nhất|tốt nhất|giá rẻ|báo giá)\b/i.test(s.title);
     const directorySources = discoverySources.filter((s) => directoryDomains.has(domainOf(s.url) ?? ""));
-    const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? ""));
+    const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? "") && !isSeoArticle(s));
     
     const [directoryCandidates, normalizedCandidates] = await Promise.all([
       normalizeDirectoriesWithGemini(query, location, directorySources),
