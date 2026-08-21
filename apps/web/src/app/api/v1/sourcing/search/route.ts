@@ -326,6 +326,8 @@ const LOCATION_NOISE_WORDS = new Set(["quan", "huyen", "phuong", "xa", "thi", "t
 
 function normalizedLocation(value: string): string {
   return value
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
