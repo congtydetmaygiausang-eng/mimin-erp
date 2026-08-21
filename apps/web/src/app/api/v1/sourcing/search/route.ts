@@ -704,7 +704,7 @@ function fallbackQueryPlan(query: string, location: string, role: string, radius
   const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
   const areas = radiusSearchAreas(location, radiusKm);
   const budget = queryBudgetForRadius(radiusKm);
-  const targetDirectories = ["trangvangvietnam.com", "nhungtrangvang.com", "hosocongty.vn", "masothue.com"];
+  const targetDirectories = ["trangvangvietnam.com", "nhungtrangvang.com"];
   return Array.from(new Set([
     `${query} ${location}`,
     `công ty ${query} ${location}`,
@@ -738,7 +738,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
         max_tokens: 900,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm ngắn. QUAN TRỌNG:\n1. Hành văn tự nhiên, giống hệt cách con người gõ tìm kiếm thực tế trên Google (VD: 'xưởng dệt vải cotton Tân Phú', 'công ty sản xuất vải cotton ở Tân Phú', thay vì 'vải cotton Tân Phú công ty').\n2. Kết hợp với chính xác khu vực trong `searchAreas`. Tuyệt đối KHÔNG tự ý dùng 'TP.HCM' nếu người dùng tìm Quận/Huyện.\n3. CHIẾN LƯỢC TÌM KIẾM THEO DANH BẠ: Phải sinh ra ít nhất 4 truy vấn sử dụng cú pháp `site:<domain>` để vét dữ liệu từ các danh bạ B2B uy tín. Các domain danh bạ bắt buộc dùng: trangvangvietnam.com, nhungtrangvang.com, hosocongty.vn, masothue.com, thongtindoanhnghiep.co, vn.kompass.com, danhbacongty.vn, yellowpages.vn. Ví dụ: 'công ty vải cotton Tân Phú site:trangvangvietnam.com'.\nTrả về đúng định dạng JSON." },
+          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm ngắn. QUAN TRỌNG:\n1. Hành văn tự nhiên, giống hệt cách con người gõ tìm kiếm thực tế trên Google (VD: 'xưởng dệt vải cotton Tân Phú', 'công ty sản xuất vải cotton ở Tân Phú', thay vì 'vải cotton Tân Phú công ty').\n2. Kết hợp với chính xác khu vực trong `searchAreas`. Tuyệt đối KHÔNG tự ý dùng 'TP.HCM' nếu người dùng tìm Quận/Huyện.\n3. CHIẾN LƯỢC TÌM KIẾM THEO DANH BẠ: Phải sinh ra ít nhất 4 truy vấn sử dụng cú pháp `site:<domain>` để vét dữ liệu từ các danh bạ B2B uy tín. Các domain danh bạ bắt buộc dùng: trangvangvietnam.com, nhungtrangvang.com. Ví dụ: 'công ty vải cotton Tân Phú site:trangvangvietnam.com'.\nTrả về đúng định dạng JSON." },
           { role: "user", content: JSON.stringify({ query, location, radiusKm, searchAreas, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
         ],
       }),
@@ -1658,7 +1658,7 @@ export async function POST(req: NextRequest) {
     const companyReader = await enrichSourcesWithCompanyReader(auth, source.items);
     // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
     const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
-    const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com", "hosocongty.vn", "masothue.com", "thongtindoanhnghiep.co", "vn.kompass.com", "danhbacongty.vn", "yellowpages.vn"]);
+    const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com"]);
     const directorySources = discoverySources.filter((s) => directoryDomains.has(domainOf(s.url) ?? ""));
     const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? ""));
     
