@@ -125,7 +125,14 @@ function tokenSet(value: string): Set<string> {
   return new Set(normalized(value).split(" ").filter((token) => token.length > 2));
 }
 
-function overlapRatio(left: Set<string>, right: Set<string>): number {
+function overlapRatio(needle: Set<string>, haystack: Set<string>): number {
+  if (!needle.size) return 0;
+  let matches = 0;
+  needle.forEach((token) => { if (haystack.has(token)) matches += 1; });
+  return matches / needle.size;
+}
+
+function symmetricOverlap(left: Set<string>, right: Set<string>): number {
   if (!left.size || !right.size) return 0;
   let matches = 0;
   left.forEach((token) => { if (right.has(token)) matches += 1; });
@@ -143,12 +150,12 @@ function canonicalEntityKey(item:Candidate):string{
 }
 function sameEntity(left: Candidate, right: Candidate): EntityMatch {
   const leftName = normalized(left.legalName), rightName = normalized(right.legalName);
-  const nameSimilarity=overlapRatio(tokenSet(leftName),tokenSet(rightName));
-  const leftTax=validTaxCode(left.taxCode),rightTax=validTaxCode(right.taxCode);
+  const nameSimilarity = symmetricOverlap(tokenSet(leftName), tokenSet(rightName));
+  const leftTax = validTaxCode(left.taxCode), rightTax = validTaxCode(right.taxCode);
   if(leftTax&&rightTax&&leftTax!==rightTax)return{matched:false,matchedBy:"",conflicts:nameSimilarity>=0.8?[`Tên gần giống nhưng MST mâu thuẫn: ${leftTax} / ${rightTax}`]:[]};
   if(leftTax&&leftTax===rightTax)return{matched:true,matchedBy:"TAX_CODE",conflicts:[]};
   const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
-  const addresses = overlapRatio(tokenSet(left.address), tokenSet(right.address));
+  const addresses = symmetricOverlap(tokenSet(left.address), tokenSet(right.address));
   const leftPhones=phoneSet(left.phone),rightPhones=phoneSet(right.phone);
   const sharedPhone = Array.from(leftPhones).find((phone)=>rightPhones.has(phone));
   if(sharedPhone&&!NOISE_PHONES.has(sharedPhone)){
