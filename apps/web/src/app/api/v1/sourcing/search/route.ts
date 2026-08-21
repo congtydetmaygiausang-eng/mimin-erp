@@ -1581,7 +1581,7 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Bạn là AI bóc tách dữ liệu danh bạ B2B. Hãy tìm và trích xuất TẤT CẢ các công ty xuất hiện trong văn bản này. Ưu tiên giữ lại các công ty có địa chỉ nằm tại ${location} hoặc các công ty cung cấp ${query}. Trả về định dạng JSON: {"candidates":[{"legalName":"", "address":"", "phone":"", "email":"", "taxCode":"", "capabilities":[""]}]}. Yêu cầu: Không bịa dữ liệu, chỉ lấy thông tin có trong văn bản. Text:\n${text}` }] }],
+        contents: [{ parts: [{ text: `Bạn là AI bóc tách dữ liệu danh bạ B2B. Hãy tìm và trích xuất các công ty xuất hiện trong văn bản này. YÊU CẦU QUAN TRỌNG: CHỈ trích xuất các công ty thực sự cung cấp hoặc liên quan mật thiết đến "${query}". BỎ QUA HOÀN TOÀN các công ty thuộc ngành nghề khác (ví dụ: công ty trong sidebar, quảng cáo, danh sách ngẫu nhiên). Trả về định dạng JSON: {"candidates":[{"legalName":"", "address":"", "phone":"", "email":"", "taxCode":"", "capabilities":[""]}]}. Yêu cầu: Không bịa dữ liệu, chỉ lấy thông tin có trong văn bản. Text:\n${text}` }] }],
         generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
       }),
       signal: AbortSignal.timeout(30_000),
@@ -1595,7 +1595,8 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
       const parsed = JSON.parse(answer) as { candidates?: any[] };
       return (parsed.candidates ?? []).slice(0, 50).flatMap((item) => {
         if (!item || typeof item !== "object" || typeof item.legalName !== "string") return [];
-        const legalName = cleanCompanyLegalName(item.legalName);
+        let rawName = item.legalName.replace(/&#\d+;/g, "").trim();
+        const legalName = cleanCompanyLegalName(rawName);
         if (isGenericCompanyName(legalName)) return [];
         const rawPhone = firstVietnamPhone(item.phone ?? "");
         const rawAddress = postalAddress(item.address ?? "");
