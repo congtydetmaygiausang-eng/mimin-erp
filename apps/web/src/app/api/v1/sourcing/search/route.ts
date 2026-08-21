@@ -679,25 +679,17 @@ async function geocodeCandidates(candidates: Candidate[], searchLocation: string
 function radiusSearchAreas(location: string, radiusKm: number): string[] {
   const normalizedLocationValue = normalized(location);
   const isHcm = /(?:tp\s*hcm|tphcm|ho chi minh|tan phu|tan binh|binh tan|go vap|phu nhuan|binh thanh|hoc mon|cu chi|nha be|binh chanh|can gio|thu duc|quan \d+)/.test(normalizedLocationValue);
-  if (!isHcm || radiusKm <= 10) return [location];
-  const hcmInnerClusters = [
-    "Quận 12, Gò Vấp, Tân Bình, TP.HCM",
-    "Bình Tân, Tân Phú, Quận 6, TP.HCM",
-    "Bình Thạnh, Phú Nhuận, Quận 3, TP.HCM",
-    "Thủ Đức, TP.HCM",
-    "Bình Chánh, TP.HCM",
-  ];
-  if (radiusKm <= 20) return [location, ...hcmInnerClusters.slice(0, 3)];
-  const hcmOuterClusters = ["Hóc Môn, Củ Chi, TP.HCM", "Nhà Bè, Quận 7, TP.HCM", ...hcmInnerClusters];
-  if (radiusKm <= 30) return [location, ...hcmOuterClusters];
+  
+  if (!isHcm) return [location];
+  if (radiusKm <= 10) return [location];
+  if (radiusKm <= 30) return [location, "TP.HCM"];
+  
   return [
     location,
-    ...hcmOuterClusters,
-    "Dĩ An, Thuận An, Bình Dương",
-    "Thủ Dầu Một, Bình Dương",
-    "Đức Hòa, Long An",
-    "Biên Hòa, Đồng Nai",
-    "Trảng Bàng, Tây Ninh",
+    "TP.HCM",
+    "Bình Dương",
+    "Long An",
+    "Đồng Nai",
   ];
 }
 
