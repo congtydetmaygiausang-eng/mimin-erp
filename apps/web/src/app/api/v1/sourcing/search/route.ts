@@ -1487,11 +1487,20 @@ function evidenceVerificationStatus(fields:CandidateFieldConfidence[],fallback:C
   return"UNVERIFIED";
 }
 
+function stripHtml(html: string): string {
+  if (!/<[a-z][\s\S]*>/i.test(html)) return html;
+  return html
+    .replace(/<(style|script|svg|noscript)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function normalizeSourceBatch(query: string, location: string, sources: SourceResult[]): Promise<Candidate[]> {
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return fallbackCandidates(query, sources);
   const modelSources = sources.slice(0, 32).map((source) => {
-    const raw = source.rawContent ?? "";
+    const raw = stripHtml(source.rawContent ?? "");
     const rawSnippet = raw.length > 3500 ? `${raw.slice(0, 2000)}\n...[BỎ QUA GIỮA TRANG]...\n${raw.slice(-1500)}` : raw;
     const content = source.content ?? "";
     const contentSnippet = content.length > 2500 ? `${content.slice(0, 1500)}\n...[BỎ QUA GIỮA TRANG]...\n${content.slice(-1000)}` : content;
@@ -1594,13 +1603,19 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
   const key = keys[0];
   const model = "gemini-1.5-pro";
 
-  const batches = await Promise.allSettled(sources.slice(0, 15).map(async (source) => {
-    const text = (source.rawContent ?? source.content).slice(0, 80_000);
-    if (!text.trim()) return [];
+  const targets = sources.slice(0, 15);
+  const normalized: Candidate[][] = [];
+  for (let i = 0; i < targets.length; i += 3) {
+    const batch = targets.slice(i, i + 3);
+    const batchResults = await Promise.allSettled(batch.map(async (source) => {
+      const raw = stripHtml(source.rawContent ?? "");
+      const content = stripHtml(source.content ?? "");
+      const text = (raw || content).slice(0, 80_000);
+      if (!text.trim()) return [];
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
         contents: [{ parts: [{ text: `Bạn là AI bóc tách dữ liệu danh bạ B2B. Hãy tìm và trích xuất các công ty xuất hiện trong văn bản này. YÊU CẦU QUAN TRỌNG: CHỈ trích xuất các công ty thực sự cung cấp hoặc liên quan mật thiết đến "${query}". BỎ QUA HOÀN TOÀN các công ty thuộc ngành nghề khác (ví dụ: công ty trong sidebar, quảng cáo, danh sách ngẫu nhiên). Trả về định dạng JSON: {"candidates":[{"legalName":"", "address":"", "phone":"", "email":"", "taxCode":"", "capabilities":[""]}]}. Yêu cầu: Không bịa dữ liệu, chỉ lấy thông tin có trong văn bản. Text:\n${text}` }] }],
         generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
