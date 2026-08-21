@@ -486,7 +486,7 @@ function appendCityIfMissing(address: string, location: string): string {
 function isGenericCompanyName(value: string): boolean {
   const name = cleanCompanyLegalName(value);
   if (!name || !isCompanyIdentityName(name) || /^(?:trang chủ|home|giới thiệu|liên hệ|instagram|facebook|linkedin|trang vàng)$/i.test(name)) return true;
-  if (/\b(?:là gì|ưu điểm|nhược điểm|các mẫu|top \d+|danh sách(?: \d+)?|ở đâu|giá bao nhiêu|uy tín nhất|tập trung|tại tp|tại huyện|tại quận)\b/i.test(name) || noiseListing(name)) return true;
+  if (/\b(?:là gì|ưu điểm|nhược điểm|các mẫu|top \d+|danh sách(?: \d+)?|ở đâu|giá bao nhiêu|uy tín nhất|tập trung|tại tp|tại huyện|tại quận|tham quan|giải pháp|chất lượng|hướng dẫn|cách chọn|kinh nghiệm|tư vấn|lựa chọn|những|nên hay không|có nên|tại sao)\b/i.test(name) || noiseListing(name)) return true;
   const genericTokens=new Set(["cong","san","xuat","thuong","mai","dich","vu","nhap","khau","phan","phoi","vai","det","soi","cotton","thun","may","ao","quan","khoac","nha","cung","cap","xuong","cua","hang","dai","ly","uy","tin","dep","chat","luong","cao","gia","tot","viet","nam","thanh","pho","huyen","quan","hcm","tphcm"]);
   return Array.from(tokenSet(name)).filter((token)=>!genericTokens.has(token)).length===0;
 }
@@ -1549,6 +1549,12 @@ async function normalizeSourceBatch(query: string, location: string, sources: So
     const taxCode = (taxDigits.length === 10 || taxDigits.length === 13) && sourceDigits.includes(taxDigits) ? rawTaxCode : "";
     const websiteDomain = domainOf(rawWebsite);
     let website = websiteDomain && (domainOf(source.url) === websiteDomain || sourceLower.includes(websiteDomain)) ? rawWebsite : "";
+    const sourceDomain = domainOf(source.url);
+    if (websiteDomain && sourceDomain === websiteDomain) {
+      const isDeepArticle = /\/(?:top|danh-sach|huong-dan|bai-viet|tin-tuc|blog|kinh-nghiem|post|article)\b/i.test(source.url) || source.url.split('/').length > 4;
+      const nameMatchesDomain = normalized(item.legalName).replace(/\s/g, "").includes(sourceDomain.split('.')[0]);
+      if (isDeepArticle && !nameMatchesDomain) website = "";
+    }
     const wDom = domainOf(website);
     if (wDom && DIRECTORY_DOMAINS.some(d => wDom === d || wDom.endsWith(`.${d}`))) website = "";
     const proposedAddress = postalAddress(text(item.address, 500));
