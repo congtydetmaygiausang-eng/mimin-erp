@@ -831,7 +831,7 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):S
 }
 
 async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
-  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED!=="true"||process.env.COMPANY_READER_ENRICHMENT_MODE!=="LIVE")return{items:[],health:{name:"Trafilatura",status:"DISABLED",count:0,code:"LIVE_NOT_ENABLED"}};
+  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED!=="true")return{items:[],health:{name:"Trafilatura",status:"DISABLED",count:0,code:"NOT_ENABLED"}};
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Trafilatura",status:"EMPTY",count:0}};
   const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
@@ -1040,6 +1040,67 @@ async function enrichCandidatesWithContacts(candidates: Candidate[], location: s
     return updated;
   });
   return { candidates: enriched, sourceCount: enrichments.reduce((total, entry) => total + entry.sources.length, 0), enrichedCount };
+}
+
+async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: SourceResult[]): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
+  const keys = geminiApiKeys();
+  if (!keys.length) return { candidates, sourceCount: 0, enrichedCount: 0 };
+  const key = keys[0];
+  const model = "gemini-2.5-flash";
+
+  const targets = candidates.filter((item) => !item.phone || !item.address).slice(0, 10);
+  if (!targets.length) return { candidates, sourceCount: 0, enrichedCount: 0 };
+
+  const sourceMap = new Map(allSources.map(s => [canonicalSourceUrl(s.url), s]));
+
+  const batches = await Promise.allSettled(targets.map(async (candidate) => {
+    const rawContents = (candidate.sources ?? []).map(s => sourceMap.get(canonicalSourceUrl(s.url))?.rawContent).filter(Boolean);
+    if (!rawContents.length) return { candidate, updated: false };
+    const text = rawContents.join("\n\n").slice(0, 80_000);
+    if (!text.trim()) return { candidate, updated: false };
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Trả về đúng định dạng JSON: {"phone":"", "address":"", "email":"", "taxCode":""}. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }] }],
+        generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+      }),
+      signal: AbortSignal.timeout(18_000),
+    });
+    if (!response.ok) throw new Error(`Gemini enrichment failed`);
+    const data = await response.json() as any;
+    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!answer) return { candidate, updated: false };
+    
+    try {
+      const parsed = JSON.parse(answer);
+      let updated = false;
+      const result = { ...candidate };
+      if (!result.phone && parsed.phone) { result.phone = parsed.phone; result.phones = [parsed.phone]; updated = true; }
+      if (!result.address && parsed.address) { result.address = parsed.address; updated = true; }
+      if (!result.email && parsed.email) { result.email = parsed.email; updated = true; }
+      if (!result.taxCode && parsed.taxCode) { result.taxCode = parsed.taxCode; updated = true; }
+      if (updated) {
+        result.verifiedFields = Array.from(new Set([...(result.verifiedFields ?? []), ...(parsed.phone ? ["phone"] : []), ...(parsed.address ? ["address"] : []), ...(parsed.taxCode ? ["taxCode"] : [])]));
+      }
+      return { candidate: result, updated };
+    } catch {
+      return { candidate, updated: false };
+    }
+  }));
+
+  let enrichedCount = 0;
+  const enrichedMap = new Map<string, Candidate>();
+  for (const batch of batches) {
+    if (batch.status === "fulfilled" && batch.value.updated) {
+      enrichedMap.set(batch.value.candidate.legalName, batch.value.candidate);
+      enrichedCount++;
+    }
+  }
+
+  const finalCandidates = candidates.map(c => enrichedMap.get(c.legalName) || c);
+  return { candidates: finalCandidates, sourceCount: targets.length, enrichedCount };
 }
 
 async function requestGeminiSearch(key: string, model: string, query: string, location: string, queries: string[], timeoutMs: number): Promise<SourceResult[]> {
@@ -1535,7 +1596,8 @@ export async function POST(req: NextRequest) {
     const supplementalCandidates = deterministicSourceCandidates(query, body.role, discoverySources);
     const normalizationPool = [...normalizedCandidates, ...supplementalCandidates];
     const enrichment = await enrichCandidatesWithContacts(normalizationPool, location);
-    const cleanedCandidates=enrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
+    const geminiEnrichment = await enrichCandidatesWithGemini(enrichment.candidates, discoverySources);
+    const cleanedCandidates=geminiEnrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
     const exactCandidates = cleanedCandidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, body.role ?? "", query));
     const exactKeys = new Set(exactCandidates.map((candidate) => `${candidate.sourceUrl}|${normalized(candidate.legalName)}`));
     const relatedCandidates = cleanedCandidates.filter((candidate) =>
@@ -1603,7 +1665,11 @@ export async function POST(req: NextRequest) {
       rejectedInvalidIdentity: enrichment.candidates.length-cleanedCandidates.length,
       geocoding: geocoding.summary,
       locationQuality,
-      providers: [...source.providerHealth,companyReader.health],
+      providers: [
+        ...source.providerHealth,
+        companyReader.health,
+        { name: "Gemini Web Agent", status: geminiEnrichment.enrichedCount > 0 ? ("OK" as const) : (geminiApiKeys().length ? ("EMPTY" as const) : ("DISABLED" as const)), count: geminiEnrichment.enrichedCount, code: "ENRICHED" }
+      ],
     };
     return NextResponse.json({ provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, diagnostics, candidates });
   } catch (error) {
