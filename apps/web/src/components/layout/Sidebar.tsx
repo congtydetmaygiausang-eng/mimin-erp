@@ -212,7 +212,6 @@ const NAV: NavItem[] = [
     subItems: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản", icon: Users, iconColor: "text-rose-400", permModule: "cai-dat" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh", icon: Sliders, iconColor: "text-orange-400", permModule: "cai-dat" },
-      { href: "/ai-assistant", label: "AI Assistant", icon: Bot, iconColor: "text-violet-400", permModule: "cai-dat" },
       { href: "/agents", label: "Agents Dashboard", icon: Cpu, iconColor: "text-blue-400", permModule: "cai-dat" },
       { href: "/audit-log", label: "Nhật ký hệ thống", icon: Activity, iconColor: "text-amber-400", permModule: "cai-dat" },
       { href: "/backup-restore", label: "Sao lưu dữ liệu", icon: Database, iconColor: "text-slate-400", permModule: "cai-dat" },

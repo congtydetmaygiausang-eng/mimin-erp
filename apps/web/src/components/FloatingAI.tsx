@@ -129,8 +129,9 @@ export function FloatingAI() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Don't show on AI assistant page (already has full chat)
-  if (pathname === "/ai-assistant" || pathname === "/agents-chat") return null;
+  // Không hiện khung chat nổi ở trang đã có sẵn khung chat full màn
+  // (/ai-assistant đã xoá - trang cũ bị bỏ quên, trùng agents-chat).
+  if (pathname === "/agents-chat") return null;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -324,7 +325,7 @@ export function FloatingAI() {
               </div>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => router.push("/ai-assistant")}
+                  onClick={() => router.push("/agents-chat")}
                   className="p-1.5 rounded-lg hover:bg-white/20 text-white/90 hover:text-white transition"
                   title="Mở trang AI đầy đủ"
                 >

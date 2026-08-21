@@ -113,7 +113,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/quan-ly-tai-khoan", label: "Quản lý tài khoản" },
       { href: "/phan-quyen-tuy-chinh", label: "Phân quyền tùy chỉnh" },
-      { href: "/ai-assistant", label: "AI Assistant" },
       { href: "/agents", label: "Agents Dashboard" },
       { href: "/audit-log", label: "Nhật ký hệ thống" },
       { href: "/backup-restore", label: "Sao lưu dữ liệu" },

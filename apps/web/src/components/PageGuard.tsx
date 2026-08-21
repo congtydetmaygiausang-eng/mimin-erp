@@ -102,7 +102,6 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   // theo module nào cụ thể.
   { match: "/agents-chat",     module: "dashboard" },
   { match: "/agents",          module: "dashboard" },
-  { match: "/ai-assistant",    module: "dashboard" },
   { match: "/auto-action-flow", module: "cai-dat" },
   // 4 module "gia-cong-mobile" (cong-viec/ban-giao/san-luong/tien-cong) dùng
   // chung cho role "partner" (đối tác gia công) + "finishing"/"sewing"/"qc" -
