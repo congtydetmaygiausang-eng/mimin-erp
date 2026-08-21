@@ -1481,7 +1481,13 @@ function evidenceVerificationStatus(fields:CandidateFieldConfidence[],fallback:C
 async function normalizeSourceBatch(query: string, location: string, sources: SourceResult[]): Promise<Candidate[]> {
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return fallbackCandidates(query, sources);
-  const modelSources=sources.slice(0,32).map((source)=>({...source,content:source.content.slice(0,1_500),rawContent:source.rawContent?.slice(0,2_200)}));
+  const modelSources = sources.slice(0, 32).map((source) => {
+    const raw = source.rawContent ?? "";
+    const rawSnippet = raw.length > 3500 ? `${raw.slice(0, 2000)}\n...[BỎ QUA GIỮA TRANG]...\n${raw.slice(-1500)}` : raw;
+    const content = source.content ?? "";
+    const contentSnippet = content.length > 2500 ? `${content.slice(0, 1500)}\n...[BỎ QUA GIỮA TRANG]...\n${content.slice(-1000)}` : content;
+    return { ...source, content: contentSnippet, rawContent: rawSnippet };
+  });
   const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
