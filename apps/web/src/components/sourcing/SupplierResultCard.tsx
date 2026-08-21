@@ -2,23 +2,26 @@
 
 // @codex MIMIN GROUP - tách từ AiDiscoveryTab.tsx để dùng chung cho AgentSearchBox
 // (kết quả tìm kiếm qua chat) và Lịch sử tìm kiếm (xem lại kết quả cũ).
+//
+// Thiết kế lại theo mockup đã duyệt (xem chat): điểm phù hợp dạng vòng tròn thay vì
+// chữ số góc, gộp resultTier/entityType/qualificationTier vào 1 hàng badge ngắn thay vì
+// 3 khối xếp chồng, đánh giá chi tiết (lý do, profileQuality, matchReasons) gom vào 1
+// mục thu gọn <details>, hành động rút còn 1 nút chính nổi bật (Lưu) + các nút phụ nhỏ.
 
 import { useState } from "react";
 import {
   AlertTriangle,
-  BadgeCheck,
   Bookmark,
   BookmarkCheck,
   Building2,
   Calculator,
   CheckSquare,
+  ChevronDown,
   ExternalLink,
   Globe2,
   Hash,
-  Info,
   Mail,
   Map,
-  MapPin,
   Navigation,
   Phone,
   RefreshCw,
@@ -93,6 +96,22 @@ export function contactDetails(item: DirectSearchCandidate) {
   return { email, phones, website, taxCode };
 }
 
+function ScoreRing({ value }: { value: number }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  const ringColor = clamped >= 70 ? "#10b981" : clamped >= 40 ? "#f59e0b" : "#ef4444";
+  return (
+    <div
+      className="relative shrink-0 w-11 h-11 rounded-full grid place-items-center"
+      style={{ background: `conic-gradient(${ringColor} ${clamped}%, var(--border) ${clamped}% 100%)` }}
+      title={`${clamped}% phù hợp`}
+    >
+      <div className="w-8 h-8 rounded-full grid place-items-center text-[10px] font-bold" style={{ background: "var(--bg-card)" }}>
+        {clamped}%
+      </div>
+    </div>
+  );
+}
+
 export function SupplierResultCard({
   item,
   opening,
@@ -156,104 +175,78 @@ export function SupplierResultCard({
   const evidence = item.distanceEvidence;
   const quality = item.profileQuality;
   const conflictLabels = quality?.conflictFields?.map((field) => FIELD_LABELS[field]) ?? [];
-  const qualityStyle = quality?.grade === "STRONG"
-    ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-    : quality?.grade === "CONFLICT"
-    ? "border-red-300 bg-red-50 text-red-800"
-    : quality?.grade === "REVIEW"
-    ? "border-amber-300 bg-amber-50 text-amber-800"
-    : "border-slate-300 bg-slate-50 text-slate-700";
+  const hasDetail = Boolean(quality || item.qualificationReasons?.length || item.matchReasons?.length);
 
   return (
-    <article className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
-      <div className="flex justify-between gap-3">
+    <article className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+      <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2">
           <button type="button" onClick={onToggle} disabled={saved} className="mt-0.5 text-brand-700 disabled:text-emerald-600" aria-label={saved ? "Công ty đã lưu" : selected ? "Bỏ chọn công ty" : "Chọn công ty"}>
             {saved ? <BookmarkCheck className="w-4 h-4" /> : selected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
           </button>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-start gap-2">
+            <div className="flex items-start gap-2">
               <Building2 className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600" />
               <b className="leading-snug">{item.legalName}</b>
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.resultTier === "RELATED" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-emerald-300 bg-emerald-50 text-emerald-800"}`}>
-                {item.resultTier === "RELATED" ? "Liên quan · cần xác minh" : "Đúng năng lực"}
-              </span>
-              {item.entityType && (
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ENTITY_TYPE_LABELS[item.entityType].className}`}>
-                  {ENTITY_TYPE_LABELS[item.entityType].label}
-                </span>
-              )}
             </div>
-            <div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1">
-              <BadgeCheck className="w-3.5 h-3.5" />
-              {item.verificationStatus === "VERIFIED" ? "Đã đối chiếu nhiều nguồn" : item.verificationStatus === "PARTIAL" ? "Đã đối chiếu một phần" : "Chưa đủ bằng chứng"}
-            </div>
+            <p className="text-[11px] mt-0.5 ml-6 text-slate-500 line-clamp-1">{item.address || "Chưa có địa chỉ"}</p>
           </div>
         </div>
-        <span className="text-xs text-brand-700 shrink-0">{item.confidence}% phù hợp</span>
+        <ScoreRing value={item.confidence} />
       </div>
-      <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${locationBadge.className}`}>
-        <Navigation className="w-3.5 h-3.5" />{distanceLabel}
-        {status === "UNKNOWN" && (
-          <span className="ml-1 text-slate-500 cursor-help" title="Hồ sơ này có địa chỉ chưa đủ chi tiết để hệ thống định vị trên Bản đồ.">(?)</span>
-        )}
-      </div>
-      {quality && (
-        <div className={`rounded-lg border px-3 py-2 text-xs ${qualityStyle}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 font-semibold">
-              {quality.grade === "CONFLICT" ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-              {quality.grade === "STRONG" ? "Hồ sơ mạnh" : quality.grade === "CONFLICT" ? "Cần đối chiếu dữ liệu chính" : quality.grade === "REVIEW" ? "Cần kiểm tra thêm" : "Bằng chứng còn yếu"}
-            </span>
-            <b>{quality.score}/100</b>
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-            <span>Đầy đủ <b>{quality.completeness}%</b></span>
-            <span>Bằng chứng <b>{quality.evidenceCoverage}%</b></span>
-            {quality.conflictCount > 0 && <span>Xung đột chính <b>{quality.conflictCount}</b></span>}
-          </div>
-          {quality.grade === "CONFLICT" && (
-            <p className="mt-1.5 inline-flex items-center gap-1"><Info className="w-3.5 h-3.5 shrink-0" />Cần kiểm tra: {conflictLabels.length ? conflictLabels.join(", ") : "danh tính doanh nghiệp"}.</p>
-          )}
-        </div>
-      )}
-      {item.qualificationTier && (
-        <div className={`rounded-lg border px-3 py-2 text-xs ${QUALIFICATION_TIER_STYLES[item.qualificationTier].className}`}>
-          <span className="inline-flex items-center gap-1.5 font-semibold">
-            <ShieldCheck className="w-4 h-4" />{QUALIFICATION_TIER_STYLES[item.qualificationTier].label}
+
+      <div className="flex flex-wrap gap-1.5">
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.resultTier === "RELATED" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-emerald-300 bg-emerald-50 text-emerald-800"}`}>
+          {item.resultTier === "RELATED" ? "Liên quan · cần xác minh" : "Đúng năng lực"}
+        </span>
+        {item.entityType && (
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ENTITY_TYPE_LABELS[item.entityType].className}`}>
+            {ENTITY_TYPE_LABELS[item.entityType].label}
           </span>
-          {Boolean(item.qualificationReasons?.length) && (
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {item.qualificationReasons?.map((reason) => (
-                <span key={reason} className="rounded-full border border-current/30 px-2 py-0.5 text-[10px] opacity-80">{reason}</span>
-              ))}
+        )}
+        {item.qualificationTier && (
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${QUALIFICATION_TIER_STYLES[item.qualificationTier].className}`}>
+            {QUALIFICATION_TIER_STYLES[item.qualificationTier].label}
+          </span>
+        )}
+        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${locationBadge.className}`}>
+          <Navigation className="w-3 h-3" />{distanceLabel}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+        <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 shrink-0 text-emerald-600" />{contact.phones.length ? (<div className="flex min-w-0 flex-wrap items-center gap-1">{contact.phones.slice(0, 2).map((phone) => <a key={phone} className="text-brand-700 font-medium" href={`tel:${phone}`}>{formatVietnamPhone(phone)}</a>)}</div>) : <span className="opacity-50">Chưa có SĐT</span>}</div>
+        <div className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 shrink-0 text-violet-600" />{contact.email ? <a className="truncate text-brand-700" href={`mailto:${contact.email}`}>{contact.email}</a> : <span className="opacity-50">Chưa có email</span>}</div>
+        <div className="flex items-center gap-2"><Globe2 className="w-3.5 h-3.5 shrink-0 text-sky-600" />{contact.website ? <a className="truncate text-brand-700" href={contact.website.startsWith("http") ? contact.website : `https://${contact.website}`} target="_blank" rel="noopener noreferrer">{contact.website}</a> : <span className="opacity-50">Chưa có website</span>}</div>
+        <div className="flex items-center gap-2"><Hash className="w-3.5 h-3.5 shrink-0 text-amber-600" />{contact.taxCode ? <span>{contact.taxCode}</span> : <span className="opacity-50">Chưa có MST</span>}</div>
+      </div>
+
+      {hasDetail && (
+        <details className="group">
+          <summary className="list-none cursor-pointer flex items-center gap-1.5 text-[11px] font-semibold text-brand-700">
+            <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+            Xem đánh giá chi tiết {quality ? `(${quality.score}/100 · ${item.sourceCount ?? sources.length} nguồn)` : ""}
+          </summary>
+          <div className="mt-2 space-y-2 pl-5">
+            {Boolean(item.qualificationReasons?.length) && (
+              <div className="flex flex-wrap gap-1.5">
+                {item.qualificationReasons?.map((reason) => <span key={reason} className="text-[10px] rounded-full border px-2 py-0.5 text-slate-600" style={{ borderColor: "var(--border)" }}>{reason}</span>)}
+              </div>
+            )}
+            {quality && (
+              <div className="text-[11px] text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+                <span>Đầy đủ <b>{quality.completeness}%</b></span>
+                <span>Bằng chứng <b>{quality.evidenceCoverage}%</b></span>
+                {quality.conflictCount > 0 && <span className="text-red-700">Xung đột chính <b>{quality.conflictCount}</b> ({conflictLabels.join(", ")})</span>}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {item.matchReasons?.map((reason) => <span key={reason} className="text-[10px] rounded-full border px-2 py-0.5 text-slate-600" style={{ borderColor: "var(--border)" }}>{reason}</span>)}
             </div>
-          )}
-        </div>
+          </div>
+        </details>
       )}
-      <div className="grid grid-cols-1 gap-2 text-xs">
-        <div className="flex items-start gap-2"><MapPin className="w-4 h-4 shrink-0 text-rose-600" /><span className="w-20 shrink-0 font-medium">Địa chỉ</span><span className="min-w-0 break-words leading-relaxed line-clamp-2">{item.address || "Chưa có"}</span></div>
-        <div className="flex items-start gap-2"><Phone className="w-4 h-4 shrink-0 text-emerald-600" /><span className="w-20 shrink-0 font-medium">Điện thoại</span>{contact.phones.length ? (<div className="flex min-w-0 flex-wrap items-center gap-1.5">{contact.phones.map((phone, index) => <a key={phone} className={`rounded-md px-2 py-0.5 font-medium ${index === 0 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`} href={`tel:${phone}`}>{formatVietnamPhone(phone)}{index > 0 && <span className="ml-1 text-[10px] opacity-60">phụ</span>}</a>)}</div>) : <span className="opacity-50">Chưa có</span>}</div>
-        <div className="flex items-start gap-2"><Mail className="w-4 h-4 shrink-0 text-violet-600" /><span className="w-20 shrink-0 font-medium">Email</span>{contact.email ? <a className="break-all text-brand-700" href={`mailto:${contact.email}`}>{contact.email}</a> : <span className="opacity-50">Chưa có</span>}</div>
-        <div className="flex items-start gap-2"><Globe2 className="w-4 h-4 shrink-0 text-sky-600" /><span className="w-20 shrink-0 font-medium">Website</span>{contact.website ? <a className="break-all text-brand-700" href={contact.website.startsWith("http") ? contact.website : `https://${contact.website}`} target="_blank" rel="noopener noreferrer">{contact.website}</a> : <span className="opacity-50">Chưa có</span>}</div>
-        <div className="flex items-start gap-2"><Hash className="w-4 h-4 shrink-0 text-amber-600" /><span className="w-20 shrink-0 font-medium">Mã số thuế</span>{contact.taxCode ? <span>{contact.taxCode}</span> : <span className="opacity-50">Chưa xác minh</span>}</div>
-      </div>
-      <div className="flex flex-wrap gap-2">{item.matchReasons?.map((reason) => <span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{ borderColor: "var(--border)" }}>{reason}</span>)}</div>
-      <div className="flex flex-wrap gap-2">
-        <a className="btn-secondary inline-flex items-center gap-2 text-xs" href={mapsUrl} target="_blank" rel="noopener noreferrer"><Map className="w-4 h-4" />Google Maps</a>
-        <button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={() => setShowCalculation((current) => !current)}><Calculator className="w-4 h-4" />{showCalculation ? "Ẩn cách tính" : "Xem cách tính"}</button>
-        {Boolean(item.fieldConfidence?.length) && <button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={() => setShowEvidence((current) => !current)}><ShieldCheck className="w-4 h-4" />{showEvidence ? "Ẩn kiểm chứng" : "Xem kiểm chứng"}</button>}
-        {onVerifyLocation && <button type="button" disabled={verifying} className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={onVerifyLocation}><RefreshCw className={`w-4 h-4 ${verifying ? "animate-spin" : ""}`} />{verifying ? "Đang xác minh..." : "Xác minh lại vị trí"}</button>}
-        <button
-          type="button"
-          disabled={!item.taxCode || legalLookupLoading}
-          title={!item.taxCode ? "Chưa có mã số thuế để tra cứu" : undefined}
-          className="btn-secondary inline-flex items-center gap-2 text-xs disabled:opacity-50"
-          onClick={() => void runLegalLookup()}
-        >
-          <Scale className={`w-4 h-4 ${legalLookupLoading ? "animate-pulse" : ""}`} />{legalLookupLoading ? "Đang tra cứu..." : "Tra cứu pháp lý"}
-        </button>
-      </div>
+
       {legalLookupError && (
         <p className="text-xs text-red-700 inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />{legalLookupError}</p>
       )}
@@ -280,6 +273,11 @@ export function SupplierResultCard({
           <p className="opacity-60">Đây là bản xem nhanh, chưa lưu bằng chứng. Để lưu bằng chứng đối chiếu đầy đủ, bấm "Lưu công ty này" rồi "Xem chi tiết" để mở mục Đối chiếu pháp lý hai nguồn.</p>
         </div>
       )}
+
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+        <button type="button" className="inline-flex items-center gap-1 text-slate-500 hover:text-brand-700" onClick={() => setShowCalculation((current) => !current)}><Calculator className="w-3.5 h-3.5" />{showCalculation ? "Ẩn cách tính" : "Xem cách tính"}</button>
+        {Boolean(item.fieldConfidence?.length) && <button type="button" className="inline-flex items-center gap-1 text-slate-500 hover:text-brand-700" onClick={() => setShowEvidence((current) => !current)}><ShieldCheck className="w-3.5 h-3.5" />{showEvidence ? "Ẩn kiểm chứng" : "Xem kiểm chứng"}</button>}
+      </div>
       {showCalculation && (
         <div className="rounded-lg border bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1">
           <p><b>Phương pháp:</b> {evidence?.method === "HAVERSINE" ? "Haversine · khoảng cách đường chim bay" : "Chưa có phép tính"}</p>
@@ -302,18 +300,30 @@ export function SupplierResultCard({
           </div>
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3 text-xs">
+
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="flex flex-wrap gap-3 text-[11px]">
           {sources.slice(0, 3).map((source, sourceIndex) => (
             <a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3" />Nguồn {sourceIndex + 1}</a>
           ))}
         </div>
-        <div className="flex gap-2">
-          <button type="button" disabled={saving || saved} onClick={onSaveOne} className={`btn-secondary inline-flex items-center gap-1.5 text-xs ${saving || saved ? "opacity-60" : ""}`}>
-            {saved ? <><BookmarkCheck className="w-4 h-4 text-emerald-600" />Đã lưu</> : saving ? <><BookmarkCheck className="w-4 h-4 text-emerald-600" />Đang lưu...</> : <><Bookmark className="w-4 h-4" />Lưu công ty này</>}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!item.taxCode || legalLookupLoading}
+            title={!item.taxCode ? "Chưa có mã số thuế để tra cứu" : undefined}
+            className="btn-secondary inline-flex items-center gap-1.5 text-xs disabled:opacity-50"
+            onClick={() => void runLegalLookup()}
+          >
+            <Scale className={`w-3.5 h-3.5 ${legalLookupLoading ? "animate-pulse" : ""}`} />{legalLookupLoading ? "Đang tra..." : "Tra cứu pháp lý"}
           </button>
-          <button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-2 text-xs">
-            <Building2 className="w-4 h-4" />{opening ? "Đang mở..." : "Xem chi tiết"}
+          <a className="btn-secondary inline-flex items-center gap-1.5 text-xs" href={mapsUrl} target="_blank" rel="noopener noreferrer"><Map className="w-3.5 h-3.5" />Maps</a>
+          {onVerifyLocation && <button type="button" disabled={verifying} className="btn-secondary inline-flex items-center gap-1.5 text-xs" onClick={onVerifyLocation}><RefreshCw className={`w-3.5 h-3.5 ${verifying ? "animate-spin" : ""}`} />{verifying ? "Đang xác minh..." : "Xác minh vị trí"}</button>}
+          <button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-1.5 text-xs">
+            <Building2 className="w-3.5 h-3.5" />{opening ? "Đang mở..." : "Chi tiết"}
+          </button>
+          <button type="button" disabled={saving || saved} onClick={onSaveOne} className={`btn-primary inline-flex items-center gap-1.5 text-xs ${saving || saved ? "opacity-70" : ""}`}>
+            {saved ? <><BookmarkCheck className="w-3.5 h-3.5" />Đã lưu</> : saving ? <><BookmarkCheck className="w-3.5 h-3.5" />Đang lưu...</> : <><Bookmark className="w-3.5 h-3.5" />Lưu công ty</>}
           </button>
         </div>
       </div>

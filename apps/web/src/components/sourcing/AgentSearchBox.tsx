@@ -13,7 +13,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, RefreshCw, Search, Sparkles, User as UserIcon } from "lucide-react";
+import { Bot, Boxes, Building2, Factory, Layers, MapPin, Package, RefreshCw, Search, Sparkles, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
 import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
@@ -24,10 +24,10 @@ import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 
 export type PartnerTypeChip = "factory" | "supplier" | "customer";
 
-const PARTNER_TYPE_OPTIONS: { value: PartnerTypeChip; label: string; role: ProductionPartnerRole }[] = [
-  { value: "factory", label: "Xưởng sản xuất", role: "SATELLITE_PROCESSOR" },
-  { value: "supplier", label: "Nhà cung cấp", role: "MATERIAL_SUPPLIER" },
-  { value: "customer", label: "Khách hàng", role: "CUSTOMER" },
+const PARTNER_TYPE_OPTIONS: { value: PartnerTypeChip; label: string; role: ProductionPartnerRole; icon: typeof Factory }[] = [
+  { value: "factory", label: "Xưởng sản xuất", role: "SATELLITE_PROCESSOR", icon: Factory },
+  { value: "supplier", label: "Nhà cung cấp", role: "MATERIAL_SUPPLIER", icon: Boxes },
+  { value: "customer", label: "Khách hàng", role: "CUSTOMER", icon: Building2 },
 ];
 
 const REGION_OPTIONS = ["TP.HCM", "Bình Dương", "Đồng Nai", "Long An", "Hà Nội"];
@@ -200,33 +200,42 @@ export default function AgentSearchBox({
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {lockPartnerType ? (
           <div className="text-xs font-medium">
             Đang tìm: <span className="text-brand-700">{PARTNER_TYPE_OPTIONS.find((option) => option.value === partnerType)?.label ?? ""}</span>
           </div>
         ) : (
           <div>
-            <span className="block text-xs font-medium mb-1.5">1. Loại đối tác <span className="text-rose-500">*</span></span>
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
+              <Building2 className="w-3.5 h-3.5" />Loại đối tác <span className="text-rose-500 normal-case font-normal">*</span>
+            </span>
             <div className="flex flex-wrap gap-1.5">
-              {PARTNER_TYPE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => { setPartnerType(option.value); setSpecialties(new Set()); }}
-                  className={`text-xs rounded-full border px-3 py-1.5 font-medium transition disabled:opacity-50 ${partnerType === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
-                >
-                  {option.label}
-                </button>
-              ))}
+              {PARTNER_TYPE_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const active = partnerType === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => { setPartnerType(option.value); setSpecialties(new Set()); }}
+                    className={`text-xs rounded-xl border px-3 py-2 font-semibold transition disabled:opacity-50 inline-flex items-center gap-1.5 ${active ? "text-white border-transparent shadow" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+                    style={active ? { background: "linear-gradient(135deg, #0d9488 0%, #0891b2 100%)" } : undefined}
+                  >
+                    <Icon className="w-3.5 h-3.5" />{option.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
         {partnerType && (
           <div>
-            <span className="block text-xs font-medium mb-1.5">2. Chuyên môn / sản phẩm (chọn nhiều)</span>
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
+              <Layers className="w-3.5 h-3.5" />Chuyên môn / sản phẩm
+            </span>
             <div className="flex flex-wrap gap-1.5">
               {specialtyOptions.map((option) => {
                 const active = specialties.has(option);
@@ -247,7 +256,9 @@ export default function AgentSearchBox({
         )}
 
         <div>
-          <span className="block text-xs font-medium mb-1.5">3. Khu vực <span className="text-rose-500">*</span></span>
+          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
+            <MapPin className="w-3.5 h-3.5" />Khu vực <span className="text-rose-500 normal-case font-normal">*</span>
+          </span>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {REGION_OPTIONS.map((option) => (
               <button
@@ -271,7 +282,9 @@ export default function AgentSearchBox({
         </div>
 
         <div>
-          <span className="block text-xs font-medium mb-1.5">4. MOQ tối thiểu (không bắt buộc)</span>
+          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
+            <Package className="w-3.5 h-3.5" />MOQ tối thiểu <span className="normal-case font-normal opacity-60">(không bắt buộc)</span>
+          </span>
           <div className="flex flex-wrap gap-1.5">
             {MOQ_OPTIONS.map((option) => (
               <button
@@ -287,39 +300,42 @@ export default function AgentSearchBox({
           </div>
         </div>
 
-        <label className="block text-xs font-medium">
-          5. Từ khóa khác (không bắt buộc)
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Từ khóa khác <span className="normal-case font-normal opacity-60">(không bắt buộc)</span></span>
           <input
             value={extraKeywords}
             onChange={(event) => setExtraKeywords(event.target.value)}
             disabled={loading}
-            className="input mt-1 text-xs"
+            className="input mt-1.5 text-xs"
             placeholder="VD: có chứng nhận OEKO-TEX, nhận đơn gấp..."
           />
         </label>
 
         {composedMessage && (
-          <div className="rounded-lg bg-brand-500/5 border px-3 py-2 text-xs text-brand-800 dark:text-brand-200" style={{ borderColor: "var(--border)" }}>
-            <span className="opacity-70">Câu tìm kiếm sẽ gửi: </span>{composedMessage}
+          <div
+            className="rounded-xl border px-3.5 py-2.5 text-xs text-brand-900 dark:text-brand-100"
+            style={{ borderColor: "var(--border)", background: "linear-gradient(135deg, rgba(13,148,136,0.08), rgba(6,182,212,0.08))" }}
+          >
+            <span className="opacity-60">Sẽ tìm: </span><b>{composedMessage}</b>
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           <button
             type="button"
             onClick={handleConfirmSearch}
             disabled={loading || !readyToSearch}
-            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+            className="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50 flex-1 sm:flex-none py-3"
           >
-            <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm kiếm"}
+            <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm kiếm ngay"}
           </button>
           {(partnerType || region || specialties.size > 0 || moq !== null || extraKeywords) && (
             <button type="button" onClick={resetBuilder} disabled={loading} className="btn-secondary text-xs">
               Xóa điều kiện
             </button>
           )}
-          {!readyToSearch && <span className="text-[11px] opacity-50">Chọn Loại đối tác + Khu vực để bật nút tìm kiếm</span>}
         </div>
+        {!readyToSearch && <span className="text-[11px] opacity-50 block">Chọn Loại đối tác + Khu vực để bật nút tìm kiếm</span>}
       </div>
 
       {bubbles.length > 0 && (
