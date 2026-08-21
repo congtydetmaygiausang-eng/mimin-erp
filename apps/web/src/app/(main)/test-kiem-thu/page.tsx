@@ -18,18 +18,10 @@ const TEST_CASES = [
   { id: "07", group: "Sản xuất", name: "Hoàn thiện", url: "/hoan-thien/", check: ["Hoàn thiện", "Ủi"] },
   { id: "08", group: "Sản xuất", name: "QC", url: "/qc/", check: ["QC", "lỗi"] },
   { id: "09", group: "Sản xuất", name: "Tổng hợp công đoạn", url: "/tong-hop-cong-doan/", check: ["công đoạn"] },
-  { id: "10", group: "Sản xuất", name: "Lệnh tổng", url: "/lenh-tong/", check: ["Lệnh tổng"] },
-  { id: "11", group: "Sản xuất", name: "Sản xuất ERP", url: "/san-xuat-erp/", check: ["Sản xuất"] },
-
-  // 3. Sợi - Dệt - Nhuộm
-  { id: "12", group: "Sợi-Dệt-Nhuộm", name: "Kho sợi - dây chuyền", url: "/kho-soi-day-chuyen/", check: ["sợi", "dây chuyền"] },
+  // 3. Sợi - Dệt - Nhuộm (module mới, thay 5 module cũ đã gỡ 2026-08-21)
   { id: "13", group: "Sợi-Dệt-Nhuộm", name: "Kho vải Tinh Mần", url: "/kho-vai-tinhmann/", check: ["vải"] },
   { id: "14", group: "Sợi-Dệt-Nhuộm", name: "Kho phụ liệu", url: "/kho-phu-lieu/", check: ["phụ liệu"] },
-  { id: "15", group: "Sợi-Dệt-Nhuộm", name: "Sợi dệt nhuộm ERP", url: "/soi-det-nhuom-erp/", check: ["Sợi", "Dệt", "Nhuộm"] },
-  { id: "16", group: "Sợi-Dệt-Nhuộm", name: "Sơ đồ dệt nhuộm", url: "/so-det-nhuom/", check: ["sơ đồ"] },
-  { id: "17", group: "Sợi-Dệt-Nhuộm", name: "Flow tổng quan", url: "/flow-tong-quan/", check: ["flow", "tổng quan"] },
-  { id: "18", group: "Sợi-Dệt-Nhuộm", name: "Dệt nhuộm flow", url: "/det-nhuom-flow/", check: ["dệt nhuộm"] },
-  { id: "19", group: "Sợi-Dệt-Nhuộm", name: "Mini sợi dệt", url: "/mini-soi-det/", check: ["sợi dệt"] },
+  { id: "18", group: "Sợi-Dệt-Nhuộm", name: "Dệt nhuộm flow", url: "/det-nhuom-flow/", check: ["Dệt Nhuộm", "Nhập sợi", "Giao dệt", "Giao nhuộm"] },
 
   // 4. Kho
   { id: "20", group: "Kho", name: "Kho thành phẩm", url: "/kho-thanh-pham/", check: ["thành phẩm"] },
@@ -54,7 +46,6 @@ const TEST_CASES = [
   { id: "33", group: "Nhân sự", name: "Mô hình chuẩn MIMIN OS", url: "/mohinh-phan-quyen-chuan/", check: ["vai trò", "data scope"] },
   { id: "34", group: "Nhân sự", name: "Chấm công", url: "/cham-cong/", check: ["chấm công"] },
   { id: "35", group: "Nhân sự", name: "Audit log", url: "/audit-log/", check: ["audit"] },
-  { id: "36", group: "Nhân sự", name: "Role workspaces", url: "/role-workspaces/", check: ["workspace"] },
 
   // 8. UI Mobile
   { id: "37", group: "UI Mobile", name: "UI Công nhân Cắt", url: "/ui-cat/", check: ["Module Cắt", "Cần làm", "+10"] },

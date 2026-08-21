@@ -18,7 +18,6 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/kho-vai-tinhmann", module: "kho-vai" },
   { match: "/kho-phu-lieu",    module: "kho-phu-lieu" },
   { match: "/kho-thanh-pham",  module: "kho-thanh-pham" },
-  { match: "/kho-soi-day-chuyen", module: "kho-vai" },
   { match: "/kho",             module: "kho-vai" },
   // Sản xuất
   { match: "/may",             module: "to-may" },
@@ -26,15 +25,8 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/qc",              module: "kiem-tra-chat-luong" },
   { match: "/workflow",        module: "lenh-cat" },
   { match: "/tong-hop-cong-doan", module: "bao-cao" },
-  { match: "/lenh-tong",       module: "ke-hoach-sx" },
-  { match: "/san-xuat-erp",    module: "ke-hoach-sx" },
-  { match: "/so-det-nhuom",    module: "kho-vai" },
-  { match: "/soi-det-nhuom-erp", module: "kho-vai" },
-  { match: "/mini-soi-det",    module: "kho-vai" },
   { match: "/det-nhuom-flow",  module: "kho-vai" },
-  { match: "/flow-tong-quan",  module: "kho-vai" },
   { match: "/lsx-m758-demo",   module: "ke-hoach-sx" },
-  { match: "/role-workspaces", module: "nhan-su" },
   // Bán hàng
   { match: "/don-hang",        module: "don-hang" },
   { match: "/khach-hang",      module: "khach-hang" },

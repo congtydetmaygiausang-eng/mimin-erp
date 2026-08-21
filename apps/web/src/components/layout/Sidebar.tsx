@@ -125,6 +125,7 @@ const NAV: NavItem[] = [
     subItems: [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX", icon: Calendar, iconColor: "text-teal-400", permModule: "ke-hoach-sx" },
       { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors, iconColor: "text-cyan-400", permModule: "lenh-cat" },
+      { href: "/det-nhuom-flow", label: "Dệt Nhuộm", icon: Palette, iconColor: "text-fuchsia-400", permModule: "kho-vai" },
       { href: "/to-cat-work", label: "Tổ Cắt – Việc của tôi", icon: Scissors, iconColor: "text-sky-400", permModule: "to-cat" },
       { href: "/ui-intd", label: "In / Thêu – Việc của tôi", icon: Palette, iconColor: "text-violet-400", permModule: "to-in-theu" },
       { href: "/to-may-work", label: "Tổ May – Việc của tôi", icon: Shirt, iconColor: "text-green-400", permModule: "to-may" },
