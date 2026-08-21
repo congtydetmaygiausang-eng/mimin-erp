@@ -148,7 +148,11 @@ function sameEntity(left: Candidate, right: Candidate): EntityMatch {
   if(leftTax&&rightTax&&leftTax!==rightTax)return{matched:false,matchedBy:"",conflicts:nameSimilarity>=0.8?[`Tên gần giống nhưng MST mâu thuẫn: ${leftTax} / ${rightTax}`]:[]};
   if(leftTax&&leftTax===rightTax)return{matched:true,matchedBy:"TAX_CODE",conflicts:[]};
   const leftPhones=phoneSet(left.phone),rightPhones=phoneSet(right.phone);
-  if(Array.from(leftPhones).some((phone)=>rightPhones.has(phone)))return{matched:true,matchedBy:"PHONE",conflicts:[]};
+  const sharedPhone = Array.from(leftPhones).find((phone)=>rightPhones.has(phone));
+  if(sharedPhone&&!NOISE_PHONES.has(sharedPhone)){
+    const sharedWebsite = leftDomain && leftDomain === rightDomain && !DIRECTORY_DOMAINS.some(d => leftDomain === d || leftDomain.endsWith(`.${d}`));
+    if(nameSimilarity>=0.3||addresses>=0.3||sharedWebsite)return{matched:true,matchedBy:"PHONE",conflicts:[]};
+  }
   if (left.email && right.email && left.email.toLowerCase() === right.email.toLowerCase()) return{matched:true,matchedBy:"EMAIL",conflicts:[]};
   const leftDomain = domainOf(left.website), rightDomain = domainOf(right.website);
   if (leftDomain && leftDomain === rightDomain&&!DIRECTORY_DOMAINS.some((entry)=>leftDomain===entry||leftDomain.endsWith(`.${entry}`))) return{matched:true,matchedBy:"WEBSITE",conflicts:[]};
@@ -941,7 +945,8 @@ async function searchBrave(queries: string[]): Promise<SourceResult[]> {
   }).filter((item) => item.url);
 }
 
-const DIRECTORY_DOMAINS = ["masothue.com", "yellowpages.vn", "trangvangvietnam.com", "facebook.com", "linkedin.com", "google.com", "maps.google.com"];
+const DIRECTORY_DOMAINS = ["masothue.com", "masothue.vn", "yellowpages.vn", "trangvangvietnam.com", "facebook.com", "linkedin.com", "google.com", "maps.google.com", "hosocongty.vn", "thongtindoanhnghiep.co", "danhba.vn", "danhbacongty.vn", "tratencongty.com", "infocom.vn", "danhbaonline.vn", "nhungtrangvang.com", "danhbavietnam.com", "tratencongty.vn", "congty.info", "tracuudnc.com", "tracuucongty.com", "doanhnghiepmoi.vn"];
+const NOISE_PHONES = new Set(["0588001001"]);
 
 function firstVietnamPhone(value: string): string {
   return extractVietnamPhones(value, 1)[0] ?? "";
@@ -1515,11 +1520,15 @@ async function normalizeSourceBatch(query: string, location: string, sources: So
     const sourceDigits = digits(sourceLower);
     const rawPhone = firstVietnamPhone(text(item.phone, 100)), rawEmail = text(item.email, 200).toLowerCase(), rawTaxCode = text(item.taxCode, 30), rawWebsite = text(item.website, 500);
     const phone = digits(rawPhone).length >= 9&&sourceDigits.includes(digits(rawPhone)) ? rawPhone : "";
-    const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) && sourceLower.includes(rawEmail) ? rawEmail : "";
+    let email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) && sourceLower.includes(rawEmail) ? rawEmail : "";
+    const eDom = email.split('@')[1];
+    if (eDom && DIRECTORY_DOMAINS.some(d => eDom === d || eDom.endsWith(`.${d}`))) email = "";
     const taxDigits = digits(rawTaxCode);
     const taxCode = (taxDigits.length === 10 || taxDigits.length === 13) && sourceDigits.includes(taxDigits) ? rawTaxCode : "";
     const websiteDomain = domainOf(rawWebsite);
-    const website = websiteDomain && (domainOf(source.url) === websiteDomain || sourceLower.includes(websiteDomain)) ? rawWebsite : "";
+    let website = websiteDomain && (domainOf(source.url) === websiteDomain || sourceLower.includes(websiteDomain)) ? rawWebsite : "";
+    const wDom = domainOf(website);
+    if (wDom && DIRECTORY_DOMAINS.some(d => wDom === d || wDom.endsWith(`.${d}`))) website = "";
     const proposedAddress = postalAddress(text(item.address, 500));
     const address = proposedAddress&&overlapRatio(tokenSet(proposedAddress),tokenSet(sourceLower))>=0.65?proposedAddress:"";
     const legalName = cleanCompanyLegalName(text(item.legalName, 200));
