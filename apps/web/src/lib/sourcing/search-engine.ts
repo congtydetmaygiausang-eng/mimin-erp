@@ -31,6 +31,7 @@ import { buildApi5ProviderValueAudit, api5ToolCall } from "@/lib/sourcing/api5-p
 import { buildApi6RolloutGateAudit, api6ToolCall } from "@/lib/sourcing/api6-rollout-gate";
 import { buildApi7CanaryPlanAudit, api7ToolCall } from "@/lib/sourcing/api7-canary-plan";
 import { buildApi8CanaryHealthAudit, api8ToolCall } from "@/lib/sourcing/api8-canary-health";
+import { passesBusinessIdentityGate } from "@/lib/sourcing/business-identity-gate";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -622,17 +623,16 @@ function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: 
   const distinctiveMatch = distinctiveTokens.length === 0 || distinctiveTokens.some((token) => evidenceTokens.has(token));
   const queryRelevant = overlapRatio(queryTokens, evidenceTokens) >= 0.5 && distinctiveMatch;
   if (!roleRelevant || !queryRelevant) return false;
-  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
   const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
   const officialWebsite = Boolean(candidate.website && !blockedSource(candidate.website));
-  return identityEvidence >= 2 || Boolean(candidate.taxCode) || (businessName && identityEvidence >= 1) || (officialWebsite && identityEvidence >= 1);
+  return passesBusinessIdentityGate({ legalName: candidate.legalName, identityEvidenceCount: identityEvidence, hasTaxCode: Boolean(validTaxCode(candidate.taxCode)) })
+    || (officialWebsite && identityEvidence >= 1);
 }
 
 function isRelatedBusinessCandidate(candidate: Candidate, role: string, query: string): boolean {
   if (blockedSource(candidate.sourceUrl) || isGenericCompanyName(candidate.legalName) || noiseListing(candidate.sourceTitle)) return false;
-  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
   const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
-  if (identityEvidence < 2 && !candidate.taxCode && !(businessName && identityEvidence >= 1)) return false;
+  if (!passesBusinessIdentityGate({ legalName: candidate.legalName, identityEvidenceCount: identityEvidence, hasTaxCode: Boolean(validTaxCode(candidate.taxCode)) })) return false;
   const evidence = normalized(`${candidate.legalName} ${candidate.capabilities.join(" ")} ${(candidate.businessLines ?? []).join(" ")} ${candidate.companyIntroduction ?? ""} ${candidate.sourceTitle}`);
   const roleRelevant = (ROLE_EVIDENCE_TERMS[role] ?? []).some((term) => evidence.includes(normalized(term)));
   const queryTokens = tokenSet(query);
@@ -1645,8 +1645,7 @@ function deterministicSourceCandidates(query: string, role: string, sources: Sou
     const legalName = cleanCompanyLegalName(source.title);
     // Không dùng tiêu đề bài viết chung làm tên công ty. Các thương hiệu/xưởng
     // không có tên pháp lý rõ ràng vẫn được DeepSeek xử lý ở tầng chính.
-    const hasFormalIdentity = /\b(?:công\s*ty|cty|tnhh|trách nhiệm hữu hạn|cổ phần|doanh nghiệp tư nhân|dntn|hộ kinh doanh)\b/i.test(legalName);
-    if (isGenericCompanyName(legalName) || !hasFormalIdentity) return [];
+    if (isGenericCompanyName(legalName)) return [];
     const body = `${source.title}\n${source.content}\n${source.rawContent ?? ""}`;
     const bodyTokens = tokenSet(body);
     const queryRelevant = overlapRatio(queryTokens, bodyTokens) >= 0.5;
@@ -1662,7 +1661,7 @@ function deterministicSourceCandidates(query: string, role: string, sources: Sou
     const website = "";
     const verifiedFields = [address ? "address" : "", phone ? "phone" : "", email ? "email" : "", taxCode ? "taxCode" : "", source.latitude !== undefined && source.longitude !== undefined ? "coordinates" : ""].filter(Boolean);
     const identityEvidence = [address, phone, email, taxCode].filter(Boolean).length;
-    if (identityEvidence < 2 && !taxCode) return [];
+    if (!passesBusinessIdentityGate({ legalName, identityEvidenceCount: identityEvidence, hasTaxCode: Boolean(validTaxCode(taxCode)) })) return [];
     const matchedCapability = Array.from(queryTokens).filter((token) => bodyTokens.has(token)).join(" ");
     if (!matchedCapability) return [];
     const sourceLink = candidateSource(source);
@@ -1676,7 +1675,7 @@ function deterministicSourceCandidates(query: string, role: string, sources: Sou
       email,
       taxCode,
       website,
-      entityType: "COMPANY",
+      entityType: /\b(?:công\s*ty|cty|tnhh|trách nhiệm hữu hạn|cổ phần|doanh nghiệp tư nhân|dntn)\b/i.test(legalName) ? "COMPANY" : /\bhộ kinh doanh\b/i.test(legalName) ? "HOUSEHOLD_BUSINESS" : "UNKNOWN",
       latitude: source.latitude ?? null,
       longitude: source.longitude ?? null,
       capabilities: [matchedCapability],
