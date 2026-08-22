@@ -32,8 +32,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { data: publicData } = supabase.storage.from("employee-documents").getPublicUrl(path);
-    return NextResponse.json({ url: publicData.publicUrl });
+    // Bucket này private (ảnh CCCD - dữ liệu nhạy cảm), không dùng getPublicUrl().
+    // Trả về path để lưu bền vào DB + 1 signed URL tạm để xem ngay sau khi upload;
+    // các lần xem sau phải ký lại URL mới qua /api/employee-uploads/sign.
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from("employee-documents")
+      .createSignedUrl(path, 3600);
+    if (signedError) {
+      return NextResponse.json({ error: signedError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ path, url: signedData.signedUrl });
   } catch (error) {
     console.error("employee-upload-error", error);
     return NextResponse.json({ error: "Không thể upload ảnh" }, { status: 500 });

@@ -4,7 +4,49 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 import { NHAN_SU_KHOI_DAU, type NhanSuExt } from "@/app/(main)/nhan-su/data";
 import { toSupabaseEmployeeRecord, normalizeEmployeeRecord } from "@/lib/employee-records";
+import { authFetch } from "@/lib/auth-fetch";
 import { toast } from "sonner";
+
+// Bucket "employee-documents" (ảnh CCCD) là private - avatar/cccdFrontImage/
+// cccdBackImage lưu trong DB là PATH bền, không phải URL xem được trực tiếp.
+// Hàm này ký lại URL tạm (1 tiếng) cho các path đó trước khi đưa vào state
+// hiển thị, đồng thời giữ lại path gốc ở *Path để NVFormModal lưu đúng path
+// khi sửa hồ sơ mà không upload ảnh mới. Giá trị không phải path lưu trữ
+// (avatar mẫu tĩnh /avatars/*, rỗng...) được giữ nguyên, không ký.
+const isEmployeeStoragePath = (value?: string): value is string => Boolean(value && value.startsWith("nhan-su/"));
+
+async function resolveEmployeeImageUrls(items: NhanSuExt[]): Promise<NhanSuExt[]> {
+  const paths = new Set<string>();
+  items.forEach((nv) => {
+    if (isEmployeeStoragePath(nv.avatar)) paths.add(nv.avatar);
+    if (isEmployeeStoragePath(nv.cccdFrontImage)) paths.add(nv.cccdFrontImage);
+    if (isEmployeeStoragePath(nv.cccdBackImage)) paths.add(nv.cccdBackImage);
+  });
+  if (!paths.size) return items;
+
+  let urls: Record<string, string> = {};
+  try {
+    const res = await authFetch("/api/employee-uploads/sign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paths: Array.from(paths) }),
+    });
+    const json = await res.json();
+    urls = json.urls || {};
+  } catch (err) {
+    console.warn("[nhan-su] Không ký được URL ảnh CCCD:", err);
+  }
+
+  return items.map((nv) => ({
+    ...nv,
+    avatarPath: isEmployeeStoragePath(nv.avatar) ? nv.avatar : nv.avatarPath,
+    cccdFrontPath: isEmployeeStoragePath(nv.cccdFrontImage) ? nv.cccdFrontImage : nv.cccdFrontPath,
+    cccdBackPath: isEmployeeStoragePath(nv.cccdBackImage) ? nv.cccdBackImage : nv.cccdBackPath,
+    avatar: isEmployeeStoragePath(nv.avatar) ? (urls[nv.avatar] || nv.avatar) : nv.avatar,
+    cccdFrontImage: isEmployeeStoragePath(nv.cccdFrontImage) ? (urls[nv.cccdFrontImage] || nv.cccdFrontImage) : nv.cccdFrontImage,
+    cccdBackImage: isEmployeeStoragePath(nv.cccdBackImage) ? (urls[nv.cccdBackImage] || nv.cccdBackImage) : nv.cccdBackImage,
+  }));
+}
 
 type NhanSuContextType = {
   list: NhanSuExt[];
@@ -61,7 +103,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
       try {
         // 2026-08-08 - Select cu the (tranh loi schema cache voi column moi)
         // Dung wrapper "head" de check column ton tai truoc
-        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
+        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar, cccd_front_url, cccd_back_url, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
         if (error) {
           console.warn("[nhan-su] Supabase fetch error:", error.message);
           // Fallback to localStorage
@@ -89,9 +131,11 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
               }
             });
             const uniqueList = Array.from(uniqueMap.values()).sort((a, b) => (a.stt || 0) - (b.stt || 0));
-            
-            setList(uniqueList);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(uniqueList));
+            const resolvedList = await resolveEmployeeImageUrls(uniqueList);
+            if (!mounted) return;
+
+            setList(resolvedList);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedList));
           } else {
             // Seed data if empty
             setList(NHAN_SU_KHOI_DAU);
@@ -121,9 +165,13 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
   }, []); // Run once on mount
 
   const themNhanSu = useCallback(async (nv: NhanSuExt) => {
-    // Optimistic UI update
+    // nv.avatar/cccdFrontImage/cccdBackImage ở đây là path bền (NVFormModal đã
+    // lưu path, không lưu URL ký tạm) - ký URL riêng cho state hiển thị, KHÔNG
+    // dùng bản đã ký để ghi xuống Supabase (toSupabaseEmployeeRecord dùng `nv`
+    // gốc bên dưới, không phải `display`).
+    const display = (await resolveEmployeeImageUrls([nv]))[0];
     setList(prev => {
-      const newList = [...prev, nv];
+      const newList = [...prev, display];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
       return newList;
     });
@@ -142,8 +190,9 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const suaNhanSu = useCallback(async (nv: NhanSuExt) => {
+    const display = (await resolveEmployeeImageUrls([nv]))[0];
     setList(prev => {
-      const newList = prev.map(x => x.maNV === nv.maNV ? nv : x);
+      const newList = prev.map(x => x.maNV === nv.maNV ? display : x);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
       return newList;
     });
