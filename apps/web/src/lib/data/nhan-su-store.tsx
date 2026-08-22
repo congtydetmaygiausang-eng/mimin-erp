@@ -103,7 +103,10 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
       try {
         // 2026-08-08 - Select cu the (tranh loi schema cache voi column moi)
         // Dung wrapper "head" de check column ton tai truoc
-        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar, cccd_front_url, cccd_back_url, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
+        // avatar_url (không phải "avatar") - đúng tên cột gốc trong schema.sql;
+        // toSupabaseEmployeeRecord() cũng ghi vào avatar_url, lệch tên ở đây
+        // trước đó khiến ảnh đại diện không bao giờ đọc lại được sau khi lưu.
+        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar_url, cccd_front_url, cccd_back_url, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
         if (error) {
           console.warn("[nhan-su] Supabase fetch error:", error.message);
           // Fallback to localStorage
