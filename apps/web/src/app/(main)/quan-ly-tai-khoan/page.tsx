@@ -72,7 +72,7 @@ type UserRow = {
 type UserType = "all" | "noi-bo" | "ncc";
 
 export default function QuanLyTaiKhoanPage() {
-  const { user } = useSession();
+  const { user, authSource } = useSession();
   const [list, setList] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -86,24 +86,18 @@ export default function QuanLyTaiKhoanPage() {
     setLoading(true);
     try {
       const res = await authFetch("/api/admin/users", { cache: "no-store" });
-      if (!res.ok) throw new Error("API failed");
       const json = await res.json();
-      if (json.error) {
-        throw new Error(json.error);
-      } else {
-        setList(json.users || []);
+      if (!res.ok || json.error) {
+        throw new Error(json.error || `Tải danh sách thất bại (${res.status})`);
       }
+      setList(json.users || []);
     } catch (e) {
-      // toast.error("Lỗi fetch (Static Export fallback to mock): " + (e as Error).message);
-      // STATIC EXPORT FALLBACK (mock data for demo)
-      setList([
-        { id: "1", email: "admin@mimin.vn", name: "A Cường (Admin)", role: "admin", chucVu: "Giám đốc", phongBan: "ban-giam-doc", maNV: "GD001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "2", email: "kehoach@mimin.vn", name: "Kế hoạch", role: "kehoach", chucVu: "Trưởng phòng", phongBan: "ban-dieu-hanh", maNV: "KH001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "3", email: "sanxuat@mimin.vn", name: "Sản xuất", role: "sanxuat", chucVu: "Quản đốc", phongBan: "ban-dieu-hanh", maNV: "SX001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "4", email: "kho@mimin.vn", name: "Thủ kho", role: "kho", chucVu: "Thủ kho", phongBan: "ban-kho", maNV: "KHO001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "5", email: "qc@mimin.vn", name: "Nhân viên QC", role: "qc", chucVu: "KCS", phongBan: "ban-qc", maNV: "QC001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "6", email: "giao@mimin.vn", name: "Giao hàng", role: "viewer", chucVu: "Tài xế", phongBan: "khac", maNV: "GH001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      ]);
+      // Không còn fallback về mock data khi lỗi - trước đây fallback này che
+      // giấu lỗi permission/token thật (vd "permission denied for table
+      // users"), khiến trang trông như đang chạy bình thường với dữ liệu giả
+      // cho tới khi bấm "Tạo TK" mới lộ ra lỗi thật.
+      toast.error("Không tải được danh sách tài khoản: " + (e as Error).message);
+      setList([]);
     } finally {
       setLoading(false);
     }
@@ -175,6 +169,20 @@ export default function QuanLyTaiKhoanPage() {
           </button>
         </div>
       </div>
+
+      {/* Cảnh báo phiên đăng nhập không phải Supabase Auth thật - mọi thao tác
+          tạo/sửa/khoá/xoá tài khoản (API /api/admin/users) sẽ bị từ chối vì
+          không có access token thật để gửi lên server. */}
+      {authSource === "demo" && (
+        <div className="card p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            Phiên đăng nhập hiện tại đang ở chế độ dự phòng (không phải Supabase Auth thật) - có thể do sai mật khẩu Supabase.
+            Các thao tác <b>Tạo / Sửa / Khoá / Xoá tài khoản</b> ở trang này sẽ báo lỗi &quot;Thiếu access token&quot;.
+            Vui lòng đăng xuất và đăng nhập lại đúng mật khẩu.
+          </span>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

@@ -1129,7 +1129,7 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
   const keys = geminiApiKeys();
   if (!keys.length) return { candidates, sourceCount: 0, enrichedCount: 0 };
   const key = keys[0];
-  const model = "gemini-1.5-pro";
+  const model = orderedGeminiModels(await supportedGeminiModels(key))[0] ?? "gemini-1.5-flash";
 
   const targets = candidates.filter((item) => !item.phone || !item.address).slice(0, 10);
   if (!targets.length) return { candidates, sourceCount: 0, enrichedCount: 0 };
@@ -1248,14 +1248,18 @@ async function supportedGeminiModels(key: string): Promise<string[]> {
 
 function orderedGeminiModels(available: string[]): string[] {
   const configured = (process.env.GEMINI_SEARCH_MODEL ?? "").trim().replace(/^models\//, "");
-  const preferred = [configured, "gemini-1.5-pro", "gemini-2.0-pro-exp", "gemini-1.5-flash", "gemini-2.0-flash"]
+  // Ưu tiên flash trước pro: gemini-1.5-pro có quota free-tier rất thấp (thường
+  // chỉ vài request/phút), rất dễ HTTP 429 khi 1 API key phải gánh nhiều lượt gọi
+  // trong cùng 1 lượt tìm (source discovery + enrichment + chuẩn hoá danh bạ).
+  // Flash đủ tốt cho các tác vụ trích xuất/tìm kiếm ở đây và có quota cao hơn hẳn.
+  const preferred = [configured, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-pro-exp"]
     .filter(Boolean);
   const discovered = available
     .filter((model) => /(pro|flash)/i.test(model) && !/(image|tts|live|preview)/i.test(model))
     .sort((left, right) => {
-      const isProLeft = /pro/i.test(left) ? 1 : 0;
-      const isProRight = /pro/i.test(right) ? 1 : 0;
-      return isProRight - isProLeft || left.localeCompare(right);
+      const isFlashLeft = /flash/i.test(left) ? 1 : 0;
+      const isFlashRight = /flash/i.test(right) ? 1 : 0;
+      return isFlashRight - isFlashLeft || left.localeCompare(right);
     });
   const candidates = Array.from(new Set([...preferred, ...discovered]));
   return available.length ? candidates.filter((model) => available.includes(model)).slice(0, 5) : candidates.slice(0, 4);
@@ -1441,7 +1445,10 @@ function providerErrorCode(reason: unknown): string {
     if (httpStatus) return `HTTP ${httpStatus}`;
     const providerStatus = reason.message.match(/Google Places ([A-Z_]+)/)?.[1];
     if (providerStatus) return providerStatus;
-    if (reason.name === "TimeoutError" || /timeout/i.test(reason.message)) return "TIMEOUT";
+    // AbortSignal.timeout() nên tạo DOMException tên "TimeoutError" theo spec, nhưng
+    // 1 số runtime (vd undici trên Vercel) có lúc trả về "AbortError"/"The operation
+    // was aborted" thay vì literal "timeout" - trước đây rơi vào REQUEST_FAILED mù mờ.
+    if (reason.name === "TimeoutError" || reason.name === "AbortError" || /timeout|aborted/i.test(reason.message)) return "TIMEOUT";
   }
   return "REQUEST_FAILED";
 }
@@ -1827,7 +1834,7 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
   const keys = geminiApiKeys();
   if (!keys.length || !sources.length) return [];
   const key = keys[0];
-  const model = "gemini-1.5-pro";
+  const model = orderedGeminiModels(await supportedGeminiModels(key))[0] ?? "gemini-1.5-flash";
 
   const targets = sources.slice(0, 15);
   const normalized: Candidate[][] = [];
