@@ -1628,7 +1628,11 @@ async function searchSources(
 }
 
 function fallbackCandidates(query: string, sources: SourceResult[]): Candidate[] {
-  return sources.filter((source) => !isGenericCompanyName(source.title)).slice(0, 20).map((source) => ({ legalName: cleanCompanyLegalName(source.title), address: postalAddress(source.content), province: "", district: "", phone: "", email: "", taxCode: "", website: "", latitude: source.latitude ?? null, longitude: source.longitude ?? null, capabilities: [query], sourceUrl: source.url, sourceTitle: source.title, sources:[candidateSource(source)], confidence: 50, verifiedFields: source.latitude !== undefined ? ["coordinates"] : [], verificationStatus: "UNVERIFIED", lastVerifiedAt: new Date().toISOString() }));
+  return sources.flatMap((source) => {
+    const legalName = cleanCompanyLegalName(source.title);
+    if (!legalName || isGenericCompanyName(legalName)) return [];
+    return [{ legalName, address: postalAddress(source.content), province: "", district: "", phone: "", email: "", taxCode: "", website: "", latitude: source.latitude ?? null, longitude: source.longitude ?? null, capabilities: [query], sourceUrl: source.url, sourceTitle: source.title, sources:[candidateSource(source)], confidence: 50, verifiedFields: source.latitude !== undefined ? ["coordinates"] : [], verificationStatus: "UNVERIFIED" as const, lastVerifiedAt: new Date().toISOString() }];
+  }).slice(0, 20);
 }
 
 /**
@@ -2059,8 +2063,11 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
     const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com"]);
     const isSeoArticle = (s: SourceResult) => /\/(?:top|danh-sach|huong-dan|bai-viet|tin-tuc|blog|kinh-nghiem|post|article|tong-hop)\b/i.test(s.url) || /\b(?:top \d+|danh sách(?: \d+)?|hướng dẫn|kinh nghiệm|tổng hợp|tại sao|có nên|uy tín nhất|tốt nhất|giá rẻ|báo giá)\b/i.test(s.title);
-    const directorySources = discoverySources.filter((s) => directoryDomains.has(domainOf(s.url) ?? ""));
-    const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? "") && !isSeoArticle(s));
+    const directorySources = discoverySources.filter((s) => directoryDomains.has(domainOf(s.url) ?? "") || isSeoArticle(s));
+    // Bài tổng hợp vẫn là nguồn chứa nhiều doanh nghiệp có giá trị. Cho DeepSeek
+    // đọc nội dung để tách tên thật bên trong; bộ lọc danh tính sẽ chặn chính tiêu
+    // đề SEO, tránh biến câu hỏi/bài viết thành tên công ty như trước đây.
+    const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? ""));
 
     const [directoryCandidates, normalizedCandidates] = await Promise.all([
       observeApi0Call("Gemini Directory Extraction", api0ProcessingDurations, () => normalizeDirectoriesWithGemini(query, location, directorySources)),
