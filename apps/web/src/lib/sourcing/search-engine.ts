@@ -27,6 +27,7 @@ import { buildApi1ProviderContractAudit, api1ToolCall } from "@/lib/sourcing/api
 import { buildApi2RoutingPolicyAudit, api2ToolCall } from "@/lib/sourcing/api2-routing-policy";
 import { buildApi3ProviderBudgetAudit, api3ToolCall } from "@/lib/sourcing/api3-provider-budget";
 import { buildApi4ResilienceAudit, api4ToolCall } from "@/lib/sourcing/api4-resilience-audit";
+import { buildApi5ProviderValueAudit, api5ToolCall } from "@/lib/sourcing/api5-provider-value";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -2231,6 +2232,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     });
     const api3Audit = buildApi3ProviderBudgetAudit(api0Baseline.operations);
     const api4Audit = buildApi4ResilienceAudit(api0Baseline.operations);
+    const api5Audit = buildApi5ProviderValueAudit({ observations: api0Baseline.operations, finalCandidateCount: candidates.length });
 
     const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
     const dr0Baseline = buildDr0OperationalBaseline({ startedAtMs: dr0StartedAtMs, diagnostics, candidates });
@@ -2275,7 +2277,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       missingCriticalEvidence: dr5Audit.missingCriticalEvidence,
       goldenDatasetValidated: dr7Audit.goldenDatasetValidated,
     });
-    result.diagnostics = { ...result.diagnostics, api0Baseline, api1Audit, api2Audit, api3Audit, api4Audit, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit, dr9Audit };
+    result.diagnostics = { ...result.diagnostics, api0Baseline, api1Audit, api2Audit, api3Audit, api4Audit, api5Audit, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit, dr9Audit };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
@@ -2286,7 +2288,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
-      toolCalls: [api0ToolCall(api0Baseline), api1ToolCall(api1Audit), api2ToolCall(api2Audit), api3ToolCall(api3Audit), api4ToolCall(api4Audit), dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit), dr9ToolCall(dr9Audit)],
+      toolCalls: [api0ToolCall(api0Baseline), api1ToolCall(api1Audit), api2ToolCall(api2Audit), api3ToolCall(api3Audit), api4ToolCall(api4Audit), api5ToolCall(api5Audit), dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit), dr9ToolCall(dr9Audit)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),
