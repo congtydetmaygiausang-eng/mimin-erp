@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
+import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
 import type { Tab, LoaiKho } from "./data";
@@ -27,15 +28,40 @@ export default function KhoPhuLieuPage() {
   const [uploadingVT, setUploadingVT] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const PL_IMAGES_KEY = "mimin_kho_phuLieu_images";
+  const PL_INVENTORY_KEY = "mimin_kho_phuLieu_custom";
+
+  // Load ảnh + inventory đã sửa từ localStorage khi mount
+  useEffect(() => {
+    try {
+      const imgRaw = localStorage.getItem(PL_IMAGES_KEY);
+      if (imgRaw) setInventoryImages(JSON.parse(imgRaw));
+      const invRaw = localStorage.getItem(PL_INVENTORY_KEY);
+      if (invRaw) {
+        const saved = JSON.parse(invRaw) as Record<string, Partial<KhoVai>>;
+        setInventory(prev => prev.map(v => saved[v.maVT] ? { ...v, ...saved[v.maVT] } : v));
+      }
+    } catch {}
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && uploadingVT) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setInventoryImages((prev) => ({ ...prev, [uploadingVT]: e.target?.result as string }));
+      reader.onload = (ev) => {
+        const url = ev.target?.result as string;
+        // Persist ảnh qua F5
+        setInventoryImages(prev => {
+          const next = { ...prev, [uploadingVT]: url };
+          localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
+          return next;
+        });
+        toast.success("Đã tải ảnh và lưu thành công!");
       };
       reader.readAsDataURL(file);
     }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadingVT(null);
   };
 
   // KPIs
@@ -65,8 +91,34 @@ export default function KhoPhuLieuPage() {
   [giaoDich, search, tab, inventory]);
 
   const handleSaveEdit = (v: KhoVai) => {
-    setInventory((prev) => prev.map((item) => (item.maVT === v.maVT ? { ...item, ...editForm } : item)));
-    toast.success("Đã lưu thông tin phụ liệu!");
+    const updated = { ...v, ...editForm };
+    // 1. Cập nhật state React
+    setInventory((prev) => prev.map((item) => (item.maVT === v.maVT ? updated : item)));
+
+    // 2. Persist vào localStorage (survive F5)
+    try {
+      const raw = localStorage.getItem(PL_INVENTORY_KEY);
+      const saved = raw ? JSON.parse(raw) : {};
+      saved[v.maVT] = { tenVT: updated.tenVT, donGia: updated.donGia };
+      localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(saved));
+    } catch {}
+
+    // 3. Sync lên Supabase (fire-and-forget, có guard)
+    if (isSupabaseEnabled && supabase) {
+      supabase.from("kho").upsert(
+        { sku: v.maVT, ten: updated.tenVT, sl: v.tonKho, don_vi: v.dvt, don_gia: updated.donGia, loai: "phu-lieu" },
+        { onConflict: "sku" }
+      ).then(({ error }) => {
+        if (error) {
+          toast.error("Lỗi đồng bộ Supabase: " + error.message);
+        } else {
+          toast.success("✅ Đã lưu thông tin phụ liệu lên Supabase!");
+        }
+      });
+    } else {
+      toast.success("Đã lưu thông tin phụ liệu (localStorage)!");
+    }
+
     setEditingVT(null);
   };
 

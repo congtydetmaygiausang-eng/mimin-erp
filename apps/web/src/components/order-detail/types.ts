@@ -26,6 +26,8 @@ export type OrderItem = {
   mauCode?: string;
   /** Tên màu hiển thị - VD: "Đen" */
   mauTen?: string;
+  /** Ảnh đại diện của biến thể màu */
+  mauImg?: string;
   /** Size - "M", "L", "XL", "2XL", "3XL" */
   size?: string;
   /** SKU đầy đủ - VD: "A001-DEN-L" */

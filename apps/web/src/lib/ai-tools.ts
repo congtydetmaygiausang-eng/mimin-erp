@@ -445,6 +445,19 @@ export const getToolsForDomain = (domains: string[]) => {
             required: ["role", "loaiPhieu", "phieuId", "hanhDong"]
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "getLenhCatList",
+          description: "Lấy danh sách lệnh cắt từ hệ thống.",
+          parameters: {
+            type: "object",
+            properties: {
+              trangThai: { type: "string", description: "Trạng thái lệnh cắt cần lọc" }
+            }
+          }
+        }
       }
     );
   }
@@ -489,6 +502,7 @@ export const getAllToolsForDomain = (domains: string[]) => {
     tools.updateCongDoan = updateCongDoan;
     tools.deletePhieu = deletePhieu;
     tools.approvePhieu = approvePhieu;
+    tools.getLenhCatList = getLenhCatList;
   }
 
   return tools;

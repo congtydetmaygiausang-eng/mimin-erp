@@ -225,6 +225,38 @@ export default function KhoThanhPhamPage() {
 
   const handleSaveVariant = (updated: SanPhamTP) => {
     update(dsSanPham.map((s) => (s.id === updated.id ? updated : s)));
+    
+    // Đồng bộ sang Danh mục sản phẩm nếu đã có
+    const existingDM = dsDanhMuc.find(d => d.id === updated.maSP || d.maSP === updated.maSP);
+    if (existingDM) {
+      let changed = false;
+      const newDM = { ...existingDM };
+      
+      if (updated.giaBanLe && (updated.giaBanLe > newDM.giaBanDuKien || newDM.giaBanDuKien === 0)) {
+        newDM.giaBanDuKien = updated.giaBanLe;
+        changed = true;
+      }
+      
+      if (newDM.dsMau) {
+        const mauIndex = newDM.dsMau.findIndex(m => m.ten === updated.mau);
+        if (mauIndex >= 0) {
+          const oldMau = newDM.dsMau[mauIndex];
+          const newImg = updated.hinhAnh?.[0] || oldMau.img;
+          const newVid = updated.video || oldMau.video;
+          if (newImg !== oldMau.img || newVid !== oldMau.video) {
+            const newDsMau = [...newDM.dsMau];
+            newDsMau[mauIndex] = { ...oldMau, img: newImg, video: newVid };
+            newDM.dsMau = newDsMau;
+            changed = true;
+          }
+        }
+      }
+      
+      if (changed) {
+        suaSP(newDM.id, newDM);
+      }
+    }
+    
     toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
   };
 

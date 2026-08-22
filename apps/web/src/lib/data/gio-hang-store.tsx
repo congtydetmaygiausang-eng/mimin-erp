@@ -28,6 +28,7 @@ export interface GioHangItem {
 interface GioHangContextType {
   items: GioHangItem[];
   themVaoGio: (sp: SanPham) => void;
+  themNhieuVaoGio: (items: GioHangItem[]) => void;
   capNhatSoLuong: (id: string, soLuong: number) => void;
   xoaKhoiGio: (id: string) => void;
   xoaGio: () => void;
@@ -90,6 +91,25 @@ export function GioHangProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const themNhieuVaoGio = useCallback((newItems: GioHangItem[]) => {
+    setItems((prev) => {
+      let next = [...prev];
+      for (const item of newItems) {
+        if (item.soLuong <= 0) continue;
+        const existingIdx = next.findIndex((it) => it.id === item.id);
+        if (existingIdx >= 0) {
+          next[existingIdx] = { ...next[existingIdx], soLuong: next[existingIdx].soLuong + item.soLuong };
+        } else {
+          next.push(item);
+        }
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const capNhatSoLuong = useCallback((id: string, soLuong: number) => {
     setItems((prev) => {
       const next =
@@ -122,7 +142,16 @@ export function GioHangProvider({ children }: { children: ReactNode }) {
 
   return (
     <GioHangContext.Provider
-      value={{ items, themVaoGio, capNhatSoLuong, xoaKhoiGio, xoaGio, tongSoLuong, tongTien }}
+      value={{
+        items,
+        themVaoGio,
+        themNhieuVaoGio,
+        capNhatSoLuong,
+        xoaKhoiGio,
+        xoaGio,
+        tongSoLuong,
+        tongTien,
+      }}
     >
       {children}
     </GioHangContext.Provider>

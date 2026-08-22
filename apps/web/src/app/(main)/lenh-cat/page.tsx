@@ -75,7 +75,7 @@ export default function LenhCatPage() {
   const handleCreate = () => { setEditId(null); setShowModal(true); };
   const handleDelete = (id: string) => {
     if (confirm(`Xoá ${id}? Hành động này không thể hoàn tác.`)) {
-      xoaLenhCat(id, (typeof window !== 'undefined' && (window as any).__currentUser) || null as any);
+      xoaLenhCat(id, user!);
       toast.success(`Đã xoá ${id}`);
     }
   };

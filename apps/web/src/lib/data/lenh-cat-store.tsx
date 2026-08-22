@@ -123,6 +123,29 @@ export type CatChiTiet = {
   epKeo: CatChiTietTrangThai;
 };
 
+// Lịch sử 1 lần QC kiểm tra (mỗi lần kiểm = 1 phần tử)
+export type LichSuQCItem = {
+  lan: number;                       // Lần kiểm thứ mấy (1, 2, 3...)
+  ngay: string;                      // ISO date
+  slDat: number;                     // SL đạt lần này
+  slLoi: number;                     // SL lỗi lần này
+  loaiLoi?: string;                  // Loại lỗi
+  khauGayLoi?: string;               // Khâu gây ra lỗi (Tổ May, Tổ Cắt...)
+  nguoiKiem?: string;                // Người QC kiểm
+  ketQua: "dat" | "tra_lai" | "hoan_tat"; // dat=đạt hết, tra_lai=trả về sửa, hoan_tat=đã xong vòng lặp
+  ghiChu?: string;
+  daPhatQuaHan?: boolean;
+};
+
+// Lịch sử nhập SL từng sự kiện (dùng cho nhập kho + công nợ + lương)
+export type LichSuNhapSLItem = {
+  ngay: string;                      // ISO date
+  nguoiNhap?: string;               // Người nhập
+  soLuong: number;                   // SL tại sự kiện này
+  loai: "nhan_viec" | "hoan_thanh" | "sua_loi" | "qc_dat" | "tra_loi" | "nhap_kho";
+  ghiChu?: string;
+};
+
 type CongDoanBase = {
   id: string; // e.g. "cat", "mayAo", "in", "theu" or auto-generated
   tenCongDoan: string; // e.g. "Cắt", "May Áo", "In", "Thêu", "Ủi", "Đóng Gói", "In Chuyển Nhiệt"
@@ -137,8 +160,8 @@ type CongDoanBase = {
   ghiChu?: string;
   // Workflow tracking (P1 - 2026-08-09)
   trangThaiCD?: TrangThaiCongDoan; // Trạng thái công đoạn
-  soLuongHoanThanh?: number;       // SP đã làm xong
-  soLuongLoi?: number;             // SP lỗi
+  soLuongHoanThanh?: number;       // SP đã làm xong (tổng đạt cuối)
+  soLuongLoi?: number;             // SP lỗi (còn tồn)
   lyDoLoi?: string;                // Lý do lỗi
   ngayNhanViec?: string;           // Ngày nhận việc
   ngayHoanThanh?: string;          // Ngày hoàn thành thực tế
@@ -151,6 +174,17 @@ type CongDoanBase = {
     soLuongDat: number;
     soLuongLoi: number;
   }[];
+  // === QC DEFECT RETURN FLOW (P2 - 2026-08-22) ===
+  // Lịch sử các lần QC kiểm tra (vòng lặp May ↔ QC)
+  lichSuQC?: LichSuQCItem[];
+  // SL đã sửa xong (Tổ May sửa và trả lại QC)
+  soLuongSuaXong?: number;
+  // SL phế phẩm (lỗi không sửa được - loại bỏ)
+  soLuongPhePham?: number;
+  // SL đạt cuối cùng = tổng SL đạt qua tất cả vòng QC (dùng để tính công nợ/lương)
+  soLuongDatCuoi?: number;
+  // Lịch sử nhập SL toàn bộ sự kiện (dùng cho nhập kho, công nợ, lương)
+  lichSuNhapSL?: LichSuNhapSLItem[];
 };
 
 
@@ -378,6 +412,9 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  // isSupabaseReady: set true sau khi Supabase fetch xong (thành công hoặc thất bại)
+  // Dùng để đồng bộ với isLoaded (localStorage) trước khi render Provider
+  const [isSupabaseDone, setIsSupabaseDone] = useState(false);
 
   // Load Lệnh Cắt từ Supabase
   useEffect(() => {
@@ -431,7 +468,10 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error("Lỗi fetch Lệnh cắt", err);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          setIsSupabaseDone(true);
+        }
       }
     };
     loadData();
@@ -619,6 +659,12 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     conLai?: number;
     catChiTiet?: CatChiTiet;
     chiTietMau?: any;
+    // QC Defect Return Flow (P2)
+    lichSuQC?: LichSuQCItem[];
+    soLuongSuaXong?: number;
+    soLuongPhePham?: number;
+    soLuongDatCuoi?: number;     // SL đạt cuối - dùng cho công nợ/lương
+    lichSuNhapSL?: LichSuNhapSLItem[];
   }) => {
     // Tính TRƯỚC, đồng bộ, từ closure `dsLenhCat` hiện tại - KHÔNG được gán biến
     // ngoài bên trong callback của setDsLenhCat rồi đọc lại ngay sau đó. Callback
@@ -642,6 +688,14 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 conLai: data.conLai ?? pc.conLai,
                 catChiTiet: data.catChiTiet ?? pc.catChiTiet,
                 chiTietMau: data.chiTietMau ?? pc.chiTietMau,
+                // QC Defect Return Flow fields
+                lichSuQC: data.lichSuQC ?? pc.lichSuQC,
+                soLuongSuaXong: data.soLuongSuaXong ?? pc.soLuongSuaXong,
+                soLuongPhePham: data.soLuongPhePham ?? pc.soLuongPhePham,
+                soLuongDatCuoi: data.soLuongDatCuoi ?? pc.soLuongDatCuoi,
+                lichSuNhapSL: data.lichSuNhapSL
+                  ? [...(pc.lichSuNhapSL || []), ...data.lichSuNhapSL]
+                  : pc.lichSuNhapSL,
                 ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
                   ? new Date().toISOString().slice(0, 10)
                   : pc.ngayNhanViec,
@@ -660,13 +714,19 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     if (data.trangThaiCD === 'hoan_thanh' && lcCurrent && newPhanCong) {
       const pc = newPhanCong.find((x: any) => x.id === congDoanId);
       if (pc && pc.nguoiMa) {
+        // Ưu tiên dùng soLuongDatCuoi (tổng SL đạt sau tất cả vòng QC)
+        // Nếu chưa có (khâu không qua QC nư Cắt/Ủi) dùng soLuongHoanThanh rồi tongSL
+        const slDeTinhCongNo =
+          data.soLuongDatCuoi ?? pc.soLuongDatCuoi ??
+          data.soLuongHoanThanh ?? pc.soLuongHoanThanh ??
+          pc.soLuong ?? lcCurrent.tongSL;
         congNoSyncInfo = {
           lenhCatId: lenhId,
           congDoan: pc.tenCongDoan || "Gia công",
           nguoiMa: pc.nguoiMa,
           nguoiTen: pc.nguoiTen || "Chưa rõ",
           donGia: pc.donGia || 0,
-          soLuongGiao: data.soLuongHoanThanh ?? pc.soLuongHoanThanh ?? pc.soLuong ?? lcCurrent.tongSL,
+          soLuongGiao: slDeTinhCongNo,
           ngayGiao: pc.ngayNhanViec,
           daThanhToan: pc.daThanhToan || 0,
         };
@@ -710,7 +770,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  if (!isLoaded) return null;
+  // Chỉ render khi cả localStorage và Supabase đều đã sẵn sàng
+  if (!isLoaded || !isSupabaseDone) return null;
 
   return (
     <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, capNhatCongDoan, reset, loading }}>
