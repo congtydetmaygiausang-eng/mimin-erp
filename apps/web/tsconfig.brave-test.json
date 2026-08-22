@@ -27,6 +27,8 @@
     "src/lib/sourcing/dr6-decision-gate.ts",
     "src/lib/sourcing/dr6-decision-gate.test.ts",
     "src/lib/sourcing/dr7-rollout-readiness.ts",
-    "src/lib/sourcing/dr7-rollout-readiness.test.ts"
+    "src/lib/sourcing/dr7-rollout-readiness.test.ts",
+    "src/lib/sourcing/dr8-quality-drift.ts",
+    "src/lib/sourcing/dr8-quality-drift.test.ts"
   ]
 }

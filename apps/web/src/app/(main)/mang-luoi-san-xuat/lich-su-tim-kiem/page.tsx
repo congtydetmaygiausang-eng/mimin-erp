@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, Bot, Building2, ChevronDown, ChevronUp, CircleSlash2, Clock, Database, FileCheck2, Gauge, GitBranch, ListChecks, MapPin, Network, RefreshCw, Scale, Search, Sparkles, Timer } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, CircleSlash2, Clock, Database, FileCheck2, Gauge, GitBranch, ListChecks, MapPin, Network, RefreshCw, Scale, Search, Sparkles, Timer, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -22,6 +22,7 @@ import { readDr4Audit } from "@/lib/sourcing/dr4-evidence-ledger";
 import { readDr5Audit } from "@/lib/sourcing/dr5-claim-verifier";
 import { readDr6Audit } from "@/lib/sourcing/dr6-decision-gate";
 import { readDr7Audit } from "@/lib/sourcing/dr7-rollout-readiness";
+import { readDr8Audit } from "@/lib/sourcing/dr8-quality-drift";
 
 const PAGE_SIZE = 15;
 
@@ -196,6 +197,7 @@ export default function LichSuTimKiemPage() {
               const dr5 = readDr5Audit(row.tool_calls);
               const dr6 = readDr6Audit(row.tool_calls);
               const dr7 = readDr7Audit(row.tool_calls);
+              const dr8 = readDr8Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -345,6 +347,21 @@ export default function LichSuTimKiemPage() {
                             <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Bộ dữ liệu vàng</p><p className="mt-1 text-sm font-bold">{dr7.goldenDatasetValidated ? "Đã duyệt" : "Chưa duyệt"}</p></div>
                           </div>
                           {dr7.nextActions.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr7.nextActions.join(" · ")}</p>}
+                        </section>
+                      )}
+                      {dr8 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Giám sát drift DR8">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold"><TrendingDown className="h-4 w-4 text-purple-600" /> DR8 · Giám sát drift (shadow)</div>
+                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr8.status === "STABLE" ? "bg-emerald-50 text-emerald-700" : dr8.status === "BASELINE_REQUIRED" ? "bg-slate-100 text-slate-700" : dr8.status === "WATCH" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>{dr8.status}</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Nguồn / hồ sơ</p><p className="mt-1 text-sm font-bold">{dr8.current.sourceCount} / {dr8.current.candidateCount}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Độ đầy đủ hồ sơ</p><p className="mt-1 text-sm font-bold">{dr8.current.profileCompletenessPercent}%</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Suy giảm trung bình</p><p className="mt-1 text-sm font-bold">{dr8.averageDegradationPercent}%</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Chỉ số suy giảm</p><p className="mt-1 text-sm font-bold text-rose-600">{dr8.degradedMetricCount}</p></div>
+                          </div>
+                          {dr8.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr8.warnings.join(" · ")}</p>}
                         </section>
                       )}
                       {row.assistant_reply && (
