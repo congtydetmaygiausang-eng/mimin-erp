@@ -82,6 +82,7 @@ export function createOrderItemFromVariant(variant: {
   spTen: string;
   mauCode?: string;
   mauTen?: string;
+  mauImg?: string;
   size?: string;
   sku?: string;
   donGia: number;
@@ -92,6 +93,7 @@ export function createOrderItemFromVariant(variant: {
     spTen: variant.spTen,
     mauCode: variant.mauCode,
     mauTen: variant.mauTen,
+    mauImg: variant.mauImg,
     size: variant.size,
     sku: variant.sku,
     soLuong: 1,

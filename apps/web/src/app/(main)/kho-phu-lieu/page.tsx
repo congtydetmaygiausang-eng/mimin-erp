@@ -106,14 +106,19 @@ export default function KhoPhuLieuPage() {
     // 3. Sync lên Supabase (fire-and-forget, có guard)
     if (isSupabaseEnabled && supabase) {
       supabase.from("kho").upsert(
-        { sku: v.maVT, ten: updated.tenVT, don_gia: updated.donGia, loai: "phu-lieu" },
+        { sku: v.maVT, ten: updated.tenVT, sl: v.tonKho, don_vi: v.dvt, don_gia: updated.donGia, loai: "phu-lieu" },
         { onConflict: "sku" }
       ).then(({ error }) => {
-        if (error) console.warn("[kho-phu-lieu] Supabase upsert error:", error.message);
+        if (error) {
+          toast.error("Lỗi đồng bộ Supabase: " + error.message);
+        } else {
+          toast.success("✅ Đã lưu thông tin phụ liệu lên Supabase!");
+        }
       });
+    } else {
+      toast.success("Đã lưu thông tin phụ liệu (localStorage)!");
     }
 
-    toast.success("Đã lưu thông tin phụ liệu! (localStorage + Supabase)");
     setEditingVT(null);
   };
 

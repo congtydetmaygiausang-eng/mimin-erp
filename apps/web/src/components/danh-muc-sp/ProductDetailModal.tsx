@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle, Plus, Image as ImageIcon } from "lucide-react";
+import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle, Plus, Image as ImageIcon, FileText } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
@@ -9,6 +9,8 @@ interface ProductDetailModalProps {
   sp: SanPham | null;
   onClose: () => void;
   onAddToCart?: (sp: SanPham) => void;
+  onCreateOrder?: (sp: SanPham) => void;
+  onProduceOrder?: (sp: SanPham) => void;
   onEdit?: (sp: SanPham) => void;
   onDelete?: (sp: SanPham) => void;
 }
@@ -32,12 +34,15 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
   const loaiInfoLabel = LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP;
   const laHot = sp.id.endsWith("3") || sp.id.endsWith("7") || (sp.daBan && sp.daBan > 1000);
 
+  const initialColorIdx = sp.dsMau?.findIndex(m => m.img === (sp.hinhAnh || sp.dsMau?.[0]?.img)) || 0;
+  const [selectedColorIndex, setSelectedColorIndex] = useState(initialColorIdx !== -1 ? initialColorIdx : 0);
   const [selectedImage, setSelectedImage] = useState(sp.hinhAnh || sp.dsMau?.[0]?.img || "");
   const [selectedVideo, setSelectedVideo] = useState(sp.dsMau?.find(m => m.img === selectedImage)?.video || sp.dsMau?.[0]?.video || "");
   const [viewingMode, setViewingMode] = useState<"video" | "image">(selectedVideo ? "video" : "image");
   const [showFullScreen, setShowFullScreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fsVideoRef = useRef<HTMLVideoElement>(null);
+  const selectedColor = sp.dsMau?.[selectedColorIndex];
 
   if (!mounted) return null;
 
@@ -48,11 +53,11 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
       onClose();
     }}>
       <div 
-        className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full flex flex-col md:flex-row animate-slide-up my-auto"
+        className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full flex flex-col md:flex-row animate-slide-up my-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Left: Image Panel */}
-        <div className="w-full md:w-5/12 bg-gradient-to-br from-cyan-50 to-teal-50 relative flex flex-col justify-center items-center min-h-[300px] border-b md:border-b-0 md:border-r border-slate-200">
+        <div className="w-full md:w-1/2 bg-gradient-to-br from-cyan-50 to-teal-50 relative flex flex-col justify-center items-center min-h-[400px] md:min-h-[600px] border-b md:border-b-0 md:border-r border-slate-200">
           <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
             <span className={`px-3 py-1 text-xs font-bold rounded-lg shadow ${trangThaiInfo.className}`}>
               {trangThaiInfo.label}
@@ -101,21 +106,40 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                 <div 
                   key={i} 
                   onClick={() => {
+                    setSelectedColorIndex(i);
                     if (m.img) setSelectedImage(m.img);
                     if (videoRef.current) videoRef.current.pause();
                     setSelectedVideo(m.video || "");
                     setViewingMode(m.video ? "video" : "image");
                   }}
-                  className={`w-6 h-6 rounded-full border-2 ${selectedImage === m.img ? "border-emerald-500 scale-125" : "border-white"} shadow-md cursor-pointer hover:scale-110 transition-transform`}
-                  style={{ background: m.ten === "Đen" ? "#1f2937" : m.ten === "Trắng" ? "#f9fafb" : m.ten?.toLowerCase().includes("xanh") ? "#0891b2" : m.ten?.toLowerCase().includes("đỏ") || m.ten?.toLowerCase().includes("hồng") ? "#ec4899" : m.ten?.toLowerCase().includes("vàng") || m.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }}
+                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 ${selectedColorIndex === i ? "border-emerald-500 scale-125" : "border-white"} shadow-md cursor-pointer hover:scale-110 transition-transform overflow-hidden`}
+                  style={{ background: !m.img ? (m.ten === "Đen" ? "#1f2937" : m.ten === "Trắng" ? "#f9fafb" : m.ten?.toLowerCase().includes("xanh") ? "#0891b2" : m.ten?.toLowerCase().includes("đỏ") || m.ten?.toLowerCase().includes("hồng") ? "#ec4899" : m.ten?.toLowerCase().includes("vàng") || m.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af") : undefined }}
                   title={m.ten}
-                />
+                >
+                  {m.img && <img src={m.img} alt={m.ten} className="w-full h-full object-cover" />}
+                </div>
              ))}
+          </div>
+
+          {/* Thumbnails of the selected color variant */}
+          {selectedColor && selectedColor.hinhAnhChiTiet && selectedColor.hinhAnhChiTiet.length > 0 && (
+            <div className="absolute top-1/2 left-4 -translate-y-1/2 flex flex-col gap-2 z-10">
+              {[selectedColor.img, ...selectedColor.hinhAnhChiTiet].filter(Boolean).map((imgUrl, i) => (
+                <div 
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); setSelectedImage(imgUrl); setViewingMode("image"); }}
+                  className={`w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border-2 cursor-pointer shadow-sm ${selectedImage === imgUrl ? "border-cyan-500" : "border-white/70"} hover:border-cyan-400`}
+                >
+                  <img src={imgUrl} alt={`Thumbnail ${i}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
           </div>
         </div>
 
         {/* Right: Info Panel */}
-        <div className="w-full md:w-7/12 flex flex-col h-full md:max-h-[85vh] overflow-hidden">
+        <div className="w-full md:w-1/2 flex flex-col h-full md:max-h-[90vh] overflow-hidden">
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white shrink-0 z-10">
             <div>
@@ -136,9 +160,9 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
             {/* Price & Stats Row */}
             <div className="flex flex-wrap gap-6 items-end">
               <div>
-                <div className="text-xs font-bold text-slate-400 uppercase mb-1">Giá bán dự kiến</div>
-                <div className="text-3xl font-extrabold text-cyan-600">
-                  {formatVNDShort(sp.giaBanDuKien)}<span className="text-base text-cyan-700 font-bold ml-1">VNĐ</span>
+                <div className="text-sm font-bold text-slate-400 uppercase mb-1">Giá bán dự kiến</div>
+                <div className="text-4xl font-extrabold text-cyan-600">
+                  {formatVNDShort(sp.giaBanDuKien)}<span className="text-xl text-cyan-700 font-bold ml-1">VNĐ</span>
                 </div>
               </div>
               <div className="flex gap-4 pb-1">
@@ -181,13 +205,13 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
             </div>
 
             {/* Sizes & Ratio */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 shrink-0">
-              <div className="text-xs font-bold text-slate-500 uppercase mb-3">Thông số Size & Tỉ lệ cắt</div>
-              <div className="flex items-center gap-4 flex-wrap">
+            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 shrink-0">
+              <div className="text-sm font-bold text-slate-500 uppercase mb-4">Thông số Size & Tỉ lệ cắt</div>
+              <div className="flex items-center gap-5 flex-wrap">
                 {sp.bangSize?.sizes.map((s, idx) => (
                   <div key={s} className="flex flex-col items-center">
-                    <span className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-700 shadow-sm mb-1">{s}</span>
-                    <span className="text-xs font-bold text-cyan-600">{sp.bangSize?.ratios[idx]}</span>
+                    <span className="w-12 h-12 rounded-xl bg-white border-2 border-slate-300 flex items-center justify-center font-bold text-lg text-slate-700 shadow-sm mb-1.5">{s}</span>
+                    <span className="text-sm font-bold text-cyan-600">{sp.bangSize?.ratios[idx]}</span>
                   </div>
                 ))}
               </div>
@@ -206,11 +230,11 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                     }}
                     className={`flex gap-4 p-3 border rounded-xl items-center shadow-sm cursor-pointer transition-colors ${selectedImage === m.img ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}
                   >
-                    <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center">
+                    <div className="w-32 h-32 shrink-0 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center">
                       {m.img ? (
                         <img src={m.img} className="w-full h-full object-cover" />
                       ) : (
-                        <Shirt className="w-8 h-8 text-slate-300" />
+                        <Shirt className="w-12 h-12 text-slate-300" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -267,12 +291,26 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
                 Sửa
               </button>
             )}
-            <button 
-              onClick={() => onAddToCart && onAddToCart(sp)}
-              className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-xl font-bold shadow-md shadow-cyan-600/20 transition-colors flex items-center justify-center gap-2"
-            >
-              <ShoppingCart className="w-5 h-5" /> Thêm vào Đơn Đặt Hàng
-            </button>
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button 
+                onClick={() => onAddToCart && onAddToCart(sp)}
+                className="bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-xl font-bold text-base shadow-md shadow-amber-500/20 transition-colors flex items-center justify-center gap-2"
+              >
+                <ShoppingCart className="w-5 h-5" /> Giỏ Hàng
+              </button>
+              <button 
+                onClick={() => onCreateOrder && onCreateOrder(sp)}
+                className="bg-sky-500 hover:bg-sky-600 text-white py-4 rounded-xl font-bold text-base shadow-md shadow-sky-500/20 transition-colors flex items-center justify-center gap-2"
+              >
+                <FileText className="w-5 h-5" /> Tạo Đơn Mới
+              </button>
+              <button 
+                onClick={() => onProduceOrder && onProduceOrder(sp)}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-bold text-base shadow-md shadow-emerald-500/20 transition-colors flex items-center justify-center gap-2"
+              >
+                <Package className="w-5 h-5" /> Đặt Sản Xuất
+              </button>
+            </div>
           </div>
         </div>
       </div>

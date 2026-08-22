@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Portal } from "@/components/ui/Portal";
+import { CrudModal } from "@/components/ui/CrudModal";
 
 // ============ TYPES ============
 type TrangThaiKHSX = "LÃªn káº¿ hoáº¡ch" | "Äang SX" | "HoÃ n thÃ nh" | "Trá»… háº¡n";
@@ -57,7 +58,6 @@ export default function KeHoachSXPage() {
   const [list, setList] = useState<KHSX[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<KHSX | null>(null);
-  const [form, setForm] = useState(FORM_EMPTY);
   const [filterTT, setFilterTT] = useState<TrangThaiKHSX | "Táº¥t cáº£">("Táº¥t cáº£");
   const [progressEdit, setProgressEdit] = useState<{ id: string; val: number } | null>(null);
 
@@ -78,38 +78,17 @@ export default function KeHoachSXPage() {
   const tongSL = list.reduce((s, k) => s + k.soLuong, 0);
   const tongXong = list.reduce((s, k) => s + k.daHoanThanh, 0);
   const tienDoChung = tongSL > 0 ? (tongXong / tongSL) * 100 : 0;
-  const dsTreHan = list.filter(k => k.trangThai === "Trá»… háº¡n");
-  const dsDangSX = list.filter(k => k.trangThai === "Äang SX");
-  const filtered = filterTT === "Táº¥t cáº£" ? list : list.filter(k => k.trangThai === filterTT);
-
-  const handleSubmit = () => {
-    if (!form.sanPham.trim()) { toast.error("Vui lÃ²ng nháº­p tÃªn sáº£n pháº©m"); return; }
-    if (!form.tuNgay || !form.denNgay) { toast.error("Vui lÃ²ng chá»n ngÃ y SX"); return; }
-    if (form.soLuong <= 0) { toast.error("Sá»‘ lÆ°á»£ng pháº£i > 0"); return; }
-    if (editItem) {
-      commit(list.map(k => k.id === editItem.id ? { ...editItem, ...form } : k));
-      toast.success(`âœ… ÄÃ£ cáº­p nháº­t: ${form.sanPham}`);
-    } else {
-      const n = list.length + 1;
-      const newItem: KHSX = {
-        id: `KHSX-${Date.now()}`,
-        maKHSX: `KH-${String(n).padStart(3, "0")}`,
-        ...form,
-      };
-      commit([...list, newItem]);
-      toast.success(`âœ… ÄÃ£ táº¡o ${newItem.maKHSX}: ${form.sanPham} â€” ${form.soLuong.toLocaleString()} SP`);
-    }
-    setShowForm(false); setEditItem(null); setForm(FORM_EMPTY);
-  };
+  const dsTreHan = list.filter(k => k.trangThai === "Trễ hạn");
+  const dsDangSX = list.filter(k => k.trangThai === "Đang SX");
+  const filtered = filterTT === "Tất cả" ? list : list.filter(k => k.trangThai === filterTT);
 
   const handleEdit = (k: KHSX) => {
     setEditItem(k);
-    setForm({ tuan: k.tuan, tuNgay: k.tuNgay, denNgay: k.denNgay, sanPham: k.sanPham, loai: k.loai, soLuong: k.soLuong, daHoanThanh: k.daHoanThanh, xuongPhuTrach: k.xuongPhuTrach, trangThai: k.trangThai, ghiChu: k.ghiChu || "" });
     setShowForm(true);
   };
 
   const handleDelete = (k: KHSX) => {
-    if (!confirm(`XoÃ¡ káº¿ hoáº¡ch "${k.sanPham}"?`)) return;
+    if (!confirm(`Xoá kế hoạch "${k.sanPham}"?`)) return;
     commit(list.filter(x => x.id !== k.id));
     toast.success("ÄÃ£ xoÃ¡ káº¿ hoáº¡ch");
   };
@@ -133,7 +112,7 @@ export default function KeHoachSXPage() {
               <div className="h-full bg-white/80 rounded-full transition-all" style={{ width: `${tienDoChung}%` }} />
             </div>
           </div>
-          <button onClick={() => { setEditItem(null); setForm(FORM_EMPTY); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition">
+          <button onClick={() => { setEditItem(null); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition">
             <Plus className="w-4 h-4" /> Táº¡o KHSX
           </button>
         </div>
@@ -231,97 +210,90 @@ export default function KeHoachSXPage() {
                   <button onClick={() => setProgressEdit({ id: k.id, val: k.daHoanThanh })} className="flex-1 text-xs py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-1">
                     <TrendingUp className="w-3 h-3" /> Tiáº¿n Ä‘á»™
                   </button>
-                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 transition flex items-center justify-center gap-1">
-                    <Edit2 className="w-3 h-3" /> Sá»­a
-                  </button>
-                  <button onClick={() => handleDelete(k)} className="px-3 text-xs py-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 rounded-lg font-bold hover:bg-rose-100 transition">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 tr      {/* Form Modal sử dụng CrudModal chuẩn */}
+      <CrudModal
+        open={showForm}
+        onClose={() => { setShowForm(false); setEditItem(null); }}
+        title={editItem ? `Sửa kế hoạch: ${editItem.maKHSX}` : "Tạo Kế hoạch SX mới"}
+        fields={[
+          { name: "maKHSX", label: "Mã Kế Hoạch (Mã Lệnh)", type: "text", required: true, placeholder: "VD: KH-001" },
+          { name: "sanPham", label: "Sản phẩm", type: "text", required: true, placeholder: "VD: Áo thun cotton trắng" },
+          { name: "loai", label: "Loại SP", type: "select", options: [
+            { value: "Áo", label: "Áo" }, { value: "Bộ", label: "Bộ" }, { value: "Quần", label: "Quần" }, { value: "Phụ kiện", label: "Phụ kiện" }
+          ]},
+          { name: "soLuong", label: "Số lượng (SL)", type: "number", required: true, min: 1 },
+          { name: "daHoanThanh", label: "Đã hoàn thành", type: "number", min: 0 },
+          { name: "tuNgay", label: "Từ ngày", type: "date", required: true },
+          { name: "denNgay", label: "Đến ngày (Ngày dự kiến)", type: "date", required: true },
+          { name: "xuongPhuTrach", label: "Xưởng phụ trách", type: "select", options: XUONG_LIST.map(x => ({ value: x, label: x })) },
+          { name: "trangThai", label: "Trạng thái", type: "select", options: [
+            { value: "Lên kế hoạch", label: "Lên kế hoạch" },
+            { value: "Đang SX", label: "Đang SX" },
+            { value: "Hoàn thành", label: "Hoàn thành" },
+            { value: "Trễ hạn", label: "Trễ hạn" },
+          ] },
+          { name: "ghiChu", label: "Ghi chú", type: "textarea" },
+        ]}
+        initial={editItem ? {
+          maKHSX: editItem.maKHSX,
+          sanPham: editItem.sanPham,
+          loai: editItem.loai,
+          soLuong: String(editItem.soLuong),
+          daHoanThanh: String(editItem.daHoanThanh),
+          tuNgay: editItem.tuNgay,
+          denNgay: editItem.denNgay,
+          xuongPhuTrach: editItem.xuongPhuTrach,
+          trangThai: editItem.trangThai,
+          ghiChu: editItem.ghiChu || ""
+        } : {
+          maKHSX: `KH-${String(list.length + 1).padStart(3, "0")}`,
+          soLuong: "0",
+          daHoanThanh: "0",
+          loai: "Áo",
+          xuongPhuTrach: XUONG_LIST[0],
+          trangThai: "Lên kế hoạch"
+        }}
+        onSubmit={async (values) => {
+          const soLuong = Number(values.soLuong);
+          const daHoanThanh = Number(values.daHoanThanh || 0);
 
-      {/* Form Modal */}
-      {showForm && (
-        <Portal>
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => { setShowForm(false); setEditItem(null); }}>
-            <div className="card max-w-2xl w-full p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-bold flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-teal-600" />
-                  {editItem ? `Sá»­a: ${editItem.maKHSX}` : "Táº¡o Káº¿ hoáº¡ch SX má»›i"}
-                </h3>
-                <button onClick={() => { setShowForm(false); setEditItem(null); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><X className="w-5 h-5 text-slate-500" /></button>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">TÃªn sáº£n pháº©m *</label>
-                    <input type="text" className="input-field" placeholder="VD: Ão thun cotton tráº¯ng" value={form.sanPham} onChange={e => setForm(f => ({ ...f, sanPham: e.target.value }))} autoFocus />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">Tuáº§n sáº£n xuáº¥t</label>
-                    <input type="text" className="input-field" placeholder="VD: Tuáº§n 34/2026" value={form.tuan} onChange={e => setForm(f => ({ ...f, tuan: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">Tá»« ngÃ y *</label>
-                    <input type="date" className="input-field" value={form.tuNgay} onChange={e => setForm(f => ({ ...f, tuNgay: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">Äáº¿n ngÃ y *</label>
-                    <input type="date" className="input-field" value={form.denNgay} onChange={e => setForm(f => ({ ...f, denNgay: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">Loáº¡i SP</label>
-                    <select className="input-field" value={form.loai} onChange={e => setForm(f => ({ ...f, loai: e.target.value as KHSX["loai"] }))}>
-                      {["Ão", "Bá»™", "Quáº§n", "Phá»¥ kiá»‡n"].map(l => <option key={l}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">Sá»‘ lÆ°á»£ng *</label>
-                    <input type="number" min={1} className="input-field" value={form.soLuong || ""} onChange={e => setForm(f => ({ ...f, soLuong: Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">ÄÃ£ hoÃ n thÃ nh</label>
-                    <input type="number" min={0} className="input-field" value={form.daHoanThanh || ""} onChange={e => setForm(f => ({ ...f, daHoanThanh: Number(e.target.value) }))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">XÆ°á»Ÿng phá»¥ trÃ¡ch</label>
-                    <select className="input-field" value={form.xuongPhuTrach} onChange={e => setForm(f => ({ ...f, xuongPhuTrach: e.target.value }))}>
-                      {XUONG_LIST.map(x => <option key={x}>{x}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">Tráº¡ng thÃ¡i</label>
-                    <select className="input-field" value={form.trangThai} onChange={e => setForm(f => ({ ...f, trangThai: e.target.value as TrangThaiKHSX }))}>
-                      {(["LÃªn káº¿ hoáº¡ch", "Äang SX", "HoÃ n thÃ nh", "Trá»… háº¡n"] as const).map(t => <option key={t}>{t}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-1">Ghi chÃº</label>
-                  <textarea className="input-field" rows={2} placeholder="Ghi chÃº thÃªm..." value={form.ghiChu} onChange={e => setForm(f => ({ ...f, ghiChu: e.target.value }))} />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => { setShowForm(false); setEditItem(null); }} className="btn-secondary flex-1">Huỷ</button>
-                  <button type="button" onClick={handleSubmit} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                    <Save className="w-4 h-4" /> {editItem ? "Lưu thay đổi" : "Tạo kế hoạch"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+          if (editItem) {
+            commit(list.map(k => k.id === editItem.id ? { 
+              ...k,
+              maKHSX: values.maKHSX,
+              sanPham: values.sanPham,
+              loai: values.loai as KHSX["loai"],
+              soLuong,
+              daHoanThanh,
+              tuNgay: values.tuNgay,
+              denNgay: values.denNgay,
+              xuongPhuTrach: values.xuongPhuTrach,
+              trangThai: values.trangThai as TrangThaiKHSX,
+              ghiChu: values.ghiChu
+            } : k));
+            toast.success(`✅ Đã cập nhật: ${values.sanPham}`);
+          } else {
+            const newItem: KHSX = {
+              id: `KHSX-${Date.now()}`,
+              tuan: "", // có thể tính toán tuần nếu cần
+              maKHSX: values.maKHSX,
+              sanPham: values.sanPham,
+              loai: values.loai as KHSX["loai"],
+              soLuong,
+              daHoanThanh,
+              tuNgay: values.tuNgay,
+              denNgay: values.denNgay,
+              xuongPhuTrach: values.xuongPhuTrach,
+              trangThai: values.trangThai as TrangThaiKHSX,
+              ghiChu: values.ghiChu
+            };
+            commit([...list, newItem]);
+            toast.success(`✅ Đã tạo ${newItem.maKHSX}: ${values.sanPham} — ${soLuong.toLocaleString()} SP`);
+          }
+          setShowForm(false);
+          setEditItem(null);
+        }}
+      />
     </div>
   );
 }

@@ -67,10 +67,19 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && lc.trangThai !== "HoanThanh";
   const isBo = lc.loaiSP?.toLowerCase().includes("bo");
   const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
-  const isQuan = lc.loaiSP?.toLowerCase().includes("quan") || isBo;
+  // isQuan chỉ đúng khi là hàng Bộ (BoTru, BoCoTron) - Áo đơn KHÔNG có quần
+  const isQuan = !!isBo;
 
   const [modalGiaCong, setModalGiaCong] = useState<"ao" | "quan" | null>(null);
   const [modalTyLeMauIdx, setModalTyLeMauIdx] = useState<number | null>(null);
+
+  // Kiểm tra khâu Cắt đã có số liệu chưa (dựa vào tyLeSizeChiTiet của tất cả màu)
+  // Nếu cắt chưa nhập: khoá nút Gia Công và TyLeSize các khâu sau
+  const catDaNhap = (lc.dsMau || []).some(mau => {
+    const catKey = Object.keys(mau.tyLeSizeChiTiet || {}).find(k => k.toLowerCase().includes("cat"));
+    if (!catKey) return false;
+    return (mau.tyLeSizeChiTiet![catKey] || []).reduce((s, sz) => s + (sz.sl || 0), 0) > 0;
+  });
 
   // Helper tìm người phụ trách cắt
   const pcCat = lc.phanCong?.find(p => p.tenCongDoan.toLowerCase().includes("cắt"));
@@ -92,18 +101,30 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
         <div className="flex items-center gap-2">
           {isAo && (
             <button
-              onClick={() => setModalGiaCong("ao")}
-              className="px-3 py-1 bg-white border border-violet-200 text-violet-700 rounded-lg text-xs font-bold hover:bg-violet-50 transition-colors shadow-sm"
+              onClick={() => catDaNhap && setModalGiaCong("ao")}
+              disabled={!catDaNhap}
+              title={!catDaNhap ? "Khâu Cắt chưa nhập số liệu - hãy nhập tỷ lệ size khâu Cắt trước" : undefined}
+              className={`px-3 py-1 border rounded-lg text-xs font-bold transition-colors shadow-sm ${
+                catDaNhap
+                  ? "bg-white border-violet-200 text-violet-700 hover:bg-violet-50"
+                  : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+              }`}
             >
-              Gia công áo
+              {!catDaNhap && "🔒 "}Gia công áo
             </button>
           )}
           {isQuan && (
             <button
-              onClick={() => setModalGiaCong("quan")}
-              className="px-3 py-1 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-50 transition-colors shadow-sm"
+              onClick={() => catDaNhap && setModalGiaCong("quan")}
+              disabled={!catDaNhap}
+              title={!catDaNhap ? "Khâu Cắt chưa nhập số liệu - hãy nhập tỷ lệ size khâu Cắt trước" : undefined}
+              className={`px-3 py-1 border rounded-lg text-xs font-bold transition-colors shadow-sm ${
+                catDaNhap
+                  ? "bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+              }`}
             >
-              Gia công quần
+              {!catDaNhap && "🔒 "}Gia công quần
             </button>
           )}
         </div>

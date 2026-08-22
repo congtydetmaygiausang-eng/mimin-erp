@@ -223,8 +223,8 @@ export function truTonKho(phieu: PhieuWorkflow, user: any): TruTonKhoResult[] {
     return results;
   }
 
-  const kgPerMet = 0.25;
-  const kgCan = round(tinh.soMetCan * kgPerMet, 2);
+  const metTrenKg = vai.metTrenKg || 4; // Mặc định 1kg = 4m
+  const kgCan = round(tinh.soMetCan / metTrenKg, 2);
 
   const v = inv[maVT];
   if (!v) {
@@ -462,6 +462,32 @@ function ghiXuatKho(
     };
     dsGD.push(newGD);
     localStorage.setItem(KHO_STORE_KEY, JSON.stringify(dsGD));
+
+    // Đồng bộ lên Supabase ngầm
+    if (isSupabaseEnabled && supabase) {
+      supabase
+        .from("kho_lich_su_giao_dich")
+        .insert({
+          id: newGD.id,
+          ngay: newGD.ngay,
+          loai: newGD.loai,
+          ma_vt: newGD.maVT,
+          ten_vt: newGD.tenVT,
+          so_luong: newGD.soLuong,
+          don_vi: newGD.donVi,
+          don_gia: newGD.donGia,
+          thanh_tien: newGD.thanhTien,
+          nguon_nhap: newGD.nguonNhap,
+          nguoi_thuc_hien: newGD.nguoiThucHien,
+          ghi_chu: newGD.ghiChu,
+        })
+        .then(({ error }) => {
+          if (error && error.code !== "PGRST116" && error.code !== "42P01") {
+            console.warn("[inventory] Lỗi đồng bộ lịch sử kho:", error.message);
+          }
+        })
+        .catch(() => {});
+    }
   } catch (e) {
     console.error("[inventory] ghiXuatKho error:", e);
   }

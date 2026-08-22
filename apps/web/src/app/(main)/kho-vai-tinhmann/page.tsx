@@ -16,7 +16,8 @@ import {
   addNewVai, getVaiImages, saveVaiImage,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
-import { KHO_VAI, NHA_CUNG_CAP, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
+import { KHO_VAI, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
+import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import { Portal } from "@/components/ui/Portal";
 
@@ -27,6 +28,34 @@ const TINH_MAN_PHAN_LOAI = [
   "Quần",
   "Bộ trụ trơn",
 ];
+
+async function compressImage(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 300;
+        let { width, height } = img;
+        if (width > height && width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+    };
+  });
+}
 
 export default function KhoVaiPage() {
   const { user } = useSession();
@@ -57,19 +86,18 @@ export default function KhoVaiPage() {
   const newVaiImgRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && uploadingVT) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const url = ev.target?.result as string;
-        // Persist ảnh vào localStorage — không mất khi F5
-        saveVaiImage(uploadingVT, url);
-        setVaiImages(prev => ({ ...prev, [uploadingVT]: url }));
-        setInventory(prev => prev.map(v => v.maVT === uploadingVT ? { ...v, imageUrl: url } as any : v));
-        toast.success("Đã tải ảnh lên và lưu thành công!");
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedUrl = await compressImage(file);
+        saveVaiImage(uploadingVT, compressedUrl);
+        setVaiImages(prev => ({ ...prev, [uploadingVT]: compressedUrl }));
+        setInventory(prev => prev.map(v => v.maVT === uploadingVT ? { ...v, imageUrl: compressedUrl } as any : v));
+        toast.success("Đã tải ảnh lên và lưu thành công (nén tự động)!");
+      } catch (err) {
+        toast.error("Lỗi khi xử lý ảnh");
+      }
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
     setUploadingVT(null);
@@ -764,12 +792,11 @@ export default function KhoVaiPage() {
               ref={newVaiImgRef}
               className="hidden"
               accept="image/*"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => setNewVaiForm(f => ({ ...f, previewImg: ev.target?.result as string }));
-                reader.readAsDataURL(file);
+                const compressedUrl = await compressImage(file);
+                setNewVaiForm(f => ({ ...f, previewImg: compressedUrl }));
                 if (newVaiImgRef.current) newVaiImgRef.current.value = "";
               }}
             />
@@ -858,11 +885,12 @@ export default function KhoVaiPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!newVaiForm.tenVT.trim()) { toast.error("Vui lòng nhập tên vải"); return; }
                     if (!newVaiForm.mauSac.trim()) { toast.error("Vui lòng nhập màu sắc"); return; }
                     const maVT = `VAI-${String(inventory.length + 1).padStart(2, "0")}`;
-                    const ok = addNewVai({
+                    
+                    const newVai = {
                       maVT,
                       tenVT: newVaiForm.tenVT.trim(),
                       mauSac: newVaiForm.mauSac.trim(),
@@ -871,14 +899,39 @@ export default function KhoVaiPage() {
                       loai: "Vải",
                       dvt: "kg",
                       tonKho: 0,
-                    } as any);
+                    };
+
+                    const ok = addNewVai(newVai as any);
                     if (!ok) { toast.error(`Mã ${maVT} đã tồn tại!`); return; }
+                    
                     // Lưu ảnh nếu có
                     if (newVaiForm.previewImg) {
                       saveVaiImage(maVT, newVaiForm.previewImg);
                       setVaiImages(prev => ({ ...prev, [maVT]: newVaiForm.previewImg }));
                     }
-                    toast.success(`✅ Đã tạo mã vải ${maVT}: ${newVaiForm.tenVT} — Lưu vào localStorage, tồn kho: 0kg (dùng nút Nhập để cập nhật số lượng)`);
+                    
+                    toast.success(`✅ Đã lưu ${maVT} vào localStorage`);
+
+                    // Đồng bộ trực tiếp lên Supabase để bắt lỗi
+                    import("@/lib/supabase/client").then(async ({ supabase, isSupabaseEnabled }) => {
+                      if (isSupabaseEnabled && supabase) {
+                        const { error } = await supabase.from("kho").upsert({
+                          sku: newVai.maVT,
+                          ten: newVai.tenVT,
+                          sl: newVai.tonKho,
+                          don_vi: newVai.dvt,
+                          don_gia: newVai.donGia,
+                          loai: "vai",
+                        }, { onConflict: "sku" });
+                        
+                        if (error) {
+                          toast.error("Lỗi đồng bộ Supabase: " + error.message);
+                        } else {
+                          toast.success("✅ Đã đồng bộ mã vải mới lên Supabase!");
+                        }
+                      }
+                    });
+
                     setNewVaiForm({ tenVT: "", mauSac: "", donGia: 0, tonToiThieu: 50, ghiChu: "", previewImg: "" });
                     refresh();
                   }}
@@ -940,7 +993,13 @@ function VaiNhapKho({
   onSuccess: () => void;
 }) {
   const vt = KHO_VAI.find((v) => v.maVT === maVT);
-  const nccList = NHA_CUNG_CAP;
+  const { list: _nccList } = useNhaCungCap();
+  const nccList = _nccList
+    .filter(n => {
+      const txt = (n.loai + " " + (n.danh_muc_chi_tiet?.join(" ") || "")).toLowerCase();
+      return txt.includes("sợi") || txt.includes("vải") || txt.includes("vai") || txt.includes("dệt") || txt.includes("nhuộm");
+    })
+    .map((n) => ({ maNCC: n.ma_ncc, tenDonVi: n.ten_ncc }));
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,

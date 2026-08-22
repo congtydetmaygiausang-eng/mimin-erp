@@ -21,12 +21,12 @@ export function MasterDetailsModal({ maSP, groups, productImages, onClose }: { m
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white flex justify-between items-start">
-          <div className="flex gap-4 items-center">
-            <div className="w-16 h-16 bg-white/20 rounded-xl border border-white/20 flex items-center justify-center overflow-hidden">
-              {productImages[group.maSP] ? <img src={productImages[group.maSP]} className="w-full h-full object-cover" /> : <Package className="w-8 h-8 opacity-70" />}
+          <div className="flex gap-5 items-center">
+            <div className="w-28 h-28 bg-white/20 rounded-xl border-2 border-white/30 flex items-center justify-center overflow-hidden shadow-md shrink-0">
+              {productImages[group.maSP] ? <img src={productImages[group.maSP]} className="w-full h-full object-cover" /> : <Package className="w-12 h-12 opacity-70" />}
             </div>
             <div>
-              <h2 className="text-2xl font-bold">{group.tenSP || "Sản phẩm mới"}</h2>
+              <h2 className="text-3xl font-black">{group.tenSP || "Sản phẩm mới"}</h2>
               <div className="flex items-center gap-2 mt-1 opacity-90 text-sm">
                 <span className="font-mono bg-white/20 px-2 py-0.5 rounded">{group.maSP}</span>
                 <span>• {group.items.length} kiện biến thể</span>

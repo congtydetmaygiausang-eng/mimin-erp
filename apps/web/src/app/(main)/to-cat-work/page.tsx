@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriangle, Eye, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { usePhanCong } from "@/lib/data/cong-no-store";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAI, KHO_VAT_TU } from "@/lib/data/real-data";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
@@ -17,6 +18,7 @@ import { useSession } from "@/components/session-provider";
 
 export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { themPhanCong } = usePhanCong();
   const { themGiaoDich } = useKho();
   const { user } = useSession();
 
@@ -425,7 +427,7 @@ export default function CongViecCatPage() {
                     lc={lc}
                     mauIdx={modalTyLeMau.mauIdx}
                     onClose={() => setModalTyLeMau(null)}
-                    onSave={(mauIdx, newTyLe) => {
+                    onSave={(mauIdx, newTyLe, tongDuCat) => {
                       const newDsMau = [...(lc.dsMau || [])];
                       newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: newTyLe };
 
@@ -441,6 +443,28 @@ export default function CongViecCatPage() {
                       });
 
                       suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
+
+                      // Xử lý tạo lệnh phạt nếu Cắt lố/thất thoát
+                      if (tongDuCat && tongDuCat > 0) {
+                        const confirmPenalty = confirm(`Cảnh báo: Khâu gia công sau đang có số lượng lớn hơn khâu Cắt ${tongDuCat} SP (Màu: ${newDsMau[mauIdx].ten}).\n\nBạn có muốn tự động tạo lệnh Trừ tiền (Phạt thất thoát vải) đối với Tổ Cắt không?`);
+                        if (confirmPenalty) {
+                          const catPC = getPhanCongCat(lc) as any;
+                          if (catPC && catPC.nguoiMa) {
+                            themPhanCong({
+                              lenhCatId: lc.id,
+                              congDoan: `Phạt cắt dư / thất thoát vải`,
+                              nguoiMa: catPC.nguoiMa,
+                              nguoiTen: catPC.nguoiTen || "Chưa rõ",
+                              donGia: 30000, // Giá trị mặc định 30k/SP, kế toán có thể điều chỉnh sau
+                              soLuongGiao: -tongDuCat,
+                              ngayGiao: new Date().toISOString().slice(0, 10),
+                            });
+                            toast.success(`Đã tự động tạo lệnh phạt ${tongDuCat} SP vào bảng Công Nợ Tổ Cắt.`);
+                          } else {
+                            toast.error("Không tìm thấy thông tin Tổ Cắt trong hệ thống để phạt tiền.");
+                          }
+                        }
+                      }
                     }}
                   />
                 )}

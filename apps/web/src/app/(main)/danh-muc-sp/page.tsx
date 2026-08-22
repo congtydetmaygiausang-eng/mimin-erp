@@ -14,11 +14,13 @@ import { toast } from "sonner";
 import ProductLibraryCard from "@/components/danh-muc-sp/ProductLibraryCard";
 import ProductDetailModal from "@/components/danh-muc-sp/ProductDetailModal";
 import ProductFormModal from "@/components/danh-muc-sp/ProductFormModal";
+import AddToCartModal from "@/components/danh-muc-sp/AddToCartModal";
 import { GioHangDrawer } from "@/components/danh-muc-sp/GioHangDrawer";
 import OrderFormModal from "@/components/order-detail/OrderFormModal";
-import { createEmptyOrder, createOrderItemFromVariant } from "@/components/order-detail/helpers";
+import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, generateMaDH, calcOrderTotal, calcOrderQty } from "@/components/order-detail/helpers";
 import { generateVariants } from "@/lib/data/product-variants";
-import type { Order } from "@/components/order-detail/types";
+import type { Order, OrderItem } from "@/components/order-detail/types";
+import type { GioHangItem } from "@/lib/data/gio-hang-store";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
@@ -31,14 +33,16 @@ const FILTER_TABS = [
 
 export default function DanhMucSanPhamPage() {
   const { dsSanPham, loading, themSP, suaSP, xoaSP } = useDanhMucSP();
-  const { items: gioHangItems, themVaoGio, capNhatSoLuong, xoaKhoiGio, xoaGio, tongSoLuong: soLuongTrongGio } = useGioHang();
-  const { themOrder } = useDonHang();
+  const { items: gioHangItems, themVaoGio, themNhieuVaoGio, capNhatSoLuong, xoaKhoiGio, xoaGio, tongSoLuong: soLuongTrongGio } = useGioHang();
+  const { dsOrder, themOrder } = useDonHang();
+  const dsMaDaCo = useMemo(() => dsOrder.map((o) => o.maDH), [dsOrder]);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedProduct, setSelectedProduct] = useState<SanPham | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [productToEdit, setProductToEdit] = useState<SanPham | null>(null);
+  const [productForCart, setProductForCart] = useState<SanPham | null>(null);
   const [showGioHang, setShowGioHang] = useState(false);
   const [orderFormInitial, setOrderFormInitial] = useState<Order | null>(null);
   const [orderFromCart, setOrderFromCart] = useState(false);
@@ -77,6 +81,100 @@ export default function DanhMucSanPhamPage() {
     toast.success(`Đã thêm "${sp.tenSP}" vào giỏ`);
   };
 
+  const handleConfirmAddToCart = (data: { 
+    mode: "si" | "le", 
+    mau: string, 
+    ri?: number, 
+    sizes?: Record<string, number>,
+    khachHang: string,
+    thue: number,
+    thanhToan: "tien-mat" | "cong-no",
+    inPhieu: boolean,
+    xuatHD: boolean
+  }) => {
+    if (!productForCart) return;
+    const sp = productForCart;
+    const variants = generateVariants(sp.id, sp.dsMau || [], sp.bangSize);
+    const colorVariants = variants.filter(v => (v.mauTen === data.mau || (v.mauTen === undefined && sp.dsMau?.[0]?.ten === data.mau)));
+    
+    const newItems: OrderItem[] = [];
+    const unitPrice = data.mode === "si" ? (sp.giaBanSi || sp.giaBanDuKien) : (sp.giaBanLe || sp.giaBanDuKien);
+    
+    if (data.mode === "si" && data.ri) {
+      const ratios = sp.bangSize?.ratios || [];
+      sp.bangSize?.sizes.forEach((s, idx) => {
+        const variant = colorVariants.find(v => v.size === s);
+        const qty = (ratios[idx] || 0) * data.ri!;
+        if (qty > 0 && variant) {
+            const oi = createOrderItemFromVariant({
+              spId: sp.id,
+              spTen: sp.tenSP,
+              mauCode: variant.mauCode,
+              mauTen: variant.mauTen || data.mau,
+              mauImg: variant.img,
+              size: variant.size,
+              sku: variant.maSKU,
+              donGia: unitPrice,
+            });
+          oi.soLuong = qty;
+          oi.thanhTien = oi.soLuong * oi.donGia;
+          newItems.push(oi);
+        }
+      });
+    } else if (data.mode === "le" && data.sizes) {
+      Object.entries(data.sizes).forEach(([s, qty]) => {
+        if (qty > 0) {
+          const variant = colorVariants.find(v => v.size === s);
+          if (variant) {
+            const oi = createOrderItemFromVariant({
+              spId: sp.id,
+              spTen: sp.tenSP,
+              mauCode: variant.mauCode,
+              mauTen: variant.mauTen || data.mau,
+              mauImg: variant.img,
+              size: variant.size,
+              sku: variant.maSKU,
+              donGia: unitPrice,
+            });
+            oi.soLuong = qty;
+            oi.thanhTien = oi.soLuong * oi.donGia;
+            newItems.push(oi);
+          }
+        }
+      });
+    }
+    
+    if (newItems.length > 0) {
+      const newOrder = createEmptyOrder(dsMaDaCo);
+      newOrder.khachHang = data.khachHang;
+      newOrder.loaiDonHang = data.mode === "si" ? "ban-si" : "ban-le";
+      newOrder.items = newItems;
+      
+      const subtotal = calcOrderTotal(newItems);
+      const total = subtotal + (subtotal * data.thue / 100);
+      
+      newOrder.soLuong = calcOrderQty(newItems);
+      newOrder.thanhTien = total;
+      newOrder.trangThaiThanhToan = data.thanhToan === "tien-mat" ? "thanh-toan-du" : "chua-thanh-toan";
+      
+      if (data.thanhToan === "tien-mat") {
+        const pm = createEmptyPayment("tien-mat");
+        pm.soTien = total;
+        newOrder.payments = [pm];
+      }
+      
+      themOrder(newOrder);
+      
+      let msg = `Đã tạo thành công đơn hàng ${newOrder.maDH}.`;
+      if (data.inPhieu) msg += " Đang kết nối máy in...";
+      if (data.xuatHD) msg += " Đã gọi API xuất hoá đơn điện tử thành công!";
+      
+      toast.success(msg, { duration: 5000 });
+    }
+    
+    setProductForCart(null);
+  };
+
   // Tạo 1 đơn hàng chỉ với đúng SP này (biến thể đầu tiên) - mở OrderFormModal
   // ở chế độ Bán sỉ (nhập số lượng theo bảng size × màu) - bán lẻ thì đi qua
   // Giỏ hàng, bán sỉ thì tạo đơn hàng thẳng.
@@ -91,6 +189,7 @@ export default function DanhMucSanPhamPage() {
         spTen: sp.tenSP,
         mauCode: first?.mauCode,
         mauTen: first?.mauTen || sp.dsMau?.[0]?.ten,
+        mauImg: first?.img || sp.dsMau?.[0]?.img,
         size: first?.size,
         sku: first?.maSKU,
         donGia: sp.giaBanDuKien,
@@ -99,8 +198,14 @@ export default function DanhMucSanPhamPage() {
     setOrderFromCart(false);
     setOrderFormInitial(order);
   };
-  const handleCreateOrder = (sp: SanPham) => openQuickOrder(sp);
-  const handleDirectOrder = (sp: SanPham) => openQuickOrder(sp);
+  const handleCreateOrder = (sp: SanPham) => {
+    // Gọi Quick Checkout modal -> đổi lại dùng setProductForCart
+    setProductForCart(sp);
+  };
+  const handleProduceOrder = (sp: SanPham) => {
+    // Navigate to /ke-hoach-sx
+    window.location.href = "/ke-hoach-sx";
+  };
 
   const handleFavorite = (sp: any) => {
     toast.success(`Đã thêm "${sp.tenSP}" vào yêu thích`);
@@ -116,6 +221,7 @@ export default function DanhMucSanPhamPage() {
         spTen: it.spTen,
         mauCode: it.mauCode,
         mauTen: it.mauTen,
+        mauImg: it.mauImg,
         size: it.size,
         sku: it.sku,
         donGia: it.donGia,
@@ -264,16 +370,15 @@ export default function DanhMucSanPhamPage() {
           <p className="text-cyan-100 text-sm mt-2">Vào Supabase Dashboard → SQL Editor → chạy file <code className="bg-white/20 px-2 py-0.5 rounded">fix-rls-and-add-columns.sql</code></p>
         </div>
       ) : (
-        /* === GRID: thu vien the card (4 cols responsive cho the to) === */
-        <div className="max-w-[1600px] mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
+        <div className="w-full px-2 md:px-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
             {filtered.map((sp) => (
               <ProductLibraryCard
                 key={sp.id}
                 sp={sp}
                 onAddToCart={handleAddToCart}
                 onCreateOrder={handleCreateOrder}
-                onDirectOrder={handleDirectOrder}
+                onProduceOrder={handleProduceOrder}
                 onFavorite={handleFavorite}
                 onClick={(product) => setSelectedProduct(product)}
               />
@@ -287,6 +392,8 @@ export default function DanhMucSanPhamPage() {
           sp={selectedProduct}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
+          onCreateOrder={handleCreateOrder}
+          onProduceOrder={handleProduceOrder}
           onEdit={handleEditProduct}
           onDelete={handleDeleteProduct}
         />
@@ -300,6 +407,14 @@ export default function DanhMucSanPhamPage() {
             setProductToEdit(null);
           }}
           onSave={handleSaveProduct}
+        />
+      )}
+
+      {productForCart && (
+        <AddToCartModal
+          sp={productForCart}
+          onClose={() => setProductForCart(null)}
+          onConfirm={handleConfirmAddToCart}
         />
       )}
 
