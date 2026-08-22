@@ -21,6 +21,7 @@ import { buildDr5ClaimVerifierAudit, dr5ToolCall } from "@/lib/sourcing/dr5-clai
 import { buildDr6DecisionGateAudit, dr6ToolCall } from "@/lib/sourcing/dr6-decision-gate";
 import { buildDr7RolloutReadinessAudit, dr7ToolCall } from "@/lib/sourcing/dr7-rollout-readiness";
 import { buildDr8QualityDriftAudit, dr8ToolCall } from "@/lib/sourcing/dr8-quality-drift";
+import { buildDr9HumanReviewPlanAudit, dr9ToolCall } from "@/lib/sourcing/dr9-human-review-plan";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -2124,7 +2125,13 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       dr7: dr7Audit,
       baseline: null,
     });
-    result.diagnostics = { ...result.diagnostics, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit };
+    const dr9Audit = buildDr9HumanReviewPlanAudit({
+      decisions: dr6Audit.decisions,
+      conflictClaimCount: dr5Audit.conflictClaims,
+      missingCriticalEvidence: dr5Audit.missingCriticalEvidence,
+      goldenDatasetValidated: dr7Audit.goldenDatasetValidated,
+    });
+    result.diagnostics = { ...result.diagnostics, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit, dr9Audit };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
@@ -2135,7 +2142,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
-      toolCalls: [dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit)],
+      toolCalls: [dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit), dr9ToolCall(dr9Audit)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),
