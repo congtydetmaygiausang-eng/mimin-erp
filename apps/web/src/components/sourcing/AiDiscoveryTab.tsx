@@ -218,6 +218,23 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   // (đã lỗi thời vì giờ có agent chat thật) - gọi cùng route DeepSeek tool-calling mà
   // AgentSearchBox dùng, nhưng đổ kết quả thẳng vào directResults/directResultSections
   // sẵn có của trang này thay vì có danh sách kết quả riêng - đúng ý "gộp về 1".
+  //
+  // Chiều ngược "chat → form": sau khi AI hiểu câu chat và gọi search_partners, đọc lại
+  // args (specialty/location/radius_km) rồi tự điền vào form nâng cao phía trên - để anh
+  // NHÌN THẤY chính xác AI đã hiểu điều kiện nào, không chỉ đọc trong câu trả lời.
+  const syncFormFromToolCall = (args: Record<string, unknown>) => {
+    const specialty = typeof args.specialty === "string" ? args.specialty.trim() : "";
+    if (specialty) {
+      const options = MANG_LUOI_DANH_MUC[role];
+      const matched = options.find((option) => option.toLowerCase() === specialty.toLowerCase() || specialty.toLowerCase().includes(option.toLowerCase()) || option.toLowerCase().includes(specialty.toLowerCase()));
+      if (matched) { setQuery(matched); setManualKeyword(""); }
+      else { setQuery(""); setManualKeyword(specialty); }
+    }
+    const location_ = typeof args.location === "string" ? args.location.trim() : "";
+    if (location_) { setLocationType("DISTRICT"); setCenter(null); setResolvedCenter(null); lastDistrictLocation.current = location_; setLocation(location_); }
+    const radius = typeof args.radius_km === "number" ? args.radius_km : null;
+    if (radius) { const nearest = [5, 10, 20, 30, 50, 100].reduce((best, option) => Math.abs(option - radius) < Math.abs(best - radius) ? option : best); setRadiusKm(nearest); }
+  };
   const sendChat = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || chatLoading) return;
@@ -235,10 +252,12 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: trimmed, history, lastResults }),
       });
-      const data = await response.json() as { reply?: string; error?: string; results?: { candidates: DirectSearchCandidate[]; provider: string[] } | null };
+      const data = await response.json() as { reply?: string; error?: string; toolCalls?: Array<{ name: string; args: Record<string, unknown> }>; results?: { candidates: DirectSearchCandidate[]; provider: string[] } | null };
       if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
       if (chatRequestId.current !== currentRequestId) return;
       setChatBubbles((current) => [...current, { role: "assistant", content: data.reply ?? "Đã xử lý xong." }]);
+      const searchCall = data.toolCalls?.find((call) => call.name === "search_partners");
+      if (searchCall) syncFormFromToolCall(searchCall.args);
       if (data.results) {
         setDirectResults(data.results.candidates);
         setDirectProvider(data.results.provider.join("+"));
