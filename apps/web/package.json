@@ -11,7 +11,8 @@
     "test:dr0": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/dr0-benchmark.test.js",
     "test:dr1": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/dr1-intent-planner.test.js",
     "test:dr2": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/dr2-research-graph.test.js",
-    "test:dr3": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/dr3-source-router.test.js"
+    "test:dr3": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/dr3-source-router.test.js",
+    "test:dr4": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/dr4-evidence-ledger.test.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.30",

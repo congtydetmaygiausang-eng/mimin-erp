@@ -19,6 +19,8 @@
     "src/lib/sourcing/dr2-research-graph.ts",
     "src/lib/sourcing/dr2-research-graph.test.ts",
     "src/lib/sourcing/dr3-source-router.ts",
-    "src/lib/sourcing/dr3-source-router.test.ts"
+    "src/lib/sourcing/dr3-source-router.test.ts",
+    "src/lib/sourcing/dr4-evidence-ledger.ts",
+    "src/lib/sourcing/dr4-evidence-ledger.test.ts"
   ]
 }
