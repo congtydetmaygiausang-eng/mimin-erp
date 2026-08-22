@@ -33,6 +33,8 @@
     "src/lib/sourcing/dr9-human-review-plan.ts",
     "src/lib/sourcing/dr9-human-review-plan.test.ts",
     "src/lib/sourcing/api0-search-observability.ts",
-    "src/lib/sourcing/api0-search-observability.test.ts"
+    "src/lib/sourcing/api0-search-observability.test.ts",
+    "src/lib/sourcing/api1-provider-contracts.ts",
+    "src/lib/sourcing/api1-provider-contracts.test.ts"
   ]
 }
