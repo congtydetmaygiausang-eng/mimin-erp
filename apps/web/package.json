@@ -26,7 +26,8 @@
     "test:api5-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api5-provider-value.test.js",
     "test:api6-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api6-rollout-gate.test.js",
     "test:api7-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api7-canary-plan.test.js",
-    "test:api8-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api8-canary-health.test.js"
+    "test:api8-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api8-canary-health.test.js",
+    "test:sourcing-auth": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/sourcing-auth-request.test.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.30",

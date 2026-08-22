@@ -49,6 +49,8 @@
     "src/lib/sourcing/api7-canary-plan.ts",
     "src/lib/sourcing/api7-canary-plan.test.ts",
     "src/lib/sourcing/api8-canary-health.ts",
-    "src/lib/sourcing/api8-canary-health.test.ts"
+    "src/lib/sourcing/api8-canary-health.test.ts",
+    "src/lib/sourcing/sourcing-auth-request.ts",
+    "src/lib/sourcing/sourcing-auth-request.test.ts"
   ]
 }
