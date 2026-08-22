@@ -835,16 +835,30 @@ function queryBudgetForRadius(radiusKm: number): number {
   return 16;
 }
 
+function isDirectorySearchQuery(value: string): boolean {
+  return /\bsite:(?:www\.)?(?:trangvangvietnam\.com|nhungtrangvang\.com)\b/i.test(value);
+}
+
+function balanceSearchQueries(queries: string[], fallback: string[], budget: number): string[] {
+  const unique = Array.from(new Set([...queries, ...fallback].map((item) => item.trim()).filter(Boolean)));
+  const official = unique.filter((item) => !isDirectorySearchQuery(item));
+  const directories = unique.filter(isDirectorySearchQuery).slice(0, 2);
+  return [...official, ...directories].slice(0, budget);
+}
+
 function fallbackQueryPlan(query: string, location: string, role: string, radiusKm: number): string[] {
   const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
   const areas = radiusSearchAreas(location, radiusKm);
   const budget = queryBudgetForRadius(radiusKm);
   const targetDirectories = ["trangvangvietnam.com", "nhungtrangvang.com"];
-  return Array.from(new Set([
+  const queries = Array.from(new Set([
     `${query} ${location}`,
     `công ty ${query} ${location}`,
     `xưởng sản xuất ${query} tại ${location}`,
-    ...targetDirectories.map((dir) => `công ty ${query} ${location} site:${dir}`),
+    `nhà sản xuất ${query} ${location} website liên hệ`,
+    `công ty TNHH ${query} ${location}`,
+    `\"${query}\" \"${location}\" địa chỉ điện thoại`,
+    `${query} ${location} -site:trangvangvietnam.com -site:nhungtrangvang.com`,
     ...areas.slice(1).flatMap((area, index) => [
       `nhà cung cấp ${query} ở ${area}`,
       index < 4 ? `xưởng ${query} ${area}` : "",
@@ -853,14 +867,16 @@ function fallbackQueryPlan(query: string, location: string, role: string, radius
     `địa chỉ bán ${query} ${location}`,
     `danh sách công ty ${query} ${location}`,
     `${query} manufacturer ${location} Vietnam`,
-  ].filter(Boolean))).slice(0, Math.max(budget, 16));
+    ...targetDirectories.map((dir) => `công ty ${query} ${location} site:${dir}`),
+  ].filter(Boolean)));
+  return balanceSearchQueries(queries, [], budget);
 }
 
 async function buildQueryPlan(query: string, location: string, role: string, learning: LearningProfile, radiusKm: number): Promise<string[]> {
   const budget = queryBudgetForRadius(radiusKm);
   const learnedQueries = learning.applied ? learning.preferredTerms.slice(0, 3).map((term) => `${query} ${term} ${location}`) : [];
   const searchAreas = radiusSearchAreas(location, radiusKm);
-  const fallback = Array.from(new Set([...fallbackQueryPlan(query, location, role, radiusKm), ...learnedQueries])).slice(0, budget);
+  const fallback = balanceSearchQueries([...fallbackQueryPlan(query, location, role, radiusKm), ...learnedQueries], [], budget);
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return fallback;
   try {
@@ -873,7 +889,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
         max_tokens: 900,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm ngắn. QUAN TRỌNG:\n1. Hành văn tự nhiên, giống hệt cách con người gõ tìm kiếm thực tế trên Google (VD: 'xưởng dệt vải cotton Tân Phú', 'công ty sản xuất vải cotton ở Tân Phú', thay vì 'vải cotton Tân Phú công ty').\n2. Kết hợp với chính xác khu vực trong `searchAreas`. Tuyệt đối KHÔNG tự ý dùng 'TP.HCM' nếu người dùng tìm Quận/Huyện.\n3. CHIẾN LƯỢC TÌM KIẾM THEO DANH BẠ: Phải sinh ra ít nhất 4 truy vấn sử dụng cú pháp `site:<domain>` để vét dữ liệu từ các danh bạ B2B uy tín. Các domain danh bạ bắt buộc dùng: trangvangvietnam.com, nhungtrangvang.com. Ví dụ: 'công ty vải cotton Tân Phú site:trangvangvietnam.com'.\nTrả về đúng định dạng JSON." },
+          { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm ngắn. QUAN TRỌNG:\n1. Hành văn tự nhiên, giống cách con người tìm công ty/xưởng thật trên Google.\n2. Kết hợp chính xác khu vực trong `searchAreas`. Không tự ý đổi quận/huyện sang địa phương khác.\n3. Ít nhất 60% truy vấn phải hướng đến website chính thức, trang liên hệ hoặc tên pháp lý doanh nghiệp (công ty, nhà sản xuất, xưởng, website, liên hệ, địa chỉ, điện thoại).\n4. Tối đa 2 truy vấn `site:` vào danh bạ trangvangvietnam.com hoặc nhungtrangvang.com; danh bạ chỉ dùng để phát hiện tên doanh nghiệp, không được coi là website chính thức.\nTrả về đúng định dạng JSON." },
           { role: "user", content: JSON.stringify({ query, location, radiusKm, searchAreas, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
         ],
       }),
@@ -886,7 +902,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim().slice(0, 180))
       .filter((item) => item.length >= 4);
-    return Array.from(new Set([...fallback.slice(0, 4), ...aiQueries, ...fallback.slice(4)])).slice(0, budget);
+    return balanceSearchQueries(aiQueries, fallback, budget);
   } catch {
     return fallback;
   }
@@ -1140,8 +1156,64 @@ function extractContactEvidence(candidate: Candidate, sources: SourceResult[]): 
 }
 
 async function enrichCandidatesWithContacts(candidates: Candidate[], location: string): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
-  // Disable aggressive Tavily enrichment to save API quota and speed up search
-  return { candidates, sourceCount: 0, enrichedCount: 0 };
+  const configured = Number(process.env.CONTACT_ENRICHMENT_MAX_CANDIDATES ?? "6");
+  const maximum = Number.isFinite(configured) ? Math.max(1, Math.min(8, Math.trunc(configured))) : 6;
+  const targets = candidates
+    .filter((candidate) => !candidate.website || !candidate.phone || !candidate.address)
+    .sort((left, right) => right.confidence - left.confidence)
+    .slice(0, maximum);
+  if (!targets.length || (!process.env.TAVILY_API_KEY && !process.env.BRAVE_SEARCH_API_KEY)) {
+    return { candidates, sourceCount: 0, enrichedCount: 0 };
+  }
+
+  const queries = targets.map((candidate) => {
+    const identity = candidate.taxCode ? `\"${candidate.legalName}\" ${candidate.taxCode}` : `\"${candidate.legalName}\"`;
+    return `${identity} ${location} website chính thức liên hệ`;
+  });
+  const [tavilyResult, braveResult] = await Promise.allSettled([
+    process.env.TAVILY_API_KEY ? searchTavily(queries) : Promise.resolve([]),
+    process.env.BRAVE_SEARCH_API_KEY ? searchBrave(queries) : Promise.resolve([]),
+  ]);
+  const sources = [
+    ...(tavilyResult.status === "fulfilled" ? tavilyResult.value : []),
+    ...(braveResult.status === "fulfilled" ? braveResult.value : []),
+  ];
+  const uniqueSources = Array.from(new Map(sources.map((source) => [canonicalSourceUrl(source.url), source])).values());
+  let enrichedCount = 0;
+  const enrichedByIdentity = new Map<string, Candidate>();
+
+  for (const candidate of targets) {
+    const candidateTokens = tokenSet(candidate.legalName);
+    const relevant = uniqueSources.filter((source) => {
+      const body = `${source.title} ${source.content} ${source.rawContent ?? ""}`;
+      const identityMatch = overlapRatio(candidateTokens, tokenSet(body));
+      const taxMatch = Boolean(candidate.taxCode && digits(body).includes(digits(candidate.taxCode)));
+      return taxMatch || identityMatch >= 0.55;
+    }).sort((left, right) => sourceInformationScore(right, candidate) - sourceInformationScore(left, candidate)).slice(0, 8);
+    if (!relevant.length) continue;
+    const enriched = extractContactEvidence(candidate, relevant);
+    const official = relevant.find((source) => {
+      const domain = domainOf(source.url);
+      return domain && !DIRECTORY_DOMAINS.some((entry) => domain === entry || domain.endsWith(`.${entry}`));
+    });
+    const withOfficialPrimary = official && enriched.website ? {
+      ...enriched,
+      sourceUrl: official.url,
+      sourceTitle: official.title,
+      sources: [candidateSource(official), ...(enriched.sources ?? []).filter((source) => canonicalSourceUrl(source.url) !== canonicalSourceUrl(official.url))].slice(0, 12),
+    } : enriched;
+    const changed = ["website", "phone", "email", "address", "taxCode"].some((field) =>
+      String(withOfficialPrimary[field as keyof Candidate] ?? "") !== String(candidate[field as keyof Candidate] ?? ""),
+    );
+    if (changed) enrichedCount += 1;
+    enrichedByIdentity.set(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`, withOfficialPrimary);
+  }
+
+  return {
+    candidates: candidates.map((candidate) => enrichedByIdentity.get(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) ?? candidate),
+    sourceCount: uniqueSources.length,
+    enrichedCount,
+  };
 }
 
 async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: SourceResult[]): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
@@ -1936,7 +2008,7 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
       }),
       signal: AbortSignal.timeout(30_000),
     });
-    if (!response.ok) throw new Error(`Gemini directory normalization failed`);
+    if (!response.ok) throw new Error(`Gemini directory normalization HTTP ${response.status}`);
     const data = await response.json() as any;
     const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!answer) return [];
@@ -1988,6 +2060,7 @@ async function normalizeDirectoriesWithGemini(query: string, location: string, s
   }));
   
   normalized.push(...batchResults.map(r => r.status === "fulfilled" ? r.value : []));
+  if (batchResults.some((result) => result.status === "rejected" && /HTTP 429\b/.test(String(result.reason)))) break;
   if (i + 3 < targets.length) await new Promise(resolve => setTimeout(resolve, 800));
 }
 
@@ -2064,10 +2137,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com"]);
     const isSeoArticle = (s: SourceResult) => /\/(?:top|danh-sach|huong-dan|bai-viet|tin-tuc|blog|kinh-nghiem|post|article|tong-hop)\b/i.test(s.url) || /\b(?:top \d+|danh sách(?: \d+)?|hướng dẫn|kinh nghiệm|tổng hợp|tại sao|có nên|uy tín nhất|tốt nhất|giá rẻ|báo giá)\b/i.test(s.title);
     const directorySources = discoverySources.filter((s) => directoryDomains.has(domainOf(s.url) ?? "") || isSeoArticle(s));
-    // Bài tổng hợp vẫn là nguồn chứa nhiều doanh nghiệp có giá trị. Cho DeepSeek
-    // đọc nội dung để tách tên thật bên trong; bộ lọc danh tính sẽ chặn chính tiêu
-    // đề SEO, tránh biến câu hỏi/bài viết thành tên công ty như trước đây.
-    const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? ""));
+    // DeepSeek luôn nhận cả nguồn danh bạ để làm fallback khi Gemini hết quota/429.
+    // Bộ lọc danh tính phía sau vẫn chặn tiêu đề SEO và tên danh sách giả.
+    const normalSources = discoverySources;
 
     const [directoryCandidates, normalizedCandidates] = await Promise.all([
       observeApi0Call("Gemini Directory Extraction", api0ProcessingDurations, () => normalizeDirectoriesWithGemini(query, location, directorySources)),
