@@ -13,6 +13,7 @@ import { extractVietnamContactPhones, extractVietnamPhones, normalizeVietnamPhon
 import { searchBraveWeb } from "@/lib/brave-search";
 import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/sourcing/search-history";
 import { buildDr0OperationalBaseline, dr0ToolCall } from "@/lib/sourcing/dr0-benchmark";
+import { auditDr1Execution, buildDr1ShadowPlan, dr1ToolCall } from "@/lib/sourcing/dr1-intent-planner";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -1951,6 +1952,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
   const entryPoint = params.entryPoint ?? "ADVANCED_FORM";
   const rawQueryText = params.rawQueryText ?? params.query;
   const structuredFilters = { role, location, radiusKm, locationMode };
+  // DR1 runs in shadow mode: it observes the original contract but none of its
+  // output is passed into resolveCenter/buildQueryPlan/searchSources.
+  const dr1Plan = buildDr1ShadowPlan({ query, rawQueryText, location, role, radiusKm, locationMode });
 
   try {
     const center = await resolveCenter(location, params.center ?? undefined);
@@ -2078,7 +2082,8 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
 
     const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
     const dr0Baseline = buildDr0OperationalBaseline({ startedAtMs: dr0StartedAtMs, diagnostics, candidates });
-    result.diagnostics = { ...result.diagnostics, dr0Baseline };
+    const dr1Audit = auditDr1Execution({ plan: dr1Plan, executedQueries: searchQueries, candidateCount: candidates.length });
+    result.diagnostics = { ...result.diagnostics, dr0Baseline, dr1Audit };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
@@ -2089,7 +2094,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
-      toolCalls: [dr0ToolCall(dr0Baseline)],
+      toolCalls: [dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),

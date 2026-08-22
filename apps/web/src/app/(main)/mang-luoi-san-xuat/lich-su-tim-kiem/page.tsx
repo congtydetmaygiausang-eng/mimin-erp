@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, ListChecks, MapPin, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -15,6 +15,7 @@ import { directCandidateSaveKey, saveDirectSearchCandidates, type DirectSearchCa
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import { readDr0Baseline } from "@/lib/sourcing/dr0-benchmark";
+import { readDr1Audit } from "@/lib/sourcing/dr1-intent-planner";
 
 const PAGE_SIZE = 15;
 
@@ -182,6 +183,7 @@ export default function LichSuTimKiemPage() {
               const isExpanded = expandedId === row.id;
               const role = partnerRoleFromFilters(row.structured_filters);
               const dr0 = readDr0Baseline(row.tool_calls);
+              const dr1 = readDr1Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -216,6 +218,21 @@ export default function LichSuTimKiemPage() {
                             <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Building2 className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] opacity-60">Đủ SĐT / địa chỉ</p><p className="text-sm font-bold">{dr0.completenessPercent.phone}% / {dr0.completenessPercent.address}%</p></div>
                           </div>
                           <p className="mt-2 text-[10px] opacity-55">Baseline chỉ đo lường, không can thiệp kết quả. Precision/recall chỉ được công bố sau khi bộ dữ liệu vàng được duyệt thủ công.</p>
+                        </section>
+                      )}
+                      {dr1 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Kế hoạch DR1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="h-4 w-4 text-violet-600" /> DR1 · Kiểm tra ý định (shadow)</div>
+                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr1.contractAligned ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"}`}>{dr1.contractAligned ? "Đúng hợp đồng" : "Cần bổ sung"}</span>
+                          </div>
+                          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Search className="mb-1 h-4 w-4 text-cyan-600" /><span className="opacity-60">Năng lực</span><p className="mt-0.5 font-semibold">{dr1.plan.query || "Chưa có"}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><MapPin className="mb-1 h-4 w-4 text-rose-500" /><span className="opacity-60">Vị trí · bán kính</span><p className="mt-0.5 font-semibold">{dr1.plan.location || "Chưa có"} · {dr1.plan.radiusKm} km</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><ListChecks className="mb-1 h-4 w-4 text-violet-500" /><span className="opacity-60">Truy vấn thực thi</span><p className="mt-0.5 font-semibold">{dr1.distinctQueryCount}/{dr1.executedQueryCount} truy vấn khác nhau</p></div>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">{dr1.plan.requestedFields.map((field) => <span key={field} className="rounded-full border px-2 py-0.5 text-[10px]" style={{ borderColor: "var(--border)" }}>{field}</span>)}</div>
+                          {dr1.plan.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr1.plan.warnings.join(" · ")}</p>}
                         </section>
                       )}
                       {row.assistant_reply && (

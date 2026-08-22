@@ -13,6 +13,8 @@
     "src/lib/brave-search.ts",
     "src/lib/brave-search.test.ts",
     "src/lib/sourcing/dr0-benchmark.ts",
-    "src/lib/sourcing/dr0-benchmark.test.ts"
+    "src/lib/sourcing/dr0-benchmark.test.ts",
+    "src/lib/sourcing/dr1-intent-planner.ts",
+    "src/lib/sourcing/dr1-intent-planner.test.ts"
   ]
 }
