@@ -22,6 +22,7 @@ import { buildDr6DecisionGateAudit, dr6ToolCall } from "@/lib/sourcing/dr6-decis
 import { buildDr7RolloutReadinessAudit, dr7ToolCall } from "@/lib/sourcing/dr7-rollout-readiness";
 import { buildDr8QualityDriftAudit, dr8ToolCall } from "@/lib/sourcing/dr8-quality-drift";
 import { buildDr9HumanReviewPlanAudit, dr9ToolCall } from "@/lib/sourcing/dr9-human-review-plan";
+import { buildApi0SearchBaseline, api0ToolCall, type Api0OperationObservation } from "@/lib/sourcing/api0-search-observability";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -1300,7 +1301,7 @@ async function searchOpenStreetMap(query: string, location: string): Promise<Sou
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { "User-Agent": "MIMIN-ERP-Sourcing/1.0", "Accept-Language": "vi" }, signal: AbortSignal.timeout(15_000) });
   if (!response.ok) throw new Error(`OpenStreetMap HTTP ${response.status}`);
   const data = await response.json() as Array<{ display_name: string; lat: string; lon: string; osm_type: string; osm_id: number }>;
-  return data.map((item) => ({ title: item.display_name.split(",")[0], url: `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`, content: item.display_name, latitude: Number(item.lat), longitude: Number(item.lon) }));
+  return data.map((item) => ({ title: item.display_name.split(",")[0], url: `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`, content: item.display_name, latitude: Number(item.lat), longitude: Number(item.lon), provider: "OPENSTREETMAP", sourceType: "MAP" }));
 }
 
 interface GooglePlaceResult {
@@ -1465,6 +1466,33 @@ function providerErrorCode(reason: unknown): string {
 
 type ProviderHealthEntry = { name: string; status: "OK" | "EMPTY" | "ERROR" | "DISABLED" | "SKIPPED"; count: number; code?: string };
 
+async function observeApi0Call<T>(name: string, durations: Map<string, number>, operation: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  try { return await operation(); }
+  finally { durations.set(name, Date.now() - startedAt); }
+}
+
+function api0DiscoveryOperations(
+  providerHealth: ProviderHealthEntry[], uniqueSources: SourceResult[], durations: Map<string, number>, plannedRequests: Record<string, number>,
+): Api0OperationObservation[] {
+  const providerNames: Record<string, string> = { TAVILY: "Tavily", BRAVE: "Brave", GEMINI_GOOGLE_SEARCH: "Gemini", GOOGLE_PLACES: "Google Places", OPENAI_WEB_SEARCH: "OpenAI", OPENSTREETMAP: "OpenStreetMap" };
+  const uniqueByProvider = uniqueSources.reduce<Record<string, number>>((counts, source) => {
+    const name = providerNames[source.provider ?? ""];
+    if (name) counts[name] = (counts[name] ?? 0) + 1;
+    return counts;
+  }, {});
+  return providerHealth.map((health) => ({
+    name: health.name,
+    role: health.name === "Google Places" || health.name === "OpenStreetMap" ? "GEOLOCATION" : "DISCOVERY",
+    status: health.status,
+    durationMs: durations.get(health.name) ?? 0,
+    plannedRequests: plannedRequests[health.name] ?? 0,
+    rawItems: health.count,
+    uniqueItems: uniqueByProvider[health.name] ?? 0,
+    code: health.code,
+  }));
+}
+
 // Ngưỡng số nguồn Google Places tối thiểu để coi là "đủ dữ liệu vị trí" và bỏ qua các nguồn
 // web-discovery còn lại (Tavily/Brave/Gemini/OpenAI) khi locationPriority=true. Xem plan
 // "Search Router Phase 1" - mục đích tiết kiệm API call cho câu hỏi có yếu tố khu vực rõ.
@@ -1479,8 +1507,17 @@ async function searchSources(
   location: string,
   queries: string[],
   options?: { locationPriority?: boolean },
-): Promise<{ provider: string; items: SourceResult[]; providerHealth: ProviderHealthEntry[] }> {
+): Promise<{ provider: string; items: SourceResult[]; providerHealth: ProviderHealthEntry[]; api0Operations: Api0OperationObservation[] }> {
   const locationPriority = options?.locationPriority ?? false;
+  const api0Durations = new Map<string, number>();
+  const api0PlannedRequests: Record<string, number> = {
+    Tavily: process.env.TAVILY_API_KEY ? Math.min(queries.length, 16) : 0,
+    Brave: process.env.BRAVE_SEARCH_API_KEY ? Math.min(queries.length, braveMaximumQueries()) : 0,
+    Gemini: geminiApiKeys().length ? 1 : 0,
+    "Google Places": process.env.GOOGLE_MAPS_API_KEY ? Math.min(queries.length, 3) : 0,
+    OpenAI: openAiApiKey() ? 1 : 0,
+    OpenStreetMap: 1,
+  };
 
   // Search Router Phase 1: khi câu hỏi có yếu tố vị trí (search_partners luôn có location bắt
   // buộc), thử Google Places trước - nếu đã đủ ứng viên thì KHÔNG gọi 4 nguồn web-discovery
@@ -1488,7 +1525,7 @@ async function searchSources(
   // qua /api/v1/sourcing/search) không truyền locationPriority nên hành vi giữ nguyên y hệt
   // trước đây - luôn fan-out cả 5 nguồn song song.
   if (locationPriority) {
-    const placesSettled = await Promise.allSettled([searchGooglePlaces(query, location, queries)]);
+    const placesSettled = await Promise.allSettled([observeApi0Call("Google Places", api0Durations, () => searchGooglePlaces(query, location, queries))]);
     const googlePlaces = placesSettled[0];
     const placesItems = googlePlaces.status === "fulfilled" ? googlePlaces.value : [];
     const placesUnique = dedupeSources(placesItems);
@@ -1501,15 +1538,23 @@ async function searchSources(
 
     if (placesUnique.length >= LOCATION_PRIORITY_SUFFICIENT_SOURCES) {
       const skipped = (name: string): ProviderHealthEntry => ({ name, status: "SKIPPED", count: 0, code: "SUFFICIENT_LOCATION_RESULTS" });
+      const providerHealth = [placesHealth, skipped("Tavily"), skipped("Brave"), skipped("Gemini"), skipped("OpenAI")];
+      const items = placesUnique.slice(0, MAX_DISCOVERY_SOURCES);
       return {
         provider: "GOOGLE_PLACES",
-        items: placesUnique.slice(0, MAX_DISCOVERY_SOURCES),
-        providerHealth: [placesHealth, skipped("Tavily"), skipped("Brave"), skipped("Gemini"), skipped("OpenAI")],
+        items,
+        providerHealth,
+        api0Operations: api0DiscoveryOperations(providerHealth, items, api0Durations, api0PlannedRequests),
       };
     }
 
     // Chưa đủ - fan-out phần còn lại như bình thường, gộp với Places đã có.
-    const [tavily, brave, gemini, openai] = await Promise.allSettled([searchTavily(queries), searchBrave(queries), searchGemini(query, location, queries), searchOpenAI(query, location, queries)]);
+    const [tavily, brave, gemini, openai] = await Promise.allSettled([
+      observeApi0Call("Tavily", api0Durations, () => searchTavily(queries)),
+      observeApi0Call("Brave", api0Durations, () => searchBrave(queries)),
+      observeApi0Call("Gemini", api0Durations, () => searchGemini(query, location, queries)),
+      observeApi0Call("OpenAI", api0Durations, () => searchOpenAI(query, location, queries)),
+    ]);
     const sources = [...placesUnique, ...(tavily.status === "fulfilled" ? tavily.value : []), ...(brave.status === "fulfilled" ? brave.value : []), ...(gemini.status === "fulfilled" ? gemini.value : []), ...(openai.status === "fulfilled" ? openai.value : [])];
     const unique = dedupeSources(sources);
     const providers = [
@@ -1526,13 +1571,23 @@ async function searchSources(
       { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" : gemini.status === "rejected" ? "ERROR" : gemini.value.length ? "OK" : "EMPTY", count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
       { name: "OpenAI", status: !openAiApiKey() ? "DISABLED" : openai.status === "rejected" ? "ERROR" : openai.value.length ? "OK" : "EMPTY", count: openai.status === "fulfilled" ? openai.value.length : 0, code: openai.status === "rejected" ? providerErrorCode(openai.reason) : undefined },
     ];
-    if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, MAX_DISCOVERY_SOURCES), providerHealth };
-    const fallback = await searchOpenStreetMap(query, location);
-    return { provider: "OPENSTREETMAP", items: fallback, providerHealth: [...providerHealth, { name: "OpenStreetMap", status: fallback.length ? "OK" : "EMPTY", count: fallback.length }] };
+    if (unique.length) {
+      const items = unique.slice(0, MAX_DISCOVERY_SOURCES);
+      return { provider: providers.join("+") || "WEB", items, providerHealth, api0Operations: api0DiscoveryOperations(providerHealth, items, api0Durations, api0PlannedRequests) };
+    }
+    const fallback = await observeApi0Call("OpenStreetMap", api0Durations, () => searchOpenStreetMap(query, location));
+    const fallbackHealth = [...providerHealth, { name: "OpenStreetMap", status: fallback.length ? "OK" as const : "EMPTY" as const, count: fallback.length }];
+    return { provider: "OPENSTREETMAP", items: fallback, providerHealth: fallbackHealth, api0Operations: api0DiscoveryOperations(fallbackHealth, fallback, api0Durations, api0PlannedRequests) };
   }
 
   // Hành vi mặc định (giữ nguyên y hệt trước Phase 1) - luôn fan-out cả 5 nguồn song song.
-  const [tavily, brave, gemini, googlePlaces, openai] = await Promise.allSettled([searchTavily(queries), searchBrave(queries), searchGemini(query, location, queries), searchGooglePlaces(query, location, queries), searchOpenAI(query, location, queries)]);
+  const [tavily, brave, gemini, googlePlaces, openai] = await Promise.allSettled([
+    observeApi0Call("Tavily", api0Durations, () => searchTavily(queries)),
+    observeApi0Call("Brave", api0Durations, () => searchBrave(queries)),
+    observeApi0Call("Gemini", api0Durations, () => searchGemini(query, location, queries)),
+    observeApi0Call("Google Places", api0Durations, () => searchGooglePlaces(query, location, queries)),
+    observeApi0Call("OpenAI", api0Durations, () => searchOpenAI(query, location, queries)),
+  ]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
     ...(brave.status === "fulfilled" ? brave.value : []),
@@ -1555,9 +1610,13 @@ async function searchSources(
     { name: "Google Places", status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" : googlePlaces.status === "rejected" ? "ERROR" : googlePlaces.value.length ? "OK" : "EMPTY", count: googlePlaces.status === "fulfilled" ? googlePlaces.value.length : 0, code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined },
     { name: "OpenAI", status: !openAiApiKey() ? "DISABLED" : openai.status === "rejected" ? "ERROR" : openai.value.length ? "OK" : "EMPTY", count: openai.status === "fulfilled" ? openai.value.length : 0, code: openai.status === "rejected" ? providerErrorCode(openai.reason) : undefined },
   ];
-  if (unique.length) return { provider: providers.join("+") || "WEB", items: unique.slice(0, MAX_DISCOVERY_SOURCES), providerHealth };
-  const fallback = await searchOpenStreetMap(query, location);
-  return { provider: "OPENSTREETMAP", items: fallback, providerHealth: [...providerHealth, { name: "OpenStreetMap", status: fallback.length ? "OK" : "EMPTY", count: fallback.length }] };
+  if (unique.length) {
+    const items = unique.slice(0, MAX_DISCOVERY_SOURCES);
+    return { provider: providers.join("+") || "WEB", items, providerHealth, api0Operations: api0DiscoveryOperations(providerHealth, items, api0Durations, api0PlannedRequests) };
+  }
+  const fallback = await observeApi0Call("OpenStreetMap", api0Durations, () => searchOpenStreetMap(query, location));
+  const fallbackHealth = [...providerHealth, { name: "OpenStreetMap", status: fallback.length ? "OK" as const : "EMPTY" as const, count: fallback.length }];
+  return { provider: "OPENSTREETMAP", items: fallback, providerHealth: fallbackHealth, api0Operations: api0DiscoveryOperations(fallbackHealth, fallback, api0Durations, api0PlannedRequests) };
 }
 
 function fallbackCandidates(query: string, sources: SourceResult[]): Candidate[] {
@@ -1952,6 +2011,8 @@ function candidateToHistorySnapshot(candidate: Candidate): SearchHistoryCandidat
  */
 export async function runSourcingSearch(params: SourcingSearchParams, auth: SourcingSearchAuth): Promise<SourcingSearchResult> {
   const dr0StartedAtMs = Date.now();
+  const api0Operations: Api0OperationObservation[] = [];
+  const api0ProcessingDurations = new Map<string, number>();
   const query = params.query;
   const location = params.location;
   const role = params.role;
@@ -1968,9 +2029,24 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const center = await resolveCenter(location, params.center ?? undefined);
     if (!center) throw new SourcingSearchError("Không xác minh được vị trí trung tâm. Hãy nhập đầy đủ quận/huyện, tỉnh/thành phố hoặc dùng Vị trí hiện tại.", 422);
     const learning = await loadLearningProfile(auth.client, role);
-    const searchQueries = await buildQueryPlan(query, location, role, learning, radiusKm);
+    const searchQueries = await observeApi0Call("DeepSeek Query Planner", api0ProcessingDurations, () => buildQueryPlan(query, location, role, learning, radiusKm));
+    api0Operations.push({
+      name: "DeepSeek Query Planner", role: "QUERY_PLANNING",
+      status: process.env.DEEPSEEK_API_KEY ? "OK" : "DISABLED",
+      durationMs: api0ProcessingDurations.get("DeepSeek Query Planner") ?? 0,
+      plannedRequests: process.env.DEEPSEEK_API_KEY ? 1 : 0,
+      rawItems: searchQueries.length, uniqueItems: new Set(searchQueries).size,
+      code: process.env.DEEPSEEK_API_KEY ? "AI_OR_SAFE_FALLBACK" : "SAFE_FALLBACK",
+    });
     const source = await searchSources(query, location, searchQueries, { locationPriority: params.locationPriority ?? false });
-    const companyReader = await enrichSourcesWithCompanyReader(auth, source.items);
+    api0Operations.push(...source.api0Operations);
+    const companyReader = await observeApi0Call("Trafilatura", api0ProcessingDurations, () => enrichSourcesWithCompanyReader(auth, source.items));
+    api0Operations.push({
+      name: "Trafilatura", role: "DEEP_READING", status: companyReader.health.status,
+      durationMs: api0ProcessingDurations.get("Trafilatura") ?? 0,
+      plannedRequests: companyReader.health.status === "DISABLED" ? 0 : Math.ceil(Math.min(source.items.length, companyReaderMaximumUrls()) / 5),
+      rawItems: companyReader.health.count, uniqueItems: companyReader.items.length, code: companyReader.health.code,
+    });
     // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
     const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
     const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com"]);
@@ -1979,14 +2055,41 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const normalSources = discoverySources.filter((s) => !directoryDomains.has(domainOf(s.url) ?? "") && !isSeoArticle(s));
 
     const [directoryCandidates, normalizedCandidates] = await Promise.all([
-      normalizeDirectoriesWithGemini(query, location, directorySources),
-      normalizeWithDeepSeek(query, location, normalSources)
+      observeApi0Call("Gemini Directory Extraction", api0ProcessingDurations, () => normalizeDirectoriesWithGemini(query, location, directorySources)),
+      observeApi0Call("DeepSeek Normalization", api0ProcessingDurations, () => normalizeWithDeepSeek(query, location, normalSources)),
     ]);
+    api0Operations.push(
+      {
+        name: "Gemini Directory Extraction", role: "NORMALIZATION", status: !geminiApiKeys().length ? "DISABLED" : directoryCandidates.length ? "OK" : "EMPTY",
+        durationMs: api0ProcessingDurations.get("Gemini Directory Extraction") ?? 0,
+        plannedRequests: geminiApiKeys().length ? Math.ceil(Math.min(directorySources.length, 15) / 3) : 0,
+        rawItems: directorySources.length, uniqueItems: directoryCandidates.length,
+      },
+      {
+        name: "DeepSeek Normalization", role: "NORMALIZATION", status: !process.env.DEEPSEEK_API_KEY ? "DISABLED" : normalizedCandidates.length ? "OK" : "EMPTY",
+        durationMs: api0ProcessingDurations.get("DeepSeek Normalization") ?? 0,
+        plannedRequests: process.env.DEEPSEEK_API_KEY ? Math.ceil(Math.min(normalSources.length, MAX_NORMALIZATION_SOURCES) / NORMALIZATION_BATCH_SIZE) : 0,
+        rawItems: normalSources.length, uniqueItems: normalizedCandidates.length,
+        code: process.env.DEEPSEEK_API_KEY ? undefined : "DETERMINISTIC_FALLBACK",
+      },
+    );
 
     const supplementalCandidates = deterministicSourceCandidates(query, role, discoverySources);
     const normalizationPool = [...directoryCandidates, ...normalizedCandidates, ...supplementalCandidates];
-    const enrichment = await enrichCandidatesWithContacts(normalizationPool, location);
-    const geminiEnrichment = await enrichCandidatesWithGemini(enrichment.candidates, discoverySources);
+    const enrichment = await observeApi0Call("Contact Enrichment", api0ProcessingDurations, () => enrichCandidatesWithContacts(normalizationPool, location));
+    api0Operations.push({
+      name: "Contact Enrichment", role: "ENRICHMENT", status: enrichment.enrichedCount ? "OK" : "SKIPPED",
+      durationMs: api0ProcessingDurations.get("Contact Enrichment") ?? 0,
+      plannedRequests: enrichment.sourceCount, rawItems: normalizationPool.length, uniqueItems: enrichment.candidates.length,
+      code: enrichment.enrichedCount ? undefined : "NO_ADDITIONAL_EVIDENCE",
+    });
+    const geminiEnrichment = await observeApi0Call("Gemini Web Agent", api0ProcessingDurations, () => enrichCandidatesWithGemini(enrichment.candidates, discoverySources));
+    api0Operations.push({
+      name: "Gemini Web Agent", role: "ENRICHMENT", status: !geminiApiKeys().length ? "DISABLED" : geminiEnrichment.enrichedCount ? "OK" : "EMPTY",
+      durationMs: api0ProcessingDurations.get("Gemini Web Agent") ?? 0,
+      plannedRequests: geminiApiKeys().length ? Math.min(enrichment.candidates.filter((candidate) => !candidate.phone || !candidate.address).length, 10) : 0,
+      rawItems: enrichment.candidates.length, uniqueItems: geminiEnrichment.enrichedCount,
+    });
     const cleanedCandidates=geminiEnrichment.candidates.map((candidate)=>({...candidate,legalName:cleanCompanyLegalName(candidate.legalName),address:postalAddress(candidate.address)})).filter((candidate)=>Boolean(candidate.legalName));
     const exactCandidates = cleanedCandidates.filter((candidate) => isVerifiedBusinessCandidate(candidate, role ?? "", query));
     const exactKeys = new Set(exactCandidates.map((candidate) => `${candidate.sourceUrl}|${normalized(candidate.legalName)}`));
@@ -2001,7 +2104,14 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       const fullAddress = appendCityIfMissing(standardized.currentAddress, location);
       return { ...candidate, address: fullAddress, legacyAddress: standardized.legacyAddress, addressStandard: standardized.standard, district: standardized.standard ? "" : candidate.district };
     });
-    const geocoding = await geocodeCandidates(businessCandidates, location);
+    const geocoding = await observeApi0Call("Google Maps / Nominatim Geocoding", api0ProcessingDurations, () => geocodeCandidates(businessCandidates, location));
+    api0Operations.push({
+      name: "Google Maps / Nominatim Geocoding", role: "GEOLOCATION",
+      status: geocoding.summary.verified + geocoding.summary.retainedFromSource > 0 ? "OK" : geocoding.summary.attempted ? "EMPTY" : "SKIPPED",
+      durationMs: api0ProcessingDurations.get("Google Maps / Nominatim Geocoding") ?? 0,
+      plannedRequests: geocoding.summary.attempted, rawItems: geocoding.summary.attempted,
+      uniqueItems: geocoding.summary.verified + geocoding.summary.retainedFromSource,
+    });
     let effectiveRadiusKm = radiusKm;
     let processed = postProcessCandidates(geocoding.candidates, query, location, center, effectiveRadiusKm, locationMode, learning);
     let radiusEscalated = false;
@@ -2088,6 +2198,28 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       ],
     };
 
+    const api0Baseline = buildApi0SearchBaseline({
+      startedAtMs: dr0StartedAtMs,
+      completedAtMs: Date.now(),
+      operations: api0Operations,
+      funnel: {
+        rawProviderItems: source.providerHealth.reduce((total, health) => total + health.count, 0),
+        uniqueDiscoveryUrls: discoverySources.length,
+        deepReaderSources: companyReader.items.length,
+        normalizedCandidates: normalizedCandidates.length,
+        directoryCandidates: directoryCandidates.length,
+        deterministicCandidates: supplementalCandidates.length,
+        candidatesBeforeIdentityCleaning: geminiEnrichment.candidates.length,
+        candidatesAfterIdentityCleaning: cleanedCandidates.length,
+        exactCandidates: exactCandidates.length,
+        relatedCandidates: relatedCandidates.length,
+        candidatesBeforeEntityMerge: businessCandidates.length,
+        finalCandidates: candidates.length,
+        insideRadius: processed.breakdown.inside,
+        unknownCoordinates: processed.breakdown.unknown,
+      },
+    });
+
     const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
     const dr0Baseline = buildDr0OperationalBaseline({ startedAtMs: dr0StartedAtMs, diagnostics, candidates });
     const dr1Audit = auditDr1Execution({ plan: dr1Plan, executedQueries: searchQueries, candidateCount: candidates.length });
@@ -2131,7 +2263,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       missingCriticalEvidence: dr5Audit.missingCriticalEvidence,
       goldenDatasetValidated: dr7Audit.goldenDatasetValidated,
     });
-    result.diagnostics = { ...result.diagnostics, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit, dr9Audit };
+    result.diagnostics = { ...result.diagnostics, api0Baseline, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit, dr9Audit };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
@@ -2142,7 +2274,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
-      toolCalls: [dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit), dr9ToolCall(dr9Audit)],
+      toolCalls: [api0ToolCall(api0Baseline), dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit), dr9ToolCall(dr9Audit)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),
