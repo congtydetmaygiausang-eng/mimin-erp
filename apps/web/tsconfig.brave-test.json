@@ -39,6 +39,8 @@
     "src/lib/sourcing/api2-routing-policy.ts",
     "src/lib/sourcing/api2-routing-policy.test.ts",
     "src/lib/sourcing/api3-provider-budget.ts",
-    "src/lib/sourcing/api3-provider-budget.test.ts"
+    "src/lib/sourcing/api3-provider-budget.test.ts",
+    "src/lib/sourcing/api4-resilience-audit.ts",
+    "src/lib/sourcing/api4-resilience-audit.test.ts"
   ]
 }
