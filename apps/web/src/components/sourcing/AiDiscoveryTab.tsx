@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Bot, Building2, Check, CheckCircle2, ExternalLink, MapPin, Navigation, RefreshCw, Search, ShieldCheck, Sparkles, User as UserIcon, X } from "lucide-react";
+import { BadgeCheck, Boxes, Bot, Building2, Check, CheckCircle2, ExternalLink, Factory, MapPin, Navigation, RefreshCw, Search, Send, ShieldCheck, Sparkles, User as UserIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
@@ -21,6 +21,16 @@ const HCM_DISTRICTS = [
 ];
 
 const SEARCH_CACHE_KEY = "mimin:sourcing-search:v3";
+
+// Nút gợi ý nhanh trong khung chat - chỉ điền sẵn câu vào ô nhắn (không tự gửi) để anh
+// còn bổ sung chi tiết trước khi bấm Gửi. partner_type do DeepSeek tự suy ra từ câu chữ
+// (search_partners tool), không phụ thuộc role cố định của trang này - nên vẫn cho chọn
+// cả 3 loại kể cả khi đang ở trang Xưởng/Nhà cung cấp.
+const CHAT_STARTERS = [
+  { label: "Xưởng may gia công", icon: Factory, text: "Tìm xưởng may gia công" },
+  { label: "Nhà cung cấp", icon: Boxes, text: "Tìm nhà cung cấp nguyên phụ liệu" },
+  { label: "Khách hàng", icon: Building2, text: "Tìm khách hàng đầu ra" },
+] as const;
 
 interface SearchCriteriaSnapshot {
   query: string;
@@ -242,6 +252,21 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       if (chatRequestId.current === currentRequestId) setChatLoading(false);
     }
   };
+  // "Nạp điều kiện đã chọn" - ghép các trường form nâng cao (đã điền ở trên) thành 1 câu
+  // rồi gửi thẳng cho AI Agent, để không phải gõ lại tay những gì đã chọn sẵn.
+  const roleTypeLabel = role === "CUSTOMER" ? "khách hàng" : role === "SATELLITE_PROCESSOR" ? "xưởng sản xuất" : "nhà cung cấp";
+  const composeFormMessage = () => {
+    const specialty = [query, manualKeyword].filter(Boolean).join(", ");
+    const parts = [`Tìm ${roleTypeLabel}`];
+    if (specialty) parts.push(`chuyên ${specialty}`);
+    if (location.trim() && location !== "Vị trí hiện tại (GPS)") parts.push(`ở ${location.trim()}`);
+    parts.push(`bán kính ${radiusKm}km`);
+    return parts.join(" ");
+  };
+  const sendFormConditions = () => {
+    if (!query && !manualKeyword) { toast.error("Chọn năng lực hoặc nhập từ khóa ở form phía trên trước"); return; }
+    void sendChat(composeFormMessage());
+  };
   const saveDirectResults = async()=>{const selected=directResults.filter(item=>selectedResultKeys.has(directCandidateSaveKey(item)));const candidates=selected.length?selected:directResults.filter(item=>!isDirectCandidateSaved(item,items));try{const result=await saveDirectSearchCandidates(candidates,role,`${query} | ${location}`,directProvider);await refresh();setSelectedResultKeys(new Set());if(result.savedCount)toast.success(`Đã lưu ${result.savedCount} công ty vào Công ty đã lưu`);else toast.info("Các công ty đã có trong vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
   const saveOneResult = async (item: DirectSearchCandidate, key: string) => {
     setSavingCard(key);
@@ -360,6 +385,19 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {selectedResultKeys.size||directResults.filter(item=>!isDirectCandidateSaved(item,items)).length} công ty</button></div>{directResultSections.map((section)=><section key={section.key} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.key}-${index}`;const saveKey=directCandidateSaveKey(item);const saved=isDirectCandidateSaved(item,items);return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} selected={selectedResultKeys.has(saveKey)} saved={saved} onToggle={()=>setSelectedResultKeys(current=>{const next=new Set(current);if(next.has(saveKey))next.delete(saveKey);else next.add(saveKey);return next})} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
     <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Bot className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Trò chuyện với AI Agent</h2><p className="text-xs opacity-60">Gõ nhu cầu bằng lời — AI tự hiểu, lọc điều kiện và gọi tìm kiếm; kết quả hiện ở khu vực phía trên.</p></div></div>
+      <div className="flex flex-wrap gap-1.5">
+        {CHAT_STARTERS.map((starter) => {
+          const Icon = starter.icon;
+          return (
+            <button key={starter.label} type="button" disabled={chatLoading} onClick={() => setChatInput(starter.text)} className="text-xs rounded-full border px-2.5 py-1.5 font-medium inline-flex items-center gap-1.5 border-slate-200 text-slate-600 hover:border-brand-300 disabled:opacity-50 dark:text-slate-300">
+              <Icon className="w-3.5 h-3.5" />{starter.label}
+            </button>
+          );
+        })}
+        <button type="button" disabled={chatLoading} onClick={sendFormConditions} title="Ghép Năng lực/Khu vực/Bán kính đã chọn ở form phía trên thành 1 câu, gửi thẳng cho AI" className="text-xs rounded-full border px-2.5 py-1.5 font-medium inline-flex items-center gap-1.5 border-brand-300 text-brand-700 hover:bg-brand-500/5 disabled:opacity-50">
+          <Send className="w-3.5 h-3.5" />Nạp điều kiện đã chọn
+        </button>
+      </div>
       <div className="space-y-2 max-h-72 overflow-y-auto rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
         {chatBubbles.length === 0 && <p className="text-xs opacity-50">VD: "Tìm xưởng cắt tại Quận 12" hoặc "chỉ lấy công ty có website" để lọc lại kết quả vừa tìm.</p>}
         {chatBubbles.map((bubble, index) => (
