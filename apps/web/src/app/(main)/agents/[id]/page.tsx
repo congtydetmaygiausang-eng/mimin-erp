@@ -14,7 +14,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { AGENT_PERSONAS, AGENT_IDS } from "@/lib/agent-personas";
+import { AGENT_PERSONAS, AGENT_IDS_V6 as AGENT_IDS } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
 
 // Map style for 10 agents

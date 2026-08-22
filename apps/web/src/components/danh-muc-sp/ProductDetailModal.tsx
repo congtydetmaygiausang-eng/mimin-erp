@@ -22,7 +22,7 @@ const TRANG_THAI_LABELS: Record<string, { label: string; className: string }> = 
   "ngung-kinh-doanh": { label: "Ngừng KD", className: "bg-slate-500 text-white" },
 };
 
-export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, onDelete }: ProductDetailModalProps) {
+export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateOrder, onProduceOrder, onEdit, onDelete }: ProductDetailModalProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 

@@ -36,7 +36,7 @@ export default function ProductLibraryCard({
   sp,
   onAddToCart,
   onCreateOrder,
-  onDirectOrder,
+  onProduceOrder,
   onFavorite,
   onClick,
 }: ProductLibraryCardProps) {
