@@ -284,6 +284,18 @@ function coordinateAddressConsistency(candidate: Candidate): "MATCHED" | "UNVERI
   return expectedAdminTerms.every((term) => returnedTerms.has(term)) ? "MATCHED" : "CONFLICT";
 }
 
+// Bán kính tìm mở rộng nhiều tầng (đúng như nhãn "Ưu tiên gần · mở rộng nếu thiếu" đã
+// hiển thị sẵn trên form nhưng trước đây chưa thực sự làm): postProcessCandidates() là hàm
+// thuần, không gọi API ngoài - chỉ phân loại/chấm điểm lại candidates ĐÃ có sẵn theo 1
+// radiusKm - nên gọi lại nhiều lần với bán kính tăng dần không tốn thêm request nào, chỉ
+// tính toán lại trong bộ nhớ. Chỉ kích hoạt khi bán kính ban đầu chưa đủ EXACT-tier trong
+// bán kính, không đụng đến hành vi khi bán kính ban đầu đã đủ (giữ nguyên như cũ).
+const RADIUS_ESCALATION_TIERS = [5, 10, 20, 50, 100] as const;
+const RADIUS_ESCALATION_MIN_EXACT_INSIDE = 3;
+function countExactInside(processed: PostProcessedCandidates): number {
+  return processed.candidates.filter((item) => (item.resultTier ?? "EXACT") === "EXACT" && item.locationStatus === "INSIDE").length;
+}
+
 function postProcessCandidates(candidates: Candidate[], query: string, location: string, center: SearchCenter, radiusKm: number, locationMode: "PREFER" | "STRICT", learning: LearningProfile): PostProcessedCandidates {
   const clusters: Candidate[] = [];
   let taxConflictsPrevented=0;
@@ -1969,7 +1981,19 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       return { ...candidate, address: fullAddress, legacyAddress: standardized.legacyAddress, addressStandard: standardized.standard, district: standardized.standard ? "" : candidate.district };
     });
     const geocoding = await geocodeCandidates(businessCandidates, location);
-    const processed = postProcessCandidates(geocoding.candidates, query, location, center, radiusKm, locationMode, learning);
+    let effectiveRadiusKm = radiusKm;
+    let processed = postProcessCandidates(geocoding.candidates, query, location, center, effectiveRadiusKm, locationMode, learning);
+    let radiusEscalated = false;
+    if (locationMode === "PREFER" && countExactInside(processed) < RADIUS_ESCALATION_MIN_EXACT_INSIDE) {
+      for (const tier of RADIUS_ESCALATION_TIERS) {
+        if (tier <= effectiveRadiusKm) continue;
+        const attempt = postProcessCandidates(geocoding.candidates, query, location, center, tier, locationMode, learning);
+        processed = attempt;
+        effectiveRadiusKm = tier;
+        radiusEscalated = true;
+        if (countExactInside(attempt) >= RADIUS_ESCALATION_MIN_EXACT_INSIDE) break;
+      }
+    }
     const candidates = processed.candidates;
     const measurableCount = processed.candidates.filter((candidate) => candidate.locationStatus === "INSIDE" || candidate.locationStatus === "OUTSIDE").length;
     const coordinateCoveragePercent = processed.candidates.length ? Math.round(measurableCount / processed.candidates.length * 100) : 0;
@@ -1986,6 +2010,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       coordinateCoveragePercent, staleFallbackUsed, warnings: qualityWarnings, evaluatedAt: new Date().toISOString(),
     };
     const diagnostics = {
+      requestedRadiusKm: radiusKm,
+      effectiveRadiusKm,
+      radiusEscalated,
       plannedQueries: searchQueries.length,
       executedTavilyQueries: process.env.TAVILY_API_KEY ? Math.min(searchQueries.length, 16) : 0,
       executedBraveQueries: process.env.BRAVE_SEARCH_API_KEY ? Math.min(searchQueries.length, braveMaximumQueries()) : 0,
@@ -2040,7 +2067,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       ],
     };
 
-    const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm, locationMode, learning, diagnostics, candidates };
+    const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
