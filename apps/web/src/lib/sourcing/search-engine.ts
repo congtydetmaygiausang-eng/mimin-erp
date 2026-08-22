@@ -12,6 +12,16 @@ import { cleanCompanyLegalName, cleanCompanyPostalAddress, isCompanyIdentityName
 import { extractVietnamContactPhones, extractVietnamPhones, normalizeVietnamPhone } from "@/lib/vietnam-phone";
 import { searchBraveWeb } from "@/lib/brave-search";
 import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/sourcing/search-history";
+import { buildDr0OperationalBaseline, dr0ToolCall } from "@/lib/sourcing/dr0-benchmark";
+import { auditDr1Execution, buildDr1ShadowPlan, dr1ToolCall } from "@/lib/sourcing/dr1-intent-planner";
+import { buildDr2ResearchGraphAudit, dr2ToolCall } from "@/lib/sourcing/dr2-research-graph";
+import { buildDr3SourceRouterAudit, dr3ToolCall } from "@/lib/sourcing/dr3-source-router";
+import { buildDr4EvidenceLedgerAudit, dr4ToolCall } from "@/lib/sourcing/dr4-evidence-ledger";
+import { buildDr5ClaimVerifierAudit, dr5ToolCall } from "@/lib/sourcing/dr5-claim-verifier";
+import { buildDr6DecisionGateAudit, dr6ToolCall } from "@/lib/sourcing/dr6-decision-gate";
+import { buildDr7RolloutReadinessAudit, dr7ToolCall } from "@/lib/sourcing/dr7-rollout-readiness";
+import { buildDr8QualityDriftAudit, dr8ToolCall } from "@/lib/sourcing/dr8-quality-drift";
+import { buildDr9HumanReviewPlanAudit, dr9ToolCall } from "@/lib/sourcing/dr9-human-review-plan";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -1941,6 +1951,7 @@ function candidateToHistorySnapshot(candidate: Candidate): SearchHistoryCandidat
  * perform auth + rate limiting themselves via verify()/limited() before calling this.
  */
 export async function runSourcingSearch(params: SourcingSearchParams, auth: SourcingSearchAuth): Promise<SourcingSearchResult> {
+  const dr0StartedAtMs = Date.now();
   const query = params.query;
   const location = params.location;
   const role = params.role;
@@ -1949,6 +1960,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
   const entryPoint = params.entryPoint ?? "ADVANCED_FORM";
   const rawQueryText = params.rawQueryText ?? params.query;
   const structuredFilters = { role, location, radiusKm, locationMode };
+  // DR1 runs in shadow mode: it observes the original contract but none of its
+  // output is passed into resolveCenter/buildQueryPlan/searchSources.
+  const dr1Plan = buildDr1ShadowPlan({ query, rawQueryText, location, role, radiusKm, locationMode });
 
   try {
     const center = await resolveCenter(location, params.center ?? undefined);
@@ -2075,6 +2089,49 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     };
 
     const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
+    const dr0Baseline = buildDr0OperationalBaseline({ startedAtMs: dr0StartedAtMs, diagnostics, candidates });
+    const dr1Audit = auditDr1Execution({ plan: dr1Plan, executedQueries: searchQueries, candidateCount: candidates.length });
+    const dr2Audit = buildDr2ResearchGraphAudit({
+      executedQueries: searchQueries,
+      sourceTypeBreakdown: diagnostics.sourceTypeBreakdown,
+      candidateCount: candidates.length,
+      insideRadius: processed.breakdown.inside,
+      contactCompleteCount: candidates.filter((candidate) => Boolean(candidate.phone && candidate.address)).length,
+    });
+    const dr3Audit = buildDr3SourceRouterAudit({
+      providers: diagnostics.providers,
+      registryEvidenceCount: diagnostics.sourceTypeBreakdown.REGISTRY,
+    });
+    const dr4Audit = buildDr4EvidenceLedgerAudit(candidates);
+    const dr5Audit = buildDr5ClaimVerifierAudit(candidates);
+    const dr6Audit = buildDr6DecisionGateAudit(candidates);
+    const dr7Audit = buildDr7RolloutReadinessAudit({
+      dr0: dr0Baseline,
+      dr1: dr1Audit,
+      dr2: dr2Audit,
+      dr3: dr3Audit,
+      dr4: dr4Audit,
+      dr5: dr5Audit,
+      dr6: dr6Audit,
+      goldenDatasetValidated: false,
+    });
+    const dr8Audit = buildDr8QualityDriftAudit({
+      dr0: dr0Baseline,
+      dr2: dr2Audit,
+      dr3: dr3Audit,
+      dr4: dr4Audit,
+      dr5: dr5Audit,
+      dr6: dr6Audit,
+      dr7: dr7Audit,
+      baseline: null,
+    });
+    const dr9Audit = buildDr9HumanReviewPlanAudit({
+      decisions: dr6Audit.decisions,
+      conflictClaimCount: dr5Audit.conflictClaims,
+      missingCriticalEvidence: dr5Audit.missingCriticalEvidence,
+      goldenDatasetValidated: dr7Audit.goldenDatasetValidated,
+    });
+    result.diagnostics = { ...result.diagnostics, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit, dr9Audit };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
@@ -2085,6 +2142,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
+      toolCalls: [dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit), dr9ToolCall(dr9Audit)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),
