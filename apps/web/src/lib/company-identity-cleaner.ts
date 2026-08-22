@@ -1,6 +1,6 @@
 // @codex T3: bộ lọc xác định tên và địa chỉ doanh nghiệp; không suy đoán dữ liệu thiếu.
 
-const ARTICLE_NAME_PATTERN = /\b(?:danh sách|top\s*\d+|là gì|ưu điểm|nhược điểm|bảng giá|giá sỉ|ở đâu|các mẫu|hướng dẫn|quy trình|tuyển dụng|tìm việc|nhận gia công|cung cấp.+ở\s+(?:quận|huyện|tp)|công ty.+tại\s+tp\.?\s*hồ chí minh\s*\(?tphcm\)?$)\b/i;
+const ARTICLE_NAME_PATTERN = /\b(?:danh\s*(?:bạ|sách)|top\s*\d+|là gì|ưu điểm|nhược điểm|bảng giá|giá sỉ|ở đâu|bán loại.+nào|các mẫu|hướng dẫn|quy trình|tuyển dụng|tìm việc|nhận gia công|tham quan|cung cấp.+ở\s+(?:quận|huyện|tp)|công ty.+(?:ở\s*)?tại\s+(?:quận|huyện|tp)|xưởng.+(?:ở\s*)?tại\s+(?:quận|huyện|tp))\b/i;
 const BUSINESS_MARKER_PATTERN = /\b(?:công\s*ty|cty|tnhh|trách nhiệm hữu hạn|cổ phần|doanh nghiệp|nhà máy|xưởng|hộ kinh doanh|cửa hàng|supplier|manufacturer)\b/i;
 const ADDRESS_ADMIN_PATTERN = /\b(?:phường|p\.?\s*\d+|xã|quận|q\.?\s*\d+|huyện|thành phố|tp\.?\s*hcm|tỉnh|thị xã|thị trấn)\b/gi;
 const ADDRESS_ROUTE_PATTERN = /(?:đường|đ\.?\s*[a-zà-ỹ]|phố|ấp|thôn|khu phố|khu công nghiệp|kcn|cụm công nghiệp|lô|tổ)(?:\s|,)/i;
@@ -13,12 +13,13 @@ export function cleanCompanyLegalName(value:string):string{
     .replace(/^(?:image|hình)\s*\d+\s*[:.\-–—]*\s*/i,"")
     .replace(/^\d{10}(?:-\d{3})?\s*[-–—|:]\s*/,"")
     .replace(/\s*[-–—|]\s*(?:masothue|mã số thuế)\s*$/i,"");
-  if(ARTICLE_NAME_PATTERN.test(text))return"";
+  const hasMarketingSuffix=/\s[-–—|]\s.*\b(?:sản xuất|phân phối|giá sỉ|toàn quốc)\b/i.test(text);
+  if(/[?？]/.test(text)||/danh\s*(?:bạ|sách)/i.test(text)||ARTICLE_NAME_PATTERN.test(text)||hasMarketingSuffix)return"";
   const embedded=text.match(/\b(?:công\s*ty|cty)\s+(?:tnhh|trách nhiệm hữu hạn|cổ phần|cp|một thành viên|mtv)?\s*[^|\n]{2,180}/i)?.[0];
   if(embedded)text=embedded;
   text=compact(text.split(/\s+(?:ngành|địa chỉ|mã số thuế|mst|điện thoại|hotline|website)\s*[:#-]/i)[0]??"",200)
     .replace(/\s*[-–—|]\s*(?:masothue|trang vàng|yellow pages)\s*$/i,"");
-  if(!text||text.length<3||ARTICLE_NAME_PATTERN.test(text))return"";
+  if(!text||text.length<3||/[?？]/.test(text)||ARTICLE_NAME_PATTERN.test(text))return"";
   const words=text.split(/\s+/).length;
   if(words>24||(/[.!?]{1,}/.test(text)&&!BUSINESS_MARKER_PATTERN.test(text)))return"";
   return text;

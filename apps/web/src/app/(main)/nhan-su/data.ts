@@ -15,6 +15,13 @@ export type NhanSuExt = NhanSu & {
   cccdBackImage?: string;
   donGiaSP?: string;
   ghiChu?: string;
+  // Path gốc trong bucket private "employee-documents" (khác domain, không thể
+  // render trực tiếp) - avatar/cccdFrontImage/cccdBackImage ở trên là URL đã
+  // được ký tạm (hết hạn sau 1 tiếng) để hiển thị; 3 field *Path này giữ path
+  // bền để lưu lại DB mỗi khi sửa hồ sơ mà không upload ảnh mới. Xem nhan-su-store.tsx.
+  avatarPath?: string;
+  cccdFrontPath?: string;
+  cccdBackPath?: string;
 };
 
 /**

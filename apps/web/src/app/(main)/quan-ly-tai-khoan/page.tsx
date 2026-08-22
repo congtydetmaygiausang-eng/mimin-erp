@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
 import { ROLE_LABELS, ROLE_COLORS, ALL_ROLES } from "@/lib/permissions";
 import { authFetch } from "@/lib/auth-fetch";
+import { useNhanSu } from "@/lib/data/nhan-su-store";
+import type { NhanSuExt } from "@/app/(main)/nhan-su/data";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +58,25 @@ const PHONG_BAN_COLORS: Record<string, string> = {
   "khac": "bg-slate-500",
 };
 
+// Trang Nhân sự dùng bộ "Bộ phận" khác (tiếng Việt tự do, không phải kebab-case
+// như phòng ban ở đây) - quy đổi khi tạo tài khoản kèm hồ sơ nhân sự, để hồ sơ
+// mới không rơi vào 1 "Bộ phận" trống hoặc sai lệch với trang Nhân sự.
+const PHONG_BAN_TO_BO_PHAN: Record<string, string> = {
+  "ban-giam-doc": "Quản lý",
+  "ban-dieu-hanh": "Quản lý",
+  "ke-toan": "Kế toán",
+  "ban-content": "Kinh doanh",
+  "ban-kho": "Kho vận",
+  "to-cat": "Sản xuất",
+  "to-may": "Sản xuất",
+  "to-khuy-nut": "Sản xuất",
+  "to-ui": "Sản xuất",
+  "to-dong-goi": "Sản xuất",
+  "ban-qc": "QC",
+  "doi-tac": "Kinh doanh",
+  "khac": "Hành chính",
+};
+
 type UserRow = {
   id: string;
   email: string;
@@ -72,7 +93,7 @@ type UserRow = {
 type UserType = "all" | "noi-bo" | "ncc";
 
 export default function QuanLyTaiKhoanPage() {
-  const { user } = useSession();
+  const { user, authSource } = useSession();
   const [list, setList] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -86,24 +107,18 @@ export default function QuanLyTaiKhoanPage() {
     setLoading(true);
     try {
       const res = await authFetch("/api/admin/users", { cache: "no-store" });
-      if (!res.ok) throw new Error("API failed");
       const json = await res.json();
-      if (json.error) {
-        throw new Error(json.error);
-      } else {
-        setList(json.users || []);
+      if (!res.ok || json.error) {
+        throw new Error(json.error || `Tải danh sách thất bại (${res.status})`);
       }
+      setList(json.users || []);
     } catch (e) {
-      // toast.error("Lỗi fetch (Static Export fallback to mock): " + (e as Error).message);
-      // STATIC EXPORT FALLBACK (mock data for demo)
-      setList([
-        { id: "1", email: "admin@mimin.vn", name: "A Cường (Admin)", role: "admin", chucVu: "Giám đốc", phongBan: "ban-giam-doc", maNV: "GD001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "2", email: "kehoach@mimin.vn", name: "Kế hoạch", role: "kehoach", chucVu: "Trưởng phòng", phongBan: "ban-dieu-hanh", maNV: "KH001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "3", email: "sanxuat@mimin.vn", name: "Sản xuất", role: "sanxuat", chucVu: "Quản đốc", phongBan: "ban-dieu-hanh", maNV: "SX001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "4", email: "kho@mimin.vn", name: "Thủ kho", role: "kho", chucVu: "Thủ kho", phongBan: "ban-kho", maNV: "KHO001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "5", email: "qc@mimin.vn", name: "Nhân viên QC", role: "qc", chucVu: "KCS", phongBan: "ban-qc", maNV: "QC001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: "6", email: "giao@mimin.vn", name: "Giao hàng", role: "viewer", chucVu: "Tài xế", phongBan: "khac", maNV: "GH001", isActive: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      ]);
+      // Không còn fallback về mock data khi lỗi - trước đây fallback này che
+      // giấu lỗi permission/token thật (vd "permission denied for table
+      // users"), khiến trang trông như đang chạy bình thường với dữ liệu giả
+      // cho tới khi bấm "Tạo TK" mới lộ ra lỗi thật.
+      toast.error("Không tải được danh sách tài khoản: " + (e as Error).message);
+      setList([]);
     } finally {
       setLoading(false);
     }
@@ -175,6 +190,20 @@ export default function QuanLyTaiKhoanPage() {
           </button>
         </div>
       </div>
+
+      {/* Cảnh báo phiên đăng nhập không phải Supabase Auth thật - mọi thao tác
+          tạo/sửa/khoá/xoá tài khoản (API /api/admin/users) sẽ bị từ chối vì
+          không có access token thật để gửi lên server. */}
+      {authSource === "demo" && (
+        <div className="card p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            Phiên đăng nhập hiện tại đang ở chế độ dự phòng (không phải Supabase Auth thật) - có thể do sai mật khẩu Supabase.
+            Các thao tác <b>Tạo / Sửa / Khoá / Xoá tài khoản</b> ở trang này sẽ báo lỗi &quot;Thiếu access token&quot;.
+            Vui lòng đăng xuất và đăng nhập lại đúng mật khẩu.
+          </span>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -437,6 +466,7 @@ function CreateUserModal({ onClose, onCreated }: {
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { list: nhanSuList, themNhanSu } = useNhanSu();
   const [data, setData] = useState({
     email: "",
     password: "",
@@ -445,7 +475,10 @@ function CreateUserModal({ onClose, onCreated }: {
     chucVu: "",
     phongBan: "khac" as string,
     maNV: "",
+    sdt: "",
   });
+  const [taoHoSoNhanSu, setTaoHoSoNhanSu] = useState(true);
+  const [ngayVaoLam, setNgayVaoLam] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
@@ -466,8 +499,50 @@ function CreateUserModal({ onClose, onCreated }: {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (json.error) toast.error("Lỗi: " + json.error);
-      else { toast.success("Đã tạo tài khoản: " + data.email); onCreated(); }
+      if (json.error) { toast.error("Lỗi: " + json.error); return; }
+      toast.success("Đã tạo tài khoản: " + data.email);
+
+      // Tạo kèm hồ sơ Nhân sự (bộ phận/lương/CCCD... để trống, HR bổ sung sau ở
+      // trang Nhân sự) - tránh phải nhập trùng thông tin ở 2 nơi khi onboard 1
+      // người mới. maNV rỗng sẽ tự sinh mã theo đúng quy ước của trang Nhân sự.
+      if (taoHoSoNhanSu) {
+        const maNV = data.maNV.trim() || `NV${(nhanSuList.length + 19).toString().padStart(3, "0")}`;
+        const nv: NhanSuExt = {
+          stt: nhanSuList.length + 1,
+          maNV,
+          hoTen: data.name,
+          boPhan: PHONG_BAN_TO_BO_PHAN[data.phongBan] || "Hành chính",
+          chucVu: data.chucVu || ROLE_LABELS[data.role as keyof typeof ROLE_LABELS] || data.role,
+          ngaySinh: "",
+          ngayCap: "",
+          noiCap: "",
+          gioiTinh: "",
+          cccd: "",
+          sdt: data.sdt,
+          email: data.email,
+          diaChiTT: "",
+          diaChiTamTru: "",
+          viTri: data.chucVu,
+          ngayVaoLam,
+          loaiHD: "",
+          tinhTrangHN: "",
+          soTK: "",
+          nganHang: "",
+          mst: "",
+          bhxh: "",
+          trangThai: "dang_lam",
+          luongCB: 0,
+          loaiLuong: "",
+          ngayVao: ngayVaoLam,
+          luongCung: 0,
+          rating: 4,
+          taiKhoan: data.email,
+        };
+        const okNv = await themNhanSu(nv);
+        if (okNv) toast.success(`Đã tạo hồ sơ Nhân sự cho ${data.name} (${maNV}) - vào trang Nhân sự để bổ sung CCCD, lương...`);
+        else toast.error("Tạo tài khoản thành công nhưng lỗi khi tạo hồ sơ Nhân sự - vào trang Nhân sự thêm thủ công");
+      }
+      onCreated();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -482,7 +557,7 @@ function CreateUserModal({ onClose, onCreated }: {
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} placeholder="Nguyễn Văn A" />
-        <Field label="Mã NV" value={data.maNV} onChange={(v) => setData({ ...data, maNV: v })} placeholder="NV001" />
+        <Field label="Mã NV" value={data.maNV} onChange={(v) => setData({ ...data, maNV: v })} placeholder="NV001 (để trống sẽ tự sinh)" />
         <Field label="Email *" value={data.email} onChange={(v) => setData({ ...data, email: v })} placeholder="a@mimin.vn" type="email" />
         <div>
           <label className="text-xs font-semibold opacity-70">Mật khẩu *</label>
@@ -502,7 +577,23 @@ function CreateUserModal({ onClose, onCreated }: {
         <Field label="Chức vụ" value={data.chucVu} onChange={(v) => setData({ ...data, chucVu: v })} placeholder="Nhân viên kho" />
         <SelectField label="Role *" value={data.role} options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => setData({ ...data, role: v })} />
         <SelectField label="Phòng ban" value={data.phongBan} options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))} onChange={(v) => setData({ ...data, phongBan: v })} />
+        <Field label="SĐT" value={data.sdt} onChange={(v) => setData({ ...data, sdt: v })} placeholder="0901234567" />
       </div>
+
+      <div className="mt-3 p-2.5 rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+        <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+          <input type="checkbox" checked={taoHoSoNhanSu} onChange={(e) => setTaoHoSoNhanSu(e.target.checked)} className="w-4 h-4" />
+          Đồng thời tạo hồ sơ Nhân sự (trang Nhân sự)
+        </label>
+        {taoHoSoNhanSu && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[11px] opacity-70 shrink-0">Ngày vào làm</span>
+            <input type="date" value={ngayVaoLam} onChange={(e) => setNgayVaoLam(e.target.value)} className="px-2 py-1 rounded border text-xs" />
+            <span className="text-[10px] opacity-60">CCCD, lương, ngân hàng... bổ sung sau ở trang Nhân sự</span>
+          </div>
+        )}
+      </div>
+
       <div className="flex gap-2 pt-3">
         <button onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
         <button onClick={handleCreate} disabled={saving} className="btn-primary flex-1 bg-blue-500 disabled:opacity-50">

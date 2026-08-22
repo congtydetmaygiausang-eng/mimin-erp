@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "DR0-GOLD-1",
+  "status": "DRAFT_REQUIRES_HUMAN_VERIFICATION",
+  "description": "Mẫu bộ dữ liệu vàng. Không dùng để công bố precision/recall trước khi người phụ trách xác minh từng doanh nghiệp và nguồn chứng cứ.",
+  "minimumVerifiedCompanies": 100,
+  "requiredFields": [
+    "legalName",
+    "taxCode",
+    "address",
+    "capabilities",
+    "sourceUrls",
+    "verifiedAt",
+    "verifiedBy"
+  ],
+  "scenarios": [
+    {
+      "id": "material-cotton-hoc-mon-10km",
+      "role": "MATERIAL_SUPPLIER",
+      "query": "vải cotton",
+      "location": "Huyện Hóc Môn, Thành phố Hồ Chí Minh",
+      "radiusKm": 10,
+      "expectedCompanies": []
+    },
+    {
+      "id": "satellite-sewing-tan-phu-10km",
+      "role": "SATELLITE_PROCESSOR",
+      "query": "xưởng gia công may",
+      "location": "Quận Tân Phú, Thành phố Hồ Chí Minh",
+      "radiusKm": 10,
+      "expectedCompanies": []
+    },
+    {
+      "id": "packaging-finishing-binh-tan-20km",
+      "role": "PACKAGING_FINISHER",
+      "query": "ủi đóng gói hoàn thiện",
+      "location": "Quận Bình Tân, Thành phố Hồ Chí Minh",
+      "radiusKm": 20,
+      "expectedCompanies": []
+    }
+  ]
+}

@@ -156,6 +156,37 @@ export async function importAICandidates(
   return rows.length;
 }
 
+// Nhập hàng loạt từ file Excel/CSV (Công ty đã lưu > Nhập Excel) - khác importAICandidates()
+// ở chỗ nhận sẵn mảng object đã parse phía client (XLSX.utils.sheet_to_json), không phải
+// JSON text dán tay, và giữ taxCode/email trong raw_data để mapRow() đọc lại được (2 cột
+// này không có cột riêng trong bảng, luôn đọc/ghi qua raw_data giống các nguồn AI khác).
+export interface ExcelCandidateInput {
+  legalName: string; address: string; phone: string; email: string; taxCode: string; website: string;
+}
+
+export async function importExcelCandidates(
+  rows: ExcelCandidateInput[], role: ProductionPartnerRole, fileName: string,
+): Promise<number> {
+  if (!supabase) throw new Error("Cần đăng nhập Supabase để nhập dữ liệu");
+  const valid = rows.filter((row) => row.legalName.trim());
+  if (valid.length === 0) throw new Error("Không có dòng nào có tên công ty hợp lệ");
+  if (valid.length > 200) throw new Error("Mỗi lần chỉ nhập tối đa 200 dòng");
+  const payload = await Promise.all(valid.map(async (row) => {
+    const identity = `EXCEL|${row.legalName}|${row.address}|${row.phone}|${row.taxCode}`.toLowerCase();
+    return {
+      organization_id: PRODUCTION_ORGANIZATION_ID, role, search_query: `Nhập Excel: ${fileName}`.slice(0, 200),
+      legal_name: row.legalName.slice(0, 200), address: row.address.slice(0, 500), province: "", district: "",
+      phone: row.phone.slice(0, 50), website: row.website.slice(0, 500),
+      latitude: null, longitude: null, source_provider: "EXCEL_IMPORT", source_url: "https://mimin-erp.vercel.app",
+      external_id: await fingerprint(identity), raw_data: { email: row.email, taxCode: row.taxCode },
+    };
+  }));
+  const { error } = await supabase.from("production_discovery_candidates").upsert(payload,
+    { onConflict: "organization_id,source_provider,external_id", ignoreDuplicates: true });
+  if (error) throw error;
+  return payload.length;
+}
+
 export interface SearchDistanceEvidence { method:"HAVERSINE";unit:"KM";calculatedAt:string;radiusKm:number;rawDistanceKm:number|null;center:{latitude:number;longitude:number;label:string;source:"GPS"|"ADDRESS"};destination:{latitude:number|null;longitude:number|null;coordinateSource?:"SOURCE"|"NOMINATIM";coordinateConfidence?:"HIGH"|"MEDIUM"|"LOW";geocodedAddress?:string};addressConsistency:"MATCHED"|"UNVERIFIED"|"CONFLICT" }
 export type CompanySourceType = "SEARCH"|"OFFICIAL"|"REGISTRY"|"MAP"|"SOCIAL"|"OTHER";
 export interface DirectCandidateSource {url:string;title:string;sourceType?:CompanySourceType;sourceProvider?:string;excerpt?:string;rawContent?:string;relevanceScore?:number;searchQuery?:string}
@@ -164,7 +195,10 @@ export interface DirectCandidateFieldEvidence {fieldName:DirectCandidateEvidence
 export interface DirectCandidateEntityResolution {canonicalKey:string;matchedBy:string[];mergedRecords:number;conflicts:string[]}
 export interface DirectCandidateFieldConfidence {fieldName:DirectCandidateEvidenceField;selectedValue:string;score:number;independentSources:number;status:"UNVERIFIED"|"PARTIAL"|"VERIFIED"|"CONFLICT";alternatives:string[]}
 export interface DirectCandidateProfileQuality {score:number;completeness:number;evidenceCoverage:number;conflictCount:number;conflictFields?:DirectCandidateEvidenceField[];grade:"STRONG"|"REVIEW"|"WEAK"|"CONFLICT"}
-export interface DirectSearchCandidate { legalName:string;tradeName?:string;shortName?:string;address:string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string;legacyAddress?:string;addressStandard?:"HCM_POST_MERGER_2025";province:string;district:string;phone:string;phones?:string[];zaloPhone?:string;email?:string;taxCode?:string;website:string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:DirectCandidateFieldEvidence[];fieldConfidence?:DirectCandidateFieldConfidence[];profileQuality?:DirectCandidateProfileQuality;entityResolution?:DirectCandidateEntityResolution;resultTier?:"EXACT"|"RELATED";latitude:number|null;longitude:number|null;capabilities:string[];sourceUrl:string;sourceTitle:string;confidence:number;sourceCount?:number;sources?:DirectCandidateSource[];matchReasons?:string[];distanceKm?:number|null;locationStatus?:"INSIDE"|"OUTSIDE"|"UNKNOWN"|"CONFLICT";locationReason?:string;distanceEvidence?:SearchDistanceEvidence;verifiedFields?:string[];verificationStatus?:"VERIFIED"|"PARTIAL"|"UNVERIFIED";lastVerifiedAt?:string;coordinateSource?:"MANUAL"|"SOURCE"|"WEBSITE"|"NOMINATIM"|"GOOGLE_MAPS";coordinateConfidence?:"HIGH"|"MEDIUM"|"LOW";geocodedAddress?:string;geocodedAt?:string;geocodeStatus?:"VERIFIED"|"REJECTED"|"NOT_ATTEMPTED";coordinateBoundingBox?:[number,number,number,number];coordinateConflictReason?:string;geocodeCacheStatus?:"MEMORY"|"PERSISTENT"|"PROVIDER"|"STALE_FALLBACK" }
+export type DirectCandidateEntityType = "HOUSEHOLD_BUSINESS" | "COMPANY" | "INDIVIDUAL_SELLER" | "UNKNOWN";
+export type DirectQualificationTier = "QUALIFIED" | "NEEDS_VERIFICATION" | "INCOMPLETE";
+export interface DirectCandidateQualificationSignals { hasPhone: boolean; hasAddress: boolean; hasTaxCode: boolean; isFormalEntity: boolean }
+export interface DirectSearchCandidate { legalName:string;tradeName?:string;shortName?:string;address:string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string;legacyAddress?:string;addressStandard?:"HCM_POST_MERGER_2025";province:string;district:string;phone:string;phones?:string[];zaloPhone?:string;email?:string;taxCode?:string;website:string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:DirectCandidateFieldEvidence[];fieldConfidence?:DirectCandidateFieldConfidence[];profileQuality?:DirectCandidateProfileQuality;entityResolution?:DirectCandidateEntityResolution;entityType?:DirectCandidateEntityType;qualificationTier?:DirectQualificationTier;qualificationSignals?:DirectCandidateQualificationSignals;qualificationReasons?:string[];resultTier?:"EXACT"|"RELATED";latitude:number|null;longitude:number|null;capabilities:string[];sourceUrl:string;sourceTitle:string;confidence:number;sourceCount?:number;sources?:DirectCandidateSource[];matchReasons?:string[];distanceKm?:number|null;locationStatus?:"INSIDE"|"OUTSIDE"|"UNKNOWN"|"CONFLICT";locationReason?:string;distanceEvidence?:SearchDistanceEvidence;verifiedFields?:string[];verificationStatus?:"VERIFIED"|"PARTIAL"|"UNVERIFIED";lastVerifiedAt?:string;coordinateSource?:"MANUAL"|"SOURCE"|"WEBSITE"|"NOMINATIM"|"GOOGLE_MAPS";coordinateConfidence?:"HIGH"|"MEDIUM"|"LOW";geocodedAddress?:string;geocodedAt?:string;geocodeStatus?:"VERIFIED"|"REJECTED"|"NOT_ATTEMPTED";coordinateBoundingBox?:[number,number,number,number];coordinateConflictReason?:string;geocodeCacheStatus?:"MEMORY"|"PERSISTENT"|"PROVIDER"|"STALE_FALLBACK" }
 
 function normalizedIdentity(value:string):string{return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()}
 function identityKeys(item:Pick<DirectSearchCandidate,"legalName"|"address"|"phone"|"website"|"sourceUrl">&{taxCode?:string}):string[]{return[

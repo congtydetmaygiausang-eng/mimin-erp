@@ -128,7 +128,13 @@ export default function AgentDetailPage() {
         className={`bg-gradient-to-br ${persona.color || "from-violet-500 to-purple-600"} rounded-2xl p-6 text-white shadow-xl`}
       >
         <div className="flex items-start gap-4">
-          <div className="text-5xl">{persona.icon || "🤖"}</div>
+          {basePersona?.avatar?.startsWith("/avatars/") ? (
+            <div className="w-16 h-16 rounded-2xl bg-white/20 ring-2 ring-white/40 overflow-hidden shrink-0">
+              <img src={basePersona.avatar} alt={persona.name} className="w-full h-full object-cover object-top" />
+            </div>
+          ) : (
+            <div className="text-5xl">{persona.icon || "🤖"}</div>
+          )}
           <div className="flex-1">
             <h1 className="text-2xl font-bold mb-1">{persona.name}</h1>
             <p className="text-sm opacity-90 mb-2">{persona.role}</p>

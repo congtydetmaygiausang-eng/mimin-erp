@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Send, Bot, User, Sparkles, MessageSquare, ArrowLeft, CheckCircle2, Trash2, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
-import { AGENT_PERSONAS, AgentPersona } from "@/lib/agent-personas";
+import { useSearchParams } from "next/navigation";
+import { AGENT_PERSONAS, AgentPersona, getDefaultAgentIdForRole } from "@/lib/agent-personas";
 import { useSession } from "@/components/session-provider";
 
 interface Message {
@@ -13,24 +14,296 @@ interface Message {
   timestamp: string;
 }
 
+// Ảnh avatar là ảnh nhân vật full-thân chụp trên phông màu riêng của từng
+// agent (studio gray cho Mavis, cam nhạt cho Minh...) - object-cover center
+// mặc định sẽ cắt trúng bụng/chân thay vì mặt. Card lớn dùng object-top +
+// mask-image mờ dần phía dưới, nền card khớp tông màu ảnh gốc để chỗ mờ
+// không bị lộ viền cắt cứng, tạo cảm giác "đã xoá phông" mà không cần tách
+// nền pixel thật (không có công cụ tách nền AI trong môi trường này).
+const AGENT_CARD_BG: Record<string, string> = {
+  mavis: "bg-gradient-to-b from-slate-300 to-slate-400",
+  minh: "bg-gradient-to-b from-orange-100 to-orange-200",
+  lan: "bg-gradient-to-b from-stone-300 to-stone-400",
+  ha: "bg-gradient-to-b from-pink-100 to-purple-200",
+  vy: "bg-gradient-to-b from-slate-50 to-slate-200",
+  "mimin-help": "bg-gradient-to-b from-rose-50 to-rose-100",
+};
+const AVATAR_FADE_MASK = "linear-gradient(to bottom, black 58%, transparent 96%)";
+
+// Trước đây lịch sử chat chỉ nằm trong useState - refresh trang hoặc chuyển
+// tab là mất sạch. Anh Sang yêu cầu giữ lại lịch sử tối đa 1 ngày, tự xoá
+// sau đó, và có nút xoá tay bất cứ lúc nào. Lưu localStorage (không phải
+// Supabase - đây là UI state cá nhân, chưa cần đồng bộ nhiều thiết bị).
+const CHAT_HISTORY_KEY = "mimin_agents_chat_history_v1";
+const CHAT_HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Đọc to câu trả lời bằng Web Speech API (giọng trình duyệt, miễn phí, không
+// cần API key) - anh Sang chọn phương án này thay vì TTS AI trả phí. Markdown
+// (**đậm**, `code`, gạch đầu dòng...) trong câu trả lời phải bỏ trước khi đọc,
+// không thì giọng đọc luôn cả ký tự "sao sao" nghe rất kỳ.
+function stripMarkdownForSpeech(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-•]\s+/gm, "")
+    .replace(/\n{2,}/g, ". ")
+    .replace(/\n/g, " ")
+    .trim();
+}
+
+// "Đã từng gặp agent này chưa" - QUYẾT ĐỊNH RIÊNG với lịch sử chat 24h ở trên:
+// lịch sử tin nhắn có thể tự xoá sau 1 ngày, nhưng KHÔNG có nghĩa là "quên"
+// đã từng làm việc với agent - giống nhân sự thật, không tự nhiên "quên mặt"
+// đồng nghiệp chỉ vì qua 1 ngày. Lưu riêng, không có hạn.
+const AGENTS_MET_KEY = "mimin_agents_met_v1";
+
+function loadMetAgents(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(AGENTS_MET_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markAgentMet(agentId: string) {
+  if (typeof window === "undefined") return;
+  const met = loadMetAgents();
+  if (met.has(agentId)) return;
+  met.add(agentId);
+  try {
+    localStorage.setItem(AGENTS_MET_KEY, JSON.stringify(Array.from(met)));
+  } catch {}
+}
+
+// Gọi /api/v1/orchestrator/query và trả về text thuần - dùng chung cho cả
+// tin nhắn thật (handleSend) lẫn lời chào động theo dữ liệu (tier 3). Tách
+// riêng để không lặp lại đoạn parse SSE của nhánh Gemini (mỗi dòng "data: "
+// là 1 sự kiện nhỏ, không phải 1 khối JSON chat-completion duy nhất).
+async function callOrchestrator(userId: string, content: string, agentId: string): Promise<string> {
+  const res = await fetch("/api/v1/orchestrator/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId,
+      messages: [{ role: "user", content }],
+      agent_id: agentId,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
+    const raw = await res.text();
+    const lines = raw.split("\n").filter((l) => l.startsWith("data: "));
+    let streamedText = "";
+    for (const line of lines) {
+      const payload = line.slice(6).trim();
+      if (!payload || payload === "[DONE]") continue;
+      let evt: any;
+      try {
+        evt = JSON.parse(payload);
+      } catch {
+        continue;
+      }
+      if (evt.type === "text-delta" && typeof evt.delta === "string") {
+        streamedText += evt.delta;
+      } else if (evt.type === "error") {
+        throw new Error(evt.errorText || "Lỗi khi Gemini trả lời");
+      }
+    }
+    return streamedText || "Không có phản hồi";
+  }
+
+  const data = await res.json();
+  return data.response || data.error || "Không có phản hồi";
+}
+
+// Lời chào "biết tình hình thật" (tier 3) - agent tự tra dữ liệu qua tool
+// của mình rồi chào ngắn gọn theo đúng chuyên môn, thay vì câu chào ngắn
+// tĩnh (greetingShort) không đổi. Chỉ áp dụng cho lần mở chat SAU (đã từng
+// gặp) - lần đầu vẫn dùng greeting tĩnh để giới thiệu danh tính trước đã.
+const DYNAMIC_GREETING_PROMPT =
+  "Đây là tin nhắn tự động khi mở lại phiên chat, KHÔNG phải câu hỏi thật của người dùng - không trả lời như đang trả lời câu hỏi. Nếu có tool tra cứu dữ liệu thuộc chuyên môn của bạn, hãy dùng thử để xem hôm nay có gì đáng chú ý không. Sau đó chào ngắn gọn 1-2 câu đúng phong cách riêng của bạn (KHÔNG giới thiệu lại tên/vai trò vì đã từng nói chuyện rồi), chủ động nhắc điểm đáng chú ý nếu tìm thấy, và hỏi hôm nay muốn xử lý gì trước. Trả lời ngắn gọn, không dùng markdown.";
+
+function loadStoredMessages(): { savedAt: number; messages: Record<string, Message[]> } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt: number; messages: Record<string, Message[]> };
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > CHAT_HISTORY_TTL_MS) {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default function AgentsChatPage() {
   const { user } = useSession();
+  const searchParams = useSearchParams();
   const agentsList = Object.values(AGENT_PERSONAS);
   const [selectedAgent, setSelectedAgent] = useState<AgentPersona>(agentsList[0]);
-  const [messages, setMessages] = useState<Record<string, Message[]>>({
-    "mimin-orchestrator": [
-      { id: "1", sender: "agent", text: "Xin chào! Tôi là Mavis, trợ lý AI điều phối tổng quan MIMIN ERP. Bạn cần hỗ trợ gì hôm nay?", timestamp: "10:00" },
-    ],
+  const [autoSelected, setAutoSelected] = useState(false);
+
+  // Gộp làm 1 effect (không tách 2 effect riêng): tách riêng bị race - cả 2
+  // effect cùng chạy trong 1 lượt render với "autoSelected" đọc từ closure
+  // CŨ (false), nên effect theo vai trò luôn ghi đè mất kết quả của effect
+  // đọc ?agent= dù nó chạy sau và set autoSelected=true trước đó. Bấm card
+  // agent ở Dashboard Agents (/agents) hoặc nút "Chat với..." ở trang chi
+  // tiết đều điều hướng sang đây kèm ?agent=<id> - ưu tiên param này cao
+  // nhất; chỉ dùng agent mặc định theo vai trò khi KHÔNG có param.
+  useEffect(() => {
+    if (autoSelected) return;
+    const agentIdFromUrl = searchParams.get("agent");
+    if (agentIdFromUrl) {
+      const match = agentsList.find((a) => a.agent_id === agentIdFromUrl);
+      if (match) {
+        setSelectedAgent(match);
+        setAutoSelected(true);
+      }
+      return;
+    }
+    if (!user) return;
+    const defaultId = getDefaultAgentIdForRole(user.role);
+    const match = agentsList.find((a) => a.agent_id === defaultId);
+    if (match) setSelectedAgent(match);
+    setAutoSelected(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, autoSelected]);
+
+  const [messages, setMessages] = useState<Record<string, Message[]>>(() => {
+    const stored = loadStoredMessages();
+    return (
+      stored?.messages || {
+        "mimin-orchestrator": [
+          { id: "1", sender: "agent", text: "Xin chào! Tôi là Mavis, trợ lý AI điều phối tổng quan MIMIN ERP. Bạn cần hỗ trợ gì hôm nay?", timestamp: "10:00" },
+        ],
+      }
+    );
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [autoRead, setAutoRead] = useState(false);
+  const [metAgents, setMetAgents] = useState<Set<string>>(() => loadMetAgents());
+  // Lời chào tier 3 (theo dữ liệu thật) - KHÔNG persist, phải gọi lại mỗi
+  // lần mở chat theo đúng yêu cầu, không lưu vĩnh viễn như lịch sử hội thoại.
+  const [dynamicGreetings, setDynamicGreetings] = useState<Record<string, string>>({});
+  const [greetingLoadingId, setGreetingLoadingId] = useState<string | null>(null);
 
-  // Lời chào mở đầu (hiện trước khi gọi API) - dùng tên thật người đang đăng
-  // nhập thay vì "sếp" chung chung cho mọi người.
-  const greetTitle = user?.email === "sang@mimin.vn" ? "sếp Sang" : user?.name ? `anh/chị ${user.name.split(" ").slice(-1)[0]}` : "sếp";
-  const currentMessages = messages[selectedAgent.agent_id] || [
-    { id: "init", sender: "agent", text: `Chào ${greetTitle}! Em là ${selectedAgent.name} (${selectedAgent.role_title}). Em có thể giúp gì cho ${greetTitle} hôm nay?`, timestamp: "Vừa xong" }
-  ];
+  // Đọc to 1 tin nhắn bằng Web Speech API (giọng trình duyệt - miễn phí,
+  // không cần API key, làm được ngay). Huỷ câu đang đọc trước khi đọc câu
+  // mới, tránh chồng giọng khi bấm liên tục.
+  const speak = (text: string, messageId: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    if (speakingId === messageId) {
+      setSpeakingId(null);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(stripMarkdownForSpeech(text));
+    utterance.lang = "vi-VN";
+    utterance.rate = 1;
+    utterance.onend = () => setSpeakingId(null);
+    utterance.onerror = () => setSpeakingId(null);
+    setSpeakingId(messageId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Tắt trang/đổi agent thì phải dừng giọng đọc đang phát dở, không để nó
+  // tự đọc tiếp trong nền sau khi người dùng đã rời màn hình.
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  // Ghi lại mỗi khi tin nhắn đổi - giữ nguyên savedAt gốc nếu còn hạn (hết
+  // đúng 24h kể từ tin nhắn đầu, không phải "24h kể từ lần chat gần nhất").
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const existing = loadStoredMessages();
+    const savedAt = existing?.savedAt || Date.now();
+    try {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify({ savedAt, messages }));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  const handleClearHistory = () => {
+    if (!window.confirm("Xoá toàn bộ lịch sử chat với tất cả agent? Không thể hoàn tác.")) return;
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    setMessages({});
+  };
+
+  // Lời chào mở đầu (hiện trước khi gọi API):
+  // - Lần ĐẦU gặp agent: giới thiệu đầy đủ (greeting), không gọi AI.
+  // - Lần sau: đang tra dữ liệu (loading) -> chào "biết tình hình thật"
+  //   (dynamicGreetings, tier 3) nếu gọi được -> rơi về chào ngắn tĩnh
+  //   (greetingShort) nếu lỗi/chưa xong. Không lặp lại y hệt như đang nói
+  //   chuyện với 1 agent duy nhất đổi avatar.
+  const agentId = selectedAgent.agent_id;
+  const hasRealHistory = !!messages[agentId]?.length;
+  let initGreetingText = selectedAgent.greeting;
+  let greetingIsLoading = false;
+  if (metAgents.has(agentId)) {
+    if (dynamicGreetings[agentId]) {
+      initGreetingText = dynamicGreetings[agentId];
+    } else if (greetingLoadingId === agentId) {
+      greetingIsLoading = true;
+      initGreetingText = "";
+    } else {
+      initGreetingText = selectedAgent.greetingShort;
+    }
+  }
+  const currentMessages = hasRealHistory
+    ? messages[agentId]
+    : greetingIsLoading
+    ? []
+    : [{ id: "init", sender: "agent" as const, text: initGreetingText, timestamp: "Vừa xong" }];
+
+  // Chào theo dữ liệu thật (tier 3) - chỉ cho agent đã từng gặp, và chỉ khi
+  // chưa có hội thoại thật nào trong phiên hiện tại (không ghi đè lịch sử
+  // đang xem). Không lưu vào messages[] persisted - phải gọi lại MỖI LẦN mở
+  // chat như anh Sang yêu cầu, không phải 1 lần duy nhất rồi lưu mãi.
+  useEffect(() => {
+    if (!metAgents.has(agentId)) return;
+    if (hasRealHistory) return;
+    if (dynamicGreetings[agentId]) return;
+    if (greetingLoadingId === agentId) return;
+
+    let cancelled = false;
+    setGreetingLoadingId(agentId);
+    callOrchestrator(user?.email || "guest", DYNAMIC_GREETING_PROMPT, agentId)
+      .then((text) => {
+        if (cancelled || !text) return;
+        setDynamicGreetings((prev) => ({ ...prev, [agentId]: text }));
+        if (autoRead) speak(text, `dyn-greeting-${agentId}`);
+      })
+      .catch(() => {
+        // Im lặng rơi về greetingShort tĩnh - không cần báo lỗi cho 1 lời chào phụ.
+      })
+      .finally(() => {
+        if (!cancelled) setGreetingLoadingId((id) => (id === agentId ? null : id));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, metAgents, hasRealHistory]);
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -39,10 +312,23 @@ export default function AgentsChatPage() {
 
     const userMsg: Message = { id: Date.now().toString(), sender: "user", text: userText, timestamp: now };
 
-    setMessages((prev) => ({
-      ...prev,
-      [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), userMsg],
-    }));
+    setMessages((prev) => {
+      const existing = prev[selectedAgent.agent_id] || [];
+      // Chưa có hội thoại thật nào -> lời chào đang hiện (dài/ngắn/tier 3) sẽ
+      // biến mất ngay khi currentMessages chuyển sang đọc messages[] thật.
+      // Giữ nó lại làm tin nhắn đầu tiên của cuộc hội thoại hôm nay, tránh
+      // cảm giác lời chào vừa đọc xong bỗng dưng biến mất khỏi khung chat.
+      const greetingMsg: Message[] =
+        existing.length === 0 && initGreetingText
+          ? [{ id: `greeting-${selectedAgent.agent_id}`, sender: "agent", text: initGreetingText, timestamp: "Vừa xong" }]
+          : [];
+      return {
+        ...prev,
+        [selectedAgent.agent_id]: [...greetingMsg, ...existing, userMsg],
+      };
+    });
+    markAgentMet(selectedAgent.agent_id);
+    setMetAgents((prev) => (prev.has(selectedAgent.agent_id) ? prev : new Set(prev).add(selectedAgent.agent_id)));
     setInput("");
     setLoading(true);
 
@@ -53,61 +339,7 @@ export default function AgentsChatPage() {
       // biến môi trường không có tiền tố NEXT_PUBLIC_ vào bundle client, đúng theo
       // bảo mật) -> mọi câu hỏi đều rơi vào nhánh mock, không bao giờ gọi AI thật.
       // FloatingAI.tsx đã dùng đúng route /api/v1/orchestrator/query này từ trước.
-      const res = await fetch("/api/v1/orchestrator/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // Trước đây hardcode "sang@mimin.vn" cho MỌI người dùng - bất kỳ ai
-          // đăng nhập chat cũng bị AI chào nhầm là "sếp Sang". Gửi đúng email
-          // người đang đăng nhập thật để API chào đúng tên.
-          user_id: user?.email || "guest",
-          messages: [{ role: "user", content: userText }],
-          agent_id: selectedAgent.agent_id,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-
-      // Response có thể là JSON (DeepSeek/MiniMax) hoặc SSE streaming (Gemini)
-      const contentType = res.headers.get("content-type") || "";
-      let responseText: string;
-
-      if (contentType.includes("text/plain") || contentType.includes("event-stream")) {
-        // Nhánh Gemini dùng AI SDK v5 toUIMessageStreamResponse() - mỗi dòng
-        // "data: " là 1 SỰ KIỆN NHỎ ({"type":"text-delta","delta":"..."} ...),
-        // KHÔNG phải 1 khối JSON chat-completion duy nhất. Code cũ gộp hết các
-        // dòng lại rồi JSON.parse() cả khối -> luôn lỗi (nhiều JSON object dính
-        // liền nhau không phải JSON hợp lệ) -> rơi vào catch, hiển thị thẳng
-        // JSON thô lên màn hình thay vì nội dung câu trả lời thật. Phải parse
-        // TỪNG dòng, chỉ cộng dồn phần "delta" của các sự kiện "text-delta".
-        const raw = await res.text();
-        const lines = raw.split("\n").filter((l) => l.startsWith("data: "));
-        let streamedText = "";
-        for (const line of lines) {
-          const payload = line.slice(6).trim();
-          if (!payload || payload === "[DONE]") continue;
-          let evt: any;
-          try {
-            evt = JSON.parse(payload);
-          } catch {
-            continue; // dòng lỗi định dạng, bỏ qua - không làm gãy cả phản hồi
-          }
-          if (evt.type === "text-delta" && typeof evt.delta === "string") {
-            streamedText += evt.delta;
-          } else if (evt.type === "error") {
-            // Lỗi thật từ AI SDK (VD hết quota) - phải ném ra ngoài để catch()
-            // hiển thị rõ nguyên nhân, không được nuốt lỗi rồi báo chung chung.
-            throw new Error(evt.errorText || "Lỗi khi Gemini trả lời");
-          }
-        }
-        responseText = streamedText || "Không có phản hồi";
-      } else {
-        const data = await res.json();
-        responseText = data.response || data.error || "Không có phản hồi";
-      }
+      const responseText = await callOrchestrator(user?.email || "guest", userText, selectedAgent.agent_id);
 
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -120,6 +352,7 @@ export default function AgentsChatPage() {
         ...prev,
         [selectedAgent.agent_id]: [...(prev[selectedAgent.agent_id] || []), agentMsg],
       }));
+      if (autoRead) speak(agentMsg.text, agentMsg.id);
     } catch (e: any) {
       console.error(e);
       const errMsg: Message = {
@@ -137,46 +370,77 @@ export default function AgentsChatPage() {
     }
   };
 
+  // Vào chat qua ?agent=<id> (bấm card ở Dashboard Agents hoặc nút "Chat
+  // với...") -> xem như đang vào 1-1 riêng với agent đó, ẩn thanh 6 agent
+  // bên trái cho gọn màn hình (theo yêu cầu anh Sang), thay vì luôn hiện
+  // switcher. Vào thẳng /agents-chat (không kèm param) vẫn giữ switcher như
+  // cũ để người dùng tự do chuyển qua lại giữa các agent.
+  const isFocusedChat = !!searchParams.get("agent");
+
   return (
     <div className="flex h-[calc(100vh-80px)] bg-slate-50">
-      {/* Sidebar Danh sách 9 Agent */}
-      <div className="w-80 bg-white border-r border-slate-200 flex flex-col">
+      {/* Sidebar Danh sách 9 Agent - ẩn khi vào chat riêng 1 agent (focused) */}
+      <div className={`w-80 bg-white border-r border-slate-200 flex-col ${isFocusedChat ? "hidden" : "flex"}`}>
         <div className="p-4 border-b border-slate-200">
-          <Link href="/agents" className="text-xs text-sky-600 flex items-center gap-1 font-semibold mb-2 hover:underline">
-            <ArrowLeft className="w-3.5 h-3.5" /> Dashboard Agents
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link href="/agents" className="text-xs text-sky-600 flex items-center gap-1 font-semibold mb-2 hover:underline">
+              <ArrowLeft className="w-3.5 h-3.5" /> Dashboard Agents
+            </Link>
+            <button
+              onClick={handleClearHistory}
+              title="Xoá lịch sử chat (lưu tối đa 1 ngày)"
+              className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 mb-2 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Xoá lịch sử
+            </button>
+          </div>
           <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            <Bot className="w-5 h-5 text-sky-500" /> Chat 9 Nhân viên AI
+            <Bot className="w-5 h-5 text-sky-500" /> Chat {agentsList.length} Nhân viên AI
           </h2>
-          <p className="text-xs text-slate-500">Chọn nhân viên AI để trao đổi trực tiếp</p>
+          <p className="text-xs text-slate-500">Chọn nhân viên AI để trao đổi trực tiếp · lưu lịch sử tối đa 1 ngày</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
           {agentsList.map((agent) => {
             const isSelected = selectedAgent.agent_id === agent.agent_id;
+            const isImg = agent.avatar.startsWith("/avatars/");
+            const isReplyingHere = loading && isSelected;
             return (
               <button
                 key={agent.agent_id}
                 onClick={() => setSelectedAgent(agent)}
-                className={`w-full text-left p-3 rounded-xl transition flex items-center gap-3 ${
-                  isSelected ? "bg-sky-50 border border-sky-200 shadow-sm" : "hover:bg-slate-50"
+                className={`w-full text-left rounded-2xl transition flex items-stretch overflow-hidden border ${
+                  isSelected ? "border-sky-300 shadow-md ring-2 ring-sky-100" : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
                 }`}
               >
-                <div className="text-2xl w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
-                  {agent.avatar.startsWith("/avatars/") ? (
-                    <img src={agent.avatar} alt={agent.name} className="w-full h-full object-cover" />
+                <div className={`relative w-20 shrink-0 overflow-hidden ${AGENT_CARD_BG[agent.agent_id] || "bg-slate-100"}`}>
+                  {isImg ? (
+                    <img
+                      src={agent.avatar}
+                      alt={agent.name}
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      style={{ maskImage: AVATAR_FADE_MASK, WebkitMaskImage: AVATAR_FADE_MASK }}
+                    />
                   ) : (
-                    agent.avatar
+                    <div className="w-full h-full flex items-center justify-center text-4xl">{agent.avatar}</div>
+                  )}
+                  {isReplyingHere && (
+                    <span className="absolute inset-0 ring-4 ring-sky-400/70 rounded-none animate-pulse" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
+                <div className={`flex-1 min-w-0 p-3 flex flex-col justify-center gap-1 ${isSelected ? "bg-sky-50" : "bg-white"}`}>
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-sm text-slate-900 truncate">{agent.name}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono uppercase">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono uppercase shrink-0">
                       {agent.provider}
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 truncate">{agent.role_title}</div>
+                  {isReplyingHere && (
+                    <div className="text-[11px] text-sky-600 font-medium flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 animate-spin" /> Đang trả lời...
+                    </div>
+                  )}
                 </div>
               </button>
             );
@@ -186,43 +450,111 @@ export default function AgentsChatPage() {
 
       {/* Giao diện Chat chính */}
       <div className="flex-1 flex flex-col">
-        {/* Header Agent đang chọn */}
-        <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl w-11 h-11 rounded-full bg-sky-50 flex items-center justify-center border border-sky-100 overflow-hidden">
+        {/* Header Agent đang chọn - "hero card" full chiều rộng, theo đúng tông
+            màu phông ảnh của agent (khớp card bên sidebar) thay vì thanh nhỏ
+            trung tính trước đây - bấm card nào bên trái, cả khung chat đổi
+            "danh tính" theo agent đó. */}
+        <div className={`relative overflow-hidden border-b border-slate-200 shadow-sm ${AGENT_CARD_BG[selectedAgent.agent_id] || "bg-white"}`}>
+          {isFocusedChat && (
+            <div className="px-6 pt-3">
+              <Link
+                href="/agents"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-white/50 hover:bg-white/70 px-2.5 py-1 rounded-full transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Dashboard Agents
+              </Link>
+            </div>
+          )}
+          <div className="relative flex items-center gap-4 px-6 py-5">
+            <button
+              onClick={() => speak(initGreetingText || selectedAgent.greetingShort, `intro-${selectedAgent.agent_id}`)}
+              title="Bấm để nghe agent tự giới thiệu"
+              className="relative w-20 h-20 rounded-2xl bg-white/40 flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white/70 shadow-md text-4xl cursor-pointer hover:ring-sky-300 transition group/avatar"
+            >
               {selectedAgent.avatar.startsWith("/avatars/") ? (
-                <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover" />
+                <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
               ) : (
                 selectedAgent.avatar
               )}
-            </div>
+              <span className="absolute inset-0 bg-black/0 group-hover/avatar:bg-black/20 flex items-center justify-center transition">
+                <Volume2 className={`w-6 h-6 text-white opacity-0 group-hover/avatar:opacity-100 transition ${speakingId === `intro-${selectedAgent.agent_id}` ? "opacity-100 animate-pulse" : ""}`} />
+              </span>
+            </button>
             <div>
-              <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                {selectedAgent.name} <span className="text-xs text-slate-500 font-normal">({selectedAgent.role_title})</span>
+              <h3 className="font-extrabold text-slate-900 text-xl flex items-center gap-2 drop-shadow-sm">
+                {selectedAgent.name} <span className="text-sm text-slate-700 font-medium">({selectedAgent.role_title})</span>
               </h3>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="flex items-center gap-1 text-emerald-600 font-medium">
+              <div className="flex items-center gap-2 text-xs text-slate-700 mt-1">
+                <span className="flex items-center gap-1 text-emerald-700 font-semibold bg-white/50 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Sẵn sàng
                 </span>
-                <span>• Model: <b>{selectedAgent.model}</b></span>
+                <span className="bg-white/50 px-2 py-0.5 rounded-full">Model: <b>{selectedAgent.model}</b></span>
               </div>
             </div>
+            <button
+              onClick={() => {
+                if (autoRead && typeof window !== "undefined") window.speechSynthesis?.cancel();
+                setAutoRead((v) => !v);
+              }}
+              title={autoRead ? "Đang tự động đọc câu trả lời - bấm để tắt" : "Bật tự động đọc câu trả lời bằng giọng nói"}
+              className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                autoRead ? "bg-sky-600 text-white shadow" : "bg-white/50 text-slate-700 hover:bg-white/70"
+              }`}
+            >
+              {autoRead ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              {autoRead ? "Đang đọc tự động" : "Đọc tự động"}
+            </button>
           </div>
         </div>
 
         {/* Khung tin nhắn */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {greetingIsLoading && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+                {selectedAgent.avatar.startsWith("/avatars/") ? (
+                  <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
+                ) : (
+                  <div className="w-full h-full bg-sky-500 text-white flex items-center justify-center"><Bot className="w-4 h-4" /></div>
+                )}
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs text-slate-500 shadow-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-sky-500 animate-spin" />
+                <span>{selectedAgent.name} đang xem tình hình hôm nay...</span>
+              </div>
+            </div>
+          )}
           {currentMessages.map((msg) => {
             const isUser = msg.sender === "user";
+            const isAgentImg = !isUser && selectedAgent.avatar.startsWith("/avatars/");
             return (
               <div key={msg.id} className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? "bg-slate-200 text-slate-700" : "bg-sky-500 text-white"}`}>
-                  {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${isUser ? "bg-slate-200 text-slate-700" : "bg-sky-500 text-white"}`}>
+                  {isUser ? (
+                    <User className="w-4 h-4" />
+                  ) : isAgentImg ? (
+                    <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
+                  ) : (
+                    <Bot className="w-4 h-4" />
+                  )}
                 </div>
                 <div className={`max-w-xl rounded-2xl p-4 text-sm ${isUser ? "bg-sky-500 text-white" : "bg-white border border-slate-200 text-slate-800 shadow-sm"}`}>
                   <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
-                  <div className={`text-[10px] mt-1 text-right ${isUser ? "text-sky-100" : "text-slate-400"}`}>
-                    {msg.timestamp}
+                  <div className={`flex items-center gap-2 mt-1 ${isUser ? "justify-end" : "justify-between"}`}>
+                    {!isUser && (
+                      <button
+                        onClick={() => speak(msg.text, msg.id)}
+                        title={speakingId === msg.id ? "Dừng đọc" : "Đọc to tin nhắn này"}
+                        className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded transition ${
+                          speakingId === msg.id ? "bg-sky-100 text-sky-700" : "text-slate-400 hover:text-sky-600 hover:bg-sky-50"
+                        }`}
+                      >
+                        {speakingId === msg.id ? <Volume2 className="w-3 h-3 animate-pulse" /> : <Volume2 className="w-3 h-3" />}
+                      </button>
+                    )}
+                    <div className={`text-[10px] ${isUser ? "text-sky-100" : "text-slate-400"}`}>
+                      {msg.timestamp}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -230,8 +562,13 @@ export default function AgentsChatPage() {
           })}
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0 animate-pulse">
-                <Bot className="w-4 h-4" />
+              <div className="relative w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0 overflow-hidden">
+                {selectedAgent.avatar.startsWith("/avatars/") ? (
+                  <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-full h-full object-cover object-top" />
+                ) : (
+                  <Bot className="w-4 h-4" />
+                )}
+                <span className="absolute inset-0 rounded-full ring-2 ring-sky-400 animate-ping" />
               </div>
               <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs text-slate-500 shadow-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-sky-500 animate-spin" />

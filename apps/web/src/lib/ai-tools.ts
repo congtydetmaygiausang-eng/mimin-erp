@@ -4,6 +4,33 @@ import { KHO_VAI, KHO_VAT_TU, NHAN_SU, DOI_TAC } from "./data/real-data";
 import { PHAN_CONG } from "./data/cong-no";
 import { AGENT_PERSONAS } from "./agent-personas";
 import { ALL_MODULES, ROLE_LABELS, getFullMatrix, canCreate, canEdit, canDelete, type Role, type Module } from "./permissions";
+import { supabaseAdmin } from "./supabase/admin";
+
+// KHO_VAI/KHO_VAT_TU/NHAN_SU/DOI_TAC/PHAN_CONG ở trên là snapshot Excel tĩnh
+// (2026-07-23), không đổi theo thời gian - agent trả lời sai lệch với dữ liệu
+// thật trên Supabase. 3 tool bên dưới ưu tiên đọc trực tiếp từ Supabase (nguồn
+// chính) qua supabaseAdmin, chỉ rơi về snapshot tĩnh khi thiếu env (dev local
+// chưa cấu hình SUPABASE_SERVICE_ROLE_KEY) - và luôn nói rõ trong câu trả lời
+// khi đang dùng dữ liệu mẫu để không đánh lừa người hỏi.
+const DU_LIEU_MAU = " (dữ liệu mẫu - chưa kết nối được Supabase)";
+
+// Tồn kho thật = baseline snapshot (hầu hết = 0) + cộng dồn NHAP/XUAT từ bảng
+// giao_dich_kho - đúng công thức tinhTonKho() trong kho-store.tsx để khớp số
+// với trang kho-vai-tinhmann/kho-phu-lieu người dùng đang thấy trên UI.
+async function tonKhoTuGiaoDich(loaiKho: "vai" | "phu-lieu", baseList: { maVT: string; tonKho: number }[]) {
+  const map = new Map<string, number>(baseList.map((v) => [v.maVT, v.tonKho || 0]));
+  if (!supabaseAdmin) return { map, stale: true };
+  const { data, error } = await supabaseAdmin
+    .from("giao_dich_kho")
+    .select("ma_vt, loai, so_luong")
+    .eq("loai_kho", loaiKho);
+  if (error || !data) return { map, stale: true };
+  for (const r of data as any[]) {
+    const delta = r.loai === "XUAT" ? -(Number(r.so_luong) || 0) : (Number(r.so_luong) || 0);
+    map.set(r.ma_vt, (map.get(r.ma_vt) ?? 0) + delta);
+  }
+  return { map, stale: false };
+}
 
 // Hàm helper định dạng tiền VND
 function formatVND(amount: number) {
@@ -32,20 +59,25 @@ export const getInventoryStatus = tool({
     const result: string[] = [];
 
     if (category === "vai" || category === "all") {
+      const { map: tonMap, stale } = await tonKhoTuGiaoDich("vai", KHO_VAI);
       const totalVai = KHO_VAI.length;
-      const tongKhoiLuong = KHO_VAI.reduce((sum, item) => sum + (item.tonKho || 0), 0);
-      result.push(`Kho vải hiện có ${totalVai} mã, tổng khối lượng tồn là ${tongKhoiLuong} kg.`);
+      const tongKhoiLuong = Array.from(tonMap.values()).reduce((sum, v) => sum + v, 0);
+      result.push(`Kho vải hiện có ${totalVai} mã, tổng khối lượng tồn là ${tongKhoiLuong.toLocaleString("vi-VN")} kg${stale ? DU_LIEU_MAU : ""}.`);
 
-      // Top 3 tồn nhiều nhất
-      const topVai = [...KHO_VAI].sort((a, b) => (b.tonKho || 0) - (a.tonKho || 0)).slice(0, 3);
+      // Top 3 tồn nhiều nhất (tính từ giao dịch kho thật)
+      const topVai = [...KHO_VAI]
+        .map((v) => ({ ...v, tonKho: tonMap.get(v.maVT) ?? 0 }))
+        .sort((a, b) => b.tonKho - a.tonKho)
+        .slice(0, 3);
       result.push("Top 3 mã vải tồn nhiều nhất:");
-      topVai.forEach(v => result.push(`- ${v.tenVT} (${v.maVT}): ${v.tonKho || 0} ${v.dvt}`));
+      topVai.forEach(v => result.push(`- ${v.tenVT} (${v.maVT}): ${v.tonKho.toLocaleString("vi-VN")} ${v.dvt}`));
     }
 
     if (category === "phu_lieu" || category === "all") {
+      const { map: tonMap, stale } = await tonKhoTuGiaoDich("phu-lieu", KHO_VAT_TU);
       const totalPhuLieu = KHO_VAT_TU.length;
-      const tongTon = KHO_VAT_TU.reduce((sum, item) => sum + (item.tonKho || 0), 0);
-      result.push(`Kho phụ liệu hiện có ${totalPhuLieu} mã, tổng tồn kho ${tongTon} đơn vị.`);
+      const tongTon = Array.from(tonMap.values()).reduce((sum, v) => sum + v, 0);
+      result.push(`Kho phụ liệu hiện có ${totalPhuLieu} mã, tổng tồn kho ${tongTon.toLocaleString("vi-VN")} đơn vị${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     return result.join("\n");
@@ -60,40 +92,53 @@ export const getDebtStatus = tool({
   execute: async ({ entityType = "all" }) => {
     const result: string[] = [];
 
+    // Đọc phan_cong + nha_cung_cap (đối tác gia công) thật từ Supabase; rơi về
+    // PHAN_CONG/DOI_TAC tĩnh (mẫu Excel) chỉ khi thiếu env Supabase.
+    let phanCong: { trangThai: string; daThanhToan: number; donGiaGiao: number; soLuongGiao: number }[] = PHAN_CONG;
+    let doiTac: { trangThai: string; congNo: number }[] = DOI_TAC.map(d => ({ trangThai: d.trangThai, congNo: 0 }));
+    let stale = true;
+
+    if (supabaseAdmin) {
+      const [pcRes, dtRes] = await Promise.all([
+        supabaseAdmin.from("phan_cong").select("trang_thai, da_thanh_toan, don_gia_giao, so_luong_giao"),
+        supabaseAdmin.from("nha_cung_cap").select("trang_thai, cong_no").eq("loai", "doi_tac_gia_cong"),
+      ]);
+      if (!pcRes.error && pcRes.data) {
+        phanCong = (pcRes.data as any[]).map(r => ({
+          trangThai: r.trang_thai,
+          daThanhToan: Number(r.da_thanh_toan) || 0,
+          donGiaGiao: Number(r.don_gia_giao) || 0,
+          soLuongGiao: Number(r.so_luong_giao) || 0,
+        }));
+        stale = false;
+      }
+      if (!dtRes.error && dtRes.data) {
+        doiTac = (dtRes.data as any[]).map(r => ({ trangThai: r.trang_thai, congNo: Number(r.cong_no) || 0 }));
+      }
+    }
+
     if (entityType === "nha_cung_cap" || entityType === "all") {
-      // Tính công nợ NCC dựa trên PHAN_CONG có daThanhToan < donGiaGiao*soLuongGiao
-      const phanCongChuaThanhToan = PHAN_CONG.filter(
-        pc => pc.trangThai !== "Đã thanh toán"
-      );
-      const tongDaThanhToan = phanCongChuaThanhToan.reduce(
-        (sum, pc) => sum + (pc.daThanhToan || 0), 0
-      );
-      const tongCanThanhToan = phanCongChuaThanhToan.reduce(
-        (sum, pc) => sum + ((pc.donGiaGiao || 0) * (pc.soLuongGiao || 0)), 0
-      );
-      const tongNoNCC = Math.max(0, tongCanThanhToan - tongDaThanhToan);
-      result.push(`Công nợ phải trả (từ phân công): Tổng cộng ${formatVND(tongNoNCC)} (chưa thanh toán ${phanCongChuaThanhToan.length} phiếu).`);
+      const tongNoNCC = doiTac.reduce((sum, d) => sum + Math.max(0, d.congNo), 0);
+      result.push(`Công nợ phải trả cho đối tác gia công: Tổng cộng ${formatVND(tongNoNCC)} (${doiTac.length} đối tác)${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     if (entityType === "gia_cong" || entityType === "all") {
-      // Tiền công gia công dựa trên PHAN_CONG
-      const phanCongHoanThanh = PHAN_CONG.filter(
+      const phanCongHoanThanh = phanCong.filter(
         pc => pc.trangThai === "Hoàn thành" || pc.trangThai === "Đã thanh toán"
       );
       const tongTienCong = phanCongHoanThanh.reduce(
-        (sum, pc) => sum + ((pc.donGiaGiao || 0) * (pc.soLuongGiao || 0)), 0
+        (sum, pc) => sum + (pc.donGiaGiao * pc.soLuongGiao), 0
       );
       const tongDaTra = phanCongHoanThanh.reduce(
-        (sum, pc) => sum + (pc.daThanhToan || 0), 0
+        (sum, pc) => sum + pc.daThanhToan, 0
       );
       const conNo = tongTienCong - tongDaTra;
-      result.push(`Công nợ tiền gia công: Đã làm ${formatVND(tongTienCong)}, đã trả ${formatVND(tongDaTra)}, còn nợ ${formatVND(conNo)}.`);
+      result.push(`Công nợ tiền gia công: Đã làm ${formatVND(tongTienCong)}, đã trả ${formatVND(tongDaTra)}, còn nợ ${formatVND(conNo)}${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     if (entityType === "khach_hang" || entityType === "all") {
-      // Đếm đối tác Đang hợp tác (coi là KH tiềm năng)
-      const khActive = DOI_TAC.filter(d => d.trangThai === "Đang hợp tác");
-      result.push(`Khách hàng: ${khActive.length} đối tác đang hợp tác trong hệ thống.`);
+      const dangHopTac = doiTac.filter(d => d.trangThai === "Đang hợp tác");
+      result.push(`Đối tác: ${dangHopTac.length} đơn vị đang hợp tác trong hệ thống${stale ? DU_LIEU_MAU : ""}.`);
     }
 
     return result.join("\n");
@@ -106,12 +151,22 @@ export const getStaffList = tool({
     department: z.string().optional().describe("Tên phòng ban cần lọc, ví dụ: 'Sản xuất', 'Kho', 'May'"),
   }),
   execute: async ({ department }) => {
-    let list = NHAN_SU;
-    if (department) {
-      list = list.filter(nv => nv.boPhan.toLowerCase().includes(department.toLowerCase()));
+    let list: { hoTen: string; chucVu: string; boPhan: string }[] = NHAN_SU;
+    let stale = true;
+
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin.from("nhan_su").select("ho_ten, chuc_vu, bo_phan").order("stt");
+      if (!error && data) {
+        list = (data as any[]).map(d => ({ hoTen: d.ho_ten || "", chucVu: d.chuc_vu || "", boPhan: d.bo_phan || "" }));
+        stale = false;
+      }
     }
 
-    return `Tìm thấy ${list.length} nhân viên${department ? ` trong bộ phận ${department}` : ""}. Một số nhân viên: ` +
+    if (department) {
+      list = list.filter(nv => (nv.boPhan || "").toLowerCase().includes(department.toLowerCase()));
+    }
+
+    return `Tìm thấy ${list.length} nhân viên${department ? ` trong bộ phận ${department}` : ""}${stale ? DU_LIEU_MAU : ""}. Một số nhân viên: ` +
       list.slice(0, 5).map(nv => `${nv.hoTen} (${nv.chucVu})`).join(", ") + (list.length > 5 ? ", v.v." : "");
   },
 });
@@ -186,16 +241,6 @@ export const getSystemConfig = tool({
   },
 });
 
-export const getLenhCatList = tool({
-  description: "Lấy danh sách lệnh cắt từ hệ thống.",
-  inputSchema: z.object({
-    trangThai: z.string().optional().describe("Trạng thái lệnh cắt cần lọc"),
-  }),
-  execute: async ({ trangThai }) => {
-    return "Danh sách lệnh cắt hiện tại đang được lưu trữ an toàn trong cơ sở dữ liệu Supabase. Để xem chi tiết và chính xác tình trạng các Lệnh Cắt (Đang chạy, Hoàn thành...), anh/chị vui lòng truy cập menu 'Lệnh Cắt' trên giao diện phần mềm nhé.";
-  },
-});
-
 export const getAllTools = () => {
   return {
     getInventoryStatus,
@@ -209,16 +254,28 @@ export const getAllTools = () => {
     approvePhieu,
     // Add missing createDonHang
     createDonHang,
-    getLenhCatList,
   };
 };
+
+// Domain "thật" khai báo trong agent-personas.ts KHÔNG khớp với 4 domain hàm
+// này từng nhận diện (chỉ ton-kho/cong-no/ho-so-nhan-su/don-hang/all) - hậu
+// quả: Minh (domain lenh-cat/ke-hoach-san-xuat/tien-do-chuyen-may/...) và
+// MIMIN Help (domain phan-tich-logic/toi-uu-hoa/...) gần như 0 tool dùng
+// được dù allowed_domains đã khai báo đúng ý định. Nhóm các domain liên quan
+// để khớp đúng, không đổi allowed_domains gốc (giữ ý nghĩa mô tả rõ ràng).
+const PRODUCTION_DOMAINS = ["lenh-cat", "ke-hoach-san-xuat", "tien-do-chuyen-may", "chat-luong-qc", "thiet-bi-may", "gia-cong-ngoai"];
+const ANALYTICAL_DOMAINS = ["phan-tich-logic", "toi-uu-hoa", "help-desk", "bao-cao", "realtime", "bang-dieu-hanh-sx"];
 
 export const getToolsForDomain = (domains: string[]) => {
   // Trả về JSON definitions cho OpenAI compatible APIs (DeepSeek, MiniMax)
   const tools = [];
+  const hasAll = domains.includes("all");
+  const hasProduction = hasAll || domains.some((d) => PRODUCTION_DOMAINS.includes(d));
+  const hasAnalytical = hasAll || domains.some((d) => ANALYTICAL_DOMAINS.includes(d));
 
-  // Kho domains
-  if (domains.includes("ton-kho") || domains.includes("all")) {
+  // Kho domains - Minh (sản xuất) và MIMIN Help (phân tích chéo module) cũng
+  // cần tra tồn kho dù domain không ghi trực tiếp "ton-kho".
+  if (hasAll || domains.includes("ton-kho") || hasProduction || hasAnalytical) {
     tools.push({
       type: "function",
       function: {
@@ -235,7 +292,7 @@ export const getToolsForDomain = (domains: string[]) => {
   }
 
   // Kế toán, Tài chính, Bán hàng domains
-  if (domains.includes("cong-no") || domains.includes("all")) {
+  if (hasAll || domains.includes("cong-no") || hasAnalytical) {
     tools.push({
       type: "function",
       function: {
@@ -252,7 +309,7 @@ export const getToolsForDomain = (domains: string[]) => {
   }
 
   // Nhân sự domains
-  if (domains.includes("ho-so-nhan-su") || domains.includes("all")) {
+  if (hasAll || domains.includes("ho-so-nhan-su") || hasAnalytical) {
     tools.push({
       type: "function",
       function: {
@@ -268,23 +325,29 @@ export const getToolsForDomain = (domains: string[]) => {
     });
   }
 
-  // General tools
-  tools.push({
-    type: "function",
-    function: {
-      name: "getSystemConfig",
-      description: "Đọc cấu hình hệ thống MIMIN ERP hiện tại",
-      parameters: {
-        type: "object",
-        properties: {
-          section: { type: "string", enum: ["all", "version", "agents", "modules", "rbac", "supabase", "build"] }
+  // getSystemConfig lộ kiến trúc nội bộ (danh sách agent + provider/model,
+  // RBAC roles, Supabase project ref, email admin) - TRƯỚC ĐÂY không gate
+  // theo domain nên mọi agent kể cả Vy (tiếp khách hàng NGOÀI) đều gọi
+  // được. Chỉ giữ cho Mavis (domain "all") và MIMIN Help (domain phân
+  // tích/help-desk) - 2 agent thực sự cần biết context hệ thống.
+  if (hasAll || hasAnalytical) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "getSystemConfig",
+        description: "Đọc cấu hình hệ thống MIMIN ERP hiện tại",
+        parameters: {
+          type: "object",
+          properties: {
+            section: { type: "string", enum: ["all", "version", "agents", "modules", "rbac", "supabase", "build"] }
+          }
         }
       }
-    }
-  });
+    });
+  }
 
   // Action Tools (HITL)
-  if (domains.includes("don-hang") || domains.includes("all")) {
+  if (hasAll || domains.includes("don-hang")) {
     tools.push({
       type: "function",
       function: {
@@ -306,59 +369,140 @@ export const getToolsForDomain = (domains: string[]) => {
     });
   }
 
-  // Lenh Cat Action Tools
-  if (domains.includes("lenh-cat") || domains.includes("all")) {
-    tools.push({
-      type: "function",
-      function: {
-        name: "createLenhCat",
-        description: "Tạo lệnh cắt mới (chỉ admin/planner). Thực thi ngay và tự động gửi thông báo.",
-        parameters: {
-          type: "object",
-          properties: {
-            role: { type: "string", description: "Role của user hiện tại" },
-            maKH: { type: "string", description: "Mã khách hàng" },
-            tenSP: { type: "string", description: "Tên sản phẩm" },
-            tongSL: { type: "number", description: "Tổng số lượng" },
-            hanHoanThanh: { type: "string", description: "Hạn hoàn thành (YYYY-MM-DD)" },
-            ghiChu: { type: "string", description: "Ghi chú (optional)" }
-          },
-          required: ["role", "maKH", "tenSP", "tongSL", "hanHoanThanh"]
+  // 4 tool hành động sản xuất (tạo lệnh cắt/sửa công đoạn/xoá phiếu/duyệt
+  // phiếu) TRƯỚC ĐÂY chỉ có trong getAllTools() (nhánh Gemini), domain nào
+  // cũng không có trong hàm này -> Minh (agent chính phụ trách sản xuất,
+  // chạy DeepSeek) không bao giờ gọi được dù đúng nghiệp vụ của mình.
+  if (hasProduction) {
+    tools.push(
+      {
+        type: "function",
+        function: {
+          name: "createLenhCat",
+          description: "Tạo lệnh cắt mới (chỉ admin/planner). Thực thi ngay và tự động gửi thông báo cho các bộ phận liên quan.",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              maKH: { type: "string", description: "Mã khách hàng" },
+              tenSP: { type: "string", description: "Tên sản phẩm" },
+              tongSL: { type: "number", description: "Tổng số lượng" },
+              hanHoanThanh: { type: "string", description: "Hạn hoàn thành (YYYY-MM-DD)" },
+              ghiChu: { type: "string", description: "Ghi chú (optional)" }
+            },
+            required: ["role", "maKH", "tenSP", "tongSL", "hanHoanThanh"]
+          }
         }
-      }
-    });
-    
-    tools.push({
-      type: "function",
-      function: {
-        name: "updateCongDoan",
-        description: "Cập nhật trạng thái công đoạn (cắt/may/ủi/đóng gói). Trả về yêu cầu xác nhận (HITL).",
-        parameters: {
-          type: "object",
-          properties: {
-            role: { type: "string", description: "Role của user hiện tại" },
-            phanCongId: { type: "string", description: "ID phân công cần cập nhật" },
-            trangThai: { type: "string", enum: ["Mới giao", "Đang làm", "Hoàn thành", "Tạm dừng", "Đã thanh toán"], description: "Trạng thái mới" },
-            ghiChu: { type: "string", description: "Ghi chú (optional)" }
-          },
-          required: ["role", "phanCongId", "trangThai"]
+      },
+      {
+        type: "function",
+        function: {
+          name: "updateCongDoan",
+          description: "Cập nhật trạng thái công đoạn (cắt/may/ủi/đóng gói). Trả về yêu cầu xác nhận (HITL).",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              phanCongId: { type: "string", description: "ID phân công cần cập nhật" },
+              trangThai: { type: "string", enum: ["Mới giao", "Đang làm", "Hoàn thành", "Tạm dừng", "Đã thanh toán"], description: "Trạng thái mới" },
+              ghiChu: { type: "string", description: "Ghi chú (optional)" }
+            },
+            required: ["role", "phanCongId", "trangThai"]
+          }
         }
-      }
-    });
-
-    tools.push({
-      type: "function",
-      function: {
-        name: "getLenhCatList",
-        description: "Lấy danh sách lệnh cắt từ hệ thống.",
-        parameters: {
-          type: "object",
-          properties: {
-            trangThai: { type: "string", description: "Trạng thái lệnh cắt cần lọc" }
+      },
+      {
+        type: "function",
+        function: {
+          name: "deletePhieu",
+          description: "Xóa phiếu (lệnh cắt, phân công, NCC...). CHỈ admin. CẢNH BÁO: không thể hoàn tác. Trả về yêu cầu xác nhận (HITL).",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              loaiPhieu: { type: "string", enum: ["lenh-cat", "phan-cong", "khach-hang", "nha-cung-cap"], description: "Loại phiếu cần xóa" },
+              phieuId: { type: "string", description: "ID phiếu cần xóa" },
+              lyDo: { type: "string", description: "Lý do xóa (bắt buộc, để audit)" }
+            },
+            required: ["role", "loaiPhieu", "phieuId", "lyDo"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "approvePhieu",
+          description: "Duyệt phiếu (lệnh cắt, NCC, bảng lương). Trả về yêu cầu xác nhận (HITL).",
+          parameters: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "Role của user hiện tại" },
+              loaiPhieu: { type: "string", enum: ["lenh-cat", "nha-cung-cap", "bang-luong", "cong-no"], description: "Loại phiếu cần duyệt" },
+              phieuId: { type: "string", description: "ID phiếu cần duyệt" },
+              hanhDong: { type: "string", enum: ["duyet", "tu-choi"], description: "Hành động: duyệt hoặc từ chối" },
+              lyDo: { type: "string", description: "Lý do (bắt buộc nếu từ chối)" }
+            },
+            required: ["role", "loaiPhieu", "phieuId", "hanhDong"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "getLenhCatList",
+          description: "Lấy danh sách lệnh cắt từ hệ thống.",
+          parameters: {
+            type: "object",
+            properties: {
+              trangThai: { type: "string", description: "Trạng thái lệnh cắt cần lọc" }
+            }
           }
         }
       }
-    });
+    );
+  }
+
+  return tools;
+};
+
+// Bản tương đương getToolsForDomain() ở trên nhưng trả về AI SDK tool()
+// object thật (không phải JSON schema) - dùng cho streamText() ở nhánh
+// Gemini. TRƯỚC ĐÂY nhánh Gemini luôn gọi getAllTools() bỏ qua domain hoàn
+// toàn, nên Hà (tài chính/kế toán/nhân sự, chạy Gemini) gọi được cả 4 tool
+// hành động sản xuất (createLenhCat/updateCongDoan/deletePhieu/approvePhieu)
+// dù không thuộc allowed_domains của mình - và bất kỳ agent nào fallback
+// sang Gemini (khi DeepSeek/MiniMax lỗi) cũng bị lộ tương tự.
+export const getAllToolsForDomain = (domains: string[]) => {
+  const tools: Record<string, any> = {};
+  const hasAll = domains.includes("all");
+  const hasProduction = hasAll || domains.some((d) => PRODUCTION_DOMAINS.includes(d));
+  const hasAnalytical = hasAll || domains.some((d) => ANALYTICAL_DOMAINS.includes(d));
+
+  if (hasAll || domains.includes("ton-kho") || hasProduction || hasAnalytical) {
+    tools.getInventoryStatus = getInventoryStatus;
+  }
+  if (hasAll || domains.includes("cong-no") || hasAnalytical) {
+    tools.getDebtStatus = getDebtStatus;
+  }
+  if (hasAll || domains.includes("ho-so-nhan-su") || hasAnalytical) {
+    tools.getStaffList = getStaffList;
+  }
+
+  // Chỉ Mavis (all) và MIMIN Help (analytical) - xem lý do ở getToolsForDomain() phía trên
+  if (hasAll || hasAnalytical) {
+    tools.getSystemConfig = getSystemConfig;
+  }
+
+  if (hasAll || domains.includes("don-hang")) {
+    tools.createDonHang = createDonHang;
+  }
+
+  if (hasProduction) {
+    tools.createLenhCat = createLenhCat;
+    tools.updateCongDoan = updateCongDoan;
+    tools.deletePhieu = deletePhieu;
+    tools.approvePhieu = approvePhieu;
+    tools.getLenhCatList = getLenhCatList;
   }
 
   return tools;

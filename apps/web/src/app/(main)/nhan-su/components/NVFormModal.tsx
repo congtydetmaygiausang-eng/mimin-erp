@@ -80,7 +80,9 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
     }
 
     const data = await response.json();
-    return data.url as string;
+    // Bucket private - lưu path bền vào DB, không lưu url (chỉ dùng tạm 1
+    // tiếng). nhan-su-store.tsx sẽ tự ký lại URL mới mỗi khi tải danh sách.
+    return data.path as string;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,17 +101,22 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
 
     setIsUploading(true);
     try {
-      const [avatarUrl, cccdFrontUrl, cccdBackUrl] = await Promise.all([
-        uploadFiles.avatar ? uploadToSupabase("avatar", uploadFiles.avatar) : Promise.resolve(form.avatar || nv?.avatar || ""),
-        uploadFiles.cccdFrontImage ? uploadToSupabase("cccdFrontImage", uploadFiles.cccdFrontImage) : Promise.resolve(form.cccdFrontImage || nv?.cccdFrontImage || ""),
-        uploadFiles.cccdBackImage ? uploadToSupabase("cccdBackImage", uploadFiles.cccdBackImage) : Promise.resolve(form.cccdBackImage || nv?.cccdBackImage || ""),
+      // Bucket employee-documents là private - nv.avatar/cccdFrontImage/cccdBackImage
+      // hiện trên form là URL đã ký tạm (chỉ để xem), KHÔNG được lưu lại vào DB.
+      // Khi không upload ảnh mới, phải lấy path bền từ nv.*Path (do nhan-su-store
+      // gắn vào lúc tải danh sách) - nếu không có (vd chọn ảnh mẫu tĩnh /avatars/...
+      // hoặc thêm mới chưa từng lưu), giữ nguyên giá trị đang có trên form.
+      const [avatarPath, cccdFrontPath, cccdBackPath] = await Promise.all([
+        uploadFiles.avatar ? uploadToSupabase("avatar", uploadFiles.avatar) : Promise.resolve(null),
+        uploadFiles.cccdFrontImage ? uploadToSupabase("cccdFrontImage", uploadFiles.cccdFrontImage) : Promise.resolve(null),
+        uploadFiles.cccdBackImage ? uploadToSupabase("cccdBackImage", uploadFiles.cccdBackImage) : Promise.resolve(null),
       ]);
 
       const savedEmployee = {
         ...form,
-        avatar: avatarUrl || form.avatar || "",
-        cccdFrontImage: cccdFrontUrl || form.cccdFrontImage || "",
-        cccdBackImage: cccdBackUrl || form.cccdBackImage || "",
+        avatar: avatarPath ?? nv?.avatarPath ?? form.avatar ?? "",
+        cccdFrontImage: cccdFrontPath ?? nv?.cccdFrontPath ?? form.cccdFrontImage ?? "",
+        cccdBackImage: cccdBackPath ?? nv?.cccdBackPath ?? form.cccdBackImage ?? "",
       } as NhanSuExt;
 
       const response = await authFetch("/api/employee-records", {

@@ -2,27 +2,35 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, BadgeCheck, Bookmark, BookmarkCheck, Building2, Calculator, Check, CheckCircle2, CheckSquare, ExternalLink, Eye, Globe2, Hash, Info, Mail, Map, MapPin, Navigation, Phone, RefreshCw, Search, ShieldCheck, Sparkles, Square, X } from "lucide-react";
+import { BadgeCheck, Boxes, Bot, Building2, Check, CheckCircle2, ExternalLink, Factory, MapPin, Navigation, RefreshCw, Search, Send, ShieldCheck, Sparkles, User as UserIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
-import { approveDiscoveryCandidate, directCandidateSaveKey, importAICandidates, isDirectCandidateSaved, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectCandidateEvidenceField, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
-import { googleMapsSearchUrl } from "@/lib/google-maps";
+import { directCandidateSaveKey, approveDiscoveryCandidate, isDirectCandidateSaved, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { supabase } from "@/lib/supabase/client";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
-import MultiSelectDropdown from "@/components/ui/MultiSelectDropdown";
-import { extractVietnamPhones, formatVietnamPhone, normalizeVietnamPhone } from "@/lib/vietnam-phone";
+import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
 import { runCompanyReaderShadow } from "@/lib/company-reader-shadow";
 
 const HCM_DISTRICTS = [
   "Quận 1", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 8", "Quận 10", "Quận 11", "Quận 12",
   "Tân Bình", "Bình Tân", "Tân Phú", "Phú Nhuận", "Gò Vấp", "Bình Thạnh",
-  "TP Thủ Đức",
+  "Thủ Đức",
   "Huyện Hóc Môn", "Huyện Củ Chi", "Huyện Nhà Bè", "Huyện Bình Chánh", "Huyện Cần Giờ"
 ];
 
 const SEARCH_CACHE_KEY = "mimin:sourcing-search:v3";
+
+// Nút gợi ý nhanh trong khung chat - chỉ điền sẵn câu vào ô nhắn (không tự gửi) để anh
+// còn bổ sung chi tiết trước khi bấm Gửi. partner_type do DeepSeek tự suy ra từ câu chữ
+// (search_partners tool), không phụ thuộc role cố định của trang này - nên vẫn cho chọn
+// cả 3 loại kể cả khi đang ở trang Xưởng/Nhà cung cấp.
+const CHAT_STARTERS = [
+  { label: "Xưởng may gia công", icon: Factory, text: "Tìm xưởng may gia công" },
+  { label: "Nhà cung cấp", icon: Boxes, text: "Tìm nhà cung cấp nguyên phụ liệu" },
+  { label: "Khách hàng", icon: Building2, text: "Tìm khách hàng đầu ra" },
+] as const;
 
 interface SearchCriteriaSnapshot {
   query: string;
@@ -58,29 +66,7 @@ interface SearchCache {
   resultCriteria: SearchCriteriaSnapshot|null;
 }
 
-interface SearchDiagnostics { executedQueries?:string[];plannedQueries?:number;executedTavilyQueries?:number;normalizationBatches?:number;normalizationSourceLimit?:number;collectedSources:number;normalizedCandidates:number;supplementedCandidates?:number;finalCandidates:number;exactCandidates?:number;relatedCandidates?:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;locationBreakdown?:{inside:number;outside:number;unknown:number;conflict:number};strictExcluded?:number;strictLocationFallback?:boolean;enrichmentSources?:number;enrichedCandidates?:number;companyReaderEnrichmentSources?:number;rejectedNoiseCandidates?:number;qualityGate?:{strong:number;review:number;weak:number;conflicts:number;averageScore:number};geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number;persistentHits?:number;staleFallbacks?:number;providerRequests?:number};locationQuality?:{runId:string;algorithmVersion:string;grade:"HIGH"|"MEDIUM"|"LOW";coordinateCoveragePercent:number;staleFallbackUsed:boolean;warnings:string[];evaluatedAt:string};providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}> }
-
-const FIELD_LABELS: Record<DirectCandidateEvidenceField, string> = {
-  LEGAL_NAME:"Tên pháp lý",TRADE_NAME:"Tên thương mại",SHORT_NAME:"Tên viết tắt",TAX_CODE:"Mã số thuế",REGISTERED_ADDRESS:"Địa chỉ đăng ký",FACTORY_ADDRESS:"Địa chỉ nhà máy",OFFICE_ADDRESS:"Địa chỉ văn phòng",PHONE:"Điện thoại",ZALO:"Zalo",EMAIL:"Email",WEBSITE:"Website",FACEBOOK:"Facebook",LEGAL_REPRESENTATIVE:"Người đại diện",BUSINESS_LINE:"Ngành nghề",CAPABILITY:"Năng lực",COMPANY_INTRODUCTION:"Giới thiệu",FOUNDED_YEAR:"Năm thành lập",OPERATING_STATUS:"Tình trạng hoạt động",
-};
-
-function contactDetails(item: DirectSearchCandidate) {
-  const sourceText = item.address ?? "";
-  const email = item.email || sourceText.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0] || "";
-  const taxCodeDigits=(item.taxCode??"").replace(/\D/g,"");
-  const taxNumbers=new Set([taxCodeDigits,taxCodeDigits.slice(0,10)].filter(Boolean));
-  const phones = Array.from(new Set([...(item.phones ?? []).map(normalizeVietnamPhone), ...extractVietnamPhones(item.phone || sourceText)].filter((phone)=>phone&&!taxNumbers.has(phone)))).slice(0, 5);
-  const website = item.website || sourceText.match(/(?:https?:\/\/|www\.)[^\s,;]+/i)?.[0]?.replace(/[.)]+$/, "") || "";
-  const taxCode = item.taxCode || sourceText.match(/(?:mã số thuế|mst)\s*:?[\s-]*(\d{8,14})/i)?.[1] || "";
-  return { email, phones, website, taxCode };
-}
-
-const LOCATION_BADGES = {
-  INSIDE: { label: "Trong bán kính", className: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  OUTSIDE: { label: "Ngoài bán kính", className: "border-amber-300 bg-amber-50 text-amber-700" },
-  UNKNOWN: { label: "Chưa xác minh tọa độ", className: "border-slate-300 bg-slate-50 text-slate-700" },
-  CONFLICT: { label: "Mâu thuẫn vị trí", className: "border-red-300 bg-red-50 text-red-700" },
-} as const;
+interface SearchDiagnostics { requestedRadiusKm?:number;effectiveRadiusKm?:number;radiusEscalated?:boolean;executedQueries?:string[];plannedQueries?:number;executedTavilyQueries?:number;normalizationBatches?:number;normalizationSourceLimit?:number;collectedSources:number;normalizedCandidates:number;directoryCandidates?:number;supplementedCandidates?:number;finalCandidates:number;exactCandidates?:number;relatedCandidates?:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;locationBreakdown?:{inside:number;outside:number;unknown:number;conflict:number};strictExcluded?:number;strictLocationFallback?:boolean;enrichmentSources?:number;enrichedCandidates?:number;companyReaderEnrichmentSources?:number;rejectedNoiseCandidates?:number;qualityGate?:{strong:number;review:number;weak:number;conflicts:number;averageScore:number};qualificationGate?:{qualified:number;needsVerification:number;incomplete:number;missingPhone:number;missingAddress:number;missingTaxCode:number;individualSellerSuspected:number;entityTypeUnknown:number};geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number;persistentHits?:number;staleFallbacks?:number;providerRequests?:number};locationQuality?:{runId:string;algorithmVersion:string;grade:"HIGH"|"MEDIUM"|"LOW";coordinateCoveragePercent:number;staleFallbackUsed:boolean;warnings:string[];evaluatedAt:string};providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED"|"SKIPPED";count:number;code?:string}> }
 
 function SearchProgressModal({ loading }: { loading: boolean }) {
   const [step, setStep] = useState(0);
@@ -121,43 +107,6 @@ function SearchProgressModal({ loading }: { loading: boolean }) {
   );
 }
 
-function SupplierResultCard({ item, opening, verifying, saving, selected, saved, onToggle, onViewDetails, onVerifyLocation, onSaveOne }: { item: DirectSearchCandidate; opening: boolean; verifying: boolean; saving: boolean; selected: boolean; saved: boolean; onToggle: () => void; onViewDetails: () => void; onVerifyLocation: () => void; onSaveOne: () => void }) {
-  const [showCalculation, setShowCalculation] = useState(false);
-  const [showEvidence, setShowEvidence] = useState(false);
-  const contact = contactDetails(item);
-  const sources = item.sources?.length ? item.sources : [{ url: item.sourceUrl, title: item.sourceTitle }];
-  const status = item.locationStatus ?? "UNKNOWN";
-  const locationBadge = LOCATION_BADGES[status];
-  const distanceLabel = status === "INSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `${item.distanceKm.toFixed(1)} km từ tâm` : status === "OUTSIDE" && item.distanceKm !== null && item.distanceKm !== undefined ? `Ngoài bán kính · ${item.distanceKm.toFixed(1)} km` : locationBadge.label;
-  const mapsUrl = googleMapsSearchUrl(item);
-  const evidence = item.distanceEvidence;
-  const quality = item.profileQuality;
-  const conflictLabels = quality?.conflictFields?.map((field) => FIELD_LABELS[field]) ?? [];
-  const qualityStyle = quality?.grade === "STRONG" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : quality?.grade === "CONFLICT" ? "border-red-300 bg-red-50 text-red-800" : quality?.grade === "REVIEW" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-300 bg-slate-50 text-slate-700";
-  return <article className="rounded-xl border p-4 space-y-3" style={{borderColor:"var(--border)"}}>
-    <div className="flex justify-between gap-3">
-      <div className="flex min-w-0 items-start gap-2"><button type="button" onClick={onToggle} disabled={saved} className="mt-0.5 text-brand-700 disabled:text-emerald-600" aria-label={saved?"Công ty đã lưu":selected?"Bỏ chọn công ty":"Chọn công ty"}>{saved?<BookmarkCheck className="w-4 h-4"/>:selected?<CheckSquare className="w-4 h-4"/>:<Square className="w-4 h-4"/>}</button><div className="min-w-0"><div className="flex flex-wrap items-start gap-2"><Building2 className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600"/><b className="leading-snug">{item.legalName}</b><span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.resultTier==="RELATED"?"border-amber-300 bg-amber-50 text-amber-800":"border-emerald-300 bg-emerald-50 text-emerald-800"}`}>{item.resultTier==="RELATED"?"Liên quan · cần xác minh":"Đúng năng lực"}</span></div><div className="text-[11px] mt-1 text-brand-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>{item.verificationStatus==="VERIFIED"?"Đã đối chiếu nhiều nguồn":item.verificationStatus==="PARTIAL"?"Đã đối chiếu một phần":"Chưa đủ bằng chứng"}</div></div></div>
-      <span className="text-xs text-brand-700 shrink-0">{item.confidence}% phù hợp</span>
-    </div>
-    <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${locationBadge.className}`}><Navigation className="w-3.5 h-3.5"/>{distanceLabel}
-      {status === "UNKNOWN" && <span className="ml-1 text-slate-500 cursor-help" title="Hồ sơ này có địa chỉ chưa đủ chi tiết (thiếu số nhà, ngõ ngách...) để hệ thống định vị trên Bản đồ. Dù AI đánh giá nó phù hợp với nhu cầu, nhưng không thể tính khoảng cách thực tế. Anh có thể xem chi tiết để tự đánh giá lại.">(?)</span>}
-    </div>
-    {quality&&<div className={`rounded-lg border px-3 py-2 text-xs ${qualityStyle}`}><div className="flex flex-wrap items-center justify-between gap-2"><span className="inline-flex items-center gap-1.5 font-semibold">{quality.grade==="CONFLICT"?<AlertTriangle className="w-4 h-4"/>:<ShieldCheck className="w-4 h-4"/>}{quality.grade==="STRONG"?"Hồ sơ mạnh":quality.grade==="CONFLICT"?"Cần đối chiếu dữ liệu chính":quality.grade==="REVIEW"?"Cần kiểm tra thêm":"Bằng chứng còn yếu"}</span><b>{quality.score}/100</b></div><div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px]"><span>Đầy đủ <b>{quality.completeness}%</b></span><span>Bằng chứng <b>{quality.evidenceCoverage}%</b></span>{quality.conflictCount>0&&<span>Xung đột chính <b>{quality.conflictCount}</b></span>}</div>{quality.grade==="CONFLICT"&&<p className="mt-1.5 inline-flex items-center gap-1"><Info className="w-3.5 h-3.5 shrink-0"/>Cần kiểm tra: {conflictLabels.length?conflictLabels.join(", "):"danh tính doanh nghiệp"}.</p>}</div>}
-    <div className="grid grid-cols-1 gap-2 text-xs">
-      <div className="flex items-start gap-2"><MapPin className="w-4 h-4 shrink-0 text-rose-600"/><span className="w-20 shrink-0 font-medium">Địa chỉ</span><span className="min-w-0 break-words leading-relaxed line-clamp-2" title={item.legacyAddress?`Địa chỉ cũ: ${item.legacyAddress}`:item.address}>{item.address||"Chưa có"}{item.addressStandard&&<small className="ml-2 text-emerald-700">Đã chuẩn hóa sau sắp xếp 2025</small>}</span></div>
-      <div className="flex items-start gap-2"><Phone className="w-4 h-4 shrink-0 text-emerald-600"/><span className="w-20 shrink-0 font-medium">Điện thoại</span>{contact.phones.length?(<div className="flex min-w-0 flex-wrap items-center gap-1.5">{contact.phones.map((phone,index)=><a key={phone} className={`rounded-md px-2 py-0.5 font-medium ${index===0?"bg-emerald-50 text-emerald-700":"bg-slate-100 text-slate-700"}`} href={`tel:${phone}`}>{formatVietnamPhone(phone)}{index>0&&<span className="ml-1 text-[10px] opacity-60">phụ</span>}</a>)}</div>):<span className="opacity-50">Chưa có</span>}</div>
-      <div className="flex items-start gap-2"><Mail className="w-4 h-4 shrink-0 text-violet-600"/><span className="w-20 shrink-0 font-medium">Email</span>{contact.email?<a className="break-all text-brand-700" href={`mailto:${contact.email}`}>{contact.email}</a>:<span className="opacity-50">Chưa có</span>}</div>
-      <div className="flex items-start gap-2"><Globe2 className="w-4 h-4 shrink-0 text-sky-600"/><span className="w-20 shrink-0 font-medium">Website</span>{contact.website?<a className="break-all text-brand-700" href={contact.website.startsWith("http")?contact.website:`https://${contact.website}`} target="_blank" rel="noopener noreferrer">{contact.website}</a>:<span className="opacity-50">Chưa có</span>}</div>
-      <div className="flex items-start gap-2"><Hash className="w-4 h-4 shrink-0 text-amber-600"/><span className="w-20 shrink-0 font-medium">Mã số thuế</span>{contact.taxCode?<span>{contact.taxCode}</span>:<span className="opacity-50">Chưa xác minh</span>}</div>
-    </div>
-    <div className="flex flex-wrap gap-2">{item.matchReasons?.map(reason=><span key={reason} className="text-[11px] rounded-full border px-2 py-1" style={{borderColor:"var(--border)"}}>{reason}</span>)}</div>
-    <div className="flex flex-wrap gap-2"><a className="btn-secondary inline-flex items-center gap-2 text-xs" href={mapsUrl} target="_blank" rel="noopener noreferrer"><Map className="w-4 h-4"/>Google Maps</a><button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={()=>setShowCalculation((current)=>!current)}><Calculator className="w-4 h-4"/>{showCalculation?"Ẩn cách tính":"Xem cách tính"}</button>{Boolean(item.fieldConfidence?.length)&&<button type="button" className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={()=>setShowEvidence((current)=>!current)}><ShieldCheck className="w-4 h-4"/>{showEvidence?"Ẩn kiểm chứng":"Xem kiểm chứng"}</button>}<button type="button" disabled={verifying} className="btn-secondary inline-flex items-center gap-2 text-xs" onClick={onVerifyLocation}><RefreshCw className={`w-4 h-4 ${verifying?"animate-spin":""}`}/>{verifying?"Đang xác minh...":"Xác minh lại vị trí"}</button></div>
-    {showCalculation&&<div className="rounded-lg border bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1"><p><b>Phương pháp:</b> {evidence?.method==="HAVERSINE"?"Haversine · khoảng cách đường chim bay":"Chưa có phép tính"}</p><p><b>Bán kính áp dụng:</b> {evidence?`${evidence.radiusKm} km`:"Chưa có"}</p><p><b>Tâm:</b> {evidence?`${evidence.center.latitude.toFixed(6)}, ${evidence.center.longitude.toFixed(6)} · ${evidence.center.label}`:"Chưa xác định"}</p><p><b>Công ty:</b> {evidence?.destination.latitude!==null&&evidence?.destination.latitude!==undefined&&evidence.destination.longitude!==null&&evidence.destination.longitude!==undefined?`${evidence.destination.latitude.toFixed(6)}, ${evidence.destination.longitude.toFixed(6)}`:"Chưa có tọa độ"}</p><p><b>Nguồn tọa độ:</b> {evidence?.destination.coordinateSource??"Chưa xác minh"} · độ tin cậy {evidence?.destination.coordinateConfidence??"chưa có"}</p><p><b>Kết luận:</b> {item.locationReason??locationBadge.label}</p>{evidence&&<p><b>Thời điểm tính:</b> {new Date(evidence.calculatedAt).toLocaleString("vi-VN")}</p>}</div>}
-    {showEvidence&&<div className="rounded-lg border bg-white/60 p-3 text-xs dark:bg-white/5" style={{borderColor:"var(--border)"}}><div className="mb-2 flex items-center justify-between gap-2"><b>Kiểm chứng từng trường</b><span className="opacity-60">Nguồn cùng tên miền chỉ tính một lần</span></div><div className="space-y-2">{item.fieldConfidence?.map(field=><div key={field.fieldName} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-t pt-2 first:border-t-0 first:pt-0" style={{borderColor:"var(--border)"}}><div className="min-w-0"><p className="font-medium">{FIELD_LABELS[field.fieldName]}</p><p className="truncate opacity-60" title={field.selectedValue}>{field.selectedValue}</p>{field.alternatives.length>0&&<p className={`mt-1 line-clamp-2 text-[10px] ${field.status==="CONFLICT"?"text-red-700":"text-slate-500"}`}>{field.status==="CONFLICT"?"Cần đối chiếu":"Thông tin khác"}: {field.alternatives.slice(0,3).join(" · ")}{field.alternatives.length>3?` · +${field.alternatives.length-3}`:""}</p>}</div><div className="text-right"><b className={field.status==="CONFLICT"?"text-red-700":field.status==="VERIFIED"?"text-emerald-700":"text-amber-700"}>{field.score}/100</b><p className="text-[10px] opacity-60">{field.independentSources} nguồn độc lập</p></div></div>)}</div></div>}
-    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-3 text-xs">{sources.slice(0,3).map((source,sourceIndex)=><a key={`${source.url}-${sourceIndex}`} className="text-brand-700 inline-flex items-center gap-1" href={source.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3 h-3"/>Nguồn {sourceIndex+1}</a>)}</div><div className="flex gap-2"><button type="button" disabled={saving||saved} onClick={onSaveOne} className={`btn-secondary inline-flex items-center gap-1.5 text-xs ${saving||saved ? "opacity-60" : ""}`}>{saved?<><BookmarkCheck className="w-4 h-4 text-emerald-600"/>Đã lưu</>:saving ? <><BookmarkCheck className="w-4 h-4 text-emerald-600"/>Đang lưu...</> : <><Bookmark className="w-4 h-4"/>Lưu công ty này</>}</button><button type="button" disabled={opening} onClick={onViewDetails} className="btn-secondary inline-flex items-center gap-2 text-xs"><Eye className="w-4 h-4"/>{opening?"Đang mở...":"Xem chi tiết"}</button></div></div>
-  </article>;
-}
-
 export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -175,6 +124,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [verifyingLocation, setVerifyingLocation] = useState("");
   const [savingCard, setSavingCard] = useState("");
   const [radiusKm, setRadiusKm] = useState(20);
+  const [entityTypeFilter, setEntityTypeFilter] = useState<"ALL" | "COMPANY" | "HOUSEHOLD_BUSINESS">("ALL");
   const locationMode = "PREFER" as const;
   const [selectedResultKeys, setSelectedResultKeys] = useState<Set<string>>(new Set());
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
@@ -182,10 +132,11 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [diagnostics, setDiagnostics] = useState<SearchDiagnostics|null>(null);
   const [resultCriteria, setResultCriteria] = useState<SearchCriteriaSnapshot|null>(null);
-  const [aiText, setAiText] = useState("");
-  const [aiProvider, setAiProvider] = useState("AI_IMPORT");
-  const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
   const [cacheReady,setCacheReady]=useState(false);
+  const [chatBubbles,setChatBubbles]=useState<Array<{role:"user"|"assistant";content:string}>>([]);
+  const [chatInput,setChatInput]=useState("");
+  const [chatLoading,setChatLoading]=useState(false);
+  const chatRequestId=useRef(0);
   const refresh = useCallback(async () => { try { setItems(await loadDiscoveryCandidates()); } catch (error) { console.error("Không tải được ứng viên:", error); } }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -221,20 +172,6 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     const cached:SearchCache={query,location,locationType,role,radiusKm,locationMode,center:locationType==="GPS"?center:null,directResults,directProvider,resolvedCenter,learningSummary,diagnostics,resultCriteria};
     try{sessionStorage.setItem(SEARCH_CACHE_KEY,JSON.stringify(cached))}catch{/* Trình duyệt có thể chặn hoặc hết dung lượng sessionStorage. */}
   },[cacheReady,query,location,locationType,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics,resultCriteria]);
-  useEffect(() => {
-    const receive = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.data?.type !== "MIMIN_AI_IMPORT") return;
-      const payload = event.data.payload as { text?: unknown; provider?: unknown; sourceUrl?: unknown };
-      if (typeof payload.text === "string") setAiText(payload.text);
-      if (typeof payload.provider === "string") setAiProvider(payload.provider);
-      if (typeof payload.sourceUrl === "string") setAiSourceUrl(payload.sourceUrl);
-      toast.success("Đã nhận dữ liệu từ extension — hãy kiểm tra trước khi lưu");
-      window.postMessage({ type: "MIMIN_AI_IMPORT_RECEIVED" }, window.location.origin);
-    };
-    window.addEventListener("message", receive);
-    return () => window.removeEventListener("message", receive);
-  }, []);
-
   const search = async (silent = false): Promise<DirectSearchCandidate[]|null> => {
     const combinedQuery = [query, manualKeyword].filter(Boolean).join(", ");
     if (!combinedQuery.trim() || !location.trim()) { toast.error("Nhập nội dung và khu vực cần tìm"); return null; }
@@ -278,12 +215,79 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     try { if (status === "APPROVED") await approveDiscoveryCandidate(id); else await setDiscoveryStatus(id, status); await refresh(); toast.success(status === "APPROVED" ? "Đã duyệt vào danh mục đối tác" : "Đã loại ứng viên"); }
     catch { toast.error("Không cập nhật được trạng thái"); }
   };
-  const importFromAI = async () => {
-    if (!aiText.trim()) return toast.error("Chưa có dữ liệu JSON từ AI");
-    setLoading(true);
-    try { const count = await importAICandidates(aiText, role, aiProvider, aiSourceUrl); setAiText(""); await refresh(); toast.success(`Đã đưa ${count} ứng viên vào vùng chờ`); }
-    catch (error) { toast.error(error instanceof Error ? error.message : "Không nhập được dữ liệu AI"); }
-    finally { setLoading(false); }
+  // Khung chat AI thay cho khung "Nhập từ ChatGPT/Gemini/DeepSeek" dán JSON thủ công cũ
+  // (đã lỗi thời vì giờ có agent chat thật) - gọi cùng route DeepSeek tool-calling mà
+  // AgentSearchBox dùng, nhưng đổ kết quả thẳng vào directResults/directResultSections
+  // sẵn có của trang này thay vì có danh sách kết quả riêng - đúng ý "gộp về 1".
+  //
+  // Chiều ngược "chat → form": sau khi AI hiểu câu chat và gọi search_partners, đọc lại
+  // args (specialty/location/radius_km) rồi tự điền vào form nâng cao phía trên - để anh
+  // NHÌN THẤY chính xác AI đã hiểu điều kiện nào, không chỉ đọc trong câu trả lời.
+  const syncFormFromToolCall = (args: Record<string, unknown>) => {
+    const specialty = typeof args.specialty === "string" ? args.specialty.trim() : "";
+    if (specialty) {
+      const options = MANG_LUOI_DANH_MUC[role];
+      const matched = options.find((option) => option.toLowerCase() === specialty.toLowerCase() || specialty.toLowerCase().includes(option.toLowerCase()) || option.toLowerCase().includes(specialty.toLowerCase()));
+      if (matched) { setQuery(matched); setManualKeyword(""); }
+      else { setQuery(""); setManualKeyword(specialty); }
+    }
+    const location_ = typeof args.location === "string" ? args.location.trim() : "";
+    if (location_) { setLocationType("DISTRICT"); setCenter(null); setResolvedCenter(null); lastDistrictLocation.current = location_; setLocation(location_); }
+    const radius = typeof args.radius_km === "number" ? args.radius_km : null;
+    if (radius) { const nearest = [5, 10, 20, 30, 50, 100].reduce((best, option) => Math.abs(option - radius) < Math.abs(best - radius) ? option : best); setRadiusKm(nearest); }
+  };
+  const sendChat = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || chatLoading) return;
+    const currentRequestId = chatRequestId.current + 1;
+    chatRequestId.current = currentRequestId;
+    const history = chatBubbles.slice(-6);
+    setChatBubbles((current) => [...current, { role: "user", content: trimmed }]);
+    setChatLoading(true);
+    try {
+      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+      if (!token) throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
+      const lastResults = directResults.map((item, index) => ({ ...item, role, roleLabel: ROLE_LABELS[role], resultIndex: index }));
+      const response = await fetch("/api/v1/mimin-group/agent/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: trimmed, history, lastResults }),
+      });
+      const data = await response.json() as { reply?: string; error?: string; toolCalls?: Array<{ name: string; args: Record<string, unknown> }>; results?: { candidates: DirectSearchCandidate[]; provider: string[] } | null };
+      if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
+      if (chatRequestId.current !== currentRequestId) return;
+      setChatBubbles((current) => [...current, { role: "assistant", content: data.reply ?? "Đã xử lý xong." }]);
+      const searchCall = data.toolCalls?.find((call) => call.name === "search_partners");
+      if (searchCall) syncFormFromToolCall(searchCall.args);
+      if (data.results) {
+        setDirectResults(data.results.candidates);
+        setDirectProvider(data.results.provider.join("+"));
+        setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "AI Search Agent gặp lỗi";
+      toast.error(message);
+      if (chatRequestId.current === currentRequestId) setChatBubbles((current) => [...current, { role: "assistant", content: `Xin lỗi, có lỗi xảy ra: ${message}` }]);
+    } finally {
+      if (chatRequestId.current === currentRequestId) setChatLoading(false);
+    }
+  };
+  // "Nạp điều kiện đã chọn" - ghép các trường form nâng cao (đã điền ở trên) thành 1 câu
+  // rồi gửi thẳng cho AI Agent, để không phải gõ lại tay những gì đã chọn sẵn.
+  const roleTypeLabel = role === "CUSTOMER" ? "khách hàng" : role === "SATELLITE_PROCESSOR" ? "xưởng sản xuất" : "nhà cung cấp";
+  const composeFormMessage = () => {
+    const specialty = [query, manualKeyword].filter(Boolean).join(", ");
+    const parts = [`Tìm ${roleTypeLabel}`];
+    if (specialty) parts.push(`chuyên ${specialty}`);
+    if (locationType === "GPS" && center) parts.push(`gần vị trí hiện tại (tọa độ ${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)})`);
+    else if (location.trim()) parts.push(`ở ${location.trim()}`);
+    parts.push(`bán kính ${radiusKm}km`);
+    return parts.join(" ");
+  };
+  const sendFormConditions = () => {
+    if (!query && !manualKeyword) { toast.error("Chọn năng lực hoặc nhập từ khóa ở form phía trên trước"); return; }
+    if (!location.trim() && !(locationType === "GPS" && center)) { toast.error("Chọn khu vực hoặc bật Vị trí hiện tại ở form phía trên trước"); return; }
+    void sendChat(composeFormMessage());
   };
   const saveDirectResults = async()=>{const selected=directResults.filter(item=>selectedResultKeys.has(directCandidateSaveKey(item)));const candidates=selected.length?selected:directResults.filter(item=>!isDirectCandidateSaved(item,items));try{const result=await saveDirectSearchCandidates(candidates,role,`${query} | ${location}`,directProvider);await refresh();setSelectedResultKeys(new Set());if(result.savedCount)toast.success(`Đã lưu ${result.savedCount} công ty vào Công ty đã lưu`);else toast.info("Các công ty đã có trong vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
   const saveOneResult = async (item: DirectSearchCandidate, key: string) => {
@@ -332,14 +336,15 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     ...section,
     key: `${tier.tier}-${section.status}`,
     title: `${tier.prefix} — ${section.title}`,
-    items: directResults.filter((item) => (item.resultTier ?? "EXACT") === tier.tier && (item.locationStatus === section.status || (section.status === "UNKNOWN" && !item.locationStatus))),
+    items: directResults.filter((item) => (item.resultTier ?? "EXACT") === tier.tier && (item.locationStatus === section.status || (section.status === "UNKNOWN" && !item.locationStatus)) && (entityTypeFilter === "ALL" || item.entityType === entityTypeFilter)),
   }))).filter((section) => section.items.length);
 
   return <div className="space-y-5 animate-fade-in">
     {resultsAreStale&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"><b>Đây là kết quả của lần tìm trước.</b> Anh đã thay đổi năng lực, khu vực hoặc bán kính; hãy bấm <b>Tìm tự động</b> để chạy lại. Kết quả cũ không được gắn nhãn theo bộ lọc mới.</div>}
     {learningSummary&&<div className="text-xs px-1 opacity-70">{learningSummary.applied?`AI đang học từ ${learningSummary.approvedCount} kết quả đã duyệt và ${learningSummary.rejectedCount} kết quả đã loại.`:`Cần ít nhất 3 quyết định duyệt/loại để AI bắt đầu học. Hiện có ${learningSummary.approvedCount+learningSummary.rejectedCount}.`}</div>}
+    {diagnostics?.radiusEscalated&&<div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900 inline-flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5 shrink-0"/>Chưa đủ kết quả gần trong {diagnostics.requestedRadiusKm} km nên AI đã tự mở rộng bán kính lên <b>{diagnostics.effectiveRadiusKm} km</b>.</div>}
     {diagnostics?.locationQuality&&<div className={`rounded-lg border px-3 py-2 text-xs ${diagnostics.locationQuality.grade==="HIGH"?"border-emerald-300 bg-emerald-50 text-emerald-900":diagnostics.locationQuality.grade==="MEDIUM"?"border-amber-300 bg-amber-50 text-amber-900":"border-red-300 bg-red-50 text-red-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><b>Chất lượng định vị: {diagnostics.locationQuality.grade==="HIGH"?"Cao":diagnostics.locationQuality.grade==="MEDIUM"?"Trung bình":"Thấp"} · phủ tọa độ {diagnostics.locationQuality.coordinateCoveragePercent}%</b><span className="font-mono text-[10px]">Mã lượt: {diagnostics.locationQuality.runId.slice(0,8)} · {diagnostics.locationQuality.algorithmVersion}</span></div>{diagnostics.locationQuality.warnings.length>0&&<ul className="mt-1 list-disc pl-4">{diagnostics.locationQuality.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul>}</div>}
-    {diagnostics&&<div className="card p-4 space-y-3">{diagnostics.executedQueries&&diagnostics.executedQueries.length>0&&<div className="rounded-lg border bg-brand-50/50 p-3 text-xs" style={{borderColor:"var(--border)"}}><b className="block mb-1.5 text-brand-800">Từ khóa AI đã sinh ra & gửi cho tìm kiếm:</b><div className="flex flex-wrap gap-1.5">{diagnostics.executedQueries.map(q=><span key={q} className="rounded bg-white px-2 py-1 border text-brand-900 shadow-sm" style={{borderColor:"var(--border)"}}>{q}</span>)}</div></div>}<div className="flex flex-wrap gap-2">{diagnostics.providers.map(item=><span key={item.name} className="text-xs rounded-full border px-3 py-1" style={{borderColor:"var(--border)"}}>{item.name}: {item.status==="OK"?`${item.count} nguồn`:item.status==="EMPTY"?"không có kết quả":item.status==="DISABLED"?"chưa cấu hình":`tạm lỗi${item.code?` (${item.code})`:""}`}</span>)}{typeof diagnostics.enrichmentSources==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Làm giàu: {diagnostics.enrichmentSources} nguồn · bổ sung {diagnostics.enrichedCandidates??0} hồ sơ</span>}{Boolean(diagnostics.supplementedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-cyan-300 text-cyan-700">Trích xuất trực tiếp: +{diagnostics.supplementedCandidates} hồ sơ</span>}{typeof diagnostics.exactCandidates==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Đúng năng lực: {diagnostics.exactCandidates}</span>}{Boolean(diagnostics.relatedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-amber-300 text-amber-700">Liên quan cần xác minh: {diagnostics.relatedCandidates}</span>}{Boolean(diagnostics.rejectedNoiseCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-slate-300 text-slate-600">Đã loại {diagnostics.rejectedNoiseCandidates} kết quả không đủ hồ sơ công ty</span>}{diagnostics.geocoding&&<span className="text-xs rounded-full border px-3 py-1 border-sky-300 text-sky-700">Định vị: xác minh {diagnostics.geocoding.verified+diagnostics.geocoding.retainedFromSource}/{diagnostics.geocoding.attempted+diagnostics.geocoding.retainedFromSource} hồ sơ</span>}</div>{diagnostics.qualityGate&&<div className="rounded-lg border bg-brand-500/5 p-3 text-xs" style={{borderColor:"var(--border)"}}><div className="flex flex-wrap items-center justify-between gap-2"><b className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-brand-700"/>Cổng chất lượng hồ sơ · trung bình {diagnostics.qualityGate.averageScore}/100</b><div className="flex flex-wrap gap-2"><span className="text-emerald-700">Mạnh {diagnostics.qualityGate.strong}</span><span className="text-amber-700">Cần duyệt {diagnostics.qualityGate.review}</span><span className="text-slate-600">Yếu {diagnostics.qualityGate.weak}</span><span className="text-red-700">Xung đột {diagnostics.qualityGate.conflicts}</span></div></div></div>}{diagnostics.strictLocationFallback&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Chưa có hồ sơ nào đủ tọa độ để xác nhận trong {radiusKm} km. Hệ thống đang hiển thị hồ sơ chưa có tọa độ để anh kiểm tra; các hồ sơ này không được tính là nằm trong bán kính.</div>}<div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center"><div><b>{diagnostics.collectedSources}</b><p className="text-[11px] opacity-60">Nguồn thu thập</p></div><div><b>{diagnostics.finalCandidates}</b><p className="text-[11px] opacity-60">Hồ sơ sau gộp</p></div><div><b>{diagnostics.verified}</b><p className="text-[11px] opacity-60">Đối chiếu nhiều nguồn</p></div><div><b>{diagnostics.partial}</b><p className="text-[11px] opacity-60">Đối chiếu một phần</p></div><div><b>{diagnostics.insideRadius}</b><p className="text-[11px] opacity-60">Trong bán kính</p></div><div><b>{diagnostics.unknownCoordinates}</b><p className="text-[11px] opacity-60">Thiếu tọa độ</p></div></div></div>}
+    {diagnostics&&<div className="card p-4 space-y-3">{diagnostics.executedQueries&&diagnostics.executedQueries.length>0&&<div className="rounded-lg border bg-brand-50/50 p-3 text-xs" style={{borderColor:"var(--border)"}}><b className="block mb-1.5 text-brand-800">Từ khóa AI đã sinh ra & gửi cho tìm kiếm:</b><div className="flex flex-wrap gap-1.5">{diagnostics.executedQueries.map(q=><span key={q} className="rounded bg-white px-2 py-1 border text-brand-900 shadow-sm" style={{borderColor:"var(--border)"}}>{q}</span>)}</div></div>}<div className="flex flex-wrap gap-2">{diagnostics.providers.map(item=><span key={item.name} className="text-xs rounded-full border px-3 py-1" style={{borderColor:"var(--border)"}}>{item.name}: {item.status==="OK"?`${item.count} nguồn`:item.status==="EMPTY"?"không có kết quả":item.status==="DISABLED"?"chưa cấu hình":item.status==="SKIPPED"?"bỏ qua (đã đủ dữ liệu)":`tạm lỗi${item.code?` (${item.code})`:""}`}</span>)}{typeof diagnostics.enrichmentSources==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Làm giàu: {diagnostics.enrichmentSources} nguồn · bổ sung {diagnostics.enrichedCandidates??0} hồ sơ</span>}{Boolean(diagnostics.directoryCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-indigo-300 text-indigo-700">Vét danh bạ: +{diagnostics.directoryCandidates} hồ sơ</span>}{Boolean(diagnostics.supplementedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-cyan-300 text-cyan-700">Trích xuất trực tiếp: +{diagnostics.supplementedCandidates} hồ sơ</span>}{typeof diagnostics.exactCandidates==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Đúng năng lực: {diagnostics.exactCandidates}</span>}{Boolean(diagnostics.relatedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-amber-300 text-amber-700">Liên quan cần xác minh: {diagnostics.relatedCandidates}</span>}{Boolean(diagnostics.rejectedNoiseCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-slate-300 text-slate-600">Đã loại {diagnostics.rejectedNoiseCandidates} kết quả không đủ hồ sơ công ty</span>}{diagnostics.geocoding&&<span className="text-xs rounded-full border px-3 py-1 border-sky-300 text-sky-700">Định vị: xác minh {diagnostics.geocoding.verified+diagnostics.geocoding.retainedFromSource}/{diagnostics.geocoding.attempted+diagnostics.geocoding.retainedFromSource} hồ sơ</span>}</div>{diagnostics.qualityGate&&<div className="rounded-lg border bg-brand-500/5 p-3 text-xs" style={{borderColor:"var(--border)"}}><div className="flex flex-wrap items-center justify-between gap-2"><b className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-brand-700"/>Cổng chất lượng hồ sơ · trung bình {diagnostics.qualityGate.averageScore}/100</b><div className="flex flex-wrap gap-2"><span className="text-emerald-700">Mạnh {diagnostics.qualityGate.strong}</span><span className="text-amber-700">Cần duyệt {diagnostics.qualityGate.review}</span><span className="text-slate-600">Yếu {diagnostics.qualityGate.weak}</span><span className="text-red-700">Xung đột {diagnostics.qualityGate.conflicts}</span></div></div></div>}{diagnostics.strictLocationFallback&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Chưa có hồ sơ nào đủ tọa độ để xác nhận trong {radiusKm} km. Hệ thống đang hiển thị hồ sơ chưa có tọa độ để anh kiểm tra; các hồ sơ này không được tính là nằm trong bán kính.</div>}<div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center"><div><b>{diagnostics.collectedSources}</b><p className="text-[11px] opacity-60">Nguồn thu thập</p></div><div><b>{diagnostics.finalCandidates}</b><p className="text-[11px] opacity-60">Hồ sơ sau gộp</p></div><div><b>{diagnostics.verified}</b><p className="text-[11px] opacity-60">Đối chiếu nhiều nguồn</p></div><div><b>{diagnostics.partial}</b><p className="text-[11px] opacity-60">Đối chiếu một phần</p></div><div><b>{diagnostics.insideRadius}</b><p className="text-[11px] opacity-60">Trong bán kính</p></div><div><b>{diagnostics.unknownCoordinates}</b><p className="text-[11px] opacity-60">Thiếu tọa độ</p></div></div></div>}
     <div className="card p-5 space-y-4 relative z-20">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="text-xs font-medium">Năng lực cần tìm
@@ -379,6 +384,25 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           {center && <p className="text-[10px] text-emerald-700 text-center">số {Math.round(center.accuracy??0)} m</p>}
         </div>
       </div>
+      <div>
+        <span className="text-xs font-medium block mb-1.5">Loại hình doanh nghiệp <span className="opacity-50 font-normal">(lọc kết quả đang có, không cần tìm lại)</span></span>
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            { value: "ALL", label: "Không giới hạn" },
+            { value: "COMPANY", label: "Công ty / Doanh nghiệp" },
+            { value: "HOUSEHOLD_BUSINESS", label: "Hộ kinh doanh" },
+          ] as const).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setEntityTypeFilter(option.value)}
+              className={`text-xs rounded-full border px-2.5 py-1 transition ${entityTypeFilter === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <p className="text-xs opacity-60">{center ? `✅ GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m` : ""}</p>
         <button onClick={() => void search(false)} disabled={loading} className="btn-primary inline-flex items-center justify-center gap-2">
@@ -402,9 +426,42 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     </div>)}
     {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {selectedResultKeys.size||directResults.filter(item=>!isDirectCandidateSaved(item,items)).length} công ty</button></div>{directResultSections.map((section)=><section key={section.key} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.key}-${index}`;const saveKey=directCandidateSaveKey(item);const saved=isDirectCandidateSaved(item,items);return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} selected={selectedResultKeys.has(saveKey)} saved={saved} onToggle={()=>setSelectedResultKeys(current=>{const next=new Set(current);if(next.has(saveKey))next.delete(saveKey);else next.add(saveKey);return next})} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
     <div className="card p-5 space-y-3">
-      <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
-      <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />
-      <div className="flex justify-between items-center gap-3"><span className="text-xs opacity-60">Nguồn: {aiProvider}</span><button className="btn-primary" disabled={loading} onClick={() => void importFromAI()}>Kiểm tra & lưu vùng chờ</button></div>
+      <div className="flex items-center gap-2"><Bot className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Trò chuyện với AI Agent</h2><p className="text-xs opacity-60">Gõ nhu cầu bằng lời — AI tự hiểu, lọc điều kiện và gọi tìm kiếm; kết quả hiện ở khu vực phía trên.</p></div></div>
+      <div className="flex flex-wrap gap-1.5">
+        {CHAT_STARTERS.map((starter) => {
+          const Icon = starter.icon;
+          return (
+            <button key={starter.label} type="button" disabled={chatLoading} onClick={() => setChatInput(starter.text)} className="text-xs rounded-full border px-2.5 py-1.5 font-medium inline-flex items-center gap-1.5 border-slate-200 text-slate-600 hover:border-brand-300 disabled:opacity-50 dark:text-slate-300">
+              <Icon className="w-3.5 h-3.5" />{starter.label}
+            </button>
+          );
+        })}
+        <button type="button" disabled={chatLoading} onClick={sendFormConditions} title="Ghép Năng lực/Khu vực/Bán kính đã chọn ở form phía trên thành 1 câu, gửi thẳng cho AI" className="text-xs rounded-full border px-2.5 py-1.5 font-medium inline-flex items-center gap-1.5 border-brand-300 text-brand-700 hover:bg-brand-500/5 disabled:opacity-50">
+          <Send className="w-3.5 h-3.5" />Nạp điều kiện đã chọn
+        </button>
+      </div>
+      <div className="space-y-2 max-h-72 overflow-y-auto rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
+        {chatBubbles.length === 0 && <p className="text-xs opacity-50">VD: "Tìm xưởng cắt tại Quận 12" hoặc "chỉ lấy công ty có website" để lọc lại kết quả vừa tìm.</p>}
+        {chatBubbles.map((bubble, index) => (
+          <div key={index} className={`flex items-start gap-2 text-sm ${bubble.role === "user" ? "justify-end" : ""}`}>
+            {bubble.role === "assistant" && <Bot className="w-4 h-4 mt-0.5 shrink-0 text-brand-600" />}
+            <div className={`rounded-xl px-3 py-2 max-w-[85%] ${bubble.role === "user" ? "bg-brand-500 text-white" : "bg-slate-100 dark:bg-white/10"}`}>{bubble.content}</div>
+            {bubble.role === "user" && <UserIcon className="w-4 h-4 mt-0.5 shrink-0 opacity-60" />}
+          </div>
+        ))}
+        {chatLoading && <div className="flex items-center gap-2 text-sm opacity-60"><Bot className="w-4 h-4 shrink-0 text-brand-600" /><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Đang tìm kiếm...</div>}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          value={chatInput}
+          onChange={(event) => setChatInput(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter" && !chatLoading) { event.preventDefault(); void sendChat(chatInput); setChatInput(""); } }}
+          disabled={chatLoading}
+          className="input text-sm flex-1"
+          placeholder="Nhắn cho AI Agent..."
+        />
+        <button type="button" onClick={() => { void sendChat(chatInput); setChatInput(""); }} disabled={chatLoading || !chatInput.trim()} className="btn-primary text-sm shrink-0">Gửi</button>
+      </div>
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items.map((item) => <article key={item.id} className="card p-5 space-y-3">
       <div className="flex justify-between gap-3"><div><div className="text-[10px] text-brand-700">{ROLE_LABELS[item.role]} · {item.sourceProvider}</div><h3 className="font-bold">{item.legalName}</h3></div><span className="text-xs">{item.status === "PENDING" ? "Chờ duyệt" : item.status === "APPROVED" ? "Phù hợp" : "Đã loại"}</span></div>
