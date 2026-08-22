@@ -147,8 +147,6 @@ export default function ProductLibraryCard({
 
         {/* === VARIANTS BLOCKS (HORIZONTAL - EXTRA LARGE) === */}
         {sp.dsMau && sp.dsMau.length > 0 ? (
-        {/* === VARIANTS BLOCKS (HORIZONTAL - EXTRA LARGE) === */}
-        {sp.dsMau && sp.dsMau.length > 0 ? (
           <div className="flex flex-col gap-3 mb-4">
             {sp.dsMau.slice(0, 4).map((mau, idx) => {
               const sizes = (sp.bangSize?.sizes || []).slice(0, 5);

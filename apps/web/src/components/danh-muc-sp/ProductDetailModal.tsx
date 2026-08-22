@@ -135,7 +135,6 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onEdit, o
               ))}
             </div>
           )}
-          </div>
         </div>
 
         {/* Right: Info Panel */}
