@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, FileCheck2, GitBranch, ListChecks, MapPin, Network, RefreshCw, Scale, Search, Sparkles, Timer } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, CircleSlash2, Clock, Database, FileCheck2, GitBranch, ListChecks, MapPin, Network, RefreshCw, Scale, Search, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -20,6 +20,7 @@ import { readDr2Audit } from "@/lib/sourcing/dr2-research-graph";
 import { readDr3Audit } from "@/lib/sourcing/dr3-source-router";
 import { readDr4Audit } from "@/lib/sourcing/dr4-evidence-ledger";
 import { readDr5Audit } from "@/lib/sourcing/dr5-claim-verifier";
+import { readDr6Audit } from "@/lib/sourcing/dr6-decision-gate";
 
 const PAGE_SIZE = 15;
 
@@ -192,6 +193,7 @@ export default function LichSuTimKiemPage() {
               const dr3 = readDr3Audit(row.tool_calls);
               const dr4 = readDr4Audit(row.tool_calls);
               const dr5 = readDr5Audit(row.tool_calls);
+              const dr6 = readDr6Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -311,6 +313,21 @@ export default function LichSuTimKiemPage() {
                             <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Cần người duyệt</p><p className="mt-1 text-sm font-bold">{dr5.reviewRequiredCandidateCount}</p></div>
                           </div>
                           {dr5.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr5.warnings.join(" · ")}</p>}
+                        </section>
+                      )}
+                      {dr6 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Cổng quyết định DR6">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold"><CircleSlash2 className="h-4 w-4 text-rose-600" /> DR6 · Cổng quyết định (shadow)</div>
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">Xử lý an toàn {dr6.safeHandlingPercent}%</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Sẵn sàng</p><p className="mt-1 text-sm font-bold text-emerald-600">{dr6.readyCount}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Cần duyệt</p><p className="mt-1 text-sm font-bold text-amber-600">{dr6.reviewCount}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tạm không kết luận</p><p className="mt-1 text-sm font-bold text-rose-600">{dr6.abstainCount}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tỷ lệ sẵn sàng</p><p className="mt-1 text-sm font-bold">{dr6.readyPercent}%</p></div>
+                          </div>
+                          {dr6.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr6.warnings.join(" · ")}</p>}
                         </section>
                       )}
                       {row.assistant_reply && (
