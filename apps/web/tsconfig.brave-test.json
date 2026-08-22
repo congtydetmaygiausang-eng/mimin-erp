@@ -31,6 +31,24 @@
     "src/lib/sourcing/dr8-quality-drift.ts",
     "src/lib/sourcing/dr8-quality-drift.test.ts",
     "src/lib/sourcing/dr9-human-review-plan.ts",
-    "src/lib/sourcing/dr9-human-review-plan.test.ts"
+    "src/lib/sourcing/dr9-human-review-plan.test.ts",
+    "src/lib/sourcing/api0-search-observability.ts",
+    "src/lib/sourcing/api0-search-observability.test.ts",
+    "src/lib/sourcing/api1-provider-contracts.ts",
+    "src/lib/sourcing/api1-provider-contracts.test.ts",
+    "src/lib/sourcing/api2-routing-policy.ts",
+    "src/lib/sourcing/api2-routing-policy.test.ts",
+    "src/lib/sourcing/api3-provider-budget.ts",
+    "src/lib/sourcing/api3-provider-budget.test.ts",
+    "src/lib/sourcing/api4-resilience-audit.ts",
+    "src/lib/sourcing/api4-resilience-audit.test.ts",
+    "src/lib/sourcing/api5-provider-value.ts",
+    "src/lib/sourcing/api5-provider-value.test.ts",
+    "src/lib/sourcing/api6-rollout-gate.ts",
+    "src/lib/sourcing/api6-rollout-gate.test.ts",
+    "src/lib/sourcing/api7-canary-plan.ts",
+    "src/lib/sourcing/api7-canary-plan.test.ts",
+    "src/lib/sourcing/api8-canary-health.ts",
+    "src/lib/sourcing/api8-canary-health.test.ts"
   ]
 }
