@@ -279,12 +279,14 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     const specialty = [query, manualKeyword].filter(Boolean).join(", ");
     const parts = [`Tìm ${roleTypeLabel}`];
     if (specialty) parts.push(`chuyên ${specialty}`);
-    if (location.trim() && location !== "Vị trí hiện tại (GPS)") parts.push(`ở ${location.trim()}`);
+    if (locationType === "GPS" && center) parts.push(`gần vị trí hiện tại (tọa độ ${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)})`);
+    else if (location.trim()) parts.push(`ở ${location.trim()}`);
     parts.push(`bán kính ${radiusKm}km`);
     return parts.join(" ");
   };
   const sendFormConditions = () => {
     if (!query && !manualKeyword) { toast.error("Chọn năng lực hoặc nhập từ khóa ở form phía trên trước"); return; }
+    if (!location.trim() && !(locationType === "GPS" && center)) { toast.error("Chọn khu vực hoặc bật Vị trí hiện tại ở form phía trên trước"); return; }
     void sendChat(composeFormMessage());
   };
   const saveDirectResults = async()=>{const selected=directResults.filter(item=>selectedResultKeys.has(directCandidateSaveKey(item)));const candidates=selected.length?selected:directResults.filter(item=>!isDirectCandidateSaved(item,items));try{const result=await saveDirectSearchCandidates(candidates,role,`${query} | ${location}`,directProvider);await refresh();setSelectedResultKeys(new Set());if(result.savedCount)toast.success(`Đã lưu ${result.savedCount} công ty vào Công ty đã lưu`);else toast.info("Các công ty đã có trong vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
