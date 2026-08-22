@@ -124,6 +124,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [verifyingLocation, setVerifyingLocation] = useState("");
   const [savingCard, setSavingCard] = useState("");
   const [radiusKm, setRadiusKm] = useState(20);
+  const [entityTypeFilter, setEntityTypeFilter] = useState<"ALL" | "COMPANY" | "HOUSEHOLD_BUSINESS">("ALL");
   const locationMode = "PREFER" as const;
   const [selectedResultKeys, setSelectedResultKeys] = useState<Set<string>>(new Set());
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
@@ -333,7 +334,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     ...section,
     key: `${tier.tier}-${section.status}`,
     title: `${tier.prefix} — ${section.title}`,
-    items: directResults.filter((item) => (item.resultTier ?? "EXACT") === tier.tier && (item.locationStatus === section.status || (section.status === "UNKNOWN" && !item.locationStatus))),
+    items: directResults.filter((item) => (item.resultTier ?? "EXACT") === tier.tier && (item.locationStatus === section.status || (section.status === "UNKNOWN" && !item.locationStatus)) && (entityTypeFilter === "ALL" || item.entityType === entityTypeFilter)),
   }))).filter((section) => section.items.length);
 
   return <div className="space-y-5 animate-fade-in">
@@ -378,6 +379,25 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
             <Navigation className="w-4 h-4"/>{locationType === "GPS" ? "Đang dùng GPS • Hủy" : "Vị trí hiện tại"}
           </button>
           {center && <p className="text-[10px] text-emerald-700 text-center">số {Math.round(center.accuracy??0)} m</p>}
+        </div>
+      </div>
+      <div>
+        <span className="text-xs font-medium block mb-1.5">Loại hình doanh nghiệp <span className="opacity-50 font-normal">(lọc kết quả đang có, không cần tìm lại)</span></span>
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            { value: "ALL", label: "Không giới hạn" },
+            { value: "COMPANY", label: "Công ty / Doanh nghiệp" },
+            { value: "HOUSEHOLD_BUSINESS", label: "Hộ kinh doanh" },
+          ] as const).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setEntityTypeFilter(option.value)}
+              className={`text-xs rounded-full border px-2.5 py-1 transition ${entityTypeFilter === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
