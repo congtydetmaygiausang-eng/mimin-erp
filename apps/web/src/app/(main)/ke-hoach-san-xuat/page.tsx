@@ -210,7 +210,20 @@ export default function KeHoachSXPage() {
                   <button onClick={() => setProgressEdit({ id: k.id, val: k.daHoanThanh })} className="flex-1 text-xs py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-1">
                     <TrendingUp className="w-3 h-3" /> Tiáº¿n Ä‘á»™
                   </button>
-                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 tr      {/* Form Modal sử dụng CrudModal chuẩn */}
+                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 transition flex items-center justify-center gap-1">
+                    <Edit2 className="w-3 h-3" /> Sửa
+                  </button>
+                  <button onClick={() => handleDelete(k)} className="flex-1 text-xs py-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 rounded-lg font-bold hover:bg-rose-100 transition flex items-center justify-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Xoá
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Form Modal sử dụng CrudModal chuẩn */}
       <CrudModal
         open={showForm}
         onClose={() => { setShowForm(false); setEditItem(null); }}
