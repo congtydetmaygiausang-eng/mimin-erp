@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, GitBranch, ListChecks, MapPin, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, GitBranch, ListChecks, MapPin, Network, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -17,6 +17,7 @@ import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/pr
 import { readDr0Baseline } from "@/lib/sourcing/dr0-benchmark";
 import { readDr1Audit } from "@/lib/sourcing/dr1-intent-planner";
 import { readDr2Audit } from "@/lib/sourcing/dr2-research-graph";
+import { readDr3Audit } from "@/lib/sourcing/dr3-source-router";
 
 const PAGE_SIZE = 15;
 
@@ -186,6 +187,7 @@ export default function LichSuTimKiemPage() {
               const dr0 = readDr0Baseline(row.tool_calls);
               const dr1 = readDr1Audit(row.tool_calls);
               const dr2 = readDr2Audit(row.tool_calls);
+              const dr3 = readDr3Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -253,6 +255,24 @@ export default function LichSuTimKiemPage() {
                             ))}
                           </div>
                           <p className="mt-2 text-[10px] opacity-55">{dr2.queryCount} truy vấn · trùng {dr2.duplicateQueryRatePercent}%. DR2 chưa tự bổ sung truy vấn hoặc phát sinh API call.</p>
+                        </section>
+                      )}
+                      {dr3 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Định tuyến nguồn DR3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold"><Network className="h-4 w-4 text-blue-600" /> DR3 · Định tuyến nguồn (shadow)</div>
+                            <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">Dự phòng {dr3.fallbackReadinessPercent}%</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                            {dr3.routes.map((route) => (
+                              <div key={route.branch} className="rounded-lg bg-slate-50 p-2 dark:bg-white/5">
+                                <p className="truncate text-[10px] font-semibold">{route.branch}</p>
+                                <p className={`mt-1 text-[10px] ${route.status === "RESILIENT" ? "text-emerald-600" : route.status === "SINGLE_PATH" ? "text-amber-600" : "text-rose-600"}`}>{route.status}</p>
+                                <p className="mt-0.5 truncate text-[9px] opacity-55" title={route.healthyProviders.join(", ")}>{route.healthyProviders.join(", ") || "Chưa có nguồn"}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-[10px] opacity-55">Provider thành công {dr3.providerSuccessPercent}% · {dr3.resilientRoutes} nhánh có dự phòng · {dr3.unavailableRoutes} nhánh chưa sẵn sàng.</p>
                         </section>
                       )}
                       {row.assistant_reply && (

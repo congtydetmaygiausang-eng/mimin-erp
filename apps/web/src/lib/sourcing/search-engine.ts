@@ -15,6 +15,7 @@ import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/
 import { buildDr0OperationalBaseline, dr0ToolCall } from "@/lib/sourcing/dr0-benchmark";
 import { auditDr1Execution, buildDr1ShadowPlan, dr1ToolCall } from "@/lib/sourcing/dr1-intent-planner";
 import { buildDr2ResearchGraphAudit, dr2ToolCall } from "@/lib/sourcing/dr2-research-graph";
+import { buildDr3SourceRouterAudit, dr3ToolCall } from "@/lib/sourcing/dr3-source-router";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -2091,7 +2092,11 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       insideRadius: processed.breakdown.inside,
       contactCompleteCount: candidates.filter((candidate) => Boolean(candidate.phone && candidate.address)).length,
     });
-    result.diagnostics = { ...result.diagnostics, dr0Baseline, dr1Audit, dr2Audit };
+    const dr3Audit = buildDr3SourceRouterAudit({
+      providers: diagnostics.providers,
+      registryEvidenceCount: diagnostics.sourceTypeBreakdown.REGISTRY,
+    });
+    result.diagnostics = { ...result.diagnostics, dr0Baseline, dr1Audit, dr2Audit, dr3Audit };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
@@ -2102,7 +2107,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
-      toolCalls: [dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit)],
+      toolCalls: [dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),
