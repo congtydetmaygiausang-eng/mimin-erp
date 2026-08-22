@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Building2, Check, CheckCircle2, ExternalLink, MapPin, Navigation, RefreshCw, Search, ShieldCheck, Sparkles, X } from "lucide-react";
+import { BadgeCheck, Bot, Building2, Check, CheckCircle2, ExternalLink, MapPin, Navigation, RefreshCw, Search, ShieldCheck, Sparkles, User as UserIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
-import { approveDiscoveryCandidate, directCandidateSaveKey, importAICandidates, isDirectCandidateSaved, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
+import { directCandidateSaveKey, approveDiscoveryCandidate, isDirectCandidateSaved, loadDiscoveryCandidates, saveDirectSearchCandidates, setDiscoveryStatus, type DirectSearchCandidate, type DiscoveryCandidate } from "@/lib/production-discovery";
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { supabase } from "@/lib/supabase/client";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
@@ -121,10 +121,11 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [diagnostics, setDiagnostics] = useState<SearchDiagnostics|null>(null);
   const [resultCriteria, setResultCriteria] = useState<SearchCriteriaSnapshot|null>(null);
-  const [aiText, setAiText] = useState("");
-  const [aiProvider, setAiProvider] = useState("AI_IMPORT");
-  const [aiSourceUrl, setAiSourceUrl] = useState("https://mimin-erp.vercel.app");
   const [cacheReady,setCacheReady]=useState(false);
+  const [chatBubbles,setChatBubbles]=useState<Array<{role:"user"|"assistant";content:string}>>([]);
+  const [chatInput,setChatInput]=useState("");
+  const [chatLoading,setChatLoading]=useState(false);
+  const chatRequestId=useRef(0);
   const refresh = useCallback(async () => { try { setItems(await loadDiscoveryCandidates()); } catch (error) { console.error("Không tải được ứng viên:", error); } }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -160,20 +161,6 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     const cached:SearchCache={query,location,locationType,role,radiusKm,locationMode,center:locationType==="GPS"?center:null,directResults,directProvider,resolvedCenter,learningSummary,diagnostics,resultCriteria};
     try{sessionStorage.setItem(SEARCH_CACHE_KEY,JSON.stringify(cached))}catch{/* Trình duyệt có thể chặn hoặc hết dung lượng sessionStorage. */}
   },[cacheReady,query,location,locationType,role,radiusKm,locationMode,center,directResults,directProvider,resolvedCenter,learningSummary,diagnostics,resultCriteria]);
-  useEffect(() => {
-    const receive = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.data?.type !== "MIMIN_AI_IMPORT") return;
-      const payload = event.data.payload as { text?: unknown; provider?: unknown; sourceUrl?: unknown };
-      if (typeof payload.text === "string") setAiText(payload.text);
-      if (typeof payload.provider === "string") setAiProvider(payload.provider);
-      if (typeof payload.sourceUrl === "string") setAiSourceUrl(payload.sourceUrl);
-      toast.success("Đã nhận dữ liệu từ extension — hãy kiểm tra trước khi lưu");
-      window.postMessage({ type: "MIMIN_AI_IMPORT_RECEIVED" }, window.location.origin);
-    };
-    window.addEventListener("message", receive);
-    return () => window.removeEventListener("message", receive);
-  }, []);
-
   const search = async (silent = false): Promise<DirectSearchCandidate[]|null> => {
     const combinedQuery = [query, manualKeyword].filter(Boolean).join(", ");
     if (!combinedQuery.trim() || !location.trim()) { toast.error("Nhập nội dung và khu vực cần tìm"); return null; }
@@ -217,12 +204,43 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     try { if (status === "APPROVED") await approveDiscoveryCandidate(id); else await setDiscoveryStatus(id, status); await refresh(); toast.success(status === "APPROVED" ? "Đã duyệt vào danh mục đối tác" : "Đã loại ứng viên"); }
     catch { toast.error("Không cập nhật được trạng thái"); }
   };
-  const importFromAI = async () => {
-    if (!aiText.trim()) return toast.error("Chưa có dữ liệu JSON từ AI");
-    setLoading(true);
-    try { const count = await importAICandidates(aiText, role, aiProvider, aiSourceUrl); setAiText(""); await refresh(); toast.success(`Đã đưa ${count} ứng viên vào vùng chờ`); }
-    catch (error) { toast.error(error instanceof Error ? error.message : "Không nhập được dữ liệu AI"); }
-    finally { setLoading(false); }
+  // Khung chat AI thay cho khung "Nhập từ ChatGPT/Gemini/DeepSeek" dán JSON thủ công cũ
+  // (đã lỗi thời vì giờ có agent chat thật) - gọi cùng route DeepSeek tool-calling mà
+  // AgentSearchBox dùng, nhưng đổ kết quả thẳng vào directResults/directResultSections
+  // sẵn có của trang này thay vì có danh sách kết quả riêng - đúng ý "gộp về 1".
+  const sendChat = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || chatLoading) return;
+    const currentRequestId = chatRequestId.current + 1;
+    chatRequestId.current = currentRequestId;
+    const history = chatBubbles.slice(-6);
+    setChatBubbles((current) => [...current, { role: "user", content: trimmed }]);
+    setChatLoading(true);
+    try {
+      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+      if (!token) throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
+      const lastResults = directResults.map((item, index) => ({ ...item, role, roleLabel: ROLE_LABELS[role], resultIndex: index }));
+      const response = await fetch("/api/v1/mimin-group/agent/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: trimmed, history, lastResults }),
+      });
+      const data = await response.json() as { reply?: string; error?: string; results?: { candidates: DirectSearchCandidate[]; provider: string[] } | null };
+      if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
+      if (chatRequestId.current !== currentRequestId) return;
+      setChatBubbles((current) => [...current, { role: "assistant", content: data.reply ?? "Đã xử lý xong." }]);
+      if (data.results) {
+        setDirectResults(data.results.candidates);
+        setDirectProvider(data.results.provider.join("+"));
+        setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "AI Search Agent gặp lỗi";
+      toast.error(message);
+      if (chatRequestId.current === currentRequestId) setChatBubbles((current) => [...current, { role: "assistant", content: `Xin lỗi, có lỗi xảy ra: ${message}` }]);
+    } finally {
+      if (chatRequestId.current === currentRequestId) setChatLoading(false);
+    }
   };
   const saveDirectResults = async()=>{const selected=directResults.filter(item=>selectedResultKeys.has(directCandidateSaveKey(item)));const candidates=selected.length?selected:directResults.filter(item=>!isDirectCandidateSaved(item,items));try{const result=await saveDirectSearchCandidates(candidates,role,`${query} | ${location}`,directProvider);await refresh();setSelectedResultKeys(new Set());if(result.savedCount)toast.success(`Đã lưu ${result.savedCount} công ty vào Công ty đã lưu`);else toast.info("Các công ty đã có trong vùng chờ")}catch(error){toast.error(error instanceof Error?error.message:"Không lưu được kết quả")}};
   const saveOneResult = async (item: DirectSearchCandidate, key: string) => {
@@ -341,9 +359,29 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     </div>)}
     {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {selectedResultKeys.size||directResults.filter(item=>!isDirectCandidateSaved(item,items)).length} công ty</button></div>{directResultSections.map((section)=><section key={section.key} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.key}-${index}`;const saveKey=directCandidateSaveKey(item);const saved=isDirectCandidateSaved(item,items);return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} selected={selectedResultKeys.has(saveKey)} saved={saved} onToggle={()=>setSelectedResultKeys(current=>{const next=new Set(current);if(next.has(saveKey))next.delete(saveKey);else next.add(saveKey);return next})} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
     <div className="card p-5 space-y-3">
-      <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Nhập từ ChatGPT / Gemini / DeepSeek</h2><p className="text-xs opacity-60">Extension chỉ chuyển phần JSON anh chủ động chọn; dữ liệu vẫn vào vùng chờ duyệt.</p></div></div>
-      <textarea className="input min-h-32" value={aiText} onChange={(e) => setAiText(e.target.value)} placeholder='Dán JSON: [{"legalName":"...","address":"..."}]' />
-      <div className="flex justify-between items-center gap-3"><span className="text-xs opacity-60">Nguồn: {aiProvider}</span><button className="btn-primary" disabled={loading} onClick={() => void importFromAI()}>Kiểm tra & lưu vùng chờ</button></div>
+      <div className="flex items-center gap-2"><Bot className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Trò chuyện với AI Agent</h2><p className="text-xs opacity-60">Gõ nhu cầu bằng lời — AI tự hiểu, lọc điều kiện và gọi tìm kiếm; kết quả hiện ở khu vực phía trên.</p></div></div>
+      <div className="space-y-2 max-h-72 overflow-y-auto rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
+        {chatBubbles.length === 0 && <p className="text-xs opacity-50">VD: "Tìm xưởng cắt tại Quận 12" hoặc "chỉ lấy công ty có website" để lọc lại kết quả vừa tìm.</p>}
+        {chatBubbles.map((bubble, index) => (
+          <div key={index} className={`flex items-start gap-2 text-sm ${bubble.role === "user" ? "justify-end" : ""}`}>
+            {bubble.role === "assistant" && <Bot className="w-4 h-4 mt-0.5 shrink-0 text-brand-600" />}
+            <div className={`rounded-xl px-3 py-2 max-w-[85%] ${bubble.role === "user" ? "bg-brand-500 text-white" : "bg-slate-100 dark:bg-white/10"}`}>{bubble.content}</div>
+            {bubble.role === "user" && <UserIcon className="w-4 h-4 mt-0.5 shrink-0 opacity-60" />}
+          </div>
+        ))}
+        {chatLoading && <div className="flex items-center gap-2 text-sm opacity-60"><Bot className="w-4 h-4 shrink-0 text-brand-600" /><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Đang tìm kiếm...</div>}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          value={chatInput}
+          onChange={(event) => setChatInput(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter" && !chatLoading) { event.preventDefault(); void sendChat(chatInput); setChatInput(""); } }}
+          disabled={chatLoading}
+          className="input text-sm flex-1"
+          placeholder="Nhắn cho AI Agent..."
+        />
+        <button type="button" onClick={() => { void sendChat(chatInput); setChatInput(""); }} disabled={chatLoading || !chatInput.trim()} className="btn-primary text-sm shrink-0">Gửi</button>
+      </div>
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items.map((item) => <article key={item.id} className="card p-5 space-y-3">
       <div className="flex justify-between gap-3"><div><div className="text-[10px] text-brand-700">{ROLE_LABELS[item.role]} · {item.sourceProvider}</div><h3 className="font-bold">{item.legalName}</h3></div><span className="text-xs">{item.status === "PENDING" ? "Chờ duyệt" : item.status === "APPROVED" ? "Phù hợp" : "Đã loại"}</span></div>

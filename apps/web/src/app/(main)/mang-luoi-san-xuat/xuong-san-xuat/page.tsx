@@ -3,21 +3,22 @@
 // @codex MIMIN GROUP - tab Xưởng sản xuất (vai trò SATELLITE_PROCESSOR).
 // Hỗ trợ ?role=CUSTOMER để Tổng quan có thể deep-link sang danh mục Khách hàng
 // mà không cần thêm 1 tab chính riêng (CUSTOMER không nằm trong 7 tab spec).
+// Tab "Tìm nâng cao (AI)" và "Trò chuyện AI" đã gộp làm 1 (AiDiscoveryTab tự chứa
+// cả form nâng cao lẫn khung chat AI Agent) theo yêu cầu gộp về 1 khung duy nhất.
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Bot, Factory, Sparkles } from "lucide-react";
+import { Factory, Sparkles } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import PartnerDataTable from "@/components/production-network/PartnerDataTable";
 import { AiDiscoveryTab } from "@/components/sourcing/AiDiscoveryTab";
-import AgentSearchBox from "@/components/sourcing/AgentSearchBox";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 
 function XuongSanXuatContent() {
   const searchParams = useSearchParams();
   const overrideRole = searchParams.get("role");
   const role: ProductionPartnerRole = overrideRole === "CUSTOMER" ? "CUSTOMER" : "SATELLITE_PROCESSOR";
-  const [tab, setTab] = useState<"LOCAL" | "AI_FORM" | "AI_CHAT">("LOCAL");
+  const [tab, setTab] = useState<"LOCAL" | "AI">("LOCAL");
 
   return (
     <div className="space-y-4">
@@ -37,16 +38,10 @@ function XuongSanXuatContent() {
           Danh sách {role === "CUSTOMER" ? "khách hàng" : "xưởng"}
         </button>
         <button
-          onClick={() => setTab("AI_FORM")}
-          className={`pb-2 px-2 text-sm font-semibold inline-flex items-center gap-1.5 transition-colors ${tab === "AI_FORM" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
+          onClick={() => setTab("AI")}
+          className={`pb-2 px-2 text-sm font-semibold inline-flex items-center gap-1.5 transition-colors ${tab === "AI" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
         >
           <Sparkles className="w-3.5 h-3.5" /> Tìm nâng cao (AI)
-        </button>
-        <button
-          onClick={() => setTab("AI_CHAT")}
-          className={`pb-2 px-2 text-sm font-semibold inline-flex items-center gap-1.5 transition-colors ${tab === "AI_CHAT" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
-        >
-          <Bot className="w-3.5 h-3.5" /> Trò chuyện AI
         </button>
       </div>
       {tab === "LOCAL" ? (
@@ -55,10 +50,8 @@ function XuongSanXuatContent() {
           primaryRole={role}
           emptyHint={`Chưa có ${ROLE_LABELS[role].toLowerCase()} nào — dùng tab Tìm nâng cao (AI) để tìm nguồn mới.`}
         />
-      ) : tab === "AI_FORM" ? (
-        <AiDiscoveryTab role={role} />
       ) : (
-        <AgentSearchBox defaultPartnerType={role === "CUSTOMER" ? "customer" : "factory"} lockPartnerType />
+        <AiDiscoveryTab role={role} />
       )}
     </div>
   );

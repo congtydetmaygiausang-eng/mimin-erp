@@ -1,19 +1,20 @@
 "use client";
 
 // @codex MIMIN GROUP - tab Nhà cung cấp (gộp MATERIAL_SUPPLIER + PACKAGING_FINISHER).
+// Tab "Tìm nâng cao (AI)" và "Trò chuyện AI" đã gộp làm 1 (AiDiscoveryTab tự chứa
+// cả form nâng cao lẫn khung chat AI Agent) theo yêu cầu gộp về 1 khung duy nhất.
 
 import { useState } from "react";
-import { Bot, Boxes, Sparkles } from "lucide-react";
+import { Boxes, Sparkles } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import PartnerDataTable from "@/components/production-network/PartnerDataTable";
 import { AiDiscoveryTab } from "@/components/sourcing/AiDiscoveryTab";
-import AgentSearchBox from "@/components/sourcing/AgentSearchBox";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 
 const SUPPLIER_ROLES: ProductionPartnerRole[] = ["MATERIAL_SUPPLIER", "PACKAGING_FINISHER"];
 
 export default function NhaCungCapPage() {
-  const [tab, setTab] = useState<"LOCAL" | "AI_FORM" | "AI_CHAT">("LOCAL");
+  const [tab, setTab] = useState<"LOCAL" | "AI">("LOCAL");
   const [aiRole, setAiRole] = useState<ProductionPartnerRole>("MATERIAL_SUPPLIER");
 
   return (
@@ -32,16 +33,10 @@ export default function NhaCungCapPage() {
           Danh sách nhà cung cấp
         </button>
         <button
-          onClick={() => setTab("AI_FORM")}
-          className={`pb-2 px-2 text-sm font-semibold inline-flex items-center gap-1.5 transition-colors ${tab === "AI_FORM" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
+          onClick={() => setTab("AI")}
+          className={`pb-2 px-2 text-sm font-semibold inline-flex items-center gap-1.5 transition-colors ${tab === "AI" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
         >
           <Sparkles className="w-3.5 h-3.5" /> Tìm nâng cao (AI)
-        </button>
-        <button
-          onClick={() => setTab("AI_CHAT")}
-          className={`pb-2 px-2 text-sm font-semibold inline-flex items-center gap-1.5 transition-colors ${tab === "AI_CHAT" ? "border-b-2 border-brand-500 text-brand-700" : "text-slate-500 hover:text-slate-800"}`}
-        >
-          <Bot className="w-3.5 h-3.5" /> Trò chuyện AI
         </button>
       </div>
       {tab === "LOCAL" ? (
@@ -50,7 +45,7 @@ export default function NhaCungCapPage() {
           primaryRole="MATERIAL_SUPPLIER"
           emptyHint="Chưa có nhà cung cấp nào — dùng tab Tìm nâng cao (AI) để tìm nguồn mới."
         />
-      ) : tab === "AI_FORM" ? (
+      ) : (
         <div className="space-y-3">
           <div className="inline-flex rounded-xl border p-1 gap-1" style={{ borderColor: "var(--border)" }}>
             {SUPPLIER_ROLES.map((role) => (
@@ -65,8 +60,6 @@ export default function NhaCungCapPage() {
           </div>
           <AiDiscoveryTab role={aiRole} />
         </div>
-      ) : (
-        <AgentSearchBox defaultPartnerType="supplier" lockPartnerType />
       )}
     </div>
   );
