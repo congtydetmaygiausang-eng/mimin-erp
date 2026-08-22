@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, Bot, Building2, ChevronDown, ChevronUp, CircleSlash2, Clock, Database, FileCheck2, GitBranch, ListChecks, MapPin, Network, RefreshCw, Scale, Search, Sparkles, Timer } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, CircleSlash2, Clock, Database, FileCheck2, Gauge, GitBranch, ListChecks, MapPin, Network, RefreshCw, Scale, Search, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -21,6 +21,7 @@ import { readDr3Audit } from "@/lib/sourcing/dr3-source-router";
 import { readDr4Audit } from "@/lib/sourcing/dr4-evidence-ledger";
 import { readDr5Audit } from "@/lib/sourcing/dr5-claim-verifier";
 import { readDr6Audit } from "@/lib/sourcing/dr6-decision-gate";
+import { readDr7Audit } from "@/lib/sourcing/dr7-rollout-readiness";
 
 const PAGE_SIZE = 15;
 
@@ -194,6 +195,7 @@ export default function LichSuTimKiemPage() {
               const dr4 = readDr4Audit(row.tool_calls);
               const dr5 = readDr5Audit(row.tool_calls);
               const dr6 = readDr6Audit(row.tool_calls);
+              const dr7 = readDr7Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -328,6 +330,21 @@ export default function LichSuTimKiemPage() {
                             <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tỷ lệ sẵn sàng</p><p className="mt-1 text-sm font-bold">{dr6.readyPercent}%</p></div>
                           </div>
                           {dr6.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr6.warnings.join(" · ")}</p>}
+                        </section>
+                      )}
+                      {dr7 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Readiness DR7">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold"><Gauge className="h-4 w-4 text-indigo-600" /> DR7 · Readiness rollout (shadow)</div>
+                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr7.readiness === "CANARY_READY" ? "bg-emerald-50 text-emerald-700" : dr7.readiness === "SHADOW_READY" ? "bg-indigo-50 text-indigo-700" : "bg-rose-50 text-rose-700"}`}>{dr7.readiness}</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Điểm readiness</p><p className="mt-1 text-sm font-bold">{dr7.readinessScore}/100</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tín hiệu đạt</p><p className="mt-1 text-sm font-bold">{dr7.passedSignals}/{dr7.totalSignals}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Điểm chặn</p><p className="mt-1 text-sm font-bold text-rose-600">{dr7.criticalBlockers.length}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Bộ dữ liệu vàng</p><p className="mt-1 text-sm font-bold">{dr7.goldenDatasetValidated ? "Đã duyệt" : "Chưa duyệt"}</p></div>
+                          </div>
+                          {dr7.nextActions.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr7.nextActions.join(" · ")}</p>}
                         </section>
                       )}
                       {row.assistant_reply && (
