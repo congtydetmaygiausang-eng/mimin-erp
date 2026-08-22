@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, FileCheck2, GitBranch, ListChecks, MapPin, Network, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, FileCheck2, GitBranch, ListChecks, MapPin, Network, RefreshCw, Scale, Search, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -19,6 +19,7 @@ import { readDr1Audit } from "@/lib/sourcing/dr1-intent-planner";
 import { readDr2Audit } from "@/lib/sourcing/dr2-research-graph";
 import { readDr3Audit } from "@/lib/sourcing/dr3-source-router";
 import { readDr4Audit } from "@/lib/sourcing/dr4-evidence-ledger";
+import { readDr5Audit } from "@/lib/sourcing/dr5-claim-verifier";
 
 const PAGE_SIZE = 15;
 
@@ -190,6 +191,7 @@ export default function LichSuTimKiemPage() {
               const dr2 = readDr2Audit(row.tool_calls);
               const dr3 = readDr3Audit(row.tool_calls);
               const dr4 = readDr4Audit(row.tool_calls);
+              const dr5 = readDr5Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -292,6 +294,23 @@ export default function LichSuTimKiemPage() {
                             <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Mâu thuẫn</p><p className="mt-1 text-sm font-bold">{dr4.conflictCandidateCount}</p></div>
                           </div>
                           {dr4.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr4.warnings.join(" · ")}</p>}
+                        </section>
+                      )}
+                      {dr5 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Đối chiếu claim DR5">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold"><Scale className="h-4 w-4 text-orange-600" /> DR5 · Đối chiếu claim (shadow)</div>
+                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr5.grade === "PASS" ? "bg-emerald-50 text-emerald-700" : dr5.grade === "REVIEW" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>{dr5.grade}</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Độ phủ xác minh</p><p className="mt-1 text-sm font-bold">{dr5.verificationCoveragePercent}%</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Trường trọng yếu</p><p className="mt-1 text-sm font-bold">{dr5.criticalCoveragePercent}%</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Đã xác minh</p><p className="mt-1 text-sm font-bold text-emerald-600">{dr5.verifiedClaims}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Một phần</p><p className="mt-1 text-sm font-bold text-amber-600">{dr5.partialClaims}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Mâu thuẫn</p><p className="mt-1 text-sm font-bold text-rose-600">{dr5.conflictClaims}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Cần người duyệt</p><p className="mt-1 text-sm font-bold">{dr5.reviewRequiredCandidateCount}</p></div>
+                          </div>
+                          {dr5.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr5.warnings.join(" · ")}</p>}
                         </section>
                       )}
                       {row.assistant_reply && (

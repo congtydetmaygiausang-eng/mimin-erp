@@ -21,6 +21,8 @@
     "src/lib/sourcing/dr3-source-router.ts",
     "src/lib/sourcing/dr3-source-router.test.ts",
     "src/lib/sourcing/dr4-evidence-ledger.ts",
-    "src/lib/sourcing/dr4-evidence-ledger.test.ts"
+    "src/lib/sourcing/dr4-evidence-ledger.test.ts",
+    "src/lib/sourcing/dr5-claim-verifier.ts",
+    "src/lib/sourcing/dr5-claim-verifier.test.ts"
   ]
 }
