@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bot, Building2, ChevronDown, ChevronUp, Clock, RefreshCw, Search, Sparkles } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -14,6 +14,7 @@ import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
 import { directCandidateSaveKey, saveDirectSearchCandidates, type DirectSearchCandidate } from "@/lib/production-discovery";
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
+import { readDr0Baseline } from "@/lib/sourcing/dr0-benchmark";
 
 const PAGE_SIZE = 15;
 
@@ -28,6 +29,7 @@ interface HistoryRow {
   result_count: number;
   status: "OK" | "ERROR" | "RATE_LIMITED";
   assistant_reply: string | null;
+  tool_calls: unknown;
 }
 
 interface ResultRow {
@@ -179,6 +181,7 @@ export default function LichSuTimKiemPage() {
               const Icon = meta.icon;
               const isExpanded = expandedId === row.id;
               const role = partnerRoleFromFilters(row.structured_filters);
+              const dr0 = readDr0Baseline(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -200,6 +203,21 @@ export default function LichSuTimKiemPage() {
                   </button>
                   {isExpanded && (
                     <div className="px-4 pb-4 space-y-3 bg-slate-50/40 dark:bg-white/[0.02]">
+                      {dr0 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Baseline DR0">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-semibold text-sm"><Activity className="h-4 w-4 text-cyan-600" /> DR0 · Baseline vận hành</div>
+                            <span className="rounded-full bg-cyan-50 px-2 py-1 text-[10px] font-semibold text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">{dr0.schemaVersion}</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Timer className="mb-1 h-4 w-4 text-indigo-500" /><p className="text-[10px] opacity-60">Thời gian</p><p className="text-sm font-bold">{(dr0.durationMs / 1000).toFixed(1)} giây</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Database className="mb-1 h-4 w-4 text-emerald-500" /><p className="text-[10px] opacity-60">Nguồn / hồ sơ</p><p className="text-sm font-bold">{dr0.sourceCount} / {dr0.candidateCount}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Search className="mb-1 h-4 w-4 text-amber-500" /><p className="text-[10px] opacity-60">Đúng / liên quan</p><p className="text-sm font-bold">{dr0.exactCount} / {dr0.relatedCount}</p></div>
+                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Building2 className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] opacity-60">Đủ SĐT / địa chỉ</p><p className="text-sm font-bold">{dr0.completenessPercent.phone}% / {dr0.completenessPercent.address}%</p></div>
+                          </div>
+                          <p className="mt-2 text-[10px] opacity-55">Baseline chỉ đo lường, không can thiệp kết quả. Precision/recall chỉ được công bố sau khi bộ dữ liệu vàng được duyệt thủ công.</p>
+                        </section>
+                      )}
                       {row.assistant_reply && (
                         <p className="text-sm rounded-lg bg-white dark:bg-white/5 border p-3" style={{ borderColor: "var(--border)" }}>{row.assistant_reply}</p>
                       )}

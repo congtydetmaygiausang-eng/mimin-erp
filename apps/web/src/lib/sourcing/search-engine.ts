@@ -12,6 +12,7 @@ import { cleanCompanyLegalName, cleanCompanyPostalAddress, isCompanyIdentityName
 import { extractVietnamContactPhones, extractVietnamPhones, normalizeVietnamPhone } from "@/lib/vietnam-phone";
 import { searchBraveWeb } from "@/lib/brave-search";
 import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/sourcing/search-history";
+import { buildDr0OperationalBaseline, dr0ToolCall } from "@/lib/sourcing/dr0-benchmark";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -1941,6 +1942,7 @@ function candidateToHistorySnapshot(candidate: Candidate): SearchHistoryCandidat
  * perform auth + rate limiting themselves via verify()/limited() before calling this.
  */
 export async function runSourcingSearch(params: SourcingSearchParams, auth: SourcingSearchAuth): Promise<SourcingSearchResult> {
+  const dr0StartedAtMs = Date.now();
   const query = params.query;
   const location = params.location;
   const role = params.role;
@@ -2075,6 +2077,8 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     };
 
     const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
+    const dr0Baseline = buildDr0OperationalBaseline({ startedAtMs: dr0StartedAtMs, diagnostics, candidates });
+    result.diagnostics = { ...result.diagnostics, dr0Baseline };
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {
@@ -2085,6 +2089,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
+      toolCalls: [dr0ToolCall(dr0Baseline)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),
