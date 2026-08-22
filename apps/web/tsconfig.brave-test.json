@@ -43,6 +43,8 @@
     "src/lib/sourcing/api4-resilience-audit.ts",
     "src/lib/sourcing/api4-resilience-audit.test.ts",
     "src/lib/sourcing/api5-provider-value.ts",
-    "src/lib/sourcing/api5-provider-value.test.ts"
+    "src/lib/sourcing/api5-provider-value.test.ts",
+    "src/lib/sourcing/api6-rollout-gate.ts",
+    "src/lib/sourcing/api6-rollout-gate.test.ts"
   ]
 }

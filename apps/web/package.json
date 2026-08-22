@@ -23,7 +23,8 @@
     "test:api2-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api2-routing-policy.test.js",
     "test:api3-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api3-provider-budget.test.js",
     "test:api4-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api4-resilience-audit.test.js",
-    "test:api5-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api5-provider-value.test.js"
+    "test:api5-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api5-provider-value.test.js",
+    "test:api6-search": "tsc -p tsconfig.brave-test.json && node --test .test-dist/sourcing/api6-rollout-gate.test.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.30",
