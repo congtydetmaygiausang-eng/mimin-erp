@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, ListChecks, MapPin, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
+import { Activity, Bot, Building2, ChevronDown, ChevronUp, Clock, Database, GitBranch, ListChecks, MapPin, RefreshCw, Search, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import { supabase } from "@/lib/supabase/client";
@@ -16,6 +16,7 @@ import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import { readDr0Baseline } from "@/lib/sourcing/dr0-benchmark";
 import { readDr1Audit } from "@/lib/sourcing/dr1-intent-planner";
+import { readDr2Audit } from "@/lib/sourcing/dr2-research-graph";
 
 const PAGE_SIZE = 15;
 
@@ -184,6 +185,7 @@ export default function LichSuTimKiemPage() {
               const role = partnerRoleFromFilters(row.structured_filters);
               const dr0 = readDr0Baseline(row.tool_calls);
               const dr1 = readDr1Audit(row.tool_calls);
+              const dr2 = readDr2Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -233,6 +235,24 @@ export default function LichSuTimKiemPage() {
                           </div>
                           <div className="mt-2 flex flex-wrap gap-1.5">{dr1.plan.requestedFields.map((field) => <span key={field} className="rounded-full border px-2 py-0.5 text-[10px]" style={{ borderColor: "var(--border)" }}>{field}</span>)}</div>
                           {dr1.plan.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr1.plan.warnings.join(" · ")}</p>}
+                        </section>
+                      )}
+                      {dr2 && (
+                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Độ phủ nghiên cứu DR2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold"><GitBranch className="h-4 w-4 text-fuchsia-600" /> DR2 · Độ phủ nghiên cứu (shadow)</div>
+                            <span className="rounded-full bg-fuchsia-50 px-2 py-1 text-[10px] font-semibold text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300">{dr2.coveragePercent}% · {dr2.coveredNodes}/6 nhánh</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                            {dr2.nodes.map((node) => (
+                              <div key={node.node} className="rounded-lg bg-slate-50 p-2 dark:bg-white/5">
+                                <p className="truncate text-[10px] font-semibold">{node.node}</p>
+                                <p className={`mt-1 text-[10px] ${node.status === "COVERED" ? "text-emerald-600" : node.status === "PARTIAL" ? "text-amber-600" : "text-rose-600"}`}>{node.status}</p>
+                                <p className="mt-0.5 text-[9px] opacity-55">{node.queryCount} truy vấn · {node.evidenceCount} chứng cứ</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-[10px] opacity-55">{dr2.queryCount} truy vấn · trùng {dr2.duplicateQueryRatePercent}%. DR2 chưa tự bổ sung truy vấn hoặc phát sinh API call.</p>
                         </section>
                       )}
                       {row.assistant_reply && (
