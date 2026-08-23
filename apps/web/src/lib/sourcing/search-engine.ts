@@ -2439,7 +2439,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const api7Audit = buildApi7CanaryPlanAudit({ api6: api6Audit, subjectId: `mimin:${auth.user.id}` });
     const api8Audit = buildApi8CanaryHealthAudit({ api0: api0Baseline, api2: api2Audit, api4: api4Audit, api7: api7Audit, baseline: null });
 
-    const result: SourcingSearchResult = { provider: source.provider, agent: "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
+    const result: SourcingSearchResult = { provider: source.provider, agent: process.env.MINIMAX_API_KEY ? "minimax" : "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
     const dr0Baseline = buildDr0OperationalBaseline({ startedAtMs: dr0StartedAtMs, diagnostics, candidates });
     const dr1Audit = auditDr1Execution({ plan: dr1Plan, executedQueries: searchQueries, candidateCount: candidates.length });
     const dr2Audit = buildDr2ResearchGraphAudit({
