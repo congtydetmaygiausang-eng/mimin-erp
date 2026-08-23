@@ -11,6 +11,7 @@ import { cleanVietnamPostalAddress, standardizeVietnamAddress } from "@/lib/viet
 import { cleanCompanyLegalName, cleanCompanyPostalAddress, isCompanyIdentityName } from "@/lib/company-identity-cleaner";
 import { extractVietnamContactPhones, extractVietnamPhones, normalizeVietnamPhone } from "@/lib/vietnam-phone";
 import { searchBraveWeb } from "@/lib/brave-search";
+import { getStaticCoordinate } from "@/lib/data/hcm-coordinates";
 import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/sourcing/search-history";
 import { buildDr0OperationalBaseline, dr0ToolCall } from "@/lib/sourcing/dr0-benchmark";
 import { auditDr1Execution, buildDr1ShadowPlan, dr1ToolCall } from "@/lib/sourcing/dr1-intent-planner";
@@ -789,6 +790,11 @@ async function geocodeCandidate(candidate: Candidate, searchLocation: string, ca
     const coordinateConfidence = best.score >= 75 && queryIndex === 0 ? "HIGH" : best.score >= 50 ? "MEDIUM" : "LOW";
     const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), "coordinates"]));
     return { ...candidate, latitude, longitude, verifiedFields, coordinateSource: lookup.source, coordinateConfidence, geocodedAddress: best.place.display_name, geocodedAt: new Date().toISOString(), geocodeStatus: "VERIFIED", coordinateBoundingBox: parseBoundingBox(best.place.boundingbox), geocodeCacheStatus: lookup.status };
+  }
+  const staticFallback = getStaticCoordinate(candidate.address);
+  if (staticFallback) {
+    const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), "coordinates"]));
+    return { ...candidate, latitude: staticFallback.lat, longitude: staticFallback.lng, verifiedFields, coordinateSource: "MANUAL", coordinateConfidence: "LOW", geocodedAddress: candidate.address, geocodedAt: new Date().toISOString(), geocodeStatus: "VERIFIED", geocodeCacheStatus: "MEMORY" };
   }
   return { ...candidate, latitude: null, longitude: null, geocodeStatus: "REJECTED" };
 }
