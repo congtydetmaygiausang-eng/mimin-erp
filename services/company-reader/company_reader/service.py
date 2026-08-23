@@ -49,17 +49,20 @@ class CompanyReaderPipeline:
                     fallback_decision = f"JINA_FAILED_TRAFILATURA_USED({jina_outcome.decision.name})"
 
                 bundle = self.candidate_extractor.extract(selected)
-                segmentation = self.segmenter.segment(selected, bundle)
-                
-                if segmentation.entities:
+                if selected.status.name in {"OK", "TRUNCATED"}:
                     status = SourceProcessingStatus.PROCESSED
+                    segmentation = self.segmenter.segment(selected, bundle)
                     error_code = None
-                elif selected.status is ExtractionStatus.OK:
-                    status = SourceProcessingStatus.NO_ENTITY
-                    error_code = segmentation.warnings[0] if segmentation.warnings else None
+                    if not segmentation.entities:
+                        status = SourceProcessingStatus.NO_ENTITY
+                        error_code = segmentation.warnings[0] if segmentation.warnings else None
                 else:
                     status = SourceProcessingStatus.FAILED
                     error_code = selected.error_code
+                    from .segmentation_models import EntitySegmentationResult, SegmentationStatus
+                    segmentation = EntitySegmentationResult(
+                        source_url=url, text_sha256="", status=SegmentationStatus.SKIPPED_CANDIDATE_ERROR
+                    )
                     
                 report = SourceProcessingReport(
                     source_url=url,
