@@ -29,11 +29,11 @@ ARTICLE_TITLE = re.compile(
     re.IGNORECASE,
 )
 LEGAL_LABEL = re.compile(
-    r"(?:tên pháp lý|tên công ty|tên doanh nghiệp)\s*(?:[:#-]|\|)\s*([^\n|]{3,220})",
+    r"(?:tên pháp lý|tên công ty|tên doanh nghiệp|tên xưởng|tên cửa hàng|tên đại lý|tên nhà máy)\s*(?:[:#-]|\|)\s*([^\n|]{3,220})",
     re.IGNORECASE,
 )
 LEGAL_INLINE = re.compile(
-    r"\b((?:C[Ôô]NG\s+TY|CTY)\s+(?:(?:TNHH|CP|CỔ\s+PHẦN|TRÁCH\s+NHIỆM\s+HỮU\s+HẠN|"
+    r"\b((?:C[Ôô]NG\s+TY|CTY|XƯỞNG|CỬA\s+HÀNG|NHÀ\s+MÁY|DOANH\s+NGHIỆP|HỘ\s+KINH\s+DOANH|ĐẠI\s+LÝ|TỔNG\s+KHO|KHO)\s+(?:(?:TNHH|CP|CỔ\s+PHẦN|TRÁCH\s+NHIỆM\s+HỮU\s+HẠN|"
     r"MỘT\s+THÀNH\s+VIÊN)\s+)?[^\n|;]{2,180})",
     re.IGNORECASE,
 )
