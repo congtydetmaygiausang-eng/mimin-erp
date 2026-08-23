@@ -1007,15 +1007,15 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):S
     rawContent:Array.from(new Set([...values,...excerpts])).join("\n").slice(0,50_000),
     score:Math.min(1,Math.max(...accepted.map((field)=>Number(field.confidence)||0))),
     sourceType:classifySource(url,String(legalName??""),values.join(" ")),
-    provider:"TRAFILATURA",
+    provider:"Jina Reader",
     searchQuery:`company-reader-${index+1}`,
   };
 }
 
 async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
-  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED!=="true")return{items:[],health:{name:"Trafilatura",status:"DISABLED",count:0,code:"NOT_ENABLED"}};
+  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED==="false")return{items:[],health:{name:"Jina Reader",status:"DISABLED",count:0,code:"NOT_ENABLED"}};
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
-  if(!urls.length)return{items:[],health:{name:"Trafilatura",status:"EMPTY",count:0}};
+  if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}};
   const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
   const timeoutMs=Math.max(5_000,Math.min(55_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"45000")||45_000));
   const controller=new AbortController();
@@ -1039,10 +1039,10 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
     const profiles=responses.flatMap((response)=>Array.isArray(response.profiles)?response.profiles:[]);
     const items=profiles.map(companyReaderProfileSource).filter((item):item is SourceResult=>Boolean(item));
     const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
-    return{items,health:{name:"Trafilatura",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}};
+    return{items,health:{name:"Jina Reader",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}};
   }catch(error){
     const isTimeout = error instanceof Error && (error.name === "AbortError" || /timeout|aborted/i.test(error.message));
-    return{items:[],health:{name:"Trafilatura",status:isTimeout?"EMPTY":"ERROR",count:0,code:isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE")}};
+    return{items:[],health:{name:"Jina Reader",status:isTimeout?"EMPTY":"ERROR",count:0,code:isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE")}};
   }finally{clearTimeout(timeoutId)}
 }
 
