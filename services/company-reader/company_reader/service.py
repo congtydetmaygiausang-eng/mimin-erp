@@ -90,7 +90,7 @@ class CompanyReaderPipeline:
                 return seg, report
 
         import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(urls) or 1) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(urls), 2) or 1) as executor:
             futures = [executor.submit(process_url, url) for url in urls]
             for future in concurrent.futures.as_completed(futures):
                 seg, rep = future.result()
