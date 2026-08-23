@@ -485,8 +485,7 @@ function ghiXuatKho(
           if (error && error.code !== "PGRST116" && error.code !== "42P01") {
             console.warn("[inventory] Lỗi đồng bộ lịch sử kho:", error.message);
           }
-        })
-        .catch(() => {});
+        });
     }
   } catch (e) {
     console.error("[inventory] ghiXuatKho error:", e);

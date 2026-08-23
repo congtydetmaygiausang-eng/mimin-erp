@@ -78,9 +78,9 @@ export default function KeHoachSXPage() {
   const tongSL = list.reduce((s, k) => s + k.soLuong, 0);
   const tongXong = list.reduce((s, k) => s + k.daHoanThanh, 0);
   const tienDoChung = tongSL > 0 ? (tongXong / tongSL) * 100 : 0;
-  const dsTreHan = list.filter(k => k.trangThai === "Trễ hạn");
-  const dsDangSX = list.filter(k => k.trangThai === "Đang SX");
-  const filtered = filterTT === "Tất cả" ? list : list.filter(k => k.trangThai === filterTT);
+  const dsTreHan = list.filter(k => k.trangThai === ("Trá»… háº¡n" as any));
+  const dsDangSX = list.filter(k => k.trangThai === ("Ä ang SX" as any));
+  const filtered = filterTT === "Táº¥t cáº£" ? list : list.filter(k => k.trangThai === (filterTT as any));
 
   const handleEdit = (k: KHSX) => {
     setEditItem(k);
@@ -210,7 +210,20 @@ export default function KeHoachSXPage() {
                   <button onClick={() => setProgressEdit({ id: k.id, val: k.daHoanThanh })} className="flex-1 text-xs py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-1">
                     <TrendingUp className="w-3 h-3" /> Tiáº¿n Ä‘á»™
                   </button>
-                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 tr      {/* Form Modal sử dụng CrudModal chuẩn */}
+                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 transition flex items-center justify-center gap-1">
+                    <Edit2 className="w-3 h-3" /> Sửa
+                  </button>
+                  <button onClick={() => handleDelete(k)} className="flex-1 text-xs py-1.5 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 rounded-lg font-bold hover:bg-red-100 transition flex items-center justify-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Xóa
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Form Modal sử dụng CrudModal chuẩn */}
       <CrudModal
         open={showForm}
         onClose={() => { setShowForm(false); setEditItem(null); }}

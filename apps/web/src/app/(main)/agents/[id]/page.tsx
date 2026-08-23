@@ -14,7 +14,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { AGENT_PERSONAS, AGENT_IDS } from "@/lib/agent-personas";
+import { AGENT_PERSONAS, AGENT_IDS_V6 } from "@/lib/agent-personas";
 import { getAgentSummaryToday, type AgentSummary } from "@/lib/agent-usage-tracker";
 
 // Map style for 10 agents
@@ -43,7 +43,7 @@ export default function AgentDetailPage() {
   const agentId = params?.id as string;
 
   // Validate agentId thuoc 10 personas, neu sai -> redirect /agents
-  const isValidId = agentId ? (AGENT_IDS as readonly string[]).includes(agentId) : false;
+  const isValidId = agentId ? (AGENT_IDS_V6 as readonly string[]).includes(agentId) : false;
 
   useEffect(() => {
     if (agentId && !isValidId) {

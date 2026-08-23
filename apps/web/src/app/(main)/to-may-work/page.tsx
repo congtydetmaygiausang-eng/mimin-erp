@@ -114,7 +114,7 @@ export default function UiMayPage() {
       thanhTien: thanhTienDat,
       conLai: thanhTienDat - (pc.daThanhToan || 0),
       lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "hoan_thanh" as const, ghiChu: "May xong → Chuyển QC" }],
-    });
+    } as any);
     toast.success(`✅ Đã giao QC: ${pc.tenCongDoan} – ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
   }
 
@@ -133,7 +133,7 @@ export default function UiMayPage() {
       soLuongSuaXong: slSuaXongMoi,
       soLuongLoi: 0,
       lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slLoi, loai: "sua_loi" as const, ghiChu: `Sửa xong ${slLoi} SP → Trả lại QC` }],
-    });
+    } as any);
     toast.success(`🔧 Sửa xong: ${pc.tenCongDoan} – ${slLoi} SP → Chuyển QC kiểm lại`);
   }
 
