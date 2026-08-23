@@ -1556,6 +1556,95 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                </div>
             </div>
 
+            {/* THÔNG TIN GIA CÔNG MAY (ÁO / QUẦN) */}
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              {/* Box Áo */}
+              <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
+                <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG ÁO:</span>
+                <select 
+                  className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                  value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.nguoiMa || ""}
+                  onChange={e => {
+                    setPhanCong(p => {
+                      const next = [...(p as any[])];
+                      const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                      if (idx >= 0) {
+                        const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                        next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                      }
+                      return next as any;
+                    });
+                  }}
+                >
+                   <option value="">-- Chọn NV/Xưởng --</option>
+                   {getDoiTuongOptions("May Áo", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                </select>
+                <div className="flex items-center gap-1 w-full md:w-auto">
+                  <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
+                  <input 
+                    type="number" min={0}
+                    placeholder="0" 
+                    className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.donGia || ""}
+                    onChange={e => {
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                        if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                        return next as any;
+                      });
+                    }}
+                  />
+                  <span className="text-xs font-bold text-emerald-700">đ</span>
+                </div>
+              </div>
+
+              {/* Box Quần (Chỉ hiện nếu là hàng Bộ) */}
+              {loaiSP?.toLowerCase().includes("bo") && (
+                <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
+                  <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG QUẦN:</span>
+                  <select 
+                    className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.nguoiMa || ""}
+                    onChange={e => {
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id === "mayQuan");
+                        if (idx >= 0) {
+                          const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                          const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                          next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                        }
+                        return next as any;
+                      });
+                    }}
+                  >
+                     <option value="">-- Chọn NV/Xưởng --</option>
+                     {getDoiTuongOptions("May Quần", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                  </select>
+                  <div className="flex items-center gap-1 w-full md:w-auto">
+                    <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
+                    <input 
+                      type="number" min={0}
+                      placeholder="0" 
+                      className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
+                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.donGia || ""}
+                      onChange={e => {
+                        setPhanCong(p => {
+                          const next = [...(p as any[])];
+                          const idx = next.findIndex(k => k.id === "mayQuan");
+                          if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                          return next as any;
+                        });
+                      }}
+                    />
+                    <span className="text-xs font-bold text-emerald-700">đ</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Grid Thẻ Màu Sắc */}
             <div className="grid grid-cols-1 gap-6 mb-6">
               {dsMau.map((mau, idx) => {
