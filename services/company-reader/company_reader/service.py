@@ -80,9 +80,14 @@ class CompanyReaderPipeline:
                     fallback_decision="NOT_RUN",
                     error_code=f"UNEXPECTED_{type(error).__name__.upper()}",
                 )
-                # segmentation giả để khỏi lỗi unpack
-                from .entity_segmenter import SegmentationResult
-                return SegmentationResult((), ()), report
+                from .segmentation_models import EntitySegmentationResult, SegmentationStatus
+                seg = EntitySegmentationResult(
+                    source_url=url, 
+                    text_sha256="", 
+                    status=SegmentationStatus.SKIPPED_EXTRACTION_ERROR,
+                    warnings=("INTERNAL_ERROR",)
+                )
+                return seg, report
 
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(urls) or 1) as executor:
