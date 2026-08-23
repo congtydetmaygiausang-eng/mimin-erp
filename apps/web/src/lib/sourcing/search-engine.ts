@@ -971,8 +971,8 @@ const COMPANY_READER_FIELDS = new Set(["LEGAL_NAME","TAX_CODE","ADDRESS","PHONE"
 const COMPANY_READER_ACCEPTED_FIELD_STATUS = new Set(["CONSENSUS","SINGLE_SOURCE"]);
 
 function companyReaderMaximumUrls():number{
-  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"10");
-  return Number.isFinite(configured)?Math.max(1,Math.min(10,Math.floor(configured))):10;
+  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"5");
+  return Number.isFinite(configured)?Math.max(1,Math.min(10,Math.floor(configured))):5;
 }
 
 function companyReaderSourceScore(source:SourceResult):number{
