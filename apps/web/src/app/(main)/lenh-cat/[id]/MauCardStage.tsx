@@ -20,9 +20,12 @@ export interface MauCardStageProps {
   donGia?: number;
   // Trạng thái công đoạn
   trangThai?: "cho_giao" | "dang_lam" | "cho_qc" | "hoan_thanh" | "co_loi";
-  // Số lượng hoàn thành / lỗi (cho tab QC)
-  soLuongHT?: number;
-  soLuongLoi?: number;
+  // Custom UI props cho các tab nhập liệu
+  renderSizeRows?: (sizeData: any[], isThucTe: boolean, totalSL: number) => React.ReactNode;
+  footerAction?: React.ReactNode;
+  // Metadata bổ sung
+  nguoiPhuTrach?: string;
+  ghiChu?: string;
 }
 
 // Lấy SL size theo khâu hoặc fallback về phanBoSize
@@ -58,8 +61,10 @@ export function MauCardStage({
   khauKey,
   donGia,
   trangThai,
-  soLuongHT,
-  soLuongLoi,
+  renderSizeRows,
+  footerAction,
+  nguoiPhuTrach,
+  ghiChu,
 }: MauCardStageProps) {
   const { data: sizeData, isThucTe } = getSizeData(mau, khauKey);
   const totalSL = sizeData.reduce((s, sz) => s + (sz.sl || 0), 0);
@@ -140,34 +145,40 @@ export function MauCardStage({
 
         {/* 5 + 6. Tỉ lệ size + Tổng SL */}
         <div className="flex-1">
-          <div className="text-[10px] text-slate-400 font-bold uppercase mb-1.5">
-            Tỉ lệ size {isThucTe ? "(thực tế)" : "(dự kiến)"}
-          </div>
-          {sizeData.length > 0 ? (
-            <div className="space-y-1">
-              {sizeData.map((sz) => (
-                <div key={sz.size} className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-600 w-10">{sz.size}</span>
-                  <div className="flex-1 mx-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${isThucTe ? "bg-sky-500" : "bg-slate-300"}`}
-                      style={{ width: totalSL > 0 ? `${(sz.sl / totalSL) * 100}%` : "0%" }}
-                    />
-                  </div>
-                  <span className="text-xs font-black text-slate-800 tabular-nums w-10 text-right">
-                    {sz.sl.toLocaleString()}
-                  </span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-1">
-                <span className="text-xs font-black text-slate-500">Tổng</span>
-                <span className="text-sm font-black text-slate-900 tabular-nums">
-                  {totalSL.toLocaleString()} {type === "quan" ? "quần" : type === "bo" ? "bộ" : "áo"}
-                </span>
-              </div>
-            </div>
+          {renderSizeRows ? (
+            renderSizeRows(sizeData, isThucTe, totalSL)
           ) : (
-            <div className="text-xs text-slate-400 italic">Chưa nhập số lượng</div>
+            <>
+              <div className="text-[10px] text-slate-400 font-bold uppercase mb-1.5">
+                Tỉ lệ size {isThucTe ? "(thực tế)" : "(dự kiến)"}
+              </div>
+              {sizeData.length > 0 ? (
+                <div className="space-y-1">
+                  {sizeData.map((sz) => (
+                    <div key={sz.size} className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-600 w-10">{sz.size}</span>
+                      <div className="flex-1 mx-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${isThucTe ? "bg-sky-500" : "bg-slate-300"}`}
+                          style={{ width: totalSL > 0 ? `${(sz.sl / totalSL) * 100}%` : "0%" }}
+                        />
+                      </div>
+                      <span className="text-xs font-black text-slate-800 tabular-nums w-10 text-right">
+                        {sz.sl.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-1">
+                    <span className="text-xs font-black text-slate-500">Tổng</span>
+                    <span className="text-sm font-black text-slate-900 tabular-nums">
+                      {totalSL.toLocaleString()} {type === "quan" ? "quần" : type === "bo" ? "bộ" : "áo"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic">Chưa nhập số lượng</div>
+              )}
+            </>
           )}
         </div>
 
@@ -187,20 +198,17 @@ export function MauCardStage({
           </div>
         )}
 
-        {/* QC rows */}
-        {(soLuongHT != null || soLuongLoi != null) && (
-          <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100 space-y-1">
-            {soLuongHT != null && (
-              <div className="flex justify-between text-xs">
-                <span className="text-emerald-600 font-bold">SL Đạt:</span>
-                <span className="font-black text-emerald-800">{soLuongHT.toLocaleString()} SP</span>
+        {/* Nguoi phu trach / Ghi chu */}
+        {(nguoiPhuTrach || ghiChu) && (
+          <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100 space-y-1 text-xs">
+            {nguoiPhuTrach && (
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-bold">Người PT:</span>
+                <span className="font-bold text-slate-800">{nguoiPhuTrach}</span>
               </div>
             )}
-            {soLuongLoi != null && soLuongLoi > 0 && (
-              <div className="flex justify-between text-xs">
-                <span className="text-rose-600 font-bold">SL Lỗi:</span>
-                <span className="font-black text-rose-700">{soLuongLoi.toLocaleString()} SP</span>
-              </div>
+            {ghiChu && (
+              <div className="text-slate-600 italic">"{ghiChu}"</div>
             )}
           </div>
         )}
@@ -209,6 +217,13 @@ export function MauCardStage({
         {ttInfo && (
           <div className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold border text-center ${ttInfo.cls}`}>
             {ttInfo.label}
+          </div>
+        )}
+
+        {/* Footer Actions */}
+        {footerAction && (
+          <div className="pt-2 border-t border-slate-100">
+            {footerAction}
           </div>
         )}
       </div>

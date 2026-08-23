@@ -51,6 +51,15 @@ export const TRANG_THAI_LC_STYLE: Record<TrangThaiLenhCat, { bg: string; color: 
   "ChuyenTiep": { bg: "bg-purple-500/15", color: "text-purple-700" },
 };
 
+export type SizeDetail = {
+  size: string;
+  sl: number;       // SL thực tế (Cắt, Đóng gói, etc)
+  nhan?: number;    // SL nhận từ khâu trước
+  dat?: number;     // SL đạt (QC)
+  loi?: number;     // SL lỗi (QC)
+  nguyenNhan?: string; // Nguyên nhân lỗi nếu có
+};
+
 export type MauVai = {
   ten: string;
   maSKU?: string;
@@ -69,13 +78,14 @@ export type MauVai = {
   dinhMucQuan?: number;
   imgQuan?: string;    // Ảnh mẫu QUẦN (hàng Bộ) - img ở trên là ảnh ÁO
 
-  // Màu phối - danh sách TÊN MÀU dùng để phối (viền, phối màu...), không gắn mã vải trong kho.
-  // CHỈ mang tính tham khảo, KHÔNG tính vào định mức/tiền vải (chỉ vải chính maVai/maVaiQuan mới tính).
+  // Màu phối
   mauPhoi?: string[];
 
   // Tracking tỉ lệ size chi tiết theo từng khâu (Cắt, May Áo, May Quần, In/Thêu, Ủi/QC...)
-  // Key: id khâu (vidu: "cat", "mayAo") -> Value: list size distribution
-  tyLeSizeChiTiet?: Record<string, { size: string; sl: number }[]>;
+  tyLeSizeChiTiet?: Record<string, SizeDetail[]>;
+
+  // Bảng đối chiếu Ghép Bộ (Áo + Quần = Bộ) sau khi QC
+  bangGhepBo?: { size: string; aoDat: number; quanDat: number; boGhepDuoc: number; aoDu: number; quanDu: number }[];
 };
 
 export type LenhCatPhuLieu = {

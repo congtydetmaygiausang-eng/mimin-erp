@@ -5,9 +5,11 @@
 // ============================================================
 
 import { useState } from "react";
-import type { LenhCat, MauVai, CongDoanItem } from "@/lib/data/lenh-cat-store";
+import { type LenhCat, type MauVai, type CongDoanItem, useLenhCat, type SizeDetail } from "@/lib/data/lenh-cat-store";
+import { useSession } from "@/components/session-provider";
 import { formatVND } from "@/lib/data/real-data";
 import { MauCardStage } from "./MauCardStage";
+import { CatSizeForm, QCSizeForm, BasicStageForm, NhapKhoForm } from "./StageFormComponents";
 
 // === TYPES ===
 export type StageKey =
@@ -52,7 +54,7 @@ function getPhanCong(lc: LenhCat, keyword: string): CongDoanItem | undefined {
 
 // Helper lấy tổng SL size (từ khâu cắt, hoặc phanBoSize)
 function getSizeData(mau: MauVai, khauKey?: string) {
-  if (khauKey && mau.tyLeSizeChiTiet?.[khauKey]?.some((s) => s.sl > 0)) {
+  if (khauKey && mau.tyLeSizeChiTiet?.[khauKey]?.some((s) => s.sl > 0 || s.dat != null)) {
     return mau.tyLeSizeChiTiet[khauKey];
   }
   // Fallback: tìm khâu cắt
@@ -62,7 +64,25 @@ function getSizeData(mau: MauVai, khauKey?: string) {
       return mau.tyLeSizeChiTiet[catKey];
     }
   }
-  return mau.phanBoSize || [];
+  return mau.phanBoSize.map(s => ({ ...s, sl: s.sl, nhan: s.sl }));
+}
+
+// Helper lấy dữ liệu cho khâu (truyền nhan từ khâu trước nếu chưa có)
+function getStageDataForEdit(mau: MauVai, khauKey: string, prevKhauKey?: string): SizeDetail[] {
+  if (mau.tyLeSizeChiTiet?.[khauKey]) return mau.tyLeSizeChiTiet[khauKey];
+  
+  // Lấy dữ liệu khâu trước làm "nhận"
+  let prevData = prevKhauKey && mau.tyLeSizeChiTiet?.[prevKhauKey] 
+    ? mau.tyLeSizeChiTiet[prevKhauKey] 
+    : getSizeData(mau); // fallback to cat/phanBoSize
+    
+  return prevData.map(p => ({
+    size: p.size,
+    sl: 0,
+    nhan: (khauKey.includes("qc") ? p.sl : p.dat ?? p.sl) || 0, // QC nhận từ SL cắt. Khác nhận từ SL đạt.
+    dat: 0,
+    loi: 0,
+  }));
 }
 
 // ============================================================
@@ -70,9 +90,16 @@ function getSizeData(mau: MauVai, khauKey?: string) {
 // ============================================================
 
 // 1. Tab Cắt
-function StageCat({ lc }: { lc: LenhCat }) {
+function StageCat({ lc, suaLenhCat, user }: { lc: LenhCat; suaLenhCat: any; user: any }) {
   const pcCat = getPhanCong(lc, "cat");
   const isBo = lc.dsMau.some((m) => m.maVaiQuan);
+
+  const handleSaveSize = async (mauIdx: number, sizeData: SizeDetail[]) => {
+    const dsMau = [...lc.dsMau];
+    if (!dsMau[mauIdx].tyLeSizeChiTiet) dsMau[mauIdx].tyLeSizeChiTiet = {};
+    dsMau[mauIdx].tyLeSizeChiTiet!["cat"] = sizeData;
+    await suaLenhCat(lc.id, { dsMau }, user);
+  };
 
   return (
     <div className="space-y-4">
@@ -100,15 +127,22 @@ function StageCat({ lc }: { lc: LenhCat }) {
       <SectionTitle title={isBo ? "Vải Áo — từng màu" : "Vải — từng màu"} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {lc.dsMau.map((mau, idx) => (
-          <MauCardStage
-            key={`ao-${idx}`}
-            mau={mau}
-            type="ao"
-            khauKey="cat"
-            label={`Màu ${idx + 1}`}
-            donGia={pcCat?.donGia}
-            trangThai={pcCat?.trangThaiCD}
-          />
+            <MauCardStage
+              key={`ao-${idx}`}
+              mau={mau}
+              type="ao"
+              khauKey="cat"
+              label={`Màu ${idx + 1}`}
+              donGia={pcCat?.donGia}
+              trangThai={pcCat?.trangThaiCD}
+              renderSizeRows={(sizeData) => (
+                <CatSizeForm
+                  initialData={sizeData}
+                  onSave={(newData) => handleSaveSize(idx, newData)}
+                  readOnly={pcCat?.trangThaiCD === "hoan_thanh"}
+                />
+              )}
+            />
         ))}
       </div>
 
@@ -126,6 +160,13 @@ function StageCat({ lc }: { lc: LenhCat }) {
                 label={`Màu ${idx + 1}`}
                 donGia={pcCat?.donGia}
                 trangThai={pcCat?.trangThaiCD}
+                renderSizeRows={(sizeData) => (
+                  <CatSizeForm
+                    initialData={sizeData}
+                    onSave={(newData) => handleSaveSize(idx, newData)} // Note: in real DB maybe we separate ao/quan cut sizes? Currently MauVai stores one tyLeSizeChiTiet for the color, so both ao and quan share it if it's the same. If they differ, we need deeper changes. We'll stick to shared for now.
+                    readOnly={pcCat?.trangThaiCD === "hoan_thanh"}
+                  />
+                )}
               />
             ))}
           </div>
@@ -225,11 +266,20 @@ function StageMayQuan({ lc }: { lc: LenhCat }) {
 }
 
 // 4. Tab QC Áo & Quần
-function StageQC({ lc, forQuan = false }: { lc: LenhCat; forQuan?: boolean }) {
+function StageQC({ lc, suaLenhCat, user, forQuan = false }: { lc: LenhCat; suaLenhCat: any; user: any; forQuan?: boolean }) {
   const pcMay = forQuan
     ? (getPhanCong(lc, "may_quan"))
     : (getPhanCong(lc, "may_ao") || getPhanCong(lc, "may"));
   const title = forQuan ? "Quần" : "Áo";
+  const khauKey = forQuan ? "qc_quan" : "qc_ao";
+  const prevKey = forQuan ? "may_quan" : "may_ao";
+
+  const handleSaveQC = async (mauIdx: number, sizeData: SizeDetail[]) => {
+    const dsMau = [...lc.dsMau];
+    if (!dsMau[mauIdx].tyLeSizeChiTiet) dsMau[mauIdx].tyLeSizeChiTiet = {};
+    dsMau[mauIdx].tyLeSizeChiTiet![khauKey] = sizeData;
+    await suaLenhCat(lc.id, { dsMau }, user);
+  };
 
   return (
     <div className="space-y-4">
@@ -246,9 +296,14 @@ function StageQC({ lc, forQuan = false }: { lc: LenhCat; forQuan?: boolean }) {
             key={idx}
             mau={mau}
             type={forQuan ? "quan" : "ao"}
-            khauKey={forQuan ? "may_quan" : "may_ao"}
+            khauKey={khauKey}
             label={`Màu ${idx + 1}`}
-            showQC
+            renderSizeRows={() => (
+              <QCSizeForm 
+                initialData={getStageDataForEdit(mau, khauKey, prevKey)}
+                onSave={(data) => handleSaveQC(idx, data)}
+              />
+            )}
           />
         ))}
       </div>
@@ -257,46 +312,86 @@ function StageQC({ lc, forQuan = false }: { lc: LenhCat; forQuan?: boolean }) {
 }
 
 // 5. Tab Khuy Nút (chỉ Áo)
-function StageKhuyNut({ lc }: { lc: LenhCat }) {
+function StageKhuyNut({ lc, suaLenhCat, user }: { lc: LenhCat; suaLenhCat: any; user: any }) {
   const pcKN = getPhanCong(lc, "khuy");
+
+  const handleSave = async (mauIdx: number, sizeData: SizeDetail[]) => {
+    const dsMau = [...lc.dsMau];
+    if (!dsMau[mauIdx].tyLeSizeChiTiet) dsMau[mauIdx].tyLeSizeChiTiet = {};
+    dsMau[mauIdx].tyLeSizeChiTiet!["khuy_nut"] = sizeData;
+    await suaLenhCat(lc.id, { dsMau }, user);
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap gap-4">
         <InfoItem label="Người phụ trách" value={pcKN?.nguoiTen || "Chưa giao"} />
         <InfoItem label="Đơn giá" value={pcKN ? formatVND(pcKN.donGia) + "/SP" : "—"} highlight />
         <div className="w-full text-xs text-amber-600 font-bold bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
-          ℹ️ Khuy nút chỉ áp dụng cho Áo. Không tính cho Quần.
+          ℹ️ Khuy nút chỉ áp dụng cho Áo. Nhận số lượng từ QC Áo Đạt.
         </div>
       </div>
 
       <SectionTitle title="Áo — Từng màu (Chỉ áo, không có quần)" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {lc.dsMau.map((mau, idx) => (
-          <MauCardStage key={idx} mau={mau} type="ao" label={`Màu ${idx + 1}`} showSizeOnly />
+          <MauCardStage 
+            key={idx} 
+            mau={mau} 
+            type="ao" 
+            khauKey="khuy_nut" 
+            label={`Màu ${idx + 1}`}
+            renderSizeRows={() => (
+              <BasicStageForm
+                initialData={getStageDataForEdit(mau, "khuy_nut", "qc_ao")}
+                onSave={(data) => handleSave(idx, data)}
+                btnText="LƯU KHUY NÚT"
+              />
+            )}
+          />
         ))}
       </div>
     </div>
   );
 }
+// 6. Tab Ủi / Đóng Gói
+function StageBo({ lc, suaLenhCat, user, stageName }: { lc: LenhCat; suaLenhCat: any; user: any; stageName: string }) {
+  const key = stageName === "Ủi" ? "ui" : "dong_goi";
+  const prevKey = stageName === "Ủi" ? "khuy_nut" : "ui";
+  const pc = getPhanCong(lc, key === "dong_goi" ? "dongGoi" : key);
+  const isBo = lc.dsMau.some((m) => m.maVaiQuan) || lc.loaiSP.toLowerCase().includes("bo");
 
-// 6-7. Tab Ủi / Đóng Gói (cả Áo + Quần ghép thành Bộ)
-function StageBo({ lc, stageName }: { lc: LenhCat; stageName: string }) {
-  const isBo = lc.dsMau.some((m) => m.maVaiQuan);
+  const handleSave = async (mauIdx: number, sizeData: SizeDetail[]) => {
+    const dsMau = [...lc.dsMau];
+    if (!dsMau[mauIdx].tyLeSizeChiTiet) dsMau[mauIdx].tyLeSizeChiTiet = {};
+    dsMau[mauIdx].tyLeSizeChiTiet![key] = sizeData;
+    await suaLenhCat(lc.id, { dsMau }, user);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <div className="text-sm font-bold text-slate-700">
-          {isBo ? "📦 Hàng Bộ — Áo + Quần ghép thành bộ hoàn chỉnh" : "👔 Hàng Áo đơn"}
-        </div>
-        <div className="text-xs text-slate-500 mt-1">
-          Tổng: <span className="font-black text-slate-800">{lc.tongSL.toLocaleString()}</span> SP
-        </div>
+      <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap gap-4">
+        <InfoItem label={`Người phụ trách ${stageName}`} value={pc?.nguoiTen || "Chưa giao"} />
+        <InfoItem label="Đơn giá" value={pc ? formatVND(pc.donGia) + "/SP" : "—"} highlight />
       </div>
 
-      <SectionTitle title={`${stageName} — SL tỉ lệ size từng màu`} />
+      <SectionTitle title={`Hàng hóa — Từng màu (Hiển thị theo ${isBo ? "BỘ" : "ÁO"})`} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {lc.dsMau.map((mau, idx) => (
-          <MauCardStage key={idx} mau={mau} type="bo" label={`Màu ${idx + 1}`} showSizeOnly />
+          <MauCardStage
+            key={idx}
+            mau={mau}
+            type={isBo ? "bo" : "ao"}
+            khauKey={key}
+            label={`Màu ${idx + 1}`}
+            renderSizeRows={() => (
+              <BasicStageForm
+                initialData={getStageDataForEdit(mau, key, prevKey)}
+                onSave={(data) => handleSave(idx, data)}
+                btnText={`LƯU ${stageName.toUpperCase()}`}
+              />
+            )}
+          />
         ))}
       </div>
     </div>
@@ -304,9 +399,17 @@ function StageBo({ lc, stageName }: { lc: LenhCat; stageName: string }) {
 }
 
 // 8. Tab Nhập Kho
-function StageNhapKho({ lc }: { lc: LenhCat }) {
+function StageNhapKho({ lc, suaLenhCat, user }: { lc: LenhCat; suaLenhCat: any; user: any }) {
   const giaBan = (lc.bangCOGS as any)?.giaBan || 0;
   const giaVon = lc.bangCOGS?.giaVonBinhQuan || 0;
+  const isBo = lc.loaiSP.toLowerCase().includes("bo");
+
+  const handleSaveKho = async (mauIdx: number, giaSi: number, giaLe: number, trangThaiBan: string) => {
+    // Save to bangCOGS for now. In real ERP, this would also write to SanPham table and create Kho log.
+    const bangCOGS = { ...(lc.bangCOGS || {}), giaBanSi: giaSi, giaBanLe: giaLe, trangThaiBan } as any;
+    // Mark as completed
+    await suaLenhCat(lc.id, { bangCOGS, trangThai: "HoanThanh" }, user);
+  };
 
   return (
     <div className="space-y-4">
@@ -315,14 +418,25 @@ function StageNhapKho({ lc }: { lc: LenhCat }) {
         <InfoItem label="Giá Bán (nếu đã nhập)" value={giaBan ? formatVND(giaBan) + "/SP" : "Chưa nhập"} highlight />
         <InfoItem label="Tổng SL nhập kho" value={`${(lc.tongSLThucTe || lc.tongSL).toLocaleString()} SP`} highlight />
         <div className="w-full text-xs text-emerald-700 font-bold bg-emerald-100 rounded-lg px-3 py-2 border border-emerald-200">
-          ✅ Sau khi xác nhận nhập kho, toàn bộ công đoạn sẽ được ghi vào Công Nợ tương ứng.
+          ✅ Sau khi xác nhận nhập kho, toàn bộ công đoạn sẽ được ghi vào Công Nợ tương ứng. Tồn kho và giá sẽ được cập nhật.
         </div>
       </div>
 
       <SectionTitle title="Tổng SL nhập kho theo màu" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {lc.dsMau.map((mau, idx) => (
-          <MauCardStage key={idx} mau={mau} type="bo" label={`Màu ${idx + 1}`} showSizeOnly />
+          <MauCardStage 
+            key={idx} 
+            mau={mau} 
+            type={isBo ? "bo" : "ao"} 
+            label={`Màu ${idx + 1}`} 
+            renderSizeRows={() => (
+              <NhapKhoForm
+                initialData={getStageDataForEdit(mau, "nhap_kho", "dong_goi")}
+                onSave={(si, le, status) => handleSaveKho(idx, si, le, status)}
+              />
+            )}
+          />
         ))}
       </div>
     </div>
@@ -387,6 +501,9 @@ function InfoItem({ label, value, highlight = false, danger = false }: {
 // ============================================================
 
 export function StageTabsView({ lc }: { lc: LenhCat }) {
+  const { suaLenhCat } = useLenhCat();
+  const { user } = useSession();
+
   const isBo = lc.dsMau?.some((m) => m.maVaiQuan) || lc.loaiSP.toLowerCase().includes("bo");
 
   const tabs = ALL_TABS.filter((t) => {
@@ -405,18 +522,19 @@ export function StageTabsView({ lc }: { lc: LenhCat }) {
   };
 
   const renderContent = () => {
+    const props = { lc, suaLenhCat, user };
     switch (activeKey) {
-      case "cat":       return <StageCat lc={lc} />;
-      case "in_theu":   return <StageInTheu lc={lc} />;
-      case "may_ao":    return <StageMayAo lc={lc} />;
-      case "may_quan":  return <StageMayQuan lc={lc} />;
-      case "qc_ao":     return <StageQC lc={lc} forQuan={false} />;
-      case "qc_quan":   return <StageQC lc={lc} forQuan={true} />;
-      case "khuy_nut":  return <StageKhuyNut lc={lc} />;
-      case "ui":        return <StageBo lc={lc} stageName="Ủi" />;
-      case "dong_goi":  return <StageBo lc={lc} stageName="Đóng Gói" />;
-      case "nhap_kho":  return <StageNhapKho lc={lc} />;
-      case "danh_muc":  return <StageDanhMuc lc={lc} />;
+      case "cat":       return <StageCat {...props} />;
+      case "in_theu":   return <StageInTheu {...props} />;
+      case "may_ao":    return <StageMayAo {...props} />;
+      case "may_quan":  return <StageMayQuan {...props} />;
+      case "qc_ao":     return <StageQC {...props} forQuan={false} />;
+      case "qc_quan":   return <StageQC {...props} forQuan={true} />;
+      case "khuy_nut":  return <StageKhuyNut {...props} />;
+      case "ui":        return <StageBo {...props} stageName="Ủi" />;
+      case "dong_goi":  return <StageBo {...props} stageName="Đóng Gói" />;
+      case "nhap_kho":  return <StageNhapKho {...props} />;
+      case "danh_muc":  return <StageDanhMuc {...props} />;
       default:          return null;
     }
   };
