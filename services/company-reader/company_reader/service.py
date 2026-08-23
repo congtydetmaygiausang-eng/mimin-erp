@@ -29,30 +29,35 @@ class CompanyReaderPipeline:
 
     def read(self, request_id: str, urls: tuple[str, ...]) -> CompanyReadResponse:
         segmentations = []
-        reports = []
+        reports: list[SourceProcessingReport] = []
         
+        import threading
+        trafilatura_lock = threading.Lock()
+
         def process_url(url: str):
             try:
                 jina_outcome = self.fallback.read_primary(url)
                 
                 if jina_outcome.decision.name == "JINA_ACCEPTED":
                     selected = jina_outcome.selected_document
-                    fetch_status = "OK"
-                    extraction_status = selected.status.value
                     fallback_decision = "JINA_PRIMARY"
+                    fetch_status = "JINA_OK"
+                    extraction_status = "JINA_OK"
+                    error_code = None
                 else:
-                    fetched = self.fetcher.fetch(url)
-                    primary = self.extractor.extract(fetched)
+                    with trafilatura_lock:
+                        fetched = self.fetcher.fetch(url)
+                        primary = self.extractor.extract(fetched)
                     selected = primary
-                    fetch_status = fetched.status.value
-                    extraction_status = selected.status.value
                     fallback_decision = f"JINA_FAILED_TRAFILATURA_USED({jina_outcome.decision.name})"
+                    fetch_status = fetched.status.name
+                    extraction_status = primary.status.name
+                    error_code = primary.error_code
 
                 bundle = self.candidate_extractor.extract(selected)
                 if selected.status.name in {"OK", "TRUNCATED"}:
                     status = SourceProcessingStatus.PROCESSED
                     segmentation = self.segmenter.segment(selected, bundle)
-                    error_code = None
                     if not segmentation.entities:
                         status = SourceProcessingStatus.NO_ENTITY
                         error_code = segmentation.warnings[0] if segmentation.warnings else None
@@ -93,7 +98,7 @@ class CompanyReaderPipeline:
                 return seg, report
 
         import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(urls), 2) or 1) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(urls), 5) or 1) as executor:
             futures = [executor.submit(process_url, url) for url in urls]
             for future in concurrent.futures.as_completed(futures):
                 seg, rep = future.result()
