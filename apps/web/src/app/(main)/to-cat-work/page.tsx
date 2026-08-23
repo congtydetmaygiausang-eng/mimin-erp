@@ -17,7 +17,7 @@ import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useSession } from "@/components/session-provider";
 
 export default function CongViecCatPage() {
-  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat, ghiNhanLichSuNhap } = useLenhCat();
   const { themPhanCong } = usePhanCong();
   const { themGiaoDich } = useKho();
   const { user } = useSession();
@@ -443,6 +443,9 @@ export default function CongViecCatPage() {
                       });
 
                       suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
+                      
+                      // Ghi nhận lịch sử nhập
+                      ghiNhanLichSuNhap(lc.id, "cat", totalThucTe, user?.name || "Thợ cắt", `Cập nhật tỷ lệ size màu ${newDsMau[mauIdx].ten}`);
 
                       // Xử lý tạo lệnh phạt nếu Cắt lố/thất thoát
                       if (tongDuCat && tongDuCat > 0) {

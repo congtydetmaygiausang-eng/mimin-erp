@@ -396,6 +396,7 @@ interface LenhCatStore {
     catChiTiet?: CatChiTiet;
     chiTietMau?: any;
   }) => void;
+  ghiNhanLichSuNhap: (idLenh: string, khauId: string, soLuong: number, nguoiNhap: string, ghiChu?: string) => void;
   reset: () => void;
   loading: boolean;
 }
@@ -764,6 +765,19 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     }
   }, [upsertTuLenhCat, dsLenhCat]);
 
+  const ghiNhanLichSuNhap = useCallback((idLenh: string, khauId: string, soLuong: number, nguoiNhap: string, ghiChu?: string) => {
+    const item: LichSuNhapSLItem = {
+      ngay: new Date().toISOString(),
+      loai: "nhan_viec", // Mặc định loại thao tác
+      nguoiNhap,
+      soLuong,
+      ghiChu
+    };
+    capNhatCongDoan(idLenh, khauId, {
+      lichSuNhapSL: [item]
+    });
+  }, [capNhatCongDoan]);
+
   const reset = useCallback(() => {
     setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
@@ -774,7 +788,23 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   if (!isLoaded || !isSupabaseDone) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, capNhatCongDoan, reset, loading }}>
+    <LenhCatContext.Provider value={{ 
+      dsLenhCat, 
+      themLenhCat, 
+      suaLenhCat, 
+      xoaLenhCat, 
+      dsMauCongDoan, 
+      themMauCongDoan, 
+      xoaMauCongDoan, 
+      dsMauChiPhi, 
+      themMauChiPhi,
+      xoaMauChiPhi,
+      capNhatTrangThai,
+      capNhatCongDoan,
+      ghiNhanLichSuNhap,
+      reset,
+      loading
+    }}>
       {children}
     </LenhCatContext.Provider>
   );

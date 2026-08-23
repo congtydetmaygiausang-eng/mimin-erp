@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
 import React, { ReactNode } from "react";
-import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight } from "lucide-react";
+import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight, ExternalLink } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE, LOAI_SP_LABELS, type LenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
@@ -10,6 +10,7 @@ import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
 import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useState } from "react";
+import Link from "next/link";
 
 // ============ STAT CARD ============
 export function StatCard({ icon, label, value, sub, color }: {
@@ -209,28 +210,38 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
 
       {/* Footer Actions (Chỉ hiện khi ở trang chủ Lệnh Cắt, tuỳ biến) */}
       {(onEdit || onDelete || onChangeStatus) && (
-        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
-          {onEdit && (
-            <button onClick={onEdit} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all text-xs">
-              <Edit3 className="w-3.5 h-3.5" /> Xem/Sửa
-            </button>
-          )}
-          {onChangeStatus && (
-            <select
-              value={lc.trangThai}
-              onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold text-slate-700 text-xs focus:ring-2 focus:ring-sky-500/30"
-            >
-              {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
-                <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
-              ))}
-            </select>
-          )}
-          {onDelete && (
-            <button onClick={onDelete} className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold transition-all flex items-center gap-1.5 text-xs">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
+        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+          {/* Xem chi tiết 9 tab công đoạn */}
+          <Link
+            href={`/lenh-cat/${lc.id}`}
+            className="px-3 py-1.5 rounded-lg bg-sky-600 text-white hover:bg-sky-700 font-bold flex items-center gap-1.5 transition-all text-xs shadow-sm"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> Xem chi tiết
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button onClick={onEdit} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all text-xs">
+                <Edit3 className="w-3.5 h-3.5" /> Sửa
+              </button>
+            )}
+            {onChangeStatus && (
+              <select
+                value={lc.trangThai}
+                onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold text-slate-700 text-xs focus:ring-2 focus:ring-sky-500/30"
+              >
+                {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
+                  <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
+                ))}
+              </select>
+            )}
+            {onDelete && (
+              <button onClick={onDelete} className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold transition-all flex items-center gap-1.5 text-xs">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
