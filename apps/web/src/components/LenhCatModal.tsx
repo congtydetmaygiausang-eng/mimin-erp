@@ -1825,7 +1825,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     </div>
                     {isBo ? (
                       <div className="flex gap-2">
-                        <div className="w-1/2 p-2 bg-blue-50/50 rounded border border-blue-100 flex flex-col gap-2">
+                        <div className="w-1/2 p-2 bg-blue-50/50 rounded border border-blue-200 flex flex-col gap-2">
                           <div>
                             <div className="text-[10px] font-bold text-blue-700 mb-1">ÁO - Kho Vải</div>
                             <select 
@@ -1852,8 +1852,30 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                               }}
                             />
                           </div>
+                          <div className="mt-2 p-1.5 bg-fuchsia-50/60 border border-fuchsia-200 rounded">
+                            <label className="text-[10px] font-bold text-fuchsia-700 block mb-1">Màu phối (tham khảo, không tính định mức)</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
+                              {(mau.mauPhoi || []).map((ten, mpIdx) => (
+                                <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                                  {ten}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = [...dsMau];
+                                      next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
+                                      setDsMau(next);
+                                    }}
+                                    className="hover:text-fuchsia-950"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        <div className="w-1/2 p-2 bg-rose-50/50 rounded border border-rose-100 flex flex-col gap-2">
+                        <div className="w-1/2 p-2 bg-rose-50/50 rounded border border-rose-200 flex flex-col gap-2">
                           <div>
                             <div className="text-[10px] font-bold text-rose-700 mb-1">QUẦN - Kho Vải</div>
                             <select 
@@ -1880,6 +1902,32 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                               }}
                             />
                           </div>
+                          <div className="mt-2">
+                            <select
+                              className="text-[11px] px-2 py-1.5 border border-fuchsia-200 rounded bg-white w-full font-medium text-fuchsia-800 focus:outline-none focus:border-fuchsia-400 shadow-sm"
+                              value=""
+                              onChange={(e) => {
+                                const ten = e.target.value;
+                                if (!ten) return;
+                                const next = [...dsMau];
+                                const dsHienTai = next[idx].mauPhoi || [];
+                                if (!dsHienTai.includes(ten)) {
+                                  next[idx].mauPhoi = [...dsHienTai, ten];
+                                  setDsMau(next);
+                                }
+                                e.target.value = "";
+                              }}
+                            >
+                              <option value="">+ Thêm màu phối...</option>
+                              {NHOM_MAU.map((nhom) => (
+                                <optgroup key={nhom} label={nhom}>
+                                  {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                    <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -1895,7 +1943,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                           >
                             <option value="">-- Chọn vải --</option>
                             {KHO_VAI.map((kv) => (
-                              <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
+                              <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                             ))}
                           </select>
                         </div>
@@ -1910,58 +1958,57 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                             }}
                           />
                         </div>
+                        {/* Màu phối - chỉ TÊN MÀU (không gắn mã vải), tham khảo, KHÔNG tính định mức/tiền vải */}
+                        <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded p-2">
+                          <div className="flex flex-wrap items-center justify-between mb-1.5 gap-2">
+                            <label className="text-[10px] font-bold text-fuchsia-700">Màu phối (tham khảo, không tính định mức)</label>
+                            <select
+                              className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[160px]"
+                              value=""
+                              onChange={(e) => {
+                                const ten = e.target.value;
+                                if (!ten) return;
+                                const next = [...dsMau];
+                                const dsHienTai = next[idx].mauPhoi || [];
+                                if (!dsHienTai.includes(ten)) {
+                                  next[idx].mauPhoi = [...dsHienTai, ten];
+                                  setDsMau(next);
+                                }
+                                e.target.value = "";
+                              }}
+                            >
+                              <option value="">+ Thêm màu phối...</option>
+                              {NHOM_MAU.map((nhom) => (
+                                <optgroup key={nhom} label={nhom}>
+                                  {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                    <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
+                            {(mau.mauPhoi || []).map((ten, mpIdx) => (
+                              <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                                {ten}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...dsMau];
+                                    next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
+                                    setDsMau(next);
+                                  }}
+                                  className="hover:text-fuchsia-950"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </>
                     )}
-
-                    {/* Màu phối - chỉ TÊN MÀU (không gắn mã vải), tham khảo, KHÔNG tính định mức/tiền vải */}
-                    <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded p-2">
-                      <div className="flex flex-wrap items-center justify-between mb-1.5 gap-2">
-                        <label className="text-[10px] font-bold text-fuchsia-700">Màu phối (tham khảo, không tính định mức)</label>
-                        <select
-                          className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[160px]"
-                          value=""
-                          onChange={(e) => {
-                            const ten = e.target.value;
-                            if (!ten) return;
-                            const next = [...dsMau];
-                            const dsHienTai = next[idx].mauPhoi || [];
-                            if (!dsHienTai.includes(ten)) {
-                              next[idx].mauPhoi = [...dsHienTai, ten];
-                              setDsMau(next);
-                            }
-                            e.target.value = "";
-                          }}
-                        >
-                          <option value="">+ Thêm màu phối...</option>
-                          {NHOM_MAU.map((nhom) => (
-                            <optgroup key={nhom} label={nhom}>
-                              {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
-                                <option key={sw.id} value={sw.ten}>{sw.ten}</option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
-                        {(mau.mauPhoi || []).map((ten, mpIdx) => (
-                          <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
-                            {ten}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = [...dsMau];
-                                next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
-                                setDsMau(next);
-                              }}
-                              className="hover:text-fuchsia-950"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
 
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
