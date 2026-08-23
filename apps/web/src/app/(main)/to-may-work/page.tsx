@@ -5,7 +5,7 @@
 // Nhận bán thành phẩm từ Cắt/In/Thêu, cập nhật tiến độ may
 
 import { useState } from "react";
-import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight } from "lucide-react";
+import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
@@ -23,7 +23,7 @@ export default function UiMayPage() {
 
   function getMayPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
-      const isMay = MAY_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("may"));
+      const isMay = MAY_KEYS.some(k => pc.id === k || pc.id === "may_ao" || pc.id === "may_quan" || pc.tenCongDoan?.toLowerCase().includes("may"));
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isMay && isMyTask;
@@ -98,9 +98,6 @@ export default function UiMayPage() {
   }
 
   function handleHoanThanh(lc: any, pc: any) {
-    // Trước đây khâu May chỉ đổi trạng thái sang "chờ QC", KHÔNG ghi nhận số đạt
-    // và số lỗi - tức khâu dễ phát sinh lỗi nhất lại không có số liệu hao hụt nào.
-    // Nay bắt buộc khai báo theo màu và lưu lại số đạt/lỗi cùng tiền công thực tế.
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
       toast.error(kiemTra.loi!, { duration: 6000 });
@@ -108,6 +105,7 @@ export default function UiMayPage() {
     }
     const { slDat, slLoi } = kiemTra;
     const thanhTienDat = slDat * (pc.donGia || 0);
+    const today = new Date().toISOString().slice(0, 10);
 
     capNhatCongDoan(lc.id, pc.id, {
       trangThaiCD: "cho_qc",
@@ -115,8 +113,28 @@ export default function UiMayPage() {
       soLuongLoi: slLoi,
       thanhTien: thanhTienDat,
       conLai: thanhTienDat - (pc.daThanhToan || 0),
-    });
+      lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "hoan_thanh" as const, ghiChu: "May xong → Chuyển QC" }],
+    } as any);
     toast.success(`✅ Đã giao QC: ${pc.tenCongDoan} – ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
+  }
+
+  // Tổ May sửa xong hàng QC trả về → trả lại QC lần 2
+  function handleSuaXong(lc: any, pc: any) {
+    const slLoi = pc.soLuongLoi || 0;
+    if (slLoi <= 0) {
+      toast.error("Không có sản phẩm lỗi nào cần sửa");
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const slSuaXongMoi = (pc.soLuongSuaXong || 0) + slLoi;
+
+    capNhatCongDoan(lc.id, pc.id, {
+      trangThaiCD: "cho_qc",
+      soLuongSuaXong: slSuaXongMoi,
+      soLuongLoi: 0,
+      lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slLoi, loai: "sua_loi" as const, ghiChu: `Sửa xong ${slLoi} SP → Trả lại QC` }],
+    } as any);
+    toast.success(`🔧 Sửa xong: ${pc.tenCongDoan} – ${slLoi} SP → Chuyển QC kiểm lại`);
   }
 
   return (
@@ -213,10 +231,24 @@ export default function UiMayPage() {
                             </div>
                           )}
                           {tt === "co_loi" && (
-                            <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 flex items-center justify-center gap-1.5">
-                              <Clock className="w-4 h-4" /> Làm lại
-                            </button>
+                            <div className="space-y-2 w-full">
+                              <div className="px-3 py-2 bg-rose-50 border border-rose-200 rounded-lg">
+                                <div className="text-xs font-bold text-rose-700 flex items-center gap-1.5 mb-1">
+                                  <AlertTriangle className="w-3.5 h-3.5" /> QC trả lỗi: {pc.soLuongLoi || 0} SP cần sửa
+                                </div>
+                                {pc.lyDoLoi && <div className="text-[10px] text-rose-600">{pc.lyDoLoi}</div>}
+                              </div>
+                              <div className="flex gap-2">
+                                <button onClick={() => handleNhanHang(lc, pc)}
+                                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-amber-100 border border-amber-300 text-amber-700 hover:bg-amber-200 transition-colors">
+                                  🔧 Bắt đầu sửa lỗi
+                                </button>
+                                <button onClick={() => handleSuaXong(lc, pc)}
+                                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors">
+                                  ✅ Sửa xong → Trả QC
+                                </button>
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>

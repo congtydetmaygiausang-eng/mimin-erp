@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MIMIN × AI Bloum — Trợ lý sản xuất 24/7 cho chủ xưởng may</title>
+<meta name="description" content="AI Bloum — trợ lý 24/7 cho chủ xưởng may. Chọn vải, đặt nhuộm, theo dõi đơn. Nói tiếng Việt." />
+<meta property="og:title" content="MIMIN × AI Bloum — Trợ lý sản xuất 24/7" />
+<meta property="og:description" content="AI cho chủ xưởng may. Trợ lý 24/7. Nói tiếng Việt, như nhắn Zalo." />
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="vi_VN" />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&family=Inter:wght@300;400;500;600;700;800&family=Caveat:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+
+<style>
+/* ============================================================
+   MIMIN × AI Bloum — Landing Page
+   Design system: forest green, sage, cream, terracotta
+   ============================================================ */
+
+:root {
+  --forest: #1B3A2F;
+  --forest-deep: #112620;
+  --sage: #52796F;
+  --sage-soft: #84A89A;
+  --moss: #CAD2C5;
+  --cream: #F5F1E8;
+  --cream-warm: #EDE6D3;
+  --terracotta: #C85A3F;
+  --terracotta-soft: #E08570;
+  --ink: #1A1A1A;
+  --muted: #6B7280;
+  --white: #FFFFFF;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  --shadow-sm: 0 4px 12px rgba(27, 58, 47, 0.06);
+  --shadow-md: 0 12px 32px rgba(27, 58, 47, 0.10);
+  --shadow-lg: 0 30px 60px rgba(27, 58, 47, 0.12);
+  --shadow-xl: 0 40px 90px rgba(27, 58, 47, 0.18);
+
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 36px;
+
+  --container: 1280px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--cream);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img, video {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s var(--ease-out-quart);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+@media (max-width: 768px) {
+  .container { padding: 0 20px; }
+}
+
+/* ============================================================
+   HERO SECTION
+   ============================================================ */
+
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  background: var(--forest);
+  color: var(--white);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0.45;
+  filter: saturate(0.7) contrast(1.1);
+}
+
+.hero__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at center, transparent 0%, rgba(17, 38, 32, 0.7) 80%),
+    linear-gradient(180deg, rgba(27, 58, 47, 0.3) 0%, rgba(17, 38, 32, 0.9) 100%);
+}
+
+.hero__noise {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background-image: url('./imgs/grain.svg');
+  opacity: 0.15;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.hero__inner {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  padding: 120px 0 100px;
+}
+
+.hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--sage-soft);
+  margin-bottom: 40px;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  animation: fadeInUp 1s var(--ease-out-expo) 0.3s forwards;
+}
+
+.hero__eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sage-soft);
+  box-shadow: 0 0 0 4px rgba(132, 168, 154, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.hero__title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(48px, 8.5vw, 128px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  margin-bottom: 32px;
+  max-width: 1100px;
+  opacity: 0;
+  animation: fadeInUp 1.2s var(--ease-out-expo) 0.5s forwards;
+}
+
+.hero__title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--sage-soft);
+  display: inline-block;
+  position: relative;
+}
+
+.hero__title em::after {
+  content: '';
+  position: absolute;
+  bottom: 0.05em;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--terracotta);
+  border-radius: 2px;
+}
+
+.hero__sub {
+  font-size: clamp(16px, 1.6vw, 22px);
+  line-height: 1.55;
+  color: rgba(245, 241, 232, 0.78);
+  max-width: 620px;
+  margin-bottom: 56px;
+  font-weight: 400;
+  opacity: 0;
+  animation: fadeInUp 1.2s var(--ease-out-expo) 0.7s forwards;
+}
+
+.hero__ctas {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  opacity: 0;
+  animation: fadeInUp 1.2s var(--ease-out-expo) 0.9s forwards;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 32px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  transition: all 0.3s var(--ease-out-expo);
+  white-space: nowrap;
+}
+
+.btn--primary {
+  background: var(--cream);
+  color: var(--forest);
+}
+
+.btn--primary:hover {
+  background: var(--white);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(245, 241, 232, 0.2);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid rgba(245, 241, 232, 0.3);
+}
+
+.btn--ghost:hover {
+  background: rgba(245, 241, 232, 0.08);
+  border-color: rgba(245, 241, 232, 0.5);
+}
+
+.btn--accent {
+  background: var(--sage);
+  color: var(--white);
+}
+
+.btn--accent:hover {
+  background: var(--forest);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn--terra {
+  background: var(--terracotta);
+  color: var(--white);
+}
+
+.btn--terra:hover {
+  background: #B14E36;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(200, 90, 63, 0.3);
+}
+
+.btn__arrow {
+  transition: transform 0.3s var(--ease-out-expo);
+}
+
+.btn:hover .btn__arrow {
+  transform: translateX(4px);
+}
+
+.hero__ticker {
+  position: absolute;
+  bottom: 40px;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  border-top: 1px solid rgba(245, 241, 232, 0.1);
+  border-bottom: 1px solid rgba(245, 241, 232, 0.1);
+  padding: 16px 0;
+  overflow: hidden;
+  opacity: 0;
+  animation: fadeIn 1s var(--ease-out-expo) 1.5s forwards;
+}
+
+.ticker__track {
+  display: flex;
+  gap: 60px;
+  animation: scroll 30s linear infinite;
+  white-space: nowrap;
+}
+
+.ticker__item {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sage-soft);
+  display: flex;
+  align-items: center;
+  gap: 60px;
+}
+
+.ticker__item::after {
+  content: '◆';
+  color: var(--terracotta);
+  font-size: 8px;
+}
+
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============================================================
+   SECTION GENERIC
+   ============================================================ */
+
+.section {
+  padding: 120px 0;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .section { padding: 80px 0; }
+}
+
+.section__eyebrow {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 24px;
+}
+
+.section__title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(36px, 5.5vw, 72px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--forest);
+  margin-bottom: 24px;
+  max-width: 900px;
+}
+
+.section__title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--sage);
+}
+
+.section__sub {
+  font-size: clamp(16px, 1.4vw, 20px);
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 640px;
+  margin-bottom: 60px;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.9s var(--ease-out-expo), transform 0.9s var(--ease-out-expo);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal--delay-1 { transition-delay: 0.1s; }
+.reveal--delay-2 { transition-delay: 0.2s; }
+.reveal--delay-3 { transition-delay: 0.3s; }
+.reveal--delay-4 { transition-delay: 0.4s; }
+
+/* ============================================================
+   PAIN SECTION
+   ============================================================ */
+
+.pain {
+  background: var(--cream);
+  position: relative;
+}
+
+.pain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('./imgs/grain.svg');
+  opacity: 0.4;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.pain__inner { position: relative; z-index: 1; }
+
+.pain__header {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 80px;
+  align-items: end;
+  margin-bottom: 80px;
+}
+
+@media (max-width: 900px) {
+  .pain__header { grid-template-columns: 1fr; gap: 40px; }
+}
+
+.pain__title em {
+  color: var(--terracotta);
+  font-style: normal;
+  position: relative;
+  display: inline-block;
+}
+
+.pain__title em::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--terracotta-soft);
+  opacity: 0.15;
+  transform: skewX(-8deg);
+  z-index: -1;
+  border-radius: 4px;
+  padding: 0 8px;
+}
+
+.pain__intro {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.pain__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.pain__card {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  padding: 32px 28px;
+  border-left: 4px solid var(--terracotta);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.4s var(--ease-out-expo);
+  position: relative;
+  overflow: hidden;
+}
+
+.pain__card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(200, 90, 63, 0.18);
+  border-left-width: 6px;
+}
+
+.pain__card-number {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--terracotta);
+  opacity: 0.5;
+}
+
+.pain__card-label {
+  font-family: 'Caveat', cursive;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--terracotta);
+  line-height: 1;
+  margin-bottom: 14px;
+  display: block;
+}
+
+.pain__card-text {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.pain__card-quote {
+  margin-top: 14px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.pain__card:nth-child(1) { grid-column: 1 / 2; }
+.pain__card:nth-child(2) { grid-column: 2 / 3; }
+.pain__card:nth-child(3) { grid-column: 3 / 5; }
+.pain__card:nth-child(4) { grid-column: 1 / 3; }
+.pain__card:nth-child(5) { grid-column: 3 / 4; }
+.pain__card:nth-child(6) { grid-column: 4 / 5; }
+.pain__card:nth-child(7) { grid-column: 1 / 5; background: var(--terracotta); color: var(--white); border-left-color: var(--forest); }
+.pain__card:nth-child(7) .pain__card-label { color: var(--cream); }
+.pain__card:nth-child(7) .pain__card-text { color: var(--white); font-size: 22px; }
+.pain__card:nth-child(7) .pain__card-quote { color: rgba(255, 255, 255, 0.7); }
+.pain__card:nth-child(7) .pain__card-number { color: var(--cream); opacity: 0.6; }
+
+@media (max-width: 900px) {
+  .pain__grid { grid-template-columns: repeat(2, 1fr); }
+  .pain__card:nth-child(n) { grid-column: auto; }
+  .pain__card:nth-child(7) { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .pain__grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   PIVOT SECTION
+   ============================================================ */
+
+.pivot {
+  background: var(--white);
+  text-align: center;
+  padding: 140px 0;
+}
+
+.pivot__inner { max-width: 1000px; margin: 0 auto; }
+
+.pivot__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  background: var(--cream);
+  border: 1px solid var(--moss);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sage);
+  margin-bottom: 40px;
+  letter-spacing: 0.05em;
+}
+
+.pivot__badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sage);
+  box-shadow: 0 0 0 4px rgba(82, 121, 111, 0.2);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.pivot__title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(40px, 6vw, 88px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--forest);
+  margin-bottom: 32px;
+}
+
+.pivot__title em {
+  font-style: italic;
+  font-weight: 500;
+  background: linear-gradient(135deg, var(--sage) 0%, var(--terracotta) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.pivot__sub {
+  font-size: clamp(17px, 1.5vw, 22px);
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 700px;
+  margin: 0 auto 50px;
+}
+
+.pivot__divider {
+  width: 60px;
+  height: 2px;
+  background: var(--terracotta);
+  margin: 0 auto;
+}
+
+/* ============================================================
+   FEATURE SECTIONS
+   ============================================================ */
+
+.feature {
+  background: var(--cream);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature--alt { background: var(--white); }
+
+.feature__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .feature__grid { grid-template-columns: 1fr; gap: 60px; }
+}
+
+.feature--reverse .feature__media { order: -1; }
+@media (max-width: 900px) {
+  .feature--reverse .feature__media { order: 0; }
+}
+
+.feature__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: var(--cream);
+  border: 1px solid var(--moss);
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 24px;
+}
+
+.feature--alt .feature__eyebrow { background: var(--white); }
+
+.feature__eyebrow-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--forest);
+  color: var(--cream);
+  border-radius: 50%;
+  font-size: 11px;
+}
+
+.feature__title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(32px, 4vw, 56px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--forest);
+  margin-bottom: 24px;
+}
+
+.feature__title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--sage);
+}
+
+.feature__body {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+
+.feature__list {
+  list-style: none;
+  margin-bottom: 40px;
+}
+
+.feature__list li {
+  position: relative;
+  padding-left: 36px;
+  margin-bottom: 14px;
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.feature__list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  background: var(--sage);
+  color: var(--white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.feature__media {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+  background: var(--moss);
+  aspect-ratio: 16 / 10;
+}
+
+.feature__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s var(--ease-out-expo);
+}
+
+.feature__media:hover img {
+  transform: scale(1.04);
+}
+
+.feature__media-tag {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  padding: 8px 16px;
+  background: var(--white);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--forest);
+  box-shadow: var(--shadow-sm);
+}
+
+.feature__stats {
+  display: flex;
+  gap: 32px;
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--moss);
+}
+
+.feature__stat-num {
+  font-family: 'Fraunces', serif;
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--forest);
+  line-height: 1;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+
+.feature__stat-num span { color: var(--sage); }
+
+.feature__stat-label {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ============================================================
+   BIG STATS STRIP
+   ============================================================ */
+
+.stats {
+  background: var(--forest);
+  color: var(--white);
+  padding: 100px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.stats::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('./imgs/grain.svg');
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+}
+
+.stats__inner { position: relative; z-index: 1; }
+
+.stats__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+}
+
+@media (max-width: 900px) {
+  .stats__grid { grid-template-columns: repeat(2, 1fr); gap: 60px 40px; }
+}
+
+@media (max-width: 480px) {
+  .stats__grid { grid-template-columns: 1fr; }
+}
+
+.stat__item {
+  position: relative;
+  padding-left: 0;
+}
+
+.stat__num {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(48px, 6vw, 80px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  margin-bottom: 12px;
+  display: block;
+}
+
+.stat__num span {
+  color: var(--sage-soft);
+}
+
+.stat__label {
+  font-size: 14px;
+  color: var(--sage-soft);
+  line-height: 1.4;
+  font-weight: 500;
+  max-width: 220px;
+}
+
+.stat__item::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 0;
+  width: 32px;
+  height: 2px;
+  background: var(--sage-soft);
+  opacity: 0.6;
+}
+
+/* ============================================================
+   STEPS
+   ============================================================ */
+
+.steps { background: var(--white); }
+
+.steps__head {
+  text-align: center;
+  margin-bottom: 80px;
+}
+
+.steps__head .section__sub { margin: 0 auto; }
+
+.steps__line {
+  position: absolute;
+  top: 60px;
+  left: 12.5%;
+  right: 12.5%;
+  height: 2px;
+  background: var(--moss);
+  z-index: 0;
+}
+
+.steps__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .steps__grid { grid-template-columns: 1fr; gap: 40px; }
+  .steps__line { display: none; }
+}
+
+.step {
+  position: relative;
+  z-index: 1;
+  background: var(--white);
+  padding: 40px 32px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  border: 1px solid var(--moss);
+  transition: all 0.3s var(--ease-out-expo);
+}
+
+.step:hover {
+  transform: translateY(-4px);
+  border-color: var(--sage);
+  box-shadow: var(--shadow-md);
+}
+
+.step__num {
+  width: 56px;
+  height: 56px;
+  background: var(--forest);
+  color: var(--cream);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  border: 4px solid var(--white);
+  box-shadow: 0 0 0 2px var(--forest);
+}
+
+.step__title {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--forest);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+.step__body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ============================================================
+   FINAL CTA
+   ============================================================ */
+
+.cta {
+  background: var(--forest);
+  color: var(--white);
+  padding: 140px 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(82, 121, 111, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(200, 90, 63, 0.2) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('./imgs/grain.svg');
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+.cta__inner { position: relative; z-index: 2; max-width: 900px; margin: 0 auto; }
+
+.cta__title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(40px, 6vw, 84px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  margin-bottom: 28px;
+}
+
+.cta__title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--sage-soft);
+}
+
+.cta__sub {
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.6;
+  color: rgba(245, 241, 232, 0.8);
+  margin-bottom: 48px;
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta__buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 60px;
+}
+
+.cta__brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sage-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.cta__brand-divider {
+  width: 4px;
+  height: 4px;
+  background: var(--terracotta);
+  border-radius: 50%;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+.footer {
+  background: var(--forest-deep);
+  color: var(--sage-soft);
+  padding: 50px 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+.footer__brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--cream);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.footer__contact {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.footer__contact a:hover { color: var(--cream); }
+
+.footer__legal {
+  margin-top: 28px;
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+
+.float-tag {
+  position: absolute;
+  background: var(--white);
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--forest);
+  z-index: 5;
+}
+
+.float-tag--1 { top: -20px; right: -10px; transform: rotate(3deg); }
+.float-tag--2 { bottom: -20px; left: -10px; transform: rotate(-3deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   FLOATING CTA — Vào ứng dụng
+   ============================================================ */
+
+.floating-cta {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 26px;
+  background: var(--sage);
+  color: var(--white);
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  box-shadow: 0 12px 32px rgba(27, 58, 47, 0.28);
+  transition: all 0.3s var(--ease-out-expo);
+  animation: float-pulse 2.6s ease-in-out infinite;
+  text-decoration: none;
+}
+
+.floating-cta:hover {
+  background: var(--forest);
+  transform: translateY(-3px);
+  box-shadow: 0 20px 50px rgba(27, 58, 47, 0.40);
+}
+
+.floating-cta__icon {
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.floating-cta__arrow {
+  font-size: 18px;
+  transition: transform 0.3s var(--ease-out-expo);
+}
+
+.floating-cta:hover .floating-cta__arrow {
+  transform: translateX(4px);
+}
+
+@keyframes float-pulse {
+  0%, 100% {
+    box-shadow: 0 12px 32px rgba(27, 58, 47, 0.28), 0 0 0 0 rgba(82, 121, 111, 0.5);
+  }
+  50% {
+    box-shadow: 0 12px 32px rgba(27, 58, 47, 0.28), 0 0 0 14px rgba(82, 121, 111, 0);
+  }
+}
+
+@media (max-width: 600px) {
+  .floating-cta {
+    bottom: 18px;
+    right: 18px;
+    left: 18px;
+    justify-content: center;
+    padding: 16px 22px;
+    font-size: 14px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<section class="hero">
+  <video class="hero__video" autoplay muted loop playsinline preload="auto" poster="">
+    <source src="./videos/hero_loop.mp4" type="video/mp4" />
+  </video>
+  <div class="hero__vignette"></div>
+  <div class="hero__noise"></div>
+
+  <div class="hero__inner">
+    <div class="container">
+      <div class="hero__eyebrow">
+        <span class="hero__eyebrow-dot"></span>
+        <span>TỔNG TIN · 19.08.2026</span>
+      </div>
+
+      <h1 class="hero__title">
+        AI cho<br />
+        <em>chủ xưởng may.</em>
+      </h1>
+
+      <p class="hero__sub">
+        AI Bloum — trợ lý 24/7. Chọn vải, đặt nhuộm, theo dõi đơn.
+        Nói tiếng Việt, như nhắn Zalo.
+      </p>
+
+      <div class="hero__ctas">
+        <a href="#solution" class="btn btn--primary">
+          Xem cách dùng
+          <span class="btn__arrow">→</span>
+        </a>
+        <a href="#cta" class="btn btn--ghost">
+          Dùng thử miễn phí
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero__ticker" aria-hidden="true">
+    <div class="ticker__track">
+      <div class="ticker__item">POLOMIMIN</div>
+      <div class="ticker__item">MIMIN ERP</div>
+      <div class="ticker__item">AI BLOUM</div>
+      <div class="ticker__item">12+ NĂM</div>
+      <div class="ticker__item">100+ XƯỞNG</div>
+      <div class="ticker__item">24/7</div>
+      <div class="ticker__item">POLOMIMIN</div>
+      <div class="ticker__item">MIMIN ERP</div>
+      <div class="ticker__item">AI BLOUM</div>
+      <div class="ticker__item">12+ NĂM</div>
+      <div class="ticker__item">100+ XƯỞNG</div>
+      <div class="ticker__item">24/7</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PAIN POINTS
+     ============================================================ -->
+<section class="section pain" id="pain">
+  <div class="container pain__inner">
+    <div class="pain__header">
+      <div class="reveal">
+        <span class="section__eyebrow">① Vấn đề thường gặp</span>
+        <h2 class="section__title pain__title">
+          Bảy điều<br />
+          <em>chủ xưởng hay gặp.</em>
+        </h2>
+      </div>
+      <p class="pain__intro reveal reveal--delay-2">
+        Không phải lỗi của bạn. Vì chưa có công cụ đúng.
+      </p>
+    </div>
+
+    <div class="pain__grid">
+      <article class="pain__card reveal">
+        <span class="pain__card-number">01</span>
+        <span class="pain__card-label">Giá</span>
+        <p class="pain__card-text">Hàng giá cao. Bán khó.</p>
+      </article>
+
+      <article class="pain__card reveal reveal--delay-1">
+        <span class="pain__card-number">02</span>
+        <span class="pain__card-label">Đơn ế</span>
+        <p class="pain__card-text">Khách không hỏi. Đơn về 0.</p>
+      </article>
+
+      <article class="pain__card reveal reveal--delay-2">
+        <span class="pain__card-number">03</span>
+        <span class="pain__card-label">Hàng tồn</span>
+        <p class="pain__card-text">Kho đầy. Vốn kẹt.</p>
+      </article>
+
+      <article class="pain__card reveal reveal--delay-3">
+        <span class="pain__card-number">04</span>
+        <span class="pain__card-label">Tiền</span>
+        <p class="pain__card-text">Dòng tiền khó. Nợ chồng nợ.</p>
+      </article>
+
+      <article class="pain__card reveal">
+        <span class="pain__card-number">05</span>
+        <span class="pain__card-label">Tìm xưởng</span>
+        <p class="pain__card-text">Không biết NCC nào uy tín.</p>
+      </article>
+
+      <article class="pain__card reveal reveal--delay-1">
+        <span class="pain__card-number">06</span>
+        <span class="pain__card-label">Kinh nghiệm</span>
+        <p class="pain__card-text">Mới vào nghề. Chưa rõ quy trình.</p>
+      </article>
+
+      <article class="pain__card reveal reveal--delay-2">
+        <span class="pain__card-number">07</span>
+        <span class="pain__card-label">SP chưa đẹp</span>
+        <p class="pain__card-text">
+          Mẫu mã chưa cạnh tranh.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PIVOT
+     ============================================================ -->
+<section class="section pivot" id="solution">
+  <div class="container pivot__inner">
+    <div class="pivot__badge reveal">
+      <span class="pivot__badge-dot"></span>
+      <span>MỚI · 2026</span>
+    </div>
+    <h2 class="pivot__title reveal reveal--delay-1">
+      <em>AI Bloum.</em><br />
+      Trợ lý sản xuất 24/7.
+    </h2>
+    <p class="pivot__sub reveal reveal--delay-2">
+      Một AI biết ngành may. Nói tiếng Việt, như nhắn Zalo.
+    </p>
+    <div class="pivot__divider reveal reveal--delay-3"></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FEATURE 1: CHỌN SỢI
+     ============================================================ -->
+<section class="section feature">
+  <div class="container">
+    <div class="feature__grid">
+      <div class="feature__text">
+        <div class="reveal">
+          <span class="feature__eyebrow">
+            <span class="feature__eyebrow-num">01</span>
+            <span>Chọn sợi</span>
+          </span>
+          <h3 class="feature__title">
+            So sánh 10+ NCC<br />
+            <em>trong 5 giây.</em>
+          </h3>
+          <p class="feature__body">
+            Bạn nói yêu cầu. AI tìm nhà cung cấp phù hợp nhất.
+            Giá, lead time, chất lượng — có hết.
+          </p>
+          <ul class="feature__list">
+            <li>So sánh giá real-time</li>
+            <li>Đánh giá từ khách hàng cũ</li>
+            <li>Cảnh báo NCC giao chậm</li>
+            <li>Đề xuất theo ngân sách</li>
+          </ul>
+        </div>
+        <div class="feature__stats reveal reveal--delay-2">
+          <div>
+            <div class="feature__stat-num"><span>4-6</span></div>
+            <div class="feature__stat-label">tiết kiệm<br />mỗi đơn</div>
+          </div>
+          <div>
+            <div class="feature__stat-num"><span>15%</span></div>
+            <div class="feature__stat-label">giảm chi phí<br />nguyên liệu</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature__media reveal reveal--delay-2">
+        <span class="feature__media-tag">📊 Chọn sợi · AI Bloum</span>
+        <img src="./imgs/feature_chonsoi.png" alt="AI Blooum chọn sợi — dashboard so sánh nhà cung cấp" loading="lazy" onerror="this.style.display='none'" />
+        <div class="float-tag float-tag--1">⭐ 4.8/5</div>
+        <div class="float-tag float-tag--2">✅ Đã đề xuất</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FEATURE 2: ĐẶT LỆNH NHUỘM
+     ============================================================ -->
+<section class="section feature feature--alt feature--reverse" id="features">
+  <div class="container">
+    <div class="feature__grid">
+      <div class="feature__media reveal">
+        <span class="feature__media-tag">🎨 Đặt nhuộm · AI Bloum</span>
+        <img src="./imgs/feature_nhuom.jpg" alt="AI Blooum đặt lệnh nhuộm — chọn màu và xác nhận" loading="lazy" onerror="this.style.display='none'" />
+        <div class="float-tag float-tag--1">⚡ 90 giây</div>
+        <div class="float-tag float-tag--2">🔒 Ký quỹ 6 tháng</div>
+      </div>
+
+      <div class="feature__text">
+        <div class="reveal reveal--delay-1">
+          <span class="feature__eyebrow">
+            <span class="feature__eyebrow-num">02</span>
+            <span>Đặt nhuộm</span>
+          </span>
+          <h3 class="feature__title">
+            Xong<br />
+            <em>trong 90 giây.</em>
+          </h3>
+          <p class="feature__body">
+            Chọn màu. AI báo giá. Đặt cọc 30%. Xong.
+          </p>
+          <ul class="feature__list">
+            <li>3 báo giá cùng lúc</li>
+            <li>Chuẩn OE 100, ISO 9001</li>
+            <li>Đặt cọc 30% — ký quỹ 6 tháng</li>
+            <li>Theo dõi đến khi giao</li>
+          </ul>
+        </div>
+        <div class="feature__stats reveal reveal--delay-3">
+          <div>
+            <div class="feature__stat-num"><span>90s</span></div>
+            <div class="feature__stat-label">đặt lệnh<br />hoàn tất</div>
+          </div>
+          <div>
+            <div class="feature__stat-num"><span>0đ</span></div>
+            <div class="feature__stat-label">phí phạt<br />giao chậm</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     STATS STRIP
+     ============================================================ -->
+<section class="stats">
+  <div class="container stats__inner">
+    <div class="stats__grid">
+      <div class="stat__item reveal">
+        <span class="stat__num" data-count="12" data-suffix="+">0+</span>
+        <p class="stat__label">năm kinh nghiệm</p>
+      </div>
+      <div class="stat__item reveal reveal--delay-1">
+        <span class="stat__num" data-count="100" data-suffix="+">0+</span>
+        <p class="stat__label">xưởng tin dùng</p>
+      </div>
+      <div class="stat__item reveal reveal--delay-2">
+        <span class="stat__num" data-count="30" data-suffix="%">0%</span>
+        <p class="stat__label">giảm chi phí NCC</p>
+      </div>
+      <div class="stat__item reveal reveal--delay-3">
+        <span class="stat__num" data-count="7" data-suffix="">0</span>
+        <p class="stat__label">ngày rút ngắn / đơn</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     HOW IT WORKS
+     ============================================================ -->
+<section class="section steps">
+  <div class="container">
+    <div class="steps__head">
+      <div class="reveal">
+        <span class="section__eyebrow" style="text-align:center; display:block;">② Quy trình</span>
+        <h2 class="section__title" style="text-align:center; margin: 0 auto 16px;">
+          Ba bước — <em>như nhắn Zalo.</em>
+        </h2>
+        <p class="section__sub" style="text-align:center; margin: 0 auto 60px;">
+          Không cần học. Cứ nói tiếng Việt.
+        </p>
+      </div>
+    </div>
+
+    <div class="steps__line" aria-hidden="true"></div>
+    <div class="steps__grid">
+      <article class="step reveal">
+        <div class="step__num">1</div>
+        <h4 class="step__title">Nhập yêu cầu</h4>
+        <p class="step__body">
+          Mô tả nhu cầu bằng tiếng Việt. Có thể kèm ảnh.
+        </p>
+      </article>
+      <article class="step reveal reveal--delay-1">
+        <div class="step__num">2</div>
+        <h4 class="step__title">AI đề xuất</h4>
+        <p class="step__body">
+          Tìm NCC, so sánh, báo giá.
+        </p>
+      </article>
+      <article class="step reveal reveal--delay-2">
+        <div class="step__num">3</div>
+        <h4 class="step__title">Xác nhận</h4>
+        <p class="step__body">
+          Một chạm. Theo dõi đến khi giao.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FINAL CTA
+     ============================================================ -->
+<section class="cta" id="cta">
+  <div class="container cta__inner">
+    <h2 class="cta__title reveal">
+      Bắt đầu<br />
+      <em>ngay hôm nay.</em>
+    </h2>
+    <p class="cta__sub reveal reveal--delay-1">
+      Dùng thử miễn phí 30 ngày. Không cần thẻ.
+    </p>
+    <div class="cta__buttons reveal reveal--delay-2">
+      <a href="https://zlsfdvtryzzw2.space.minimax.io/dashboard/" target="_blank" rel="noopener noreferrer" class="btn btn--primary">
+        Vào ứng dụng
+        <span class="btn__arrow">↗</span>
+      </a>
+      <a href="tel:0774480916" class="btn btn--ghost">
+        Gọi 0774.480.916
+      </a>
+    </div>
+    <div class="cta__brand reveal reveal--delay-3">
+      <span>POLOMIMIN</span>
+      <span class="cta__brand-divider"></span>
+      <span>MIMIN ERP</span>
+      <span class="cta__brand-divider"></span>
+      <span>AI BLOUM</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__brand">GIAU SANG TEXTILE · POLOMIMIN</div>
+    <p>CÔNG TY TNHH DỆT MAY GIÀU SANG · MST 0318507560</p>
+    <p>12/39 Xuân Thới Thượng 58C, Bà Điểm, TP.HCM</p>
+    <div class="footer__contact">
+      <a href="tel:0774480916">📞 0774.480.916</a>
+      <a href="mailto:sang@mimin.vn">✉️ sang@mimin.vn</a>
+      <a href="https://polomimin.shop" target="_blank" rel="noopener">🌐 polomimin.shop</a>
+    </div>
+    <p class="footer__legal">© 2026 Giau Sang Textile Co., Ltd. All rights reserved.</p>
+  </div>
+</footer>
+
+<script>
+  // ============================================================
+  // Scroll reveal
+  // ============================================================
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.classList.add('is-visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+  revealEls.forEach((el) => io.observe(el));
+
+  // ============================================================
+  // Counter animation
+  // ============================================================
+  const counters = document.querySelectorAll('[data-count]');
+  const counterIO = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        const el = e.target;
+        const target = parseFloat(el.dataset.count);
+        const suffix = el.dataset.suffix || '';
+        const duration = 1800;
+        const start = performance.now();
+        const tick = (now) => {
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const value = Math.floor(eased * target);
+          el.textContent = value + suffix;
+          if (progress < 1) requestAnimationFrame(tick);
+          else el.textContent = target + suffix;
+        };
+        requestAnimationFrame(tick);
+        counterIO.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+  counters.forEach((c) => counterIO.observe(c));
+
+  // ============================================================
+  // Smooth scroll for anchor links
+  // ============================================================
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (ev) => {
+      const href = a.getAttribute('href');
+      if (href === '#' || href.length < 2) return;
+      const target = document.querySelector(href);
+      if (target) {
+        ev.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+</script>
+
+<!-- Floating CTA — luôn hiển thị để vào ứng dụng -->
+<a href="https://zlsfdvtryzzw2.space.minimax.io/dashboard/" target="_blank" rel="noopener noreferrer" class="floating-cta" aria-label="Vào ứng dụng trải nghiệm">
+  <span class="floating-cta__icon">🚀</span>
+  <span class="floating-cta__text">Trải nghiệm ngay</span>
+  <span class="floating-cta__arrow">→</span>
+</a>
+</body>
+</html>

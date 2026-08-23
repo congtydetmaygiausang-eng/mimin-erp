@@ -278,6 +278,7 @@ export type KhoVai = {
   maMoi?: string;      // Mã vải mới chuẩn hóa, VD: "VAI09"
   tenChuan?: string;   // Tên vải chuẩn, VD: "XÁM CHÌ 035"
   mauChuan?: string;   // Màu chuẩn dùng cho SKU/màu phối, VD: "Xám chì"
+  metTrenKg?: number;  // Định lượng vải (Ví dụ: 1kg = 4m)
 };
 
 export const KHO_VAI: KhoVai[] = [

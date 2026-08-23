@@ -223,8 +223,8 @@ export function truTonKho(phieu: PhieuWorkflow, user: any): TruTonKhoResult[] {
     return results;
   }
 
-  const kgPerMet = 0.25;
-  const kgCan = round(tinh.soMetCan * kgPerMet, 2);
+  const metTrenKg = vai.metTrenKg || 4; // Mặc định 1kg = 4m
+  const kgCan = round(tinh.soMetCan / metTrenKg, 2);
 
   const v = inv[maVT];
   if (!v) {
@@ -338,6 +338,38 @@ export function updateVaiInfo(maVT: string, update: Partial<KhoVai>): boolean {
   return true;
 }
 
+/** Thêm mã vải mới vào inventory (dùng khi tạo mã vải mới từ tab Danh mục) */
+export function addNewVai(vai: Omit<KhoVai, "tonKho"> & { tonKho?: number }): boolean {
+  const inv = getInventory();
+  if (inv[vai.maVT]) return false; // đã tồn tại
+  inv[vai.maVT] = { ...vai, tonKho: vai.tonKho ?? 0 };
+  saveInventory(inv);
+  return true;
+}
+
+// ============ PERSISTENT ẢNH VẢI (localStorage, survive F5) ============
+const KHO_VAI_IMAGES_KEY = "mimin_kho_vai_images";
+
+export function getVaiImages(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(KHO_VAI_IMAGES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export function saveVaiImage(maVT: string, base64: string): void {
+  const imgs = getVaiImages();
+  imgs[maVT] = base64;
+  localStorage.setItem(KHO_VAI_IMAGES_KEY, JSON.stringify(imgs));
+}
+
+export function removeVaiImage(maVT: string): void {
+  const imgs = getVaiImages();
+  delete imgs[maVT];
+  localStorage.setItem(KHO_VAI_IMAGES_KEY, JSON.stringify(imgs));
+}
+
 function round(n: number, digits: number = 2): number {
   const f = Math.pow(10, digits);
   return Math.round(n * f) / f;
@@ -430,6 +462,31 @@ function ghiXuatKho(
     };
     dsGD.push(newGD);
     localStorage.setItem(KHO_STORE_KEY, JSON.stringify(dsGD));
+
+    // Đồng bộ lên Supabase ngầm
+    if (isSupabaseEnabled && supabase) {
+      supabase
+        .from("kho_lich_su_giao_dich")
+        .insert({
+          id: newGD.id,
+          ngay: newGD.ngay,
+          loai: newGD.loai,
+          ma_vt: newGD.maVT,
+          ten_vt: newGD.tenVT,
+          so_luong: newGD.soLuong,
+          don_vi: newGD.donVi,
+          don_gia: newGD.donGia,
+          thanh_tien: newGD.thanhTien,
+          nguon_nhap: newGD.nguonNhap,
+          nguoi_thuc_hien: newGD.nguoiThucHien,
+          ghi_chu: newGD.ghiChu,
+        })
+        .then(({ error }) => {
+          if (error && error.code !== "PGRST116" && error.code !== "42P01") {
+            console.warn("[inventory] Lỗi đồng bộ lịch sử kho:", error.message);
+          }
+        });
+    }
   } catch (e) {
     console.error("[inventory] ghiXuatKho error:", e);
   }

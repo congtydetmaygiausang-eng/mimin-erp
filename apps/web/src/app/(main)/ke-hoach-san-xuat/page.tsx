@@ -1,147 +1,312 @@
 "use client";
 
-import { useState } from "react";
-import { Calendar, Plus, CheckCircle2, Clock, TrendingUp, Target, AlertCircle, ChevronRight, Edit2, Trash2, X, Package, Layers } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Calendar, Plus, CheckCircle2, TrendingUp, Target,
+  AlertCircle, Edit2, Trash2, X, Layers, Save, Filter
+} from "lucide-react";
 import { toast } from "sonner";
+import { Portal } from "@/components/ui/Portal";
+import { CrudModal } from "@/components/ui/CrudModal";
 
-type TrangThaiKHSX = "Lên kế hoạch" | "Đang SX" | "Hoàn thành" | "Trễ hạn";
+// ============ TYPES ============
+type TrangThaiKHSX = "LÃªn káº¿ hoáº¡ch" | "Äang SX" | "HoÃ n thÃ nh" | "Trá»… háº¡n";
 
-type KHSX = {
+interface KHSX {
   id: string;
   maKHSX: string;
   tuan: string;
   tuNgay: string;
   denNgay: string;
   sanPham: string;
-  loai: "Áo" | "Bộ";
+  loai: "Ão" | "Bá»™" | "Quáº§n" | "Phá»¥ kiá»‡n";
   soLuong: number;
   daHoanThanh: number;
   xuongPhuTrach: string;
   trangThai: TrangThaiKHSX;
   ghiChu?: string;
+}
+
+const LS_KEY = "mimin_ke_hoach_sx";
+
+const TRANG_THAI_STYLE: Record<TrangThaiKHSX, { color: string; bg: string; dot: string }> = {
+  "LÃªn káº¿ hoáº¡ch": { color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-700/50", dot: "bg-slate-400" },
+  "Äang SX":      { color: "text-amber-700 dark:text-amber-400",  bg: "bg-amber-100 dark:bg-amber-500/20",  dot: "bg-amber-500" },
+  "HoÃ n thÃ nh":   { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-500/20", dot: "bg-emerald-500" },
+  "Trá»… háº¡n":      { color: "text-red-700 dark:text-red-400",      bg: "bg-red-100 dark:bg-red-500/20",      dot: "bg-red-500" },
 };
 
-const KHSX_DATA: KHSX[] = [];
+const XUONG_LIST = [
+  "XÆ°á»Ÿng May 1 â€“ Polomimin", "XÆ°á»Ÿng May 2 â€“ Polomimin",
+  "Gia cÃ´ng ngoÃ i â€“ Cty A", "Gia cÃ´ng ngoÃ i â€“ Cty B",
+  "Tá»• hoÃ n thiá»‡n", "Tá»• cáº¯t",
+];
 
-const TRANG_THAI_STYLE: Record<TrangThaiKHSX, { color: string; bg: string }> = {
-  "Lên kế hoạch": { color: "text-slate-700", bg: "bg-slate-500/15" },
-  "Đang SX": { color: "text-amber-700", bg: "bg-amber-500/15" },
-  "Hoàn thành": { color: "text-emerald-700", bg: "bg-emerald-500/15" },
-  "Trễ hạn": { color: "text-red-700", bg: "bg-red-500/15" },
+const FORM_EMPTY = {
+  tuan: "", tuNgay: "", denNgay: "", sanPham: "",
+  loai: "Ão" as KHSX["loai"], soLuong: 0, daHoanThanh: 0,
+  xuongPhuTrach: XUONG_LIST[0], trangThai: "LÃªn káº¿ hoáº¡ch" as TrangThaiKHSX, ghiChu: "",
 };
+
+function autoTrangThai(k: KHSX): TrangThaiKHSX {
+  if (k.daHoanThanh >= k.soLuong && k.soLuong > 0) return "HoÃ n thÃ nh";
+  if (k.trangThai !== "HoÃ n thÃ nh" && k.denNgay && new Date(k.denNgay) < new Date()) return "Trá»… háº¡n";
+  return k.trangThai;
+}
 
 export default function KeHoachSXPage() {
-  const [list, setList] = useState<KHSX[]>(KHSX_DATA);
+  const [list, setList] = useState<KHSX[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editItem, setEditItem] = useState<KHSX | null>(null);
+  const [filterTT, setFilterTT] = useState<TrangThaiKHSX | "Táº¥t cáº£">("Táº¥t cáº£");
+  const [progressEdit, setProgressEdit] = useState<{ id: string; val: number } | null>(null);
 
-  const tongKH = list.length;
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      const loaded: KHSX[] = raw ? JSON.parse(raw) : [];
+      setList(loaded.map(k => ({ ...k, trangThai: autoTrangThai(k) })));
+    } catch { setList([]); }
+  }, []);
+
+  const commit = (next: KHSX[]) => {
+    const updated = next.map(k => ({ ...k, trangThai: autoTrangThai(k) }));
+    setList(updated);
+    localStorage.setItem(LS_KEY, JSON.stringify(updated));
+  };
+
   const tongSL = list.reduce((s, k) => s + k.soLuong, 0);
-  const daHoanThanh = list.reduce((s, k) => s + k.daHoanThanh, 0);
-  const tienDoChung = tongSL > 0 ? (daHoanThanh / tongSL) * 100 : 0;
-  const dsDangSX = list.filter((k) => k.trangThai === "Đang SX");
-  const dsTreHan = list.filter((k) => {
-    const today = new Date();
-    return k.trangThai !== "Hoàn thành" && new Date(k.denNgay) < today;
-  });
+  const tongXong = list.reduce((s, k) => s + k.daHoanThanh, 0);
+  const tienDoChung = tongSL > 0 ? (tongXong / tongSL) * 100 : 0;
+  const dsTreHan = list.filter(k => k.trangThai === ("Trá»… háº¡n" as any));
+  const dsDangSX = list.filter(k => k.trangThai === ("Ä ang SX" as any));
+  const filtered = filterTT === "Táº¥t cáº£" ? list : list.filter(k => k.trangThai === (filterTT as any));
+
+  const handleEdit = (k: KHSX) => {
+    setEditItem(k);
+    setShowForm(true);
+  };
+
+  const handleDelete = (k: KHSX) => {
+    if (!confirm(`Xoá kế hoạch "${k.sanPham}"?`)) return;
+    commit(list.filter(x => x.id !== k.id));
+    toast.success("ÄÃ£ xoÃ¡ káº¿ hoáº¡ch");
+  };
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* Header */}
       <div className="rounded-2xl overflow-hidden shadow-xl" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
         <div className="p-5 md:p-7 text-white flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> MIMIN ERP · Sản xuất & Kế hoạch
+              <Calendar className="w-3.5 h-3.5" /> MIMIN ERP Â· Sáº£n xuáº¥t & Káº¿ hoáº¡ch
             </div>
             <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5">
-              <Calendar className="w-7 h-7" />
-              Kế hoạch sản xuất
+              <Calendar className="w-7 h-7" /> Káº¿ hoáº¡ch sáº£n xuáº¥t
             </h1>
             <p className="text-sm opacity-95 mt-1.5">
-              {tongKH} KH · Tổng SL <b className="text-white">{tongSL.toLocaleString()}</b> · Hoàn thành <b className="text-white">{daHoanThanh.toLocaleString()}</b> · Tiến độ <b className="text-white">{tienDoChung.toFixed(1)}%</b>
+              {list.length} KH Â· Tá»•ng SL <b>{tongSL.toLocaleString()}</b> Â· HoÃ n thÃ nh <b>{tongXong.toLocaleString()}</b> Â· Tiáº¿n Ä‘á»™ <b>{tienDoChung.toFixed(1)}%</b>
             </p>
+            <div className="mt-3 h-2 bg-white/20 rounded-full overflow-hidden w-80 max-w-full">
+              <div className="h-full bg-white/80 rounded-full transition-all" style={{ width: `${tienDoChung}%` }} />
+            </div>
           </div>
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition">
-            <Plus className="w-4 h-4" /> Tạo KHSX
+          <button onClick={() => { setEditItem(null); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition">
+            <Plus className="w-4 h-4" /> Táº¡o KHSX
           </button>
         </div>
       </div>
 
+      {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-5"><div className="text-xs opacity-70 flex items-center gap-1"><Target className="w-3 h-3" /> Tổng KH</div><div className="text-2xl md:text-3xl font-bold mt-1">{tongKH}</div><div className="text-xs opacity-60 mt-1">kế hoạch</div></div>
-        <div className="card p-5"><div className="text-xs opacity-70 flex items-center gap-1"><Layers className="w-3 h-3" /> Tổng SL</div><div className="text-2xl md:text-3xl font-bold mt-1 text-brand-600">{tongSL.toLocaleString()}</div><div className="text-xs opacity-60 mt-1">sản phẩm</div></div>
-        <div className="card p-5"><div className="text-xs opacity-70 flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-600" /> Hoàn thành</div><div className="text-2xl md:text-3xl font-bold mt-1 text-emerald-600">{daHoanThanh.toLocaleString()}</div><div className="text-xs opacity-60 mt-1">đã xong</div></div>
-        <div className={`card p-5 ${dsTreHan.length > 0 ? "bg-red-500/10 border-red-500/40" : ""}`}>
-          <div className="text-xs opacity-70 flex items-center gap-1"><AlertCircle className="w-3 h-3 text-red-600" /> Trễ hạn</div>
-          <div className={`text-2xl md:text-3xl font-bold mt-1 ${dsTreHan.length > 0 ? "text-red-600" : "text-emerald-600"}`}>{dsTreHan.length}</div>
-          <div className="text-xs opacity-60 mt-1">cần xử lý</div>
-        </div>
+        {[
+          { label: "Tá»•ng KH", val: list.length, icon: <Target className="w-3 h-3" />, sub: "káº¿ hoáº¡ch", color: "" },
+          { label: "Äang SX", val: dsDangSX.length, icon: <Layers className="w-3 h-3" />, sub: "Ä‘ang cháº¡y", color: "text-amber-600" },
+          { label: "HoÃ n thÃ nh", val: list.filter(k => k.trangThai === "HoÃ n thÃ nh").length, icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />, sub: "xong", color: "text-emerald-600" },
+          { label: "Trá»… háº¡n", val: dsTreHan.length, icon: <AlertCircle className="w-3 h-3 text-red-600" />, sub: "cáº§n xá»­ lÃ½", color: dsTreHan.length > 0 ? "text-red-600" : "text-emerald-600" },
+        ].map(({ label, val, icon, sub, color }) => (
+          <div key={label} className={`card p-5 ${label === "Trá»… háº¡n" && dsTreHan.length > 0 ? "bg-red-500/10 border-red-500/40" : ""}`}>
+            <div className="text-xs opacity-70 flex items-center gap-1">{icon} {label}</div>
+            <div className={`text-2xl md:text-3xl font-bold mt-1 ${color}`}>{val}</div>
+            <div className="text-xs opacity-60 mt-1">{sub}</div>
+          </div>
+        ))}
       </div>
 
-      {list.length === 0 ? (
-        <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200 shadow-sm">
+      {/* Filter */}
+      <div className="card p-3 flex flex-wrap gap-2 items-center">
+        <Filter className="w-4 h-4 text-slate-400" />
+        {(["Táº¥t cáº£", "LÃªn káº¿ hoáº¡ch", "Äang SX", "HoÃ n thÃ nh", "Trá»… háº¡n"] as const).map(tt => (
+          <button key={tt} onClick={() => setFilterTT(tt)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${filterTT === tt ? "bg-teal-600 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"}`}>
+            {tt} {tt !== "Táº¥t cáº£" && `(${list.filter(k => k.trangThai === tt).length})`}
+          </button>
+        ))}
+      </div>
+
+      {/* Cards */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-16 text-slate-400 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Chưa có Kế hoạch sản xuất nào</div>
-          <div className="text-sm mt-1">Bấm "Tạo KHSX" để bắt đầu lên lịch</div>
+          <div className="font-bold">ChÆ°a cÃ³ Káº¿ hoáº¡ch sáº£n xuáº¥t nÃ o</div>
+          <div className="text-sm mt-1">Báº¥m "Táº¡o KHSX" Ä‘á»ƒ báº¯t Ä‘áº§u lÃªn lá»‹ch</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {list.map((k) => {
-            const tienDo = k.soLuong > 0 ? (k.daHoanThanh / k.soLuong) * 100 : 0;
+          {filtered.map((k) => {
+            const tienDo = k.soLuong > 0 ? Math.min((k.daHoanThanh / k.soLuong) * 100, 100) : 0;
             const s = TRANG_THAI_STYLE[k.trangThai];
             return (
               <div key={k.id} className="card p-4 hover:shadow-md transition-shadow">
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
-                  <div className="flex-1">
-                    <div className="text-[11px] font-bold text-brand-600 mb-1">{k.maKHSX} · {k.tuan}</div>
-                    <h3 className="text-lg font-black leading-tight text-slate-800">{k.sanPham}</h3>
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-bold text-teal-600 mb-1">{k.maKHSX} Â· {k.tuan || "â€”"}</div>
+                    <h3 className="text-lg font-black leading-tight text-slate-800 dark:text-slate-100 truncate" title={k.sanPham}>{k.sanPham}</h3>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${s.bg} ${s.color} border border-current/20`}>{k.trangThai}</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${k.loai === "Bộ" ? "bg-violet-100 text-violet-700 border-violet-200" : "bg-sky-100 text-sky-700 border-sky-200"} border`}>{k.loai}</span>
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${s.bg} ${s.color}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{k.trangThai}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${k.loai === "Bá»™" ? "bg-violet-100 text-violet-700" : k.loai === "Quáº§n" ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"}`}>{k.loai}</span>
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-500 mb-4 flex gap-1.5 items-start">
-                  <span className="shrink-0">📍</span>
-                  <span className="font-medium line-clamp-2">{k.xuongPhuTrach}</span>
+                <div className="text-xs text-slate-500 mb-3 flex gap-1.5 items-center">
+                  <span>ðŸ“</span><span className="font-medium truncate">{k.xuongPhuTrach}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="grid grid-cols-2 gap-3 text-sm mb-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
                   <div>
-                    <div className="text-[11px] font-medium text-slate-400 mb-0.5">Lịch SX</div>
-                    <div className="font-bold text-slate-700">{k.tuNgay.slice(5)} ➔ {k.denNgay.slice(5)}</div>
+                    <div className="text-[11px] font-medium text-slate-400 mb-0.5">Lá»‹ch SX</div>
+                    <div className="font-bold text-slate-700 dark:text-slate-300">{k.tuNgay.slice(5)} â†’ {k.denNgay.slice(5)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[11px] font-medium text-slate-400 mb-0.5">Sản lượng (Xong / Tổng)</div>
-                    <div className="font-bold text-slate-700"><span className="text-emerald-600">{k.daHoanThanh.toLocaleString()}</span> / {k.soLuong.toLocaleString()}</div>
+                    <div className="text-[11px] font-medium text-slate-400 mb-0.5">Xong / Tá»•ng</div>
+                    <div className="font-bold"><span className="text-emerald-600">{k.daHoanThanh.toLocaleString()}</span> / {k.soLuong.toLocaleString()}</div>
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="font-bold text-slate-500">Tiến độ</span>
-                    <span className={`font-black ${tienDo === 100 ? "text-emerald-600" : "text-brand-600"}`}>{tienDo.toFixed(1)}%</span>
+                <div className="mb-3">
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="font-bold text-slate-500">Tiáº¿n Ä‘á»™</span>
+                    <span className={`font-black ${tienDo >= 100 ? "text-emerald-600" : "text-teal-600"}`}>{tienDo.toFixed(1)}%</span>
                   </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div className={`h-full transition-all ${tienDo === 100 ? "bg-emerald-500" : tienDo > 50 ? "bg-amber-500" : "bg-brand-500"}`} style={{ width: `${tienDo}%` }} />
+                  <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div className={`h-full transition-all rounded-full ${tienDo >= 100 ? "bg-emerald-500" : tienDo > 50 ? "bg-amber-500" : "bg-teal-500"}`} style={{ width: `${tienDo}%` }} />
                   </div>
                 </div>
-                {k.ghiChu && <div className="mt-3 text-xs bg-amber-50 text-amber-700 p-2 rounded-lg border border-amber-200 font-medium">💬 {k.ghiChu}</div>}
+
+                {progressEdit?.id === k.id && (
+                  <div className="flex gap-2 mb-3">
+                    <input type="number" min={0} max={k.soLuong} className="input flex-1 text-sm" value={progressEdit.val} onChange={e => setProgressEdit({ id: k.id, val: Number(e.target.value) })} placeholder={`Tá»‘i Ä‘a ${k.soLuong}`} />
+                    <button onClick={() => { commit(list.map(x => x.id === k.id ? { ...x, daHoanThanh: Math.min(progressEdit.val, k.soLuong) } : x)); setProgressEdit(null); toast.success("ÄÃ£ cáº­p nháº­t tiáº¿n Ä‘á»™"); }} className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3 rounded-lg font-bold"><Save className="w-3 h-3" /></button>
+                    <button onClick={() => setProgressEdit(null)} className="bg-slate-200 text-slate-700 text-xs px-2 rounded-lg font-bold"><X className="w-3 h-3" /></button>
+                  </div>
+                )}
+
+                {k.ghiChu && <div className="mb-3 text-xs bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-2 rounded-lg border border-amber-200 dark:border-amber-500/20 font-medium">ðŸ’¬ {k.ghiChu}</div>}
+
+                <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <button onClick={() => setProgressEdit({ id: k.id, val: k.daHoanThanh })} className="flex-1 text-xs py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-1">
+                    <TrendingUp className="w-3 h-3" /> Tiáº¿n Ä‘á»™
+                  </button>
+                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 transition flex items-center justify-center gap-1">
+                    <Edit2 className="w-3 h-3" /> Sửa
+                  </button>
+                  <button onClick={() => handleDelete(k)} className="flex-1 text-xs py-1.5 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 rounded-lg font-bold hover:bg-red-100 transition flex items-center justify-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Xóa
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowForm(false)}>
-          <div className="card max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-4">Tạo KHSX mới</h3>
-            <p className="text-sm opacity-70 mb-3">Form đầy đủ sẽ được bổ sung trong Phase tiếp theo. Hiện tại vui lòng liên hệ quản lý để thêm KHSX.</p>
-            <button onClick={() => { toast.info("Form đang phát triển"); setShowForm(false); }} className="btn-primary w-full">Đóng</button>
-          </div>
-        </div>
-      )}
+      {/* Form Modal sử dụng CrudModal chuẩn */}
+      <CrudModal
+        open={showForm}
+        onClose={() => { setShowForm(false); setEditItem(null); }}
+        title={editItem ? `Sửa kế hoạch: ${editItem.maKHSX}` : "Tạo Kế hoạch SX mới"}
+        fields={[
+          { name: "maKHSX", label: "Mã Kế Hoạch (Mã Lệnh)", type: "text", required: true, placeholder: "VD: KH-001" },
+          { name: "sanPham", label: "Sản phẩm", type: "text", required: true, placeholder: "VD: Áo thun cotton trắng" },
+          { name: "loai", label: "Loại SP", type: "select", options: [
+            { value: "Áo", label: "Áo" }, { value: "Bộ", label: "Bộ" }, { value: "Quần", label: "Quần" }, { value: "Phụ kiện", label: "Phụ kiện" }
+          ]},
+          { name: "soLuong", label: "Số lượng (SL)", type: "number", required: true, min: 1 },
+          { name: "daHoanThanh", label: "Đã hoàn thành", type: "number", min: 0 },
+          { name: "tuNgay", label: "Từ ngày", type: "date", required: true },
+          { name: "denNgay", label: "Đến ngày (Ngày dự kiến)", type: "date", required: true },
+          { name: "xuongPhuTrach", label: "Xưởng phụ trách", type: "select", options: XUONG_LIST.map(x => ({ value: x, label: x })) },
+          { name: "trangThai", label: "Trạng thái", type: "select", options: [
+            { value: "Lên kế hoạch", label: "Lên kế hoạch" },
+            { value: "Đang SX", label: "Đang SX" },
+            { value: "Hoàn thành", label: "Hoàn thành" },
+            { value: "Trễ hạn", label: "Trễ hạn" },
+          ] },
+          { name: "ghiChu", label: "Ghi chú", type: "textarea" },
+        ]}
+        initial={editItem ? {
+          maKHSX: editItem.maKHSX,
+          sanPham: editItem.sanPham,
+          loai: editItem.loai,
+          soLuong: String(editItem.soLuong),
+          daHoanThanh: String(editItem.daHoanThanh),
+          tuNgay: editItem.tuNgay,
+          denNgay: editItem.denNgay,
+          xuongPhuTrach: editItem.xuongPhuTrach,
+          trangThai: editItem.trangThai,
+          ghiChu: editItem.ghiChu || ""
+        } : {
+          maKHSX: `KH-${String(list.length + 1).padStart(3, "0")}`,
+          soLuong: "0",
+          daHoanThanh: "0",
+          loai: "Áo",
+          xuongPhuTrach: XUONG_LIST[0],
+          trangThai: "Lên kế hoạch"
+        }}
+        onSubmit={async (values) => {
+          const soLuong = Number(values.soLuong);
+          const daHoanThanh = Number(values.daHoanThanh || 0);
+
+          if (editItem) {
+            commit(list.map(k => k.id === editItem.id ? { 
+              ...k,
+              maKHSX: values.maKHSX,
+              sanPham: values.sanPham,
+              loai: values.loai as KHSX["loai"],
+              soLuong,
+              daHoanThanh,
+              tuNgay: values.tuNgay,
+              denNgay: values.denNgay,
+              xuongPhuTrach: values.xuongPhuTrach,
+              trangThai: values.trangThai as TrangThaiKHSX,
+              ghiChu: values.ghiChu
+            } : k));
+            toast.success(`✅ Đã cập nhật: ${values.sanPham}`);
+          } else {
+            const newItem: KHSX = {
+              id: `KHSX-${Date.now()}`,
+              tuan: "", // có thể tính toán tuần nếu cần
+              maKHSX: values.maKHSX,
+              sanPham: values.sanPham,
+              loai: values.loai as KHSX["loai"],
+              soLuong,
+              daHoanThanh,
+              tuNgay: values.tuNgay,
+              denNgay: values.denNgay,
+              xuongPhuTrach: values.xuongPhuTrach,
+              trangThai: values.trangThai as TrangThaiKHSX,
+              ghiChu: values.ghiChu
+            };
+            commit([...list, newItem]);
+            toast.success(`✅ Đã tạo ${newItem.maKHSX}: ${values.sanPham} — ${soLuong.toLocaleString()} SP`);
+          }
+          setShowForm(false);
+          setEditItem(null);
+        }}
+      />
     </div>
   );
 }

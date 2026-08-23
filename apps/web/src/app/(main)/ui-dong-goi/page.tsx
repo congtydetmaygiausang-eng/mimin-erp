@@ -10,12 +10,14 @@ import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCo
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
 import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
 
 export default function UiDongGoiPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { dsSanPham: dsDanhMuc, suaSP } = useDanhMucSP();
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
@@ -258,6 +260,8 @@ export default function UiDongGoiPage() {
                           const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
                             const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
                             const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+                            const chiTietSz = ct?.sizes || m.phanBoSize || [];
+                            const strTiLeSize = chiTietSz.filter((x: any) => x.sl > 0).map((x: any) => `${x.size}:${x.sl}`).join(", ");
                             return {
                               id: `SP-${Date.now()}-${idx}`,
                               maSP: lc.maSP || lc.id,
@@ -274,7 +278,8 @@ export default function UiDongGoiPage() {
                               trangThai: "con",
                               hinhAnh: m.img ? [m.img] : [],
                               imgQuan: m.imgQuan || undefined,
-                              chiTietSize: ct?.sizes || m.phanBoSize || [],
+                              chiTietSize: chiTietSz,
+                              tiLeSize: strTiLeSize,
                             };
                           });
 
@@ -291,6 +296,43 @@ export default function UiDongGoiPage() {
                               console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
                             );
                           });
+
+                          // Cập nhật lại màu và size chuẩn vào Danh mục sản phẩm
+                          const existingDM = dsDanhMuc.find(d => d.id === lc.maSP || d.maSP === lc.maSP);
+                          if (existingDM) {
+                            const newDM = { ...existingDM };
+                            let changed = false;
+
+                            const allSizesMap: Record<string, number> = {};
+                            newSPs.forEach(sp => {
+                              sp.chiTietSize?.forEach((sz: any) => {
+                                allSizesMap[sz.size] = (allSizesMap[sz.size] || 0) + sz.sl;
+                              });
+                            });
+                            
+                            const totalTiLeStr = Object.entries(allSizesMap).map(([size, sl]) => `${size}:${sl}`).join(", ");
+                            if (totalTiLeStr && newDM.tiLeSize !== totalTiLeStr) {
+                              newDM.tiLeSize = totalTiLeStr;
+                              changed = true;
+                            }
+
+                            const newDsMau = [...(newDM.dsMau || [])];
+                            newSPs.forEach(sp => {
+                              const mIdx = newDsMau.findIndex(m => m.ten === sp.mau);
+                              if (mIdx >= 0) {
+                                // Đã có màu này trong danh mục -> giữ nguyên
+                              } else {
+                                // Thêm màu mới bị phát sinh
+                                newDsMau.push({ ten: sp.mau, maSKU: `${newDM.id}-${sp.mau}`, dinhMuc: 0, img: sp.hinhAnh?.[0] || "" });
+                                changed = true;
+                              }
+                            });
+
+                            if (changed) {
+                              newDM.dsMau = newDsMau;
+                              suaSP(newDM.id, newDM);
+                            }
+                          }
 
                           toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) tại ${khuVuc[lc.id]}`);
                         }}

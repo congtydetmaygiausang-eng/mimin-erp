@@ -46,6 +46,8 @@ function mapSanPhamFromDB(item: any): SanPham {
     luotXem: item.luot_xem || 0,
     rating: item.rating || 0,
     hinhAnh: item.hinh_anh || "",
+    giaBanLe: item.gia_ban_le || 0,
+    giaBanSi: item.gia_ban_si || 0,
   };
 }
 
@@ -55,6 +57,7 @@ export interface MauTieuChuan {
   dinhMuc: number;
   img: string;
   video?: string;
+  hinhAnhChiTiet?: string[]; // Thêm mảng chứa nhiều ảnh cho biến thể
 }
 
 export interface BangSize {
@@ -85,6 +88,8 @@ export interface SanPham {
   luotXem?: number; // so luot xem (analytics)
   rating?: number; // danh gia 0-5
   hinhAnh?: string; // URL hinh anh that (placeholder hien tai)
+  giaBanLe?: number;
+  giaBanSi?: number;
 }
 
 const DEFAULT_BANGSIZE_5SIZE: BangSize = {

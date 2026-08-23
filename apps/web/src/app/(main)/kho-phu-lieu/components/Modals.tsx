@@ -6,7 +6,7 @@ import { Plus, Minus, X, Box, History } from "lucide-react";
 import { toast } from "sonner";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAT_TU, KHO_VAI } from "@/lib/data/real-data";
-import { DOI_TAC } from "@/lib/data/real-data";
+import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { Portal } from "@/components/ui/Portal";
 import type { LoaiKho } from "../data";
 
@@ -15,7 +15,17 @@ export function PLNhapKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho
   const { themGiaoDich } = useKho();
   const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
   const vt = dsVT.find((v) => v.maVT === maVT)!;
-  const nccList = DOI_TAC.filter((n) => n.trangThai === "Đang hợp tác");
+  const { list: _nccList } = useNhaCungCap();
+  const nccList = _nccList
+    .filter(n => {
+      const txt = (n.loai + " " + (n.danh_muc_chi_tiet?.join(" ") || "")).toLowerCase();
+      // Nếu là Kho Phụ Liệu thì ưu tiên các NCC có chữ "phụ liệu", "phu lieu", "khóa", "nút", "chỉ", "bo cổ", v.v.
+      // Hoặc đơn giản là loại trừ các NCC chuyên Vải/Sợi ra. Ở đây ta lọc tương đối:
+      if (txt.includes("phụ liệu") || txt.includes("phu lieu") || txt.includes("bo cổ") || txt.includes("chỉ") || txt.includes("nút") || txt.includes("khóa")) return true;
+      // Nếu NCC không có tag rõ ràng, tạm thời cho hiển thị nếu KHÔNG phải chuyên vải/sợi
+      return !txt.includes("sợi") && !txt.includes("vải") && !txt.includes("dệt") && !txt.includes("nhuộm");
+    })
+    .map((n) => ({ maDT: n.ma_ncc, tenDonVi: n.ten_ncc }));
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,

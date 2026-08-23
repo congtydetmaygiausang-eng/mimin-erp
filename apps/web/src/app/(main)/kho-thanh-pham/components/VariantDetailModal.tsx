@@ -83,46 +83,46 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
               <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2.5">Hình ảnh ({hinhAnh.length})</div>
               <div className="flex flex-wrap gap-3">
                 {hinhAnh.map((img, i) => (
-                  <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
+                  <div key={i} className="relative w-40 h-40 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
                     <img src={img} className="w-full h-full object-cover" alt="" />
                     <button
                       onClick={() => setHinhAnh((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-600 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
                 <button
                   onClick={() => imageInputRef.current?.click()}
-                  className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
+                  className="w-40 h-40 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
                 >
-                  <Camera className="w-6 h-6 mb-1" />
-                  <span className="text-[10px] font-bold">Thêm ảnh</span>
+                  <Camera className="w-8 h-8 mb-2" />
+                  <span className="text-xs font-bold">Thêm ảnh</span>
                 </button>
                 <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAddImages} />
               </div>
             </div>
 
-            <div className="w-24 shrink-0">
+            <div className="w-40 shrink-0">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2.5">Video</div>
               {video ? (
-                <div className="relative w-24 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
+                <div className="relative w-40 rounded-xl overflow-hidden border border-slate-200 group shadow-sm">
                   <video src={video} className="w-full aspect-[9/16] object-cover bg-black" controls playsInline />
                   <button
                     onClick={() => setVideo(undefined)}
-                    className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-600 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => videoInputRef.current?.click()}
-                  className="w-24 aspect-[9/16] rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
+                  className="w-40 aspect-[9/16] rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
                 >
-                  <Video className="w-6 h-6 mb-1" />
-                  <span className="text-[10px] font-bold">Thêm video</span>
+                  <Video className="w-8 h-8 mb-2" />
+                  <span className="text-xs font-bold">Thêm video</span>
                 </button>
               )}
               <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleAddVideo} />

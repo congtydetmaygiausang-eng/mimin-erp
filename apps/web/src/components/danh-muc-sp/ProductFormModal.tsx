@@ -61,15 +61,16 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
   const [tenSP, setTenSP] = useState(initialData?.tenSP || "");
   const [loaiSP, setLoaiSP] = useState<LoaiSP>(initialData?.loaiSP || "BoTru");
   const [tiLeSize, setTiLeSize] = useState(initialData?.bangSize?.ratios.join(":") || "1:2:2:2:1");
-  const [dsMau, setDsMau] = useState<{ ten: string; maSKU: string; dinhMuc: number; img: string; video?: string }[]>(
+  const [dsMau, setDsMau] = useState<{ ten: string; maSKU: string; dinhMuc: number; img: string; video: string; hinhAnhChiTiet?: string[] }[]>(
     initialData?.dsMau?.map(m => ({
       ten: m.ten,
       maSKU: m.maSKU || "",
       dinhMuc: m.dinhMuc || 0.25,
       img: m.img || "",
-      video: m.video || ""
+      video: m.video || "",
+      hinhAnhChiTiet: m.hinhAnhChiTiet || []
     })) || [
-      { ten: "Đen", maSKU: "", dinhMuc: 0.25, img: "", video: "" },
+      { ten: "Đen", maSKU: "", dinhMuc: 0.25, img: "", video: "", hinhAnhChiTiet: [] },
     ]
   );
   
@@ -126,7 +127,8 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
         maSKU: m.maSKU || `${maSP}-${m.ten.toUpperCase()}`,
         dinhMuc: m.dinhMuc,
         img: m.img || "",
-        video: m.video || ""
+        video: m.video || "",
+        hinhAnhChiTiet: m.hinhAnhChiTiet || []
       })),
       hinhAnh: dsMau[0]?.img || "",
       bangSize,
@@ -280,7 +282,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
             <div className="flex justify-between items-center mb-3">
               <label className="block text-sm font-bold text-slate-700">Màu sắc tiêu chuẩn & Định mức vải</label>
               <button 
-                onClick={() => setDsMau([...dsMau, { ten: "", maSKU: "", dinhMuc: 0.25, img: "", video: "" }])}
+                onClick={() => setDsMau([...dsMau, { ten: "", maSKU: "", dinhMuc: 0.25, img: "", video: "", hinhAnhChiTiet: [] }])}
                 className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold hover:bg-emerald-200 flex items-center gap-1"
               >
                 <Plus className="w-3 h-3"/> Thêm màu
@@ -348,6 +350,56 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                   
                   {/* Inputs (Right side) */}
                   <div className="w-3/5 flex flex-col gap-3 py-1">
+                    
+                    {/* Add hinhAnhChiTiet thumbnails and upload button */}
+                    <div className="flex flex-col gap-1.5 w-full bg-white p-2 rounded-lg border border-slate-200">
+                      <div className="flex items-center justify-between">
+                         <span className="text-[10px] font-bold text-slate-500 uppercase">Ảnh chi tiết (Nhiều ảnh)</span>
+                         <label className="text-[10px] bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded cursor-pointer font-bold hover:bg-cyan-100">
+                            + Thêm ảnh
+                            <input 
+                              type="file" 
+                              multiple 
+                              accept="image/*" 
+                              className="hidden"
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                Promise.all(files.map(file => new Promise<string>((resolve) => {
+                                  const r = new FileReader();
+                                  r.onload = ev => resolve(ev.target?.result as string);
+                                  r.readAsDataURL(file);
+                                }))).then(results => {
+                                  const n = [...dsMau];
+                                  n[i].hinhAnhChiTiet = [...(n[i].hinhAnhChiTiet || []), ...results];
+                                  setDsMau(n);
+                                });
+                              }}
+                            />
+                         </label>
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar min-h-[40px]">
+                        {m.hinhAnhChiTiet && m.hinhAnhChiTiet.length > 0 ? (
+                           m.hinhAnhChiTiet.map((imgUrl, idx) => (
+                              <div key={idx} className="w-10 h-10 shrink-0 rounded border border-slate-200 relative group overflow-hidden">
+                                 <img src={imgUrl} className="w-full h-full object-cover" />
+                                 <div 
+                                    className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center cursor-pointer"
+                                    onClick={() => {
+                                       const n = [...dsMau];
+                                       n[i].hinhAnhChiTiet = n[i].hinhAnhChiTiet?.filter((_, index) => index !== idx);
+                                       setDsMau(n);
+                                    }}
+                                 >
+                                    <X className="w-4 h-4 text-white" />
+                                 </div>
+                              </div>
+                           ))
+                        ) : (
+                           <div className="text-[10px] text-slate-400 italic flex items-center w-full h-full">Chưa có ảnh chi tiết</div>
+                        )}
+                      </div>
+                    </div>
+
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block mb-1">Tên màu</label>
                       <input 
