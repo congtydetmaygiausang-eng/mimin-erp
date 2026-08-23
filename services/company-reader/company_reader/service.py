@@ -30,9 +30,9 @@ class CompanyReaderPipeline:
     def read(self, request_id: str, urls: tuple[str, ...]) -> CompanyReadResponse:
         segmentations = []
         reports = []
-        for url in urls:
+        
+        def process_url(url: str):
             try:
-                # 1. Thử dùng Jina Reader làm phương án chính (ưu tiên)
                 jina_outcome = self.fallback.read_primary(url)
                 
                 if jina_outcome.decision.name == "JINA_ACCEPTED":
@@ -41,7 +41,6 @@ class CompanyReaderPipeline:
                     extraction_status = selected.status.value
                     fallback_decision = "JINA_PRIMARY"
                 else:
-                    # 2. Nếu Jina thất bại, dự phòng bằng Trafilatura
                     fetched = self.fetcher.fetch(url)
                     primary = self.extractor.extract(fetched)
                     selected = primary
@@ -51,7 +50,6 @@ class CompanyReaderPipeline:
 
                 bundle = self.candidate_extractor.extract(selected)
                 segmentation = self.segmenter.segment(selected, bundle)
-                segmentations.append(segmentation)
                 
                 if segmentation.entities:
                     status = SourceProcessingStatus.PROCESSED
@@ -63,7 +61,7 @@ class CompanyReaderPipeline:
                     status = SourceProcessingStatus.FAILED
                     error_code = selected.error_code
                     
-                reports.append(SourceProcessingReport(
+                report = SourceProcessingReport(
                     source_url=url,
                     status=status,
                     fetch_status=fetch_status,
@@ -71,16 +69,29 @@ class CompanyReaderPipeline:
                     fallback_decision=fallback_decision,
                     entity_count=len(segmentation.entities),
                     error_code=error_code,
-                ))
+                )
+                return segmentation, report
             except Exception as error:
-                reports.append(SourceProcessingReport(
+                report = SourceProcessingReport(
                     source_url=url,
                     status=SourceProcessingStatus.FAILED,
                     fetch_status="INTERNAL_ERROR",
                     extraction_status="INTERNAL_ERROR",
                     fallback_decision="NOT_RUN",
                     error_code=f"UNEXPECTED_{type(error).__name__.upper()}",
-                ))
+                )
+                # segmentation giả để khỏi lỗi unpack
+                from .entity_segmenter import SegmentationResult
+                return SegmentationResult((), ()), report
+
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(urls) or 1) as executor:
+            futures = [executor.submit(process_url, url) for url in urls]
+            for future in concurrent.futures.as_completed(futures):
+                seg, rep = future.result()
+                segmentations.append(seg)
+                reports.append(rep)
+
         resolution = self.resolver.resolve(tuple(segmentations))
         profiles = tuple(
             self.selector.select(group)

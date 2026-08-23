@@ -42,7 +42,7 @@ TAX_CODE = re.compile(
     re.IGNORECASE,
 )
 PHONE_LABEL = re.compile(
-    r"(?:điện thoại|hotline|phone|telephone|tel|liên hệ|call)\s*(?:[:#-]|\|)?\s*([^\n|<>]{8,120})",
+    r"(?:điện thoại|hotline|phone|telephone|tel|liên hệ|call|sđt|sdt|zalo|di động|mobile)\s*(?:[:#-]|\|)?\s*([^\n|<>]{8,120})",
     re.IGNORECASE,
 )
 PHONE = re.compile(r"(?<!\d)(?:\+?84|0)(?:[\s().-]*\d){8,10}(?!\d)")
