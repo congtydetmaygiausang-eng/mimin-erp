@@ -84,7 +84,7 @@ class CompanyReaderPipeline:
                 seg = EntitySegmentationResult(
                     source_url=url, 
                     text_sha256="", 
-                    status=SegmentationStatus.SKIPPED_EXTRACTION_ERROR,
+                    status=SegmentationStatus.SKIPPED_CANDIDATE_ERROR,
                     warnings=("INTERNAL_ERROR",)
                 )
                 return seg, report
