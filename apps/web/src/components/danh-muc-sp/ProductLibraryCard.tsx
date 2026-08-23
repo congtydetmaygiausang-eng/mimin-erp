@@ -36,7 +36,7 @@ export default function ProductLibraryCard({
   sp,
   onAddToCart,
   onCreateOrder,
-  onDirectOrder,
+  onProduceOrder,
   onFavorite,
   onClick,
 }: ProductLibraryCardProps) {
@@ -145,8 +145,6 @@ export default function ProductLibraryCard({
           </p>
         )}
 
-        {/* === VARIANTS BLOCKS (HORIZONTAL - EXTRA LARGE) === */}
-        {sp.dsMau && sp.dsMau.length > 0 ? (
         {/* === VARIANTS BLOCKS (HORIZONTAL - EXTRA LARGE) === */}
         {sp.dsMau && sp.dsMau.length > 0 ? (
           <div className="flex flex-col gap-3 mb-4">
