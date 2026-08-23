@@ -814,18 +814,41 @@ async function geocodeCandidates(candidates: Candidate[], searchLocation: string
 function radiusSearchAreas(location: string, radiusKm: number): string[] {
   const normalizedLocationValue = normalized(location);
   const isHcm = /(?:tp\s*hcm|tphcm|ho chi minh|tan phu|tan binh|binh tan|go vap|phu nhuan|binh thanh|hoc mon|cu chi|nha be|binh chanh|can gio|thu duc|quan \d+)/.test(normalizedLocationValue);
-  
+
   if (!isHcm) return [location];
   if (radiusKm <= 10) return [location];
-  if (radiusKm <= 30) return [location, "TP.HCM"];
-  
-  return [
-    location,
-    "TP.HCM",
-    "Bình Dương",
-    "Long An",
-    "Đồng Nai",
+  const nearbyByCenter: Array<[RegExp, string[]]> = [
+    [/hoc mon/, ["Quận 12, TP.HCM", "Gò Vấp, TP.HCM", "Tân Bình, TP.HCM", "Bình Tân, TP.HCM", "Củ Chi, TP.HCM", "Bình Chánh, TP.HCM"]],
+    [/binh tan/, ["Tân Phú, TP.HCM", "Quận 6, TP.HCM", "Quận 8, TP.HCM", "Bình Chánh, TP.HCM", "Tân Bình, TP.HCM", "Hóc Môn, TP.HCM"]],
+    [/tan binh/, ["Tân Phú, TP.HCM", "Phú Nhuận, TP.HCM", "Gò Vấp, TP.HCM", "Quận 10, TP.HCM", "Quận 11, TP.HCM", "Bình Tân, TP.HCM"]],
+    [/binh thanh/, ["Phú Nhuận, TP.HCM", "Gò Vấp, TP.HCM", "Thủ Đức, TP.HCM", "Quận 1, TP.HCM", "Quận 3, TP.HCM", "Tân Bình, TP.HCM"]],
+    [/tan phu/, ["Tân Bình, TP.HCM", "Bình Tân, TP.HCM", "Quận 11, TP.HCM", "Quận 6, TP.HCM", "Gò Vấp, TP.HCM", "Quận 12, TP.HCM"]],
+    [/go vap/, ["Quận 12, TP.HCM", "Tân Bình, TP.HCM", "Phú Nhuận, TP.HCM", "Bình Thạnh, TP.HCM", "Hóc Môn, TP.HCM", "Tân Phú, TP.HCM"]],
+    [/cu chi/, ["Hóc Môn, TP.HCM", "Quận 12, TP.HCM", "Bình Dương", "Tây Ninh", "Long An", "Bình Chánh, TP.HCM"]],
+    [/binh chanh/, ["Bình Tân, TP.HCM", "Quận 8, TP.HCM", "Quận 6, TP.HCM", "Hóc Môn, TP.HCM", "Long An", "Tân Phú, TP.HCM"]],
   ];
+  const nearby = nearbyByCenter.find(([pattern]) => pattern.test(normalizedLocationValue))?.[1]
+    ?? ["Tân Bình, TP.HCM", "Bình Thạnh, TP.HCM", "Gò Vấp, TP.HCM", "Bình Tân, TP.HCM", "Thủ Đức, TP.HCM", "Quận 12, TP.HCM"];
+  const count = radiusKm <= 20 ? 3 : radiusKm <= 30 ? 6 : nearby.length;
+  const regional = radiusKm > 30 ? ["Bình Dương", "Long An", "Đồng Nai"] : [];
+  return Array.from(new Set([location, ...nearby.slice(0, count), "TP.HCM", ...regional]));
+}
+
+function nextExpansionRadius(radiusKm: number): number | null {
+  return RADIUS_ESCALATION_TIERS.find((tier) => tier > radiusKm) ?? null;
+}
+
+function buildExpansionQueries(query: string, location: string, role: string, radiusKm: number, existing: string[]): { radiusKm: number; queries: string[] } | null {
+  const expandedRadiusKm = nextExpansionRadius(radiusKm);
+  if (!expandedRadiusKm) return null;
+  const existingSet = new Set(existing.map((item) => normalized(item)));
+  const areas = radiusSearchAreas(location, expandedRadiusKm).filter((area) => normalized(area) !== normalized(location));
+  const roleTerm = (ROLE_SEARCH_TERMS[role] ?? ["công ty", "xưởng"])[0] ?? "công ty";
+  const queries = areas.flatMap((area) => [
+    `${roleTerm} ${query} ${area}`,
+    `công ty xưởng ${query} ${area} website liên hệ`,
+  ]).filter((item) => !existingSet.has(normalized(item))).slice(0, 8);
+  return queries.length ? { radiusKm: expandedRadiusKm, queries } : null;
 }
 
 function queryBudgetForRadius(radiusKm: number): number {
@@ -1088,6 +1111,32 @@ async function searchBrave(queries: string[]): Promise<SourceResult[]> {
       searchQuery: item.query,
     };
   }).filter((item) => item.url);
+}
+
+async function searchPreferExpansion(queries: string[]): Promise<{ items: SourceResult[]; health: ProviderHealthEntry[]; operations: Api0OperationObservation[] }> {
+  const durations = new Map<string, number>();
+  const [tavily, brave] = await Promise.allSettled([
+    observeApi0Call("Tavily mở rộng", durations, () => searchTavily(queries)),
+    observeApi0Call("Brave mở rộng", durations, () => searchBrave(queries)),
+  ]);
+  const tavilyItems = tavily.status === "fulfilled" ? tavily.value : [];
+  const braveItems = brave.status === "fulfilled" ? brave.value : [];
+  const items = dedupeSources([...tavilyItems, ...braveItems]);
+  const health: ProviderHealthEntry[] = [
+    { name: "Tavily mở rộng", status: !process.env.TAVILY_API_KEY ? "DISABLED" : tavily.status === "rejected" ? "ERROR" : tavilyItems.length ? "OK" : "EMPTY", count: tavilyItems.length, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
+    { name: "Brave mở rộng", status: !process.env.BRAVE_SEARCH_API_KEY ? "DISABLED" : brave.status === "rejected" ? "ERROR" : braveItems.length ? "OK" : "EMPTY", count: braveItems.length, code: brave.status === "rejected" ? providerErrorCode(brave.reason) : undefined },
+  ];
+  const operations: Api0OperationObservation[] = health.map((entry) => ({
+    name: entry.name,
+    role: "DISCOVERY",
+    status: entry.status,
+    durationMs: durations.get(entry.name) ?? 0,
+    plannedRequests: entry.status === "DISABLED" ? 0 : queries.length,
+    rawItems: entry.count,
+    uniqueItems: items.filter((item) => item.provider === (entry.name.startsWith("Tavily") ? "TAVILY" : "BRAVE")).length,
+    code: entry.code,
+  }));
+  return { items, health, operations };
 }
 
 const DIRECTORY_DOMAINS = ["masothue.com", "masothue.vn", "yellowpages.vn", "trangvangvietnam.com", "facebook.com", "linkedin.com", "google.com", "maps.google.com", "hosocongty.vn", "thongtindoanhnghiep.co", "danhba.vn", "danhbacongty.vn", "tratencongty.com", "infocom.vn", "danhbaonline.vn", "nhungtrangvang.com", "danhbavietnam.com", "tratencongty.vn", "congty.info", "tracuudnc.com", "tracuucongty.com", "doanhnghiepmoi.vn"];
@@ -2114,7 +2163,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const center = await resolveCenter(location, params.center ?? undefined);
     if (!center) throw new SourcingSearchError("Không xác minh được vị trí trung tâm. Hãy nhập đầy đủ quận/huyện, tỉnh/thành phố hoặc dùng Vị trí hiện tại.", 422);
     const learning = await loadLearningProfile(auth.client, role);
-    const searchQueries = await observeApi0Call("DeepSeek Query Planner", api0ProcessingDurations, () => buildQueryPlan(query, location, role, learning, radiusKm));
+    let searchQueries = await observeApi0Call("DeepSeek Query Planner", api0ProcessingDurations, () => buildQueryPlan(query, location, role, learning, radiusKm));
     api0Operations.push({
       name: "DeepSeek Query Planner", role: "QUERY_PLANNING",
       status: process.env.DEEPSEEK_API_KEY ? "OK" : "DISABLED",
@@ -2125,15 +2174,33 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     });
     const source = await searchSources(query, location, searchQueries, { locationPriority: params.locationPriority ?? false });
     api0Operations.push(...source.api0Operations);
-    const companyReader = await observeApi0Call("Trafilatura", api0ProcessingDurations, () => enrichSourcesWithCompanyReader(auth, source.items));
+    let discoverySeed = source.items;
+    let expansionHealth: ProviderHealthEntry[] = [];
+    let discoveryExpanded = false;
+    let discoveryExpansionRadiusKm: number | null = null;
+    const preliminaryCandidates = deterministicSourceCandidates(query, role, discoverySeed);
+    if (locationMode === "PREFER" && preliminaryCandidates.length < 10) {
+      const expansionPlan = buildExpansionQueries(query, location, role, radiusKm, searchQueries);
+      if (expansionPlan) {
+        const expanded = await observeApi0Call("Prefer-near Discovery Expansion", api0ProcessingDurations, () => searchPreferExpansion(expansionPlan.queries));
+        expansionHealth = expanded.health;
+        api0Operations.push(...expanded.operations);
+        const beforeCount = discoverySeed.length;
+        discoverySeed = dedupeSources([...discoverySeed, ...expanded.items]).slice(0, MAX_DISCOVERY_SOURCES);
+        discoveryExpanded = discoverySeed.length > beforeCount;
+        discoveryExpansionRadiusKm = expansionPlan.radiusKm;
+        searchQueries = Array.from(new Set([...searchQueries, ...expansionPlan.queries]));
+      }
+    }
+    const companyReader = await observeApi0Call("Trafilatura", api0ProcessingDurations, () => enrichSourcesWithCompanyReader(auth, discoverySeed));
     api0Operations.push({
       name: "Trafilatura", role: "DEEP_READING", status: companyReader.health.status,
       durationMs: api0ProcessingDurations.get("Trafilatura") ?? 0,
-      plannedRequests: companyReader.health.status === "DISABLED" ? 0 : Math.ceil(Math.min(source.items.length, companyReaderMaximumUrls()) / 5),
+      plannedRequests: companyReader.health.status === "DISABLED" ? 0 : Math.ceil(Math.min(discoverySeed.length, companyReaderMaximumUrls()) / 5),
       rawItems: companyReader.health.count, uniqueItems: companyReader.items.length, code: companyReader.health.code,
     });
     // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
-    const discoverySources = Array.from(new Map([...source.items,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
+    const discoverySources = Array.from(new Map([...discoverySeed,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
     const directoryDomains = new Set(["trangvangvietnam.com", "nhungtrangvang.com"]);
     const isSeoArticle = (s: SourceResult) => /\/(?:top|danh-sach|huong-dan|bai-viet|tin-tuc|blog|kinh-nghiem|post|article|tong-hop)\b/i.test(s.url) || /\b(?:top \d+|danh sách(?: \d+)?|hướng dẫn|kinh nghiệm|tổng hợp|tại sao|có nên|uy tín nhất|tốt nhất|giá rẻ|báo giá)\b/i.test(s.title);
     const directorySources = discoverySources.filter((s) => directoryDomains.has(domainOf(s.url) ?? "") || isSeoArticle(s));
@@ -2202,9 +2269,11 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     let effectiveRadiusKm = radiusKm;
     let processed = postProcessCandidates(geocoding.candidates, query, location, center, effectiveRadiusKm, locationMode, learning);
     let radiusEscalated = false;
+    const maximumEvaluatedRadiusKm = discoveryExpansionRadiusKm ?? radiusKm;
     if (locationMode === "PREFER" && countExactInside(processed) < RADIUS_ESCALATION_MIN_EXACT_INSIDE) {
       for (const tier of RADIUS_ESCALATION_TIERS) {
         if (tier <= effectiveRadiusKm) continue;
+        if (tier > maximumEvaluatedRadiusKm) break;
         const attempt = postProcessCandidates(geocoding.candidates, query, location, center, tier, locationMode, learning);
         processed = attempt;
         effectiveRadiusKm = tier;
@@ -2231,6 +2300,8 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       requestedRadiusKm: radiusKm,
       effectiveRadiusKm,
       radiusEscalated,
+      discoveryExpanded,
+      discoveryExpansionRadiusKm,
       plannedQueries: searchQueries.length,
       executedTavilyQueries: process.env.TAVILY_API_KEY ? Math.min(searchQueries.length, 16) : 0,
       executedBraveQueries: process.env.BRAVE_SEARCH_API_KEY ? Math.min(searchQueries.length, braveMaximumQueries()) : 0,
@@ -2280,6 +2351,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       locationQuality,
       providers: [
         ...source.providerHealth,
+        ...expansionHealth,
         companyReader.health,
         { name: "Gemini Web Agent", status: geminiEnrichment.enrichedCount > 0 ? ("OK" as const) : (geminiApiKeys().length ? ("EMPTY" as const) : ("DISABLED" as const)), count: geminiEnrichment.enrichedCount, code: "ENRICHED" }
       ],
@@ -2290,7 +2362,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       completedAtMs: Date.now(),
       operations: api0Operations,
       funnel: {
-        rawProviderItems: source.providerHealth.reduce((total, health) => total + health.count, 0),
+        rawProviderItems: [...source.providerHealth, ...expansionHealth].reduce((total, health) => total + health.count, 0),
         uniqueDiscoveryUrls: discoverySources.length,
         deepReaderSources: companyReader.items.length,
         normalizedCandidates: normalizedCandidates.length,
