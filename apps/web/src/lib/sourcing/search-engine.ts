@@ -2268,7 +2268,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
         rawItems: directorySources.length, uniqueItems: directoryCandidates.length,
       },
       {
-        name: process.env.MINIMAX_API_KEY ? "Minimax Normalization" : "DeepSeek Normalization", role: "NORMALIZATION", status: !(process.env.DEEPSEEK_API_KEY || process.env.MINIMAX_API_KEY) ? "DISABLED" : normalizedCandidates.length ? "OK" : "EMPTY",
+        name: "DeepSeek Normalization", role: "NORMALIZATION", status: !(process.env.DEEPSEEK_API_KEY || process.env.MINIMAX_API_KEY) ? "DISABLED" : normalizedCandidates.length ? "OK" : "EMPTY",
         durationMs: api0ProcessingDurations.get("DeepSeek Normalization") ?? 0,
         plannedRequests: (process.env.DEEPSEEK_API_KEY || process.env.MINIMAX_API_KEY) ? Math.ceil(Math.min(normalSources.length, MAX_NORMALIZATION_SOURCES) / NORMALIZATION_BATCH_SIZE) : 0,
         rawItems: normalSources.length, uniqueItems: normalizedCandidates.length,
