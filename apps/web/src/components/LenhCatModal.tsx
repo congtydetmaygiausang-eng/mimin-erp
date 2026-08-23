@@ -154,7 +154,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setDsMau(editing.dsMau || []);
       setDsPhuLieu(editing.dsPhuLieu || []);
       setMauCongDoan(editing.mauCongDoan || "BoTheThao");
-      if (editing.phanCong) setPhanCong(editing.phanCong);
+      if (editing.phanCong) {
+        setPhanCong(editing.phanCong);
+        const inTheuItem = (editing.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
+        if (inTheuItem) {
+          if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
+          else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
+          else setLoaiInTheu("bo");
+        }
+      }
       setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
       setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
       setSoDoChinh(editing.soDoChinh || "");
@@ -231,6 +239,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [hinhMauInTheu, setHinhMauInTheu] = useState("");
   const [fileGocInTheu, setFileGocInTheu] = useState("");
   const [ghiChuInTheu, setGhiChuInTheu] = useState("");
+  const [loaiInTheu, setLoaiInTheu] = useState<"ao" | "quan" | "bo">("bo");
   const fileInTheuAnhRef = useRef<HTMLInputElement>(null);
   const fileInTheuFileRef = useRef<HTMLInputElement>(null);
 
@@ -524,6 +533,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
           if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
           if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
+          
+          if (parsed.phanCong) {
+            const inTheuItem = (parsed.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
+            if (inTheuItem) {
+              if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
+              else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
+              else setLoaiInTheu("bo");
+            }
+          }
         }
       } catch (e) {
         console.error("Lỗi tải nháp", e);
@@ -1543,6 +1561,110 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
             <div className="mt-3">
               <textarea rows={2} placeholder="Nhập ghi chú cho bên in/thêu (vd: kích thước, vị trí in, màu in, chất liệu)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-y" value={ghiChuInTheu} onChange={e => setGhiChuInTheu(e.target.value)} />
+            </div>
+
+            {/* THÔNG TIN GIA CÔNG IN/THÊU */}
+            <div className="mt-4 pt-4 border-t border-orange-200/50">
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+                {loaiSP?.toLowerCase().includes("bo") && (
+                  <div className="flex items-center gap-4 bg-white px-3 py-1.5 rounded-md border border-orange-200 shrink-0">
+                    <span className="text-sm font-bold text-orange-800">In/Thêu cho:</span>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer font-medium"><input type="radio" name="loaiInTheu" checked={loaiInTheu === "bo"} onChange={() => {
+                      setLoaiInTheu("bo");
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        if (idx >= 0) {
+                          next[idx].id = "in_theu";
+                          next[idx].tenCongDoan = "In/Thêu";
+                        }
+                        return next as any;
+                      });
+                    }} /> Nguyên bộ</label>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer font-medium"><input type="radio" name="loaiInTheu" checked={loaiInTheu === "ao"} onChange={() => {
+                      setLoaiInTheu("ao");
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        if (idx >= 0) {
+                          next[idx].id = "in_theu_ao";
+                          next[idx].tenCongDoan = "In/Thêu Áo";
+                        }
+                        return next as any;
+                      });
+                    }} /> Chỉ Áo</label>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer font-medium"><input type="radio" name="loaiInTheu" checked={loaiInTheu === "quan"} onChange={() => {
+                      setLoaiInTheu("quan");
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        if (idx >= 0) {
+                          next[idx].id = "in_theu_quan";
+                          next[idx].tenCongDoan = "In/Thêu Quần";
+                        }
+                        return next as any;
+                      });
+                    }} /> Chỉ Quần</label>
+                  </div>
+                )}
+                
+                <div className="flex-1 bg-orange-50 border-2 border-orange-300 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm w-full">
+                  <span className="text-sm font-black text-orange-800 whitespace-nowrap">
+                    GIA CÔNG IN/THÊU{loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
+                  </span>
+                  <select 
+                    className="flex-1 min-w-0 px-2 py-1.5 border border-orange-300 rounded text-sm focus:outline-none bg-white font-semibold text-orange-900"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id?.startsWith("in_theu"))?.nguoiMa || ""}
+                    onChange={e => {
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        const selectedVal = e.target.value;
+                        const nv = REAL_NHAN_VIEN.find(n => n.ma === selectedVal);
+                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === selectedVal);
+                        const selectedTen = nv?.ten || dt?.tenDonVi || selectedVal;
+
+                        if (idx >= 0) {
+                          next[idx] = { ...next[idx], nguoiMa: selectedVal, nguoiTen: selectedTen };
+                        } else {
+                          // Thêm mới nếu chưa có
+                          next.push({
+                            id: loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? "in_theu_ao" : loaiInTheu === "quan" ? "in_theu_quan" : "in_theu") : "in_theu",
+                            tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? "In/Thêu Áo" : loaiInTheu === "quan" ? "In/Thêu Quần" : "In/Thêu") : "In/Thêu",
+                            loaiNguoi: "xuong_ngoai",
+                            nguoiMa: selectedVal,
+                            nguoiTen: selectedTen,
+                            donGia: 0,
+                            soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra"
+                          });
+                        }
+                        return next as any;
+                      });
+                    }}
+                  >
+                     <option value="">-- Chọn NV/Xưởng --</option>
+                     {getDoiTuongOptions("In/Thêu", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                  </select>
+                  <div className="flex items-center gap-1 w-full md:w-auto">
+                    <span className="text-xs font-bold text-orange-700">Đơn giá:</span>
+                    <input 
+                      type="number" min={0}
+                      placeholder="0" 
+                      className="w-full md:w-28 px-2 py-1.5 border border-orange-300 rounded text-sm text-right font-bold tabular-nums text-orange-900"
+                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id?.startsWith("in_theu"))?.donGia || ""}
+                      onChange={e => {
+                        setPhanCong(p => {
+                          const next = [...(p as any[])];
+                          const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                          if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                          return next as any;
+                        });
+                      }}
+                    />
+                    <span className="text-xs font-bold text-orange-700">đ</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
