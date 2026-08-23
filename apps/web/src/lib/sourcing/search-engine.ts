@@ -1128,6 +1128,35 @@ async function searchBrave(queries: string[]): Promise<SourceResult[]> {
   }).filter((item) => item.url);
 }
 
+async function searchSerper(queries: string[]): Promise<SourceResult[]> {
+  const key = process.env.SERPER_API_KEY;
+  if (!key) return [];
+  const batches = await Promise.allSettled(queries.slice(0, 10).map(async (searchQuery) => {
+    const response = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-KEY": key },
+      body: JSON.stringify({ q: `${searchQuery} Việt Nam`, gl: "vn", hl: "vi", num: 10 }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) throw new Error(`Serper HTTP ${response.status}`);
+    const data = await response.json() as { organic?: Array<{ title?: string; link?: string; snippet?: string }> };
+    return (data.organic ?? []).map((item, index) => ({
+      title: (item.title ?? "").slice(0, 500),
+      url: canonicalSourceUrl(item.link ?? ""),
+      content: (item.snippet ?? "").slice(0, 4_000),
+      score: Math.max(0.45, 0.88 - index * 0.035),
+      sourceType: classifySource(item.link ?? "", item.title ?? "", item.snippet ?? ""),
+      provider: "SERPER",
+      searchQuery
+    })).filter((item) => item.url);
+  }));
+  if (batches.length && batches.every((batch) => batch.status === "rejected")) {
+    const firstFailure = batches.find((batch): batch is PromiseRejectedResult => batch.status === "rejected");
+    throw firstFailure?.reason instanceof Error ? firstFailure.reason : new Error("Serper request failed");
+  }
+  return batches.flatMap((batch) => batch.status === "fulfilled" ? batch.value : []);
+}
+
 async function searchPreferExpansion(queries: string[]): Promise<{ items: SourceResult[]; health: ProviderHealthEntry[]; operations: Api0OperationObservation[] }> {
   const durations = new Map<string, number>();
   const [tavily, brave] = await Promise.allSettled([
@@ -1682,6 +1711,7 @@ async function searchSources(
     Gemini: geminiApiKeys().length ? 1 : 0,
     "Google Places": process.env.GOOGLE_MAPS_API_KEY ? Math.min(queries.length, 3) : 0,
     OpenAI: openAiApiKey() ? 1 : 0,
+    "Serper (Google)": process.env.SERPER_API_KEY ? Math.min(queries.length, 10) : 0,
     OpenStreetMap: 1,
   };
 
@@ -1704,7 +1734,7 @@ async function searchSources(
 
     if (placesUnique.length >= LOCATION_PRIORITY_SUFFICIENT_SOURCES) {
       const skipped = (name: string): ProviderHealthEntry => ({ name, status: "SKIPPED", count: 0, code: "SUFFICIENT_LOCATION_RESULTS" });
-      const providerHealth = [placesHealth, skipped("Tavily"), skipped("Brave"), skipped("Gemini"), skipped("OpenAI")];
+      const providerHealth = [placesHealth, skipped("Tavily"), skipped("Brave"), skipped("Gemini"), skipped("OpenAI"), skipped("Serper (Google)")];
       const items = placesUnique.slice(0, MAX_DISCOVERY_SOURCES);
       return {
         provider: "GOOGLE_PLACES",
@@ -1715,13 +1745,14 @@ async function searchSources(
     }
 
     // Chưa đủ - fan-out phần còn lại như bình thường, gộp với Places đã có.
-    const [tavily, brave, gemini, openai] = await Promise.allSettled([
+    const [tavily, brave, gemini, openai, serper] = await Promise.allSettled([
       observeApi0Call("Tavily", api0Durations, () => searchTavily(queries)),
       observeApi0Call("Brave", api0Durations, () => searchBrave(queries)),
       observeApi0Call("Gemini", api0Durations, () => searchGemini(query, location, queries)),
       observeApi0Call("OpenAI", api0Durations, () => searchOpenAI(query, location, queries)),
+      observeApi0Call("Serper (Google)", api0Durations, () => searchSerper(queries)),
     ]);
-    const sources = [...placesUnique, ...(tavily.status === "fulfilled" ? tavily.value : []), ...(brave.status === "fulfilled" ? brave.value : []), ...(gemini.status === "fulfilled" ? gemini.value : []), ...(openai.status === "fulfilled" ? openai.value : [])];
+    const sources = [...placesUnique, ...(tavily.status === "fulfilled" ? tavily.value : []), ...(brave.status === "fulfilled" ? brave.value : []), ...(gemini.status === "fulfilled" ? gemini.value : []), ...(openai.status === "fulfilled" ? openai.value : []), ...(serper.status === "fulfilled" ? serper.value : [])];
     const unique = dedupeSources(sources);
     const providers = [
       "GOOGLE_PLACES",
@@ -1729,6 +1760,7 @@ async function searchSources(
       brave.status === "fulfilled" && brave.value.length ? "BRAVE" : "",
       gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
       openai.status === "fulfilled" && openai.value.length ? "OPENAI_WEB_SEARCH" : "",
+      serper.status === "fulfilled" && serper.value.length ? "SERPER" : "",
     ].filter(Boolean);
     const providerHealth: ProviderHealthEntry[] = [
       placesHealth,
@@ -1736,6 +1768,7 @@ async function searchSources(
       { name: "Brave", status: !process.env.BRAVE_SEARCH_API_KEY ? "DISABLED" : brave.status === "rejected" ? "ERROR" : brave.value.length ? "OK" : "EMPTY", count: brave.status === "fulfilled" ? brave.value.length : 0, code: brave.status === "rejected" ? providerErrorCode(brave.reason) : undefined },
       { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" : gemini.status === "rejected" ? "ERROR" : gemini.value.length ? "OK" : "EMPTY", count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
       { name: "OpenAI", status: !openAiApiKey() ? "DISABLED" : openai.status === "rejected" ? "ERROR" : openai.value.length ? "OK" : "EMPTY", count: openai.status === "fulfilled" ? openai.value.length : 0, code: openai.status === "rejected" ? providerErrorCode(openai.reason) : undefined },
+      { name: "Serper (Google)", status: !process.env.SERPER_API_KEY ? "DISABLED" : serper.status === "rejected" ? "ERROR" : serper.value.length ? "OK" : "EMPTY", count: serper.status === "fulfilled" ? serper.value.length : 0, code: serper.status === "rejected" ? providerErrorCode(serper.reason) : undefined },
     ];
     if (unique.length) {
       const items = unique.slice(0, MAX_DISCOVERY_SOURCES);
@@ -1747,12 +1780,13 @@ async function searchSources(
   }
 
   // Hành vi mặc định (giữ nguyên y hệt trước Phase 1) - luôn fan-out cả 5 nguồn song song.
-  const [tavily, brave, gemini, googlePlaces, openai] = await Promise.allSettled([
+  const [tavily, brave, gemini, googlePlaces, openai, serper] = await Promise.allSettled([
     observeApi0Call("Tavily", api0Durations, () => searchTavily(queries)),
     observeApi0Call("Brave", api0Durations, () => searchBrave(queries)),
     observeApi0Call("Gemini", api0Durations, () => searchGemini(query, location, queries)),
     observeApi0Call("Google Places", api0Durations, () => searchGooglePlaces(query, location, queries)),
     observeApi0Call("OpenAI", api0Durations, () => searchOpenAI(query, location, queries)),
+    observeApi0Call("Serper (Google)", api0Durations, () => searchSerper(queries)),
   ]);
   const sources = [
     ...(tavily.status === "fulfilled" ? tavily.value : []),
@@ -1760,6 +1794,7 @@ async function searchSources(
     ...(gemini.status === "fulfilled" ? gemini.value : []),
     ...(googlePlaces.status === "fulfilled" ? googlePlaces.value : []),
     ...(openai.status === "fulfilled" ? openai.value : []),
+    ...(serper.status === "fulfilled" ? serper.value : []),
   ];
   const unique = dedupeSources(sources);
   const providers = [
@@ -1768,6 +1803,7 @@ async function searchSources(
     gemini.status === "fulfilled" && gemini.value.length ? "GEMINI_GOOGLE_SEARCH" : "",
     googlePlaces.status === "fulfilled" && googlePlaces.value.length ? "GOOGLE_PLACES" : "",
     openai.status === "fulfilled" && openai.value.length ? "OPENAI_WEB_SEARCH" : "",
+    serper.status === "fulfilled" && serper.value.length ? "SERPER" : "",
   ].filter(Boolean);
   const providerHealth: ProviderHealthEntry[] = [
     { name: "Tavily", status: !process.env.TAVILY_API_KEY ? "DISABLED" : tavily.status === "rejected" ? "ERROR" : tavily.value.length ? "OK" : "EMPTY", count: tavily.status === "fulfilled" ? tavily.value.length : 0, code: tavily.status === "rejected" ? providerErrorCode(tavily.reason) : undefined },
@@ -1775,6 +1811,7 @@ async function searchSources(
     { name: "Gemini", status: !geminiApiKeys().length ? "DISABLED" : gemini.status === "rejected" ? "ERROR" : gemini.value.length ? "OK" : "EMPTY", count: gemini.status === "fulfilled" ? gemini.value.length : 0, code: gemini.status === "rejected" ? providerErrorCode(gemini.reason) : undefined },
     { name: "Google Places", status: !process.env.GOOGLE_MAPS_API_KEY ? "DISABLED" : googlePlaces.status === "rejected" ? "ERROR" : googlePlaces.value.length ? "OK" : "EMPTY", count: googlePlaces.status === "fulfilled" ? googlePlaces.value.length : 0, code: googlePlaces.status === "rejected" ? providerErrorCode(googlePlaces.reason) : undefined },
     { name: "OpenAI", status: !openAiApiKey() ? "DISABLED" : openai.status === "rejected" ? "ERROR" : openai.value.length ? "OK" : "EMPTY", count: openai.status === "fulfilled" ? openai.value.length : 0, code: openai.status === "rejected" ? providerErrorCode(openai.reason) : undefined },
+    { name: "Serper (Google)", status: !process.env.SERPER_API_KEY ? "DISABLED" : serper.status === "rejected" ? "ERROR" : serper.value.length ? "OK" : "EMPTY", count: serper.status === "fulfilled" ? serper.value.length : 0, code: serper.status === "rejected" ? providerErrorCode(serper.reason) : undefined },
   ];
   if (unique.length) {
     const items = unique.slice(0, MAX_DISCOVERY_SOURCES);
