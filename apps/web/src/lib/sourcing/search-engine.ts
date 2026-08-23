@@ -1017,7 +1017,7 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Trafilatura",status:"EMPTY",count:0}};
   const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
-  const timeoutMs=Math.max(2_000,Math.min(12_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"8000")||8_000));
+  const timeoutMs=Math.max(5_000,Math.min(55_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"45000")||45_000));
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
   try{
@@ -1041,7 +1041,8 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
     const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
     return{items,health:{name:"Trafilatura",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}};
   }catch(error){
-    return{items:[],health:{name:"Trafilatura",status:"ERROR",count:0,code:error instanceof Error?error.message:"UNAVAILABLE"}};
+    const isTimeout = error instanceof Error && (error.name === "AbortError" || /timeout|aborted/i.test(error.message));
+    return{items:[],health:{name:"Trafilatura",status:isTimeout?"EMPTY":"ERROR",count:0,code:isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE")}};
   }finally{clearTimeout(timeoutId)}
 }
 
