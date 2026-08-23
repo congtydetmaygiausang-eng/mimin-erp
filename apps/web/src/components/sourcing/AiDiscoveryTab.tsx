@@ -376,7 +376,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
             </div>
           )}
         </label>
-        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label>
+        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100,9999].map(value=><option key={value} value={value}>{value === 9999 ? "Không giới hạn" : `${value} km`}</option>)}</select></label>
         <label className="text-xs font-medium">Chế độ<div className="input mt-1 flex items-center">Ưu tiên gần · mở rộng nếu thiếu</div></label>
         <div className="flex flex-col gap-1 justify-end">
           <button type="button" className={`btn-secondary inline-flex justify-center items-center gap-2 ${locationType === "GPS" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`} onClick={locationType === "GPS" ? cancelCurrentLocation : useCurrentLocation}>
