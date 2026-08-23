@@ -79,6 +79,20 @@ export async function POST(request: NextRequest) {
 
     const record = toSupabaseEmployeeRecord(payload);
 
+    // Xử lý tự động tính số thứ tự (stt) để tránh lỗi trùng khóa chính (Primary Key)
+    if (record.ma_nv) {
+      const { data: existing } = await supabase.from("nhan_su").select("stt").eq("ma_nv", record.ma_nv).single();
+      if (existing) {
+        // Đang update: giữ nguyên stt cũ
+        record.stt = existing.stt;
+      } else {
+        // Đang insert: tìm stt lớn nhất hiện tại
+        const { data: maxData } = await supabase.from("nhan_su").select("stt").order("stt", { ascending: false }).limit(1);
+        const maxStt = (maxData && maxData.length > 0) ? maxData[0].stt : 0;
+        record.stt = maxStt + 1;
+      }
+    }
+
     const { error } = await supabase.from("nhan_su").upsert(record, { onConflict: "ma_nv" });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
