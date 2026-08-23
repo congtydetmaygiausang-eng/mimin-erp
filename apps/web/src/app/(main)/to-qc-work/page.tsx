@@ -128,7 +128,7 @@ export default function UiQCPage() {
         nguoiNhap: user?.name,
         ghiChu: isBo ? "QC xác nhận ghép bộ thành công" : "QC hoàn tất toàn bộ",
       }]
-    });
+    } as any);
     toast.success(`🎉 Lệnh cắt ${lc.id} đã hoàn tất QC. Chuyển sang Hoàn Thiện!`);
   }
 
@@ -171,7 +171,7 @@ export default function UiQCPage() {
       soLuongPhePham: slLoi,
       lichSuQC: newLichSuQC,
       lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat", ghiChu: `QC lần ${lanKiem} – Hoàn tất (tích lũy ${slDatTichLuy} SP → Cộng CN)` }],
-    });
+    } as any);
 
     toast.success(`✅ QC Hoàn Tất: ${pc.tenCongDoan} – ${slDatTichLuy} SP đạt → Cộng vào Công Nợ${slLoi > 0 ? ` · ${slLoi} SP phế phẩm` : ""}`);
 
@@ -215,7 +215,7 @@ export default function UiQCPage() {
         ...(slDat > 0 ? [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat" as const, ghiChu: `QC lần ${lanKiem} – Đạt tạm (chờ sửa lỗi xong mới cộng CN)` }] : []),
         { ngay: today, nguoiNhap: user?.name, soLuong: slLoi, loai: "tra_loi" as const, ghiChu: `QC lần ${lanKiem} – Trả lỗi về ${khauGayLoi[key] || "Tổ May"}` },
       ],
-    });
+    } as any);
 
     const msg = slDat > 0
       ? `⚠️ Trả lỗi: ${slLoi} SP lỗi → Tổ May sửa · ${slDat} SP đạt tạm (chờ hoàn tất mới cộng CN)`
@@ -242,7 +242,7 @@ export default function UiQCPage() {
       capNhatCongDoan(lc.id, pc.id, {
         soLuongLoi: 0, // Không còn chờ xử lý lỗi nữa
         lichSuQC: newLichSuQC,
-      });
+      } as any);
 
       // Tạo giao dịch phạt
       themPhanCong({
@@ -253,7 +253,7 @@ export default function UiQCPage() {
         donGia: pc.donGia || 30000, // Lấy giá gia công hoặc mặc định
         soLuongGiao: -lastLichSu.slLoi,
         ngayGiao: today,
-      });
+      } as any);
 
       toast.success(`Đã hủy ${lastLichSu.slLoi} hàng lỗi quá hạn và tạo lệnh trừ tiền.`);
     }

@@ -15,9 +15,9 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
 
   // Lấy danh sách các khâu từ phân công và sắp xếp theo quy trình chuẩn
   const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
-  const khauList = [...(lc.phanCong || [])].sort((a, b) => {
-    const aRank = STAGE_ORDER.findIndex(k => a.id.toLowerCase().includes(k));
-    const bRank = STAGE_ORDER.findIndex(k => b.id.toLowerCase().includes(k));
+  const khauList: any[] = [...(lc.phanCong || [])].sort((a: any, b: any) => {
+    const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
+    const bRank = STAGE_ORDER.findIndex(k => (b.id || "").toLowerCase().includes(k));
     return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
   });
 
@@ -107,7 +107,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
   });
   const hasQuan = khauQuan.length > 0;
 
-  const renderTable = (title: string, list: PhanCongGiaCong[], initialSizesTruoc: { size: string, sl: number }[] | null, isGrid: boolean = false) => {
+  const renderTable = (title: string, list: any[], initialSizesTruoc: { size: string, sl: number }[] | null, isGrid: boolean = false) => {
     if (list.length === 0) return null;
     return (
       <div className={`mb-4 ${isGrid ? "min-w-[400px]" : "w-full"}`}>

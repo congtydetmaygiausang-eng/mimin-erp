@@ -221,7 +221,7 @@ export default function DanhMucSanPhamPage() {
         spTen: it.spTen,
         mauCode: it.mauCode,
         mauTen: it.mauTen,
-        mauImg: it.mauImg,
+        mauImg: (it as any).mauImg || (it as any).hinhAnh,
         size: it.size,
         sku: it.sku,
         donGia: it.donGia,

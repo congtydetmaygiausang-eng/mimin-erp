@@ -78,9 +78,9 @@ export default function KeHoachSXPage() {
   const tongSL = list.reduce((s, k) => s + k.soLuong, 0);
   const tongXong = list.reduce((s, k) => s + k.daHoanThanh, 0);
   const tienDoChung = tongSL > 0 ? (tongXong / tongSL) * 100 : 0;
-  const dsTreHan = list.filter(k => k.trangThai === "Trá»… háº¡n");
-  const dsDangSX = list.filter(k => k.trangThai === "Ä ang SX");
-  const filtered = filterTT === "Táº¥t cáº£" ? list : list.filter(k => k.trangThai === filterTT);
+  const dsTreHan = list.filter(k => k.trangThai === ("Trá»… háº¡n" as any));
+  const dsDangSX = list.filter(k => k.trangThai === ("Ä ang SX" as any));
+  const filtered = filterTT === "Táº¥t cáº£" ? list : list.filter(k => k.trangThai === (filterTT as any));
 
   const handleEdit = (k: KHSX) => {
     setEditItem(k);
