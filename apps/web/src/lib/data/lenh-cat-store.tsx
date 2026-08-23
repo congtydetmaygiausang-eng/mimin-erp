@@ -275,6 +275,7 @@ export type LenhCat = {
   // Meta
   phuTrachCat: string;
   phuTrachSX?: string;
+  phuTrachSoDo?: string;
   ghiChu?: string;
   trangThai: TrangThaiLenhCat;
   phienBanDinhMuc: number;
@@ -449,6 +450,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
               bangCOGS: item.bang_cogs,
               phuTrachCat: item.phu_trach_cat,
               phuTrachSX: item.phu_trach_sx,
+              phuTrachSoDo: item.phu_trach_so_do,
               ghiChu: item.ghi_chu,
               trangThai: item.trang_thai,
               phienBanDinhMuc: item.phien_ban_dinh_muc,
@@ -549,7 +551,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
       mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
       chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
-      phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
+      phu_trach_sx: lenh.phuTrachSX, phu_trach_so_do: lenh.phuTrachSoDo, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
       phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao
     });
     if (error) throw error;
@@ -580,6 +582,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.bangCOGS !== undefined)          updateData.bang_cogs = lenh.bangCOGS;
       if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
       if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
+      if (lenh.phuTrachSoDo !== undefined)      updateData.phu_trach_so_do = lenh.phuTrachSoDo;
       if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
       if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;
       if (lenh.phienBanDinhMuc !== undefined)   updateData.phien_ban_dinh_muc = lenh.phienBanDinhMuc;

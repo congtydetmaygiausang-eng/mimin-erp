@@ -146,6 +146,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setHanHoanThanh(editing.hanHoanThanh);
       setPhuTrachCat(editing.phuTrachCat || "NV006");
       setPhuTrachSX(editing.phuTrachSX || "");
+      setPhuTrachSoDo(editing.phuTrachSoDo || "");
       setGhiChu(editing.ghiChu || "");
       setGhiChuKyThuat(editing.ghiChuKyThuat || "");
       setTrangThai(editing.trangThai || "Nhap");
@@ -341,6 +342,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   
   const [phuTrachCat, setPhuTrachCat] = useState("NV006");
   const [phuTrachSX, setPhuTrachSX] = useState("");
+  const [phuTrachSoDo, setPhuTrachSoDo] = useState("");
   const [ghiChu, setGhiChu] = useState("");
   const [ghiChuKyThuat, setGhiChuKyThuat] = useState("");
   const [trangThai, setTrangThai] = useState<TrangThaiLenhCat>("Nhap");
@@ -506,6 +508,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
           if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
           if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
+          if (parsed.phuTrachSoDo) setPhuTrachSoDo(parsed.phuTrachSoDo);
           if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
           if (parsed.ghiChuKyThuat) setGhiChuKyThuat(parsed.ghiChuKyThuat);
           if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
@@ -554,7 +557,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     if (!editId && draftLoaded) {
       localStorage.setItem("lenhCatDraft", JSON.stringify({
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
-        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat,
+        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
         daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan,
         soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh,
@@ -562,7 +565,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         hinhMauInTheu, fileGocInTheu, ghiChuInTheu,
       }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, hinhMauInTheu, fileGocInTheu, ghiChuInTheu, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, hinhMauInTheu, fileGocInTheu, ghiChuInTheu, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -722,6 +725,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
+        phuTrachSoDo,
         ghiChu,
         ghiChuKyThuat,
         trangThai: status,
@@ -773,6 +777,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
+        phuTrachSoDo,
         ghiChu,
         ghiChuKyThuat,
         trangThai: status,
@@ -1205,11 +1210,25 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
 
           {/* SƠ ĐỒ ÁO/QUẦN (PLT) - dùng chiều dài sơ đồ để tự tính định mức kg/SP */}
-          <div className="bg-[#F5F0FF] p-5 rounded-lg border border-violet-200/80 shadow-sm mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-violet-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
-              <div className="text-xs text-violet-700 font-medium">
-                Tổng SP/sơ đồ: <b>{soSpTrongSoDo || "—"}</b> (theo tỉ lệ size {tiLeSize})
+          <div className="bg-[#F3E8FC] p-5 rounded-lg border border-purple-200/80 shadow-sm mt-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+              <h2 className="text-xl font-bold text-purple-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
+              <div className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-md border border-purple-200">
+                <span className="text-sm font-bold text-purple-800">Phụ trách sơ đồ:</span>
+                <select 
+                  className="px-2 py-1 text-sm border border-purple-300 rounded font-semibold text-purple-900 focus:outline-none bg-white min-w-[150px]"
+                  value={phuTrachSoDo}
+                  onChange={e => setPhuTrachSoDo(e.target.value)}
+                >
+                  <option value="">-- Chọn NV phụ trách --</option>
+                  {REAL_NHAN_VIEN.filter(nv => nv.boPhan.includes("Sản xuất") || nv.boPhan.includes("Kỹ thuật")).map(nv => (
+                    <option key={nv.ma} value={nv.ma}>{nv.ten}</option>
+                  ))}
+                  {/* Fallback nếu không có NV nào thoả điều kiện lọc thì hiện hết */}
+                  {REAL_NHAN_VIEN.map(nv => (
+                    <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>
