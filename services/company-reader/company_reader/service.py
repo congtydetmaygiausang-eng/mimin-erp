@@ -32,13 +32,27 @@ class CompanyReaderPipeline:
         reports = []
         for url in urls:
             try:
-                fetched = self.fetcher.fetch(url)
-                primary = self.extractor.extract(fetched)
-                fallback = self.fallback.recover(url, fetched, primary)
-                selected = fallback.selected_document
+                # 1. Thử dùng Jina Reader làm phương án chính (ưu tiên)
+                jina_outcome = self.fallback.read_primary(url)
+                
+                if jina_outcome.decision.name == "JINA_ACCEPTED":
+                    selected = jina_outcome.selected_document
+                    fetch_status = "OK"
+                    extraction_status = selected.status.value
+                    fallback_decision = "JINA_PRIMARY"
+                else:
+                    # 2. Nếu Jina thất bại, dự phòng bằng Trafilatura
+                    fetched = self.fetcher.fetch(url)
+                    primary = self.extractor.extract(fetched)
+                    selected = primary
+                    fetch_status = fetched.status.value
+                    extraction_status = selected.status.value
+                    fallback_decision = f"JINA_FAILED_TRAFILATURA_USED({jina_outcome.decision.name})"
+
                 bundle = self.candidate_extractor.extract(selected)
                 segmentation = self.segmenter.segment(selected, bundle)
                 segmentations.append(segmentation)
+                
                 if segmentation.entities:
                     status = SourceProcessingStatus.PROCESSED
                     error_code = None
@@ -48,12 +62,13 @@ class CompanyReaderPipeline:
                 else:
                     status = SourceProcessingStatus.FAILED
                     error_code = selected.error_code
+                    
                 reports.append(SourceProcessingReport(
                     source_url=url,
                     status=status,
-                    fetch_status=fetched.status.value,
-                    extraction_status=selected.status.value,
-                    fallback_decision=fallback.decision.value,
+                    fetch_status=fetch_status,
+                    extraction_status=extraction_status,
+                    fallback_decision=fallback_decision,
                     entity_count=len(segmentation.entities),
                     error_code=error_code,
                 ))
