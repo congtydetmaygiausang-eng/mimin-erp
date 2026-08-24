@@ -2278,10 +2278,10 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
         searchQueries = Array.from(new Set([...searchQueries, ...expansionPlan.queries]));
       }
     }
-    const companyReader = await observeApi0Call("Trafilatura", api0ProcessingDurations, () => enrichSourcesWithCompanyReader(auth, discoverySeed));
+    const companyReader = await observeApi0Call("Jina Reader", api0ProcessingDurations, () => enrichSourcesWithCompanyReader(auth, discoverySeed));
     api0Operations.push({
-      name: "Trafilatura", role: "DEEP_READING", status: companyReader.health.status,
-      durationMs: api0ProcessingDurations.get("Trafilatura") ?? 0,
+      name: "Jina Reader", role: "DEEP_READING", status: companyReader.health.status,
+      durationMs: api0ProcessingDurations.get("Jina Reader") ?? 0,
       plannedRequests: companyReader.health.status === "DISABLED" ? 0 : Math.ceil(Math.min(discoverySeed.length, companyReaderMaximumUrls()) / 5),
       rawItems: companyReader.health.count, uniqueItems: companyReader.items.length, code: companyReader.health.code,
     });
