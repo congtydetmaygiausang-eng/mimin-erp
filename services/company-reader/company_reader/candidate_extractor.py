@@ -224,6 +224,7 @@ class CompanyCandidateExtractor:
     ) -> list[FieldCandidate]:
         result: list[FieldCandidate] = []
         tax_digits = {value.replace("-", "") for value in tax_codes}
+        # 1. Quét theo nhãn (hotline, sđt, v.v.)
         for segment in PHONE_LABEL.finditer(text):
             for match in PHONE.finditer(segment.group(1)):
                 normalized = self._normalize_vietnam_phone(match.group(0))
@@ -236,6 +237,8 @@ class CompanyCandidateExtractor:
                     0.94, EvidenceOrigin.MAIN_TEXT, text, start, end,
                     ("EXPLICIT_CONTACT_LABEL", "VALID_VN_PHONE"),
                 ))
+
+        # 2. Quét trong các ô bảng (table cells)
         for value, start, end in self._table_cells(text):
             compact = re.sub(r"\s+", "", value)
             if not PHONE.fullmatch(compact):
@@ -248,6 +251,29 @@ class CompanyCandidateExtractor:
                 0.78, EvidenceOrigin.MAIN_TEXT, text, start, end,
                 ("TABLE_CELL_VALUE", "VALID_VN_PHONE"),
             ))
+
+        # 3. Quét dự phòng (fallback) toàn bộ văn bản để tìm số điện thoại không có nhãn
+        # Jina Reader thường ngắt dòng hoặc thêm ký tự markdown làm hỏng cấu trúc nhãn
+        found_normalized = {c.value_key for c in result if c.value_key}
+        for match in PHONE.finditer(text):
+            normalized = self._normalize_vietnam_phone(match.group(0))
+            if not normalized or normalized in tax_digits or normalized in found_normalized:
+                continue
+            start = match.start()
+            end = match.end()
+            # Tránh bắt các số ngẫu nhiên nằm giữa chuỗi số dài
+            if start > 0 and text[start-1].isdigit():
+                continue
+            if end < len(text) and text[end].isdigit():
+                continue
+                
+            result.append(self._candidate(
+                document, CandidateField.PHONE, match.group(0).strip(), normalized,
+                0.75, EvidenceOrigin.MAIN_TEXT, text, start, end,
+                ("UNLABELED_PHONE", "VALID_VN_PHONE"),
+            ))
+            found_normalized.add(normalized)
+
         return result
 
     def _emails(self, document: ExtractedDocument, text: str) -> list[FieldCandidate]:
