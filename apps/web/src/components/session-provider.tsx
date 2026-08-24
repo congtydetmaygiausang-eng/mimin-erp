@@ -123,8 +123,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           setAuthSource("supabase");
           localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
           
-          // Kiểm tra xem đã thiết lập mật khẩu chưa (hoặc có cờ báo hiệu)
-          const hasSetPassword = userMeta.has_set_password === true;
+          // Kiểm tra xem đã thiết lập mật khẩu chưa (hoặc có cờ báo hiệu, hoặc đã có provider email)
+          const providers = (session.user.app_metadata.providers as string[]) || [];
+          const hasSetPassword = userMeta.has_set_password === true || providers.includes('email');
 
           // Điều hướng dựa trên trạng thái (áp dụng cho mọi trang ngoại trừ chính trang setup-password)
           if (typeof window !== 'undefined') {
