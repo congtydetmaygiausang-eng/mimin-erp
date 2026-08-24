@@ -131,12 +131,25 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
             {lc.dsMau?.map((mau, idx) => (
               <div key={idx} className="flex flex-col w-32 sm:w-40 group">
                 {/* Red box (Image) */}
-                <div className="w-full aspect-square rounded-t-xl overflow-hidden border-2 border-slate-200 group-hover:border-rose-400 transition-colors bg-white relative">
-                  {mau.img ? (
-                    <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
-                      <span className="text-xs font-bold">NO IMG</span>
+                <div className="w-full aspect-square rounded-t-xl overflow-hidden border-2 border-slate-200 group-hover:border-rose-400 transition-colors bg-white relative flex">
+                  <div className={`relative h-full ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200" : "w-full"}`}>
+                    {mau.img ? (
+                      <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
+                        <span className="text-[10px] font-bold text-center">NO IMG{lc.loaiSP?.includes("Bo") ? <br /> : ""} {lc.loaiSP?.includes("Bo") ? "ÁO" : ""}</span>
+                      </div>
+                    )}
+                  </div>
+                  {lc.loaiSP?.includes("Bo") && (
+                    <div className="relative h-full w-1/2">
+                      {(mau as any).imgQuan ? (
+                        <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
+                          <span className="text-[10px] font-bold text-center">NO IMG<br/>QUẦN</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

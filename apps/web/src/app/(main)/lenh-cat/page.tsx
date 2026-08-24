@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Scissors } from "lucide-react";
 import { toast } from "sonner";
 import { LenhCatModal } from "@/components/LenhCatModal";
@@ -23,6 +24,7 @@ const DEFAULT_GIA_CONG = [
 ];
 
 export default function LenhCatPage() {
+  const router = useRouter();
   // suaLenhCat + user được dùng ở onSaveTyLe/onSaveGiaCong bên dưới nhưng trước
   // đây không hề được lấy ra -> lưu tỷ lệ size hoặc giao việc là lỗi "suaLenhCat
   // is not defined" ngay tại chỗ.
@@ -69,7 +71,7 @@ export default function LenhCatPage() {
   const filteredLC = dsLenhCat.filter((l) => filterTrangThai === "ALL" || l.trangThai === filterTrangThai);
 
   // Handlers
-  const handleEdit = (id: string) => { setEditId(id); setShowModal(true); };
+  const handleEdit = (id: string) => { router.push(`/lenh-cat/${id}`); };
   // Tạm dùng lại LenhCatModal: wizard /lenh-cat/tao-moi chưa chạy được
   // (thiếu framer-motion + @/components/ui/button), đã chuyển vào _tao-moi.
   const handleCreate = () => { setEditId(null); setShowModal(true); };

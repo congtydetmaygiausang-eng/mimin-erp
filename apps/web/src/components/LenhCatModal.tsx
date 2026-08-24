@@ -1850,16 +1850,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         </div>
                       )}
                     </div>
-                    {/* Nút tạo mockup bằng AI - MiniMax image-01 */}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); openAiMockup(idx); }}
-                      data-testid={`btn-ai-mockup-${idx}`}
-                      className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-xs font-bold rounded hover:from-violet-600 hover:to-fuchsia-600 transition-all shadow-sm"
-                    >
-                      <Wand2 className="w-3.5 h-3.5" />
-                      Tạo mockup bằng AI
-                    </button>
+
 
                     {/* Thêm vật tư nhanh ngay tại card màu này (trước đây chỉ có 1 nút chung ở cuối form, phải cuộn xa) */}
                     <div className="flex gap-1.5">
@@ -1948,320 +1939,324 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     })()}
                   </div>
 
-                    {/* Right: Details & Sizes */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-4">
-                    <div className="flex gap-2">
-                      <div className="w-full">
-                        <label className="text-[10px] font-bold text-slate-500 mb-1 block">Mã SKU Biến Thể</label>
-                        <input 
-                          type="text"
-                          className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold text-emerald-700" 
-                          placeholder="VD: SP001-DEN"
-                          value={mau.maSKU || ""}
-                          onChange={(e) => {
-                            const next = [...dsMau]; next[idx].maSKU = e.target.value; setDsMau(next);
-                          }}
-                        />
-                      </div>
-                    </div>
-                    {isBo ? (
-                      <div className="flex gap-2">
-                        <div className="w-1/2 p-2 bg-blue-50/50 rounded border border-blue-200 flex flex-col gap-2">
+                  {/* Right: Details & Sizes */}
+                  {(() => {
+                    // Pre-calculate prices
+                    const v = KHO_VAI.find(x => x.maVT === mau.maVai);
+                    const donGia = v ? (v.donGia || 0) : 0;
+                    let tienVaiAo1SP = mau.dinhMuc * donGia;
+                    
+                    let vQuan = null;
+                    let tienVaiQuan1SP = 0;
+                    if (isBo && mau.maVaiQuan) {
+                      vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
+                      const donGiaQuan = vQuan ? (vQuan.donGia || 0) : 0;
+                      tienVaiQuan1SP = (mau.dinhMucQuan || 0) * donGiaQuan;
+                    }
+                    
+                    const tienVai1SP = tienVaiAo1SP + tienVaiQuan1SP;
+                    const tongTienVaiMau = tienVai1SP * (mau.slDuKien || 0);
+
+                    return (
+                      <div className={`flex-1 min-w-0 grid grid-cols-1 ${isBo ? 'lg:grid-cols-2' : ''} gap-6`}>
+                        {/* CỘT 1: Áo và Thông tin dùng chung */}
+                        <div className="flex flex-col gap-4">
                           <div>
-                            <div className="text-[10px] font-bold text-blue-700 mb-1">ÁO - Kho Vải</div>
-                            <select 
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.maVai}
-                              onChange={(e) => {
-                                const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                              }}
-                            >
-                              <option value="">-- Chọn vải --</option>
-                              {KHO_VAI.map((kv) => (
-                                <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/áo):</div>
+                            <label className="text-[10px] font-bold text-slate-500 mb-1 block">Mã SKU Biến Thể</label>
                             <input 
-                              type="number" step="0.01"
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.dinhMuc}
+                              type="text"
+                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold text-emerald-700" 
+                              placeholder="VD: SP001-DEN"
+                              value={mau.maSKU || ""}
                               onChange={(e) => {
-                                const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
+                                const next = [...dsMau]; next[idx].maSKU = e.target.value; setDsMau(next);
                               }}
                             />
                           </div>
-                          <div className="mt-2 p-1.5 bg-fuchsia-50/60 border border-fuchsia-200 rounded">
-                            <label className="text-[10px] font-bold text-fuchsia-700 block mb-1">Màu phối (tham khảo, không tính định mức)</label>
-                            <div className="flex flex-wrap gap-1.5">
-                              {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
-                              {(mau.mauPhoi || []).map((ten, mpIdx) => (
-                                <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
-                                  {ten}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
+
+                          {isBo ? (
+                            <div className="p-2 bg-blue-50/50 rounded border border-blue-200 flex flex-col gap-2">
+                              <div>
+                                <div className="text-[10px] font-bold text-blue-700 mb-1">ÁO - Kho Vải</div>
+                                <select 
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.maVai}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
+                                  }}
+                                >
+                                  <option value="">-- Chọn vải --</option>
+                                  {KHO_VAI.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/áo):</div>
+                                <input 
+                                  type="number" step="0.01"
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.dinhMuc}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
+                                  }}
+                                />
+                              </div>
+                              <div className="mt-2 p-1.5 bg-fuchsia-50/60 border border-fuchsia-200 rounded">
+                                <label className="text-[10px] font-bold text-fuchsia-700 block mb-1">Màu phối (tham khảo, không tính định mức)</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
+                                  {(mau.mauPhoi || []).map((ten, mpIdx) => (
+                                    <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                                      {ten}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const next = [...dsMau];
+                                          next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
+                                          setDsMau(next);
+                                        }}
+                                        className="hover:text-fuchsia-950"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">Kho Vải Chính</label>
+                                <select 
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.maVai}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
+                                  }}
+                                >
+                                  <option value="">-- Chọn vải --</option>
+                                  {KHO_VAI.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/sp):</label>
+                                <input 
+                                  type="number" step="0.01"
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.dinhMuc}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
+                                  }}
+                                />
+                              </div>
+                              <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded p-2">
+                                <div className="flex flex-wrap items-center justify-between mb-1.5 gap-2">
+                                  <label className="text-[10px] font-bold text-fuchsia-700">Màu phối (tham khảo, không tính định mức)</label>
+                                  <select
+                                    className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[160px]"
+                                    value=""
+                                    onChange={(e) => {
+                                      const ten = e.target.value;
+                                      if (!ten) return;
                                       const next = [...dsMau];
-                                      next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
-                                      setDsMau(next);
+                                      const dsHienTai = next[idx].mauPhoi || [];
+                                      if (!dsHienTai.includes(ten)) {
+                                        next[idx].mauPhoi = [...dsHienTai, ten];
+                                        setDsMau(next);
+                                      }
+                                      e.target.value = "";
                                     }}
-                                    className="hover:text-fuchsia-950"
                                   >
-                                    <X className="w-3 h-3" />
-                                  </button>
+                                    <option value="">+ Thêm màu phối...</option>
+                                    {NHOM_MAU.map((nhom) => (
+                                      <optgroup key={nhom} label={nhom}>
+                                        {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                          <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
+                                  {(mau.mauPhoi || []).map((ten, mpIdx) => (
+                                    <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                                      {ten}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const next = [...dsMau];
+                                          next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
+                                          setDsMau(next);
+                                        }}
+                                        className="hover:text-fuchsia-950"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
+                            <input
+                              type="number"
+                              className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800"
+                              value={mau.slDuKien || ""}
+                              placeholder="VD: 125"
+                              onChange={(e) => {
+                                const newVal = parseInt(e.target.value) || 0;
+                                const next = [...dsMau]; 
+                                next[idx].slDuKien = newVal; 
+                                setDsMau(next);
+                                
+                                // Cập nhật Tổng SL
+                                const newTongSL = next.reduce((sum, m) => sum + (m.slDuKien || 0), 0);
+                                setTongSL(newTongSL);
+                                
+                                // Cập nhật số lượng vật tư của màu này
+                                setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
+                              }}
+                            />
+                            {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
+                              const duoi = Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo;
+                              const tren = duoi + soSpTrongSoDo;
+                              return (
+                                <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
+                                  <span>⚠️ {mau.slDuKien} chưa khớp bội số tỉ lệ ({soSpTrongSoDo}/lượt). Chọn số gần nhất:</span>
+                                  <button type="button" onClick={() => { 
+                                    const next = [...dsMau]; 
+                                    next[idx].slDuKien = duoi; 
+                                    setDsMau(next); 
+                                    setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
+                                    setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: duoi } : p));
+                                  }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{duoi}</button>
+                                  <button type="button" onClick={() => { 
+                                    const next = [...dsMau]; 
+                                    next[idx].slDuKien = tren; 
+                                    setDsMau(next); 
+                                    setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
+                                    setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: tren } : p));
+                                  }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{tren}</button>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          <div className="bg-slate-50 p-2 rounded border border-slate-200">
+                            <div className="text-[10px] font-bold text-slate-500 mb-2 flex items-center justify-between">
+                              <span>Tự động bung size theo tỉ lệ:</span>
+                              {mau.phanBoSize && mau.phanBoSize.length > 0 && (
+                                <span className={`font-bold ${(mau.phanBoSize.reduce((s, p) => s + p.sl, 0)) !== (mau.slDuKien || 0) ? "text-amber-600" : "text-emerald-600"}`}>
+                                  Tổng đã chia: {mau.phanBoSize.reduce((s, p) => s + p.sl, 0)}/{mau.slDuKien || 0}
                                 </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {mau.phanBoSize && mau.phanBoSize.map(pb => (
+                                 <div key={pb.size} className="flex flex-col items-center bg-white border rounded p-1 w-12">
+                                   <span className="text-[10px] font-bold text-slate-400">{pb.size}</span>
+                                   <span className="text-sm font-bold text-slate-700">{pb.sl}</span>
+                                 </div>
                               ))}
+                              {(!mau.phanBoSize || mau.phanBoSize.length === 0) && <span className="text-xs text-slate-400">Nhập SL Dự kiến để chia size...</span>}
                             </div>
                           </div>
-                        </div>
-                        <div className="w-1/2 p-2 bg-rose-50/50 rounded border border-rose-200 flex flex-col gap-2">
-                          <div>
-                            <div className="text-[10px] font-bold text-rose-700 mb-1">QUẦN - Kho Vải</div>
-                            <select 
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.maVaiQuan || ""}
-                              onChange={(e) => {
-                                const next = [...dsMau]; next[idx].maVaiQuan = e.target.value; setDsMau(next);
-                              }}
-                            >
-                              <option value="">-- Chọn vải --</option>
-                              {KHO_VAI.map((kv) => (
-                                <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/quần):</div>
-                            <input 
-                              type="number" step="0.01"
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.dinhMucQuan || ""}
-                              onChange={(e) => {
-                                const next = [...dsMau]; next[idx].dinhMucQuan = parseFloat(e.target.value) || 0; setDsMau(next);
-                              }}
-                            />
-                          </div>
-                          <div className="mt-2">
-                            <select
-                              className="text-[11px] px-2 py-1.5 border border-fuchsia-200 rounded bg-white w-full font-medium text-fuchsia-800 focus:outline-none focus:border-fuchsia-400 shadow-sm"
-                              value=""
-                              onChange={(e) => {
-                                const ten = e.target.value;
-                                if (!ten) return;
-                                const next = [...dsMau];
-                                const dsHienTai = next[idx].mauPhoi || [];
-                                if (!dsHienTai.includes(ten)) {
-                                  next[idx].mauPhoi = [...dsHienTai, ten];
-                                  setDsMau(next);
-                                }
-                                e.target.value = "";
-                              }}
-                            >
-                              <option value="">+ Thêm màu phối...</option>
-                              {NHOM_MAU.map((nhom) => (
-                                <optgroup key={nhom} label={nhom}>
-                                  {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
-                                    <option key={sw.id} value={sw.ten}>{sw.ten}</option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 mb-1 block">Kho Vải Chính</label>
-                          <select 
-                            className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                            value={mau.maVai}
-                            onChange={(e) => {
-                              const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                            }}
-                          >
-                            <option value="">-- Chọn vải --</option>
-                            {KHO_VAI.map((kv) => (
-                              <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/sp):</label>
-                          <input 
-                            type="number" step="0.01"
-                            className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                            value={mau.dinhMuc}
-                            onChange={(e) => {
-                              const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
-                            }}
-                          />
-                        </div>
-                        {/* Màu phối - chỉ TÊN MÀU (không gắn mã vải), tham khảo, KHÔNG tính định mức/tiền vải */}
-                        <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded p-2">
-                          <div className="flex flex-wrap items-center justify-between mb-1.5 gap-2">
-                            <label className="text-[10px] font-bold text-fuchsia-700">Màu phối (tham khảo, không tính định mức)</label>
-                            <select
-                              className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[160px]"
-                              value=""
-                              onChange={(e) => {
-                                const ten = e.target.value;
-                                if (!ten) return;
-                                const next = [...dsMau];
-                                const dsHienTai = next[idx].mauPhoi || [];
-                                if (!dsHienTai.includes(ten)) {
-                                  next[idx].mauPhoi = [...dsHienTai, ten];
-                                  setDsMau(next);
-                                }
-                                e.target.value = "";
-                              }}
-                            >
-                              <option value="">+ Thêm màu phối...</option>
-                              {NHOM_MAU.map((nhom) => (
-                                <optgroup key={nhom} label={nhom}>
-                                  {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
-                                    <option key={sw.id} value={sw.ten}>{sw.ten}</option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
-                            {(mau.mauPhoi || []).map((ten, mpIdx) => (
-                              <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
-                                {ten}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const next = [...dsMau];
-                                    next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
-                                    setDsMau(next);
-                                  }}
-                                  className="hover:text-fuchsia-950"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
 
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
-                      <input
-                        type="number"
-                        className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800"
-                        value={mau.slDuKien || ""}
-                        placeholder="VD: 125"
-                        onChange={(e) => {
-                          const newVal = parseInt(e.target.value) || 0;
-                          const next = [...dsMau]; 
-                          next[idx].slDuKien = newVal; 
-                          setDsMau(next);
-                          
-                          // Cập nhật Tổng SL
-                          const newTongSL = next.reduce((sum, m) => sum + (m.slDuKien || 0), 0);
-                          setTongSL(newTongSL);
-                          
-                          // Cập nhật số lượng vật tư của màu này
-                          setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
-                        }}
-                      />
-                      {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
-                        const duoi = Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo;
-                        const tren = duoi + soSpTrongSoDo;
-                        return (
-                          <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
-                            <span>⚠️ {mau.slDuKien} chưa khớp bội số tỉ lệ ({soSpTrongSoDo}/lượt), hệ thống sẽ không tự phá tỉ lệ. Chọn số gần nhất:</span>
-                            <button type="button" onClick={() => { 
-                              const next = [...dsMau]; 
-                              next[idx].slDuKien = duoi; 
-                              setDsMau(next); 
-                              setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
-                              setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: duoi } : p));
-                            }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{duoi}</button>
-                            <button type="button" onClick={() => { 
-                              const next = [...dsMau]; 
-                              next[idx].slDuKien = tren; 
-                              setDsMau(next); 
-                              setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
-                              setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: tren } : p));
-                            }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{tren}</button>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
-                      <div className="bg-slate-50 p-2 rounded border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 mb-2 flex items-center justify-between">
-                          <span>Tự động bung size theo tỉ lệ:</span>
-                          {mau.phanBoSize && mau.phanBoSize.length > 0 && (
-                            <span className={`font-bold ${(mau.phanBoSize.reduce((s, p) => s + p.sl, 0)) !== (mau.slDuKien || 0) ? "text-amber-600" : "text-emerald-600"}`}>
-                              Tổng đã chia: {mau.phanBoSize.reduce((s, p) => s + p.sl, 0)}/{mau.slDuKien || 0}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {mau.phanBoSize && mau.phanBoSize.map(pb => (
-                             <div key={pb.size} className="flex flex-col items-center bg-white border rounded p-1 w-12">
-                               <span className="text-[10px] font-bold text-slate-400">{pb.size}</span>
-                               <span className="text-sm font-bold text-slate-700">{pb.sl}</span>
-                             </div>
-                          ))}
-                          {(!mau.phanBoSize || mau.phanBoSize.length === 0) && <span className="text-xs text-slate-400">Nhập SL Dự kiến để chia size...</span>}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col bg-amber-50/50 p-2 rounded border border-amber-200/50">
-                        <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
-                        <textarea 
-                          className="w-full flex-1 px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
-                          placeholder="Nhập ghi chú kỹ thuật riêng cho màu này..."
-                          value={mau.ghiChu || ""}
-                          onChange={(e) => {
-                            const next = [...dsMau]; 
-                            next[idx].ghiChu = e.target.value; 
-                            setDsMau(next);
-                          }}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* BỔ SUNG GIÁ TIỀN VẢI MÀU NÀY */}
-                    {(() => {
-                      const v = KHO_VAI.find(x => x.maVT === mau.maVai);
-                      const donGia = v ? (v.donGia || 0) : 0;
-                      let tienVai1SP = mau.dinhMuc * donGia;
-                      
-                      let vQuan = null;
-                      if (isBo && mau.maVaiQuan) {
-                        vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
-                        const donGiaQuan = vQuan ? (vQuan.donGia || 0) : 0;
-                        tienVai1SP += (mau.dinhMucQuan || 0) * donGiaQuan;
-                      }
-                      
-                      const tongTienVaiMau = tienVai1SP * (mau.slDuKien || 0);
-                      return (
-                        <div className="flex gap-2 mt-1">
-                          <div className="w-1/2 bg-amber-50 p-2 rounded border border-amber-200">
+                          <div className="bg-amber-50 p-2 rounded border border-amber-200">
                             <div className="text-[10px] font-bold text-amber-700">Giá vải / 1 SP {isBo ? "(Áo+Quần)" : ""}</div>
                             <div className="text-sm font-bold text-amber-900">{formatVND(tienVai1SP)}</div>
                           </div>
-                          <div className="w-1/2 bg-emerald-50 p-2 rounded border border-emerald-200">
+                        </div>
+
+                        {/* CỘT 2: Quần và Thông tin Bổ sung (Ghi chú, Tổng tiền) */}
+                        <div className="flex flex-col gap-4">
+                          {isBo && (
+                            <div className="p-2 bg-rose-50/50 rounded border border-rose-200 flex flex-col gap-2">
+                              <div>
+                                <div className="text-[10px] font-bold text-rose-700 mb-1">QUẦN - Kho Vải</div>
+                                <select 
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.maVaiQuan || ""}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].maVaiQuan = e.target.value; setDsMau(next);
+                                  }}
+                                >
+                                  <option value="">-- Chọn vải --</option>
+                                  {KHO_VAI.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/quần):</div>
+                                <input 
+                                  type="number" step="0.01"
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.dinhMucQuan || ""}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].dinhMucQuan = parseFloat(e.target.value) || 0; setDsMau(next);
+                                  }}
+                                />
+                              </div>
+                              <div className="mt-2">
+                                <select
+                                  className="text-[11px] px-2 py-1.5 border border-fuchsia-200 rounded bg-white w-full font-medium text-fuchsia-800 focus:outline-none focus:border-fuchsia-400 shadow-sm"
+                                  value=""
+                                  onChange={(e) => {
+                                    const ten = e.target.value;
+                                    if (!ten) return;
+                                    const next = [...dsMau];
+                                    const dsHienTai = next[idx].mauPhoi || [];
+                                    if (!dsHienTai.includes(ten)) {
+                                      next[idx].mauPhoi = [...dsHienTai, ten];
+                                      setDsMau(next);
+                                    }
+                                    e.target.value = "";
+                                  }}
+                                >
+                                  <option value="">+ Thêm màu phối...</option>
+                                  {NHOM_MAU.map((nhom) => (
+                                    <optgroup key={nhom} label={nhom}>
+                                      {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                        <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                      ))}
+                                    </optgroup>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex flex-col flex-1 bg-amber-50/50 p-2 rounded border border-amber-200/50">
+                            <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
+                            <textarea 
+                              className="w-full flex-1 px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
+                              placeholder="Nhập ghi chú kỹ thuật riêng cho màu này..."
+                              value={mau.ghiChu || ""}
+                              onChange={(e) => {
+                                const next = [...dsMau]; 
+                                next[idx].ghiChu = e.target.value; 
+                                setDsMau(next);
+                              }}
+                            />
+                          </div>
+
+                          <div className="bg-emerald-50 p-2 rounded border border-emerald-200">
                             <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này</div>
                             <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}</div>
                           </div>
                         </div>
-                      );
-                    })()}
-
-                  </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 );
               })}
