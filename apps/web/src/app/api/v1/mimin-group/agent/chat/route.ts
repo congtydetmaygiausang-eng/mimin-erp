@@ -199,6 +199,21 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "web_research",
+      description: "Thực hiện tìm kiếm thông tin chuyên sâu trên Internet (giá cả, tin tức, công nghệ, nghiên cứu đối thủ). Công cụ này sẽ kết hợp Tavily/Serper/Brave để tìm link và Jina Reader để cào sâu nội dung trang web. Dùng công cụ này khi người dùng hỏi các câu hỏi kiến thức hoặc tra cứu thông tin (VD: Giá vải cotton hôm nay, Công ty X làm gì, Cách xử lý lỗi Y). KHÔNG dùng công cụ này để tìm đối tác mới, hãy dùng search_partners.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Câu truy vấn tìm kiếm tiếng Việt hoặc tiếng Anh (tối ưu hóa cho công cụ tìm kiếm)" },
+          search_type: { type: "string", enum: ["general", "news", "b2b_company"], description: "Loại thông tin cần tìm: general (kiến thức chung), news (tin tức mới), b2b_company (thông tin 1 công ty cụ thể)" }
+        },
+        required: ["query", "search_type"]
+      }
+    }
+  }
 ] as const;
 
 const BASE_SYSTEM_PROMPT = `Bạn là AI Search Agent của MIMIN GROUP - trợ lý tìm kiếm đối tác cho chuỗi cung ứng may mặc (xưởng sản xuất, nhà cung cấp nguyên phụ liệu, khách hàng).
@@ -410,20 +425,102 @@ async function executeToolCall(
     };
   }
 
+  if (name === "web_research") {
+    const query = typeof args.query === "string" ? args.query.trim() : "";
+    if (!query) return { toolMessageContent: { error: "Thiếu từ khóa tìm kiếm (query)" } };
+
+    let links: { url: string, snippet: string, title?: string }[] = [];
+    
+    // 1. Tavily API (Nhanh, chuyên cho AI)
+    if (process.env.TAVILY_API_KEY) {
+      try {
+        const res = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: process.env.TAVILY_API_KEY, query, search_depth: "basic", max_results: 3 })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          links = (data.results || []).map((r: any) => ({ url: r.url, snippet: r.content, title: r.title }));
+        }
+      } catch (err) {
+        console.error("[web_research] Tavily error:", err);
+      }
+    }
+
+    // 2. Fallback Serper API (Nếu Tavily tịt)
+    if (links.length === 0 && process.env.SERPER_API_KEY) {
+      try {
+        const res = await fetch("https://google.serper.dev/search", {
+          method: "POST",
+          headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ q: query, num: 3 })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          links = (data.organic || []).map((r: any) => ({ url: r.link, snippet: r.snippet, title: r.title }));
+        }
+      } catch (err) {
+        console.error("[web_research] Serper error:", err);
+      }
+    }
+
+    if (links.length === 0) {
+      return { toolMessageContent: { error: "Không tìm thấy kết quả nào từ Internet. Vui lòng thử lại với từ khóa khác." } };
+    }
+
+    // 3. Jina Reader Cào Sâu (Chỉ lấy link Top 1)
+    const topLink = links[0];
+    let markdown = "";
+    try {
+      const jinaRes = await fetch(`https://r.jina.ai/${encodeURIComponent(topLink.url)}`, {
+        headers: { 
+          "Accept": "text/plain",
+          ...(process.env.JINA_API_KEY ? { "Authorization": `Bearer ${process.env.JINA_API_KEY}` } : {})
+        },
+        signal: AbortSignal.timeout(15_000) // 15s timeout
+      });
+      if (jinaRes.ok) {
+        markdown = await jinaRes.text();
+        // Cắt markdown xuống 12k ký tự (~4000 token) để không làm nổ Context Window
+        markdown = markdown.slice(0, 12000) + (markdown.length > 12000 ? "\n\n...[Nội dung đã bị cắt bớt do quá dài]" : "");
+      }
+    } catch (e) {
+      console.error("[web_research] Jina error:", e);
+    }
+
+    return {
+      toolMessageContent: {
+        note: "Đã search internet. Trả lời bằng Markdown rõ ràng. Đừng quên trích dẫn URL nếu lấy thông tin từ URL đó.",
+        search_query: query,
+        top_snippets: links,
+        deep_scrape_url: topLink.url,
+        deep_scrape_markdown: markdown || "Cào thất bại. Hãy dựa vào top_snippets để trả lời."
+      }
+    };
+  }
+
   return { toolMessageContent: { error: `Tool ${name} không tồn tại` } };
 }
 
-async function callDeepSeekWithTools(
+async function callAIWithTools(
   systemPrompt: string,
   messages: Array<{ role: string; content: string }>,
   auth: ChatAuth,
   initialTurnResults: TurnResult[],
 ): Promise<{ reply: string; toolCalls: Array<{ name: string; args: Record<string, unknown> }>; results: ToolSearchResults | null }> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) throw new Error("Chưa cấu hình DEEPSEEK_API_KEY trên máy chủ");
+  // Lấy API key
+  const minimaxKey = process.env.MINIMAX_API_KEY;
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  if (!minimaxKey && !deepseekKey) throw new Error("Chưa cấu hình API Key (MiniMax hoặc DeepSeek) trên máy chủ");
+
+  // Thiết lập model và endpoint theo thứ tự ưu tiên: MiniMax -> DeepSeek
+  let activeKey = minimaxKey || deepseekKey;
+  let activeUrl = minimaxKey ? "https://api.minimax.chat/v1/text/chatcompletion_v2" : "https://api.deepseek.com/v1/chat/completions";
+  let activeModel = minimaxKey ? "abab6.5s-chat" : "deepseek-chat";
 
   const baseBody = {
-    model: "deepseek-chat",
+    model: activeModel,
     messages: [{ role: "system", content: systemPrompt }, ...messages],
     temperature: 0.3,
     max_tokens: 1024,
@@ -431,14 +528,28 @@ async function callDeepSeekWithTools(
     tool_choice: "auto",
   };
 
-  const firstRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+  let firstRes = await fetch(activeUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
     body: JSON.stringify(baseBody),
   });
+
+  // Fallback to DeepSeek if MiniMax fails
+  if (!firstRes.ok && minimaxKey && deepseekKey) {
+    console.warn(`[web_research] MiniMax failed (${firstRes.status}), fallback to DeepSeek...`);
+    activeKey = deepseekKey;
+    activeUrl = "https://api.deepseek.com/v1/chat/completions";
+    baseBody.model = "deepseek-chat";
+    firstRes = await fetch(activeUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
+      body: JSON.stringify(baseBody),
+    });
+  }
+
   if (!firstRes.ok) {
     const err = await firstRes.text();
-    throw new Error(`DeepSeek API lỗi ${firstRes.status}: ${err.slice(0, 200)}`);
+    throw new Error(`AI API lỗi ${firstRes.status}: ${err.slice(0, 200)}`);
   }
   const firstData = await firstRes.json();
   const message = firstData.choices?.[0]?.message;
@@ -477,11 +588,11 @@ async function callDeepSeekWithTools(
       toolMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(execResult.toolMessageContent) });
     }
 
-    const secondRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    const secondRes = await fetch(activeUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: activeModel,
         messages: [{ role: "system", content: systemPrompt }, ...messages, message, ...toolMessages],
         temperature: 0.3,
         max_tokens: 1024,
@@ -530,8 +641,8 @@ export async function POST(req: NextRequest) {
 
     const messages = [...history, { role: "user", content: userMessage }];
 
-    if (!process.env.DEEPSEEK_API_KEY) {
-      return NextResponse.json({ error: "Tính năng AI Search Agent chưa được cấu hình (thiếu DEEPSEEK_API_KEY)" }, { status: 503 });
+    if (!process.env.DEEPSEEK_API_KEY && !process.env.MINIMAX_API_KEY) {
+      return NextResponse.json({ error: "Tính năng AI Search Agent chưa được cấu hình (thiếu MINIMAX hoặc DEEPSEEK KEY)" }, { status: 503 });
     }
 
     const [agentConfig, activeProfiles] = await Promise.all([
@@ -540,7 +651,7 @@ export async function POST(req: NextRequest) {
     ]);
     const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
 
-    const { reply, toolCalls, results } = await callDeepSeekWithTools(systemPrompt, messages, auth, initialTurnResults);
+    const { reply, toolCalls, results } = await callAIWithTools(systemPrompt, messages, auth, initialTurnResults);
     return NextResponse.json({ reply, toolCalls, results });
   } catch (error) {
     console.error("[mimin-group-agent-chat] error:", error);

@@ -12,6 +12,30 @@ import { supabase } from "@/lib/supabase/client";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
 import { runCompanyReaderShadow } from "@/lib/company-reader-shadow";
+import React from "react";
+
+// Trình render Markdown gọn nhẹ (không cần thư viện) cho Chatbox
+const SimpleMarkdown = ({ content }: { content: string }) => {
+  const parseLine = (line: string, index: number) => {
+    let html = line
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // sanitize
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold
+      .replace(/\*(.*?)\*/g, "<em>$1</em>") // italic
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-brand-600 underline hover:text-brand-800">$1</a>'); // link
+
+    if (html.startsWith("- ") || html.startsWith("* ")) {
+      return <li key={index} dangerouslySetInnerHTML={{ __html: html.substring(2) }} className="ml-4 list-disc" />;
+    } else if (html.match(/^\d+\.\s/)) {
+      return <li key={index} dangerouslySetInnerHTML={{ __html: html.replace(/^\d+\.\s/, "") }} className="ml-4 list-decimal" />;
+    } else if (html.startsWith("### ")) {
+      return <h4 key={index} dangerouslySetInnerHTML={{ __html: html.substring(4) }} className="font-bold mt-2 mb-1" />;
+    } else if (html.startsWith("## ")) {
+      return <h3 key={index} dangerouslySetInnerHTML={{ __html: html.substring(3) }} className="text-lg font-bold mt-3 mb-1 text-brand-700" />;
+    }
+    return <p key={index} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} className={html ? "mb-1" : "mb-2"} />;
+  };
+  return <div className="text-sm leading-relaxed">{content.split("\n").map(parseLine)}</div>;
+};
 
 const HCM_DISTRICTS = [
   "Quận 1", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 8", "Quận 10", "Quận 11", "Quận 12",
@@ -444,7 +468,9 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         {chatBubbles.map((bubble, index) => (
           <div key={index} className={`flex items-start gap-2 text-sm ${bubble.role === "user" ? "justify-end" : ""}`}>
             {bubble.role === "assistant" && <Bot className="w-4 h-4 mt-0.5 shrink-0 text-brand-600" />}
-            <div className={`rounded-xl px-3 py-2 max-w-[85%] ${bubble.role === "user" ? "bg-brand-500 text-white" : "bg-slate-100 dark:bg-white/10"}`}>{bubble.content}</div>
+            <div className={`rounded-xl px-3 py-2 max-w-[85%] ${bubble.role === "user" ? "bg-brand-500 text-white" : "bg-slate-100 dark:bg-white/10"}`}>
+              {bubble.role === "user" ? bubble.content : <SimpleMarkdown content={bubble.content} />}
+            </div>
             {bubble.role === "user" && <UserIcon className="w-4 h-4 mt-0.5 shrink-0 opacity-60" />}
           </div>
         ))}
