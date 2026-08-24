@@ -29,43 +29,82 @@ class CompanyReaderPipeline:
 
     def read(self, request_id: str, urls: tuple[str, ...]) -> CompanyReadResponse:
         segmentations = []
-        reports = []
-        for url in urls:
+        reports: list[SourceProcessingReport] = []
+        
+        import threading
+        trafilatura_lock = threading.Lock()
+
+        def process_url(url: str):
             try:
-                fetched = self.fetcher.fetch(url)
-                primary = self.extractor.extract(fetched)
-                fallback = self.fallback.recover(url, fetched, primary)
-                selected = fallback.selected_document
-                bundle = self.candidate_extractor.extract(selected)
-                segmentation = self.segmenter.segment(selected, bundle)
-                segmentations.append(segmentation)
-                if segmentation.entities:
-                    status = SourceProcessingStatus.PROCESSED
+                jina_outcome = self.fallback.read_primary(url)
+                
+                if jina_outcome.decision.name == "JINA_ACCEPTED":
+                    selected = jina_outcome.selected_document
+                    fallback_decision = "JINA_PRIMARY"
+                    fetch_status = "JINA_OK"
+                    extraction_status = "JINA_OK"
                     error_code = None
-                elif selected.status is ExtractionStatus.OK:
-                    status = SourceProcessingStatus.NO_ENTITY
-                    error_code = segmentation.warnings[0] if segmentation.warnings else None
+                else:
+                    with trafilatura_lock:
+                        fetched = self.fetcher.fetch(url)
+                        primary = self.extractor.extract(fetched)
+                    selected = primary
+                    fallback_decision = f"JINA_FAILED_TRAFILATURA_USED({jina_outcome.decision.name})"
+                    fetch_status = fetched.status.name
+                    extraction_status = primary.status.name
+                    error_code = primary.error_code
+
+                bundle = self.candidate_extractor.extract(selected)
+                if selected.status.name in {"OK", "TRUNCATED"}:
+                    status = SourceProcessingStatus.PROCESSED
+                    segmentation = self.segmenter.segment(selected, bundle)
+                    if not segmentation.entities:
+                        status = SourceProcessingStatus.NO_ENTITY
+                        error_code = segmentation.warnings[0] if segmentation.warnings else None
                 else:
                     status = SourceProcessingStatus.FAILED
                     error_code = selected.error_code
-                reports.append(SourceProcessingReport(
+                    from .segmentation_models import EntitySegmentationResult, SegmentationStatus
+                    segmentation = EntitySegmentationResult(
+                        source_url=url, text_sha256="", status=SegmentationStatus.SKIPPED_CANDIDATE_ERROR
+                    )
+                    
+                report = SourceProcessingReport(
                     source_url=url,
                     status=status,
-                    fetch_status=fetched.status.value,
-                    extraction_status=selected.status.value,
-                    fallback_decision=fallback.decision.value,
+                    fetch_status=fetch_status,
+                    extraction_status=extraction_status,
+                    fallback_decision=fallback_decision,
                     entity_count=len(segmentation.entities),
                     error_code=error_code,
-                ))
+                )
+                return segmentation, report
             except Exception as error:
-                reports.append(SourceProcessingReport(
+                report = SourceProcessingReport(
                     source_url=url,
                     status=SourceProcessingStatus.FAILED,
                     fetch_status="INTERNAL_ERROR",
                     extraction_status="INTERNAL_ERROR",
                     fallback_decision="NOT_RUN",
                     error_code=f"UNEXPECTED_{type(error).__name__.upper()}",
-                ))
+                )
+                from .segmentation_models import EntitySegmentationResult, SegmentationStatus
+                seg = EntitySegmentationResult(
+                    source_url=url, 
+                    text_sha256="", 
+                    status=SegmentationStatus.SKIPPED_CANDIDATE_ERROR,
+                    warnings=("INTERNAL_ERROR",)
+                )
+                return seg, report
+
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(urls), 5) or 1) as executor:
+            futures = [executor.submit(process_url, url) for url in urls]
+            for future in concurrent.futures.as_completed(futures):
+                seg, rep = future.result()
+                segmentations.append(seg)
+                reports.append(rep)
+
         resolution = self.resolver.resolve(tuple(segmentations))
         profiles = tuple(
             self.selector.select(group)

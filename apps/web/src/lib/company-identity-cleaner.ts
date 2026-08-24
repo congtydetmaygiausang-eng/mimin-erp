@@ -1,6 +1,6 @@
 // @codex T3: bộ lọc xác định tên và địa chỉ doanh nghiệp; không suy đoán dữ liệu thiếu.
 
-const ARTICLE_NAME_PATTERN = /\b(?:danh\s*(?:bạ|sách)|top\s*\d+|là gì|ưu điểm|nhược điểm|bảng giá|giá sỉ|ở đâu|bán loại.+nào|các mẫu|hướng dẫn|quy trình|tuyển dụng|tìm việc|nhận gia công|tham quan|cung cấp.+ở\s+(?:quận|huyện|tp)|công ty.+(?:ở\s*)?tại\s+(?:quận|huyện|tp)|xưởng.+(?:ở\s*)?tại\s+(?:quận|huyện|tp))\b/i;
+const ARTICLE_NAME_PATTERN = /\b(?:danh\s*(?:bạ|sách)|điểm danh|khu chợ|tổng hợp|bài viết|top\s*\d+|là gì|ưu điểm|nhược điểm|bảng giá|giá sỉ|ở đâu|bán loại.+nào|các mẫu|hướng dẫn|quy trình|tuyển dụng|tìm việc|nhận gia công|tham quan|cung cấp.+ở\s+(?:quận|huyện|tp)|công ty.+(?:ở\s*)?tại\s+(?:quận|huyện|tp)|xưởng.+(?:ở\s*)?tại\s+(?:quận|huyện|tp))\b/i;
 const BUSINESS_MARKER_PATTERN = /\b(?:công\s*ty|cty|tnhh|trách nhiệm hữu hạn|cổ phần|doanh nghiệp|nhà máy|xưởng|hộ kinh doanh|cửa hàng|supplier|manufacturer)\b/i;
 const ADDRESS_ADMIN_PATTERN = /\b(?:phường|p\.?\s*\d+|xã|quận|q\.?\s*\d+|huyện|thành phố|tp\.?\s*hcm|tỉnh|thị xã|thị trấn)\b/gi;
 const ADDRESS_ROUTE_PATTERN = /(?:đường|đ\.?\s*[a-zà-ỹ]|phố|ấp|thôn|khu phố|khu công nghiệp|kcn|cụm công nghiệp|lô|tổ)(?:\s|,)/i;

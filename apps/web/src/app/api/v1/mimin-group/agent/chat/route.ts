@@ -24,7 +24,24 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import type { DirectSearchCandidate } from "@/lib/production-discovery";
 
+export const runtime = "edge";
 export const maxDuration = 60;
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 20000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Kết nối tới máy chủ AI vượt quá thời gian cho phép (${timeoutMs / 1000}s). Vui lòng thử lại.`);
+    }
+    throw error;
+  }
+}
 
 const MAX_TOOL_CALLS_PER_TURN = 4;
 const MAX_HISTORY_MESSAGES = 6;
@@ -413,17 +430,22 @@ async function executeToolCall(
   return { toolMessageContent: { error: `Tool ${name} không tồn tại` } };
 }
 
-async function callDeepSeekWithTools(
+async function callAIWithTools(
   systemPrompt: string,
   messages: Array<{ role: string; content: string }>,
   auth: ChatAuth,
   initialTurnResults: TurnResult[],
 ): Promise<{ reply: string; toolCalls: Array<{ name: string; args: Record<string, unknown> }>; results: ToolSearchResults | null }> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) throw new Error("Chưa cấu hình DEEPSEEK_API_KEY trên máy chủ");
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const minimaxKey = process.env.MINIMAX_API_KEY;
+  if (!deepseekKey && !minimaxKey) throw new Error("Chưa cấu hình API Key (DeepSeek hoặc MiniMax) trên máy chủ");
+
+  let activeKey = deepseekKey || minimaxKey;
+  let activeUrl = deepseekKey ? "https://api.deepseek.com/v1/chat/completions" : "https://api.minimax.chat/v1/chat/completions";
+  let activeModel = deepseekKey ? "deepseek-chat" : "abab6.5s-chat";
 
   const baseBody = {
-    model: "deepseek-chat",
+    model: activeModel,
     messages: [{ role: "system", content: systemPrompt }, ...messages],
     temperature: 0.3,
     max_tokens: 1024,
@@ -431,11 +453,23 @@ async function callDeepSeekWithTools(
     tool_choice: "auto",
   };
 
-  const firstRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+  let firstRes = await fetchWithTimeout(activeUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
     body: JSON.stringify(baseBody),
-  });
+  }, 25000);
+
+  if (!firstRes.ok && deepseekKey && minimaxKey && activeKey === deepseekKey) {
+    console.warn(`[agent] DeepSeek failed (${firstRes.status}), fallback to MiniMax...`);
+    activeKey = minimaxKey;
+    activeUrl = "https://api.minimax.chat/v1/chat/completions";
+    baseBody.model = "abab6.5s-chat";
+    firstRes = await fetchWithTimeout(activeUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
+      body: JSON.stringify(baseBody),
+    }, 25000);
+  }
   if (!firstRes.ok) {
     const err = await firstRes.text();
     throw new Error(`DeepSeek API lỗi ${firstRes.status}: ${err.slice(0, 200)}`);
@@ -477,16 +511,16 @@ async function callDeepSeekWithTools(
       toolMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(execResult.toolMessageContent) });
     }
 
-    const secondRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    const secondRes = await fetchWithTimeout(activeUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: activeModel,
         messages: [{ role: "system", content: systemPrompt }, ...messages, message, ...toolMessages],
         temperature: 0.3,
         max_tokens: 1024,
       }),
-    });
+    }, 25000);
     if (!secondRes.ok) {
       return { reply: stripThinkTags(message?.content || "Đã có kết quả, nhưng AI chưa tổng hợp được câu trả lời."), toolCalls, results };
     }
@@ -530,17 +564,24 @@ export async function POST(req: NextRequest) {
 
     const messages = [...history, { role: "user", content: userMessage }];
 
-    if (!process.env.DEEPSEEK_API_KEY) {
-      return NextResponse.json({ error: "Tính năng AI Search Agent chưa được cấu hình (thiếu DEEPSEEK_API_KEY)" }, { status: 503 });
+    if (!process.env.DEEPSEEK_API_KEY && !process.env.MINIMAX_API_KEY) {
+      return NextResponse.json({ error: "Tính năng AI Search Agent chưa được cấu hình (thiếu MINIMAX hoặc DEEPSEEK KEY)" }, { status: 503 });
     }
 
-    const [agentConfig, activeProfiles] = await Promise.all([
-      getAgentConfig(auth.client),
-      listActiveProfiles(auth.client),
-    ]);
-    const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
+    const aiWork = async () => {
+      const [agentConfig, activeProfiles] = await Promise.all([
+        getAgentConfig(auth.client),
+        listActiveProfiles(auth.client),
+      ]);
+      const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
+      return await callAIWithTools(systemPrompt, messages, auth, initialTurnResults);
+    };
 
-    const { reply, toolCalls, results } = await callDeepSeekWithTools(systemPrompt, messages, auth, initialTurnResults);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("Quá trình tìm kiếm mất nhiều thời gian hơn dự kiến và đã tự động ngắt để bảo vệ hệ thống. Vui lòng nhấn Thử lại.")), 28000);
+    });
+
+    const { reply, toolCalls, results } = await Promise.race([aiWork(), timeoutPromise]);
     return NextResponse.json({ reply, toolCalls, results });
   } catch (error) {
     console.error("[mimin-group-agent-chat] error:", error);

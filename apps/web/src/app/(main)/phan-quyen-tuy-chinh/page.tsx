@@ -91,7 +91,28 @@ export default function PhanQuyenTuyChinhPage() {
   const [savingUser, setSavingUser] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(false);
+    const fetchUsers = async () => {
+      if (isSupabaseEnabled && supabase) {
+        try {
+          const { data, error } = await supabase.from("users").select("*").order("name");
+          if (!error && data) {
+            // Map data from DB to match the structure expected by the UI
+            const formattedUsers = data.map(u => ({
+              email: u.email,
+              name: u.name,
+              role: u.role as Role,
+              phongBan: u.phongBan || "khac",
+              chucVu: u.chucVu || ""
+            }));
+            setUsers(formattedUsers);
+          }
+        } catch (e) {
+          console.error("Lỗi khi tải danh sách users:", e);
+        }
+      }
+      setLoading(false);
+    };
+    fetchUsers();
   }, []);
 
   // Reload matrix khi user click refresh
@@ -549,7 +570,7 @@ function UserRoleManager({ users, setUsers, savingUser, setSavingUser }: {
   return (
     <div className="space-y-3">
       <div className="card p-3">
-        <h3 className="font-bold text-sm mb-2">👥 Gán role cho 44 user @mimin.vn</h3>
+        <h3 className="font-bold text-sm mb-2">👥 Gán role cho {users.length} user</h3>
         <p className="text-xs opacity-70 mb-3">
           Chỉnh role bằng dropdown → tự động lưu vào bảng <code>users</code> trong Supabase.
         </p>

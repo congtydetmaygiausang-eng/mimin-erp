@@ -40,6 +40,29 @@ class JinaFallbackCoordinator:
         allowed, reason = self._fallback_allowed(primary_fetch, primary_document)
         if not allowed:
             return FallbackOutcome(FallbackDecision.FALLBACK_NOT_ALLOWED, primary_document, reason=reason)
+        return self._do_jina_read(raw_url, primary_document, reason)
+
+    def read_primary(self, raw_url: str) -> FallbackOutcome:
+        """Sử dụng Jina Reader làm extractor chính thay vì dự phòng."""
+        # Tạo một document rỗng giả định để tương thích với FallbackOutcome
+        dummy_primary = ExtractedDocument(
+            source_url=raw_url,
+            fetch_sha256="",
+            status=ExtractionStatus.EMPTY,
+            extractor="none",
+            extractor_version="0",
+            title=None,
+            description=None,
+            main_text="",
+            text_sha256="",
+            char_count=0,
+            word_count=0,
+            truncated=False,
+            metadata={},
+        )
+        return self._do_jina_read(raw_url, dummy_primary, "JINA_PRIMARY_MODE")
+
+    def _do_jina_read(self, raw_url: str, primary_document: ExtractedDocument, reason: str) -> FallbackOutcome:
         evidence = self.client.read(raw_url)
         if evidence.status is not JinaReadStatus.OK or not evidence.content:
             return FallbackOutcome(FallbackDecision.JINA_FAILED, primary_document, evidence, evidence.error_code)

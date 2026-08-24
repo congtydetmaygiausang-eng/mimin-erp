@@ -125,6 +125,21 @@ const getFallbackUser = (): AppUser => ({
   source: "demo",
 });
 
+// Mỗi thẻ Màu trong lệnh cắt lấy 1 màu trong bảng này theo thứ tự (idx %
+// length) - giúp phân biệt nhanh bằng mắt khi lệnh có nhiều màu, không phải
+// đọc chữ "Màu 1/Màu 2..." mới biết đang ở thẻ nào. Dùng class literal đầy
+// đủ (không ghép chuỗi động) để Tailwind JIT quét được.
+const MAU_CARD_ACCENT = [
+  { stripe: "border-l-emerald-500", badge: "bg-emerald-500", tint: "bg-emerald-50/50", ring: "focus-within:ring-emerald-200" },
+  { stripe: "border-l-sky-500", badge: "bg-sky-500", tint: "bg-sky-50/50", ring: "focus-within:ring-sky-200" },
+  { stripe: "border-l-amber-500", badge: "bg-amber-500", tint: "bg-amber-50/50", ring: "focus-within:ring-amber-200" },
+  { stripe: "border-l-rose-500", badge: "bg-rose-500", tint: "bg-rose-50/50", ring: "focus-within:ring-rose-200" },
+  { stripe: "border-l-violet-500", badge: "bg-violet-500", tint: "bg-violet-50/50", ring: "focus-within:ring-violet-200" },
+  { stripe: "border-l-cyan-500", badge: "bg-cyan-500", tint: "bg-cyan-50/50", ring: "focus-within:ring-cyan-200" },
+  { stripe: "border-l-orange-500", badge: "bg-orange-500", tint: "bg-orange-50/50", ring: "focus-within:ring-orange-200" },
+  { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-50/50", ring: "focus-within:ring-fuchsia-200" },
+] as const;
+
 export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
@@ -146,6 +161,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setHanHoanThanh(editing.hanHoanThanh);
       setPhuTrachCat(editing.phuTrachCat || "NV006");
       setPhuTrachSX(editing.phuTrachSX || "");
+      setPhuTrachSoDo(editing.phuTrachSoDo || "");
       setGhiChu(editing.ghiChu || "");
       setGhiChuKyThuat(editing.ghiChuKyThuat || "");
       setTrangThai(editing.trangThai || "Nhap");
@@ -154,7 +170,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setDsMau(editing.dsMau || []);
       setDsPhuLieu(editing.dsPhuLieu || []);
       setMauCongDoan(editing.mauCongDoan || "BoTheThao");
-      if (editing.phanCong) setPhanCong(editing.phanCong);
+      if (editing.phanCong) {
+        setPhanCong(editing.phanCong);
+        const inTheuItem = (editing.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
+        if (inTheuItem) {
+          if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
+          else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
+          else setLoaiInTheu("bo");
+        }
+      }
       setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
       setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
       setSoDoChinh(editing.soDoChinh || "");
@@ -231,6 +255,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [hinhMauInTheu, setHinhMauInTheu] = useState("");
   const [fileGocInTheu, setFileGocInTheu] = useState("");
   const [ghiChuInTheu, setGhiChuInTheu] = useState("");
+  const [loaiInTheu, setLoaiInTheu] = useState<"ao" | "quan" | "bo">("bo");
   const fileInTheuAnhRef = useRef<HTMLInputElement>(null);
   const fileInTheuFileRef = useRef<HTMLInputElement>(null);
 
@@ -332,6 +357,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   
   const [phuTrachCat, setPhuTrachCat] = useState("NV006");
   const [phuTrachSX, setPhuTrachSX] = useState("");
+  const [phuTrachSoDo, setPhuTrachSoDo] = useState("");
   const [ghiChu, setGhiChu] = useState("");
   const [ghiChuKyThuat, setGhiChuKyThuat] = useState("");
   const [trangThai, setTrangThai] = useState<TrangThaiLenhCat>("Nhap");
@@ -497,6 +523,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
           if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
           if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
+          if (parsed.phuTrachSoDo) setPhuTrachSoDo(parsed.phuTrachSoDo);
           if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
           if (parsed.ghiChuKyThuat) setGhiChuKyThuat(parsed.ghiChuKyThuat);
           if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
@@ -524,6 +551,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
           if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
           if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
+          
+          if (parsed.phanCong) {
+            const inTheuItem = (parsed.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
+            if (inTheuItem) {
+              if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
+              else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
+              else setLoaiInTheu("bo");
+            }
+          }
         }
       } catch (e) {
         console.error("Lỗi tải nháp", e);
@@ -536,7 +572,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     if (!editId && draftLoaded) {
       localStorage.setItem("lenhCatDraft", JSON.stringify({
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
-        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat,
+        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
         daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan,
         soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh,
@@ -544,7 +580,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         hinhMauInTheu, fileGocInTheu, ghiChuInTheu,
       }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, hinhMauInTheu, fileGocInTheu, ghiChuInTheu, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, hinhMauInTheu, fileGocInTheu, ghiChuInTheu, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -704,6 +740,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
+        phuTrachSoDo,
         ghiChu,
         ghiChuKyThuat,
         trangThai: status,
@@ -755,6 +792,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
         phuTrachSX,
+        phuTrachSoDo,
         ghiChu,
         ghiChuKyThuat,
         trangThai: status,
@@ -916,9 +954,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const giaVonBinhQuan = binhQuanVai + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-1.5 md:p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-0 md:p-4 animate-fade-in">
       <div
-        className="bg-[#2B4C3E] rounded-xl shadow-2xl w-[99vw] h-[97vh] max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-4 border-[#2B4C3E]"
+        className="bg-[#2B4C3E] rounded-none md:rounded-xl shadow-2xl w-full h-full md:w-[99vw] md:h-[97vh] max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-0 md:border-4 border-[#2B4C3E]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -942,7 +980,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-4 md:p-6 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -955,10 +993,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           )}
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
-          <div className="bg-slate-100 p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
-              <div className="flex gap-4 items-center pr-6">
+          <div className="bg-slate-100 p-3 md:p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-6">
+              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
+              <div className="flex gap-4 items-center pr-0 md:pr-6">
                 <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
                   <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="accent-[#2B4C3E]" />
                   <span className="text-sm font-bold text-slate-700">Hàng Nhà</span>
@@ -1187,11 +1225,25 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
 
           {/* SƠ ĐỒ ÁO/QUẦN (PLT) - dùng chiều dài sơ đồ để tự tính định mức kg/SP */}
-          <div className="bg-[#F5F0FF] p-5 rounded-lg border border-violet-200/80 shadow-sm mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-violet-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
-              <div className="text-xs text-violet-700 font-medium">
-                Tổng SP/sơ đồ: <b>{soSpTrongSoDo || "—"}</b> (theo tỉ lệ size {tiLeSize})
+          <div className="bg-[#F3E8FC] p-5 rounded-lg border border-purple-200/80 shadow-sm mt-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+              <h2 className="text-xl font-bold text-purple-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
+              <div className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-md border border-purple-200">
+                <span className="text-sm font-bold text-purple-800">Phụ trách sơ đồ:</span>
+                <select 
+                  className="px-2 py-1 text-sm border border-purple-300 rounded font-semibold text-purple-900 focus:outline-none bg-white min-w-[150px]"
+                  value={phuTrachSoDo}
+                  onChange={e => setPhuTrachSoDo(e.target.value)}
+                >
+                  <option value="">-- Chọn NV phụ trách --</option>
+                  {REAL_NHAN_VIEN.filter(nv => nv.boPhan.includes("Sản xuất") || nv.boPhan.includes("Kỹ thuật")).map(nv => (
+                    <option key={nv.ma} value={nv.ma}>{nv.ten}</option>
+                  ))}
+                  {/* Fallback nếu không có NV nào thoả điều kiện lọc thì hiện hết */}
+                  {REAL_NHAN_VIEN.map(nv => (
+                    <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>
@@ -1544,6 +1596,110 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             <div className="mt-3">
               <textarea rows={2} placeholder="Nhập ghi chú cho bên in/thêu (vd: kích thước, vị trí in, màu in, chất liệu)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-y" value={ghiChuInTheu} onChange={e => setGhiChuInTheu(e.target.value)} />
             </div>
+
+            {/* THÔNG TIN GIA CÔNG IN/THÊU */}
+            <div className="mt-4 pt-4 border-t border-orange-200/50">
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+                {loaiSP?.toLowerCase().includes("bo") && (
+                  <div className="flex items-center gap-4 bg-white px-3 py-1.5 rounded-md border border-orange-200 shrink-0">
+                    <span className="text-sm font-bold text-orange-800">In/Thêu cho:</span>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer font-medium"><input type="radio" name="loaiInTheu" checked={loaiInTheu === "bo"} onChange={() => {
+                      setLoaiInTheu("bo");
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        if (idx >= 0) {
+                          next[idx].id = "in_theu";
+                          next[idx].tenCongDoan = "In/Thêu";
+                        }
+                        return next as any;
+                      });
+                    }} /> Nguyên bộ</label>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer font-medium"><input type="radio" name="loaiInTheu" checked={loaiInTheu === "ao"} onChange={() => {
+                      setLoaiInTheu("ao");
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        if (idx >= 0) {
+                          next[idx].id = "in_theu_ao";
+                          next[idx].tenCongDoan = "In/Thêu Áo";
+                        }
+                        return next as any;
+                      });
+                    }} /> Chỉ Áo</label>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer font-medium"><input type="radio" name="loaiInTheu" checked={loaiInTheu === "quan"} onChange={() => {
+                      setLoaiInTheu("quan");
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        if (idx >= 0) {
+                          next[idx].id = "in_theu_quan";
+                          next[idx].tenCongDoan = "In/Thêu Quần";
+                        }
+                        return next as any;
+                      });
+                    }} /> Chỉ Quần</label>
+                  </div>
+                )}
+                
+                <div className="flex-1 bg-orange-50 border-2 border-orange-300 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm w-full">
+                  <span className="text-sm font-black text-orange-800 whitespace-nowrap">
+                    GIA CÔNG IN/THÊU{loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
+                  </span>
+                  <select 
+                    className="flex-1 min-w-0 px-2 py-1.5 border border-orange-300 rounded text-sm focus:outline-none bg-white font-semibold text-orange-900"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id?.startsWith("in_theu"))?.nguoiMa || ""}
+                    onChange={e => {
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                        const selectedVal = e.target.value;
+                        const nv = REAL_NHAN_VIEN.find(n => n.ma === selectedVal);
+                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === selectedVal);
+                        const selectedTen = nv?.ten || dt?.tenDonVi || selectedVal;
+
+                        if (idx >= 0) {
+                          next[idx] = { ...next[idx], nguoiMa: selectedVal, nguoiTen: selectedTen };
+                        } else {
+                          // Thêm mới nếu chưa có
+                          next.push({
+                            id: loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? "in_theu_ao" : loaiInTheu === "quan" ? "in_theu_quan" : "in_theu") : "in_theu",
+                            tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? "In/Thêu Áo" : loaiInTheu === "quan" ? "In/Thêu Quần" : "In/Thêu") : "In/Thêu",
+                            loaiNguoi: "xuong_ngoai",
+                            nguoiMa: selectedVal,
+                            nguoiTen: selectedTen,
+                            donGia: 0,
+                            soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra"
+                          });
+                        }
+                        return next as any;
+                      });
+                    }}
+                  >
+                     <option value="">-- Chọn NV/Xưởng --</option>
+                     {getDoiTuongOptions("In/Thêu", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                  </select>
+                  <div className="flex items-center gap-1 w-full md:w-auto">
+                    <span className="text-xs font-bold text-orange-700">Đơn giá:</span>
+                    <input 
+                      type="number" min={0}
+                      placeholder="0" 
+                      className="w-full md:w-28 px-2 py-1.5 border border-orange-300 rounded text-sm text-right font-bold tabular-nums text-orange-900"
+                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id?.startsWith("in_theu"))?.donGia || ""}
+                      onChange={e => {
+                        setPhanCong(p => {
+                          const next = [...(p as any[])];
+                          const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
+                          if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                          return next as any;
+                        });
+                      }}
+                    />
+                    <span className="text-xs font-bold text-orange-700">đ</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* KHỐI 2: MÀU SẮC, VẢI, NGUYÊN PHỤ LIỆU */}
@@ -1556,16 +1712,109 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                </div>
             </div>
 
+            {/* THÔNG TIN GIA CÔNG MAY (ÁO / QUẦN) */}
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              {/* Box Áo */}
+              <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
+                <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG ÁO:</span>
+                <select 
+                  className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                  value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.nguoiMa || ""}
+                  onChange={e => {
+                    setPhanCong(p => {
+                      const next = [...(p as any[])];
+                      const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                      if (idx >= 0) {
+                        const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                        next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                      }
+                      return next as any;
+                    });
+                  }}
+                >
+                   <option value="">-- Chọn NV/Xưởng --</option>
+                   {getDoiTuongOptions("May Áo", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                </select>
+                <div className="flex items-center gap-1 w-full md:w-auto">
+                  <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
+                  <input 
+                    type="number" min={0}
+                    placeholder="0" 
+                    className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.donGia || ""}
+                    onChange={e => {
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                        if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                        return next as any;
+                      });
+                    }}
+                  />
+                  <span className="text-xs font-bold text-emerald-700">đ</span>
+                </div>
+              </div>
+
+              {/* Box Quần (Chỉ hiện nếu là hàng Bộ) */}
+              {loaiSP?.toLowerCase().includes("bo") && (
+                <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
+                  <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG QUẦN:</span>
+                  <select 
+                    className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.nguoiMa || ""}
+                    onChange={e => {
+                      setPhanCong(p => {
+                        const next = [...(p as any[])];
+                        const idx = next.findIndex(k => k.id === "mayQuan");
+                        if (idx >= 0) {
+                          const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                          const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                          next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                        }
+                        return next as any;
+                      });
+                    }}
+                  >
+                     <option value="">-- Chọn NV/Xưởng --</option>
+                     {getDoiTuongOptions("May Quần", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                  </select>
+                  <div className="flex items-center gap-1 w-full md:w-auto">
+                    <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
+                    <input 
+                      type="number" min={0}
+                      placeholder="0" 
+                      className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
+                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.donGia || ""}
+                      onChange={e => {
+                        setPhanCong(p => {
+                          const next = [...(p as any[])];
+                          const idx = next.findIndex(k => k.id === "mayQuan");
+                          if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                          return next as any;
+                        });
+                      }}
+                    />
+                    <span className="text-xs font-bold text-emerald-700">đ</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Grid Thẻ Màu Sắc */}
-            <div className="grid grid-cols-1 gap-6 mb-6">
+            <div className="grid grid-cols-1 gap-4 md:gap-6 mb-6">
               {dsMau.map((mau, idx) => {
                 const isBo = loaiSP?.toLowerCase().includes("bo");
+                const accent = MAU_CARD_ACCENT[idx % MAU_CARD_ACCENT.length];
                 return (
-                <div key={idx} className="bg-white rounded-lg shadow-md p-5 flex flex-col md:flex-row gap-6 border border-slate-200/60">
-                  
+                <div key={idx} className={`${accent.tint} ${accent.ring} rounded-lg shadow-md p-3 md:p-5 flex flex-col md:flex-row gap-4 md:gap-6 border border-slate-200/60 border-l-4 ${accent.stripe} focus-within:ring-2 transition-shadow`}>
+
                   {/* Left: Image */}
                   <div className="w-full md:w-[320px] shrink-0 flex flex-col gap-3">
-                    <div className="text-sm font-bold text-[#2B4C3E] uppercase tracking-wide border-b border-slate-100 pb-1">Màu {idx + 1}</div>
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${accent.badge} text-white text-xs font-black shrink-0`}>{idx + 1}</span>
+                      <span className="text-sm font-bold text-[#2B4C3E] uppercase tracking-wide">Màu {idx + 1}</span>
+                    </div>
                     <input
                       type="text"
                       className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold"
@@ -1620,16 +1869,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         </div>
                       )}
                     </div>
-                    {/* Nút tạo mockup bằng AI - MiniMax image-01 */}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); openAiMockup(idx); }}
-                      data-testid={`btn-ai-mockup-${idx}`}
-                      className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-xs font-bold rounded hover:from-violet-600 hover:to-fuchsia-600 transition-all shadow-sm"
-                    >
-                      <Wand2 className="w-3.5 h-3.5" />
-                      Tạo mockup bằng AI
-                    </button>
+
 
                     {/* Thêm vật tư nhanh ngay tại card màu này (trước đây chỉ có 1 nút chung ở cuối form, phải cuộn xa) */}
                     <div className="flex gap-1.5">
@@ -1718,273 +1958,324 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     })()}
                   </div>
 
-                    {/* Right: Details & Sizes */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-4">
-                    <div className="flex gap-2">
-                      <div className="w-full">
-                        <label className="text-[10px] font-bold text-slate-500 mb-1 block">Mã SKU Biến Thể</label>
-                        <input 
-                          type="text"
-                          className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold text-emerald-700" 
-                          placeholder="VD: SP001-DEN"
-                          value={mau.maSKU || ""}
-                          onChange={(e) => {
-                            const next = [...dsMau]; next[idx].maSKU = e.target.value; setDsMau(next);
-                          }}
-                        />
-                      </div>
-                    </div>
-                    {isBo ? (
-                      <div className="flex gap-2">
-                        <div className="w-1/2 p-2 bg-blue-50/50 rounded border border-blue-100 flex flex-col gap-2">
-                          <div>
-                            <div className="text-[10px] font-bold text-blue-700 mb-1">ÁO - Kho Vải</div>
-                            <select 
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.maVai}
-                              onChange={(e) => {
-                                const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                              }}
-                            >
-                              <option value="">-- Chọn vải --</option>
-                              {KHO_VAI.map((kv) => (
-                                <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/áo):</div>
-                            <input 
-                              type="number" step="0.01"
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.dinhMuc}
-                              onChange={(e) => {
-                                const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <div className="w-1/2 p-2 bg-rose-50/50 rounded border border-rose-100 flex flex-col gap-2">
-                          <div>
-                            <div className="text-[10px] font-bold text-rose-700 mb-1">QUẦN - Kho Vải</div>
-                            <select 
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.maVaiQuan || ""}
-                              onChange={(e) => {
-                                const next = [...dsMau]; next[idx].maVaiQuan = e.target.value; setDsMau(next);
-                              }}
-                            >
-                              <option value="">-- Chọn vải --</option>
-                              {KHO_VAI.map((kv) => (
-                                <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/quần):</div>
-                            <input 
-                              type="number" step="0.01"
-                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                              value={mau.dinhMucQuan || ""}
-                              onChange={(e) => {
-                                const next = [...dsMau]; next[idx].dinhMucQuan = parseFloat(e.target.value) || 0; setDsMau(next);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 mb-1 block">Kho Vải Chính</label>
-                          <select 
-                            className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                            value={mau.maVai}
-                            onChange={(e) => {
-                              const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                            }}
-                          >
-                            <option value="">-- Chọn vải --</option>
-                            {KHO_VAI.map((kv) => (
-                              <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/sp):</label>
-                          <input 
-                            type="number" step="0.01"
-                            className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                            value={mau.dinhMuc}
-                            onChange={(e) => {
-                              const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
-                            }}
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Màu phối - chỉ TÊN MÀU (không gắn mã vải), tham khảo, KHÔNG tính định mức/tiền vải */}
-                    <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded p-2">
-                      <div className="flex flex-wrap items-center justify-between mb-1.5 gap-2">
-                        <label className="text-[10px] font-bold text-fuchsia-700">Màu phối (tham khảo, không tính định mức)</label>
-                        <select
-                          className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[160px]"
-                          value=""
-                          onChange={(e) => {
-                            const ten = e.target.value;
-                            if (!ten) return;
-                            const next = [...dsMau];
-                            const dsHienTai = next[idx].mauPhoi || [];
-                            if (!dsHienTai.includes(ten)) {
-                              next[idx].mauPhoi = [...dsHienTai, ten];
-                              setDsMau(next);
-                            }
-                            e.target.value = "";
-                          }}
-                        >
-                          <option value="">+ Thêm màu phối...</option>
-                          {NHOM_MAU.map((nhom) => (
-                            <optgroup key={nhom} label={nhom}>
-                              {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
-                                <option key={sw.id} value={sw.ten}>{sw.ten}</option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
-                        {(mau.mauPhoi || []).map((ten, mpIdx) => (
-                          <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
-                            {ten}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = [...dsMau];
-                                next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
-                                setDsMau(next);
-                              }}
-                              className="hover:text-fuchsia-950"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
-                      <input
-                        type="number"
-                        className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800"
-                        value={mau.slDuKien || ""}
-                        placeholder="VD: 125"
-                        onChange={(e) => {
-                          const newVal = parseInt(e.target.value) || 0;
-                          const next = [...dsMau]; 
-                          next[idx].slDuKien = newVal; 
-                          setDsMau(next);
-                          
-                          // Cập nhật Tổng SL
-                          const newTongSL = next.reduce((sum, m) => sum + (m.slDuKien || 0), 0);
-                          setTongSL(newTongSL);
-                          
-                          // Cập nhật số lượng vật tư của màu này
-                          setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
-                        }}
-                      />
-                      {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
-                        const duoi = Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo;
-                        const tren = duoi + soSpTrongSoDo;
-                        return (
-                          <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
-                            <span>⚠️ {mau.slDuKien} chưa khớp bội số tỉ lệ ({soSpTrongSoDo}/lượt), hệ thống sẽ không tự phá tỉ lệ. Chọn số gần nhất:</span>
-                            <button type="button" onClick={() => { 
-                              const next = [...dsMau]; 
-                              next[idx].slDuKien = duoi; 
-                              setDsMau(next); 
-                              setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
-                              setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: duoi } : p));
-                            }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{duoi}</button>
-                            <button type="button" onClick={() => { 
-                              const next = [...dsMau]; 
-                              next[idx].slDuKien = tren; 
-                              setDsMau(next); 
-                              setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
-                              setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: tren } : p));
-                            }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{tren}</button>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
-                      <div className="bg-slate-50 p-2 rounded border border-slate-200">
-                        <div className="text-[10px] font-bold text-slate-500 mb-2 flex items-center justify-between">
-                          <span>Tự động bung size theo tỉ lệ:</span>
-                          {mau.phanBoSize && mau.phanBoSize.length > 0 && (
-                            <span className={`font-bold ${(mau.phanBoSize.reduce((s, p) => s + p.sl, 0)) !== (mau.slDuKien || 0) ? "text-amber-600" : "text-emerald-600"}`}>
-                              Tổng đã chia: {mau.phanBoSize.reduce((s, p) => s + p.sl, 0)}/{mau.slDuKien || 0}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {mau.phanBoSize && mau.phanBoSize.map(pb => (
-                             <div key={pb.size} className="flex flex-col items-center bg-white border rounded p-1 w-12">
-                               <span className="text-[10px] font-bold text-slate-400">{pb.size}</span>
-                               <span className="text-sm font-bold text-slate-700">{pb.sl}</span>
-                             </div>
-                          ))}
-                          {(!mau.phanBoSize || mau.phanBoSize.length === 0) && <span className="text-xs text-slate-400">Nhập SL Dự kiến để chia size...</span>}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col bg-amber-50/50 p-2 rounded border border-amber-200/50">
-                        <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
-                        <textarea 
-                          className="w-full flex-1 px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
-                          placeholder="Nhập ghi chú kỹ thuật riêng cho màu này..."
-                          value={mau.ghiChu || ""}
-                          onChange={(e) => {
-                            const next = [...dsMau]; 
-                            next[idx].ghiChu = e.target.value; 
-                            setDsMau(next);
-                          }}
-                        />
-                      </div>
-                    </div>
+                  {/* Right: Details & Sizes */}
+                  {(() => {
+                    // Pre-calculate prices
+                    const v = KHO_VAI.find(x => x.maVT === mau.maVai);
+                    const donGia = v ? (v.donGia || 0) : 0;
+                    let tienVaiAo1SP = mau.dinhMuc * donGia;
                     
-                    {/* BỔ SUNG GIÁ TIỀN VẢI MÀU NÀY */}
-                    {(() => {
-                      const v = KHO_VAI.find(x => x.maVT === mau.maVai);
-                      const donGia = v ? (v.donGia || 0) : 0;
-                      let tienVai1SP = mau.dinhMuc * donGia;
-                      
-                      let vQuan = null;
-                      if (isBo && mau.maVaiQuan) {
-                        vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
-                        const donGiaQuan = vQuan ? (vQuan.donGia || 0) : 0;
-                        tienVai1SP += (mau.dinhMucQuan || 0) * donGiaQuan;
-                      }
-                      
-                      const tongTienVaiMau = tienVai1SP * (mau.slDuKien || 0);
-                      return (
-                        <div className="flex gap-2 mt-1">
-                          <div className="w-1/2 bg-amber-50 p-2 rounded border border-amber-200">
+                    let vQuan = null;
+                    let tienVaiQuan1SP = 0;
+                    if (isBo && mau.maVaiQuan) {
+                      vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
+                      const donGiaQuan = vQuan ? (vQuan.donGia || 0) : 0;
+                      tienVaiQuan1SP = (mau.dinhMucQuan || 0) * donGiaQuan;
+                    }
+                    
+                    const tienVai1SP = tienVaiAo1SP + tienVaiQuan1SP;
+                    const tongTienVaiMau = tienVai1SP * (mau.slDuKien || 0);
+
+                    return (
+                      <div className={`flex-1 min-w-0 grid grid-cols-1 ${isBo ? 'lg:grid-cols-2' : ''} gap-6`}>
+                        {/* CỘT 1: Áo và Thông tin dùng chung */}
+                        <div className="flex flex-col gap-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 mb-1 block">Mã SKU Biến Thể</label>
+                            <input 
+                              type="text"
+                              className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold text-emerald-700" 
+                              placeholder="VD: SP001-DEN"
+                              value={mau.maSKU || ""}
+                              onChange={(e) => {
+                                const next = [...dsMau]; next[idx].maSKU = e.target.value; setDsMau(next);
+                              }}
+                            />
+                          </div>
+
+                          {isBo ? (
+                            <div className="p-2 bg-blue-50/50 rounded border border-blue-200 flex flex-col gap-2">
+                              <div>
+                                <div className="text-[10px] font-bold text-blue-700 mb-1">ÁO - Kho Vải</div>
+                                <select 
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.maVai}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
+                                  }}
+                                >
+                                  <option value="">-- Chọn vải --</option>
+                                  {KHO_VAI.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/áo):</div>
+                                <input 
+                                  type="number" step="0.01"
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.dinhMuc}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
+                                  }}
+                                />
+                              </div>
+                              <div className="mt-2 p-1.5 bg-fuchsia-50/60 border border-fuchsia-200 rounded">
+                                <label className="text-[10px] font-bold text-fuchsia-700 block mb-1">Màu phối (tham khảo, không tính định mức)</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
+                                  {(mau.mauPhoi || []).map((ten, mpIdx) => (
+                                    <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                                      {ten}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const next = [...dsMau];
+                                          next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
+                                          setDsMau(next);
+                                        }}
+                                        className="hover:text-fuchsia-950"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">Kho Vải Chính</label>
+                                <select 
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.maVai}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
+                                  }}
+                                >
+                                  <option value="">-- Chọn vải --</option>
+                                  {KHO_VAI.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/sp):</label>
+                                <input 
+                                  type="number" step="0.01"
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.dinhMuc}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].dinhMuc = parseFloat(e.target.value) || 0; setDsMau(next);
+                                  }}
+                                />
+                              </div>
+                              <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded p-2">
+                                <div className="flex flex-wrap items-center justify-between mb-1.5 gap-2">
+                                  <label className="text-[10px] font-bold text-fuchsia-700">Màu phối (tham khảo, không tính định mức)</label>
+                                  <select
+                                    className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[160px]"
+                                    value=""
+                                    onChange={(e) => {
+                                      const ten = e.target.value;
+                                      if (!ten) return;
+                                      const next = [...dsMau];
+                                      const dsHienTai = next[idx].mauPhoi || [];
+                                      if (!dsHienTai.includes(ten)) {
+                                        next[idx].mauPhoi = [...dsHienTai, ten];
+                                        setDsMau(next);
+                                      }
+                                      e.target.value = "";
+                                    }}
+                                  >
+                                    <option value="">+ Thêm màu phối...</option>
+                                    {NHOM_MAU.map((nhom) => (
+                                      <optgroup key={nhom} label={nhom}>
+                                        {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                          <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
+                                  {(mau.mauPhoi || []).map((ten, mpIdx) => (
+                                    <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                                      {ten}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const next = [...dsMau];
+                                          next[idx].mauPhoi = (next[idx].mauPhoi || []).filter((_, i) => i !== mpIdx);
+                                          setDsMau(next);
+                                        }}
+                                        className="hover:text-fuchsia-950"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
+                            <input
+                              type="number"
+                              className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800"
+                              value={mau.slDuKien || ""}
+                              placeholder="VD: 125"
+                              onChange={(e) => {
+                                const newVal = parseInt(e.target.value) || 0;
+                                const next = [...dsMau]; 
+                                next[idx].slDuKien = newVal; 
+                                setDsMau(next);
+                                
+                                // Cập nhật Tổng SL
+                                const newTongSL = next.reduce((sum, m) => sum + (m.slDuKien || 0), 0);
+                                setTongSL(newTongSL);
+                                
+                                // Cập nhật số lượng vật tư của màu này
+                                setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
+                              }}
+                            />
+                            {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
+                              const duoi = Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo;
+                              const tren = duoi + soSpTrongSoDo;
+                              return (
+                                <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
+                                  <span>⚠️ {mau.slDuKien} chưa khớp bội số tỉ lệ ({soSpTrongSoDo}/lượt). Chọn số gần nhất:</span>
+                                  <button type="button" onClick={() => { 
+                                    const next = [...dsMau]; 
+                                    next[idx].slDuKien = duoi; 
+                                    setDsMau(next); 
+                                    setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
+                                    setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: duoi } : p));
+                                  }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{duoi}</button>
+                                  <button type="button" onClick={() => { 
+                                    const next = [...dsMau]; 
+                                    next[idx].slDuKien = tren; 
+                                    setDsMau(next); 
+                                    setTongSL(next.reduce((sum, m) => sum + (m.slDuKien || 0), 0));
+                                    setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: tren } : p));
+                                  }} className="px-2 py-0.5 rounded bg-white border border-amber-400 font-bold hover:bg-amber-100">{tren}</button>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          <div className="bg-slate-50 p-2 rounded border border-slate-200">
+                            <div className="text-[10px] font-bold text-slate-500 mb-2 flex items-center justify-between">
+                              <span>Tự động bung size theo tỉ lệ:</span>
+                              {mau.phanBoSize && mau.phanBoSize.length > 0 && (
+                                <span className={`font-bold ${(mau.phanBoSize.reduce((s, p) => s + p.sl, 0)) !== (mau.slDuKien || 0) ? "text-amber-600" : "text-emerald-600"}`}>
+                                  Tổng đã chia: {mau.phanBoSize.reduce((s, p) => s + p.sl, 0)}/{mau.slDuKien || 0}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {mau.phanBoSize && mau.phanBoSize.map(pb => (
+                                 <div key={pb.size} className="flex flex-col items-center bg-white border rounded p-1 w-12">
+                                   <span className="text-[10px] font-bold text-slate-400">{pb.size}</span>
+                                   <span className="text-sm font-bold text-slate-700">{pb.sl}</span>
+                                 </div>
+                              ))}
+                              {(!mau.phanBoSize || mau.phanBoSize.length === 0) && <span className="text-xs text-slate-400">Nhập SL Dự kiến để chia size...</span>}
+                            </div>
+                          </div>
+
+                          <div className="bg-amber-50 p-2 rounded border border-amber-200">
                             <div className="text-[10px] font-bold text-amber-700">Giá vải / 1 SP {isBo ? "(Áo+Quần)" : ""}</div>
                             <div className="text-sm font-bold text-amber-900">{formatVND(tienVai1SP)}</div>
                           </div>
-                          <div className="w-1/2 bg-emerald-50 p-2 rounded border border-emerald-200">
+                        </div>
+
+                        {/* CỘT 2: Quần và Thông tin Bổ sung (Ghi chú, Tổng tiền) */}
+                        <div className="flex flex-col gap-4">
+                          {isBo && (
+                            <div className="p-2 bg-rose-50/50 rounded border border-rose-200 flex flex-col gap-2">
+                              <div>
+                                <div className="text-[10px] font-bold text-rose-700 mb-1">QUẦN - Kho Vải</div>
+                                <select 
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.maVaiQuan || ""}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].maVaiQuan = e.target.value; setDsMau(next);
+                                  }}
+                                >
+                                  <option value="">-- Chọn vải --</option>
+                                  {KHO_VAI.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/quần):</div>
+                                <input 
+                                  type="number" step="0.01"
+                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
+                                  value={mau.dinhMucQuan || ""}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; next[idx].dinhMucQuan = parseFloat(e.target.value) || 0; setDsMau(next);
+                                  }}
+                                />
+                              </div>
+                              <div className="mt-2">
+                                <select
+                                  className="text-[11px] px-2 py-1.5 border border-fuchsia-200 rounded bg-white w-full font-medium text-fuchsia-800 focus:outline-none focus:border-fuchsia-400 shadow-sm"
+                                  value=""
+                                  onChange={(e) => {
+                                    const ten = e.target.value;
+                                    if (!ten) return;
+                                    const next = [...dsMau];
+                                    const dsHienTai = next[idx].mauPhoi || [];
+                                    if (!dsHienTai.includes(ten)) {
+                                      next[idx].mauPhoi = [...dsHienTai, ten];
+                                      setDsMau(next);
+                                    }
+                                    e.target.value = "";
+                                  }}
+                                >
+                                  <option value="">+ Thêm màu phối...</option>
+                                  {NHOM_MAU.map((nhom) => (
+                                    <optgroup key={nhom} label={nhom}>
+                                      {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                        <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                      ))}
+                                    </optgroup>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex flex-col flex-1 bg-amber-50/50 p-2 rounded border border-amber-200/50">
+                            <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
+                            <textarea 
+                              className="w-full flex-1 px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
+                              placeholder="Nhập ghi chú kỹ thuật riêng cho màu này..."
+                              value={mau.ghiChu || ""}
+                              onChange={(e) => {
+                                const next = [...dsMau]; 
+                                next[idx].ghiChu = e.target.value; 
+                                setDsMau(next);
+                              }}
+                            />
+                          </div>
+
+                          <div className="bg-emerald-50 p-2 rounded border border-emerald-200">
                             <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này</div>
                             <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}</div>
                           </div>
                         </div>
-                      );
-                    })()}
-
-                  </div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 );
               })}

@@ -78,7 +78,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Không thể tự xoá tài khoản của chính mình" }, { status: 400 });
   }
   try {
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+    const { error } = await supabaseAdmin.from("users").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ success: true });
   } catch (error: any) {

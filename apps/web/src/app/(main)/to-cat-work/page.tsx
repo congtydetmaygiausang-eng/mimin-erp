@@ -461,7 +461,7 @@ export default function CongViecCatPage() {
                               donGia: 30000, // Giá trị mặc định 30k/SP, kế toán có thể điều chỉnh sau
                               soLuongGiao: -tongDuCat,
                               ngayGiao: new Date().toISOString().slice(0, 10),
-                            });
+                            } as any);
                             toast.success(`Đã tự động tạo lệnh phạt ${tongDuCat} SP vào bảng Công Nợ Tổ Cắt.`);
                           } else {
                             toast.error("Không tìm thấy thông tin Tổ Cắt trong hệ thống để phạt tiền.");

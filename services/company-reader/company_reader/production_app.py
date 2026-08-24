@@ -35,7 +35,9 @@ def create_production_app(environment: dict[str, str] | None = None) -> CompanyR
             health_check_interval=30,
             decode_responses=False,
         )
-        client.ping()
+        # Bỏ client.ping() ở đây vì Render khởi động song song 2 dịch vụ, 
+        # Redis có thể chưa sẵn sàng ngay lập tức.
+        # redis-py sẽ tự động kết nối (retry) khi có request tới.
     except Exception:
         app = create_app_from_env(env)
         return replace(app, configuration_error="REDIS_UNAVAILABLE")

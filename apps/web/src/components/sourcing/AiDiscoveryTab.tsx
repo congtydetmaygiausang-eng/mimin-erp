@@ -12,6 +12,30 @@ import { supabase } from "@/lib/supabase/client";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
 import { runCompanyReaderShadow } from "@/lib/company-reader-shadow";
+import React from "react";
+
+// Trình render Markdown gọn nhẹ (không cần thư viện) cho Chatbox
+const SimpleMarkdown = ({ content }: { content: string }) => {
+  const parseLine = (line: string, index: number) => {
+    let html = line
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") // sanitize
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold
+      .replace(/\*(.*?)\*/g, "<em>$1</em>") // italic
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-brand-600 underline hover:text-brand-800">$1</a>'); // link
+
+    if (html.startsWith("- ") || html.startsWith("* ")) {
+      return <li key={index} dangerouslySetInnerHTML={{ __html: html.substring(2) }} className="ml-4 list-disc" />;
+    } else if (html.match(/^\d+\.\s/)) {
+      return <li key={index} dangerouslySetInnerHTML={{ __html: html.replace(/^\d+\.\s/, "") }} className="ml-4 list-decimal" />;
+    } else if (html.startsWith("### ")) {
+      return <h4 key={index} dangerouslySetInnerHTML={{ __html: html.substring(4) }} className="font-bold mt-2 mb-1" />;
+    } else if (html.startsWith("## ")) {
+      return <h3 key={index} dangerouslySetInnerHTML={{ __html: html.substring(3) }} className="text-lg font-bold mt-3 mb-1 text-brand-700" />;
+    }
+    return <p key={index} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} className={html ? "mb-1" : "mb-2"} />;
+  };
+  return <div className="text-sm leading-relaxed">{content.split("\n").map(parseLine)}</div>;
+};
 
 const HCM_DISTRICTS = [
   "Quận 1", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 8", "Quận 10", "Quận 11", "Quận 12",
@@ -66,7 +90,7 @@ interface SearchCache {
   resultCriteria: SearchCriteriaSnapshot|null;
 }
 
-interface SearchDiagnostics { requestedRadiusKm?:number;effectiveRadiusKm?:number;radiusEscalated?:boolean;executedQueries?:string[];plannedQueries?:number;executedTavilyQueries?:number;normalizationBatches?:number;normalizationSourceLimit?:number;collectedSources:number;normalizedCandidates:number;directoryCandidates?:number;supplementedCandidates?:number;finalCandidates:number;exactCandidates?:number;relatedCandidates?:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;locationBreakdown?:{inside:number;outside:number;unknown:number;conflict:number};strictExcluded?:number;strictLocationFallback?:boolean;enrichmentSources?:number;enrichedCandidates?:number;companyReaderEnrichmentSources?:number;rejectedNoiseCandidates?:number;qualityGate?:{strong:number;review:number;weak:number;conflicts:number;averageScore:number};qualificationGate?:{qualified:number;needsVerification:number;incomplete:number;missingPhone:number;missingAddress:number;missingTaxCode:number;individualSellerSuspected:number;entityTypeUnknown:number};geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number;persistentHits?:number;staleFallbacks?:number;providerRequests?:number};locationQuality?:{runId:string;algorithmVersion:string;grade:"HIGH"|"MEDIUM"|"LOW";coordinateCoveragePercent:number;staleFallbackUsed:boolean;warnings:string[];evaluatedAt:string};providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED"|"SKIPPED";count:number;code?:string}> }
+interface SearchDiagnostics { requestedRadiusKm?:number;effectiveRadiusKm?:number;radiusEscalated?:boolean;discoveryExpanded?:boolean;discoveryExpansionRadiusKm?:number|null;executedQueries?:string[];plannedQueries?:number;executedTavilyQueries?:number;normalizationBatches?:number;normalizationSourceLimit?:number;collectedSources:number;normalizedCandidates:number;directoryCandidates?:number;supplementedCandidates?:number;finalCandidates:number;exactCandidates?:number;relatedCandidates?:number;verified:number;partial:number;insideRadius:number;unknownCoordinates:number;coordinateConflicts?:number;locationBreakdown?:{inside:number;outside:number;unknown:number;conflict:number};strictExcluded?:number;strictLocationFallback?:boolean;enrichmentSources?:number;enrichedCandidates?:number;companyReaderEnrichmentSources?:number;rejectedNoiseCandidates?:number;qualityGate?:{strong:number;review:number;weak:number;conflicts:number;averageScore:number};qualificationGate?:{qualified:number;needsVerification:number;incomplete:number;missingPhone:number;missingAddress:number;missingTaxCode:number;individualSellerSuspected:number;entityTypeUnknown:number};geocoding?:{attempted:number;verified:number;rejected:number;retainedFromSource:number;persistentHits?:number;staleFallbacks?:number;providerRequests?:number};locationQuality?:{runId:string;algorithmVersion:string;grade:"HIGH"|"MEDIUM"|"LOW";coordinateCoveragePercent:number;staleFallbackUsed:boolean;warnings:string[];evaluatedAt:string};providers:Array<{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED"|"SKIPPED";count:number;code?:string}> }
 
 function SearchProgressModal({ loading }: { loading: boolean }) {
   const [step, setStep] = useState(0);
@@ -124,8 +148,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [verifyingLocation, setVerifyingLocation] = useState("");
   const [savingCard, setSavingCard] = useState("");
   const [radiusKm, setRadiusKm] = useState(20);
+  const [locationMode, setLocationMode] = useState<"PREFER" | "STRICT">("PREFER");
   const [entityTypeFilter, setEntityTypeFilter] = useState<"ALL" | "COMPANY" | "HOUSEHOLD_BUSINESS">("ALL");
-  const locationMode = "PREFER" as const;
   const [selectedResultKeys, setSelectedResultKeys] = useState<Set<string>>(new Set());
   const [center, setCenter] = useState<{latitude:number;longitude:number;accuracy?:number}|null>(null);
   const [resolvedCenter, setResolvedCenter] = useState<ResolvedSearchCenter|null>(null);
@@ -133,7 +157,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [diagnostics, setDiagnostics] = useState<SearchDiagnostics|null>(null);
   const [resultCriteria, setResultCriteria] = useState<SearchCriteriaSnapshot|null>(null);
   const [cacheReady,setCacheReady]=useState(false);
-  const [chatBubbles,setChatBubbles]=useState<Array<{role:"user"|"assistant";content:string}>>([]);
+  const [chatBubbles,setChatBubbles]=useState<Array<{role:"user"|"assistant"|"error";content:string;payload?:string}>>([]);
   const [chatInput,setChatInput]=useState("");
   const [chatLoading,setChatLoading]=useState(false);
   const chatRequestId=useRef(0);
@@ -197,7 +221,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         void runCompanyReaderShadow(candidates.map((candidate) => candidate.sourceUrl)).then((readerShadow) => {
           if (shadowRequestId.current !== currentShadowRequestId || !diagnostics) return;
           setDiagnostics({ ...diagnostics, providers: [...diagnostics.providers, {
-            name: "Trafilatura shadow",
+            name: "Jina Reader shadow",
             status: readerShadow.status === "SHADOW_PROCESSED" ? "OK" : readerShadow.status === "DISABLED" ? "DISABLED" : "ERROR",
             count: readerShadow.sourceCount,
             code: readerShadow.code,
@@ -241,7 +265,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     if (!trimmed || chatLoading) return;
     const currentRequestId = chatRequestId.current + 1;
     chatRequestId.current = currentRequestId;
-    const history = chatBubbles.slice(-6);
+    const history = chatBubbles.filter(b => b.role !== "error").map(b => ({ role: b.role, content: b.content })).slice(-6);
     setChatBubbles((current) => [...current, { role: "user", content: trimmed }]);
     setChatLoading(true);
     try {
@@ -266,8 +290,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "AI Search Agent gặp lỗi";
-      toast.error(message);
-      if (chatRequestId.current === currentRequestId) setChatBubbles((current) => [...current, { role: "assistant", content: `Xin lỗi, có lỗi xảy ra: ${message}` }]);
+      if (chatRequestId.current === currentRequestId) setChatBubbles((current) => [...current, { role: "error", content: `Xin lỗi, có lỗi xảy ra: ${message}`, payload: trimmed }]);
     } finally {
       if (chatRequestId.current === currentRequestId) setChatLoading(false);
     }
@@ -321,7 +344,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     finally { setVerifyingLocation(""); }
   };
   const currentCombinedQuery = [query, manualKeyword].filter(Boolean).join(", ").trim();
-  const resultRadiusKm = resultCriteria?.radiusKm ?? radiusKm;
+  const resultRadiusKm = diagnostics?.effectiveRadiusKm ?? resultCriteria?.radiusKm ?? radiusKm;
   const resultsAreStale = Boolean(directResults.length && (!resultCriteria || resultCriteria.query !== currentCombinedQuery || resultCriteria.location !== location.trim() || resultCriteria.role !== role || resultCriteria.radiusKm !== radiusKm));
   const locationSections = [
     { status: "INSIDE", title: `Trong bán kính ${resultRadiusKm} km`, description: "Đã xác minh tọa độ · xếp từ gần đến xa" },
@@ -332,6 +355,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const directResultSections = ([
     { tier: "EXACT", prefix: "Đúng năng lực · đủ điều kiện" },
     { tier: "RELATED", prefix: "Ứng viên liên quan · cần xác minh" },
+    { tier: "NOISE", prefix: "Không đủ hồ sơ công ty (Bị loại)" },
   ] as const).flatMap((tier) => locationSections.map((section) => ({
     ...section,
     key: `${tier.tier}-${section.status}`,
@@ -342,7 +366,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   return <div className="space-y-5 animate-fade-in">
     {resultsAreStale&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"><b>Đây là kết quả của lần tìm trước.</b> Anh đã thay đổi năng lực, khu vực hoặc bán kính; hãy bấm <b>Tìm tự động</b> để chạy lại. Kết quả cũ không được gắn nhãn theo bộ lọc mới.</div>}
     {learningSummary&&<div className="text-xs px-1 opacity-70">{learningSummary.applied?`AI đang học từ ${learningSummary.approvedCount} kết quả đã duyệt và ${learningSummary.rejectedCount} kết quả đã loại.`:`Cần ít nhất 3 quyết định duyệt/loại để AI bắt đầu học. Hiện có ${learningSummary.approvedCount+learningSummary.rejectedCount}.`}</div>}
-    {diagnostics?.radiusEscalated&&<div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900 inline-flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5 shrink-0"/>Chưa đủ kết quả gần trong {diagnostics.requestedRadiusKm} km nên AI đã tự mở rộng bán kính lên <b>{diagnostics.effectiveRadiusKm} km</b>.</div>}
+    {diagnostics?.discoveryExpanded&&<div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900 inline-flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5 shrink-0"/>Chưa đủ hồ sơ ở vòng tìm chính nên AI đã chạy thêm Tavily/Brave tại các khu vực lân cận đến <b>{diagnostics.discoveryExpansionRadiusKm} km</b>.</div>}
+    {diagnostics?.radiusEscalated&&<div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900 inline-flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5 shrink-0"/>Kết quả đã được xếp lại theo bán kính thực tế <b>{diagnostics.effectiveRadiusKm} km</b>.</div>}
     {diagnostics?.locationQuality&&<div className={`rounded-lg border px-3 py-2 text-xs ${diagnostics.locationQuality.grade==="HIGH"?"border-emerald-300 bg-emerald-50 text-emerald-900":diagnostics.locationQuality.grade==="MEDIUM"?"border-amber-300 bg-amber-50 text-amber-900":"border-red-300 bg-red-50 text-red-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><b>Chất lượng định vị: {diagnostics.locationQuality.grade==="HIGH"?"Cao":diagnostics.locationQuality.grade==="MEDIUM"?"Trung bình":"Thấp"} · phủ tọa độ {diagnostics.locationQuality.coordinateCoveragePercent}%</b><span className="font-mono text-[10px]">Mã lượt: {diagnostics.locationQuality.runId.slice(0,8)} · {diagnostics.locationQuality.algorithmVersion}</span></div>{diagnostics.locationQuality.warnings.length>0&&<ul className="mt-1 list-disc pl-4">{diagnostics.locationQuality.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul>}</div>}
     {diagnostics&&<div className="card p-4 space-y-3">{diagnostics.executedQueries&&diagnostics.executedQueries.length>0&&<div className="rounded-lg border bg-brand-50/50 p-3 text-xs" style={{borderColor:"var(--border)"}}><b className="block mb-1.5 text-brand-800">Từ khóa AI đã sinh ra & gửi cho tìm kiếm:</b><div className="flex flex-wrap gap-1.5">{diagnostics.executedQueries.map(q=><span key={q} className="rounded bg-white px-2 py-1 border text-brand-900 shadow-sm" style={{borderColor:"var(--border)"}}>{q}</span>)}</div></div>}<div className="flex flex-wrap gap-2">{diagnostics.providers.map(item=><span key={item.name} className="text-xs rounded-full border px-3 py-1" style={{borderColor:"var(--border)"}}>{item.name}: {item.status==="OK"?`${item.count} nguồn`:item.status==="EMPTY"?"không có kết quả":item.status==="DISABLED"?"chưa cấu hình":item.status==="SKIPPED"?"bỏ qua (đã đủ dữ liệu)":`tạm lỗi${item.code?` (${item.code})`:""}`}</span>)}{typeof diagnostics.enrichmentSources==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Làm giàu: {diagnostics.enrichmentSources} nguồn · bổ sung {diagnostics.enrichedCandidates??0} hồ sơ</span>}{Boolean(diagnostics.directoryCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-indigo-300 text-indigo-700">Vét danh bạ: +{diagnostics.directoryCandidates} hồ sơ</span>}{Boolean(diagnostics.supplementedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-cyan-300 text-cyan-700">Trích xuất trực tiếp: +{diagnostics.supplementedCandidates} hồ sơ</span>}{typeof diagnostics.exactCandidates==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Đúng năng lực: {diagnostics.exactCandidates}</span>}{Boolean(diagnostics.relatedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-amber-300 text-amber-700">Liên quan cần xác minh: {diagnostics.relatedCandidates}</span>}{Boolean(diagnostics.rejectedNoiseCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-slate-300 text-slate-600">Đã loại {diagnostics.rejectedNoiseCandidates} kết quả không đủ hồ sơ công ty</span>}{diagnostics.geocoding&&<span className="text-xs rounded-full border px-3 py-1 border-sky-300 text-sky-700">Định vị: xác minh {diagnostics.geocoding.verified+diagnostics.geocoding.retainedFromSource}/{diagnostics.geocoding.attempted+diagnostics.geocoding.retainedFromSource} hồ sơ</span>}</div>{diagnostics.qualityGate&&<div className="rounded-lg border bg-brand-500/5 p-3 text-xs" style={{borderColor:"var(--border)"}}><div className="flex flex-wrap items-center justify-between gap-2"><b className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-brand-700"/>Cổng chất lượng hồ sơ · trung bình {diagnostics.qualityGate.averageScore}/100</b><div className="flex flex-wrap gap-2"><span className="text-emerald-700">Mạnh {diagnostics.qualityGate.strong}</span><span className="text-amber-700">Cần duyệt {diagnostics.qualityGate.review}</span><span className="text-slate-600">Yếu {diagnostics.qualityGate.weak}</span><span className="text-red-700">Xung đột {diagnostics.qualityGate.conflicts}</span></div></div></div>}{diagnostics.strictLocationFallback&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Chưa có hồ sơ nào đủ tọa độ để xác nhận trong {radiusKm} km. Hệ thống đang hiển thị hồ sơ chưa có tọa độ để anh kiểm tra; các hồ sơ này không được tính là nằm trong bán kính.</div>}<div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center"><div><b>{diagnostics.collectedSources}</b><p className="text-[11px] opacity-60">Nguồn thu thập</p></div><div><b>{diagnostics.finalCandidates}</b><p className="text-[11px] opacity-60">Hồ sơ sau gộp</p></div><div><b>{diagnostics.verified}</b><p className="text-[11px] opacity-60">Đối chiếu nhiều nguồn</p></div><div><b>{diagnostics.partial}</b><p className="text-[11px] opacity-60">Đối chiếu một phần</p></div><div><b>{diagnostics.insideRadius}</b><p className="text-[11px] opacity-60">Trong bán kính</p></div><div><b>{diagnostics.unknownCoordinates}</b><p className="text-[11px] opacity-60">Thiếu tọa độ</p></div></div></div>}
     <div className="card p-5 space-y-4 relative z-20">
@@ -375,8 +400,13 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
             </div>
           )}
         </label>
-        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100].map(value=><option key={value} value={value}>{value} km</option>)}</select></label>
-        <label className="text-xs font-medium">Chế độ<div className="input mt-1 flex items-center">Ưu tiên gần · mở rộng nếu thiếu</div></label>
+        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100,9999].map(value=><option key={value} value={value}>{value === 9999 ? "Không giới hạn" : `${value} km`}</option>)}</select></label>
+        <label className="text-xs font-medium">Chế độ
+          <select className="input mt-1" value={locationMode} onChange={(e) => setLocationMode(e.target.value as "PREFER" | "STRICT")}>
+            <option value="PREFER">Ưu tiên gần · mở rộng nếu thiếu</option>
+            <option value="STRICT">Chỉ tìm chính xác khu vực này</option>
+          </select>
+        </label>
         <div className="flex flex-col gap-1 justify-end">
           <button type="button" className={`btn-secondary inline-flex justify-center items-center gap-2 ${locationType === "GPS" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`} onClick={locationType === "GPS" ? cancelCurrentLocation : useCurrentLocation}>
             <Navigation className="w-4 h-4"/>{locationType === "GPS" ? "Đang dùng GPS • Hủy" : "Vị trí hiện tại"}
@@ -445,7 +475,26 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         {chatBubbles.map((bubble, index) => (
           <div key={index} className={`flex items-start gap-2 text-sm ${bubble.role === "user" ? "justify-end" : ""}`}>
             {bubble.role === "assistant" && <Bot className="w-4 h-4 mt-0.5 shrink-0 text-brand-600" />}
-            <div className={`rounded-xl px-3 py-2 max-w-[85%] ${bubble.role === "user" ? "bg-brand-500 text-white" : "bg-slate-100 dark:bg-white/10"}`}>{bubble.content}</div>
+            {bubble.role === "error" && <X className="w-4 h-4 mt-0.5 shrink-0 text-red-500" />}
+            <div className={`rounded-xl px-3 py-2 max-w-[85%] ${
+              bubble.role === "user" ? "bg-brand-500 text-white" : 
+              bubble.role === "error" ? "bg-red-50 text-red-700 border border-red-200" : 
+              "bg-slate-100 dark:bg-white/10"
+            }`}>
+              {bubble.role === "user" ? bubble.content : <SimpleMarkdown content={bubble.content} />}
+              {bubble.role === "error" && bubble.payload && (
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setChatBubbles(curr => curr.filter((_, i) => i !== index));
+                    void sendChat(bubble.payload!);
+                  }}
+                  className="mt-2 text-xs font-medium bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1.5 rounded-md transition-colors"
+                >
+                  Thử lại
+                </button>
+              )}
+            </div>
             {bubble.role === "user" && <UserIcon className="w-4 h-4 mt-0.5 shrink-0 opacity-60" />}
           </div>
         ))}

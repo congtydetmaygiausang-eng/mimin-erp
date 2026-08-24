@@ -6,8 +6,9 @@
 import { useState } from "react";
 import { ShieldCheck, CheckCircle2, XCircle, ClipboardCheck, History, RotateCcw, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
-import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat, type LichSuQCItem } from "@/lib/data/lenh-cat-store";
+import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat, type LichSuQCItem, type MauVai } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
+import { ghepAoQuanTheoSize } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 
@@ -101,8 +102,22 @@ export default function UiQCPage() {
     } catch (e: any) { toast.error(e.message); }
   };
 
+  // Với hàng Bộ: mỗi màu cần đã nhập SL đạt theo từng size cho CẢ May áo lẫn
+  // May quần (qua modal bấm vào màu) mới ghép được đúng. Trả về null cho màu
+  // nào chưa đủ dữ liệu size - dùng để chặn xác nhận + gợi ý người dùng.
+  function tinhGhepBoLenhCat(lc: LenhCat) {
+    const ds = (lc.dsMau || []) as MauVai[];
+    const perMau = ds.map((mau) => ({
+      mau,
+      ket: ghepAoQuanTheoSize(mau.tyLeSizeChiTiet?.["may_ao"], mau.tyLeSizeChiTiet?.["may_quan"]),
+    }));
+    const chuaSanSang = perMau.filter((x) => !x.ket.chinhXacTheoSize).map((x) => x.mau.ten);
+    const tongGhep = perMau.reduce((s, x) => s + x.ket.tongGhep, 0);
+    return { perMau, chuaSanSang, tongGhep, sanSang: chuaSanSang.length === 0 && perMau.length > 0 };
+  }
+
   // Khi tất cả các khâu May đã được QC duyệt (hoan_thanh), nhấn nút này để chốt toàn bộ khâu QC
-  function handleHoanTatQC(lc: any) {
+  function handleHoanTatQC(lc: LenhCat) {
     const qcPC = lc.phanCong?.find((pc: any) => pc.id === "qc");
     if (!qcPC) return;
 
@@ -110,26 +125,55 @@ export default function UiQCPage() {
     if (mayPCs.length === 0) return;
 
     const isBo = lc.loaiLenh?.toLowerCase().includes("bo") || mayPCs.length > 1;
-    let slQC = 0;
-    if (isBo) {
-      slQC = Math.min(...mayPCs.map((pc: any) => pc.soLuongHoanThanh || 0));
-    } else {
-      slQC = mayPCs[0]?.soLuongHoanThanh || 0;
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (!isBo) {
+      const slQC = mayPCs[0]?.soLuongHoanThanh || 0;
+      capNhatCongDoan(lc.id, qcPC.id, {
+        trangThaiCD: "hoan_thanh",
+        soLuongHoanThanh: slQC,
+        soLuongDatCuoi: slQC,
+        lichSuNhapSL: [{ ngay: today, loai: "qc_dat", soLuong: slQC, nguoiNhap: user?.name, ghiChu: "QC hoàn tất toàn bộ" }],
+      } as any);
+      toast.success(`🎉 Lệnh cắt ${lc.id} đã hoàn tất QC. Chuyển sang Hoàn Thiện!`);
+      return;
     }
+
+    // Hàng Bộ: ghép Áo+Quần theo từng size của TỪNG MÀU (không so tổng toàn
+    // lệnh cắt như trước) - xem ghepAoQuanTheoSize trong cong-doan-helper.ts.
+    const { perMau, chuaSanSang, tongGhep, sanSang } = tinhGhepBoLenhCat(lc);
+    if (!sanSang) {
+      toast.error(`Chưa thể Ghép Bộ: màu ${chuaSanSang.join(", ")} chưa nhập đủ SL đạt theo size cho cả Áo và Quần. Bấm vào từng màu ở trên để nhập.`);
+      return;
+    }
+
+    const newDsMau: MauVai[] = (lc.dsMau || []).map((mau) => {
+      const found = perMau.find((x) => x.mau.ten === mau.ten);
+      if (!found) return mau;
+      return {
+        ...mau,
+        tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), qc: found.ket.ghepSizes },
+        aoDuTheoSize: found.ket.aoDuSizes,
+        quanDuTheoSize: found.ket.quanDuSizes,
+      };
+    });
+    suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+
+    const chiTietMauQC = perMau.map((x) => ({
+      mau: x.mau.ten,
+      soLuongNhan: x.ket.tongGhep,
+      soLuongDat: x.ket.tongGhep,
+      soLuongLoi: 0,
+    }));
 
     capNhatCongDoan(lc.id, qcPC.id, {
       trangThaiCD: "hoan_thanh",
-      soLuongHoanThanh: slQC,
-      soLuongDatCuoi: slQC,
-      lichSuNhapSL: [{
-        ngay: new Date().toISOString().slice(0, 10),
-        loai: "qc_dat",
-        soLuong: slQC,
-        nguoiNhap: user?.name,
-        ghiChu: isBo ? "QC xác nhận ghép bộ thành công" : "QC hoàn tất toàn bộ",
-      }]
-    });
-    toast.success(`🎉 Lệnh cắt ${lc.id} đã hoàn tất QC. Chuyển sang Hoàn Thiện!`);
+      soLuongHoanThanh: tongGhep,
+      soLuongDatCuoi: tongGhep,
+      chiTietMau: chiTietMauQC,
+      lichSuNhapSL: [{ ngay: today, loai: "qc_dat", soLuong: tongGhep, nguoiNhap: user?.name, ghiChu: "QC xác nhận Ghép Bộ theo size thành công" }],
+    } as any);
+    toast.success(`🎉 Lệnh cắt ${lc.id} đã ghép Bộ xong (${tongGhep} bộ). Chuyển sang Hoàn Thiện!`);
   }
 
   // QC xác nhận ĐẠT cho 1 công đoạn may cụ thể
@@ -171,7 +215,7 @@ export default function UiQCPage() {
       soLuongPhePham: slLoi,
       lichSuQC: newLichSuQC,
       lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat", ghiChu: `QC lần ${lanKiem} – Hoàn tất (tích lũy ${slDatTichLuy} SP → Cộng CN)` }],
-    });
+    } as any);
 
     toast.success(`✅ QC Hoàn Tất: ${pc.tenCongDoan} – ${slDatTichLuy} SP đạt → Cộng vào Công Nợ${slLoi > 0 ? ` · ${slLoi} SP phế phẩm` : ""}`);
 
@@ -215,7 +259,7 @@ export default function UiQCPage() {
         ...(slDat > 0 ? [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat" as const, ghiChu: `QC lần ${lanKiem} – Đạt tạm (chờ sửa lỗi xong mới cộng CN)` }] : []),
         { ngay: today, nguoiNhap: user?.name, soLuong: slLoi, loai: "tra_loi" as const, ghiChu: `QC lần ${lanKiem} – Trả lỗi về ${khauGayLoi[key] || "Tổ May"}` },
       ],
-    });
+    } as any);
 
     const msg = slDat > 0
       ? `⚠️ Trả lỗi: ${slLoi} SP lỗi → Tổ May sửa · ${slDat} SP đạt tạm (chờ hoàn tất mới cộng CN)`
@@ -242,7 +286,7 @@ export default function UiQCPage() {
       capNhatCongDoan(lc.id, pc.id, {
         soLuongLoi: 0, // Không còn chờ xử lý lỗi nữa
         lichSuQC: newLichSuQC,
-      });
+      } as any);
 
       // Tạo giao dịch phạt
       themPhanCong({
@@ -253,7 +297,7 @@ export default function UiQCPage() {
         donGia: pc.donGia || 30000, // Lấy giá gia công hoặc mặc định
         soLuongGiao: -lastLichSu.slLoi,
         ngayGiao: today,
-      });
+      } as any);
 
       toast.success(`Đã hủy ${lastLichSu.slLoi} hàng lỗi quá hạn và tạo lệnh trừ tiền.`);
     }
@@ -582,23 +626,100 @@ export default function UiQCPage() {
                       );
                     }
 
+                    if (allMayDone && isBo) {
+                      const { perMau, chuaSanSang, tongGhep, sanSang } = tinhGhepBoLenhCat(lc);
+
+                      if (!sanSang) {
+                        return (
+                          <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-6 space-y-3">
+                            <div className="flex items-center gap-2 justify-center text-amber-800 font-black text-lg">
+                              <AlertTriangle className="w-6 h-6" /> Chưa đủ dữ liệu để Ghép Bộ theo size
+                            </div>
+                            <p className="text-sm text-amber-700 font-bold text-center max-w-md mx-auto leading-relaxed">
+                              Cần nhập SL đạt theo từng size cho <b>cả Áo và Quần</b> của các màu sau — bấm vào từng màu ở khung ảnh phía trên để nhập:
+                            </p>
+                            <div className="flex flex-wrap gap-2 justify-center">
+                              {chuaSanSang.map((ten) => (
+                                <span key={ten} className="text-xs font-black px-3 py-1 rounded-full bg-amber-200 text-amber-800">{ten}</span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-4">
+                          <div className="text-emerald-700 font-black text-lg text-center">👕👖 Đã đủ dữ liệu — Ghép Bộ theo Size</div>
+                          <div className="space-y-3">
+                            {perMau.map(({ mau, ket }) => (
+                              <div key={mau.ten} className="bg-white rounded-lg border border-emerald-200 overflow-hidden">
+                                <div className="px-3 py-1.5 bg-emerald-100/60 text-xs font-black text-emerald-800">{mau.ten} · Ghép được {ket.tongGhep}</div>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-slate-500 text-[10px] uppercase">
+                                        <th className="text-left px-3 py-1">Size</th>
+                                        <th className="text-right px-2 py-1">Áo đạt</th>
+                                        <th className="text-right px-2 py-1">Quần đạt</th>
+                                        <th className="text-right px-2 py-1">Ghép được</th>
+                                        <th className="text-right px-2 py-1">Áo dư</th>
+                                        <th className="text-right px-3 py-1">Quần dư</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {ket.ghepSizes.map((g) => {
+                                        const ao = mau.tyLeSizeChiTiet?.["may_ao"]?.find((s) => s.size === g.size)?.sl || 0;
+                                        const quan = mau.tyLeSizeChiTiet?.["may_quan"]?.find((s) => s.size === g.size)?.sl || 0;
+                                        const aoDu = ket.aoDuSizes.find((s) => s.size === g.size)?.sl || 0;
+                                        const quanDu = ket.quanDuSizes.find((s) => s.size === g.size)?.sl || 0;
+                                        return (
+                                          <tr key={g.size} className="border-t border-slate-100">
+                                            <td className="px-3 py-1 font-bold">{g.size}</td>
+                                            <td className="text-right px-2 py-1">{ao}</td>
+                                            <td className="text-right px-2 py-1">{quan}</td>
+                                            <td className="text-right px-2 py-1 font-black text-emerald-700">{g.sl}</td>
+                                            <td className={`text-right px-2 py-1 ${aoDu > 0 ? "text-amber-600 font-bold" : "text-slate-300"}`}>{aoDu || "–"}</td>
+                                            <td className={`text-right px-3 py-1 ${quanDu > 0 ? "text-amber-600 font-bold" : "text-slate-300"}`}>{quanDu || "–"}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {(perMau.some((x) => x.ket.aoDuSizes.length > 0 || x.ket.quanDuSizes.length > 0)) && (
+                            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center font-bold">
+                              ⚠️ Có size dư 1 bên (Áo hoặc Quần) chưa ghép được thành Bộ — số dư này KHÔNG được tính vào {tongGhep} bộ ghép, cần kiểm tra lại tổ May.
+                            </p>
+                          )}
+                          <div className="text-center">
+                            <button
+                              onClick={() => handleHoanTatQC(lc)}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
+                            >
+                              <Package className="w-5 h-5" />
+                              Xác nhận Ghép {tongGhep} Bộ → Chuyển Ủi
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     if (allMayDone) {
                       return (
                         <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-4">
-                          <div className="text-emerald-700 font-black text-lg">
-                            {isBo ? "👕👖 Đã hoàn thành duyệt cả Bộ!" : "✅ Đã kiểm tra hoàn tất!"}
-                          </div>
+                          <div className="text-emerald-700 font-black text-lg">✅ Đã kiểm tra hoàn tất!</div>
                           <p className="text-sm text-emerald-600 font-bold max-w-sm mx-auto leading-relaxed">
-                            {isBo
-                              ? "Tất cả các khâu gia công (Áo và Quần) đã đạt QC. Bấm xác nhận ghép bộ để gửi sang Hoàn Thiện."
-                              : "QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện."}
+                            QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện.
                           </p>
                           <button
                             onClick={() => handleHoanTatQC(lc)}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
                           >
                             <Package className="w-5 h-5" />
-                            {isBo ? "Xác nhận Ghép Bộ → Chuyển Ủi" : "Chốt QC → Chuyển Ủi"}
+                            Chốt QC → Chuyển Ủi
                           </button>
                         </div>
                       );

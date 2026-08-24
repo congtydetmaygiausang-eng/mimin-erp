@@ -66,16 +66,32 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: "Supabase service role chưa cấu hình" }, { status: 500 });
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) {
+      return NextResponse.json({ error: "Supabase URL hoặc Anon Key chưa cấu hình" }, { status: 500 });
     }
 
     const payload = await request.json();
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: request.headers.get("Authorization") || "" } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
     const record = toSupabaseEmployeeRecord(payload);
+
+    // Xử lý tự động tính số thứ tự (stt) để tránh lỗi trùng khóa chính (Primary Key)
+    if (record.ma_nv) {
+      const { data: existing } = await supabase.from("nhan_su").select("stt").eq("ma_nv", record.ma_nv).single();
+      if (existing) {
+        // Đang update: giữ nguyên stt cũ
+        record.stt = existing.stt;
+      } else {
+        // Đang insert: tìm stt lớn nhất hiện tại
+        const { data: maxData } = await supabase.from("nhan_su").select("stt").order("stt", { ascending: false }).limit(1);
+        const maxStt = (maxData && maxData.length > 0) ? maxData[0].stt : 0;
+        record.stt = maxStt + 1;
+      }
+    }
 
     const { error } = await supabase.from("nhan_su").upsert(record, { onConflict: "ma_nv" });
     if (error) {
