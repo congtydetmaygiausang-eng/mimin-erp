@@ -353,7 +353,11 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         }
         
         if (toolsData.results) {
-          setDirectResults(toolsData.results.candidates || []);
+          const fetchedCandidates = toolsData.results.candidates || [];
+          if (searchCall && fetchedCandidates.length === 0) {
+            toast.warning("API trả về 0 kết quả hợp lệ. AI có thể sẽ tự sinh ra kết quả ảo.");
+          }
+          setDirectResults(fetchedCandidates);
           setDirectProvider((toolsData.results.provider || []).join("+"));
           setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
         }
