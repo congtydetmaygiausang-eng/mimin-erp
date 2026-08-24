@@ -278,17 +278,19 @@ async function executeToolCall(
       console.error("[mimin-group-agent] internal DB check failed:", error);
     }
 
-    const searchResults = await Promise.all(
-      roles.map((role) =>
-        runSourcingSearch(
+    const searchResults = [];
+    for (const role of roles) {
+      try {
+        const res = await runSourcingSearch(
           { query: queryText, location, role, radiusKm, entryPoint: "AGENT_CHAT", rawQueryText: `[AI Agent] ${queryText} tại ${location}`, locationPriority: true },
           auth.sourcingAuth,
-        ).catch((error) => {
-          console.error(`[mimin-group-agent] search_partners role=${role} failed:`, error);
-          return null;
-        }),
-      ),
-    );
+        );
+        searchResults.push(res);
+      } catch (error) {
+        console.error(`[mimin-group-agent] search_partners role=${role} failed:`, error);
+        searchResults.push(null);
+      }
+    }
 
     const merged: TurnResult[] = [];
     const diagnosticsList: unknown[] = [];
@@ -581,19 +583,26 @@ export async function POST(req: NextRequest) {
         // Gửi ký tự khoảng trắng mỗi 2 giây để giữ kết nối HTTP luôn mở
         // lách qua mọi giới hạn proxy timeout của Vercel
         const encoder = new TextEncoder();
+        let isClosed = false;
         const intervalId = setInterval(() => {
-          controller.enqueue(encoder.encode(" "));
+          if (isClosed) return;
+          try {
+            controller.enqueue(encoder.encode(" "));
+          } catch (e) {
+            // stream may be already closed
+          }
         }, 2000);
 
         try {
           const result = await aiWork();
-          controller.enqueue(encoder.encode(JSON.stringify(result)));
+          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify(result)));
         } catch (error) {
           console.error("[mimin-group-agent-chat] aiWork error:", error);
-          controller.enqueue(encoder.encode(JSON.stringify({ error: error instanceof Error ? error.message : "AI Search Agent gặp lỗi" })));
+          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify({ error: error instanceof Error ? error.message : "AI Search Agent gặp lỗi" })));
         } finally {
+          isClosed = true;
           clearInterval(intervalId);
-          controller.close();
+          try { controller.close(); } catch (e) {}
         }
       }
     });
