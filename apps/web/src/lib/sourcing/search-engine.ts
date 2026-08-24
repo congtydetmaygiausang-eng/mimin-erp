@@ -1121,12 +1121,12 @@ async function searchBrave(queries: string[]): Promise<SourceResult[]> {
 async function searchSerper(queries: string[]): Promise<SourceResult[]> {
   const key = process.env.SERPER_API_KEY;
   if (!key) return [];
-  const batches = await Promise.allSettled(queries.slice(0, 10).map(async (searchQuery) => {
+  const batches = await Promise.allSettled(queries.slice(0, 16).map(async (searchQuery) => {
     const response = await fetch("https://google.serper.dev/search", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-API-KEY": key },
-      body: JSON.stringify({ q: `${searchQuery} Việt Nam`, gl: "vn", hl: "vi", num: 10 }),
-      signal: AbortSignal.timeout(12_000),
+      body: JSON.stringify({ q: `${searchQuery} Việt Nam`, gl: "vn", hl: "vi", num: 30 }),
+      signal: AbortSignal.timeout(20_000),
     });
     if (!response.ok) throw new Error(`Serper HTTP ${response.status}`);
     const data = await response.json() as { organic?: Array<{ title?: string; link?: string; snippet?: string }> };
@@ -1536,7 +1536,7 @@ async function searchGooglePlaces(query: string, location: string, queries: stri
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.businessStatus,places.location",
       },
       body: JSON.stringify({ textQuery: `${searchQuery}, Việt Nam`, languageCode: "vi", regionCode: "VN", maxResultCount: 20 }),
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(20_000),
     });
     if (modernResponse.ok) {
       const modernData = await modernResponse.json() as { places?: GooglePlaceNewResult[] };
@@ -1546,7 +1546,7 @@ async function searchGooglePlaces(query: string, location: string, queries: stri
 
     // Tương thích các project Google Cloud chỉ mới bật Places API (Legacy).
     const params = new URLSearchParams({ query: `${searchQuery}, Việt Nam`, key, language: "vi", region: "vn" });
-    const response = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`, { signal: AbortSignal.timeout(12_000) });
+    const response = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`, { signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`Google Places HTTP ${response.status}`);
     const data = await response.json() as { status?: string; error_message?: string; results?: GooglePlaceResult[] };
     if (data.status && !["OK", "ZERO_RESULTS"].includes(data.status)) throw new Error(`Google Places ${data.status}`);
@@ -1701,7 +1701,7 @@ async function searchSources(
     Gemini: geminiApiKeys().length ? 1 : 0,
     "Google Places": process.env.GOOGLE_MAPS_API_KEY ? Math.min(queries.length, 3) : 0,
     OpenAI: openAiApiKey() ? 1 : 0,
-    "Serper (Google)": process.env.SERPER_API_KEY ? Math.min(queries.length, 10) : 0,
+    "Serper (Google)": process.env.SERPER_API_KEY ? Math.min(queries.length, 16) : 0,
     OpenStreetMap: 1,
   };
 
