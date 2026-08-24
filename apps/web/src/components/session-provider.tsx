@@ -88,6 +88,59 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
     }
+    
+    // Lắng nghe thay đổi trạng thái từ Supabase (đặc biệt quan trọng cho OAuth/Google Login)
+    if (isSupabaseEnabled && supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          const appMeta = (session.user.app_metadata as Record<string, unknown>) || {};
+          const userMeta = (session.user.user_metadata as Record<string, unknown>) || {};
+          const role = String(appMeta.role || "user");
+          const name = String(userMeta.full_name || session.user.email?.split("@")[0] || "User");
+          const titles: Record<string, string> = {
+            admin: "Quản trị viên",
+            planner: "Chuyên viên kế hoạch",
+            warehouse: "Quản lý kho",
+            sewing: "Tổ trưởng may",
+            qc: "Kiểm tra chất lượng",
+            finishing: "Tổ trưởng hoàn thiện",
+            accountant: "Kế toán",
+          };
+          const u: AppUser = {
+            id: session.user.id,
+            email: session.user.email || "",
+            name,
+            role,
+            title: titles[role] || role,
+            source: "supabase",
+            maNV: userMeta.maNV as string | undefined,
+            phongBan: userMeta.phongBan as string | undefined,
+            donGia: userMeta.donGia as number | undefined,
+            laCongNhan: userMeta.laCongNhan as boolean | undefined,
+          };
+          
+          setUser(u);
+          setAuthSource("supabase");
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+          
+          // Điều hướng về dashboard nếu đang ở trang login
+          if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) {
+            const target = u.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
+            window.location.href = target;
+          }
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          setAuthSource("none");
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      });
+      
+      setLoading(false);
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+
     setLoading(false);
   }, []);
 
