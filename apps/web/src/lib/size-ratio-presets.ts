@@ -107,3 +107,45 @@ export const SIZE_RATIO_PRESETS: SizeRatioPreset[] = [
   ...SIZE_RATIO_5SIZE,
   ...SIZE_RATIO_4SIZE,
 ];
+
+/**
+ * Bảng tỉ lệ size do người dùng tự tạo (nút "+ Bảng size mới" trong form
+ * nhập kho) - lưu trong máy để dùng lại cho lần nhập sau, không lẫn với
+ * danh sách chuẩn ở trên.
+ */
+const CUSTOM_PRESETS_KEY = "mimin_size_ratio_custom_v1";
+
+export function loadCustomSizeRatioPresets(): SizeRatioPreset[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_PRESETS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function buildCustomSizeRatioPreset(
+  sizes: string[],
+  ratios: number[],
+  label?: string
+): SizeRatioPreset {
+  const value = ratios.join(":");
+  const riSo = ratios.reduce((a, b) => a + b, 0);
+  return {
+    id: `custom-${Date.now()}`,
+    label: label?.trim() || `${sizes.join(":")} = ${value} (Ri${riSo})`,
+    value,
+    sizes,
+    ratios,
+    riSo,
+    ghiChu: "Bảng tự tạo",
+  };
+}
+
+export function saveCustomSizeRatioPreset(preset: SizeRatioPreset): SizeRatioPreset[] {
+  const ds = [...loadCustomSizeRatioPresets(), preset];
+  if (typeof window !== "undefined") {
+    try { localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(ds)); } catch {}
+  }
+  return ds;
+}
