@@ -297,7 +297,14 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ messages }),
         });
-        const chatData = await chatResponse.json();
+        
+        let chatData;
+        const chatText = await chatResponse.text();
+        try {
+          chatData = JSON.parse(chatText);
+        } catch {
+          throw new Error(chatResponse.ok ? "Lỗi máy chủ: không nhận được JSON hợp lệ" : `Lỗi máy chủ (${chatResponse.status}): ${chatText.substring(0, 50)}...`);
+        }
         if (!chatResponse.ok) throw new Error(chatData.error ?? "AI Search Agent gặp lỗi proxy");
         
         const message = chatData.message;
@@ -320,7 +327,14 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ toolCalls: message.tool_calls, turnResults }),
         });
-        const toolsData = await toolsResponse.json();
+        
+        let toolsData;
+        const toolsText = await toolsResponse.text();
+        try {
+          toolsData = JSON.parse(toolsText);
+        } catch (err: any) {
+          throw new Error(`API công cụ trả về dữ liệu hỏng. Status: ${toolsResponse.status}. Raw text: "${toolsText}". Error: ${err.message}`);
+        }
         if (!toolsResponse.ok) throw new Error(toolsData.error ?? "Thực thi công cụ thất bại");
 
         turnResults = toolsData.turnResults || turnResults;

@@ -284,32 +284,58 @@ export async function POST(req: NextRequest) {
 
     const turnResults: TurnResult[] = body.turnResults;
     const toolMessages: Array<{ role: string; tool_call_id: string; content: string }> = [];
-    let aggregatedResults: ToolSearchResults | null = null;
-
-    for (const call of body.toolCalls) {
-      const name = call.function?.name ?? "";
-      let args: Record<string, unknown> = {};
-      try {
-        args = JSON.parse(call.function?.arguments || "{}");
-      } catch {
-        // ignore
+    const work = async () => {
+      let aggregatedResults: ToolSearchResults | null = null;
+      for (const call of body.toolCalls) {
+        const name = call.function?.name ?? "";
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(call.function?.arguments || "{}");
+        } catch {
+          // ignore
+        }
+        const execResult = await executeToolCall(name, args, auth, turnResults);
+        if (execResult.results) {
+          aggregatedResults = aggregatedResults
+            ? {
+                candidates: [...aggregatedResults.candidates, ...execResult.results.candidates],
+                diagnostics: [...aggregatedResults.diagnostics, ...execResult.results.diagnostics],
+                provider: [...aggregatedResults.provider, ...execResult.results.provider],
+              }
+            : execResult.results;
+        }
+        toolMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(execResult.toolMessageContent) });
       }
-      const execResult = await executeToolCall(name, args, auth, turnResults);
-      if (execResult.results) {
-        aggregatedResults = aggregatedResults
-          ? {
-              candidates: [...aggregatedResults.candidates, ...execResult.results.candidates],
-              diagnostics: [...aggregatedResults.diagnostics, ...execResult.results.diagnostics],
-              provider: [...aggregatedResults.provider, ...execResult.results.provider],
-            }
-          : execResult.results;
-      }
-      toolMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(execResult.toolMessageContent) });
-    }
+      return { toolMessages, turnResults, results: aggregatedResults };
+    };
 
-    return NextResponse.json({ toolMessages, turnResults, results: aggregatedResults });
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        let isClosed = false;
+        const intervalId = setInterval(() => {
+          if (isClosed) return;
+          try { controller.enqueue(encoder.encode(" ")); } catch (e) {}
+        }, 2000);
+
+        try {
+          const result = await work();
+          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify(result)));
+        } catch (error) {
+          console.error("[mimin-group-agent-tools] error:", error);
+          const errMsg = error instanceof Error ? error.message : "Thực thi tool thất bại";
+          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify({ error: errMsg })));
+        } finally {
+          isClosed = true;
+          clearInterval(intervalId);
+          try { controller.close(); } catch (e) {}
+        }
+      }
+    });
+
+    return new Response(stream, { headers: { "Content-Type": "application/json" } });
   } catch (error) {
-    console.error("[mimin-group-agent-tools] error:", error);
+    console.error("[mimin-group-agent-tools] outer error:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Thực thi tool thất bại" }, { status: 500 });
   }
 }
