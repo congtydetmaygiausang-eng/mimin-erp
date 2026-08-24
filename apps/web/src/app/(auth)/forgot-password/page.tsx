@@ -137,10 +137,10 @@ export default function ForgotPasswordPage() {
                   </button>
                 </form>
 
-                <div className="mt-6 flex items-center justify-center text-xs text-white/70">
+                <div className="mt-6 flex items-center justify-center text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <span>Đã nhớ mật khẩu?</span>
-                    <Link href="/login" className="text-brand-400 font-medium hover:text-brand-300 transition-colors">
+                    <Link href="/login" className="text-brand-500 font-medium hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition-colors">
                       Đăng nhập ngay
                     </Link>
                   </div>

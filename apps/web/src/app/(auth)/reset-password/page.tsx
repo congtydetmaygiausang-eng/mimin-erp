@@ -143,8 +143,8 @@ export default function ResetPasswordPage() {
               </button>
             </form>
             
-            <div className="mt-6 text-center text-xs text-white/70">
-              <Link href="/login" className="hover:text-white transition-colors">
+            <div className="mt-6 text-center text-xs text-muted-foreground">
+              <Link href="/login" className="hover:text-foreground transition-colors">
                 Quay lại đăng nhập
               </Link>
             </div>
