@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "rootDirectory": "apps/web",
   "buildCommand": "npm install --legacy-peer-deps && npm run build",
   "devCommand": "npm run dev",
   "installCommand": "echo 'install handled in buildCommand'",
