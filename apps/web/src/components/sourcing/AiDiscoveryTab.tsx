@@ -197,7 +197,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         void runCompanyReaderShadow(candidates.map((candidate) => candidate.sourceUrl)).then((readerShadow) => {
           if (shadowRequestId.current !== currentShadowRequestId || !diagnostics) return;
           setDiagnostics({ ...diagnostics, providers: [...diagnostics.providers, {
-            name: "Trafilatura shadow",
+            name: "Jina Reader shadow",
             status: readerShadow.status === "SHADOW_PROCESSED" ? "OK" : readerShadow.status === "DISABLED" ? "DISABLED" : "ERROR",
             count: readerShadow.sourceCount,
             code: readerShadow.code,

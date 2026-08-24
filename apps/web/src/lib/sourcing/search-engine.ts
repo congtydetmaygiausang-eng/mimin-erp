@@ -877,26 +877,16 @@ function balanceSearchQueries(queries: string[], fallback: string[], budget: num
 
 function fallbackQueryPlan(query: string, location: string, role: string, radiusKm: number): string[] {
   const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
-  const areas = radiusSearchAreas(location, radiusKm);
   const budget = queryBudgetForRadius(radiusKm);
-  const targetDirectories = ["trangvangvietnam.com", "nhungtrangvang.com"];
   const queries = Array.from(new Set([
     `${query} ${location}`,
+    `xưởng ${query} ${location}`,
+    `chuyên bán ${query} ${location}`,
     `công ty ${query} ${location}`,
-    `xưởng sản xuất ${query} tại ${location}`,
-    `nhà sản xuất ${query} ${location} website liên hệ`,
-    `công ty TNHH ${query} ${location}`,
-    `\"${query}\" \"${location}\" địa chỉ điện thoại`,
-    `${query} ${location} -site:trangvangvietnam.com -site:nhungtrangvang.com`,
-    ...areas.slice(1).flatMap((area, index) => [
-      `nhà cung cấp ${query} ở ${area}`,
-      index < 4 ? `xưởng ${query} ${area}` : "",
-    ]),
-    ...roleTerms.slice(0, 2).map((term, index) => `${term} ${query} tại ${areas[index % areas.length]}`),
-    `địa chỉ bán ${query} ${location}`,
-    `danh sách công ty ${query} ${location}`,
-    `${query} manufacturer ${location} Vietnam`,
-    ...targetDirectories.map((dir) => `công ty ${query} ${location} site:${dir}`),
+    `cửa hàng ${query} ${location}`,
+    `nhà cung cấp ${query} ${location}`,
+    `phân phối ${query} ${location}`,
+    `bán buôn ${query} ${location}`
   ].filter(Boolean)));
   return balanceSearchQueries(queries, [], budget);
 }
