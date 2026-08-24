@@ -1,12 +1,17 @@
 // ProductLibraryCard - Card compact cho thu vien (grid 3-4 cols)
 // 2026-08-07 - redesign theo sep Sang: layout "thu vien the card"
 // 2026-08-07 - them thong tin: trang thai, da ban, NCC, chat lieu, rating
-import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye } from "lucide-react";
+import { useState } from "react";
+import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye, ChevronDown } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
+import type { TonKhoTheoSize } from "@/lib/data/ton-kho-theo-mau";
 
 interface ProductLibraryCardProps {
   sp: SanPham;
+  /** Tồn kho thật theo màu (từ kho_thanh_pham) - key = tên màu. Không có
+   * nghĩa là chưa nhập kho màu đó, hiện 0 chứ không phải số giả. */
+  tonKhoTheoMau?: Record<string, TonKhoTheoSize>;
   onAddToCart?: (sp: SanPham) => void;
   onCreateOrder?: (sp: SanPham) => void;
   onProduceOrder?: (sp: SanPham) => void;
@@ -34,15 +39,23 @@ const LOAI_SP_LABELS: Record<string, { label: string; icon: string; color: strin
 
 export default function ProductLibraryCard({
   sp,
+  tonKhoTheoMau,
   onAddToCart,
   onCreateOrder,
   onProduceOrder,
   onFavorite,
   onClick,
 }: ProductLibraryCardProps) {
+  const [mauMoRong, setMauMoRong] = useState<string | null>(null);
   const topColors = (sp.dsMau || []).slice(0, 3);
   const soSize = (sp.bangSize?.sizes || []).length;
   const soMau = (sp.dsMau || []).length;
+  // Tổng số lượng thật toàn sản phẩm (cộng tất cả màu, tất cả size) - 0 nếu
+  // chưa có dữ liệu kho_thanh_pham cho mã SP này (chưa nhập kho, không phải lỗi).
+  const tongTonKho = Object.values(tonKhoTheoMau || {}).reduce(
+    (tong, sizes) => tong + sizes.reduce((s, x) => s + (x.sl || 0), 0),
+    0
+  );
   const trangThai = sp.trangThai || "con-hang";
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
@@ -145,67 +158,73 @@ export default function ProductLibraryCard({
           </p>
         )}
 
-        {/* === VARIANTS BLOCKS (HORIZONTAL - EXTRA LARGE) === */}
+        {/* === TÓM TẮT: Tổng tồn kho + danh sách màu/SKU (bấm để xem chi tiết) === */}
         {sp.dsMau && sp.dsMau.length > 0 ? (
-          <div className="flex flex-col gap-3 mb-4">
-            {sp.dsMau.slice(0, 4).map((mau, idx) => {
-              const sizes = (sp.bangSize?.sizes || []).slice(0, 5);
-              const items = sizes.map((s, i) => {
-                const ratio = sp.bangSize?.ratios[i] || parseInt(sp.tiLeSize?.split(":")[i] || "0") || 0;
-                // Deterministic mock stock so we can sum it up accurately
-                const stock = Math.floor(Math.abs(Math.sin((idx + 1) * (i + 1) * 10)) * 50) + 10;
-                return { s, ratio, stock };
-              });
-              const sumRatio = items.reduce((acc, curr) => acc + curr.ratio, 0);
-              const sumStock = items.reduce((acc, curr) => acc + curr.stock, 0);
-
-              return (
-                <div key={idx} className="flex items-center gap-2 md:gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                  
-                  {/* Extra Big Variant Image */}
-                  <div className="flex flex-col items-center shrink-0 w-[64px] md:w-[80px]">
+          <div className="mb-3">
+            {tonKhoTheoMau && (
+              <div className="flex items-center gap-1.5 mb-2 text-xs">
+                <Package className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-slate-500">Tổng tồn kho:</span>
+                <span className={`font-extrabold ${tongTonKho > 0 ? "text-emerald-600" : "text-slate-400"}`}>{tongTonKho}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {sp.dsMau.map((mau, idx) => {
+                const dangMo = mauMoRong === mau.ten;
+                const tonMau = tonKhoTheoMau?.[mau.ten];
+                const tongMau = (tonMau || []).reduce((s, x) => s + (x.sl || 0), 0);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setMauMoRong(dangMo ? null : mau.ten); }}
+                    className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-xs font-bold transition-colors ${dangMo ? "border-cyan-500 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"}`}
+                    title={mau.maSKU || mau.ten}
+                  >
                     {mau.img ? (
-                      <img src={mau.img} alt={mau.ten} className="w-14 h-14 md:w-20 md:h-20 rounded-xl object-cover border border-slate-200 shadow-sm" />
+                      <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
                     ) : (
-                      <div 
-                        className="w-14 h-14 md:w-20 md:h-20 rounded-xl border border-slate-200 shadow-sm"
+                      <span
+                        className="w-5 h-5 rounded-full border border-slate-200 shrink-0"
                         style={{ background: mau.ten === "Đen" ? "#1f2937" : mau.ten === "Trắng" ? "#f9fafb" : mau.ten?.toLowerCase().includes("xanh") ? "#0891b2" : mau.ten?.toLowerCase().includes("đỏ") || mau.ten?.toLowerCase().includes("hồng") ? "#ec4899" : mau.ten?.toLowerCase().includes("vàng") || mau.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }}
                       />
                     )}
-                    <span className="text-xs md:text-sm font-bold text-slate-700 uppercase mt-1 w-full text-center truncate">
-                      {mau.ten}
-                    </span>
-                  </div>
+                    <span className="truncate max-w-[70px]">{mau.ten}</span>
+                    {tonKhoTheoMau && <span className="text-slate-400 font-normal">· {tongMau}</span>}
+                    <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${dangMo ? "rotate-180" : ""}`} />
+                  </button>
+                );
+              })}
+            </div>
 
-                  {/* Extra Big Size Grid (Horizontal) */}
-                  <div className="flex gap-1.5 md:gap-2 overflow-x-auto pb-1 no-scrollbar flex-1 items-center">
-                    {items.map((item, i) => (
-                      <div key={i} className="flex flex-col items-center shrink-0 min-w-[32px] md:min-w-[44px]">
-                        <span className="w-full px-1 py-1 text-xs md:text-sm font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">
-                          {item.s}
-                        </span>
-                        <span className="w-full px-1 py-1 text-sm md:text-base font-extrabold bg-cyan-50 text-cyan-600 border border-slate-200 text-center">
-                          {item.ratio}
-                        </span>
-                        <span className="w-full px-1 py-1 text-sm md:text-base font-bold bg-emerald-50 text-emerald-600 border border-t-0 border-slate-200 rounded-b text-center">
-                          {item.stock}
-                        </span>
-                      </div>
-                    ))}
+            {/* Chi tiết size + tỉ lệ + SL thật của màu vừa bấm */}
+            {mauMoRong && (() => {
+              const mau = sp.dsMau!.find((m) => m.ten === mauMoRong);
+              if (!mau) return null;
+              const sizes = sp.bangSize?.sizes || [];
+              const tonMau = tonKhoTheoMau?.[mau.ten] || [];
+              return (
+                <div className="mt-2 p-2 rounded-lg border border-cyan-200 bg-cyan-50/50">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold text-cyan-800 uppercase">{mau.ten}{mau.maSKU ? ` · ${mau.maSKU}` : ""}</span>
+                    {!tonKhoTheoMau && <span className="text-[10px] text-amber-600 font-semibold">Chưa có dữ liệu kho</span>}
                   </div>
-
-                  {/* Total Sum Boxes */}
-                  <div className="flex flex-col gap-1.5 shrink-0 ml-1 mt-[26px]">
-                    <div className="flex items-center justify-center border-2 border-slate-900 rounded px-2 h-[26px] md:h-[30px] text-sm md:text-base font-extrabold text-slate-900 bg-white min-w-[36px] md:min-w-[48px] shadow-sm" title="Tổng tỉ lệ (Ri)">
-                      {sumRatio}
-                    </div>
-                    <div className="flex items-center justify-center border-2 border-slate-900 rounded px-2 h-[26px] md:h-[30px] text-sm md:text-base font-extrabold text-slate-900 bg-white min-w-[36px] md:min-w-[48px] shadow-sm" title="Tổng tồn kho">
-                      {sumStock}
-                    </div>
+                  <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                    {sizes.map((s, i) => {
+                      const ratio = sp.bangSize?.ratios[i] || parseInt(sp.tiLeSize?.split(":")[i] || "0") || 0;
+                      const sl = tonMau.find((x) => x.size === s)?.sl ?? 0;
+                      return (
+                        <div key={s} className="flex flex-col items-center shrink-0 min-w-[36px]" onClick={(e) => e.stopPropagation()}>
+                          <span className="w-full px-1 py-1 text-xs font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">{s}</span>
+                          <span className="w-full px-1 py-1 text-xs font-extrabold bg-white text-cyan-600 border border-slate-200 text-center" title="Tỉ lệ">{ratio}</span>
+                          <span className={`w-full px-1 py-1 text-xs font-bold border border-t-0 border-slate-200 rounded-b text-center ${sl > 0 ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"}`} title="Tồn kho thật">{sl}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
-            })}
+            })()}
           </div>
         ) : (
           <div className="mb-3">
@@ -217,9 +236,6 @@ export default function ProductLibraryCard({
                   </span>
                   <span className="min-w-[32px] px-1 py-0.5 text-[11px] font-extrabold bg-cyan-50 text-cyan-600 border border-slate-200 text-center" title="Tỉ lệ">
                     {sp.bangSize?.ratios[i] || sp.tiLeSize?.split(":")[i] || 0}
-                  </span>
-                  <span className="min-w-[32px] px-1 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-t-0 border-slate-200 rounded-b text-center" title="Tồn kho">
-                    {Math.floor(Math.random() * 50) + 10}
                   </span>
                 </div>
               ))}

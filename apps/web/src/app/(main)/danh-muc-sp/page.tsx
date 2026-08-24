@@ -21,6 +21,7 @@ import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, gener
 import { generateVariants } from "@/lib/data/product-variants";
 import type { Order, OrderItem } from "@/components/order-detail/types";
 import type { GioHangItem } from "@/lib/data/gio-hang-store";
+import { layTonKhoTheoSanPham, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
@@ -47,6 +48,7 @@ export default function DanhMucSanPhamPage() {
   const [orderFormInitial, setOrderFormInitial] = useState<Order | null>(null);
   const [orderFromCart, setOrderFromCart] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
 
   useEffect(() => {
     setMounted(true);
@@ -57,6 +59,7 @@ export default function DanhMucSanPhamPage() {
   // này sau khi đã ở trang khác sẽ thấy dữ liệu cũ, phải F5 mới cập nhật.
   useEffect(() => {
     refresh();
+    layTonKhoTheoSanPham().then(setTonKho).catch(() => setTonKho({}));
   }, [refresh]);
 
   const filtered = useMemo(() => {
@@ -383,6 +386,7 @@ export default function DanhMucSanPhamPage() {
               <ProductLibraryCard
                 key={sp.id}
                 sp={sp}
+                tonKhoTheoMau={tonKho[sp.id]}
                 onAddToCart={handleAddToCart}
                 onCreateOrder={handleCreateOrder}
                 onProduceOrder={handleProduceOrder}
