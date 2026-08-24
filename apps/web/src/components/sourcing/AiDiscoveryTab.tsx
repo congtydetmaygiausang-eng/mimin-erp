@@ -265,32 +265,102 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     if (!trimmed || chatLoading) return;
     const currentRequestId = chatRequestId.current + 1;
     chatRequestId.current = currentRequestId;
+    
+    // Convert current bubbles to message format
     const history = chatBubbles.filter(b => b.role !== "error").map(b => ({ role: b.role, content: b.content })).slice(-6);
+    const messages = [...history, { role: "user", content: trimmed }];
+    
     setChatBubbles((current) => [...current, { role: "user", content: trimmed }]);
     setChatLoading(true);
+
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
-      const lastResults = directResults.map((item, index) => ({ ...item, role, roleLabel: ROLE_LABELS[role], resultIndex: index }));
-      const response = await fetch("/api/v1/mimin-group/agent/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: trimmed, history, lastResults }),
-      });
-      const data = await response.json() as { reply?: string; error?: string; toolCalls?: Array<{ name: string; args: Record<string, unknown> }>; results?: { candidates: DirectSearchCandidate[]; provider: string[] } | null };
-      if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
-      if (chatRequestId.current !== currentRequestId) return;
-      setChatBubbles((current) => [...current, { role: "assistant", content: data.reply ?? "Đã xử lý xong." }]);
-      const searchCall = data.toolCalls?.find((call) => call.name === "search_partners");
-      if (searchCall) syncFormFromToolCall(searchCall.args);
-      if (data.results) {
-        setDirectResults(data.results.candidates);
-        setDirectProvider(data.results.provider.join("+"));
-        setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
+
+      // Seed turn results from current screen
+      let turnResults = directResults.map((item, index) => ({ 
+        role, 
+        candidate: { ...item, role: undefined, roleLabel: undefined, resultIndex: undefined }, 
+        searchQuery: "", 
+        provider: "" 
+      }));
+
+      let loopCount = 0;
+      let finalReply = "";
+
+      while (loopCount < 3) {
+        loopCount++;
+        
+        // 1. GỌI DEEPSEEK (Chỉ suy nghĩ, không chạy tool)
+        const chatResponse = await fetch("/api/v1/mimin-group/agent/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ messages }),
+        });
+        const chatData = await chatResponse.json();
+        if (!chatResponse.ok) throw new Error(chatData.error ?? "AI Search Agent gặp lỗi proxy");
+        
+        const message = chatData.message;
+        if (!message) throw new Error("Không nhận được phản hồi từ AI");
+        messages.push(message);
+
+        // 2. NẾU KHÔNG CÓ TOOL CALL -> LÀ CÂU TRẢ LỜI CUỐI CÙNG
+        if (!message.tool_calls || message.tool_calls.length === 0) {
+          finalReply = message.content || "Đã xử lý xong.";
+          break;
+        }
+
+        // 3. NẾU CÓ TOOL CALL -> GỌI API TOOLS ĐỂ THỰC THI
+        if (chatRequestId.current === currentRequestId && loopCount === 1) {
+          setChatBubbles((current) => [...current, { role: "assistant", content: "Đang phân tích dữ liệu và tìm kiếm..." }]);
+        }
+
+        const toolsResponse = await fetch("/api/v1/mimin-group/agent/tools", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ toolCalls: message.tool_calls, turnResults }),
+        });
+        const toolsData = await toolsResponse.json();
+        if (!toolsResponse.ok) throw new Error(toolsData.error ?? "Thực thi công cụ thất bại");
+
+        turnResults = toolsData.turnResults || turnResults;
+        
+        if (toolsData.toolMessages) {
+          messages.push(...toolsData.toolMessages);
+        }
+
+        // Update state and UI side-effects from tool execution
+        const searchCall = message.tool_calls.find((call: any) => call.function?.name === "search_partners");
+        if (searchCall) {
+          try {
+            const args = JSON.parse(searchCall.function.arguments);
+            syncFormFromToolCall(args);
+          } catch {}
+        }
+        
+        if (toolsData.results) {
+          setDirectResults(toolsData.results.candidates || []);
+          setDirectProvider((toolsData.results.provider || []).join("+"));
+          setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
+        }
       }
+
+      if (chatRequestId.current !== currentRequestId) return;
+
+      // Xóa tin nhắn "Đang phân tích..." nếu có và thêm câu trả lời cuối
+      setChatBubbles((current) => {
+        const filtered = current.filter(b => b.content !== "Đang phân tích dữ liệu và tìm kiếm...");
+        return [...filtered, { role: "assistant", content: finalReply }];
+      });
+
     } catch (error) {
       const message = error instanceof Error ? error.message : "AI Search Agent gặp lỗi";
-      if (chatRequestId.current === currentRequestId) setChatBubbles((current) => [...current, { role: "error", content: `Xin lỗi, có lỗi xảy ra: ${message}`, payload: trimmed }]);
+      if (chatRequestId.current === currentRequestId) {
+        setChatBubbles((current) => {
+          const filtered = current.filter(b => b.content !== "Đang phân tích dữ liệu và tìm kiếm...");
+          return [...filtered, { role: "error", content: `Xin lỗi, có lỗi xảy ra: ${message}`, payload: trimmed }];
+        });
+      }
     } finally {
       if (chatRequestId.current === currentRequestId) setChatLoading(false);
     }
