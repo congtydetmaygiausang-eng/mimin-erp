@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { type LoaiSP, type MauVai } from "./lenh-cat-store";
 export type { LoaiSP };
 import { useSupabaseSync, supabaseUpsert, supabaseDelete } from "@/lib/supabase/client";
@@ -481,6 +481,11 @@ interface DanhMucSPContextType {
   suaSP: (id: string, data: Partial<SanPham>) => void;
   xoaSP: (id: string) => void;
   loading: boolean;
+  /** Tải lại từ Supabase ngay - gọi khi vào lại trang Danh mục sản phẩm, vì
+   * Provider này chỉ mount 1 lần ở gốc app (không remount khi chuyển trang
+   * bằng router), nên nếu chỉ fetch trong useEffect([]) thì bấm vào trang
+   * này lần sau sẽ thấy dữ liệu cũ - phải F5 mới thấy dữ liệu mới. */
+  refresh: () => Promise<void>;
 }
 
 const STORAGE_KEY = "mimin_danh_muc_sp";
@@ -514,56 +519,65 @@ function buildDBPayload(sp: SanPham) {
 export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   const [dsSanPham, setDsSanPham] = useState<SanPham[]>([]);
   const [loading, setLoading] = useState(true);
+  // Đếm số lần refresh() được gọi - mỗi lần chỉ áp dụng kết quả của lần gọi
+  // MỚI NHẤT, tránh 1 request cũ chậm hơn resolve sau đè lên dữ liệu mới hơn
+  // (có thể xảy ra khi bấm qua lại trang Danh mục sản phẩm nhanh).
+  const requestIdRef = useRef(0);
 
-  // Load tu Supabase, fallback localStorage, fallback MOCK
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      // B1: Luon doc localStorage cache truoc de khong blank
-      try {
-        const cached = localStorage.getItem(STORAGE_KEY);
-        if (cached && mounted) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setDsSanPham(parsed);
-            setLoading(false); // Show cached ngay
-          }
+  // Load tu Supabase, fallback localStorage, fallback MOCK. Tách thành
+  // useCallback (không chỉ useEffect([])) để trang Danh mục sản phẩm có thể
+  // tự gọi lại mỗi khi vào trang - Provider này mount 1 lần ở gốc app, không
+  // remount khi chuyển trang bằng router, nên nếu chỉ fetch lúc mount thì
+  // bấm vào trang lần 2 vẫn thấy dữ liệu cũ cho tới khi F5.
+  const refresh = useCallback(async () => {
+    const myRequestId = ++requestIdRef.current;
+    const isStale = () => requestIdRef.current !== myRequestId;
+
+    // B1: Luon doc localStorage cache truoc de khong blank
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0 && !isStale()) {
+          setDsSanPham(parsed);
+          setLoading(false); // Show cached ngay
         }
-      } catch (_) {}
-
-      // B2: Fetch Supabase (override cache neu co data moi)
-      try {
-        const { supabase } = await import("@/lib/supabase/client");
-        const client = supabase;
-        if (client) {
-          const { data, error } = await client.from("san_pham").select("*").order("ma_sp", { ascending: true });
-          if (error) throw error;
-
-          if (data && mounted) {
-            const mapped = data.map(item => mapSanPhamFromDB(item));
-            setDsSanPham(mapped);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
-          }
-        } else {
-          // Khong co Supabase - dung localStorage
-          const cached = localStorage.getItem(STORAGE_KEY);
-          if (cached && mounted) {
-            try { setDsSanPham(JSON.parse(cached)); } catch(e) { setDsSanPham(MOCK_DANH_MUC); }
-          } else if (mounted) {
-            setDsSanPham(MOCK_DANH_MUC);
-          }
-        }
-      } catch (e) {
-        console.error("Loi fetch San pham", e);
-        // Fallback localStorage da duoc set o B1
-      } finally {
-        if (mounted) setLoading(false);
       }
-    };
+    } catch (_) {}
 
-    load();
-    return () => { mounted = false; };
+    // B2: Fetch Supabase (override cache neu co data moi)
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      const client = supabase;
+      if (client) {
+        const { data, error } = await client.from("san_pham").select("*").order("ma_sp", { ascending: true });
+        if (error) throw error;
+
+        if (data && !isStale()) {
+          const mapped = data.map(item => mapSanPhamFromDB(item));
+          setDsSanPham(mapped);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+        }
+      } else if (!isStale()) {
+        // Khong co Supabase - dung localStorage
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          try { setDsSanPham(JSON.parse(cached)); } catch(e) { setDsSanPham(MOCK_DANH_MUC); }
+        } else {
+          setDsSanPham(MOCK_DANH_MUC);
+        }
+      }
+    } catch (e) {
+      console.error("Loi fetch San pham", e);
+      // Fallback localStorage da duoc set o B1
+    } finally {
+      if (!isStale()) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const themSP = useCallback(async (sp: SanPham) => {
     setDsSanPham(prev => {
@@ -640,7 +654,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <DanhMucSPContext.Provider value={{ dsSanPham, themSP, suaSP, xoaSP, loading }}>
+    <DanhMucSPContext.Provider value={{ dsSanPham, themSP, suaSP, xoaSP, loading, refresh }}>
       {children}
     </DanhMucSPContext.Provider>
   );

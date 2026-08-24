@@ -32,7 +32,7 @@ const FILTER_TABS = [
 ];
 
 export default function DanhMucSanPhamPage() {
-  const { dsSanPham, loading, themSP, suaSP, xoaSP } = useDanhMucSP();
+  const { dsSanPham, loading, themSP, suaSP, xoaSP, refresh } = useDanhMucSP();
   const { items: gioHangItems, themVaoGio, themNhieuVaoGio, capNhatSoLuong, xoaKhoiGio, xoaGio, tongSoLuong: soLuongTrongGio } = useGioHang();
   const { dsOrder, themOrder } = useDonHang();
   const dsMaDaCo = useMemo(() => dsOrder.map((o) => o.maDH), [dsOrder]);
@@ -51,6 +51,13 @@ export default function DanhMucSanPhamPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Provider dữ liệu chỉ mount 1 lần ở gốc app (không remount khi chuyển
+  // trang bằng router) - nếu không tự gọi refresh() ở đây, vào lại trang
+  // này sau khi đã ở trang khác sẽ thấy dữ liệu cũ, phải F5 mới cập nhật.
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const filtered = useMemo(() => {
     let result = dsSanPham || [];
