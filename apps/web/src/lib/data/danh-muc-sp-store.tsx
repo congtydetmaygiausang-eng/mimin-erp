@@ -539,22 +539,10 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           const { data, error } = await client.from("san_pham").select("*").order("ma_sp", { ascending: true });
           if (error) throw error;
 
-          if (data && data.length > 0 && mounted) {
+          if (data && mounted) {
             const mapped = data.map(item => mapSanPhamFromDB(item));
             setDsSanPham(mapped);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
-          } else if (mounted) {
-            const cached = localStorage.getItem(STORAGE_KEY);
-            if (cached) {
-               try { setDsSanPham(JSON.parse(cached)); } catch(e) { setDsSanPham(MOCK_DANH_MUC); }
-            } else {
-               setDsSanPham(MOCK_DANH_MUC);
-               // Auto seed MOCK vao DB
-               Promise.all(MOCK_DANH_MUC.map(async sp => {
-                 const dbPayload = buildDBPayload(sp);
-                 await client.from("san_pham").insert(dbPayload);
-               })).catch(() => {});
-            }
           }
         } else {
           // Khong co Supabase - dung localStorage
