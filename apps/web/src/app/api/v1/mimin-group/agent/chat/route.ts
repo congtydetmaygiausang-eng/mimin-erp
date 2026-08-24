@@ -576,12 +576,35 @@ export async function POST(req: NextRequest) {
       return await callAIWithTools(systemPrompt, messages, auth, initialTurnResults);
     };
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Quá trình tìm kiếm mất nhiều thời gian hơn dự kiến và đã tự động ngắt. Vui lòng thử lại với lệnh tìm kiếm ngắn gọn hơn.")), 55000);
+    const stream = new ReadableStream({
+      async start(controller) {
+        // Gửi ký tự khoảng trắng mỗi 2 giây để giữ kết nối HTTP luôn mở
+        // lách qua mọi giới hạn proxy timeout của Vercel
+        const encoder = new TextEncoder();
+        const intervalId = setInterval(() => {
+          controller.enqueue(encoder.encode(" "));
+        }, 2000);
+
+        try {
+          const result = await aiWork();
+          controller.enqueue(encoder.encode(JSON.stringify(result)));
+        } catch (error) {
+          console.error("[mimin-group-agent-chat] aiWork error:", error);
+          controller.enqueue(encoder.encode(JSON.stringify({ error: error instanceof Error ? error.message : "AI Search Agent gặp lỗi" })));
+        } finally {
+          clearInterval(intervalId);
+          controller.close();
+        }
+      }
     });
 
-    const { reply, toolCalls, results } = await Promise.race([aiWork(), timeoutPromise]);
-    return NextResponse.json({ reply, toolCalls, results });
+    return new NextResponse(stream, {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   } catch (error) {
     console.error("[mimin-group-agent-chat] error:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "AI Search Agent gặp lỗi" }, { status: 502 });
