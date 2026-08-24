@@ -5,6 +5,21 @@ import { toast } from "sonner";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { type SizeRatioPreset, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
+import { authFetch } from "@/lib/auth-fetch";
+
+// Upload thật lên Supabase Storage (bucket public "san-pham-media"), trả về
+// URL công khai để lưu vào dsMau - KHÔNG dùng readAsDataURL/createObjectURL
+// nữa (nhúng thẳng base64/blob URL giả vào DB làm bảng san_pham phình to tới
+// mức truy vấn bị timeout, đã đo thực tế 9+ giây rồi Postgres huỷ query).
+async function uploadProductFile(file: File, folder: string): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folder", folder);
+  const res = await authFetch("/api/product-uploads", { method: "POST", body: formData });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error || "Không thể upload file");
+  return json.url as string;
+}
 
 interface ProductFormModalProps {
   onClose: () => void;
@@ -304,20 +319,17 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                           <span className="text-[9px] font-bold uppercase">Ảnh</span>
                         </div>
                       )}
-                      <input 
-                        type="file" 
-                        className="absolute inset-0 opacity-0 cursor-pointer" 
-                        accept="image/*" 
+                      <input
+                        type="file"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        accept="image/*"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              const n = [...dsMau]; n[i].img = ev.target?.result as string; setDsMau(n);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }} 
+                          if (!file) return;
+                          uploadProductFile(file, "mau-anh").then((url) => {
+                            const n = [...dsMau]; n[i].img = url; setDsMau(n);
+                          }).catch((err) => toast.error(err instanceof Error ? err.message : "Không upload được ảnh"));
+                        }}
                       />
                     </div>
                     {/* Video Upload */}
@@ -330,17 +342,17 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                           <span className="text-[9px] font-bold uppercase text-center leading-tight">Video<br/>(Dọc)</span>
                         </div>
                       )}
-                      <input 
-                        type="file" 
-                        className="absolute inset-0 opacity-0 cursor-pointer" 
-                        accept="video/*" 
+                      <input
+                        type="file"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        accept="video/*"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                             const url = URL.createObjectURL(file);
-                             const n = [...dsMau]; n[i].video = url; setDsMau(n);
-                          }
-                        }} 
+                          if (!file) return;
+                          uploadProductFile(file, "mau-video").then((url) => {
+                            const n = [...dsMau]; n[i].video = url; setDsMau(n);
+                          }).catch((err) => toast.error(err instanceof Error ? err.message : "Không upload được video"));
+                        }}
                       />
                       {m.video && (
                          <div className="absolute top-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded shadow">Video</div>
@@ -357,22 +369,20 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                          <span className="text-[10px] font-bold text-slate-500 uppercase">Ảnh chi tiết (Nhiều ảnh)</span>
                          <label className="text-[10px] bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded cursor-pointer font-bold hover:bg-cyan-100">
                             + Thêm ảnh
-                            <input 
-                              type="file" 
-                              multiple 
-                              accept="image/*" 
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
                               className="hidden"
                               onChange={(e) => {
                                 const files = Array.from(e.target.files || []);
-                                Promise.all(files.map(file => new Promise<string>((resolve) => {
-                                  const r = new FileReader();
-                                  r.onload = ev => resolve(ev.target?.result as string);
-                                  r.readAsDataURL(file);
-                                }))).then(results => {
-                                  const n = [...dsMau];
-                                  n[i].hinhAnhChiTiet = [...(n[i].hinhAnhChiTiet || []), ...results];
-                                  setDsMau(n);
-                                });
+                                Promise.all(files.map((file) => uploadProductFile(file, "mau-chi-tiet")))
+                                  .then((urls) => {
+                                    const n = [...dsMau];
+                                    n[i].hinhAnhChiTiet = [...(n[i].hinhAnhChiTiet || []), ...urls];
+                                    setDsMau(n);
+                                  })
+                                  .catch((err) => toast.error(err instanceof Error ? err.message : "Không upload được ảnh"));
                               }}
                             />
                          </label>

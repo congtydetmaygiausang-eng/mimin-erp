@@ -37,6 +37,21 @@ import {
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
+import { authFetch } from "@/lib/auth-fetch";
+
+// Upload thật lên Supabase Storage (bucket public "san-pham-media"), trả về
+// URL công khai - KHÔNG nhúng base64 (readAsDataURL) thẳng vào cột JSONB
+// ds_mau như code cũ, vì làm bảng phình to tới mức truy vấn "SELECT *" bị
+// Postgres huỷ do statement timeout (đã đo thực tế: 9+ giây rồi timeout).
+async function uploadProductFile(file: File, folder: string): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folder", folder);
+  const res = await authFetch("/api/product-uploads", { method: "POST", body: formData });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error || "Không thể upload file");
+  return json.url as string;
+}
 
 
 const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string) => {
@@ -637,20 +652,18 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     input.accept = "image/*";
     input.onchange = (e: any) => {
       const file = e.target.files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const dataUrl = ev.target?.result as string;
+      if (!file) return;
+      uploadProductFile(file, phan === "quan" ? "mau-quan" : "mau-ao")
+        .then((url) => {
           setDsMau(prev => {
             const next = [...prev];
             next[idx] = phan === "quan"
-              ? { ...next[idx], imgQuan: dataUrl }
-              : { ...next[idx], img: dataUrl };
+              ? { ...next[idx], imgQuan: url }
+              : { ...next[idx], img: url };
             return next;
           });
-        };
-        reader.readAsDataURL(file);
-      }
+        })
+        .catch((err) => toast.error(err instanceof Error ? err.message : "Không upload được ảnh"));
     };
     input.click();
   };
