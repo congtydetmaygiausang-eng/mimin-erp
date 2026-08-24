@@ -961,8 +961,8 @@ const COMPANY_READER_FIELDS = new Set(["LEGAL_NAME","TAX_CODE","ADDRESS","PHONE"
 const COMPANY_READER_ACCEPTED_FIELD_STATUS = new Set(["CONSENSUS","SINGLE_SOURCE"]);
 
 function companyReaderMaximumUrls():number{
-  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"3");
-  return Number.isFinite(configured)?Math.max(1,Math.min(10,Math.floor(configured))):3;
+  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"15");
+  return Number.isFinite(configured)?Math.max(1,Math.min(20,Math.floor(configured))):15;
 }
 
 function companyReaderSourceScore(source:SourceResult):number{
@@ -1007,7 +1007,7 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}};
   const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
-  const timeoutMs=Math.max(5_000,Math.min(55_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"45000")||45_000));
+  const timeoutMs=Math.max(5_000,Math.min(60_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"55000")||55_000));
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
   try{
