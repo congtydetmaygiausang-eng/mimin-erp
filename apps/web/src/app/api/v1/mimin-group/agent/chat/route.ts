@@ -24,10 +24,9 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import type { DirectSearchCandidate } from "@/lib/production-discovery";
 
-export const runtime = "edge";
-export const maxDuration = 60;
+export const maxDuration = 55;
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 20000): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 25000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -578,7 +577,7 @@ export async function POST(req: NextRequest) {
     };
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Quá trình tìm kiếm mất nhiều thời gian hơn dự kiến và đã tự động ngắt để bảo vệ hệ thống. Vui lòng nhấn Thử lại.")), 28000);
+      setTimeout(() => reject(new Error("Quá trình tìm kiếm mất nhiều thời gian hơn dự kiến và đã tự động ngắt. Vui lòng thử lại với lệnh tìm kiếm ngắn gọn hơn.")), 55000);
     });
 
     const { reply, toolCalls, results } = await Promise.race([aiWork(), timeoutPromise]);
