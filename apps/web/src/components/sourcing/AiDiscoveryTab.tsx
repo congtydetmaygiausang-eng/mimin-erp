@@ -194,15 +194,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         setResultCriteria({query:combinedQuery.trim(),location:location.trim(),role,radiusKm,searchedAt:new Date().toISOString()});
         // Shadow enrichment is deliberately detached from the primary search.
         // A request id prevents a slow previous run from updating a newer result set.
-        void runCompanyReaderShadow(candidates.map((candidate) => candidate.sourceUrl)).then((readerShadow) => {
-          if (shadowRequestId.current !== currentShadowRequestId || !diagnostics) return;
-          setDiagnostics({ ...diagnostics, providers: [...diagnostics.providers, {
-            name: "Jina Reader shadow",
-            status: readerShadow.status === "SHADOW_PROCESSED" ? "OK" : readerShadow.status === "DISABLED" ? "DISABLED" : "ERROR",
-            count: readerShadow.sourceCount,
-            code: readerShadow.code,
-          }] });
-        });
+        void runCompanyReaderShadow(candidates.map((candidate) => candidate.sourceUrl));
       if (!silent) toast.success(`Đã mở rộng ${data.searchQueries?.length??0} truy vấn và xử lý ${candidates.length} kết quả`);
       return candidates;
     }
