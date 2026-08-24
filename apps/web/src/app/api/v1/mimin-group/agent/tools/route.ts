@@ -18,7 +18,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import type { DirectSearchCandidate } from "@/lib/production-discovery";
 
-export const maxDuration = 55;
+export const maxDuration = 300;
 
 interface TurnResult {
   role: ProductionPartnerRole;
