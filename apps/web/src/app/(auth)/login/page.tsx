@@ -255,6 +255,19 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              <div className="flex items-center gap-2 mt-2 mb-4">
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                  defaultChecked
+                />
+                <label htmlFor="rememberMe" className="text-sm font-medium cursor-pointer">
+                  Ghi nhớ đăng nhập
+                </label>
+              </div>
+
               <button type="submit" disabled={loading} className="btn-primary w-full">
                 {loading ? "Đang đăng nhập…" : "Đăng nhập"}
               </button>
