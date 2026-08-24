@@ -24,7 +24,24 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import type { DirectSearchCandidate } from "@/lib/production-discovery";
 
+export const runtime = "edge";
 export const maxDuration = 60;
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 20000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Kết nối tới máy chủ AI vượt quá thời gian cho phép (${timeoutMs / 1000}s). Vui lòng thử lại.`);
+    }
+    throw error;
+  }
+}
 
 const MAX_TOOL_CALLS_PER_TURN = 4;
 const MAX_HISTORY_MESSAGES = 6;
@@ -431,11 +448,11 @@ async function callDeepSeekWithTools(
     tool_choice: "auto",
   };
 
-  const firstRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+  const firstRes = await fetchWithTimeout("https://api.deepseek.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(baseBody),
-  });
+  }, 25000);
   if (!firstRes.ok) {
     const err = await firstRes.text();
     throw new Error(`DeepSeek API lỗi ${firstRes.status}: ${err.slice(0, 200)}`);
@@ -477,7 +494,7 @@ async function callDeepSeekWithTools(
       toolMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(execResult.toolMessageContent) });
     }
 
-    const secondRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    const secondRes = await fetchWithTimeout("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
@@ -486,7 +503,7 @@ async function callDeepSeekWithTools(
         temperature: 0.3,
         max_tokens: 1024,
       }),
-    });
+    }, 25000);
     if (!secondRes.ok) {
       return { reply: stripThinkTags(message?.content || "Đã có kết quả, nhưng AI chưa tổng hợp được câu trả lời."), toolCalls, results };
     }
