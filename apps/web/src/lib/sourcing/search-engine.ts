@@ -1101,8 +1101,8 @@ async function searchBrave(queries: string[]): Promise<SourceResult[]> {
     apiKey: key,
     queries,
     maxQueries: braveMaximumQueries(),
-    resultsPerQuery: 10,
-    timeoutMs: 12_000,
+    resultsPerQuery: 20,
+    timeoutMs: 18_000,
   });
   return items.map((item) => {
     const content = [item.description, ...item.extraSnippets].filter(Boolean).join("\n").slice(0, 8_000);
