@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabase/client";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
 import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
 import { runCompanyReaderShadow } from "@/lib/company-reader-shadow";
+import { fetchWithSourcingAuth } from "@/lib/sourcing/sourcing-auth-request";
 
 const HCM_DISTRICTS = [
   "Quận 1", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 8", "Quận 10", "Quận 11", "Quận 12",
@@ -180,9 +181,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     shadowRequestId.current = currentShadowRequestId;
     setLoading(true);
     try {
-      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
-      if (!token) throw new Error("Phiên đăng nhập đã hết hạn");
-      const response = await fetch("/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`}, body:JSON.stringify({query:combinedQuery.trim(),location:location.trim(),role,center:locationType==="GPS"?center:null,radiusKm,locationMode}) });
+      if (!supabase) throw new Error("Chưa kết nối được Supabase Auth");
+      const response = await fetchWithSourcingAuth(supabase.auth, "/api/v1/sourcing/search", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({query:combinedQuery.trim(),location:location.trim(),role,center:locationType==="GPS"?center:null,radiusKm,locationMode}) });
       const data = await response.json() as {error?:string;provider?:string;searchQueries?:string[];center?:ResolvedSearchCenter|null;learning?:{approvedCount:number;rejectedCount:number;applied:boolean};diagnostics?:SearchDiagnostics;candidates?:DirectSearchCandidate[]};
       if (!response.ok) throw new Error(data.error??"Tìm kiếm thất bại");
       const candidates = data.candidates??[];
