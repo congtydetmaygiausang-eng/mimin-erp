@@ -849,10 +849,10 @@ function buildExpansionQueries(query: string, location: string, role: string, ra
   if (!expandedRadiusKm) return null;
   const existingSet = new Set(existing.map((item) => normalized(item)));
   const areas = radiusSearchAreas(location, expandedRadiusKm).filter((area) => normalized(area) !== normalized(location));
-  const roleTerm = (ROLE_SEARCH_TERMS[role] ?? ["công ty", "xưởng"])[0] ?? "công ty";
   const queries = areas.flatMap((area) => [
-    `${roleTerm} ${query} ${area}`,
-    `công ty xưởng ${query} ${area} website liên hệ`,
+    `${query} ${area}`,
+    `xưởng ${query} ${area}`,
+    `bán ${query} ${area}`
   ]).filter((item) => !existingSet.has(normalized(item))).slice(0, 8);
   return queries.length ? { radiusKm: expandedRadiusKm, queries } : null;
 }
