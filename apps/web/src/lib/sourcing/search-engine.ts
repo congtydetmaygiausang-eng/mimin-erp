@@ -894,7 +894,7 @@ function fallbackQueryPlan(query: string, location: string, role: string, radius
 async function buildQueryPlan(query: string, location: string, role: string, learning: LearningProfile, radiusKm: number): Promise<string[]> {
   const budget = queryBudgetForRadius(radiusKm);
   const learnedQueries = learning.applied ? learning.preferredTerms.slice(0, 3).map((term) => `${query} ${term} ${location}`) : [];
-  const searchAreas = radiusSearchAreas(location, radiusKm);
+  const searchAreas = [location]; // Chỉ dùng location chính cho truy vấn ban đầu để tránh lan man sang quận khác
   const fallback = balanceSearchQueries([...fallbackQueryPlan(query, location, role, radiusKm), ...learnedQueries], [], budget);
   const minimaxKey = process.env.MINIMAX_API_KEY?.trim();
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim();
@@ -908,8 +908,8 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
       temperature: 0.2,
       max_tokens: 900,
       messages: [
-        { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm ngắn. QUAN TRỌNG:\n1. Hành văn tự nhiên, giống cách con người tìm công ty/xưởng thật trên Google.\n2. Kết hợp chính xác khu vực trong `searchAreas`. Không tự ý đổi quận/huyện sang địa phương khác.\n3. Ít nhất 60% truy vấn phải hướng đến website chính thức, trang liên hệ hoặc tên pháp lý doanh nghiệp (công ty, nhà sản xuất, xưởng, website, liên hệ, địa chỉ, điện thoại).\n4. Tối đa 2 truy vấn `site:` vào danh bạ trangvangvietnam.com hoặc nhungtrangvang.com; danh bạ chỉ dùng để phát hiện tên doanh nghiệp, không được coi là website chính thức.\nTrả về đúng định dạng JSON." },
-        { role: "user", content: JSON.stringify({ query, location, radiusKm, searchAreas, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
+        { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm RẤT NGẮN GỌN. QUAN TRỌNG:\n1. Tối ưu từ khóa ngắn gọn, tự nhiên như người dùng gõ Google (vd: 'xưởng vải cotton Hóc Môn', 'bán vải cotton Hóc Môn').\n2. CHỈ kết hợp với địa phương được yêu cầu, tuyệt đối không tự thêm các quận/huyện lân cận.\n3. Bỏ các từ rườm rà như 'website liên hệ', 'nhà cung cấp nguyên phụ liệu'. Càng ngắn càng tốt.\n4. Tối đa 1-2 truy vấn `site:trangvangvietnam.com`.\nTrả về JSON chuẩn." },
+        { role: "user", content: JSON.stringify({ query, location, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
       ],
     };
     if (!minimaxKey) body.response_format = { type: "json_object" };
