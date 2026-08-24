@@ -125,6 +125,21 @@ const getFallbackUser = (): AppUser => ({
   source: "demo",
 });
 
+// Mỗi thẻ Màu trong lệnh cắt lấy 1 màu trong bảng này theo thứ tự (idx %
+// length) - giúp phân biệt nhanh bằng mắt khi lệnh có nhiều màu, không phải
+// đọc chữ "Màu 1/Màu 2..." mới biết đang ở thẻ nào. Dùng class literal đầy
+// đủ (không ghép chuỗi động) để Tailwind JIT quét được.
+const MAU_CARD_ACCENT = [
+  { stripe: "border-l-emerald-500", badge: "bg-emerald-500", tint: "bg-emerald-50/50", ring: "focus-within:ring-emerald-200" },
+  { stripe: "border-l-sky-500", badge: "bg-sky-500", tint: "bg-sky-50/50", ring: "focus-within:ring-sky-200" },
+  { stripe: "border-l-amber-500", badge: "bg-amber-500", tint: "bg-amber-50/50", ring: "focus-within:ring-amber-200" },
+  { stripe: "border-l-rose-500", badge: "bg-rose-500", tint: "bg-rose-50/50", ring: "focus-within:ring-rose-200" },
+  { stripe: "border-l-violet-500", badge: "bg-violet-500", tint: "bg-violet-50/50", ring: "focus-within:ring-violet-200" },
+  { stripe: "border-l-cyan-500", badge: "bg-cyan-500", tint: "bg-cyan-50/50", ring: "focus-within:ring-cyan-200" },
+  { stripe: "border-l-orange-500", badge: "bg-orange-500", tint: "bg-orange-50/50", ring: "focus-within:ring-orange-200" },
+  { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-50/50", ring: "focus-within:ring-fuchsia-200" },
+] as const;
+
 export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
@@ -916,9 +931,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const giaVonBinhQuan = binhQuanVai + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-1.5 md:p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-0 md:p-4 animate-fade-in">
       <div
-        className="bg-[#2B4C3E] rounded-xl shadow-2xl w-[99vw] h-[97vh] max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-4 border-[#2B4C3E]"
+        className="bg-[#2B4C3E] rounded-none md:rounded-xl shadow-2xl w-full h-full md:w-[99vw] md:h-[97vh] max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-0 md:border-4 border-[#2B4C3E]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -942,7 +957,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-4 md:p-6 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -955,10 +970,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           )}
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
-          <div className="bg-slate-100 p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
-              <div className="flex gap-4 items-center pr-6">
+          <div className="bg-slate-100 p-3 md:p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-6">
+              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
+              <div className="flex gap-4 items-center pr-0 md:pr-6">
                 <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
                   <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="accent-[#2B4C3E]" />
                   <span className="text-sm font-bold text-slate-700">Hàng Nhà</span>
@@ -1646,15 +1661,19 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
 
             {/* Grid Thẻ Màu Sắc */}
-            <div className="grid grid-cols-1 gap-6 mb-6">
+            <div className="grid grid-cols-1 gap-4 md:gap-6 mb-6">
               {dsMau.map((mau, idx) => {
                 const isBo = loaiSP?.toLowerCase().includes("bo");
+                const accent = MAU_CARD_ACCENT[idx % MAU_CARD_ACCENT.length];
                 return (
-                <div key={idx} className="bg-white rounded-lg shadow-md p-5 flex flex-col md:flex-row gap-6 border border-slate-200/60">
-                  
+                <div key={idx} className={`${accent.tint} ${accent.ring} rounded-lg shadow-md p-3 md:p-5 flex flex-col md:flex-row gap-4 md:gap-6 border border-slate-200/60 border-l-4 ${accent.stripe} focus-within:ring-2 transition-shadow`}>
+
                   {/* Left: Image */}
                   <div className="w-full md:w-[320px] shrink-0 flex flex-col gap-3">
-                    <div className="text-sm font-bold text-[#2B4C3E] uppercase tracking-wide border-b border-slate-100 pb-1">Màu {idx + 1}</div>
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${accent.badge} text-white text-xs font-black shrink-0`}>{idx + 1}</span>
+                      <span className="text-sm font-bold text-[#2B4C3E] uppercase tracking-wide">Màu {idx + 1}</span>
+                    </div>
                     <input
                       type="text"
                       className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded font-bold"
