@@ -135,7 +135,7 @@ function StageCat({ lc, suaLenhCat, user }: { lc: LenhCat; suaLenhCat: any; user
               label={`Màu ${idx + 1}`}
               donGia={pcCat?.donGia}
               trangThai={pcCat?.trangThaiCD}
-              renderSizeRows={(sizeData) => (
+              renderSizeRows={(sizeData: any[]) => (
                 <CatSizeForm
                   initialData={sizeData}
                   onSave={(newData) => handleSaveSize(idx, newData)}
@@ -160,7 +160,7 @@ function StageCat({ lc, suaLenhCat, user }: { lc: LenhCat; suaLenhCat: any; user
                 label={`Màu ${idx + 1}`}
                 donGia={pcCat?.donGia}
                 trangThai={pcCat?.trangThaiCD}
-                renderSizeRows={(sizeData) => (
+                renderSizeRows={(sizeData: any[]) => (
                   <CatSizeForm
                     initialData={sizeData}
                     onSave={(newData) => handleSaveSize(idx, newData)} // Note: in real DB maybe we separate ao/quan cut sizes? Currently MauVai stores one tyLeSizeChiTiet for the color, so both ao and quan share it if it's the same. If they differ, we need deeper changes. We'll stick to shared for now.
