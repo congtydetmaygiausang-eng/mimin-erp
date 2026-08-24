@@ -5,21 +5,7 @@ import { toast } from "sonner";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { type SizeRatioPreset, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
-import { authFetch } from "@/lib/auth-fetch";
-
-// Upload thật lên Supabase Storage (bucket public "san-pham-media"), trả về
-// URL công khai để lưu vào dsMau - KHÔNG dùng readAsDataURL/createObjectURL
-// nữa (nhúng thẳng base64/blob URL giả vào DB làm bảng san_pham phình to tới
-// mức truy vấn bị timeout, đã đo thực tế 9+ giây rồi Postgres huỷ query).
-async function uploadProductFile(file: File, folder: string): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("folder", folder);
-  const res = await authFetch("/api/product-uploads", { method: "POST", body: formData });
-  const json = await res.json();
-  if (!res.ok || json.error) throw new Error(json.error || "Không thể upload file");
-  return json.url as string;
-}
+import { uploadProductFile } from "@/lib/product-upload";
 
 interface ProductFormModalProps {
   onClose: () => void;
