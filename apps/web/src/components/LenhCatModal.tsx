@@ -130,14 +130,14 @@ const getFallbackUser = (): AppUser => ({
 // đọc chữ "Màu 1/Màu 2..." mới biết đang ở thẻ nào. Dùng class literal đầy
 // đủ (không ghép chuỗi động) để Tailwind JIT quét được.
 const MAU_CARD_ACCENT = [
-  { stripe: "border-l-emerald-500", badge: "bg-emerald-500", tint: "bg-emerald-50/50", ring: "focus-within:ring-emerald-200" },
-  { stripe: "border-l-sky-500", badge: "bg-sky-500", tint: "bg-sky-50/50", ring: "focus-within:ring-sky-200" },
-  { stripe: "border-l-amber-500", badge: "bg-amber-500", tint: "bg-amber-50/50", ring: "focus-within:ring-amber-200" },
-  { stripe: "border-l-rose-500", badge: "bg-rose-500", tint: "bg-rose-50/50", ring: "focus-within:ring-rose-200" },
-  { stripe: "border-l-violet-500", badge: "bg-violet-500", tint: "bg-violet-50/50", ring: "focus-within:ring-violet-200" },
-  { stripe: "border-l-cyan-500", badge: "bg-cyan-500", tint: "bg-cyan-50/50", ring: "focus-within:ring-cyan-200" },
-  { stripe: "border-l-orange-500", badge: "bg-orange-500", tint: "bg-orange-50/50", ring: "focus-within:ring-orange-200" },
-  { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-50/50", ring: "focus-within:ring-fuchsia-200" },
+  { stripe: "border-l-emerald-500", badge: "bg-emerald-500", tint: "bg-emerald-100/70", ring: "focus-within:ring-emerald-300" },
+  { stripe: "border-l-sky-500", badge: "bg-sky-500", tint: "bg-sky-100/70", ring: "focus-within:ring-sky-300" },
+  { stripe: "border-l-amber-500", badge: "bg-amber-500", tint: "bg-amber-100/70", ring: "focus-within:ring-amber-300" },
+  { stripe: "border-l-rose-500", badge: "bg-rose-500", tint: "bg-rose-100/70", ring: "focus-within:ring-rose-300" },
+  { stripe: "border-l-violet-500", badge: "bg-violet-500", tint: "bg-violet-100/70", ring: "focus-within:ring-violet-300" },
+  { stripe: "border-l-cyan-500", badge: "bg-cyan-500", tint: "bg-cyan-100/70", ring: "focus-within:ring-cyan-300" },
+  { stripe: "border-l-orange-500", badge: "bg-orange-500", tint: "bg-orange-100/70", ring: "focus-within:ring-orange-300" },
+  { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-100/70", ring: "focus-within:ring-fuchsia-300" },
 ] as const;
 
 export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
@@ -1807,10 +1807,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 const isBo = loaiSP?.toLowerCase().includes("bo");
                 const accent = MAU_CARD_ACCENT[idx % MAU_CARD_ACCENT.length];
                 return (
-                <div key={idx} className={`${accent.tint} ${accent.ring} rounded-lg shadow-md p-3 md:p-5 flex flex-col md:flex-row gap-4 md:gap-6 border border-slate-200/60 border-l-4 ${accent.stripe} focus-within:ring-2 transition-shadow`}>
+                <div key={idx} className={`${accent.tint} ${accent.ring} rounded-xl shadow-lg p-4 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6 border-2 border-slate-300/80 border-l-[6px] ${accent.stripe} focus-within:ring-2 transition-shadow`}>
 
                   {/* Left: Image */}
-                  <div className="w-full md:w-[320px] shrink-0 flex flex-col gap-3">
+                  <div className="w-full lg:w-[480px] shrink-0 flex flex-col gap-3">
                     <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
                       <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${accent.badge} text-white text-xs font-black shrink-0`}>{idx + 1}</span>
                       <span className="text-sm font-bold text-[#2B4C3E] uppercase tracking-wide">Màu {idx + 1}</span>
@@ -1914,7 +1914,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 {p.apDungCho === "quan" ? "Q" : "A"}
                               </span>
                               <select 
-                                className="flex-1 font-medium text-slate-700 bg-transparent border-b border-slate-300 outline-none hover:border-[#2B4C3E] focus:border-[#2B4C3E] w-24 text-[11px]"
+                                className="flex-1 font-bold text-slate-800 bg-transparent border-b border-slate-300 outline-none hover:border-[#2B4C3E] focus:border-[#2B4C3E] w-full text-[12px] truncate max-w-[180px] sm:max-w-full"
                                 value={p.maPL}
                                 onChange={e => {
                                   const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
