@@ -64,18 +64,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   try {
-    // 1. Xoa khoi bang users (custom) truoc
+    // 1. Xoa khoi bang users (custom)
     const { error: profileErr } = await supabaseAdmin.from("users").delete().eq("id", userId);
     if (profileErr) {
-      return NextResponse.json({ error: "Xoa profile that bai: " + profileErr.message }, { status: 500 });
+      return NextResponse.json({ error: "Xóa profile thất bại: " + profileErr.message }, { status: 500 });
     }
 
-    // 2. Xoa khoi auth.users
-    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (authErr) {
-      return NextResponse.json({ error: "Xoa auth that bai: " + authErr.message }, { status: 500 });
-    }
-
+    // 2. Đã bỏ logic xóa auth.users theo yêu cầu, chỉ xóa trên public.users (ERP)
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
