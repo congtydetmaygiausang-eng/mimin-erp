@@ -123,10 +123,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           setAuthSource("supabase");
           localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
           
-          // Điều hướng về dashboard nếu đang ở trang login
-          if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) {
-            const target = u.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
-            window.location.href = target;
+          // Kiểm tra xem đã thiết lập mật khẩu chưa (hoặc có cờ báo hiệu)
+          const hasSetPassword = userMeta.has_set_password === true;
+
+          // Điều hướng dựa trên trạng thái (áp dụng cho mọi trang ngoại trừ chính trang setup-password)
+          if (typeof window !== 'undefined') {
+            const path = window.location.pathname;
+            if (!hasSetPassword && !path.includes('/setup-password')) {
+              window.location.href = "/setup-password";
+            } else if (hasSetPassword && path.includes('/login')) {
+              const target = u.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
+              window.location.href = target;
+            }
           }
         } else if (event === "SIGNED_OUT") {
           setUser(null);

@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Sun, Moon, Shirt, UserPlus } from "lucide-react";
+import { Sun, Moon, Shirt, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
 
@@ -16,20 +15,21 @@ const BACKGROUNDS = [
   { id: "teal-cyan", src: "/bg/teal-cyan.jpg", label: "Teal-Cyan" },
 ];
 
-export default function RegisterPage() {
+export default function SetupPasswordPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
   
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       toast.error("Mật khẩu xác nhận không khớp");
@@ -40,13 +40,10 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          has_set_password: true,
-        },
+    const { error } = await supabase.auth.updateUser({
+      password: password,
+      data: {
+        has_set_password: true,
       },
     });
     setLoading(false);
@@ -54,8 +51,8 @@ export default function RegisterPage() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực.");
-      router.push("/login");
+      toast.success("Thiết lập mật khẩu thành công!");
+      router.push("/dashboard");
     }
   };
 
@@ -78,11 +75,10 @@ export default function RegisterPage() {
               </div>
             </div>
             <h1 className="text-4xl font-bold leading-tight mt-6">
-              Đăng ký tài khoản mới <br /> gia nhập hệ thống
+              Hoàn thiện <br /> hồ sơ tài khoản
             </h1>
             <p className="text-white/90 leading-relaxed">
-              Từ kế hoạch sản xuất → cắt → may → hoàn thiện → QC → giao hàng.<br />
-              Tất cả trong một nền tảng duy nhất.
+              Bạn đăng nhập bằng Google lần đầu. Vui lòng thiết lập thêm mật khẩu để có thể dùng cả Email/Mật khẩu cho các lần đăng nhập sau.
             </p>
           </div>
 
@@ -90,8 +86,8 @@ export default function RegisterPage() {
           <div className="card p-6 md:p-8 w-full max-w-md mx-auto shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-brand-500" />
-                Đăng ký
+                <ShieldCheck className="w-5 h-5 text-brand-500" />
+                Thiết lập mật khẩu
               </h2>
               <div className="flex items-center gap-1">
                 <button
@@ -111,20 +107,9 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <form onSubmit={handleRegister} className="space-y-3">
+            <form onSubmit={handleUpdate} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
-                <input
-                  type="email"
-                  className="input"
-                  placeholder="email@mimin.vn"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Mật khẩu</label>
+                <label className="block text-sm font-medium mb-1">Mật khẩu mới</label>
                 <input
                   type="password"
                   className="input"
@@ -148,18 +133,9 @@ export default function RegisterPage() {
                 />
               </div>
               <button type="submit" disabled={loading} className="btn-primary w-full mt-4">
-                {loading ? "Đang đăng ký…" : "Đăng ký tài khoản"}
+                {loading ? "Đang xử lý…" : "Lưu & Tiếp tục"}
               </button>
             </form>
-
-            <div className="mt-6 flex items-center justify-center text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <span>Đã có tài khoản?</span>
-                <Link href="/login" className="text-brand-500 font-medium hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition-colors">
-                  Đăng nhập ngay
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </div>
