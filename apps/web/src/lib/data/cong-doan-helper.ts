@@ -85,6 +85,59 @@ export interface KetQuaKhopBo {
   loi?: string;
 }
 
+// ============================================
+// GHÉP ÁO + QUẦN THEO SIZE (2026-08-22 - thay cho cách so TỔNG cũ)
+// ============================================
+//
+// Trước đây "khớp bộ" chỉ so TỔNG SL đạt của May áo với TỔNG SL đạt của May
+// quần trên toàn lệnh cắt - sai theo 2 cách: (1) không phân biệt màu, (2)
+// không phân biệt size. 2 màu/size có thể lệch bù trừ cho nhau khiến tổng
+// bằng nhau dù thực tế không ghép đủ ở từng size. Hàm dưới đây tính đúng
+// nghiệp vụ: ghép theo TỪNG SIZE của TỪNG MÀU = MIN(Áo đạt, Quần đạt), phần
+// dư mỗi bên được giữ lại làm bằng chứng (Áo dư / Quần dư).
+
+export interface GhepSizeResult {
+  ghepSizes: { size: string; sl: number }[];
+  aoDuSizes: { size: string; sl: number }[];
+  quanDuSizes: { size: string; sl: number }[];
+  tongGhep: number;
+  /** true nếu tính được đúng theo từng size (có đủ dữ liệu size của cả 2 vế) */
+  chinhXacTheoSize: boolean;
+}
+
+/** Ghép Áo + Quần theo từng size cho 1 màu = MIN(Áo đạt, Quần đạt) mỗi size. */
+export function ghepAoQuanTheoSize(
+  aoSizes: { size: string; sl: number }[] | undefined,
+  quanSizes: { size: string; sl: number }[] | undefined,
+): GhepSizeResult {
+  const hasAo = Boolean(aoSizes && aoSizes.length > 0);
+  const hasQuan = Boolean(quanSizes && quanSizes.length > 0);
+  if (!hasAo || !hasQuan) {
+    return { ghepSizes: [], aoDuSizes: [], quanDuSizes: [], tongGhep: 0, chinhXacTheoSize: false };
+  }
+
+  const aoMap = new Map((aoSizes || []).map((s) => [s.size, Number(s.sl) || 0]));
+  const quanMap = new Map((quanSizes || []).map((s) => [s.size, Number(s.sl) || 0]));
+  const allSizes = Array.from(new Set([...aoMap.keys(), ...quanMap.keys()]));
+
+  const ghepSizes: { size: string; sl: number }[] = [];
+  const aoDuSizes: { size: string; sl: number }[] = [];
+  const quanDuSizes: { size: string; sl: number }[] = [];
+  let tongGhep = 0;
+
+  for (const size of allSizes) {
+    const ao = aoMap.get(size) || 0;
+    const quan = quanMap.get(size) || 0;
+    const ghep = Math.min(ao, quan);
+    ghepSizes.push({ size, sl: ghep });
+    tongGhep += ghep;
+    if (ao > ghep) aoDuSizes.push({ size, sl: ao - ghep });
+    if (quan > ghep) quanDuSizes.push({ size, sl: quan - ghep });
+  }
+
+  return { ghepSizes, aoDuSizes, quanDuSizes, tongGhep, chinhXacTheoSize: true };
+}
+
 /**
  * Với hàng Bộ (áo + quần), May áo và May quần là 2 khâu TÁCH RIÊNG trong cùng 1
  * lệnh cắt. Việc kiểm tra "không vượt khâu liền trước" (tranSoLuong) chỉ so với
@@ -107,6 +160,16 @@ export function kiemTraKhopBo(lc: LenhCat, pc: any): KetQuaKhopBo {
   // chưa xong, đó là chuyện bình thường.
   const idHienTai = (pc?.id || "").toLowerCase();
   if (idHienTai === (mayAo.id || "").toLowerCase() || idHienTai === (mayQuan.id || "").toLowerCase()) {
+    return { ok: true };
+  }
+
+  // Sau khi QC đã Ghép Bộ xong (khâu "qc" hoàn thành), số ghép đúng theo từng
+  // size đã được chốt (xem ghepAoQuanTheoSize) - Áo và Quần có thể lệch nhau
+  // tự nhiên (phần dư đã ghi nhận riêng), không còn ý nghĩa so lại tổng Áo với
+  // tổng Quần ở các khâu sau nữa. Chỉ áp dụng chốt "khớp bộ" kiểu cũ khi lệnh
+  // cắt CHƯA qua bước Ghép Bộ (an toàn cho lệnh cắt cũ/chưa cập nhật).
+  const qcPC = (lc?.phanCong || []).find((p: any) => (p?.id || "").toLowerCase() === "qc");
+  if (qcPC && qcPC.trangThaiCD === "hoan_thanh") {
     return { ok: true };
   }
 

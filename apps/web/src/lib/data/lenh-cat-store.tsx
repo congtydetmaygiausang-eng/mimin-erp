@@ -76,6 +76,13 @@ export type MauVai = {
   // Tracking tỉ lệ size chi tiết theo từng khâu (Cắt, May Áo, May Quần, In/Thêu, Ủi/QC...)
   // Key: id khâu (vidu: "cat", "mayAo") -> Value: list size distribution
   tyLeSizeChiTiet?: Record<string, { size: string; sl: number }[]>;
+
+  // Kết quả Ghép Áo+Quần theo Size tại khâu QC (2026-08-22) - phần dư 1 bên
+  // không có bên kia ghép cùng, giữ lại theo từng size để QC/quản lý biết còn
+  // tồn Áo/Quần lẻ chưa ghép được thành Bộ. Không dùng cho tính SL nhận của
+  // khâu sau (đã ghi vào tyLeSizeChiTiet["qc"]) - chỉ để hiển thị/theo dõi.
+  aoDuTheoSize?: { size: string; sl: number }[];
+  quanDuTheoSize?: { size: string; sl: number }[];
 };
 
 export type LenhCatPhuLieu = {
