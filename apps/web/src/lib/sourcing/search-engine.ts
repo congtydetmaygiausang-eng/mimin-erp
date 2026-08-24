@@ -1072,8 +1072,8 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: key, query: `${searchQuery} Việt Nam`, topic:"general", country:"vietnam", search_depth:advanced?"advanced":"basic", max_results:advanced?6:8, chunks_per_source:advanced?3:undefined, include_raw_content:advanced?"text":false, include_answer:false, exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
-      signal: AbortSignal.timeout(18_000),
+      body: JSON.stringify({ api_key: key, query: `${searchQuery} Việt Nam`, topic:"general", country:"vietnam", search_depth:advanced?"advanced":"basic", max_results: advanced ? 10 : 20, chunks_per_source: advanced ? 5 : undefined, include_raw_content:advanced?"text":false, include_answer:false, exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!response.ok) {
       if (response.status === 432) throw new Error("Hết Quota (HTTP 432) - Vui lòng kiểm tra lại API Key");
@@ -1330,7 +1330,7 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
             { role: "user", content: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }
           ],
         }),
-        signal: AbortSignal.timeout(18_000),
+        signal: AbortSignal.timeout(25_000),
       });
       if (!response.ok) throw new Error(`Minimax enrichment failed`);
       const data = await response.json() as any;
@@ -1344,7 +1344,7 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
           contents: [{ parts: [{ text: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Trả về đúng định dạng JSON: {"phone":"", "address":"", "email":"", "taxCode":""}. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }] }],
           generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
         }),
-        signal: AbortSignal.timeout(18_000),
+        signal: AbortSignal.timeout(25_000),
       });
       if (!response.ok) throw new Error(`Gemini enrichment failed`);
       const data = await response.json() as any;
