@@ -202,36 +202,63 @@ export async function POST(req: NextRequest) {
       tool_choice: "auto",
     };
 
-    let response = await fetchWithTimeout(activeUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
-      body: JSON.stringify(baseBody),
-    }, 25000);
-
-    if (!response.ok && deepseekKey && minimaxKey && activeKey === deepseekKey) {
-      console.warn(`[agent] DeepSeek failed, fallback to MiniMax...`);
-      activeKey = minimaxKey;
-      activeUrl = "https://api.minimax.chat/v1/chat/completions";
-      baseBody.model = "abab6.5s-chat";
-      response = await fetchWithTimeout(activeUrl, {
+    const aiWork = async () => {
+      let response = await fetchWithTimeout(activeUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
         body: JSON.stringify(baseBody),
       }, 25000);
-    }
 
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: `API lỗi ${response.status}: ${err.slice(0, 200)}` }, { status: 502 });
-    }
+      if (!response.ok && deepseekKey && minimaxKey && activeKey === deepseekKey) {
+        console.warn(`[agent] DeepSeek failed, fallback to MiniMax...`);
+        activeKey = minimaxKey;
+        activeUrl = "https://api.minimax.chat/v1/chat/completions";
+        baseBody.model = "abab6.5s-chat";
+        response = await fetchWithTimeout(activeUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
+          body: JSON.stringify(baseBody),
+        }, 25000);
+      }
 
-    const data = await response.json();
-    const message = data.choices?.[0]?.message;
-    if (message?.content) message.content = stripThinkTags(message.content);
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`API lỗi ${response.status}: ${err.slice(0, 200)}`);
+      }
 
-    return NextResponse.json({ message });
+      const data = await response.json();
+      const message = data.choices?.[0]?.message;
+      if (message?.content) message.content = stripThinkTags(message.content);
+      return { message };
+    };
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        let isClosed = false;
+        const intervalId = setInterval(() => {
+          if (isClosed) return;
+          try { controller.enqueue(encoder.encode(" ")); } catch (e) {}
+        }, 2000);
+
+        try {
+          const result = await aiWork();
+          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify(result)));
+        } catch (error) {
+          console.error("[mimin-group-agent-proxy] error:", error);
+          const errMsg = error instanceof Error ? error.message : "AI Proxy gặp lỗi";
+          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify({ error: errMsg })));
+        } finally {
+          isClosed = true;
+          clearInterval(intervalId);
+          try { controller.close(); } catch (e) {}
+        }
+      }
+    });
+
+    return new Response(stream, { headers: { "Content-Type": "application/json" } });
   } catch (error) {
-    console.error("[mimin-group-agent-proxy] error:", error);
+    console.error("[mimin-group-agent-proxy] outer error:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "AI Proxy gặp lỗi" }, { status: 502 });
   }
 }
