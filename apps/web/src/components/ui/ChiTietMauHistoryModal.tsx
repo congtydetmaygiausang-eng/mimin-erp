@@ -119,11 +119,22 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-white">
-              {mau.img ? (
-                <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-slate-300">NO IMG</div>
+            <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-white flex">
+              <div className={`relative h-full ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200" : "w-full"}`}>
+                {mau.img ? (
+                  <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-300 text-center">NO IMG{lc.loaiSP?.includes("Bo") ? <br/> : ""} {lc.loaiSP?.includes("Bo") ? "ÁO" : ""}</div>
+                )}
+              </div>
+              {lc.loaiSP?.includes("Bo") && (
+                <div className="relative h-full w-1/2">
+                  {(mau as any).imgQuan ? (
+                    <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-300 text-center">NO IMG<br/>QUẦN</div>
+                  )}
+                </div>
               )}
             </div>
             <div>
