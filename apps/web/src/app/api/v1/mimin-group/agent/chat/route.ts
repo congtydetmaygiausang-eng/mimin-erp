@@ -568,13 +568,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Tính năng AI Search Agent chưa được cấu hình (thiếu MINIMAX hoặc DEEPSEEK KEY)" }, { status: 503 });
     }
 
-    const [agentConfig, activeProfiles] = await Promise.all([
-      getAgentConfig(auth.client),
-      listActiveProfiles(auth.client),
-    ]);
-    const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
+    const aiWork = async () => {
+      const [agentConfig, activeProfiles] = await Promise.all([
+        getAgentConfig(auth.client),
+        listActiveProfiles(auth.client),
+      ]);
+      const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
+      return await callAIWithTools(systemPrompt, messages, auth, initialTurnResults);
+    };
 
-    const { reply, toolCalls, results } = await callAIWithTools(systemPrompt, messages, auth, initialTurnResults);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("Quá trình tìm kiếm mất nhiều thời gian hơn dự kiến và đã tự động ngắt để bảo vệ hệ thống. Vui lòng nhấn Thử lại.")), 28000);
+    });
+
+    const { reply, toolCalls, results } = await Promise.race([aiWork(), timeoutPromise]);
     return NextResponse.json({ reply, toolCalls, results });
   } catch (error) {
     console.error("[mimin-group-agent-chat] error:", error);
