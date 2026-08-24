@@ -332,6 +332,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const directResultSections = ([
     { tier: "EXACT", prefix: "Đúng năng lực · đủ điều kiện" },
     { tier: "RELATED", prefix: "Ứng viên liên quan · cần xác minh" },
+    { tier: "NOISE", prefix: "Không đủ hồ sơ công ty (Bị loại)" },
   ] as const).flatMap((tier) => locationSections.map((section) => ({
     ...section,
     key: `${tier.tier}-${section.status}`,

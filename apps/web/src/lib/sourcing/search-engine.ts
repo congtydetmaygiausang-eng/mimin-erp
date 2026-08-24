@@ -166,7 +166,7 @@ interface DistanceEvidence {
   destination: { latitude: number | null; longitude: number | null; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string };
   addressConsistency: "MATCHED" | "UNVERIFIED" | "CONFLICT";
 }
-interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[];fieldConfidence?:CandidateFieldConfidence[];profileQuality?:CandidateProfileQuality;entityResolution?:CandidateEntityResolution; entityType?:CandidateEntityType; qualificationTier?:QualificationTier; qualificationSignals?:CandidateQualificationSignals; qualificationReasons?:string[]; resultTier?:"EXACT"|"RELATED"; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
+interface Candidate { legalName: string;tradeName?:string;shortName?:string; address: string;registeredAddress?:string;factoryAddress?:string;officeAddress?:string; province: string; district: string; phone: string;phones?:string[];zaloPhone?:string; email: string; taxCode: string; website: string;facebookUrl?:string;legalRepresentative?:string;businessLines?:string[];companyIntroduction?:string;foundedYear?:number|null;operatingStatus?:string;fieldEvidence?:CandidateFieldEvidence[];fieldConfidence?:CandidateFieldConfidence[];profileQuality?:CandidateProfileQuality;entityResolution?:CandidateEntityResolution; entityType?:CandidateEntityType; qualificationTier?:QualificationTier; qualificationSignals?:CandidateQualificationSignals; qualificationReasons?:string[]; resultTier?:"EXACT"|"RELATED"|"NOISE"; legacyAddress?: string; addressStandard?: "HCM_POST_MERGER_2025"; latitude: number | null; longitude: number | null; capabilities: string[]; sourceUrl: string; sourceTitle: string; confidence: number; sourceCount?: number; sources?: CandidateSource[]; matchReasons?: string[]; distanceKm?: number | null; locationStatus?: "INSIDE" | "OUTSIDE" | "UNKNOWN" | "CONFLICT"; locationReason?: string; distanceEvidence?: DistanceEvidence; verifiedFields?: string[]; verificationStatus?: "VERIFIED" | "PARTIAL" | "UNVERIFIED"; lastVerifiedAt?: string; coordinateSource?: CoordinateSource; coordinateConfidence?: "HIGH" | "MEDIUM" | "LOW"; geocodedAddress?: string; geocodedAt?: string; geocodeStatus?: "VERIFIED" | "REJECTED" | "NOT_ATTEMPTED"; coordinateBoundingBox?: [number, number, number, number]; coordinateConflictReason?: string; geocodeCacheStatus?: GeocodeCacheStatus }
 interface LearningProfile { approvedCount: number; rejectedCount: number; preferredTerms: string[]; avoidedTerms: string[]; applied: boolean }
 interface CandidateGeocodingSummary { attempted: number; verified: number; rejected: number; retainedFromSource: number; persistentHits: number; staleFallbacks: number; providerRequests: number }
 interface LocationBreakdown { inside: number; outside: number; unknown: number; conflict: number }
@@ -971,8 +971,8 @@ const COMPANY_READER_FIELDS = new Set(["LEGAL_NAME","TAX_CODE","ADDRESS","PHONE"
 const COMPANY_READER_ACCEPTED_FIELD_STATUS = new Set(["CONSENSUS","SINGLE_SOURCE"]);
 
 function companyReaderMaximumUrls():number{
-  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"5");
-  return Number.isFinite(configured)?Math.max(1,Math.min(10,Math.floor(configured))):5;
+  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"3");
+  return Number.isFinite(configured)?Math.max(1,Math.min(10,Math.floor(configured))):3;
 }
 
 function companyReaderSourceScore(source:SourceResult):number{
@@ -2336,6 +2336,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const relatedCandidates = cleanedCandidates.filter((candidate) =>
       !exactKeys.has(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) && isRelatedBusinessCandidate(candidate, role ?? "", query),
     );
+    const noiseCandidates = cleanedCandidates.filter(
+      (candidate) => !exactKeys.has(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) && !isRelatedBusinessCandidate(candidate, role ?? "", query)
+    );
     const businessCandidates = [
       ...exactCandidates.map((candidate) => ({ ...candidate, resultTier: "EXACT" as const })),
       ...relatedCandidates.map((candidate) => ({ ...candidate, resultTier: "RELATED" as const })),
@@ -2367,7 +2370,8 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
         if (countExactInside(attempt) >= RADIUS_ESCALATION_MIN_EXACT_INSIDE) break;
       }
     }
-    const candidates = processed.candidates;
+    const noiseWithTier = noiseCandidates.map((candidate) => ({ ...candidate, resultTier: "NOISE" as const, locationStatus: "UNKNOWN" as const }));
+    const candidates = [...processed.candidates, ...noiseWithTier];
     const measurableCount = processed.candidates.filter((candidate) => candidate.locationStatus === "INSIDE" || candidate.locationStatus === "OUTSIDE").length;
     const coordinateCoveragePercent = processed.candidates.length ? Math.round(measurableCount / processed.candidates.length * 100) : 0;
     const staleFallbackUsed = geocoding.summary.staleFallbacks > 0;
