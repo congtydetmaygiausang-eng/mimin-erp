@@ -23,6 +23,7 @@ export interface MauCardStageProps {
   // Custom UI props cho các tab nhập liệu
   renderSizeRows?: (sizeData: any[], isThucTe: boolean, totalSL: number) => React.ReactNode;
   footerAction?: React.ReactNode;
+  showSizeOnly?: boolean;
   // Metadata bổ sung
   nguoiPhuTrach?: string;
   ghiChu?: string;

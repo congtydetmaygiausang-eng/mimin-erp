@@ -79,7 +79,7 @@ function getStageDataForEdit(mau: MauVai, khauKey: string, prevKhauKey?: string)
   return prevData.map(p => ({
     size: p.size,
     sl: 0,
-    nhan: (khauKey.includes("qc") ? p.sl : p.dat ?? p.sl) || 0, // QC nhận từ SL cắt. Khác nhận từ SL đạt.
+    nhan: (khauKey.includes("qc") ? p.sl : (p as any).dat ?? p.sl) || 0, // QC nhận từ SL cắt. Khác nhận từ SL đạt.
     dat: 0,
     loi: 0,
   }));
