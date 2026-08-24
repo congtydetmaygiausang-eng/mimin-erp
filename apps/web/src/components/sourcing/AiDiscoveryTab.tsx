@@ -332,8 +332,8 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         const toolsText = await toolsResponse.text();
         try {
           toolsData = JSON.parse(toolsText);
-        } catch {
-          throw new Error(toolsResponse.ok ? "Lỗi máy chủ: API công cụ không trả về JSON" : `Lỗi máy chủ (${toolsResponse.status}): ${toolsText.substring(0, 50)}...`);
+        } catch (err: any) {
+          throw new Error(`API công cụ trả về dữ liệu hỏng. Status: ${toolsResponse.status}. Raw text: "${toolsText}". Error: ${err.message}`);
         }
         if (!toolsResponse.ok) throw new Error(toolsData.error ?? "Thực thi công cụ thất bại");
 
