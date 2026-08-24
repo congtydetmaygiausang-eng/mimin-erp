@@ -19,7 +19,7 @@ export const supabase: SupabaseClient | null = isSupabaseEnabled
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: true,
       },
       realtime: {
         params: { eventsPerSecond: 2 },
