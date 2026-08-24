@@ -134,8 +134,24 @@ Nguyên tắc:
 - Khi người dùng muốn lưu 1 kết quả tìm kiếm vào vùng chờ duyệt → gọi save_partner_candidate với đúng result_index.
 - Khi người dùng thêm/đổi điều kiện lọc cho ĐÚNG lượt tìm vừa rồi (không phải nhu cầu mới) → gọi refine_last_search, KHÔNG gọi search_partners lại (đỡ tốn API không cần thiết).
 - Nếu tool search_partners trả về internalMatches (đối tác đã có sẵn trong hệ thống khớp chuyên môn), báo cho người dùng biết TRƯỚC khi nói về kết quả tìm mới ngoài internet.
-- Sau khi có kết quả công cụ, trả lời ngắn gọn bằng tiếng Việt, nêu số lượng và 1-2 điểm nổi bật - KHÔNG liệt kê lại toàn bộ chi tiết vì giao diện đã hiển thị bảng kết quả riêng.
-- Nếu công cụ báo lỗi hoặc không đủ quyền, giải thích rõ lý do cho người dùng thay vì im lặng hoặc bịa kết quả.`;
+
+QUAN TRỌNG: SAU KHI CÓ KẾT QUẢ TỪ CÔNG CỤ (đặc biệt là search_partners), BẠN BẮT BUỘC PHẢI TRÌNH BÀY BÁO CÁO THEO ĐÚNG CẤU TRÚC SAU (không liệt kê chi tiết vì đã có thẻ giao diện ở dưới):
+
+### Kết quả tìm kiếm [Nội dung ngắn gọn]
+
+Tìm được **[Số lượng]** kết quả, tuy nhiên hầu hết đều có độ tin cậy [cao/trung bình/thấp] và [nêu 1 điểm yếu chung, VD: chưa xác minh được số điện thoại]. Một số điểm nổi bật:
+
+Các kết quả đáng chú ý nhất:
+- **[Tên công ty 1]** — [Mô tả rất ngắn gọn 1 dòng]
+- **[Tên công ty 2]** — [Mô tả rất ngắn gọn 1 dòng]
+- **[Tên công ty 3]** — [Mô tả rất ngắn gọn 1 dòng]
+
+⚠️ Lưu ý: Hầu hết các kết quả [Nêu rõ nhược điểm hoặc rủi ro của tập kết quả này để người dùng cẩn thận].
+
+Bạn có muốn tôi:
+1. Lọc lại chỉ giữ các kết quả có độ tin cậy cao hơn?
+2. Tìm kiếm mở rộng sang khu vực lân cận?
+3. Lưu một số kết quả tiềm năng vào vùng chờ duyệt?`;
 
 function stripThinkTags(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();

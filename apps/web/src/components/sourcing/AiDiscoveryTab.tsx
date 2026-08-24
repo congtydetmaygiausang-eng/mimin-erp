@@ -28,9 +28,9 @@ const SimpleMarkdown = ({ content }: { content: string }) => {
     } else if (html.match(/^\d+\.\s/)) {
       return <li key={index} dangerouslySetInnerHTML={{ __html: html.replace(/^\d+\.\s/, "") }} className="ml-4 list-decimal" />;
     } else if (html.startsWith("### ")) {
-      return <h4 key={index} dangerouslySetInnerHTML={{ __html: html.substring(4) }} className="font-bold mt-2 mb-1" />;
+      return <h3 key={index} dangerouslySetInnerHTML={{ __html: html.substring(4) }} className="text-lg font-bold mt-3 mb-2 text-brand-700" />;
     } else if (html.startsWith("## ")) {
-      return <h3 key={index} dangerouslySetInnerHTML={{ __html: html.substring(3) }} className="text-lg font-bold mt-3 mb-1 text-brand-700" />;
+      return <h2 key={index} dangerouslySetInnerHTML={{ __html: html.substring(3) }} className="text-xl font-bold mt-4 mb-2 text-brand-800" />;
     }
     return <p key={index} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} className={html ? "mb-1" : "mb-2"} />;
   };
