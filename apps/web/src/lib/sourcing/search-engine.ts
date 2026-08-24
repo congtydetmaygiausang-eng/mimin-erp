@@ -1469,7 +1469,7 @@ async function searchGemini(query: string, location: string, queries: string[]):
     const models = orderedGeminiModels(await supportedGeminiModels(key));
     for (const [index, model] of models.entries()) {
       try {
-        const results = await requestGeminiSearch(key, model, query, location, queries, index === 0 ? 18_000 : 14_000);
+        const results = await requestGeminiSearch(key, model, query, location, queries, 25_000);
         if (results.length) return results;
       } catch (error) {
         lastError = error;
@@ -1614,7 +1614,7 @@ async function requestOpenAISearch(key: string, model: string, query: string, lo
     seen.add(url);
     results.push({ title: annotation.title?.trim() || "OpenAI Web Search", url, content: answer, provider: "OPENAI_WEB_SEARCH" });
   }
-  return results.slice(0, 10);
+  return results.slice(0, 30);
 }
 
 async function searchOpenAI(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
@@ -1624,7 +1624,7 @@ async function searchOpenAI(query: string, location: string, queries: string[]):
   let lastError: unknown = null;
   for (const [index, model] of models.entries()) {
     try {
-      const results = await requestOpenAISearch(key, model, query, location, queries, index === 0 ? 18_000 : 14_000);
+      const results = await requestOpenAISearch(key, model, query, location, queries, 25_000);
       if (results.length) return results;
     } catch (error) {
       lastError = error;
