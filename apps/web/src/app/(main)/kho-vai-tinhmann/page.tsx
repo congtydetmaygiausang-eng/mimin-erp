@@ -129,9 +129,22 @@ export default function KhoVaiPage() {
 
   useEffect(() => {
     setInventory(getAllInventory());
-    setVaiImages(getVaiImages()); // Load ảnh persistent từ localStorage
+    const localImages = getVaiImages();
+    setVaiImages(localImages); // Load ảnh persistent từ localStorage
     loadGiaoDich();
-    syncInventoryWithSupabase().then(() => {
+    syncInventoryWithSupabase().then(async () => {
+      const syncedInventory = getAllInventory();
+      // Tự chuyển các ảnh cũ chỉ có trên máy người nhập lên dữ liệu dùng chung.
+      await Promise.all(
+        syncedInventory.map((vai) => {
+          const localImage = localImages[vai.maVT];
+          const remoteImage = (vai as KhoVaiWithImage).imageUrl;
+          return localImage && !remoteImage
+            ? upsertInventoryItem({ ...vai, imageUrl: localImage } as KhoVaiWithImage)
+            : Promise.resolve();
+        }),
+      ).catch(() => undefined);
+      await syncInventoryWithSupabase();
       setInventory(getAllInventory());
     });
     return subscribeInventoryChanges(() => {

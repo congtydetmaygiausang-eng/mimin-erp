@@ -5,42 +5,36 @@ import { useState } from "react";
 import { Plus, Minus, X, Box, History } from "lucide-react";
 import { toast } from "sonner";
 import { useKho } from "@/lib/data/kho-store";
-import { KHO_VAT_TU, KHO_VAI } from "@/lib/data/real-data";
+import { KHO_VAT_TU, KHO_VAI, type KhoVai } from "@/lib/data/real-data";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { Portal } from "@/components/ui/Portal";
 import type { LoaiKho } from "../data";
 
 // ============ MODAL NHAP KHO ============
-export function PLNhapKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho; onClose: () => void }) {
+export function PLNhapKho({ maVT, loai, onClose, vatTu }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai }) {
   const { themGiaoDich } = useKho();
   const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
-  const vt = dsVT.find((v) => v.maVT === maVT)!;
-  const { list: _nccList } = useNhaCungCap();
-  const nccList = _nccList
-    .filter(n => {
-      const txt = (n.loai + " " + (n.danh_muc_chi_tiet?.join(" ") || "")).toLowerCase();
-      // Nếu là Kho Phụ Liệu thì ưu tiên các NCC có chữ "phụ liệu", "phu lieu", "khóa", "nút", "chỉ", "bo cổ", v.v.
-      // Hoặc đơn giản là loại trừ các NCC chuyên Vải/Sợi ra. Ở đây ta lọc tương đối:
-      if (txt.includes("phụ liệu") || txt.includes("phu lieu") || txt.includes("bo cổ") || txt.includes("chỉ") || txt.includes("nút") || txt.includes("khóa")) return true;
-      // Nếu NCC không có tag rõ ràng, tạm thời cho hiển thị nếu KHÔNG phải chuyên vải/sợi
-      return !txt.includes("sợi") && !txt.includes("vải") && !txt.includes("dệt") && !txt.includes("nhuộm");
-    })
-    .map((n) => ({ maDT: n.ma_ncc, tenDonVi: n.ten_ncc }));
+  const vt = vatTu || dsVT.find((v) => v.maVT === maVT)!;
+  const { list: nccList, suaNCC } = useNhaCungCap();
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,
     donGia: vt.donGia,
-    nguonNhap: nccList[0]?.tenDonVi || "",
+    nccMa: nccList[0]?.ma_ncc || "",
     nguoiThucHien: "Trần Thị Bình",
     ghiChu: "",
   });
 
   const thanhTien = form.soLuong * form.donGia;
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.soLuong <= 0) return toast.error("SL phải > 0");
-    themGiaoDich({ ...form, loai: "NHAP" as const, maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
-    toast.success(`Đã nhập ${form.soLuong.toLocaleString()} ${vt.dvt} ${vt.tenVT}`);
+    const ncc = nccList.find((item) => item.ma_ncc === form.nccMa);
+    if (!ncc) return toast.error("Vui lòng chọn nhà cung cấp");
+    themGiaoDich({ ...form, nguonNhap: ncc.ten_ncc, loai: "NHAP" as const, maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
+    const debtSaved = await suaNCC({ ...ncc, cong_no: (ncc.cong_no || 0) + thanhTien });
+    if (!debtSaved) return toast.error("Đã nhập kho nhưng chưa cộng được công nợ nhà cung cấp");
+    toast.success(`Đã nhập ${form.soLuong.toLocaleString()} ${vt.dvt} và cộng ${thanhTien.toLocaleString()}đ công nợ ${ncc.ten_ncc}`);
     onClose();
   };
 
@@ -78,9 +72,9 @@ export function PLNhapKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho
             </div>
             <div>
               <label className="text-xs font-medium block mb-1">Nguồn nhập (NCC) *</label>
-              <select required className="input w-full" value={form.nguonNhap} onChange={(e) => setForm({ ...form, nguonNhap: e.target.value })}>
+              <select required className="input w-full" value={form.nccMa} onChange={(e) => setForm({ ...form, nccMa: e.target.value })}>
                 <option value="">-- Chọn NCC --</option>
-                {nccList.map((n) => <option key={n.maDT} value={n.tenDonVi}>{n.tenDonVi}</option>)}
+                {nccList.map((n) => <option key={n.ma_ncc} value={n.ma_ncc}>{n.ma_ncc} — {n.ten_ncc} (nợ {(n.cong_no || 0).toLocaleString()}đ)</option>)}
               </select>
             </div>
             <div>

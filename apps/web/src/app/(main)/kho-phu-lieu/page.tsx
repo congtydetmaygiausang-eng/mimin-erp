@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 import { useKho } from "@/lib/data/kho-store";
@@ -19,6 +19,7 @@ export default function KhoPhuLieuPage() {
   const [showNhap, setShowNhap] = useState<string | null>(null);
   const [showXuat, setShowXuat] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
+  const [selectedNhapMaVT, setSelectedNhapMaVT] = useState("");
 
   const [inventory, setInventory] = useState<KhoVai[]>([]);
   const [editingVT, setEditingVT] = useState<string | null>(null);
@@ -198,7 +199,8 @@ export default function KhoPhuLieuPage() {
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
 
         <div className="card p-4">
-          <div className="relative max-w-md">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
             <input
               className="input pl-9"
@@ -206,6 +208,18 @@ export default function KhoPhuLieuPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </div>
+          <select className="input md:w-64" value={selectedNhapMaVT} onChange={(e) => setSelectedNhapMaVT(e.target.value)}>
+            <option value="">-- Chọn phụ liệu nhập --</option>
+            {inventory.map((item) => <option key={item.maVT} value={item.maVT}>{item.maVT} — {item.tenVT}</option>)}
+          </select>
+          <button
+            type="button"
+            className="btn-primary flex items-center justify-center gap-2 whitespace-nowrap"
+            onClick={() => selectedNhapMaVT ? setShowNhap(selectedNhapMaVT) : toast.error("Vui lòng chọn phụ liệu cần nhập")}
+          >
+            <Plus className="h-4 w-4" /> Nhập phụ liệu từ NCC
+          </button>
           </div>
         </div>
 
@@ -227,7 +241,7 @@ export default function KhoPhuLieuPage() {
 
         {(tab === "nhap" || tab === "xuat" || tab === "lichsu") && <TransactionTable filteredGD={filteredGD} />}
 
-        {showNhap && <PLNhapKho maVT={showNhap} loai="phu-lieu" onClose={() => setShowNhap(null)} />}
+        {showNhap && <PLNhapKho maVT={showNhap} vatTu={inventory.find((item) => item.maVT === showNhap)} loai="phu-lieu" onClose={() => setShowNhap(null)} />}
         {showXuat && <PLXuatKho maVT={showXuat} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
         {showHistory && <PLLichSu maVT={showHistory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
       </div>
