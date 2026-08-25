@@ -71,7 +71,7 @@ FOR SELECT TO anon USING (ma_ncc ~ '^NCC-[0-9]+$');
 GRANT SELECT ON public.nha_cung_cap TO anon;
 REVOKE UPDATE ON public.nha_cung_cap FROM anon;
 
-CREATE OR REPLACE FUNCTION public.sync_accessory_receipt_supplier_debt()
+CREATE OR REPLACE FUNCTION public.sync_inventory_receipt_supplier_debt()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -96,10 +96,12 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_accessory_receipt_supplier_debt ON public.giao_dich_kho;
-CREATE TRIGGER trg_accessory_receipt_supplier_debt
+DROP TRIGGER IF EXISTS trg_inventory_receipt_supplier_debt ON public.giao_dich_kho;
+DROP FUNCTION IF EXISTS public.sync_accessory_receipt_supplier_debt();
+CREATE TRIGGER trg_inventory_receipt_supplier_debt
 AFTER INSERT ON public.giao_dich_kho
 FOR EACH ROW
-WHEN (NEW.loai = 'NHAP' AND NEW.loai_kho = 'phu-lieu')
-EXECUTE FUNCTION public.sync_accessory_receipt_supplier_debt();
+WHEN (NEW.loai = 'NHAP' AND NEW.loai_kho IN ('vai', 'phu-lieu'))
+EXECUTE FUNCTION public.sync_inventory_receipt_supplier_debt();
 NOTIFY pgrst, 'reload schema';
 COMMIT;

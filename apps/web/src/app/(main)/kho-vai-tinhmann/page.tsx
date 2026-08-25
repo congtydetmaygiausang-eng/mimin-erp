@@ -1013,7 +1013,7 @@ function VaiNhapKho({
   onSuccess: () => void;
 }) {
   const vt = vatTu || KHO_VAI.find((v) => v.maVT === maVT);
-  const { list: nccList, suaNCC } = useNhaCungCap();
+  const { list: nccList } = useNhaCungCap();
   const { themGiaoDich } = useKho();
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
@@ -1058,14 +1058,14 @@ function VaiNhapKho({
         toast.error(`Đã lưu tạm trên máy này nhưng chưa đồng bộ Supabase: ${message}`);
         return;
       }
-      themGiaoDich({
+      const giaoDich = await themGiaoDich({
         ngay: form.ngay, loai: "NHAP", loaiKho: "vai", maVT: vt.maVT,
         tenVT: vt.tenVT, soLuong: form.soLuong, donVi: "kg", donGia: form.donGia,
-        thanhTien, nguonNhap: ncc.ten_ncc, nguoiThucHien: form.nguoiThucHien, ghiChu: form.ghiChu,
+        thanhTien, nguonNhap: ncc.ten_ncc, nguoiThucHien: form.nguoiThucHien,
+        ghiChu: [form.ghiChu, `NCC: ${ncc.ma_ncc}`].filter(Boolean).join(" · "),
       });
-      const debtSaved = await suaNCC({ ...ncc, cong_no: (ncc.cong_no || 0) + thanhTien });
-      if (!debtSaved) {
-        toast.error("Đã cộng tồn kho nhưng chưa cộng được công nợ NCC");
+      if (!giaoDich) {
+        toast.error("Chưa lưu được giao dịch nhập vải lên Supabase nên công nợ NCC chưa được cộng");
         return;
       }
       toast.success(`✅ Đã cộng ${form.soLuong.toLocaleString()}kg vào tồn kho và ${formatVND(thanhTien)} công nợ ${ncc.ten_ncc}`);
