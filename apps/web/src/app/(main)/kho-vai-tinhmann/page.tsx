@@ -253,18 +253,6 @@ export default function KhoVaiPage() {
             <button onClick={handleTruAllCAT} className="btn-primary text-sm flex items-center gap-1.5">
               <Scissors className="w-4 h-4" /> Trừ kho cho 6 LSX Cắt
             </button>
-            <button onClick={handleReset} className="btn-secondary text-sm flex items-center gap-1.5">
-              <RefreshCw className="w-4 h-4" /> Reset về 500kg
-            </button>
-            <button
-              onClick={handleResetToZero}
-              className="bg-rose-500 hover:bg-rose-600 text-white text-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-semibold shadow-sm transition-all"
-            >
-              <RefreshCw className="w-4 h-4" /> Đưa về 0kg
-            </button>
-            <button onClick={refresh} className="btn-secondary text-sm flex items-center gap-1.5">
-              <RefreshCw className="w-4 h-4" /> Refresh
-            </button>
           </div>
           {/* Search bar Tồn kho */}
           <div className="card p-3 flex items-center gap-2">
