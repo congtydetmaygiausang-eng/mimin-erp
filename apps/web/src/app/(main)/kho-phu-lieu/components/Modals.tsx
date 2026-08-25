@@ -1,21 +1,24 @@
 // ============ 3 MODAL: NHAP/XUAT/LICH SU ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.8)
 
-import { useState } from "react";
-import { Plus, Minus, X, Box, History } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Minus, X, Box, History, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAT_TU, KHO_VAI, type KhoVai } from "@/lib/data/real-data";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { Portal } from "@/components/ui/Portal";
 import type { LoaiKho } from "../data";
+import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 
 // ============ MODAL NHAP KHO ============
-export function PLNhapKho({ maVT, loai, onClose, vatTu }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai }) {
+export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai; onImageSaved?: (maVT: string, imageUrl: string) => void }) {
   const { themGiaoDich } = useKho();
   const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
   const vt = vatTu || dsVT.find((v) => v.maVT === maVT)!;
   const { list: nccList, suaNCC } = useNhaCungCap();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageUrl, setImageUrl] = useState("");
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,
@@ -34,6 +37,12 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu }: { maVT: string; loai: 
     themGiaoDich({ ...form, nguonNhap: ncc.ten_ncc, loai: "NHAP" as const, maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
     const debtSaved = await suaNCC({ ...ncc, cong_no: (ncc.cong_no || 0) + thanhTien });
     if (!debtSaved) return toast.error("Đã nhập kho nhưng chưa cộng được công nợ nhà cung cấp");
+    if (imageUrl && isSupabaseEnabled && supabase) {
+      const metadata = JSON.stringify({ note: form.ghiChu || "", imageUrl });
+      const { error } = await supabase.from("kho").update({ ghi_chu: metadata, updated_at: new Date().toISOString() }).eq("sku", vt.maVT);
+      if (error) return toast.error(`Đã nhập kho và cộng công nợ nhưng chưa lưu được ảnh: ${error.message}`);
+      onImageSaved?.(vt.maVT, imageUrl);
+    }
     toast.success(`Đã nhập ${form.soLuong.toLocaleString()} ${vt.dvt} và cộng ${thanhTien.toLocaleString()}đ công nợ ${ncc.ten_ncc}`);
     onClose();
   };
@@ -50,6 +59,16 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu }: { maVT: string; loai: 
             <span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b> · <span className="opacity-70">ĐVT:</span> {vt.dvt} · <span className="opacity-70">Loại:</span> {vt.loai}
           </div>
           <form onSubmit={handleSubmit} className="space-y-3">
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => setImageUrl(String(reader.result || ""));
+              reader.readAsDataURL(file);
+            }} />
+            <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full min-h-28 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50/50 dark:bg-violet-950/20 flex items-center justify-center gap-3 overflow-hidden hover:border-violet-500">
+              {imageUrl ? <img src={imageUrl} alt={`Ảnh ${vt.tenVT}`} className="h-28 w-full object-contain" /> : <><ImageIcon className="h-7 w-7 text-violet-500" /><span className="font-semibold text-violet-700">Tải ảnh phụ liệu lên</span></>}
+            </button>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium block mb-1">Ngày nhập *</label>

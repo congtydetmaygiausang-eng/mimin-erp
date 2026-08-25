@@ -32,6 +32,14 @@ export default function KhoPhuLieuPage() {
   const PL_IMAGES_KEY = "mimin_kho_phuLieu_images";
   const PL_INVENTORY_KEY = "mimin_kho_phuLieu_custom";
 
+  const readSharedImage = (ghiChu: string | null | undefined) => {
+    if (!ghiChu) return "";
+    try {
+      const parsed = JSON.parse(ghiChu) as { imageUrl?: unknown };
+      return typeof parsed.imageUrl === "string" ? parsed.imageUrl : "";
+    } catch { return ""; }
+  };
+
   // Supabase là nguồn dữ liệu chính; không tự sinh lại danh mục phụ liệu mẫu.
   useEffect(() => {
     let mounted = true;
@@ -71,6 +79,7 @@ export default function KhoPhuLieuPage() {
           ghiChu: row.ghi_chu || "",
         } satisfies KhoVai;
       });
+      setInventoryImages(Object.fromEntries((data || []).map((row) => [row.sku, readSharedImage(row.ghi_chu)]).filter(([, image]) => Boolean(image))));
       setInventory(remote);
       localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(remote));
     };
@@ -95,7 +104,7 @@ export default function KhoPhuLieuPage() {
     const file = e.target.files?.[0];
     if (file && uploadingVT) {
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
         const url = ev.target?.result as string;
         // Persist ảnh qua F5
         setInventoryImages(prev => {
@@ -103,7 +112,13 @@ export default function KhoPhuLieuPage() {
           localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
           return next;
         });
-        toast.success("Đã tải ảnh và lưu thành công!");
+        if (isSupabaseEnabled && supabase) {
+          const item = inventory.find((value) => value.maVT === uploadingVT);
+          const metadata = JSON.stringify({ note: item?.ghiChu || "", imageUrl: url });
+          const { error } = await supabase.from("kho").update({ ghi_chu: metadata, updated_at: new Date().toISOString() }).eq("sku", uploadingVT);
+          if (error) return toast.error(`Chưa lưu được ảnh lên Supabase: ${error.message}`);
+        }
+        toast.success("Đã tải ảnh và đồng bộ cho tất cả nhân viên!");
       };
       reader.readAsDataURL(file);
     }
@@ -241,7 +256,7 @@ export default function KhoPhuLieuPage() {
 
         {(tab === "nhap" || tab === "xuat" || tab === "lichsu") && <TransactionTable filteredGD={filteredGD} />}
 
-        {showNhap && <PLNhapKho maVT={showNhap} vatTu={inventory.find((item) => item.maVT === showNhap)} loai="phu-lieu" onClose={() => setShowNhap(null)} />}
+        {showNhap && <PLNhapKho maVT={showNhap} vatTu={inventory.find((item) => item.maVT === showNhap)} loai="phu-lieu" onClose={() => setShowNhap(null)} onImageSaved={(maVT, imageUrl) => setInventoryImages((prev) => ({ ...prev, [maVT]: imageUrl }))} />}
         {showXuat && <PLXuatKho maVT={showXuat} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
         {showHistory && <PLLichSu maVT={showHistory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
       </div>
