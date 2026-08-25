@@ -19,7 +19,6 @@ import {
   History,
   Award,
   CheckCircle2,
-  ShoppingCart,
   Hash,
   Briefcase,
   Wallet,
@@ -347,7 +346,9 @@ export default function NhaCungCapPage() {
                 key={n.stt}
                 onClick={() => setShowForm({ mode: "edit", ncc: n })}
                 name={n.ten}
-                avatarSize="xl"
+                avatarUrl={n.avatar || undefined}
+                avatarSize="lg"
+                compact
                 contactPhone={n.sdt || undefined}
                 rating={n.rating}
                 highlight={(n.rating || 0) >= 4.5}
@@ -360,7 +361,6 @@ export default function NhaCungCapPage() {
                   { label: "MST", value: n.maSoThue || "thiếu", icon: FileText },
                   { label: "Công nợ", value: n.congNo > 0 ? formatVNDShort(n.congNo) : "0 đ", icon: Wallet, color: n.congNo > 0 ? "text-red-600" : "text-emerald-600" },
                   { label: "Đã mua", value: ls.tongTien > 0 ? formatVNDShort(ls.tongTien) : "0", icon: ShoppingBag, color: "text-emerald-600" },
-                  { label: "Số GD", value: `${ls.tongNhap} lần`, icon: ShoppingCart },
                 ]}
                 onView={() => setShowHistory(n)}
                 onEdit={() => setShowForm({ mode: "edit", ncc: n })}

@@ -39,6 +39,7 @@ export function EntityCard({
   warning,
   children,
   contactPhone,
+  compact = false,
 }: {
   name: string;
   subtitle?: ReactNode;
@@ -60,18 +61,19 @@ export function EntityCard({
   warning?: boolean;
   children?: ReactNode;
   contactPhone?: string;
+  compact?: boolean;
 }) {
   const [showMenu, setShowMenu] = useState(false);
 
   return (
     <div
       onClick={onClick}
-      className={`card p-3 transition hover:shadow-xl hover:-translate-y-0.5 ${onClick ? "cursor-pointer" : ""} ${
+      className={`card ${compact ? "p-2.5" : "p-3"} transition hover:shadow-xl hover:-translate-y-0.5 ${onClick ? "cursor-pointer" : ""} ${
         highlight ? "ring-2 ring-amber-500/50" : ""
       } ${warning ? "ring-2 ring-red-500/30 bg-red-500/5" : ""} ${className}`}
     >
       {/* Header */}
-      <div className="flex items-start gap-3 mb-3">
+      <div className={`flex items-start ${compact ? "gap-2 mb-2" : "gap-3 mb-3"}`}>
         <Avatar name={name} src={avatarUrl} size={avatarSize} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -135,7 +137,7 @@ export function EntityCard({
 
       {/* Status */}
       {status && (
-        <div className="mb-3">
+        <div className={compact ? "mb-2" : "mb-3"}>
           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${status.bg} ${status.color}`}>
             {status.label}
           </span>
@@ -144,11 +146,11 @@ export function EntityCard({
 
       {/* Stats grid */}
       {stats.length > 0 && (
-        <div className="grid grid-cols-2 gap-2.5 mb-3">
+        <div className={`grid grid-cols-2 ${compact ? "gap-1.5 mb-2" : "gap-2.5 mb-3"}`}>
           {stats.map((s, i) => {
             const Icon = s.icon;
             return (
-              <div key={i} className="bg-white/30 dark:bg-white/5 rounded p-2.5">
+              <div key={i} className={`bg-white/30 dark:bg-white/5 rounded ${compact ? "p-2" : "p-2.5"}`}>
                 <div className="text-xs opacity-75 flex items-center gap-1.5">
                   {Icon && <Icon className="w-3.5 h-3.5" />}
                   {s.label}
@@ -163,13 +165,13 @@ export function EntityCard({
       {children}
 
       {contactPhone && (
-        <div className="flex items-center gap-3 mt-3 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+        <div className={`flex items-center gap-2 border-t ${compact ? "mt-2 pt-2" : "mt-3 pt-3"}`} style={{ borderColor: "var(--border)" }}>
           <a
             href={`https://zalo.me/${String(contactPhone).replace(/\D/g, '')}`}
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-[#0068FF] text-white hover:bg-blue-700 text-sm font-bold transition shadow-sm"
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#0068FF] text-white hover:bg-blue-700 text-sm font-bold transition shadow-sm ${compact ? "py-1.5" : "py-2"}`}
           >
             <MessageCircle className="w-4 h-4" />
             Zalo
@@ -177,7 +179,7 @@ export function EntityCard({
           <a
             href={`tel:${String(contactPhone).replace(/\D/g, '')}`}
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-[#00A65A] text-white hover:bg-emerald-700 text-sm font-bold transition shadow-sm"
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#00A65A] text-white hover:bg-emerald-700 text-sm font-bold transition shadow-sm ${compact ? "py-1.5" : "py-2"}`}
           >
             <Phone className="w-4 h-4" />
             Gọi
