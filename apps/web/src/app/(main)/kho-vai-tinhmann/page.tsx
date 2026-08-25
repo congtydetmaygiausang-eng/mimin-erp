@@ -3,14 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Package, AlertCircle, CheckCircle2, TrendingDown, TrendingUp,
-  Scissors, Calculator, FileText, RefreshCw, BarChart3, Plus, X,
+  Scissors, Calculator, FileText, BarChart3, Plus, X,
   History, Search, ArrowDownToLine, ArrowUpFromLine, Filter
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
 import { logAudit } from "@/lib/audit-log";
 import {
-  getAllInventory, truTonKho, nhapKho, resetInventory, resetInventoryToZero, updateVaiInfo,
+  getAllInventory, truTonKho, nhapKho, updateVaiInfo,
   getInventoryByMaVT, upsertInventoryItem, subscribeInventoryChanges,
   tinhMan, parseSize, goiYVai, syncInventoryWithSupabase,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
@@ -162,20 +162,6 @@ export default function KhoVaiPage() {
     refresh();
   };
 
-  const handleReset = () => {
-    if (!confirm("Reset tồn kho về 500kg/mỗi loại?")) return;
-    resetInventory();
-    refresh();
-    toast.success("Đã reset tồn kho");
-  };
-
-  const handleResetToZero = () => {
-    if (!confirm("⚠️ Đưa tất cả tồn kho về 0kg? Dùng khi muốn nhập kho thực tế từ đầu.")) return;
-    resetInventoryToZero();
-    refresh();
-    toast.success("✅ Đã đưa toàn bộ tồn kho về 0kg");
-  };
-
   const handleNhapKho = (maVT: string) => {
     // Mở Modal thay vì dùng prompt() (chuẩn hoá form nhập liệu)
     setShowNhap(maVT);
@@ -256,19 +242,7 @@ export default function KhoVaiPage() {
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
           <div className="card p-4 flex flex-wrap gap-2">
             <button onClick={handleTruAllCAT} className="btn-primary text-sm flex items-center gap-1.5">
-              <Scissors className="w-4 h-4" /> Trừ kho cho 6 LSX Cắt
-            </button>
-            <button onClick={handleReset} className="btn-secondary text-sm flex items-center gap-1.5">
-              <RefreshCw className="w-4 h-4" /> Reset về 500kg
-            </button>
-            <button
-              onClick={handleResetToZero}
-              className="bg-rose-500 hover:bg-rose-600 text-white text-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-semibold shadow-sm transition-all"
-            >
-              <RefreshCw className="w-4 h-4" /> Đưa về 0kg
-            </button>
-            <button onClick={refresh} className="btn-secondary text-sm flex items-center gap-1.5">
-              <RefreshCw className="w-4 h-4" /> Refresh
+              <Scissors className="w-4 h-4" /> Trừ vải xuất cho Lệnh cắt
             </button>
           </div>
           {/* Search bar Tồn kho */}
