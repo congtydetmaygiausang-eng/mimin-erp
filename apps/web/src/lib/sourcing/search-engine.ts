@@ -32,6 +32,7 @@ import { buildApi5ProviderValueAudit, api5ToolCall } from "@/lib/sourcing/api5-p
 import { buildApi6RolloutGateAudit, api6ToolCall } from "@/lib/sourcing/api6-rollout-gate";
 import { buildApi7CanaryPlanAudit, api7ToolCall } from "@/lib/sourcing/api7-canary-plan";
 import { buildApi8CanaryHealthAudit, api8ToolCall } from "@/lib/sourcing/api8-canary-health";
+import { buildB2BQueryVariants, evaluateB2BCandidate } from "@/lib/sourcing/b2b-company-policy";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -124,7 +125,7 @@ interface CandidateFieldConfidence {fieldName:FieldEvidenceName;selectedValue:st
 interface CandidateProfileQuality {score:number;completeness:number;evidenceCoverage:number;conflictCount:number;conflictFields:FieldEvidenceName[];grade:"STRONG"|"REVIEW"|"WEAK"|"CONFLICT"}
 type CandidateEntityType = "HOUSEHOLD_BUSINESS" | "COMPANY" | "INDIVIDUAL_SELLER" | "UNKNOWN";
 type QualificationTier = "QUALIFIED" | "NEEDS_VERIFICATION" | "INCOMPLETE";
-interface CandidateQualificationSignals { hasPhone: boolean; hasAddress: boolean; hasTaxCode: boolean; isFormalEntity: boolean }
+interface CandidateQualificationSignals { hasPhone: boolean; hasAddress: boolean; hasTaxCode: boolean; isFormalEntity: boolean; hasB2BCapability: boolean }
 interface CandidateSource { url:string;title:string;sourceType?:SourceEvidenceType;sourceProvider?:string;excerpt?:string;rawContent?:string;relevanceScore?:number;searchQuery?:string }
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number; score?:number; sourceType?:SourceEvidenceType; provider?:string; searchQuery?:string }
 interface CompanyReaderFieldDecision { field?:unknown;status?:unknown;selected_value?:unknown;confidence?:unknown;evidence?:Array<{source_url?:unknown;excerpt?:unknown}> }
@@ -450,14 +451,25 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     // đã tinh chỉnh - chỉ dùng để sắp thứ tự ưu tiên hiển thị + gắn nhãn UI.
     const hasTaxCode = Boolean(validTaxCode(item.taxCode));
     const isFormalEntity = item.entityType === "COMPANY" || item.entityType === "HOUSEHOLD_BUSINESS";
-    const qualificationSignals: CandidateQualificationSignals = { hasPhone: Boolean(item.phone), hasAddress: Boolean(item.address), hasTaxCode, isFormalEntity };
+    const b2bDecision = evaluateB2BCandidate({
+      legalName: item.legalName,
+      entityType: item.entityType,
+      evidenceText: `${item.companyIntroduction ?? ""} ${(item.businessLines ?? []).join(" ")}`,
+      capabilityEvidence: [
+        ...(item.fieldEvidence ?? []).filter((entry) => entry.fieldName === "CAPABILITY").map((entry) => entry.fieldValue),
+        ...item.capabilities,
+      ],
+      taxCode: item.taxCode,
+    });
+    const qualificationSignals: CandidateQualificationSignals = { hasPhone: Boolean(item.phone), hasAddress: Boolean(item.address), hasTaxCode, isFormalEntity, hasB2BCapability: b2bDecision.accepted };
     const signalCount = Object.values(qualificationSignals).filter(Boolean).length;
-    const qualificationTier: QualificationTier = signalCount === 4 ? "QUALIFIED" : signalCount >= 2 ? "NEEDS_VERIFICATION" : "INCOMPLETE";
+    const qualificationTier: QualificationTier = b2bDecision.accepted && signalCount === 5 ? "QUALIFIED" : b2bDecision.accepted && signalCount >= 3 ? "NEEDS_VERIFICATION" : "INCOMPLETE";
     const qualificationReasons = [
       !qualificationSignals.hasPhone ? "Thiếu số điện thoại" : "",
       !qualificationSignals.hasAddress ? "Thiếu địa chỉ rõ ràng" : "",
       !hasTaxCode ? "Chưa có mã số thuế · Chưa xác minh MST" : "Có mã số thuế · Chưa xác minh MST",
       item.entityType === "INDIVIDUAL_SELLER" ? "Có thể là cá nhân/page bán hàng, không phải pháp nhân" : (item.entityType === "UNKNOWN" || !item.entityType) ? "Chưa xác định loại hình kinh doanh" : "",
+      !b2bDecision.accepted ? "Chưa có bằng chứng năng lực B2B trực tiếp" : "",
     ].filter(Boolean);
     return { ...item, confidence, sourceCount, matchReasons, verifiedFields, fieldConfidence, profileQuality, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus, locationReason, distanceEvidence, qualificationSignals, qualificationTier, qualificationReasons };
   });
@@ -484,7 +496,8 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const strictCandidates = ordered.filter((item) => item.locationStatus === "INSIDE").slice(0, 50);
     return { candidates: strictCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.unknown + breakdown.conflict,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
   }
-  return { candidates: ordered.slice(0, 50), breakdown, excludedByStrictMode: 0,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
+  const preferCandidates = ordered.filter((item) => item.locationStatus === "INSIDE" || item.locationStatus === "UNKNOWN").slice(0, 50);
+  return { candidates: preferCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.conflict,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
 }
 
 const LOCATION_NOISE_WORDS = new Set(["quan", "huyen", "phuong", "xa", "thi", "tran", "thanh", "pho", "tinh", "viet", "nam"]);
@@ -655,7 +668,18 @@ function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: 
   const distinctiveMatch = distinctiveTokens.length === 0 || distinctiveTokens.some((token) => evidenceTokens.has(token));
   const queryRelevant = overlapRatio(queryTokens, evidenceTokens) >= 0.5 && distinctiveMatch;
   if (!roleRelevant || !queryRelevant) return false;
-  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
+  const b2bDecision = evaluateB2BCandidate({
+    legalName: candidate.legalName,
+    entityType: candidate.entityType,
+    evidenceText: evidenceTextValue,
+    capabilityEvidence: [
+      ...(candidate.fieldEvidence ?? []).filter((entry) => entry.fieldName === "CAPABILITY").map((entry) => entry.fieldValue),
+      ...candidate.capabilities,
+    ],
+    taxCode: candidate.taxCode,
+  });
+  if (!b2bDecision.accepted) return false;
+  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|supplier|manufacturer)\b/i.test(candidate.legalName);
   const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
   const officialWebsite = Boolean(candidate.website && !blockedSource(candidate.website));
   return identityEvidence >= 2 || Boolean(candidate.taxCode) || (businessName && identityEvidence >= 1) || (officialWebsite && identityEvidence >= 1);
@@ -663,10 +687,21 @@ function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: 
 
 function isRelatedBusinessCandidate(candidate: Candidate, role: string, query: string): boolean {
   if (blockedSource(candidate.sourceUrl) || isGenericCompanyName(candidate.legalName) || noiseListing(candidate.sourceTitle)) return false;
-  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
+  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|supplier|manufacturer)\b/i.test(candidate.legalName);
   const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
   if (identityEvidence < 2 && !candidate.taxCode && !(businessName && identityEvidence >= 1)) return false;
   const evidence = normalized(`${candidate.legalName} ${candidate.capabilities.join(" ")} ${(candidate.businessLines ?? []).join(" ")} ${candidate.companyIntroduction ?? ""} ${candidate.sourceTitle}`);
+  const b2bDecision = evaluateB2BCandidate({
+    legalName: candidate.legalName,
+    entityType: candidate.entityType,
+    evidenceText: evidence,
+    capabilityEvidence: [
+      ...(candidate.fieldEvidence ?? []).filter((entry) => entry.fieldName === "CAPABILITY").map((entry) => entry.fieldValue),
+      ...candidate.capabilities,
+    ],
+    taxCode: candidate.taxCode,
+  });
+  if (!b2bDecision.accepted) return false;
   const roleRelevant = (ROLE_EVIDENCE_TERMS[role] ?? []).some((term) => evidence.includes(normalized(term)));
   const queryTokens = tokenSet(query);
   const evidenceTokens = tokenSet(evidence);
@@ -908,18 +943,8 @@ function balanceSearchQueries(queries: string[], fallback: string[], budget: num
 }
 
 function fallbackQueryPlan(query: string, location: string, role: string, radiusKm: number): string[] {
-  const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
   const budget = queryBudgetForRadius(radiusKm);
-  const queries = Array.from(new Set([
-    `${query} ${location}`,
-    `xưởng ${query} ${location}`,
-    `chuyên bán ${query} ${location}`,
-    `công ty ${query} ${location}`,
-    `cửa hàng ${query} ${location}`,
-    `nhà cung cấp ${query} ${location}`,
-    `phân phối ${query} ${location}`,
-    `bán buôn ${query} ${location}`
-  ].filter(Boolean)));
+  const queries = buildB2BQueryVariants(query, location, role);
   return balanceSearchQueries(queries, [], budget);
 }
 
@@ -940,7 +965,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
       temperature: 0.2,
       max_tokens: 900,
       messages: [
-        { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm RẤT NGẮN GỌN. QUAN TRỌNG:\n1. Tối ưu từ khóa ngắn gọn, tự nhiên như người dùng gõ Google (vd: 'xưởng vải cotton Hóc Môn', 'bán vải cotton Hóc Môn').\n2. CHỈ kết hợp với địa phương được yêu cầu, tuyệt đối không tự thêm các quận/huyện lân cận.\n3. Bỏ các từ rườm rà như 'website liên hệ', 'nhà cung cấp nguyên phụ liệu'. Càng ngắn càng tốt.\n4. Tối đa 1-2 truy vấn `site:trangvangvietnam.com`.\nTrả về JSON chuẩn." },
+        { role: "system", content: "Bạn là chuyên gia tìm nguồn cung B2B ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn ngắn để tìm CÔNG TY, NHÀ MÁY, XƯỞNG SẢN XUẤT, NHÀ CUNG CẤP SỈ hoặc ĐƠN VỊ GIA CÔNG. Không tạo truy vấn cửa hàng, bán lẻ, theo mét, giá rẻ, tuyển dụng hoặc rao vặt. CHỈ kết hợp với địa phương được yêu cầu, không tự thêm quận/huyện lân cận. Tối đa 1-2 truy vấn site:trangvangvietnam.com. Trả JSON chuẩn." },
         { role: "user", content: JSON.stringify({ query, location, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
       ],
     };
@@ -961,7 +986,8 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim().slice(0, 180))
       .filter((item) => item.length >= 4);
-    return balanceSearchQueries(aiQueries, fallback, budget);
+    const b2bOnly = aiQueries.filter((item) => !/\b(?:cửa hàng|bán lẻ|theo mét|giá rẻ|tuyển dụng|rao vặt)\b/i.test(item));
+    return balanceSearchQueries(b2bOnly, fallback, budget);
   } catch {
     return fallback;
   }
@@ -2119,19 +2145,21 @@ function applySelectedEvidence(candidate:Candidate):Candidate{
   const sanitizedCandidate={...candidate,fieldEvidence};
   const fields=buildFieldConfidence(sanitizedCandidate),selected=(name:FieldEvidenceName,minimumScore=0)=>fields.find((field)=>field.fieldName===name&&field.status!=="CONFLICT"&&field.score>=minimumScore)?.selectedValue??"";
   const phones=Array.from(new Set(fieldEvidence.filter((evidence)=>evidence.fieldName==="PHONE"&&evidence.confidence>=55).sort((left,right)=>right.confidence-left.confidence).map((evidence)=>normalizeVietnamPhone(evidence.fieldValue)).filter(Boolean))).slice(0,5);
+  const verifiedFields=new Set((candidate.verifiedFields??[]).map((field)=>field.toLowerCase()));
+  const verifiedFallback=(field:string,value:string|undefined)=>verifiedFields.has(field.toLowerCase())?(value??""):"";
   const fallbackPhones=Array.from(new Set([...(candidate.phones??[]).map(normalizeVietnamPhone),...extractVietnamPhones(candidate.phone)].filter((phone)=>phone&&!taxNumbers.has(phone)))).slice(0,5);
-  const selectedPhones=phones.length?phones:fallbackPhones;
+  const selectedPhones=phones.length?phones:(verifiedFields.has("phone")?fallbackPhones:[]);
   const addressEvidence=fieldEvidence.some((evidence)=>["REGISTERED_ADDRESS","FACTORY_ADDRESS","OFFICE_ADDRESS"].includes(evidence.fieldName));
-  const registeredAddress=postalAddress(selected("REGISTERED_ADDRESS",55))||(!addressEvidence?candidate.registeredAddress:"")||"";
-  const officeAddress=postalAddress(selected("OFFICE_ADDRESS",55))||(!addressEvidence?candidate.officeAddress:"")||"";
-  const factoryAddress=postalAddress(selected("FACTORY_ADDRESS",55))||(!addressEvidence?candidate.factoryAddress:"")||"";
-  const address=registeredAddress||factoryAddress||officeAddress||(!addressEvidence?postalAddress(candidate.address):"");
+  const registeredAddress=postalAddress(selected("REGISTERED_ADDRESS",55))||verifiedFallback("address",candidate.registeredAddress);
+  const officeAddress=postalAddress(selected("OFFICE_ADDRESS",55))||verifiedFallback("address",candidate.officeAddress);
+  const factoryAddress=postalAddress(selected("FACTORY_ADDRESS",55))||verifiedFallback("address",candidate.factoryAddress);
+  const address=registeredAddress||factoryAddress||officeAddress||(!addressEvidence?postalAddress(verifiedFallback("address",candidate.address)):"");
   const businessLines=Array.from(new Set([...fields.filter((field)=>field.fieldName==="BUSINESS_LINE"&&field.status!=="CONFLICT").map((field)=>field.selectedValue),...(candidate.businessLines??[])])).slice(0,20);
   return{...sanitizedCandidate,
     legalName:cleanCompanyLegalName(selected("LEGAL_NAME")||candidate.legalName),tradeName:selected("TRADE_NAME")||candidate.tradeName,shortName:selected("SHORT_NAME")||candidate.shortName,
-    taxCode:selected("TAX_CODE")||candidate.taxCode,registeredAddress,factoryAddress,officeAddress,address,
-    phones:selectedPhones,phone:selectedPhones.join(" - "),zaloPhone:selected("ZALO")||candidate.zaloPhone,
-    email:selected("EMAIL")||candidate.email,website:selected("WEBSITE")||candidate.website,facebookUrl:selected("FACEBOOK")||candidate.facebookUrl,
+    taxCode:selected("TAX_CODE")||verifiedFallback("taxCode",candidate.taxCode),registeredAddress,factoryAddress,officeAddress,address,
+    phones:selectedPhones,phone:selectedPhones.join(" - "),zaloPhone:selected("ZALO")||verifiedFallback("zaloPhone",candidate.zaloPhone),
+    email:selected("EMAIL")||verifiedFallback("email",candidate.email),website:selected("WEBSITE")||verifiedFallback("website",candidate.website),facebookUrl:selected("FACEBOOK")||verifiedFallback("facebookUrl",candidate.facebookUrl),
     legalRepresentative:selected("LEGAL_REPRESENTATIVE")||candidate.legalRepresentative,businessLines,
     companyIntroduction:selected("COMPANY_INTRODUCTION")||candidate.companyIntroduction,operatingStatus:selected("OPERATING_STATUS")||candidate.operatingStatus,
     fieldConfidence:fields,
@@ -2513,9 +2541,6 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const relatedCandidates = cleanedCandidates.filter((candidate) =>
       !exactKeys.has(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) && isRelatedBusinessCandidate(candidate, role ?? "", query),
     );
-    const noiseCandidates = cleanedCandidates.filter(
-      (candidate) => !exactKeys.has(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) && !isRelatedBusinessCandidate(candidate, role ?? "", query)
-    );
     const businessCandidates = [
       ...exactCandidates.map((candidate) => ({ ...candidate, resultTier: "EXACT" as const })),
       ...relatedCandidates.map((candidate) => ({ ...candidate, resultTier: "RELATED" as const })),
@@ -2547,8 +2572,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
         if (countExactInside(attempt) >= RADIUS_ESCALATION_MIN_EXACT_INSIDE) break;
       }
     }
-    const noiseWithTier = noiseCandidates.map((candidate) => ({ ...candidate, resultTier: "NOISE" as const, locationStatus: "UNKNOWN" as const }));
-    const candidates = [...processed.candidates, ...noiseWithTier];
+    // NOISE chỉ được giữ trong chẩn đoán; không đưa bài bán lẻ, danh sách tổng hợp
+    // hoặc hồ sơ thiếu bằng chứng B2B vào kết quả người dùng có thể lưu.
+    const candidates = processed.candidates;
     const measurableCount = processed.candidates.filter((candidate) => candidate.locationStatus === "INSIDE" || candidate.locationStatus === "OUTSIDE").length;
     const coordinateCoveragePercent = processed.candidates.length ? Math.round(measurableCount / processed.candidates.length * 100) : 0;
     const staleFallbackUsed = geocoding.summary.staleFallbacks > 0;
