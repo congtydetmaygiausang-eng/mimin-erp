@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, Save, Plus, Trash2, Package, Calculator, X } from "lucide-react";
 import { toast } from "sonner";
-import { DS_TI_LE_SIZE, DS_KHU_KE_HANG, ALL_PHIEU, type SanPhamTP } from "../data";
+import { DS_TI_LE_SIZE, DS_KHU_KE_HANG, DS_KENH_BAN, ALL_PHIEU, type KenhBan, type SanPhamTP } from "../data";
 import {
   SIZE_RATIO_PRESETS,
   type SizeRatioPreset,
@@ -31,6 +31,7 @@ type BienTheDraft = {
   viTri: string;
   trangThai: SanPhamTP["trangThai"];
   ghiChu: string;
+  kenhBan: KenhBan[];
 };
 
 function bienTheMoi(sizes: string[]): BienTheDraft {
@@ -42,6 +43,7 @@ function bienTheMoi(sizes: string[]): BienTheDraft {
     viTri: "Kệ A1-A2",
     trangThai: "con",
     ghiChu: "",
+    kenhBan: ["ban-le"],
   };
 }
 
@@ -72,6 +74,8 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [giaBanSi, setGiaBanSi] = useState(0);
   const [giaBanLe, setGiaBanLe] = useState(0);
   const [giaBanLo, setGiaBanLo] = useState(0);
+  const [giaTikTok, setGiaTikTok] = useState(0);
+  const [giaShopee, setGiaShopee] = useState(0);
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
   useEffect(() => { setCustomPresets(loadCustomSizeRatioPresets()); }, []);
@@ -144,6 +148,10 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       toast.error("Cần ít nhất 1 biến thể có màu và số lượng > 0");
       return;
     }
+    if (hopLe.some((bt) => bt.kenhBan.length === 0)) {
+      toast.error("Mỗi màu cần chọn ít nhất 1 kênh bán");
+      return;
+    }
     setSaving(true);
     const rows = hopLe.map((bt) => ({
       maSP: maSP.trim().toUpperCase(),
@@ -161,6 +169,9 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       giaBanSi,
       giaBanLe,
       giaBanLo,
+      giaTikTok,
+      giaShopee,
+      kenhBan: bt.kenhBan,
       viTri: bt.viTri,
       trangThai: bt.trangThai,
       ghiChu: bt.ghiChu,
@@ -245,6 +256,14 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                 <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá bán lô</label>
                 <input type="number" min={0} value={giaBanLo || ""} onChange={(e) => setGiaBanLo(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
               </div>
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá TikTok</label>
+                <input type="number" min={0} value={giaTikTok || ""} onChange={(e) => setGiaTikTok(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá Shopee</label>
+                <input type="number" min={0} value={giaShopee || ""} onChange={(e) => setGiaShopee(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
+              </div>
             </div>
           </div>
 
@@ -311,6 +330,28 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                         <option value="xuat-kho">Đã xuất kho</option>
                         <option value="khong-dat">Không đạt</option>
                       </select>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-semibold text-slate-500 mb-1">Kênh được phép bán *</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DS_KENH_BAN.map((kenh) => {
+                        const selected = bt.kenhBan.includes(kenh.value);
+                        return (
+                          <button
+                            key={kenh.value}
+                            type="button"
+                            onClick={() => capNhatBienThe(idx, {
+                              kenhBan: selected
+                                ? bt.kenhBan.filter((value) => value !== kenh.value)
+                                : [...bt.kenhBan, kenh.value],
+                            })}
+                            className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-500"}`}
+                          >
+                            {selected ? "✓ " : ""}{kenh.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -474,6 +515,9 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
     giaBanSi: sp.giaBanSi || 0,
     giaBanLe: sp.giaBanLe || 0,
     giaBanLo: sp.giaBanLo || 0,
+    giaTikTok: sp.giaTikTok || 0,
+    giaShopee: sp.giaShopee || 0,
+    kenhBan: sp.kenhBan?.length ? sp.kenhBan : (["ban-le"] as KenhBan[]),
     viTri: sp.viTri || "Kệ A1-A2",
     trangThai: sp.trangThai || "con",
     ghiChu: sp.ghiChu || "",
@@ -614,6 +658,37 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán lô</label>
               <input type="number" min="0" value={form.giaBanLo} onChange={(e) => setForm({ ...form, giaBanLo: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
             </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá TikTok</label>
+              <input type="number" min="0" value={form.giaTikTok} onChange={(e) => setForm({ ...form, giaTikTok: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá Shopee</label>
+              <input type="number" min="0" value={form.giaShopee} onChange={(e) => setForm({ ...form, giaShopee: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-slate-700 mb-1">Kênh được phép bán *</div>
+            <div className="flex flex-wrap gap-2">
+              {DS_KENH_BAN.map((kenh) => {
+                const selected = form.kenhBan.includes(kenh.value);
+                return (
+                  <button
+                    key={kenh.value}
+                    type="button"
+                    onClick={() => setForm({
+                      ...form,
+                      kenhBan: selected
+                        ? form.kenhBan.filter((value) => value !== kenh.value)
+                        : [...form.kenhBan, kenh.value],
+                    })}
+                    className={`rounded-lg border px-3 py-2 text-xs font-bold ${selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}
+                  >
+                    {selected ? "✓ " : ""}{kenh.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-700 mb-1 block">Ghi chú</label>
@@ -627,7 +702,13 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
         </div>
         <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-2xl">
           <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-semibold">Hủy</button>
-          <button onClick={() => onSave({ ...sp, ...form, __tempImage: image })} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 flex items-center gap-2">
+          <button onClick={() => {
+            if (form.kenhBan.length === 0) {
+              toast.error("Cần chọn ít nhất 1 kênh bán");
+              return;
+            }
+            onSave({ ...sp, ...form, __tempImage: image });
+          }} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 flex items-center gap-2">
             <Save className="w-4 h-4" /> Lưu biến thể
           </button>
         </div>

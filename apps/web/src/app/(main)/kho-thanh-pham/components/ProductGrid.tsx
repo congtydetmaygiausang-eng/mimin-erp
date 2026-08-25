@@ -4,7 +4,7 @@
 
 import type { RefObject } from "react";
 import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Package, Tag, Hash, DollarSign, MapPin, RefreshCw } from "lucide-react";
-import type { SanPhamTP } from "../data";
+import { DS_KENH_BAN, type SanPhamTP } from "../data";
 
 interface ProductGroup {
   maSP: string;
@@ -189,6 +189,14 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
             ))}
           </div>
         )}
+
+        <div className="flex flex-wrap gap-1 mb-2">
+          {(sp.kenhBan?.length ? sp.kenhBan : ["ban-le"]).map((value) => (
+            <span key={value} className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700 border border-violet-100">
+              {DS_KENH_BAN.find((kenh) => kenh.value === value)?.label ?? value}
+            </span>
+          ))}
+        </div>
 
         <div className="flex items-center justify-between pt-2.5 border-t border-slate-100">
           <span className="text-slate-600 text-xs font-bold flex items-center gap-1">

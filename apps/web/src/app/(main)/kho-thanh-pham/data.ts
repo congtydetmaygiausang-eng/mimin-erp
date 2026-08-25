@@ -17,6 +17,16 @@ export const DS_KHU_KE_HANG = [
   "Khu B1", "Khu B2", "Khu B3", "Khu B4", "Khu C1"
 ];
 
+export type KenhBan = "ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee";
+
+export const DS_KENH_BAN: { value: KenhBan; label: string }[] = [
+  { value: "ban-le", label: "Bán lẻ" },
+  { value: "ban-si", label: "Bán sỉ" },
+  { value: "ban-lo", label: "Bán lô" },
+  { value: "tiktok", label: "TikTok Shop" },
+  { value: "shopee", label: "Shopee" },
+];
+
 // ============ TYPES ============
 export interface SanPhamTP {
   id: string;
@@ -42,6 +52,9 @@ export interface SanPhamTP {
   // hàng tồn kho hiện tại nhiều biến thể cùng lúc.
   giaVon?: number;
   giaBanLo?: number;
+  giaTikTok?: number;
+  giaShopee?: number;
+  kenhBan?: KenhBan[];
   hinhAnh?: string[];
   imgQuan?: string; // Ảnh thứ 2 (áo mặt sau / quần bộ) - lấy nguyên từ mau.imgQuan của lệnh cắt gốc
   video?: string;
@@ -75,6 +88,9 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     giaBanSi: r.gia_ban_si != null ? Number(r.gia_ban_si) : undefined,
     giaVon: r.gia_von != null ? Number(r.gia_von) : undefined,
     giaBanLo: r.gia_ban_lo != null ? Number(r.gia_ban_lo) : undefined,
+    giaTikTok: r.gia_tiktok != null ? Number(r.gia_tiktok) : undefined,
+    giaShopee: r.gia_shopee != null ? Number(r.gia_shopee) : undefined,
+    kenhBan: Array.isArray(r.kenh_ban) ? r.kenh_ban : ["ban-le"],
     hinhAnh: Array.isArray(r.hinh_anh) ? r.hinh_anh : undefined,
     imgQuan: r.img_quan ?? undefined,
     video: r.video ?? undefined,
@@ -104,6 +120,9 @@ export function toSupabaseRow(sp: SanPhamTP) {
     gia_ban_si: sp.giaBanSi ?? null,
     gia_von: sp.giaVon ?? null,
     gia_ban_lo: sp.giaBanLo ?? null,
+    gia_tiktok: sp.giaTikTok ?? null,
+    gia_shopee: sp.giaShopee ?? null,
+    kenh_ban: sp.kenhBan?.length ? sp.kenhBan : ["ban-le"],
     hinh_anh: sp.hinhAnh ?? null,
     img_quan: sp.imgQuan ?? null,
     video: sp.video ?? null,
