@@ -14,7 +14,7 @@ import {
   getInventoryByMaVT, upsertInventoryItem, subscribeInventoryChanges,
   tinhMan, parseSize, goiYVai, syncInventoryWithSupabase,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
-  addNewVai, getVaiImages, saveVaiImage,
+  addNewVai, getVaiImages,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
 import { KHO_VAI, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
@@ -22,6 +22,7 @@ import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import { Portal } from "@/components/ui/Portal";
 import { useKho } from "@/lib/data/kho-store";
+import { uploadProductFile } from "@/lib/product-upload";
 
 const TINH_MAN_PHAN_LOAI = [
   "Áo thun cotton",
@@ -41,32 +42,20 @@ type NewVaiForm = {
   previewImg: string;
 };
 
-async function compressImage(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_SIZE = 300;
-        let { width, height } = img;
-        if (width > height && width > MAX_SIZE) {
-          height *= MAX_SIZE / width;
-          width = MAX_SIZE;
-        } else if (height > MAX_SIZE) {
-          width *= MAX_SIZE / height;
-          height = MAX_SIZE;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.7));
-      };
-    };
-  });
+function dataUrlToFile(dataUrl: string, name: string): File {
+  const [header, encoded] = dataUrl.split(",");
+  const mime = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+  const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+  return new File([bytes], name, { type: mime });
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null) {
+    const value = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
+    return [value.message, value.details, value.hint, value.code].filter((item): item is string => typeof item === "string" && item.length > 0).join(" · ") || JSON.stringify(error);
+  }
+  return String(error || "Lỗi không xác định");
 }
 
 export default function KhoVaiPage() {
@@ -102,12 +91,10 @@ export default function KhoVaiPage() {
     const file = e.target.files?.[0];
     if (file && uploadingVT) {
       try {
-        const compressedUrl = await compressImage(file);
-        saveVaiImage(uploadingVT, compressedUrl);
-        setVaiImages(prev => ({ ...prev, [uploadingVT]: compressedUrl }));
+        const imageUrl = await uploadProductFile(file, `kho-vai-${uploadingVT}`);
         const currentVai = inventory.find(v => v.maVT === uploadingVT);
         if (currentVai) {
-          const updatedVai: KhoVaiWithImage = { ...currentVai, imageUrl: compressedUrl };
+          const updatedVai: KhoVaiWithImage = { ...currentVai, imageUrl };
           await upsertInventoryItem(updatedVai);
           setInventory(prev => prev.map(v => v.maVT === uploadingVT ? updatedVai : v));
         }
@@ -137,14 +124,17 @@ export default function KhoVaiPage() {
       const syncedInventory = getAllInventory();
       // Tự chuyển các ảnh cũ chỉ có trên máy người nhập lên dữ liệu dùng chung.
       await Promise.all(
-        syncedInventory.map((vai) => {
+        syncedInventory.map(async (vai) => {
           const localImage = localImages[vai.maVT];
           const remoteImage = (vai as KhoVaiWithImage).imageUrl;
-          return localImage && !remoteImage
-            ? upsertInventoryItem({ ...vai, imageUrl: localImage } as KhoVaiWithImage)
-            : Promise.resolve();
+          if (!localImage || remoteImage) return;
+          const sharedUrl = localImage.startsWith("data:")
+            ? await uploadProductFile(dataUrlToFile(localImage, `${vai.maVT}.jpg`), `kho-vai-${vai.maVT}`)
+            : localImage;
+          await upsertInventoryItem({ ...vai, imageUrl: sharedUrl } as KhoVaiWithImage);
         }),
       ).catch(() => undefined);
+      localStorage.removeItem("mimin_kho_vai_images");
       await syncInventoryWithSupabase();
       setInventory(getAllInventory());
     });
@@ -816,8 +806,13 @@ export default function KhoVaiPage() {
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const compressedUrl = await compressImage(file);
-                setNewVaiForm(f => ({ ...f, previewImg: compressedUrl }));
+                try {
+                  const sharedUrl = await uploadProductFile(file, "kho-vai-moi");
+                  setNewVaiForm(f => ({ ...f, previewImg: sharedUrl }));
+                  toast.success("Đã tải ảnh lên Supabase Storage");
+                } catch (error) {
+                  toast.error(`Không tải được ảnh: ${getErrorMessage(error)}`);
+                }
                 if (newVaiImgRef.current) newVaiImgRef.current.value = "";
               }}
             />
@@ -918,7 +913,7 @@ export default function KhoVaiPage() {
                     try {
                       await upsertInventoryItem(newVai as KhoVaiWithImage);
                     } catch (error) {
-                      const message = error instanceof Error ? error.message : "Lỗi không xác định";
+                      const message = getErrorMessage(error);
                       toast.error(`Supabase chưa nhận mã ${maVT}: ${message}. Thẻ chưa được tạo, anh bấm lưu lại.`);
                       return;
                     }
@@ -927,7 +922,6 @@ export default function KhoVaiPage() {
                     if (!ok) { toast.error(`Mã ${maVT} đã tồn tại!`); return; }
 
                     if (newVaiForm.previewImg) {
-                      saveVaiImage(maVT, newVaiForm.previewImg);
                       setVaiImages(prev => ({ ...prev, [maVT]: newVaiForm.previewImg }));
                     }
                     toast.success(`✅ Đã lưu ${maVT} và đồng bộ cho toàn hệ thống`);

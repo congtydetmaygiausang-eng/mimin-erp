@@ -221,7 +221,9 @@ export async function upsertInventoryItem(v: KhoVai): Promise<void> {
   const { error } = await supabase
     .from("kho")
     .upsert(toSupabaseKhoRow(v), { onConflict: "sku" });
-  if (error) throw error;
+  if (error) {
+    throw new Error([error.message, error.details, error.hint, error.code].filter(Boolean).join(" · "));
+  }
 }
 
 export function getInventory(): Record<string, KhoVai> {
