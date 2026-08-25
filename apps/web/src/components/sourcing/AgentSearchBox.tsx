@@ -21,6 +21,7 @@ import { directCandidateSaveKey, saveDirectSearchCandidates, type DirectSearchCa
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
+import { buildAgentChatMessages } from "@/lib/sourcing/agent-chat-contract";
 
 export type PartnerTypeChip = "factory" | "supplier" | "customer";
 
@@ -118,7 +119,7 @@ export default function AgentSearchBox({
     if (!trimmed || loading) return;
     const currentRequestId = requestId.current + 1;
     requestId.current = currentRequestId;
-    const history = bubbles.slice(-6).map((bubble) => ({ role: bubble.role, content: bubble.content }));
+    const messages = buildAgentChatMessages(bubbles, trimmed);
     setBubbles((current) => [...current, { role: "user", content: trimmed }]);
     setLoading(true);
     try {
@@ -127,7 +128,7 @@ export default function AgentSearchBox({
       const response = await fetch("/api/v1/mimin-group/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: trimmed, history, lastResults: results }),
+        body: JSON.stringify({ messages, lastResults: results }),
       });
       const data = (await response.json()) as ChatApiResponse;
       if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
