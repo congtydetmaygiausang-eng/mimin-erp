@@ -2,6 +2,13 @@
 -- Không xóa hoặc thay đổi bất kỳ dòng GC-* nào.
 BEGIN;
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Bảng production có cột id UUID NOT NULL nhưng chưa có giá trị mặc định.
+-- Thiết lập UUID tự sinh để INSERT/UPSERT NCC không còn nhận id = NULL.
+ALTER TABLE public.nha_cung_cap
+  ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
 ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS stt integer;
 ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS chuyen_mon text;
 ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS ma_so_thue text;
