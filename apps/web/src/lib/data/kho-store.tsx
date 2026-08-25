@@ -38,7 +38,7 @@ export type TrangThaiKho = {
 
 type StoreContext = {
   giaoDich: GiaoDichKho[];
-  themGiaoDich: (gd: Omit<GiaoDichKho, "id">) => void;
+  themGiaoDich: (gd: Omit<GiaoDichKho, "id">) => Promise<GiaoDichKho | null>;
   xoaGiaoDich: (id: string) => void;
   tinhTonKho: (maVT: string, loaiKho: LoaiKho) => number;
   trangThaiKho: (maVT: string, loaiKho: LoaiKho) => TrangThaiKho;
@@ -54,6 +54,9 @@ const STORAGE_KEY = "mimin_kho_vai_v2";
 // Map 1 row Supabase (snake_case) -> GiaoDichKho (camelCase app model).
 // Không dùng supabaseFetchAll vì nó biến ma_vt -> maVt (sai hoa/thường so với maVT).
 function fromSupabaseRow(r: any): GiaoDichKho {
+  const rawNote = String(r.ghi_chu ?? r.ghiChu ?? "");
+  const sourceMatch = rawNote.match(/(?:^| · )Nguồn:\s*([^·]+)/);
+  const cleanNote = rawNote.replace(/(?:^| · )Nguồn:\s*[^·]+/, "").trim().replace(/^·\s*/, "");
   return {
     id: String(r.id),
     ngay: String(r.ngay || r.created_at || "").slice(0, 10),
@@ -65,9 +68,9 @@ function fromSupabaseRow(r: any): GiaoDichKho {
     donVi: r.don_vi ?? r.donVi ?? "",
     donGia: Number(r.don_gia ?? r.donGia) || 0,
     thanhTien: Number(r.thanh_tien ?? r.thanhTien) || 0,
-    nguonNhap: r.nguon_nhap ?? r.nguonNhap ?? undefined,
+    nguonNhap: r.nguon_nhap ?? r.nguonNhap ?? sourceMatch?.[1]?.trim() ?? undefined,
     nguoiThucHien: r.nguoi_thuc_hien ?? r.nguoiThucHien ?? "",
-    ghiChu: r.ghi_chu ?? r.ghiChu ?? undefined,
+    ghiChu: cleanNote || undefined,
   };
 }
 
@@ -156,7 +159,7 @@ export function KhoProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [giaoDich, hydrated]);
 
-  const themGiaoDich = useCallback((gd: Omit<GiaoDichKho, "id">) => {
+  const themGiaoDich = useCallback(async (gd: Omit<GiaoDichKho, "id">): Promise<GiaoDichKho | null> => {
     // Sinh id duy nhất KHÔNG dựa vào prev.length: đếm theo length sẽ tạo mã trùng
     // ngay khi có 1 giao dịch bị xoá, hoặc khi 2 giao dịch được ghi liên tiếp
     // trong cùng 1 lần render (VD xuất kho nhiều màu 1 lượt) - upsert theo id
@@ -165,27 +168,19 @@ export function KhoProvider({ children }: { children: ReactNode }) {
       ...gd,
       id: `GD-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     };
-    setGiaoDich((prev) => [...prev, newRow]);
     if (isSupabaseEnabled && supabase) {
-      // Ghi thẳng (không qua supabaseUpsert/camelToSnake) để kiểm soát đúng bộ cột.
-      supabase
-        .from("giao_dich_kho")
-        .upsert(toSupabaseRow(newRow))
-        .then(({ error }) => {
-          if (!error) return;
-          console.error("[KhoStore] Supabase upsert error:", error);
-          // KHÔNG nuốt lỗi: trước đây chỉ log ra console nên người dùng vẫn thấy
-          // tồn kho đã trừ trên máy mình, trong khi server không lưu được gì.
-          const chiTiet =
-            error.code === "23503"
-              ? `Mã vật tư "${newRow.maVT}" chưa có trong bảng vat_tu trên máy chủ.`
-              : error.message || "Lỗi không xác định";
-          toast.error(
-            `Chưa lưu được giao dịch kho lên máy chủ (chỉ lưu tạm trên máy này). ${chiTiet}`,
-            { duration: 8000 }
-          );
-        });
+      const { error } = await supabase.from("giao_dich_kho").upsert(toSupabaseRow(newRow));
+      if (error) {
+        console.error("[KhoStore] Supabase upsert error:", error);
+        const chiTiet = error.code === "23503"
+          ? `Mã vật tư "${newRow.maVT}" chưa có trong bảng vật tư trên máy chủ.`
+          : error.message || "Lỗi không xác định";
+        toast.error(`Chưa lưu được giao dịch kho: ${chiTiet}`, { duration: 8000 });
+        return null;
+      }
     }
+    setGiaoDich((prev) => [...prev, newRow]);
+    return newRow;
   }, []);
 
   const xoaGiaoDich = useCallback((id: string) => {

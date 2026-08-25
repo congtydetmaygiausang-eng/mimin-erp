@@ -10,10 +10,11 @@ import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { Portal } from "@/components/ui/Portal";
 import type { LoaiKho } from "../data";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
+import { uploadProductFile } from "@/lib/product-upload";
 
 // ============ MODAL NHAP KHO ============
 export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai; onImageSaved?: (maVT: string, imageUrl: string) => void }) {
-  const { themGiaoDich } = useKho();
+  const { themGiaoDich, xoaGiaoDich } = useKho();
   const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
   const vt = vatTu || dsVT.find((v) => v.maVT === maVT)!;
   const { list: nccList, suaNCC } = useNhaCungCap();
@@ -25,6 +26,7 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
     donGia: vt.donGia,
     nccMa: nccList[0]?.ma_ncc || "",
     nguoiThucHien: "Trần Thị Bình",
+    soLoNcc: "",
     ghiChu: "",
   });
 
@@ -34,20 +36,31 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
     if (form.soLuong <= 0) return toast.error("SL phải > 0");
     const ncc = nccList.find((item) => item.ma_ncc === form.nccMa);
     if (!ncc) return toast.error("Vui lòng chọn nhà cung cấp");
+    let tonKhoCu = Number(vt.tonKho) || 0;
     if (isSupabaseEnabled && supabase) {
       const { data: currentRow, error: readError } = await supabase
         .from("kho").select("ton_kho").eq("sku", vt.maVT).single();
       if (readError) return toast.error(`Không đọc được tồn kho hiện tại: ${readError.message}`);
-      const tonKhoMoi = (Number(currentRow?.ton_kho) || 0) + form.soLuong;
+      tonKhoCu = Number(currentRow?.ton_kho) || 0;
+      const tonKhoMoi = tonKhoCu + form.soLuong;
       const { error: stockError } = await supabase
         .from("kho")
         .update({ ton_kho: tonKhoMoi, don_gia: form.donGia, updated_at: new Date().toISOString() })
         .eq("sku", vt.maVT);
       if (stockError) return toast.error(`Không cộng được tồn kho phụ liệu: ${stockError.message}`);
     }
-    themGiaoDich({ ...form, nguonNhap: ncc.ten_ncc, loai: "NHAP" as const, maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
+    const ghiChuGiaoDich = [form.soLoNcc ? `Số lô NCC: ${form.soLoNcc}` : "", form.ghiChu].filter(Boolean).join(" · ");
+    const giaoDich = await themGiaoDich({ ngay: form.ngay, soLuong: form.soLuong, donGia: form.donGia, nguonNhap: ncc.ten_ncc, nguoiThucHien: form.nguoiThucHien, ghiChu: ghiChuGiaoDich, loai: "NHAP", loaiKho: "phu-lieu", maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
+    if (!giaoDich) {
+      if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
+      return;
+    }
     const debtSaved = await suaNCC({ ...ncc, cong_no: (ncc.cong_no || 0) + thanhTien });
-    if (!debtSaved) return toast.error("Đã nhập kho nhưng chưa cộng được công nợ nhà cung cấp");
+    if (!debtSaved) {
+      xoaGiaoDich(giaoDich.id);
+      if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
+      return toast.error("Không cộng được công nợ NCC nên hệ thống đã hoàn tác giao dịch và tồn kho");
+    }
     if (imageUrl && isSupabaseEnabled && supabase) {
       const metadata = JSON.stringify({ note: form.ghiChu || "", imageUrl });
       const { error } = await supabase.from("kho").update({ ghi_chu: metadata, updated_at: new Date().toISOString() }).eq("sku", vt.maVT);
@@ -63,19 +76,27 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
         <div className="card max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold flex items-center gap-2"><Plus className="w-5 h-5 text-sky-600" /> Nhập kho: {vt.tenVT}</h3>
+            <h3 className="text-lg font-bold flex items-center gap-2"><Plus className="w-5 h-5 text-sky-600" /> Nhập kho phụ liệu: {vt.tenVT}</h3>
             <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
           </div>
-          <div className="bg-sky-500/10 rounded p-2 mb-3 text-xs">
-            <span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b> · <span className="opacity-70">ĐVT:</span> {vt.dvt} · <span className="opacity-70">Loại:</span> {vt.loai}
+          <div className="bg-sky-500/10 rounded p-3 mb-3 text-xs flex flex-wrap gap-x-3 gap-y-1">
+            <span><span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b></span>
+            <span><span className="opacity-70">ĐVT:</span> <b>{vt.dvt}</b></span>
+            <span><span className="opacity-70">Loại:</span> <b>{vt.loai || "—"}</b></span>
+            <span><span className="opacity-70">Màu/Quy cách:</span> <b>{vt.mauSac || vt.ghiChu || "—"}</b></span>
+            <span><span className="opacity-70">Tồn hiện tại:</span> <b className="text-sky-700">{Number(vt.tonKho || 0).toLocaleString()} {vt.dvt}</b></span>
           </div>
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => {
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (event) => {
               const file = event.target.files?.[0];
               if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => setImageUrl(String(reader.result || ""));
-              reader.readAsDataURL(file);
+              try {
+                const sharedUrl = await uploadProductFile(file, `kho-phu-lieu-${vt.maVT}`);
+                setImageUrl(sharedUrl);
+                toast.success("Đã tải ảnh phụ liệu lên Supabase Storage");
+              } catch (error) {
+                toast.error(`Không tải được ảnh: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
+              }
             }} />
             <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full min-h-28 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50/50 dark:bg-violet-950/20 flex items-center justify-center gap-3 overflow-hidden hover:border-violet-500">
               {imageUrl ? <img src={imageUrl} alt={`Ảnh ${vt.tenVT}`} className="h-28 w-full object-contain" /> : <><ImageIcon className="h-7 w-7 text-violet-500" /><span className="font-semibold text-violet-700">Tải ảnh phụ liệu lên</span></>}
@@ -106,6 +127,10 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
                 <option value="">-- Chọn NCC --</option>
                 {nccList.map((n) => <option key={n.ma_ncc} value={n.ma_ncc}>{n.ma_ncc} — {n.ten_ncc} (nợ {(n.cong_no || 0).toLocaleString()}đ)</option>)}
               </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Số lô / Mã lô NCC</label>
+              <input className="input w-full font-mono" placeholder="VD: LOT-NUT-2026-08-001" value={form.soLoNcc} onChange={(e) => setForm({ ...form, soLoNcc: e.target.value })} />
             </div>
             <div>
               <label className="text-xs font-medium block mb-1">Người TH</label>
