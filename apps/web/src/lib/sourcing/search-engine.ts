@@ -1006,7 +1006,7 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
   if(process.env.COMPANY_READER_ENRICHMENT_ENABLED==="false")return{items:[],health:{name:"Jina Reader",status:"DISABLED",count:0,code:"NOT_ENABLED"}};
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}};
-  const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
+  console.log("JINA_TARGET_URLS:", urls); const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
   const timeoutMs=Math.max(5_000,Math.min(115_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"95000")||95_000));
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
@@ -1025,9 +1025,9 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
       return data;
     }));
     const settled=await operation;
-    const responses=settled.filter((result):result is PromiseFulfilledResult<CompanyReaderResponse>=>result.status==="fulfilled").map((result)=>result.value);
+    settled.forEach((result) => { if(result.status==="rejected") console.error("JINA_EDGE_ERROR:", result.reason); }); const responses=settled.filter((result):result is PromiseFulfilledResult<CompanyReaderResponse>=>result.status==="fulfilled").map((result)=>result.value);
     const profiles=responses.flatMap((response)=>Array.isArray(response.profiles)?response.profiles:[]);
-    const items=profiles.map(companyReaderProfileSource).filter((item):item is SourceResult=>Boolean(item));
+    const items=profiles.map(companyReaderProfileSource).filter((item):item is SourceResult=>Boolean(item)); console.log("JINA_PROFILES_FOUND:", profiles.length, "ITEMS_GENERATED:", items.length);
     const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
     return{items,health:{name:"Jina Reader",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}};
   }catch(error){
