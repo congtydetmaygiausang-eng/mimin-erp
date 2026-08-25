@@ -26,7 +26,6 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
     donGia: vt.donGia,
     nccMa: nccList[0]?.ma_ncc || "",
     nguoiThucHien: "Trần Thị Bình",
-    soLoNcc: "",
     ghiChu: "",
   });
 
@@ -49,7 +48,7 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
         .eq("sku", vt.maVT);
       if (stockError) return toast.error(`Không cộng được tồn kho phụ liệu: ${stockError.message}`);
     }
-    const ghiChuGiaoDich = [form.soLoNcc ? `Số lô NCC: ${form.soLoNcc}` : "", form.ghiChu].filter(Boolean).join(" · ");
+    const ghiChuGiaoDich = form.ghiChu;
     const giaoDich = await themGiaoDich({ ngay: form.ngay, soLuong: form.soLuong, donGia: form.donGia, nguonNhap: ncc.ten_ncc, nguoiThucHien: form.nguoiThucHien, ghiChu: ghiChuGiaoDich, loai: "NHAP", loaiKho: "phu-lieu", maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
     if (!giaoDich) {
       if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
@@ -127,10 +126,6 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
                 <option value="">-- Chọn NCC --</option>
                 {nccList.map((n) => <option key={n.ma_ncc} value={n.ma_ncc}>{n.ma_ncc} — {n.ten_ncc} (nợ {(n.cong_no || 0).toLocaleString()}đ)</option>)}
               </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Số lô / Mã lô NCC</label>
-              <input className="input w-full font-mono" placeholder="VD: LOT-NUT-2026-08-001" value={form.soLoNcc} onChange={(e) => setForm({ ...form, soLoNcc: e.target.value })} />
             </div>
             <div>
               <label className="text-xs font-medium block mb-1">Người TH</label>
