@@ -10,6 +10,7 @@ export interface Api0OperationObservation {
   rawItems: number;
   uniqueItems: number;
   code?: string;
+  radarLogs?: any[];
 }
 
 export interface Api0SearchFunnel {

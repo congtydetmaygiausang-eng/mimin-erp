@@ -131,6 +131,55 @@ function SearchProgressModal({ loading }: { loading: boolean }) {
   );
 }
 
+
+// --- Jina Radar Component ---
+function JinaRadar({ diagnostics }: { diagnostics: any }) {
+  if (!diagnostics || !diagnostics.api0Baseline || !Array.isArray(diagnostics.api0Baseline.operations)) return null;
+  
+  const radarLogs: any[] = [];
+  for (const op of diagnostics.api0Baseline.operations) {
+     if (op.name === "Jina Reader" && Array.isArray(op.radarLogs)) {
+        radarLogs.push(...op.radarLogs);
+     }
+  }
+
+  if (radarLogs.length === 0) return null;
+
+  return (
+    <div className="card p-4 space-y-3 bg-slate-900 text-slate-100 font-mono text-xs overflow-hidden relative group mt-4">
+      <div className="absolute top-0 right-0 bg-brand-600 px-2 py-1 text-[10px] uppercase font-bold rounded-bl-lg">Jina Radar</div>
+      <div className="flex items-center gap-2 border-b border-slate-700 pb-2 mb-2">
+         <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+         </span>
+         <h3 className="font-semibold text-sm">Theo dõi Jina Reader (Trực tiếp)</h3>
+         <span className="ml-auto opacity-70">URL đã xử lý: {radarLogs.length}</span>
+      </div>
+      <div className="max-h-60 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+         {radarLogs.map((log: any, i: number) => {
+             const time = new Date(log.timestamp).toLocaleTimeString("vi-VN");
+             const color = log.status === "ERROR" ? "text-red-400" : log.status === "SUCCESS" ? "text-emerald-400" : "text-amber-400";
+             const icon = log.status === "ERROR" ? "🔴" : log.status === "SUCCESS" ? "🟢" : "🟡";
+             return (
+               <div key={i} className="flex gap-2 items-start border-b border-slate-800 pb-1">
+                 <span className="text-slate-500 shrink-0">[{time}]</span>
+                 <span className="shrink-0">{icon}</span>
+                 <div className="flex-1 min-w-0">
+                    <p className="truncate opacity-80" title={log.url}>{log.url}</p>
+                    {log.status === "SUCCESS" && <p className={`${color} font-semibold`}>=> Đọc thành công {log.bytesRead} bytes</p>}
+                    {log.status === "ERROR" && <p className={`${color}`}>=> Lỗi: {log.message}</p>}
+                    {log.status === "PENDING" && <p className={`${color} animate-pulse`}>=> Đang kết nối Jina Reader...</p>}
+                 </div>
+               </div>
+             );
+         })}
+      </div>
+    </div>
+  );
+}
+// -----------------------------
+
 export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -155,6 +204,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [resolvedCenter, setResolvedCenter] = useState<ResolvedSearchCenter|null>(null);
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [diagnostics, setDiagnostics] = useState<SearchDiagnostics|null>(null);
+  const [agentDiagnostics, setAgentDiagnostics] = useState<any>(null);
   const [resultCriteria, setResultCriteria] = useState<SearchCriteriaSnapshot|null>(null);
   const [cacheReady,setCacheReady]=useState(false);
   const [chatBubbles,setChatBubbles]=useState<Array<{role:"user"|"assistant"|"error";content:string;payload?:string}>>([]);
@@ -360,6 +410,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           setDirectResults(fetchedCandidates);
           setDirectProvider((toolsData.results.provider || []).join("+"));
           setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
+          setAgentDiagnostics(toolsData.results.diagnostics || null);
         }
       }
 
@@ -529,6 +580,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       </div>
     </div>
     <SearchProgressModal loading={loading} />
+    <JinaRadar diagnostics={agentDiagnostics} />
     {items.length === 0 && !loading && !directResults.length && (
       <div className="rounded-xl bg-slate-50 border p-4 text-sm text-slate-700" style={{borderColor: "var(--border)"}}>
       <div className="flex items-center gap-2 font-bold mb-2 text-brand-700"><Sparkles className="w-4 h-4"/> Mẹo tìm kiếm hiệu quả</div>
