@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Calendar, Plus, CheckCircle2, TrendingUp, Target,
-  AlertCircle, Edit2, Trash2, X, Layers, Save, Filter
+  AlertCircle, Edit2, Trash2, X, Layers, Save, Filter, Scissors
 } from "lucide-react";
 import { toast } from "sonner";
 import { Portal } from "@/components/ui/Portal";
@@ -67,6 +67,32 @@ export default function KeHoachSXPage() {
       const loaded: KHSX[] = raw ? JSON.parse(raw) : [];
       setList(loaded.map(k => ({ ...k, trangThai: autoTrangThai(k) })));
     } catch { setList([]); }
+    
+    // Auto fill form from Product Library transfer
+    const transfer = sessionStorage.getItem("mimin_transfer_khsx");
+    if (transfer) {
+      try {
+        const data = JSON.parse(transfer);
+        const loaiMap: any = { AoTru: "Áo", AoCoTron: "Áo", AoPolo: "Áo", BoTru: "Bộ", BoCoTron: "Bộ", Quan: "Quần", QuanKaki: "Quần", PhuKien: "Phụ kiện" };
+        const mappedLoai = loaiMap[data.loaiSP] || "Áo";
+        setEditItem({
+          id: "",
+          maKHSX: `KH-${String(Date.now()).slice(-4)}`,
+          tuan: "",
+          tuNgay: new Date().toISOString().split("T")[0],
+          denNgay: new Date().toISOString().split("T")[0],
+          sanPham: data.tenSP || "",
+          loai: mappedLoai,
+          soLuong: 0,
+          daHoanThanh: 0,
+          xuongPhuTrach: XUONG_LIST[0],
+          trangThai: "Lên kế hoạch",
+          ghiChu: data.giaBan ? `Giá bán dự kiến: ${data.giaBan}` : ""
+        });
+        setShowForm(true);
+      } catch (e) {}
+      sessionStorage.removeItem("mimin_transfer_khsx");
+    }
   }, []);
 
   const commit = (next: KHSX[]) => {
@@ -113,7 +139,7 @@ export default function KeHoachSXPage() {
             </div>
           </div>
           <button onClick={() => { setEditItem(null); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition">
-            <Plus className="w-4 h-4" /> Táº¡o KHSX
+            <Plus className="w-4 h-4" /> Tạo KHSX
           </button>
         </div>
       </div>
@@ -188,7 +214,7 @@ export default function KeHoachSXPage() {
 
                 <div className="mb-3">
                   <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-bold text-slate-500">Tiáº¿n Ä‘á»™</span>
+                    <span className="font-bold text-slate-500">Tiến độ</span>
                     <span className={`font-black ${tienDo >= 100 ? "text-emerald-600" : "text-teal-600"}`}>{tienDo.toFixed(1)}%</span>
                   </div>
                   <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -198,24 +224,32 @@ export default function KeHoachSXPage() {
 
                 {progressEdit?.id === k.id && (
                   <div className="flex gap-2 mb-3">
-                    <input type="number" min={0} max={k.soLuong} className="input flex-1 text-sm" value={progressEdit.val} onChange={e => setProgressEdit({ id: k.id, val: Number(e.target.value) })} placeholder={`Tá»‘i Ä‘a ${k.soLuong}`} />
-                    <button onClick={() => { commit(list.map(x => x.id === k.id ? { ...x, daHoanThanh: Math.min(progressEdit.val, k.soLuong) } : x)); setProgressEdit(null); toast.success("ÄÃ£ cáº­p nháº­t tiáº¿n Ä‘á»™"); }} className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3 rounded-lg font-bold"><Save className="w-3 h-3" /></button>
+                    <input type="number" min={0} max={k.soLuong} className="input flex-1 text-sm" value={progressEdit.val} onChange={e => setProgressEdit({ id: k.id, val: Number(e.target.value) })} placeholder={`Tối đa ${k.soLuong}`} />
+                    <button onClick={() => { commit(list.map(x => x.id === k.id ? { ...x, daHoanThanh: Math.min(progressEdit.val, k.soLuong) } : x)); setProgressEdit(null); toast.success("Đã cập nhật tiến độ"); }} className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-3 rounded-lg font-bold"><Save className="w-3 h-3" /></button>
                     <button onClick={() => setProgressEdit(null)} className="bg-slate-200 text-slate-700 text-xs px-2 rounded-lg font-bold"><X className="w-3 h-3" /></button>
                   </div>
                 )}
 
-                {k.ghiChu && <div className="mb-3 text-xs bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-2 rounded-lg border border-amber-200 dark:border-amber-500/20 font-medium">ðŸ’¬ {k.ghiChu}</div>}
+                {k.ghiChu && <div className="mb-3 text-xs bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-2 rounded-lg border border-amber-200 dark:border-amber-500/20 font-medium">💬 {k.ghiChu}</div>}
 
-                <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <button onClick={() => setProgressEdit({ id: k.id, val: k.daHoanThanh })} className="flex-1 text-xs py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-1">
-                    <TrendingUp className="w-3 h-3" /> Tiáº¿n Ä‘á»™
+                <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap">
+                  <button onClick={() => {
+                    sessionStorage.setItem("mimin_transfer_lenhcat", JSON.stringify(k));
+                    window.location.href = "/lenh-cat";
+                  }} className="w-full text-xs py-2 bg-cyan-600 text-white rounded-lg font-bold hover:bg-cyan-700 transition flex items-center justify-center gap-1 shadow-sm">
+                    <Scissors className="w-3.5 h-3.5" /> Tạo Lệnh Cắt Nhanh
                   </button>
-                  <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 transition flex items-center justify-center gap-1">
-                    <Edit2 className="w-3 h-3" /> Sửa
-                  </button>
-                  <button onClick={() => handleDelete(k)} className="flex-1 text-xs py-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 rounded-lg font-bold hover:bg-rose-100 transition flex items-center justify-center gap-1">
-                    <Trash2 className="w-3 h-3" /> Xoá
-                  </button>
+                  <div className="w-full flex gap-2">
+                    <button onClick={() => setProgressEdit({ id: k.id, val: k.daHoanThanh })} className="flex-1 text-xs py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-1">
+                      <TrendingUp className="w-3 h-3" /> Tiến độ
+                    </button>
+                    <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 transition flex items-center justify-center gap-1">
+                      <Edit2 className="w-3 h-3" /> Sửa
+                    </button>
+                    <button onClick={() => handleDelete(k)} className="flex-1 text-xs py-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 rounded-lg font-bold hover:bg-rose-100 transition flex items-center justify-center gap-1">
+                      <Trash2 className="w-3 h-3" /> Xoá
+                    </button>
+                  </div>
                 </div>
               </div>
             );

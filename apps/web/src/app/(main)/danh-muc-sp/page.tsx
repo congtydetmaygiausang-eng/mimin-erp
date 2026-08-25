@@ -203,8 +203,14 @@ export default function DanhMucSanPhamPage() {
     setProductForCart(sp);
   };
   const handleProduceOrder = (sp: SanPham) => {
-    // Navigate to /ke-hoach-sx
-    window.location.href = "/ke-hoach-sx";
+    // Navigate to /ke-hoach-san-xuat and pass data via sessionStorage
+    sessionStorage.setItem("mimin_transfer_khsx", JSON.stringify({
+      maSP: sp.id,
+      tenSP: sp.tenSP,
+      loaiSP: sp.loaiSP,
+      giaBan: sp.giaBanDuKien
+    }));
+    window.location.href = "/ke-hoach-san-xuat";
   };
 
   const handleFavorite = (sp: any) => {

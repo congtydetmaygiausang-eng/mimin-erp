@@ -203,6 +203,27 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     }
   }, [editing]);
 
+  // Check for auto-transfer from Kế hoạch sản xuất
+  useEffect(() => {
+    if (!editing && isOpen) {
+      const transferStr = sessionStorage.getItem("mimin_transfer_lenhcat");
+      if (transferStr) {
+        try {
+          const data = JSON.parse(transferStr);
+          if (data.sanPham) setTenSP(data.sanPham);
+          if (data.soLuong) {
+            setTongSL(data.soLuong);
+            setTongSLThucTe(data.soLuong);
+          }
+          if (data.maKHSX) setGhiChu(`Từ KHSX: ${data.maKHSX}`);
+          const loaiMap: any = { "Áo": "AoTru", "Bộ": "BoTru", "Quần": "Quan", "Phụ kiện": "PhuKien" };
+          if (data.loai && loaiMap[data.loai]) setLoaiSP(loaiMap[data.loai]);
+        } catch (e) {}
+        sessionStorage.removeItem("mimin_transfer_lenhcat");
+      }
+    }
+  }, [editing, isOpen]);
+
   // ============ Form state ============
   const [loaiLenh, setLoaiLenh] = useState<LoaiLenh>("HangNha");
   const [khachHang, setKhachHang] = useState("");
