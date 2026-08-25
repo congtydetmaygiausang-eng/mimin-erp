@@ -202,11 +202,12 @@ export function EntityCard({
   );
 }
 
-export function EntityCardGrid({ children, cols = 3 }: { children: ReactNode; cols?: 2 | 3 | 4 }) {
+export function EntityCardGrid({ children, cols = 3 }: { children: ReactNode; cols?: 2 | 3 | 4 | 5 }) {
   const gridClass = {
     2: "grid md:grid-cols-2 gap-3",
     3: "grid md:grid-cols-2 lg:grid-cols-3 gap-3",
     4: "grid md:grid-cols-2 lg:grid-cols-4 gap-3",
+    5: "grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5",
   }[cols];
   return <div className={gridClass}>{children}</div>;
 }

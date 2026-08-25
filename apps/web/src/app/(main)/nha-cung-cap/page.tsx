@@ -338,7 +338,7 @@ export default function NhaCungCapPage() {
       )}
 
       {viewMode === "card" && (
-        <EntityCardGrid cols={4}>
+        <EntityCardGrid cols={5}>
           {filtered.map((n) => {
             const ls = lichSuMua[n.ten] || { gd: [], tongTien: 0, tongNhap: 0 };
             return (
@@ -347,7 +347,7 @@ export default function NhaCungCapPage() {
                 onClick={() => setShowForm({ mode: "edit", ncc: n })}
                 name={n.ten}
                 avatarUrl={n.avatar || undefined}
-                avatarSize="lg"
+                avatarSize="md"
                 compact
                 contactPhone={n.sdt || undefined}
                 rating={n.rating}
