@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.8)
 
 import { Boxes, Plus, Minus, History, Box, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
-import { formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { formatVND } from "@/lib/data/real-data";
 import { Stat } from "./ui-blocks";
 import type { Tab } from "../data";
 
@@ -31,7 +31,7 @@ export function Header({ inventoryCount, tongGiaTri, dsCanhBao, dsCanhBaoDetails
               Kho Phụ Liệu
             </h1>
             <p className="text-sm opacity-95 mt-1.5">
-              {inventoryCount} mã phụ liệu · Tổng giá trị tồn <b className="text-white">{formatVNDShort(tongGiaTri)}</b>
+              {inventoryCount} mã phụ liệu · Tổng giá trị tồn <b className="text-white">{formatVND(tongGiaTri)}</b>
               {dsCanhBao.length > 0 && <> · <b className="text-rose-200">⚠️ {dsCanhBao.length} mã dưới tồn tối thiểu</b></>}
             </p>
           </div>
@@ -46,12 +46,11 @@ export function Header({ inventoryCount, tongGiaTri, dsCanhBao, dsCanhBaoDetails
           </div>
           <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
             <div className="text-xs opacity-90 flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5" /> Giá trị tồn</div>
-            <div className="text-xl md:text-2xl font-bold mt-1">{formatVNDShort(tongGiaTri)}</div>
-            <div className="text-[10px] opacity-80 mt-0.5">{formatVND(tongGiaTri)}</div>
+            <div className="text-xl md:text-2xl font-bold mt-1 tabular-nums">{formatVND(tongGiaTri)}</div>
           </div>
           <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
             <div className="text-xs opacity-90 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Tổng nhập</div>
-            <div className="text-xl md:text-2xl font-bold mt-1">{formatVNDShort(tongNhap)}</div>
+            <div className="text-xl md:text-2xl font-bold mt-1 tabular-nums">{formatVND(tongNhap)}</div>
           </div>
           <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
             <div className="text-xs opacity-90 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Cảnh báo tồn</div>

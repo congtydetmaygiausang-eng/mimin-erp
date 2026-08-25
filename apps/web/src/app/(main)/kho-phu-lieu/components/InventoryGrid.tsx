@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { Boxes, Plus, Minus } from "lucide-react";
-import { formatVNDShort } from "@/lib/data/real-data";
+import { formatVND } from "@/lib/data/real-data";
 import type { KhoVai } from "@/lib/data/real-data";
 
 interface InventoryGridProps {
@@ -93,7 +93,7 @@ export function InventoryGrid({ filteredVT, dsTrangThai, inventoryImages, editin
               <div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">Giá trị</div>
                 <div className="flex flex-col gap-1 mt-0.5">
-                  <span className="text-[13px] font-black text-slate-700 dark:text-slate-200 bg-slate-200/60 dark:bg-slate-700/60 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-slate-700/50">{formatVNDShort(tt.giaTriTon)}</span>
+                  <span className="text-xs font-black tabular-nums whitespace-nowrap text-slate-700 dark:text-slate-200 bg-slate-200/60 dark:bg-slate-700/60 px-1.5 py-0.5 rounded shadow-sm border border-slate-200/50 dark:border-slate-700/50">{formatVND(tt.giaTriTon)}</span>
                 </div>
               </div>
             </div>
