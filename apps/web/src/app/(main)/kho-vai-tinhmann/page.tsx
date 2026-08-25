@@ -297,9 +297,9 @@ export default function KhoVaiPage() {
                 </div>
 
                 {/* Main content: Color image & Name */}
-                <div className="flex gap-4 items-center mb-4">
+                <div className="flex flex-col gap-3 mb-4">
                   <div 
-                    className="w-24 h-24 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group/img flex items-center justify-center bg-slate-100 dark:bg-slate-800 transition-transform group-hover:scale-105"
+                    className="w-full h-40 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden cursor-pointer relative group/img flex items-center justify-center bg-slate-100 dark:bg-slate-800 transition-transform group-hover:scale-[1.02]"
                     style={{ backgroundColor: (vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl) ? 'transparent' : getColorHex(v.mauSac) }}
                     onClick={() => {
                       const src = vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl;
@@ -324,7 +324,7 @@ export default function KhoVaiPage() {
                       title="Đổi ảnh vải"
                     >+</button>
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="w-full min-w-0">
                     {editingVT === v.maVT ? (
                       <div className="space-y-2">
                         <input 
