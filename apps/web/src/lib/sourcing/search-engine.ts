@@ -1040,12 +1040,10 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
       batch.forEach(url => {
           const log = logMap.get(url);
           if (log) { 
-             log.status = "SUCCESS"; 
              log.timestamp = new Date().toISOString(); 
              if (data.status === "SHADOW_PROCESSED") {
+                 log.status = "SUCCESS";
                  log.message = "Đang đọc ngầm (Sẽ có sau 1-2 phút)";
-             } else {
-                 log.message = "Đã lấy dữ liệu";
              }
           }
       });
@@ -1059,10 +1057,25 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
         if (result.status === "fulfilled") {
            const batch = batches[index];
            const profs = Array.isArray(result.value.profiles) ? result.value.profiles : [];
-           profs.forEach((p, pIndex) => {
-              const fallbackUrl = batch[pIndex] || batch[0];
-              const item = companyReaderProfileSource(p, index * 5 + pIndex, fallbackUrl);
-              if (item) items.push(item);
+           batch.forEach((url, pIndex) => {
+              const log = logMap.get(url);
+              if (log && log.status !== "ERROR" && result.value.status !== "SHADOW_PROCESSED") {
+                  const p = profs[pIndex];
+                  if (p) {
+                      const item = companyReaderProfileSource(p, index * 5 + pIndex, url);
+                      if (item) {
+                          items.push(item);
+                          log.message = "Đã trích xuất thông tin";
+                          log.status = "SUCCESS";
+                      } else {
+                          log.message = "Trang web chặn hoặc không có thông tin";
+                          log.status = "ERROR";
+                      }
+                  } else {
+                      log.message = "Không trích xuất được hồ sơ";
+                      log.status = "ERROR";
+                  }
+              }
            });
         }
     });
