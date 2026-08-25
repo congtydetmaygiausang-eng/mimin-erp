@@ -198,87 +198,30 @@ export default function ProductLibraryCard({
           </p>
         )}
 
-        {/* === VARIANTS BLOCKS (HORIZONTAL - EXTRA LARGE) === */}
-        {sp.dsMau && sp.dsMau.length > 0 ? (
-          <div className="flex flex-col gap-3 mb-4">
-            {sp.dsMau.slice(0, 4).map((mau, idx) => {
-              const sizes = (sp.bangSize?.sizes || []).slice(0, 5);
-              const items = sizes.map((s, i) => {
-                const ratio = sp.bangSize?.ratios[i] || parseInt(sp.tiLeSize?.split(":")[i] || "0") || 0;
-                // Deterministic mock stock so we can sum it up accurately
-                const stock = Math.floor(Math.abs(Math.sin((idx + 1) * (i + 1) * 10)) * 50) + 10;
-                return { s, ratio, stock };
-              });
-              const sumRatio = items.reduce((acc, curr) => acc + curr.ratio, 0);
-              const sumStock = items.reduce((acc, curr) => acc + curr.stock, 0);
-
-              return (
-                <div key={idx} className="flex items-center gap-2 md:gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                  
-                  {/* Extra Big Variant Image */}
-                  <div className="flex flex-col items-center shrink-0 w-[64px] md:w-[80px]">
-                    {mau.img ? (
-                      <img src={mau.img} alt={mau.ten} className="w-14 h-14 md:w-20 md:h-20 rounded-xl object-cover border border-slate-200 shadow-sm" />
-                    ) : (
-                      <div 
-                        className="w-14 h-14 md:w-20 md:h-20 rounded-xl border border-slate-200 shadow-sm"
-                        style={{ background: mau.ten === "Đen" ? "#1f2937" : mau.ten === "Trắng" ? "#f9fafb" : mau.ten?.toLowerCase().includes("xanh") ? "#0891b2" : mau.ten?.toLowerCase().includes("đỏ") || mau.ten?.toLowerCase().includes("hồng") ? "#ec4899" : mau.ten?.toLowerCase().includes("vàng") || mau.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }}
-                      />
-                    )}
-                    <span className="text-xs md:text-sm font-bold text-slate-700 uppercase mt-1 w-full text-center truncate">
-                      {mau.ten}
-                    </span>
-                  </div>
-
-                  {/* Extra Big Size Grid (Horizontal) */}
-                  <div className="flex gap-1.5 md:gap-2 overflow-x-auto pb-1 no-scrollbar flex-1 items-center">
-                    {items.map((item, i) => (
-                      <div key={i} className="flex flex-col items-center shrink-0 min-w-[32px] md:min-w-[44px]">
-                        <span className="w-full px-1 py-1 text-xs md:text-sm font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">
-                          {item.s}
-                        </span>
-                        <span className="w-full px-1 py-1 text-sm md:text-base font-extrabold bg-cyan-50 text-cyan-600 border border-slate-200 text-center">
-                          {item.ratio}
-                        </span>
-                        <span className="w-full px-1 py-1 text-sm md:text-base font-bold bg-emerald-50 text-emerald-600 border border-t-0 border-slate-200 rounded-b text-center">
-                          {item.stock}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Total Sum Boxes */}
-                  <div className="flex flex-col gap-1.5 shrink-0 ml-1 mt-[26px]">
-                    <div className="flex items-center justify-center border-2 border-slate-900 rounded px-2 h-[26px] md:h-[30px] text-sm md:text-base font-extrabold text-slate-900 bg-white min-w-[36px] md:min-w-[48px] shadow-sm" title="Tổng tỉ lệ (Ri)">
-                      {sumRatio}
-                    </div>
-                    <div className="flex items-center justify-center border-2 border-slate-900 rounded px-2 h-[26px] md:h-[30px] text-sm md:text-base font-extrabold text-slate-900 bg-white min-w-[36px] md:min-w-[48px] shadow-sm" title="Tổng tồn kho">
-                      {sumStock}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="mb-3">
-            <div className="flex flex-wrap gap-1.5">
-              {(sp.bangSize?.sizes || []).slice(0, 5).map((s, i) => (
-                <div key={i} className="flex flex-col items-center">
-                  <span className="min-w-[32px] px-1 py-1 text-[11px] font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">
-                    {s}
-                  </span>
-                  <span className="min-w-[32px] px-1 py-0.5 text-[11px] font-extrabold bg-cyan-50 text-cyan-600 border border-slate-200 text-center" title="Tỉ lệ">
-                    {sp.bangSize?.ratios[i] || sp.tiLeSize?.split(":")[i] || 0}
-                  </span>
-                  <span className="min-w-[32px] px-1 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-t-0 border-slate-200 rounded-b text-center" title="Tồn kho">
-                    {Math.floor(Math.random() * 50) + 10}
-                  </span>
-                </div>
-              ))}
+        {/* === THÔNG TIN NGẮN GỌN === */}
+        <div className="text-[11px] text-slate-500 mb-2 italic">
+          Mã DM: {sp.maSP || sp.id} | Định mức: {sp.dsMau?.[0]?.dinhMuc || 0}
+        </div>
+        
+        {/* === COLOR PILLS === */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {sp.dsMau?.slice(0, 3).map((m, i) => (
+            <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-200 bg-white shadow-sm">
+              <div 
+                className="w-4 h-4 rounded-full overflow-hidden shrink-0 border border-slate-100"
+                style={{ background: m.ten === "Đen" ? "#1f2937" : m.ten === "Trắng" ? "#f9fafb" : m.ten?.toLowerCase().includes("xanh") ? "#0891b2" : m.ten?.toLowerCase().includes("đỏ") || m.ten?.toLowerCase().includes("hồng") ? "#ec4899" : m.ten?.toLowerCase().includes("vàng") || m.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }}
+              >
+                {m.img && <img src={m.img} alt={m.ten} className="w-full h-full object-cover" />}
+              </div>
+              <span className="text-[11px] font-bold text-slate-700">{m.ten}</span>
             </div>
-          </div>
-        )}
+          ))}
+          {sp.dsMau && sp.dsMau.length > 3 && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-slate-50 shadow-sm text-[11px] font-bold text-slate-500">
+              +{sp.dsMau.length - 3}
+            </div>
+          )}
+        </div>
 
         {/* === Row: Chat lieu + NCC (2 dong nho) === */}
         <div className="space-y-0.5 mb-2 text-[10px] text-slate-500">
