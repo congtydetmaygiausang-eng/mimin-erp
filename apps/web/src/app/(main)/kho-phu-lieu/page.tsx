@@ -27,7 +27,6 @@ const NEW_ACCESSORY_FIELDS: FieldDef[] = [
     { value: "m", label: "Mét" }, { value: "kg", label: "Kg" },
     { value: "cuộn", label: "Cuộn" }, { value: "gói", label: "Gói" },
   ] },
-  { name: "mauSac", label: "Màu / Quy cách", type: "text", placeholder: "Màu sắc, kích thước hoặc quy cách" },
   { name: "donGia", label: "Đơn giá mặc định", type: "number", min: 0 },
   { name: "ghiChu", label: "Ghi chú", type: "textarea", rows: 2 },
 ];
@@ -227,7 +226,7 @@ export default function KhoPhuLieuPage() {
       maVT,
       tenVT: values.tenVT.trim(),
       loai: values.loai,
-      mauSac: values.mauSac?.trim() || "",
+      mauSac: "",
       dvt: values.dvt,
       donGia: Number(values.donGia) || 0,
       tonKho: 0,
