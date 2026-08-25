@@ -25,7 +25,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
-import { NCCS, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { NCCS, formatVND } from "@/lib/data/real-data";
 import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityCard";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
@@ -172,7 +172,7 @@ export default function NhaCungCapPage() {
               Nhà cung cấp
             </h1>
             <p className="text-white/80 mt-1 text-sm font-medium">
-              {list.length} NCC · Tổng công nợ <b className="text-white">{formatVNDShort(tongCongNo)}</b>
+              {list.length} NCC · Tổng công nợ <b className="text-white">{formatVND(tongCongNo)}</b>
               {dsCongNo.length > 0 && <> · <b className="text-amber-200">{dsCongNo.length} NCC đang nợ</b></>}
             </p>
           </div>
@@ -191,7 +191,7 @@ export default function NhaCungCapPage() {
         </div>
         <div className={`card p-5 ${tongCongNo > 0 ? "bg-red-500/10 border-red-500/40" : ""}`}>
           <div className="text-xs opacity-70 flex items-center gap-1"><DollarSign className="w-3 h-3 text-red-600" /> Tổng công nợ</div>
-          <div className={`text-2xl md:text-3xl font-bold mt-1 ${tongCongNo > 0 ? "text-red-600" : ""}`}>{formatVNDShort(tongCongNo)}</div>
+          <div className={`text-2xl md:text-3xl font-bold mt-1 ${tongCongNo > 0 ? "text-red-600" : ""}`}>{formatVND(tongCongNo)}</div>
           <div className="text-xs opacity-60 mt-1">{dsCongNo.length} NCC đang nợ</div>
         </div>
         <div className="card p-5">
@@ -309,10 +309,10 @@ export default function NhaCungCapPage() {
                         </div>
                       </td>
                       <td className="p-3 text-right font-mono font-semibold">
-                        {n.congNo > 0 ? <span className="text-red-600">{formatVNDShort(n.congNo)}</span> : <span className="text-emerald-600">✓</span>}
+                        {n.congNo > 0 ? <span className="text-red-600">{formatVND(n.congNo)}</span> : <span className="text-emerald-600">✓</span>}
                       </td>
                       <td className="p-3 text-right text-xs">
-                        <div className="font-semibold">{formatVNDShort(ls.tongTien)}</div>
+                        <div className="font-semibold">{formatVND(ls.tongTien)}</div>
                         <div className="text-[10px] opacity-60">{ls.tongNhap} giao dịch</div>
                       </td>
                       <td className="p-3 text-center">
@@ -355,12 +355,12 @@ export default function NhaCungCapPage() {
                 warning={n.congNo > 0}
                 badges={[{ label: n.vaiTro, bg: "bg-violet-500/15", color: "text-violet-700" }]}
                 subtitle={<span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {n.diaChi?.slice(0, 30)}</span>}
-                status={n.congNo > 0 ? { label: `Còn nợ ${formatVNDShort(n.congNo)}`, color: "text-red-700", bg: "bg-red-500/15" } : { label: "Không nợ", color: "text-emerald-700", bg: "bg-emerald-500/15" }}
+                status={n.congNo > 0 ? { label: `Còn nợ ${formatVND(n.congNo)}`, color: "text-red-700", bg: "bg-red-500/15" } : { label: "Không nợ", color: "text-emerald-700", bg: "bg-emerald-500/15" }}
                 stats={[
                   { label: "SĐT", value: n.sdt || "thiếu", icon: Phone },
                   { label: "MST", value: n.maSoThue || "thiếu", icon: FileText },
-                  { label: "Công nợ", value: n.congNo > 0 ? formatVNDShort(n.congNo) : "0 đ", icon: Wallet, color: n.congNo > 0 ? "text-red-600" : "text-emerald-600" },
-                  { label: "Đã mua", value: ls.tongTien > 0 ? formatVNDShort(ls.tongTien) : "0", icon: ShoppingBag, color: "text-emerald-600" },
+                  { label: "Công nợ", value: formatVND(n.congNo), icon: Wallet, color: n.congNo > 0 ? "text-red-600" : "text-emerald-600" },
+                  { label: "Đã mua", value: formatVND(ls.tongTien), icon: ShoppingBag, color: "text-emerald-600" },
                 ]}
                 onView={() => setShowHistory(n)}
                 onEdit={() => setShowForm({ mode: "edit", ncc: n })}
@@ -403,9 +403,9 @@ export default function NhaCungCapPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-semibold text-emerald-600">{formatVNDShort(ls.tongTien)}</div>
+                  <div className="text-xs font-semibold text-emerald-600">{formatVND(ls.tongTien)}</div>
                   <div className={`text-[10px] font-mono ${n.congNo > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                    {n.congNo > 0 ? `Nợ: ${formatVNDShort(n.congNo)}` : "Sạch"}
+                    {n.congNo > 0 ? `Nợ: ${formatVND(n.congNo)}` : "Sạch"}
                   </div>
                 </div>
                 <button onClick={() => setShowHistory(n)} className="p-1.5 rounded hover:bg-white/40 text-brand-600"><History className="w-4 h-4" /></button>
@@ -614,7 +614,7 @@ function NCCLichSuModal({ ncc, onClose }: { ncc: NCC; onClose: () => void }) {
         <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
           <div className="bg-brand-500/10 rounded p-2 text-center">
             <div className="text-xs opacity-70">Tổng mua</div>
-            <div className="font-bold text-brand-600">{formatVNDShort(tongTien)}</div>
+            <div className="font-bold text-brand-600">{formatVND(tongTien)}</div>
           </div>
           <div className="bg-sky-500/10 rounded p-2 text-center">
             <div className="text-xs opacity-70">Số lần mua</div>
@@ -622,7 +622,7 @@ function NCCLichSuModal({ ncc, onClose }: { ncc: NCC; onClose: () => void }) {
           </div>
           <div className={`rounded p-2 text-center ${ncc.congNo > 0 ? "bg-red-500/10" : "bg-emerald-500/10"}`}>
             <div className="text-xs opacity-70">Còn nợ</div>
-            <div className={`font-bold ${ncc.congNo > 0 ? "text-red-600" : "text-emerald-600"}`}>{formatVNDShort(ncc.congNo)}</div>
+            <div className={`font-bold ${ncc.congNo > 0 ? "text-red-600" : "text-emerald-600"}`}>{formatVND(ncc.congNo)}</div>
           </div>
         </div>
         <div className="text-sm mb-3">
@@ -655,7 +655,7 @@ function NCCLichSuModal({ ncc, onClose }: { ncc: NCC; onClose: () => void }) {
                   <td className="p-2 text-xs">{g.tenVT}</td>
                   <td className="p-2 text-right font-mono">{g.soLuong.toLocaleString()} {g.donVi}</td>
                   <td className="p-2 text-right font-mono">{g.donGia.toLocaleString()}</td>
-                  <td className="p-2 text-right font-mono font-semibold text-emerald-600">{formatVNDShort(g.thanhTien)}</td>
+                  <td className="p-2 text-right font-mono font-semibold text-emerald-600">{formatVND(g.thanhTien)}</td>
                   <td className="p-2 text-xs">{g.nguoiThucHien}</td>
                 </tr>
               ))}
