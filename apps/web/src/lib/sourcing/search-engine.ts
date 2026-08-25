@@ -978,13 +978,13 @@ function companyReaderSourceScore(source:SourceResult):number{
 function companyReaderProfileSource(profile:CompanyReaderProfile,index:number, fallbackUrl: string):SourceResult|null{
   if(!Array.isArray(profile.fields)) return null;
   const accepted=profile.fields.filter((field)=>
-    COMPANY_READER_FIELDS.has(String(field.field??""))&&
-    COMPANY_READER_ACCEPTED_FIELD_STATUS.has(String(field.status??""))&&
+    COMPANY_READER_FIELDS.has(String(field.field??"").toUpperCase())&&
     typeof field.selected_value==="string"&&field.selected_value.trim()&&
-    typeof field.confidence==="number"&&field.confidence>=0.30,
+    (typeof field.confidence==="number"?field.confidence>=0.30:true)
   );
-  const legalName=accepted.find((field)=>field.field==="LEGAL_NAME")?.selected_value;
-  const taxCode=accepted.find((field)=>field.field==="TAX_CODE")?.selected_value;
+  if (accepted.length === 0) return null;
+  const legalName=accepted.find((field)=>String(field.field).toUpperCase()==="LEGAL_NAME")?.selected_value;
+  const taxCode=accepted.find((field)=>String(field.field).toUpperCase()==="TAX_CODE")?.selected_value;
   // Removed legalName/taxCode requirement to allow partial profiles with phone numbers
   const evidence=accepted.flatMap((field)=>field.evidence??[]);
   const url=evidence.map((item)=>typeof item.source_url==="string"?canonicalSourceUrl(item.source_url):"").find(Boolean) || fallbackUrl;
@@ -996,7 +996,7 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number, f
     url,
     content:Array.from(new Set([...values,...excerpts])).join("\n").slice(0,12_000),
     rawContent:Array.from(new Set([...values,...excerpts])).join("\n").slice(0,50_000),
-    score:Math.min(1,Math.max(...accepted.map((field)=>Number(field.confidence)||0))),
+    score:Math.min(1,Math.max(...accepted.map((field)=>typeof field.confidence==="number"?field.confidence:0.8))),
     sourceType:classifySource(url,String(legalName??""),values.join(" ")),
     provider:"Jina Reader",
     searchQuery:`company-reader-${index+1}`,
