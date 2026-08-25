@@ -166,7 +166,7 @@ export async function syncInventoryWithSupabase(): Promise<void> {
   if (!isSupabaseEnabled || !supabase) return;
   try {
     // 2026-08-08 - Fix 404: bang kho co the chua ton tai, query khong crash
-    const { data, error } = await supabase!.from("kho").select("sku, ton_kho").eq("loai", "vai");
+    const { data, error } = await supabase!.from("kho").select("sku, sl").eq("loai", "vai");
     if (error) {
       // 404 = bang chua ton tai, 400 = schema chua co loai column
       // Silent fail - van dung localStorage
@@ -180,7 +180,7 @@ export async function syncInventoryWithSupabase(): Promise<void> {
       let changed = false;
       data.forEach((d: any) => {
         if (current[d.sku]) {
-          current[d.sku].tonKho = d.ton_kho ?? d.tonKho ?? 0;
+          current[d.sku].tonKho = d.sl ?? 0;
           changed = true;
         }
       });

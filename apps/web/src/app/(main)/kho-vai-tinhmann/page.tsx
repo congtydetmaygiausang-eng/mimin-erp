@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
 import { logAudit } from "@/lib/audit-log";
 import {
-  getAllInventory, truTonKho, nhapKho, resetInventory, resetInventoryToZero, updateVaiInfo,
+  getAllInventory, getInventoryByMaVT, truTonKho, nhapKho, resetInventory, resetInventoryToZero, updateVaiInfo,
   tinhMan, parseSize, goiYVai, syncInventoryWithSupabase,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   addNewVai, getVaiImages, saveVaiImage,
@@ -980,7 +980,7 @@ function VaiNhapKho({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const vt = KHO_VAI.find((v) => v.maVT === maVT);
+  const vt = getInventoryByMaVT(maVT);
   const { list: _nccList } = useNhaCungCap();
   const nccList = _nccList
     .filter(n => {
