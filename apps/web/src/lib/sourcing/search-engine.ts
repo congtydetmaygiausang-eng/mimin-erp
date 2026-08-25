@@ -975,7 +975,7 @@ function companyReaderSourceScore(source:SourceResult):number{
   return identity+contact+sourceTrust+missingDepth+(source.score??0);
 }
 
-function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):SourceResult|null{
+function companyReaderProfileSource(profile:CompanyReaderProfile,index:number, fallbackUrl: string):SourceResult|null{
   if(!Array.isArray(profile.fields)) return null;
   const accepted=profile.fields.filter((field)=>
     COMPANY_READER_FIELDS.has(String(field.field??""))&&
@@ -987,7 +987,7 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):S
   const taxCode=accepted.find((field)=>field.field==="TAX_CODE")?.selected_value;
   // Removed legalName/taxCode requirement to allow partial profiles with phone numbers
   const evidence=accepted.flatMap((field)=>field.evidence??[]);
-  const url=evidence.map((item)=>typeof item.source_url==="string"?canonicalSourceUrl(item.source_url):"").find(Boolean);
+  const url=evidence.map((item)=>typeof item.source_url==="string"?canonicalSourceUrl(item.source_url):"").find(Boolean) || fallbackUrl;
   if(!url||blockedSource(url))return null;
   const values=accepted.map((field)=>`${String(field.field)}: ${String(field.selected_value).trim()}`);
   const excerpts=evidence.map((item)=>typeof item.excerpt==="string"?item.excerpt.trim():"").filter(Boolean).slice(0,6);
@@ -1054,8 +1054,19 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
     }));
     const settled=await operation;
     settled.forEach((result) => { if(result.status==="rejected") console.error("JINA_EDGE_ERROR:", result.reason); }); const responses=settled.filter((result):result is PromiseFulfilledResult<CompanyReaderResponse>=>result.status==="fulfilled").map((result)=>result.value);
-    const profiles=responses.flatMap((response)=>Array.isArray(response.profiles)?response.profiles:[]);
-    const items=profiles.map(companyReaderProfileSource).filter((item):item is SourceResult=>Boolean(item)); console.log("JINA_PROFILES_FOUND:", profiles.length, "ITEMS_GENERATED:", items.length);
+    const items: SourceResult[] = [];
+    settled.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+           const batch = batches[index];
+           const profs = Array.isArray(result.value.profiles) ? result.value.profiles : [];
+           profs.forEach((p, pIndex) => {
+              const fallbackUrl = batch[pIndex] || batch[0];
+              const item = companyReaderProfileSource(p, index * 5 + pIndex, fallbackUrl);
+              if (item) items.push(item);
+           });
+        }
+    });
+    console.log("JINA_ITEMS_GENERATED:", items.length);
     const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
     return{items,health:{name:"Jina Reader",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}, radarLogs};
   }catch(error){
