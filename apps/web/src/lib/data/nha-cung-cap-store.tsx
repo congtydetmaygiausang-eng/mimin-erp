@@ -176,17 +176,17 @@ export function NhaCungCapProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const suaNCC = useCallback(async (ncc: NhaCungCapModel) => {
+    if (isSupabaseEnabled) {
+      try {
+        const saved = await supabaseUpsert("nha_cung_cap", toDBNhaCungCap(ncc));
+        if (!saved) return false;
+      } catch (err) { return false; }
+    }
     setList(prev => {
       const newList = prev.map(x => x.ma_ncc === ncc.ma_ncc ? ncc : x);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
       return newList;
     });
-    if (isSupabaseEnabled) {
-      try {
-        await supabaseUpsert("nha_cung_cap", toDBNhaCungCap(ncc));
-        return true;
-      } catch (err) { return false; }
-    }
     return true;
   }, []);
 

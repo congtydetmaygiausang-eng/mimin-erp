@@ -54,7 +54,7 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
       if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
       return;
     }
-    const debtSaved = await suaNCC({ ...ncc, cong_no: (ncc.cong_no || 0) + thanhTien });
+    const debtSaved = await suaNCC({ ...ncc, cong_no: (Number(ncc.cong_no) || 0) + thanhTien });
     if (!debtSaved) {
       xoaGiaoDich(giaoDich.id);
       if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
