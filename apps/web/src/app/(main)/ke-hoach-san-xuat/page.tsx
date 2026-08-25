@@ -58,7 +58,7 @@ export default function KeHoachSXPage() {
   const [list, setList] = useState<KHSX[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<KHSX | null>(null);
-  const [filterTT, setFilterTT] = useState<TrangThaiKHSX | "Táº¥t cáº£">("Táº¥t cáº£");
+  const [filterTT, setFilterTT] = useState<TrangThaiKHSX | "Tất cả">("Tất cả");
   const [progressEdit, setProgressEdit] = useState<{ id: string; val: number } | null>(null);
 
   useEffect(() => {
@@ -121,12 +121,12 @@ export default function KeHoachSXPage() {
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Tá»•ng KH", val: list.length, icon: <Target className="w-3 h-3" />, sub: "káº¿ hoáº¡ch", color: "" },
-          { label: "Äang SX", val: dsDangSX.length, icon: <Layers className="w-3 h-3" />, sub: "Ä‘ang cháº¡y", color: "text-amber-600" },
-          { label: "HoÃ n thÃ nh", val: list.filter(k => k.trangThai === "HoÃ n thÃ nh").length, icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />, sub: "xong", color: "text-emerald-600" },
-          { label: "Trá»… háº¡n", val: dsTreHan.length, icon: <AlertCircle className="w-3 h-3 text-red-600" />, sub: "cáº§n xá»­ lÃ½", color: dsTreHan.length > 0 ? "text-red-600" : "text-emerald-600" },
+          { label: "Tổng KH", val: list.length, icon: <Target className="w-3 h-3" />, sub: "kế hoạch", color: "" },
+          { label: "Đang SX", val: dsDangSX.length, icon: <Layers className="w-3 h-3" />, sub: "đang chạy", color: "text-amber-600" },
+          { label: "Hoàn thành", val: list.filter(k => k.trangThai === "Hoàn thành").length, icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />, sub: "xong", color: "text-emerald-600" },
+          { label: "Trễ hạn", val: dsTreHan.length, icon: <AlertCircle className="w-3 h-3 text-red-600" />, sub: "cần xử lý", color: dsTreHan.length > 0 ? "text-red-600" : "text-emerald-600" },
         ].map(({ label, val, icon, sub, color }) => (
-          <div key={label} className={`card p-5 ${label === "Trá»… háº¡n" && dsTreHan.length > 0 ? "bg-red-500/10 border-red-500/40" : ""}`}>
+          <div key={label} className={`card p-5 ${label === "Trễ hạn" && dsTreHan.length > 0 ? "bg-red-500/10 border-red-500/40" : ""}`}>
             <div className="text-xs opacity-70 flex items-center gap-1">{icon} {label}</div>
             <div className={`text-2xl md:text-3xl font-bold mt-1 ${color}`}>{val}</div>
             <div className="text-xs opacity-60 mt-1">{sub}</div>
@@ -137,9 +137,9 @@ export default function KeHoachSXPage() {
       {/* Filter */}
       <div className="card p-3 flex flex-wrap gap-2 items-center">
         <Filter className="w-4 h-4 text-slate-400" />
-        {(["Táº¥t cáº£", "LÃªn káº¿ hoáº¡ch", "Äang SX", "HoÃ n thÃ nh", "Trá»… háº¡n"] as const).map(tt => (
+        {(["Tất cả", "Lên kế hoạch", "Đang SX", "Hoàn thành", "Trễ hạn"] as const).map(tt => (
           <button key={tt} onClick={() => setFilterTT(tt)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${filterTT === tt ? "bg-teal-600 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"}`}>
-            {tt} {tt !== "Táº¥t cáº£" && `(${list.filter(k => k.trangThai === tt).length})`}
+            {tt} {tt !== "Tất cả" && `(${list.filter(k => k.trangThai === tt).length})`}
           </button>
         ))}
       </div>
@@ -167,7 +167,7 @@ export default function KeHoachSXPage() {
                     <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${s.bg} ${s.color}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{k.trangThai}
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${k.loai === "Bá»™" ? "bg-violet-100 text-violet-700" : k.loai === "Quáº§n" ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"}`}>{k.loai}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${k.loai === "Bộ" ? "bg-violet-100 text-violet-700" : k.loai === "Quần" ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"}`}>{k.loai}</span>
                   </div>
                 </div>
 

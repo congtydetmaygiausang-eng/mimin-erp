@@ -44,6 +44,28 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
   const fsVideoRef = useRef<HTMLVideoElement>(null);
   const selectedColor = sp.dsMau?.[selectedColorIndex];
 
+  // Tính năng auto slideshow khi hover
+  const [isHovered, setIsHovered] = useState(false);
+  const [imgIndex, setImgIndex] = useState(0);
+
+  const allImagesForSlide = (selectedColor && (selectedColor.img || (selectedColor.hinhAnhChiTiet && selectedColor.hinhAnhChiTiet.length > 0)))
+    ? [selectedColor.img, ...(selectedColor.hinhAnhChiTiet || [])].filter(Boolean) as string[]
+    : [sp.hinhAnh, ...(sp.dsMau?.map(m => m.img) || [])].filter(Boolean) as string[];
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isHovered && allImagesForSlide.length > 1 && viewingMode === "image") {
+      interval = setInterval(() => {
+        setImgIndex((prev) => (prev + 1) % allImagesForSlide.length);
+      }, 1200);
+    } else {
+      setImgIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [isHovered, allImagesForSlide.length, viewingMode]);
+
+  const currentDisplayImg = (isHovered && allImagesForSlide.length > 0) ? allImagesForSlide[imgIndex] : selectedImage;
+
   if (!mounted) return null;
 
   return createPortal(
@@ -73,9 +95,25 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
             <div className="w-full h-full flex-1 group relative overflow-hidden bg-black flex items-center justify-center">
               <video ref={videoRef} src={selectedVideo} autoPlay loop muted playsInline controls className="w-full h-full object-contain absolute inset-0" />
             </div>
-          ) : selectedImage ? (
-            <div className="w-full h-full flex-1 group relative cursor-pointer overflow-hidden bg-slate-100" onClick={() => setShowFullScreen(true)}>
-              <img src={selectedImage} alt={sp.tenSP} className="w-full h-full object-cover object-top absolute inset-0" />
+          ) : currentDisplayImg ? (
+            <div 
+              className="w-full h-full flex-1 group relative cursor-pointer overflow-hidden bg-slate-50" 
+              onClick={() => setShowFullScreen(true)}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              {isHovered && allImagesForSlide.length > 1 ? (
+                allImagesForSlide.map((img, idx) => (
+                  <img 
+                    key={idx}
+                    src={img} 
+                    alt={sp.tenSP} 
+                    className={`w-full h-full object-contain object-center absolute inset-0 transition-opacity duration-500 ${imgIndex === idx ? "opacity-100" : "opacity-0"}`} 
+                  />
+                ))
+              ) : (
+                <img src={currentDisplayImg} alt={sp.tenSP} className="w-full h-full object-contain object-center absolute inset-0" />
+              )}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                   <Maximize2 className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 drop-shadow-lg transition-opacity" />
               </div>

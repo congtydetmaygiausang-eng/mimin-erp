@@ -1,6 +1,8 @@
+"use client";
 // ProductLibraryCard - Card compact cho thu vien (grid 3-4 cols)
 // 2026-08-07 - redesign theo sep Sang: layout "thu vien the card"
 // 2026-08-07 - them thong tin: trang thai, da ban, NCC, chat lieu, rating
+import { useState, useEffect } from "react";
 import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
@@ -40,6 +42,24 @@ export default function ProductLibraryCard({
   onFavorite,
   onClick,
 }: ProductLibraryCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [imgIndex, setImgIndex] = useState(0);
+
+  // Tap hop cac anh: hinh chinh + hinh bien the mau
+  const allImages = [sp.hinhAnh, ...(sp.dsMau?.map((m) => m.img).filter(Boolean) || [])].filter(Boolean) as string[];
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isHovered && allImages.length > 1) {
+      interval = setInterval(() => {
+        setImgIndex((prev) => (prev + 1) % allImages.length);
+      }, 1200); // 1.2s chuyen hinh 1 lan
+    } else {
+      setImgIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [isHovered, allImages.length]);
+
   const topColors = (sp.dsMau || []).slice(0, 3);
   const soSize = (sp.bangSize?.sizes || []).length;
   const soMau = (sp.dsMau || []).length;
@@ -61,6 +81,8 @@ export default function ProductLibraryCard({
   return (
     <div 
       onClick={() => onClick && onClick(sp)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
     >
       {/* === ANH SAN PHAM === */}
@@ -69,14 +91,17 @@ export default function ProductLibraryCard({
         <div className="absolute inset-0 flex items-center justify-center">
           <Shirt className="w-20 h-20 md:w-24 md:h-24 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-500" />
         </div>
-        {/* Hình ảnh thật */}
-        {sp.hinhAnh && (
+        {/* Hình ảnh thật (Slideshow) */}
+        {allImages.map((img, idx) => (
           <img
-            src={sp.hinhAnh}
-            alt={sp.tenSP}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            key={idx}
+            src={img}
+            alt={`${sp.tenSP} - hình ${idx + 1}`}
+            className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${
+              imgIndex === idx ? "opacity-100 group-hover:scale-110" : "opacity-0 group-hover:scale-110"
+            }`}
           />
-        )}
+        ))}
 
         {/* === BADGES GOC TREN TRAI === */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -111,11 +136,39 @@ export default function ProductLibraryCard({
           <Heart className="w-4 h-4" />
         </button>
 
-        {/* Removed VARIANTS THUMBNAILS GOC DUOI TRAI */}
+        {/* === VARIANTS THUMBNAILS (SCROLLABLE) === */}
+        {sp.dsMau && sp.dsMau.length > 0 && (
+          <div className="absolute bottom-2 left-2 right-14 overflow-hidden z-10 pointer-events-auto">
+            <div 
+              className="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-black/30 backdrop-blur-md p-1.5 rounded-xl border border-white/20 shadow-lg"
+              title={`${sp.dsMau.length} màu sắc`}
+            >
+              <div className="text-[10px] font-bold text-white/90 pl-1 pr-0.5 shrink-0 whitespace-nowrap">
+                {sp.dsMau.length} màu
+              </div>
+              {sp.dsMau.map((mau, idx) => (
+                <div 
+                  key={idx} 
+                  className="w-6 h-6 md:w-7 md:h-7 rounded-lg border border-white/40 shadow-sm shrink-0 overflow-hidden transition-transform hover:scale-110 hover:ring-2 hover:ring-white cursor-pointer relative"
+                  title={mau.ten}
+                >
+                  {mau.img ? (
+                    <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
+                  ) : (
+                    <div 
+                      className="w-full h-full"
+                      style={{ background: mau.ten === "Đen" ? "#1f2937" : mau.ten === "Trắng" ? "#f9fafb" : mau.ten?.toLowerCase().includes("xanh") ? "#0891b2" : mau.ten?.toLowerCase().includes("đỏ") || mau.ten?.toLowerCase().includes("hồng") ? "#ec4899" : mau.ten?.toLowerCase().includes("vàng") || mau.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* === SIZE COUNT GOC DUOI PHAI === */}
         {soSize > 0 && (
-          <span className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-white/90 backdrop-blur-sm text-[10px] font-bold text-cyan-700 rounded-md shadow-md">
+          <span className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-white/90 backdrop-blur-sm text-[10px] font-bold text-cyan-700 rounded-md shadow-md z-10">
             {soSize} size
           </span>
         )}
