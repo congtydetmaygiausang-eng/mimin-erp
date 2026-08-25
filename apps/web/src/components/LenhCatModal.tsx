@@ -37,6 +37,7 @@ import {
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
+import { uploadProductFile } from "@/lib/product-upload";
 
 
 const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string) => {
@@ -637,20 +638,18 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     input.accept = "image/*";
     input.onchange = (e: any) => {
       const file = e.target.files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const dataUrl = ev.target?.result as string;
+      if (!file) return;
+      uploadProductFile(file, phan === "quan" ? "mau-quan" : "mau-ao")
+        .then((url) => {
           setDsMau(prev => {
             const next = [...prev];
             next[idx] = phan === "quan"
-              ? { ...next[idx], imgQuan: dataUrl }
-              : { ...next[idx], img: dataUrl };
+              ? { ...next[idx], imgQuan: url }
+              : { ...next[idx], img: url };
             return next;
           });
-        };
-        reader.readAsDataURL(file);
-      }
+        })
+        .catch((err) => toast.error(err instanceof Error ? err.message : "Không upload được ảnh"));
     };
     input.click();
   };

@@ -7,7 +7,7 @@ const corsHeaders = {
 interface GatewayRequest { request_id: string; urls: string[] }
 
 const READER_WAKE_TIMEOUT_MS = 60_000;
-const READER_REQUEST_TIMEOUT_MS = 45_000;
+const READER_REQUEST_TIMEOUT_MS = 55_000;
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -20,7 +20,7 @@ function validRequest(value: unknown): value is GatewayRequest {
   if (!Array.isArray(input.urls) || input.urls.length < 1 || input.urls.length > 5) return false;
   return new Set(input.urls).size === input.urls.length && input.urls.every((url) => {
     if (typeof url !== "string" || url.length > 2_000) return false;
-    try { return new URL(url).protocol === "https:"; } catch { return false; }
+    try { return new URL(url).protocol.startsWith("http"); } catch { return false; }
   });
 }
 

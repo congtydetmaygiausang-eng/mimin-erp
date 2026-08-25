@@ -28,9 +28,9 @@ const SimpleMarkdown = ({ content }: { content: string }) => {
     } else if (html.match(/^\d+\.\s/)) {
       return <li key={index} dangerouslySetInnerHTML={{ __html: html.replace(/^\d+\.\s/, "") }} className="ml-4 list-decimal" />;
     } else if (html.startsWith("### ")) {
-      return <h4 key={index} dangerouslySetInnerHTML={{ __html: html.substring(4) }} className="font-bold mt-2 mb-1" />;
+      return <h3 key={index} dangerouslySetInnerHTML={{ __html: html.substring(4) }} className="text-lg font-bold mt-3 mb-2 text-brand-700" />;
     } else if (html.startsWith("## ")) {
-      return <h3 key={index} dangerouslySetInnerHTML={{ __html: html.substring(3) }} className="text-lg font-bold mt-3 mb-1 text-brand-700" />;
+      return <h2 key={index} dangerouslySetInnerHTML={{ __html: html.substring(3) }} className="text-xl font-bold mt-4 mb-2 text-brand-800" />;
     }
     return <p key={index} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} className={html ? "mb-1" : "mb-2"} />;
   };
@@ -131,6 +131,61 @@ function SearchProgressModal({ loading }: { loading: boolean }) {
   );
 }
 
+
+// --- Jina Radar Component ---
+function JinaRadar({ diagnostics }: { diagnostics: any }) {
+  if (!diagnostics) return null;
+  
+  const diagList = Array.isArray(diagnostics) ? diagnostics : [diagnostics];
+  const radarLogs: any[] = [];
+  
+  for (const diag of diagList) {
+    if (diag && Array.isArray(diag.operations)) {
+      for (const op of diag.operations) {
+         if (op.name === "Jina Reader" && Array.isArray(op.radarLogs)) {
+            radarLogs.push(...op.radarLogs);
+         }
+      }
+    }
+  }
+
+  if (radarLogs.length === 0) return null;
+
+  return (
+    <div className="card p-4 space-y-3 bg-slate-900 text-slate-100 font-mono text-xs overflow-hidden relative group mt-4">
+      <div className="absolute top-0 right-0 bg-brand-600 px-2 py-1 text-[10px] uppercase font-bold rounded-bl-lg">Jina Radar</div>
+      <div className="flex items-center gap-2 border-b border-slate-700 pb-2 mb-2">
+         <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+         </span>
+         <h3 className="font-semibold text-sm">Theo dõi Jina Reader (Trực tiếp)</h3>
+         <span className="ml-auto opacity-70">URL đã xử lý: {radarLogs.length}</span>
+      </div>
+      <div className="max-h-60 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+         {radarLogs.map((log: any, i: number) => {
+             const time = new Date(log.timestamp).toLocaleTimeString("vi-VN");
+             const color = log.status === "ERROR" ? "text-red-400" : log.status === "SUCCESS" ? "text-emerald-400" : "text-amber-400";
+             const icon = log.status === "ERROR" ? "🔴" : log.status === "SUCCESS" ? "🟢" : "🟡";
+             return (
+               <div key={i} className="flex gap-2 items-start border-b border-slate-800 pb-1">
+                 <span className="text-slate-500 shrink-0">[{time}]</span>
+                 <span className="shrink-0">{icon}</span>
+                 <div className="flex-1 min-w-0">
+                    <p className="truncate opacity-80" title={log.url}>{log.url}</p>
+                    {log.status === "SUCCESS" && <p className={`${color} font-semibold`}>=> {log.message || `Đọc thành công ${log.bytesRead || 0} bytes`}</p>}
+                    {log.status === "ERROR" && <p className={`${color}`}>=> Lỗi: {log.message}</p>}
+                    {log.status === "PENDING" && <p className={`${color} animate-pulse`}>=> Đang kết nối Jina Reader...</p>}
+                 </div>
+               </div>
+             );
+         })}
+      </div>
+    </div>
+  );
+}
+// -----------------------------
+
 export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -155,12 +210,51 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [resolvedCenter, setResolvedCenter] = useState<ResolvedSearchCenter|null>(null);
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [diagnostics, setDiagnostics] = useState<SearchDiagnostics|null>(null);
+  const [agentDiagnostics, setAgentDiagnostics] = useState<any>(null);
+  const lastSearchArgsRef = useRef<any>(null);
   const [resultCriteria, setResultCriteria] = useState<SearchCriteriaSnapshot|null>(null);
   const [cacheReady,setCacheReady]=useState(false);
   const [chatBubbles,setChatBubbles]=useState<Array<{role:"user"|"assistant"|"error";content:string;payload?:string}>>([]);
   const [chatInput,setChatInput]=useState("");
   const [chatLoading,setChatLoading]=useState(false);
   const chatRequestId=useRef(0);
+  // Auto-refresh when Jina Reader is processing in the background
+  useEffect(() => {
+    if (!agentDiagnostics || chatLoading) return;
+    const diagList = Array.isArray(agentDiagnostics) ? agentDiagnostics : [agentDiagnostics];
+    const hasShadow = diagList.some(d => d?.api0Baseline?.operations?.some((op: any) => op.name === "Jina Reader" && op.code === "SHADOW_ONLY") || d?.api0Operations?.some((op: any) => op.name === "Jina Reader" && op.code === "SHADOW_ONLY"));
+    if (hasShadow) {
+      const timer = setTimeout(async () => {
+         if (!lastSearchArgsRef.current) return;
+         try {
+           setChatBubbles(current => [...current, { role: "assistant", content: "Đang tự động tải lại dữ liệu từ Jina Reader (chạy ngầm)..." }]);
+           const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+           if (!token) return;
+           const toolsResponse = await fetch("/api/v1/mimin-group/agent/tools", {
+             method: "POST",
+             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+             body: JSON.stringify({ 
+               toolCalls: [{ id: "call_refresh", type: "function", function: { name: "search_partners", arguments: JSON.stringify(lastSearchArgsRef.current) } }], 
+               turnResults: [] 
+             }),
+           });
+           if (!toolsResponse.ok) return;
+           const toolsData = await toolsResponse.json();
+           if (toolsData.results) {
+             setDirectResults(toolsData.results.candidates || []);
+             setDirectProvider((toolsData.results.provider || []).join("+"));
+             setAgentDiagnostics(toolsData.results.diagnostics || null);
+             setChatBubbles(current => {
+               const filtered = current.filter(b => b.content !== "Đang tự động tải lại dữ liệu từ Jina Reader (chạy ngầm)...");
+               return [...filtered, { role: "assistant", content: "Đã tự động tải lại dữ liệu Jina Reader thành công!" }];
+             });
+           }
+         } catch (error) {}
+      }, 70000); // 70 seconds delay to ensure edge function cache is populated
+      return () => clearTimeout(timer);
+    }
+  }, [agentDiagnostics, chatLoading, supabase]);
+
   const refresh = useCallback(async () => { try { setItems(await loadDiscoveryCandidates()); } catch (error) { console.error("Không tải được ứng viên:", error); } }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -265,32 +359,120 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
     if (!trimmed || chatLoading) return;
     const currentRequestId = chatRequestId.current + 1;
     chatRequestId.current = currentRequestId;
+    
+    // Convert current bubbles to message format
     const history = chatBubbles.filter(b => b.role !== "error").map(b => ({ role: b.role, content: b.content })).slice(-6);
+    const messages = [...history, { role: "user", content: trimmed }];
+    
     setChatBubbles((current) => [...current, { role: "user", content: trimmed }]);
     setChatLoading(true);
+
     try {
       const token = (await supabase?.auth.getSession())?.data.session?.access_token;
       if (!token) throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
-      const lastResults = directResults.map((item, index) => ({ ...item, role, roleLabel: ROLE_LABELS[role], resultIndex: index }));
-      const response = await fetch("/api/v1/mimin-group/agent/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: trimmed, history, lastResults }),
-      });
-      const data = await response.json() as { reply?: string; error?: string; toolCalls?: Array<{ name: string; args: Record<string, unknown> }>; results?: { candidates: DirectSearchCandidate[]; provider: string[] } | null };
-      if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
-      if (chatRequestId.current !== currentRequestId) return;
-      setChatBubbles((current) => [...current, { role: "assistant", content: data.reply ?? "Đã xử lý xong." }]);
-      const searchCall = data.toolCalls?.find((call) => call.name === "search_partners");
-      if (searchCall) syncFormFromToolCall(searchCall.args);
-      if (data.results) {
-        setDirectResults(data.results.candidates);
-        setDirectProvider(data.results.provider.join("+"));
-        setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
+
+      // Seed turn results from current screen
+      let turnResults = directResults.map((item, index) => ({ 
+        role, 
+        candidate: { ...item, role: undefined, roleLabel: undefined, resultIndex: undefined }, 
+        searchQuery: "", 
+        provider: "" 
+      }));
+
+      let loopCount = 0;
+      let finalReply = "";
+
+      while (loopCount < 5) {
+        loopCount++;
+        
+        // 1. GỌI DEEPSEEK (Chỉ suy nghĩ, không chạy tool)
+        const chatResponse = await fetch("/api/v1/mimin-group/agent/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ messages }),
+        });
+        
+        let chatData;
+        const chatText = await chatResponse.text();
+        try {
+          chatData = JSON.parse(chatText);
+        } catch {
+          throw new Error(chatResponse.ok ? "Lỗi máy chủ: không nhận được JSON hợp lệ" : `Lỗi máy chủ (${chatResponse.status}): ${chatText.substring(0, 50)}...`);
+        }
+        if (!chatResponse.ok) throw new Error(chatData.error ?? "AI Search Agent gặp lỗi proxy");
+        
+        const message = chatData.message;
+        if (!message) throw new Error("Không nhận được phản hồi từ AI");
+        messages.push(message);
+
+        // 2. NẾU KHÔNG CÓ TOOL CALL -> LÀ CÂU TRẢ LỜI CUỐI CÙNG
+        if (!message.tool_calls || message.tool_calls.length === 0) {
+          finalReply = message.content || "Đã xử lý xong.";
+          break;
+        }
+
+        // 3. NẾU CÓ TOOL CALL -> GỌI API TOOLS ĐỂ THỰC THI
+        if (chatRequestId.current === currentRequestId && loopCount === 1) {
+          setChatBubbles((current) => [...current, { role: "assistant", content: "Đang phân tích dữ liệu và tìm kiếm..." }]);
+        }
+
+        const toolsResponse = await fetch("/api/v1/mimin-group/agent/tools", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ toolCalls: message.tool_calls, turnResults }),
+        });
+        
+        let toolsData;
+        const toolsText = await toolsResponse.text();
+        try {
+          toolsData = JSON.parse(toolsText);
+        } catch (err: any) {
+          throw new Error(`API công cụ trả về dữ liệu hỏng. Status: ${toolsResponse.status}. Raw text: "${toolsText}". Error: ${err.message}`);
+        }
+        if (!toolsResponse.ok) throw new Error(toolsData.error ?? "Thực thi công cụ thất bại");
+
+        turnResults = toolsData.turnResults || turnResults;
+        
+        if (toolsData.toolMessages) {
+          messages.push(...toolsData.toolMessages);
+        }
+
+        // Update state and UI side-effects from tool execution
+        const searchCall = message.tool_calls.find((call: any) => call.function?.name === "search_partners");
+        if (searchCall) {
+          try {
+            const args = JSON.parse(searchCall.function.arguments);
+            syncFormFromToolCall(args);
+            lastSearchArgsRef.current = args;
+          } catch {}
+        }
+        
+        if (toolsData.results) {
+          const fetchedCandidates = toolsData.results.candidates || [];
+          setDirectResults(fetchedCandidates);
+          setDirectProvider((toolsData.results.provider || []).join("+"));
+          setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
+          setAgentDiagnostics(toolsData.results.diagnostics || null);
+        }
       }
+
+      if (chatRequestId.current !== currentRequestId) return;
+      if (!finalReply) finalReply = "Đã hoàn thành tìm kiếm (đạt giới hạn bước xử lý của AI). Vui lòng thử đổi từ khóa hoặc mở rộng bán kính.";
+
+      // Xóa tin nhắn "Đang phân tích..." nếu có và thêm câu trả lời cuối
+      setChatBubbles((current) => {
+        const filtered = current.filter(b => b.content !== "Đang phân tích dữ liệu và tìm kiếm...");
+        return [...filtered, { role: "assistant", content: finalReply }];
+      });
+
     } catch (error) {
       const message = error instanceof Error ? error.message : "AI Search Agent gặp lỗi";
-      if (chatRequestId.current === currentRequestId) setChatBubbles((current) => [...current, { role: "error", content: `Xin lỗi, có lỗi xảy ra: ${message}`, payload: trimmed }]);
+      if (chatRequestId.current === currentRequestId) {
+        setChatBubbles((current) => {
+          const filtered = current.filter(b => b.content !== "Đang phân tích dữ liệu và tìm kiếm...");
+          return [...filtered, { role: "error", content: `Xin lỗi, có lỗi xảy ra: ${message}`, payload: trimmed }];
+        });
+      }
     } finally {
       if (chatRequestId.current === currentRequestId) setChatLoading(false);
     }
@@ -441,6 +623,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       </div>
     </div>
     <SearchProgressModal loading={loading} />
+    <JinaRadar diagnostics={agentDiagnostics} />
     {items.length === 0 && !loading && !directResults.length && (
       <div className="rounded-xl bg-slate-50 border p-4 text-sm text-slate-700" style={{borderColor: "var(--border)"}}>
       <div className="flex items-center gap-2 font-bold mb-2 text-brand-700"><Sparkles className="w-4 h-4"/> Mẹo tìm kiếm hiệu quả</div>
@@ -454,8 +637,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         </li>
       </ul>
     </div>)}
-    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {selectedResultKeys.size||directResults.filter(item=>!isDirectCandidateSaved(item,items)).length} công ty</button></div>{directResultSections.map((section)=><section key={section.key} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.key}-${index}`;const saveKey=directCandidateSaveKey(item);const saved=isDirectCandidateSaved(item,items);return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} selected={selectedResultKeys.has(saveKey)} saved={saved} onToggle={()=>setSelectedResultKeys(current=>{const next=new Set(current);if(next.has(saveKey))next.delete(saveKey);else next.add(saveKey);return next})} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
-    <div className="card p-5 space-y-3">
+        <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Bot className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Trò chuyện với AI Agent</h2><p className="text-xs opacity-60">Gõ nhu cầu bằng lời — AI tự hiểu, lọc điều kiện và gọi tìm kiếm; kết quả hiện ở khu vực phía trên.</p></div></div>
       <div className="flex flex-wrap gap-1.5">
         {CHAT_STARTERS.map((starter) => {
@@ -512,6 +694,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         <button type="button" onClick={() => { void sendChat(chatInput); setChatInput(""); }} disabled={chatLoading || !chatInput.trim()} className="btn-primary text-sm shrink-0">Gửi</button>
       </div>
     </div>
+    {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {selectedResultKeys.size||directResults.filter(item=>!isDirectCandidateSaved(item,items)).length} công ty</button></div>{directResultSections.map((section)=><section key={section.key} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.key}-${index}`;const saveKey=directCandidateSaveKey(item);const saved=isDirectCandidateSaved(item,items);return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} selected={selectedResultKeys.has(saveKey)} saved={saved} onToggle={()=>setSelectedResultKeys(current=>{const next=new Set(current);if(next.has(saveKey))next.delete(saveKey);else next.add(saveKey);return next})} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items.map((item) => <article key={item.id} className="card p-5 space-y-3">
       <div className="flex justify-between gap-3"><div><div className="text-[10px] text-brand-700">{ROLE_LABELS[item.role]} · {item.sourceProvider}</div><h3 className="font-bold">{item.legalName}</h3></div><span className="text-xs">{item.status === "PENDING" ? "Chờ duyệt" : item.status === "APPROVED" ? "Phù hợp" : "Đã loại"}</span></div>
       <p className="text-sm flex gap-2"><MapPin className="w-4 h-4 shrink-0 mt-0.5" />{item.address}</p>

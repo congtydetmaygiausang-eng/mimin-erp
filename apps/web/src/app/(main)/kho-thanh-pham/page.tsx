@@ -174,19 +174,23 @@ export default function KhoThanhPhamPage() {
   // Unique maSP cho filter
   const dsLoai = useMemo(() => Array.from(new Set(dsSanPham.map((s) => s.maSP))).sort(), [dsSanPham]);
 
-  // Handlers
+  // Handlers - ThemNhieuBienTheForm gửi lên 1 MẢNG (nhiều biến thể/màu cùng
+  // lô), form Sửa vẫn gửi 1 object đơn - chuẩn hoá về mảng để xử lý chung.
   const handleAdd = (data: any) => {
-    const { __tempImage, ...sp } = data;
-    const newSp: SanPhamTP = {
-      ...sp,
-      id: `TP${Date.now().toString().slice(-6)}`,
-      giaTri: sp.soLuong * sp.donGia,
-    };
-    update([newSp, ...dsSanPham]);
-    if (__tempImage) {
-      setProductImages((prev) => ({ ...prev, [newSp.id]: __tempImage }));
+    const list = Array.isArray(data) ? data : [data];
+    const newImages: Record<string, string> = {};
+    const newRows: SanPhamTP[] = list.map((item, i) => {
+      const { __tempImage, ...sp } = item;
+      const id = `TP${Date.now().toString().slice(-6)}${i}`;
+      if (__tempImage) newImages[id] = __tempImage;
+      return { ...sp, id, giaTri: sp.soLuong * sp.donGia };
+    });
+    update([...newRows, ...dsSanPham]);
+    if (Object.keys(newImages).length > 0) {
+      setProductImages((prev) => ({ ...prev, ...newImages }));
     }
-    toast.success(`Đã thêm ${sp.tenSP} (${sp.soLuong} sp)`);
+    const tongSL = newRows.reduce((s, r) => s + (r.soLuong || 0), 0);
+    toast.success(newRows.length > 1 ? `Đã thêm ${newRows.length} biến thể (${tongSL} sp)` : `Đã thêm ${newRows[0]?.tenSP} (${tongSL} sp)`);
   };
 
   const handleEdit = (data: any) => {

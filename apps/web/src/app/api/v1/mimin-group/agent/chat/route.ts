@@ -1,30 +1,12 @@
 // @codex MIMIN GROUP - AI Search Agent hội thoại (tool-calling thật qua DeepSeek).
-// Theo đúng pattern callOpenAICompatibleWithTools() trong
-// apps/web/src/app/api/v1/orchestrator/query/route.ts (fetch thô, tools + tool_choice
-// "auto", 1 vòng thực thi tool rồi tổng hợp câu trả lời) nhưng tự chứa hoàn toàn cho
-// domain Mạng lưới đối tác - KHÔNG đụng vào orchestrator/ai-tools.ts sẵn có.
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
-import {
-  ALLOWED_APP_ROLES,
-  runSourcingSearch,
-  type SourcingSearchAuth,
-} from "@/lib/sourcing/search-engine";
-import {
-  getPartnerDetail,
-  insertDiscoveryCandidate,
-  listPartnersForCompare,
-  rankPartners,
-  type AgentPartnerDetail,
-} from "@/lib/sourcing/agent-partner-data";
 import { agentConfigToPromptContext, getAgentConfig } from "@/lib/sourcing/agent-config";
-import { applyExclusionRules, getActiveProfile, listActiveProfiles, profilesToPromptContext } from "@/lib/sourcing/search-profiles";
+import { getActiveProfile, listActiveProfiles, profilesToPromptContext } from "@/lib/sourcing/search-profiles";
 import { canView } from "@/lib/permissions";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
-import type { DirectSearchCandidate } from "@/lib/production-discovery";
 
-export const maxDuration = 55;
+export const maxDuration = 300;
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 25000): Promise<Response> {
   const controller = new AbortController();
@@ -42,81 +24,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 2
   }
 }
 
-const MAX_TOOL_CALLS_PER_TURN = 4;
-const MAX_HISTORY_MESSAGES = 6;
-const MAX_ECHOED_RESULTS = 50;
-
-interface TurnResult {
-  role: ProductionPartnerRole;
-  candidate: DirectSearchCandidate;
-  searchQuery: string;
-  provider: string;
-}
-
-interface ChatAuth {
-  user: User;
-  client: SupabaseClient;
-  role: string;
-  sourcingAuth: SourcingSearchAuth;
-}
-
-async function authenticateChatUser(req: NextRequest): Promise<ChatAuth | null> {
-  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!token || !url || !key) return null;
-  const client = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data, error } = await client.auth.getUser(token);
-  if (error || !data.user) return null;
-  const role = String(data.user.app_metadata?.role ?? "");
-  return { user: data.user, client, role, sourcingAuth: { user: data.user, client, token, url, key } };
-}
-
-// Dựng lại "kết quả tìm kiếm gần nhất" từ dữ liệu client gửi kèm (chính là results.candidates
-// route này đã trả về ở lượt trước) - route không giữ state giữa các request nên
-// refine_last_search/save_partner_candidate cần nguồn này để hoạt động qua nhiều lượt chat.
-function parseEchoedResults(raw: unknown): TurnResult[] {
-  if (!Array.isArray(raw)) return [];
-  const out: TurnResult[] = [];
-  for (const entry of raw.slice(0, MAX_ECHOED_RESULTS)) {
-    if (!entry || typeof entry !== "object") continue;
-    const record = entry as Record<string, unknown>;
-    const role = record.role;
-    if (typeof role !== "string" || !(role in ROLE_LABELS)) continue;
-    const { role: _role, roleLabel: _roleLabel, resultIndex: _resultIndex, ...candidate } = record;
-    out.push({ role: role as ProductionPartnerRole, candidate: candidate as unknown as DirectSearchCandidate, searchQuery: "", provider: "" });
-  }
-  return out;
-}
-
-function partnerTypeToRoles(partnerType: unknown): ProductionPartnerRole[] {
-  if (partnerType === "factory") return ["SATELLITE_PROCESSOR"];
-  if (partnerType === "customer") return ["CUSTOMER"];
-  return ["MATERIAL_SUPPLIER", "PACKAGING_FINISHER"];
-}
-
-function partnerDetailToText(detail: AgentPartnerDetail): Record<string, unknown> {
-  return {
-    id: detail.id,
-    partnerCode: detail.partnerCode,
-    legalName: detail.legalName,
-    roles: detail.roleLabels,
-    phone: detail.phone || null,
-    email: detail.email || null,
-    website: detail.website || null,
-    address: [detail.address, detail.district, detail.province].filter(Boolean).join(", ") || null,
-    capabilities: detail.capabilities,
-    capacityPerMonth: detail.capacityPerMonth,
-    minimumOrderQuantity: detail.minimumOrderQuantity,
-    leadTimeDays: detail.leadTimeDays,
-    score: detail.score,
-    status: detail.status,
-    verificationStatus: detail.verificationStatus,
-  };
-}
+const MAX_HISTORY_MESSAGES = 15;
 
 const TOOLS = [
   {
@@ -224,312 +132,45 @@ Nguyên tắc:
 - Khi người dùng muốn so sánh nhiều đối tác → gọi compare_partners.
 - Khi người dùng muốn đối tác tốt nhất/xếp hạng → gọi rank_partners.
 - Khi người dùng muốn lưu 1 kết quả tìm kiếm vào vùng chờ duyệt → gọi save_partner_candidate với đúng result_index.
-- Khi người dùng thêm/đổi điều kiện lọc cho ĐÚNG lượt tìm vừa rồi (không phải nhu cầu mới) → gọi refine_last_search, KHÔNG gọi search_partners lại (đỡ tốn API không cần thiết).
+- Khi người dùng muốn tìm một lĩnh vực/sản phẩm KHÁC hoặc ở khu vực KHÁC với lượt tìm trước → BẮT BUỘC gọi search_partners.
+- CHỈ gọi refine_last_search khi người dùng yêu cầu LỌC BỚT kết quả của đúng danh sách vừa tìm (ví dụ: "chỉ lấy công ty có SĐT", "độ tin cậy cao"). KHÔNG dùng refine_last_search để tìm kiếm nhu cầu mới.
 - Nếu tool search_partners trả về internalMatches (đối tác đã có sẵn trong hệ thống khớp chuyên môn), báo cho người dùng biết TRƯỚC khi nói về kết quả tìm mới ngoài internet.
-- Sau khi có kết quả công cụ, trả lời ngắn gọn bằng tiếng Việt, nêu số lượng và 1-2 điểm nổi bật - KHÔNG liệt kê lại toàn bộ chi tiết vì giao diện đã hiển thị bảng kết quả riêng.
-- Nếu công cụ báo lỗi hoặc không đủ quyền, giải thích rõ lý do cho người dùng thay vì im lặng hoặc bịa kết quả.`;
+
+QUAN TRỌNG: SAU KHI CÓ KẾT QUẢ TỪ CÔNG CỤ (đặc biệt là search_partners), BẠN BẮT BUỘC PHẢI TRÌNH BÀY BÁO CÁO THEO ĐÚNG CẤU TRÚC SAU (không liệt kê chi tiết vì đã có thẻ giao diện ở dưới):
+
+### Kết quả tìm kiếm [Nội dung ngắn gọn]
+
+Tìm được **[Số lượng]** kết quả, tuy nhiên hầu hết đều có độ tin cậy [cao/trung bình/thấp] và [nêu 1 điểm yếu chung, VD: chưa xác minh được số điện thoại]. Một số điểm nổi bật:
+
+Các kết quả đáng chú ý nhất:
+- **[Tên công ty 1]** — [Mô tả rất ngắn gọn 1 dòng]
+- **[Tên công ty 2]** — [Mô tả rất ngắn gọn 1 dòng]
+- **[Tên công ty 3]** — [Mô tả rất ngắn gọn 1 dòng]
+
+⚠️ Lưu ý: Hầu hết các kết quả [Nêu rõ nhược điểm hoặc rủi ro của tập kết quả này để người dùng cẩn thận].
+
+Bạn có muốn tôi:
+1. Lọc lại chỉ giữ các kết quả có độ tin cậy cao hơn?
+2. Tìm kiếm mở rộng sang khu vực lân cận?
+3. Lưu một số kết quả tiềm năng vào vùng chờ duyệt?`;
 
 function stripThinkTags(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
 }
 
-interface ToolSearchResults {
-  candidates: Array<DirectSearchCandidate & { role: ProductionPartnerRole; roleLabel: string; resultIndex: number }>;
-  diagnostics: unknown[];
-  provider: string[];
-}
-
-async function executeToolCall(
-  name: string,
-  args: Record<string, unknown>,
-  auth: ChatAuth,
-  turnResults: TurnResult[],
-): Promise<{ toolMessageContent: unknown; results?: ToolSearchResults }> {
-  if (name === "search_partners") {
-    // Tìm mới thay thế hẳn "kết quả gần nhất" của cuộc hội thoại (kể cả kết quả được
-    // client gửi lại từ lượt trước) - refine_last_search sau lượt này phải lọc trên bộ
-    // kết quả MỚI, không lẫn với lượt tìm cũ.
-    turnResults.length = 0;
-    if (!ALLOWED_APP_ROLES.has(auth.role)) {
-      return { toolMessageContent: { error: "Tài khoản của anh/chị chưa được cấp quyền tìm kiếm AI (cần vai trò admin/planner/warehouse/accountant)." } };
-    }
-    const specialty = typeof args.specialty === "string" ? args.specialty.trim() : "";
-    const location = typeof args.location === "string" ? args.location.trim() : "";
-    if (!specialty || !location) {
-      return { toolMessageContent: { error: "Thiếu specialty hoặc location để tìm kiếm." } };
-    }
-    const product = typeof args.product === "string" ? args.product.trim() : "";
-    const radiusKm = typeof args.radius_km === "number" ? args.radius_km : undefined;
-    const limit = typeof args.limit === "number" ? Math.min(Math.max(Math.round(args.limit), 1), 50) : 20;
-    const roles = partnerTypeToRoles(args.partner_type);
-    const queryText = [specialty, product].filter(Boolean).join(", ");
-
-    // Search Router Phase 1, bước "Internal MIMIN Database": kiểm tra đối tác đã có trong hệ
-    // thống khớp chuyên môn TRƯỚC khi tốn tiền tìm ngoài internet. Không chặn tìm ngoài -
-    // chỉ cho DeepSeek biết đã có sẵn gì để báo người dùng, tránh gợi ý trùng.
-    let internalMatches: AgentPartnerDetail[] = [];
-    try {
-      const specialtyNeedle = specialty.toLowerCase();
-      const internalCandidates = await rankPartners(auth.client, roles, 50);
-      internalMatches = internalCandidates
-        .filter((partner) => partner.capabilities.some((capability) => capability.toLowerCase().includes(specialtyNeedle) || specialtyNeedle.includes(capability.toLowerCase())))
-        .slice(0, 5);
-    } catch (error) {
-      console.error("[mimin-group-agent] internal DB check failed:", error);
-    }
-
-    const searchResults = [];
-    for (const role of roles) {
-      try {
-        const res = await runSourcingSearch(
-          { query: queryText, location, role, radiusKm, entryPoint: "AGENT_CHAT", rawQueryText: `[AI Agent] ${queryText} tại ${location}`, locationPriority: true },
-          auth.sourcingAuth,
-        );
-        searchResults.push(res);
-      } catch (error) {
-        console.error(`[mimin-group-agent] search_partners role=${role} failed:`, error);
-        searchResults.push(null);
-      }
-    }
-
-    const merged: TurnResult[] = [];
-    const diagnosticsList: unknown[] = [];
-    const providerList: string[] = [];
-    for (let i = 0; i < roles.length; i += 1) {
-      const result = searchResults[i];
-      if (!result) continue;
-      diagnosticsList.push(result.diagnostics);
-      providerList.push(result.provider);
-      // Lọc hậu kiểm nhẹ theo Search Profile ACTIVE (nếu có) của đúng vai trò này - profile
-      // DRAFT/không tồn tại thì không đổi gì so với hành vi trước đây.
-      const roleProfile = await getActiveProfile(auth.client, roles[i]);
-      const roleCandidates = applyExclusionRules(result.candidates as unknown as DirectSearchCandidate[], roleProfile);
-      for (const candidate of roleCandidates) {
-        merged.push({ role: roles[i], candidate, searchQuery: `${queryText} | ${location}`, provider: result.provider });
-      }
-    }
-    const limited = merged.slice(0, limit);
-    const startIndex = turnResults.length;
-    turnResults.push(...limited);
-
-    const digestResults = limited.slice(0, 20).map((item, i) => ({
-      index: startIndex + i,
-      legalName: item.candidate.legalName,
-      phone: item.candidate.phone || null,
-      address: item.candidate.address || null,
-      province: item.candidate.province || null,
-      confidence: item.candidate.confidence,
-      tier: item.candidate.resultTier ?? "EXACT",
-    }));
-    const internalDigest = internalMatches.map((partner) => ({
-      partnerId: partner.id,
-      legalName: partner.legalName,
-      phone: partner.phone || null,
-      capabilities: partner.capabilities,
-      score: partner.score,
-    }));
-
-    const payload = {
-      candidates: limited.map((item, i) => ({ ...item.candidate, role: item.role, roleLabel: ROLE_LABELS[item.role], resultIndex: startIndex + i })),
-      diagnostics: diagnosticsList,
-      provider: providerList,
-    };
-
-    return {
-      toolMessageContent: {
-        internalMatches: internalDigest.length ? internalDigest : undefined,
-        internalNote: internalDigest.length ? "Đã có sẵn trong hệ thống - báo cho người dùng biết trước khi liệt kê kết quả tìm mới." : undefined,
-        count: limited.length,
-        truncatedForDisplay: limited.length > 20,
-        results: digestResults,
-      },
-      results: payload,
-    };
-  }
-
-  if (name === "get_partner_detail") {
-    const partnerId = typeof args.partner_id === "string" ? args.partner_id : "";
-    if (!partnerId) return { toolMessageContent: { error: "Thiếu partner_id" } };
-    try {
-      const detail = await getPartnerDetail(auth.client, partnerId);
-      if (!detail) return { toolMessageContent: { error: "Không tìm thấy đối tác với id này" } };
-      return { toolMessageContent: partnerDetailToText(detail) };
-    } catch (error) {
-      return { toolMessageContent: { error: error instanceof Error ? error.message : "Không lấy được hồ sơ đối tác" } };
-    }
-  }
-
-  if (name === "compare_partners") {
-    const ids = Array.isArray(args.partner_ids) ? args.partner_ids.filter((id): id is string => typeof id === "string") : [];
-    if (ids.length === 0) return { toolMessageContent: { error: "Thiếu partner_ids" } };
-    try {
-      const details = await listPartnersForCompare(auth.client, ids);
-      return { toolMessageContent: { count: details.length, partners: details.map(partnerDetailToText) } };
-    } catch (error) {
-      return { toolMessageContent: { error: error instanceof Error ? error.message : "Không so sánh được đối tác" } };
-    }
-  }
-
-  if (name === "rank_partners") {
-    const roles = partnerTypeToRoles(args.partner_type);
-    const limit = typeof args.limit === "number" ? Math.min(Math.max(Math.round(args.limit), 1), 50) : 10;
-    try {
-      const ranked = await rankPartners(auth.client, roles, limit);
-      return { toolMessageContent: { count: ranked.length, partners: ranked.map(partnerDetailToText) } };
-    } catch (error) {
-      return { toolMessageContent: { error: error instanceof Error ? error.message : "Không xếp hạng được đối tác" } };
-    }
-  }
-
-  if (name === "save_partner_candidate") {
-    const index = typeof args.result_index === "number" ? Math.round(args.result_index) : -1;
-    const item = turnResults[index];
-    if (!item) return { toolMessageContent: { error: "result_index không hợp lệ - phải lấy từ kết quả search_partners gần nhất trong cuộc hội thoại này." } };
-    try {
-      const saved = await insertDiscoveryCandidate(auth.client, item.candidate, item.role, item.searchQuery, `AGENT_${item.provider || "CHAT"}`);
-      return { toolMessageContent: { saved: true, legalName: item.candidate.legalName, saveKey: saved.saveKey } };
-    } catch (error) {
-      return { toolMessageContent: { error: error instanceof Error ? error.message : "Không lưu được vào vùng chờ duyệt" } };
-    }
-  }
-
-  if (name === "refine_last_search") {
-    if (turnResults.length === 0) {
-      return { toolMessageContent: { error: "Chưa có kết quả tìm kiếm nào trong cuộc hội thoại này để lọc lại. Hãy gọi search_partners trước." } };
-    }
-    let filtered = turnResults.map((item, index) => ({ item, index }));
-    const minConfidence = typeof args.min_confidence === "number" ? args.min_confidence : null;
-    if (minConfidence !== null) filtered = filtered.filter(({ item }) => item.candidate.confidence >= minConfidence);
-    if (args.require_website === true) filtered = filtered.filter(({ item }) => Boolean(item.candidate.website?.trim()));
-    if (args.require_phone === true) filtered = filtered.filter(({ item }) => Boolean(item.candidate.phone?.trim()));
-    const sortBy = typeof args.sort_by === "string" ? args.sort_by : null;
-    if (sortBy === "confidence") filtered = [...filtered].sort((a, b) => b.item.candidate.confidence - a.item.candidate.confidence);
-    else if (sortBy === "distance") filtered = [...filtered].sort((a, b) => (a.item.candidate.distanceKm ?? Infinity) - (b.item.candidate.distanceKm ?? Infinity));
-
-    const digestResults = filtered.slice(0, 20).map(({ item, index }) => ({
-      index,
-      legalName: item.candidate.legalName,
-      phone: item.candidate.phone || null,
-      address: item.candidate.address || null,
-      province: item.candidate.province || null,
-      confidence: item.candidate.confidence,
-      tier: item.candidate.resultTier ?? "EXACT",
-    }));
-
-    const payload: ToolSearchResults = {
-      candidates: filtered.map(({ item, index }) => ({ ...item.candidate, role: item.role, roleLabel: ROLE_LABELS[item.role], resultIndex: index })),
-      diagnostics: [],
-      provider: [],
-    };
-
-    return {
-      toolMessageContent: { count: filtered.length, results: digestResults, note: "Đã lọc lại từ kết quả tìm kiếm trước, không gọi API mới." },
-      results: payload,
-    };
-  }
-
-  return { toolMessageContent: { error: `Tool ${name} không tồn tại` } };
-}
-
-async function callAIWithTools(
-  systemPrompt: string,
-  messages: Array<{ role: string; content: string }>,
-  auth: ChatAuth,
-  initialTurnResults: TurnResult[],
-): Promise<{ reply: string; toolCalls: Array<{ name: string; args: Record<string, unknown> }>; results: ToolSearchResults | null }> {
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  const minimaxKey = process.env.MINIMAX_API_KEY;
-  if (!deepseekKey && !minimaxKey) throw new Error("Chưa cấu hình API Key (DeepSeek hoặc MiniMax) trên máy chủ");
-
-  let activeKey = deepseekKey || minimaxKey;
-  let activeUrl = deepseekKey ? "https://api.deepseek.com/v1/chat/completions" : "https://api.minimax.chat/v1/chat/completions";
-  let activeModel = deepseekKey ? "deepseek-chat" : "abab6.5s-chat";
-
-  const baseBody = {
-    model: activeModel,
-    messages: [{ role: "system", content: systemPrompt }, ...messages],
-    temperature: 0.3,
-    max_tokens: 1024,
-    tools: TOOLS,
-    tool_choice: "auto",
-  };
-
-  let firstRes = await fetchWithTimeout(activeUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
-    body: JSON.stringify(baseBody),
-  }, 25000);
-
-  if (!firstRes.ok && deepseekKey && minimaxKey && activeKey === deepseekKey) {
-    console.warn(`[agent] DeepSeek failed (${firstRes.status}), fallback to MiniMax...`);
-    activeKey = minimaxKey;
-    activeUrl = "https://api.minimax.chat/v1/chat/completions";
-    baseBody.model = "abab6.5s-chat";
-    firstRes = await fetchWithTimeout(activeUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
-      body: JSON.stringify(baseBody),
-    }, 25000);
-  }
-  if (!firstRes.ok) {
-    const err = await firstRes.text();
-    throw new Error(`DeepSeek API lỗi ${firstRes.status}: ${err.slice(0, 200)}`);
-  }
-  const firstData = await firstRes.json();
-  const message = firstData.choices?.[0]?.message;
-
-  const toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
-  let results: ToolSearchResults | null = null;
-
-  if (message?.tool_calls?.length) {
-    // Seed từ kết quả tìm kiếm gần nhất (client gửi lại) để refine_last_search/
-    // save_partner_candidate có dữ liệu tham chiếu ngay cả khi lượt tìm gốc là 1 request
-    // HTTP khác (route này không giữ state giữa các lượt chat) - search_partners sẽ tự
-    // reset mảng này nếu lượt hiện tại là 1 tìm kiếm mới (xem executeToolCall).
-    const turnResults: TurnResult[] = [...initialTurnResults];
-    const calls = (message.tool_calls as Array<{ id: string; function: { name: string; arguments: string } }>).slice(0, MAX_TOOL_CALLS_PER_TURN);
-    const toolMessages: Array<{ role: string; tool_call_id: string; content: string }> = [];
-
-    for (const call of calls) {
-      const name = call.function?.name ?? "";
-      let args: Record<string, unknown> = {};
-      try {
-        args = JSON.parse(call.function?.arguments || "{}");
-      } catch {
-        // giữ args rỗng nếu DeepSeek trả JSON hỏng
-      }
-      toolCalls.push({ name, args });
-      const execResult = await executeToolCall(name, args, auth, turnResults);
-      if (execResult.results) {
-        results = results
-          ? {
-              candidates: [...results.candidates, ...execResult.results.candidates],
-              diagnostics: [...results.diagnostics, ...execResult.results.diagnostics],
-              provider: [...results.provider, ...execResult.results.provider],
-            }
-          : execResult.results;
-      }
-      toolMessages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(execResult.toolMessageContent) });
-    }
-
-    const secondRes = await fetchWithTimeout(activeUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
-      body: JSON.stringify({
-        model: activeModel,
-        messages: [{ role: "system", content: systemPrompt }, ...messages, message, ...toolMessages],
-        temperature: 0.3,
-        max_tokens: 1024,
-      }),
-    }, 25000);
-    if (!secondRes.ok) {
-      return { reply: stripThinkTags(message?.content || "Đã có kết quả, nhưng AI chưa tổng hợp được câu trả lời."), toolCalls, results };
-    }
-    const secondData = await secondRes.json();
-    return { reply: stripThinkTags(secondData.choices?.[0]?.message?.content || "Đã có kết quả tìm kiếm."), toolCalls, results };
-  }
-
-  return { reply: stripThinkTags(message?.content || "Không có phản hồi từ AI"), toolCalls, results };
+async function authenticateChatUser(req: NextRequest) {
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!token || !url || !key) return null;
+  const client = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data.user) return null;
+  const role = String(data.user.app_metadata?.role ?? "");
+  return { user: data.user, client, role };
 }
 
 export async function POST(req: NextRequest) {
@@ -541,64 +182,89 @@ export async function POST(req: NextRequest) {
     }
 
     const ip = getClientIp(req);
-    const perUser = checkRateLimit(`mimin-group-agent:user:${auth.user.id}`, { max: 15, windowMs: 60_000 });
-    if (!perUser.allowed) {
-      return NextResponse.json({ error: `Anh/chị gửi quá nhiều tin nhắn, vui lòng đợi ${perUser.retryAfterSec}s` }, { status: 429 });
-    }
-    const perIp = checkRateLimit(`mimin-group-agent:ip:${ip}`, { max: 40, windowMs: 60_000 });
-    if (!perIp.allowed) {
-      return NextResponse.json({ error: `Quá nhiều yêu cầu từ mạng của anh/chị, vui lòng đợi ${perIp.retryAfterSec}s` }, { status: 429 });
-    }
+    const perUser = checkRateLimit(`mimin-group-agent-proxy:user:${auth.user.id}`, { max: 40, windowMs: 60_000 });
+    if (!perUser.allowed) return NextResponse.json({ error: `Vui lòng đợi ${perUser.retryAfterSec}s` }, { status: 429 });
 
-    const body = await req.json() as { message?: string; history?: Array<{ role: string; content: string }>; lastResults?: unknown };
-    const userMessage = (body.message ?? "").trim().slice(0, 1000);
-    if (!userMessage) return NextResponse.json({ error: "Vui lòng nhập nội dung tìm kiếm" }, { status: 400 });
-
-    const initialTurnResults = parseEchoedResults(body.lastResults);
-
-    const history = Array.isArray(body.history)
-      ? body.history
-          .filter((item) => (item.role === "user" || item.role === "assistant") && typeof item.content === "string" && item.content.trim())
+    const body = await req.json();
+    const history = Array.isArray(body.messages)
+      ? body.messages
+          .filter((item: any) => item.role && item.content !== undefined)
           .slice(-MAX_HISTORY_MESSAGES)
-          .map((item) => ({ role: item.role, content: item.content.trim().slice(0, 1000) }))
       : [];
 
-    const messages = [...history, { role: "user", content: userMessage }];
+    if (!history.length) return NextResponse.json({ error: "Tin nhắn trống" }, { status: 400 });
 
-    if (!process.env.DEEPSEEK_API_KEY && !process.env.MINIMAX_API_KEY) {
-      return NextResponse.json({ error: "Tính năng AI Search Agent chưa được cấu hình (thiếu MINIMAX hoặc DEEPSEEK KEY)" }, { status: 503 });
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const minimaxKey = process.env.MINIMAX_API_KEY;
+    if (!deepseekKey && !minimaxKey) {
+      return NextResponse.json({ error: "Chưa cấu hình API Key" }, { status: 503 });
     }
 
+    let activeKey = deepseekKey || minimaxKey;
+    let activeUrl = deepseekKey ? "https://api.deepseek.com/v1/chat/completions" : "https://api.minimax.chat/v1/chat/completions";
+    let activeModel = deepseekKey ? "deepseek-chat" : "abab6.5s-chat";
+
+    const [agentConfig, activeProfiles] = await Promise.all([
+      getAgentConfig(auth.client),
+      listActiveProfiles(auth.client),
+    ]);
+    const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
+
+    const baseBody = {
+      model: activeModel,
+      messages: [{ role: "system", content: systemPrompt }, ...history],
+      temperature: 0.3,
+      max_tokens: 1024,
+      tools: TOOLS,
+      tool_choice: "auto",
+    };
+
     const aiWork = async () => {
-      const [agentConfig, activeProfiles] = await Promise.all([
-        getAgentConfig(auth.client),
-        listActiveProfiles(auth.client),
-      ]);
-      const systemPrompt = `${BASE_SYSTEM_PROMPT}${agentConfigToPromptContext(agentConfig)}${profilesToPromptContext(activeProfiles)}`;
-      return await callAIWithTools(systemPrompt, messages, auth, initialTurnResults);
+      let response = await fetchWithTimeout(activeUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
+        body: JSON.stringify(baseBody),
+      }, 25000);
+
+      if (!response.ok && deepseekKey && minimaxKey && activeKey === deepseekKey) {
+        console.warn(`[agent] DeepSeek failed, fallback to MiniMax...`);
+        activeKey = minimaxKey;
+        activeUrl = "https://api.minimax.chat/v1/chat/completions";
+        baseBody.model = "abab6.5s-chat";
+        response = await fetchWithTimeout(activeUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
+          body: JSON.stringify(baseBody),
+        }, 25000);
+      }
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`API lỗi ${response.status}: ${err.slice(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const message = data.choices?.[0]?.message;
+      if (message?.content) message.content = stripThinkTags(message.content);
+      return { message };
     };
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Gửi ký tự khoảng trắng mỗi 2 giây để giữ kết nối HTTP luôn mở
-        // lách qua mọi giới hạn proxy timeout của Vercel
         const encoder = new TextEncoder();
         let isClosed = false;
         const intervalId = setInterval(() => {
           if (isClosed) return;
-          try {
-            controller.enqueue(encoder.encode(" "));
-          } catch (e) {
-            // stream may be already closed
-          }
+          try { controller.enqueue(encoder.encode(" ")); } catch (e) {}
         }, 2000);
 
         try {
           const result = await aiWork();
           if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify(result)));
         } catch (error) {
-          console.error("[mimin-group-agent-chat] aiWork error:", error);
-          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify({ error: error instanceof Error ? error.message : "AI Search Agent gặp lỗi" })));
+          console.error("[mimin-group-agent-proxy] error:", error);
+          const errMsg = error instanceof Error ? error.message : "AI Proxy gặp lỗi";
+          if (!isClosed) controller.enqueue(encoder.encode(JSON.stringify({ error: errMsg })));
         } finally {
           isClosed = true;
           clearInterval(intervalId);
@@ -607,15 +273,9 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return new NextResponse(stream, {
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return new Response(stream, { headers: { "Content-Type": "application/json" } });
   } catch (error) {
-    console.error("[mimin-group-agent-chat] error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "AI Search Agent gặp lỗi" }, { status: 502 });
+    console.error("[mimin-group-agent-proxy] outer error:", error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "AI Proxy gặp lỗi" }, { status: 502 });
   }
 }

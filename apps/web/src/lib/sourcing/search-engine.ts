@@ -130,7 +130,8 @@ interface SourceResult { title: string; url: string; content: string; rawContent
 interface CompanyReaderFieldDecision { field?:unknown;status?:unknown;selected_value?:unknown;confidence?:unknown;evidence?:Array<{source_url?:unknown;excerpt?:unknown}> }
 interface CompanyReaderProfile { status?:unknown;fields?:CompanyReaderFieldDecision[];source_count?:unknown }
 interface CompanyReaderResponse { status?:unknown;profiles?:CompanyReaderProfile[];profile_count?:unknown;source_count?:unknown;warning_count?:unknown;error?:unknown }
-interface CompanyReaderEnrichment { items:SourceResult[];health:{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string} }
+export interface JinaRadarLog { timestamp: string; url: string; status: "PENDING" | "SUCCESS" | "ERROR"; message?: string; bytesRead?: number; }
+interface CompanyReaderEnrichment { items:SourceResult[];health:{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}; radarLogs?: JinaRadarLog[]; }
 interface SearchCenter {
   latitude: number;
   longitude: number;
@@ -961,8 +962,8 @@ const COMPANY_READER_FIELDS = new Set(["LEGAL_NAME","TAX_CODE","ADDRESS","PHONE"
 const COMPANY_READER_ACCEPTED_FIELD_STATUS = new Set(["CONSENSUS","SINGLE_SOURCE"]);
 
 function companyReaderMaximumUrls():number{
-  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"3");
-  return Number.isFinite(configured)?Math.max(1,Math.min(10,Math.floor(configured))):3;
+  const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"15");
+  return Number.isFinite(configured)?Math.max(1,Math.min(20,Math.floor(configured))):15;
 }
 
 function companyReaderSourceScore(source:SourceResult):number{
@@ -974,19 +975,19 @@ function companyReaderSourceScore(source:SourceResult):number{
   return identity+contact+sourceTrust+missingDepth+(source.score??0);
 }
 
-function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):SourceResult|null{
-  if(!Array.isArray(profile.fields)||profile.status!=="READY_FOR_REVIEW")return null;
+function companyReaderProfileSource(profile:CompanyReaderProfile,index:number, fallbackUrl: string):SourceResult|null{
+  if(!Array.isArray(profile.fields)) return null;
   const accepted=profile.fields.filter((field)=>
-    COMPANY_READER_FIELDS.has(String(field.field??""))&&
-    COMPANY_READER_ACCEPTED_FIELD_STATUS.has(String(field.status??""))&&
+    COMPANY_READER_FIELDS.has(String(field.field??"").toUpperCase())&&
     typeof field.selected_value==="string"&&field.selected_value.trim()&&
-    typeof field.confidence==="number"&&field.confidence>=0.55,
+    (typeof field.confidence==="number"?field.confidence>=0.30:true)
   );
-  const legalName=accepted.find((field)=>field.field==="LEGAL_NAME")?.selected_value;
-  const taxCode=accepted.find((field)=>field.field==="TAX_CODE")?.selected_value;
-  if(typeof legalName!=="string"&&!taxCode)return null;
+  if (accepted.length === 0) return null;
+  const legalName=accepted.find((field)=>String(field.field).toUpperCase()==="LEGAL_NAME")?.selected_value;
+  const taxCode=accepted.find((field)=>String(field.field).toUpperCase()==="TAX_CODE")?.selected_value;
+  // Removed legalName/taxCode requirement to allow partial profiles with phone numbers
   const evidence=accepted.flatMap((field)=>field.evidence??[]);
-  const url=evidence.map((item)=>typeof item.source_url==="string"?canonicalSourceUrl(item.source_url):"").find(Boolean);
+  const url=evidence.map((item)=>typeof item.source_url==="string"?canonicalSourceUrl(item.source_url):"").find(Boolean) || fallbackUrl;
   if(!url||blockedSource(url))return null;
   const values=accepted.map((field)=>`${String(field.field)}: ${String(field.selected_value).trim()}`);
   const excerpts=evidence.map((item)=>typeof item.excerpt==="string"?item.excerpt.trim():"").filter(Boolean).slice(0,6);
@@ -995,7 +996,7 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):S
     url,
     content:Array.from(new Set([...values,...excerpts])).join("\n").slice(0,12_000),
     rawContent:Array.from(new Set([...values,...excerpts])).join("\n").slice(0,50_000),
-    score:Math.min(1,Math.max(...accepted.map((field)=>Number(field.confidence)||0))),
+    score:Math.min(1,Math.max(...accepted.map((field)=>typeof field.confidence==="number"?field.confidence:0.8))),
     sourceType:classifySource(url,String(legalName??""),values.join(" ")),
     provider:"Jina Reader",
     searchQuery:`company-reader-${index+1}`,
@@ -1003,11 +1004,18 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):S
 }
 
 async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
-  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED==="false")return{items:[],health:{name:"Jina Reader",status:"DISABLED",count:0,code:"NOT_ENABLED"}};
+  const radarLogs: JinaRadarLog[] = [];
+  if(process.env.COMPANY_READER_ENRICHMENT_ENABLED==="false")return{items:[],health:{name:"Jina Reader",status:"DISABLED",count:0,code:"NOT_ENABLED"}, radarLogs};
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
-  if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}};
-  const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
-  const timeoutMs=Math.max(5_000,Math.min(55_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"45000")||45_000));
+  if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}, radarLogs};
+  console.log("JINA_TARGET_URLS:", urls); const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
+  const logMap = new Map<string, JinaRadarLog>();
+  urls.forEach(url => {
+      const log: JinaRadarLog = { timestamp: new Date().toISOString(), url, status: "PENDING" };
+      logMap.set(url, log);
+      radarLogs.push(log);
+  });
+  const timeoutMs=Math.max(5_000,Math.min(115_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"95000")||95_000));
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
   try{
@@ -1021,18 +1029,77 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
         cache:"no-store",
       });
       const data=await response.json().catch(()=>({error:"INVALID_GATEWAY_RESPONSE"})) as CompanyReaderResponse;
-      if(!response.ok)throw new Error(typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}`);
+      if(!response.ok) {
+         batch.forEach(url => {
+             const log = logMap.get(url);
+             if (log) { log.status = "ERROR"; log.message = typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}`; log.timestamp = new Date().toISOString(); }
+         });
+         throw new Error(typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}`);
+      }
+      
+      batch.forEach(url => {
+          const log = logMap.get(url);
+          if (log) { 
+             log.timestamp = new Date().toISOString(); 
+             if (data.status === "SHADOW_PROCESSED") {
+                 log.status = "SUCCESS";
+                 log.message = "Đang đọc ngầm (Sẽ có sau 1-2 phút)";
+             }
+          }
+      });
+      
       return data;
     }));
     const settled=await operation;
-    const responses=settled.filter((result):result is PromiseFulfilledResult<CompanyReaderResponse>=>result.status==="fulfilled").map((result)=>result.value);
-    const profiles=responses.flatMap((response)=>Array.isArray(response.profiles)?response.profiles:[]);
-    const items=profiles.map(companyReaderProfileSource).filter((item):item is SourceResult=>Boolean(item));
+    settled.forEach((result) => { if(result.status==="rejected") console.error("JINA_EDGE_ERROR:", result.reason); }); const responses=settled.filter((result):result is PromiseFulfilledResult<CompanyReaderResponse>=>result.status==="fulfilled").map((result)=>result.value);
+    const items: SourceResult[] = [];
+    settled.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+           const batch = batches[index];
+           const profs = Array.isArray(result.value.profiles) ? result.value.profiles : [];
+           const sources = Array.isArray(result.value.sources) ? result.value.sources : [];
+
+           profs.forEach((p, pIndex) => {
+               const evidence = p.fields?.flatMap((f: any) => f.evidence ?? []) ?? [];
+               const pUrl = evidence.find((e: any) => typeof e.source_url === "string" && e.source_url)?.source_url || "";
+               const item = companyReaderProfileSource(p, index * 5 + pIndex, pUrl);
+               if (item) items.push(item);
+           });
+
+           batch.forEach((url) => {
+              const log = logMap.get(url);
+              if (log && log.status !== "ERROR" && result.value.status !== "SHADOW_PROCESSED") {
+                  const report = sources.find((s: any) => s.source_url === url);
+                  const itemExists = items.some(i => i.url === url || canonicalSourceUrl(i.url) === canonicalSourceUrl(url));
+
+                  if (itemExists) {
+                      log.message = "Đã trích xuất thông tin";
+                      log.status = "SUCCESS";
+                  } else if (report && report.status === "NO_ENTITY") {
+                      log.message = "Trang web chặn hoặc không có thông tin";
+                      log.status = "ERROR";
+                  } else if (report && report.status === "FAILED") {
+                      log.message = "Lỗi kỹ thuật khi đọc trang: " + (report.error_code || "Unknown");
+                      log.status = "ERROR";
+                  } else {
+                      log.message = "Không trích xuất được hồ sơ";
+                      log.status = "ERROR";
+                  }
+              }
+           });
+        }
+    });
+    console.log("JINA_ITEMS_GENERATED:", items.length);
     const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
-    return{items,health:{name:"Jina Reader",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}};
+    return{items,health:{name:"Jina Reader",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}, radarLogs};
   }catch(error){
     const isTimeout = error instanceof Error && (error.name === "AbortError" || /timeout|aborted/i.test(error.message));
-    return{items:[],health:{name:"Jina Reader",status:isTimeout?"EMPTY":"ERROR",count:0,code:isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE")}};
+    const msg = isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE");
+    urls.forEach(url => {
+       const log = logMap.get(url);
+       if (log && log.status === "PENDING") { log.status = "ERROR"; log.message = msg; log.timestamp = new Date().toISOString(); }
+    });
+    return{items:[],health:{name:"Jina Reader",status:isTimeout?"EMPTY":"ERROR",count:0,code:msg}, radarLogs};
   }finally{clearTimeout(timeoutId)}
 }
 
@@ -1072,8 +1139,8 @@ async function searchTavily(queries: string[]): Promise<SourceResult[]> {
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: key, query: `${searchQuery} Việt Nam`, topic:"general", country:"vietnam", search_depth:advanced?"advanced":"basic", max_results:advanced?6:8, chunks_per_source:advanced?3:undefined, include_raw_content:advanced?"text":false, include_answer:false, exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
-      signal: AbortSignal.timeout(18_000),
+      body: JSON.stringify({ api_key: key, query: `${searchQuery} Việt Nam`, topic:"general", country:"vietnam", search_depth:advanced?"advanced":"basic", max_results: advanced ? 10 : 20, chunks_per_source: advanced ? 5 : undefined, include_raw_content:advanced?"text":false, include_answer:false, exclude_domains:[...BLOCKED_SOURCE_DOMAINS] }),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!response.ok) {
       if (response.status === 432) throw new Error("Hết Quota (HTTP 432) - Vui lòng kiểm tra lại API Key");
@@ -1101,8 +1168,8 @@ async function searchBrave(queries: string[]): Promise<SourceResult[]> {
     apiKey: key,
     queries,
     maxQueries: braveMaximumQueries(),
-    resultsPerQuery: 10,
-    timeoutMs: 12_000,
+    resultsPerQuery: 20,
+    timeoutMs: 18_000,
   });
   return items.map((item) => {
     const content = [item.description, ...item.extraSnippets].filter(Boolean).join("\n").slice(0, 8_000);
@@ -1121,12 +1188,12 @@ async function searchBrave(queries: string[]): Promise<SourceResult[]> {
 async function searchSerper(queries: string[]): Promise<SourceResult[]> {
   const key = process.env.SERPER_API_KEY;
   if (!key) return [];
-  const batches = await Promise.allSettled(queries.slice(0, 10).map(async (searchQuery) => {
+  const batches = await Promise.allSettled(queries.slice(0, 16).map(async (searchQuery) => {
     const response = await fetch("https://google.serper.dev/search", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-API-KEY": key },
-      body: JSON.stringify({ q: `${searchQuery} Việt Nam`, gl: "vn", hl: "vi", num: 10 }),
-      signal: AbortSignal.timeout(12_000),
+      body: JSON.stringify({ q: `${searchQuery} Việt Nam`, gl: "vn", hl: "vi", num: 30 }),
+      signal: AbortSignal.timeout(20_000),
     });
     if (!response.ok) throw new Error(`Serper HTTP ${response.status}`);
     const data = await response.json() as { organic?: Array<{ title?: string; link?: string; snippet?: string }> };
@@ -1330,7 +1397,7 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
             { role: "user", content: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }
           ],
         }),
-        signal: AbortSignal.timeout(18_000),
+        signal: AbortSignal.timeout(25_000),
       });
       if (!response.ok) throw new Error(`Minimax enrichment failed`);
       const data = await response.json() as any;
@@ -1344,7 +1411,7 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
           contents: [{ parts: [{ text: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Trả về đúng định dạng JSON: {"phone":"", "address":"", "email":"", "taxCode":""}. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }] }],
           generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
         }),
-        signal: AbortSignal.timeout(18_000),
+        signal: AbortSignal.timeout(25_000),
       });
       if (!response.ok) throw new Error(`Gemini enrichment failed`);
       const data = await response.json() as any;
@@ -1469,7 +1536,7 @@ async function searchGemini(query: string, location: string, queries: string[]):
     const models = orderedGeminiModels(await supportedGeminiModels(key));
     for (const [index, model] of models.entries()) {
       try {
-        const results = await requestGeminiSearch(key, model, query, location, queries, index === 0 ? 18_000 : 14_000);
+        const results = await requestGeminiSearch(key, model, query, location, queries, 25_000);
         if (results.length) return results;
       } catch (error) {
         lastError = error;
@@ -1536,7 +1603,7 @@ async function searchGooglePlaces(query: string, location: string, queries: stri
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.businessStatus,places.location",
       },
       body: JSON.stringify({ textQuery: `${searchQuery}, Việt Nam`, languageCode: "vi", regionCode: "VN", maxResultCount: 20 }),
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(20_000),
     });
     if (modernResponse.ok) {
       const modernData = await modernResponse.json() as { places?: GooglePlaceNewResult[] };
@@ -1546,7 +1613,7 @@ async function searchGooglePlaces(query: string, location: string, queries: stri
 
     // Tương thích các project Google Cloud chỉ mới bật Places API (Legacy).
     const params = new URLSearchParams({ query: `${searchQuery}, Việt Nam`, key, language: "vi", region: "vn" });
-    const response = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`, { signal: AbortSignal.timeout(12_000) });
+    const response = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params}`, { signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`Google Places HTTP ${response.status}`);
     const data = await response.json() as { status?: string; error_message?: string; results?: GooglePlaceResult[] };
     if (data.status && !["OK", "ZERO_RESULTS"].includes(data.status)) throw new Error(`Google Places ${data.status}`);
@@ -1614,7 +1681,7 @@ async function requestOpenAISearch(key: string, model: string, query: string, lo
     seen.add(url);
     results.push({ title: annotation.title?.trim() || "OpenAI Web Search", url, content: answer, provider: "OPENAI_WEB_SEARCH" });
   }
-  return results.slice(0, 10);
+  return results.slice(0, 30);
 }
 
 async function searchOpenAI(query: string, location: string, queries: string[]): Promise<SourceResult[]> {
@@ -1624,7 +1691,7 @@ async function searchOpenAI(query: string, location: string, queries: string[]):
   let lastError: unknown = null;
   for (const [index, model] of models.entries()) {
     try {
-      const results = await requestOpenAISearch(key, model, query, location, queries, index === 0 ? 18_000 : 14_000);
+      const results = await requestOpenAISearch(key, model, query, location, queries, 25_000);
       if (results.length) return results;
     } catch (error) {
       lastError = error;
@@ -1701,7 +1768,7 @@ async function searchSources(
     Gemini: geminiApiKeys().length ? 1 : 0,
     "Google Places": process.env.GOOGLE_MAPS_API_KEY ? Math.min(queries.length, 3) : 0,
     OpenAI: openAiApiKey() ? 1 : 0,
-    "Serper (Google)": process.env.SERPER_API_KEY ? Math.min(queries.length, 10) : 0,
+    "Serper (Google)": process.env.SERPER_API_KEY ? Math.min(queries.length, 16) : 0,
     OpenStreetMap: 1,
   };
 
@@ -2274,6 +2341,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       durationMs: api0ProcessingDurations.get("Jina Reader") ?? 0,
       plannedRequests: companyReader.health.status === "DISABLED" ? 0 : Math.ceil(Math.min(discoverySeed.length, companyReaderMaximumUrls()) / 5),
       rawItems: companyReader.health.count, uniqueItems: companyReader.items.length, code: companyReader.health.code,
+      radarLogs: companyReader.radarLogs,
     });
     // Map keeps the last value for a duplicate URL, so the deeper Company Reader evidence replaces the search snippet.
     const discoverySources = Array.from(new Map([...discoverySeed,...companyReader.items].map((item)=>[canonicalSourceUrl(item.url),item])).values()).slice(0,MAX_DISCOVERY_SOURCES);
@@ -2429,6 +2497,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       rejectedInvalidIdentity: enrichment.candidates.length-cleanedCandidates.length,
       geocoding: geocoding.summary,
       locationQuality,
+      operations: api0Operations,
       providers: [
         ...source.providerHealth,
         ...expansionHealth,

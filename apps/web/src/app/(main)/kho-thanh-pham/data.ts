@@ -38,6 +38,10 @@ export interface SanPhamTP {
   // Chi tiết theo từng màu (biến thể) - thêm 2026-08-18
   giaBanLe?: number;
   giaBanSi?: number;
+  // Thêm 2026-08-24: giá vốn (nhập kho) + giá bán theo lô, phục vụ nhập lô
+  // hàng tồn kho hiện tại nhiều biến thể cùng lúc.
+  giaVon?: number;
+  giaBanLo?: number;
   hinhAnh?: string[];
   imgQuan?: string; // Ảnh thứ 2 (áo mặt sau / quần bộ) - lấy nguyên từ mau.imgQuan của lệnh cắt gốc
   video?: string;
@@ -69,6 +73,8 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     ghiChu: r.ghi_chu ?? undefined,
     giaBanLe: r.gia_ban_le != null ? Number(r.gia_ban_le) : undefined,
     giaBanSi: r.gia_ban_si != null ? Number(r.gia_ban_si) : undefined,
+    giaVon: r.gia_von != null ? Number(r.gia_von) : undefined,
+    giaBanLo: r.gia_ban_lo != null ? Number(r.gia_ban_lo) : undefined,
     hinhAnh: Array.isArray(r.hinh_anh) ? r.hinh_anh : undefined,
     imgQuan: r.img_quan ?? undefined,
     video: r.video ?? undefined,
@@ -96,6 +102,8 @@ export function toSupabaseRow(sp: SanPhamTP) {
     ghi_chu: sp.ghiChu ?? null,
     gia_ban_le: sp.giaBanLe ?? null,
     gia_ban_si: sp.giaBanSi ?? null,
+    gia_von: sp.giaVon ?? null,
+    gia_ban_lo: sp.giaBanLo ?? null,
     hinh_anh: sp.hinhAnh ?? null,
     img_quan: sp.imgQuan ?? null,
     video: sp.video ?? null,
