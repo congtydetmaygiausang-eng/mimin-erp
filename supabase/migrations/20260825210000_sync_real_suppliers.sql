@@ -75,8 +75,23 @@ DROP POLICY IF EXISTS ncc_anon_read_suppliers ON public.nha_cung_cap;
 CREATE POLICY ncc_anon_read_suppliers ON public.nha_cung_cap
 FOR SELECT TO anon USING (ma_ncc ~ '^NCC-[0-9]+$');
 
+DROP POLICY IF EXISTS ncc_anon_create_supplier ON public.nha_cung_cap;
+CREATE POLICY ncc_anon_create_supplier ON public.nha_cung_cap
+FOR INSERT TO anon WITH CHECK (
+  ma_ncc ~ '^NCC-[0-9]{3,9}$'
+  AND length(trim(ten_ncc)) BETWEEN 2 AND 200
+  AND COALESCE(cong_no, 0) = 0
+  AND loai IS DISTINCT FROM 'doi_tac_gia_cong'
+);
+
 GRANT SELECT ON public.nha_cung_cap TO anon;
 REVOKE UPDATE ON public.nha_cung_cap FROM anon;
+REVOKE INSERT ON public.nha_cung_cap FROM anon;
+GRANT INSERT (
+  stt, ma_ncc, ten_ncc, loai, chuyen_mon, nguoi_lh, sdt, email, dia_chi,
+  ma_so_thue, trang_thai, ghi_chu, han_muc, don_gia, rating,
+  facebook_url, danh_muc_chi_tiet
+) ON public.nha_cung_cap TO anon;
 
 CREATE OR REPLACE FUNCTION public.sync_inventory_receipt_supplier_debt()
 RETURNS trigger

@@ -139,15 +139,29 @@ export default function NhaCungCapPage() {
   });
 
   const handleSave = async (ncc: NCC) => {
-    const dbNCC = mapToDB(ncc);
+    let payload = ncc;
+    if (showForm?.mode === "add" && !ncc.ma_ncc) {
+      const maxCode = rawList.reduce((max, item) => {
+        const value = Number(item.ma_ncc.match(/^NCC-(\d+)$/)?.[1] || 0);
+        return Math.max(max, value);
+      }, 0);
+      payload = { ...ncc, ma_ncc: `NCC-${String(maxCode + 1).padStart(3, "0")}` };
+    }
+    const dbNCC = mapToDB(payload);
     if (showForm?.mode === "add") {
       const ok = await themNCC(dbNCC);
-      if (ok) toast.success(`Đã thêm NCC: ${ncc.ten}`);
-      else toast.error(`Lỗi khi thêm NCC: ${ncc.ten}`);
+      if (ok) toast.success(`Đã thêm ${payload.ma_ncc}: ${payload.ten}`);
+      else {
+        toast.error(`Không lưu được NCC ${payload.ma_ncc} lên Supabase`);
+        return;
+      }
     } else {
       const ok = await suaNCC(dbNCC);
-      if (ok) toast.success(`Đã cập nhật NCC: ${ncc.ten}`);
-      else toast.error(`Lỗi khi cập nhật NCC: ${ncc.ten}`);
+      if (ok) toast.success(`Đã cập nhật NCC: ${payload.ten}`);
+      else {
+        toast.error(`Không cập nhật được NCC: ${payload.ten}`);
+        return;
+      }
     }
     setShowForm(null);
   };

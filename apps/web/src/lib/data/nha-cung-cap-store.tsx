@@ -165,17 +165,28 @@ export function NhaCungCapProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const themNCC = useCallback(async (ncc: NhaCungCapModel) => {
+    let savedNCC = ncc;
+    if (isSupabaseEnabled) {
+      try {
+        const dbRow = toDBNhaCungCap(ncc);
+        const { id: _id, cong_no: _congNo, ...insertRow } = dbRow;
+        const { data, error } = await supabase!
+          .from("nha_cung_cap")
+          .insert(insertRow)
+          .select("*")
+          .single();
+        if (error) throw error;
+        savedNCC = fromDBNhaCungCap(data);
+      } catch (err) {
+        console.error("[NCC] Không tạo được nhà cung cấp trên Supabase:", err);
+        return false;
+      }
+    }
     setList(prev => {
-      const newList = [...prev, ncc];
+      const newList = [...prev, savedNCC];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
       return newList;
     });
-    if (isSupabaseEnabled) {
-      try {
-        await supabaseUpsert("nha_cung_cap", toDBNhaCungCap(ncc));
-        return true;
-      } catch (err) { return false; }
-    }
     return true;
   }, []);
 
