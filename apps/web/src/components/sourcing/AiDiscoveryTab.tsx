@@ -173,7 +173,7 @@ function JinaRadar({ diagnostics }: { diagnostics: any }) {
                  <span className="shrink-0">{icon}</span>
                  <div className="flex-1 min-w-0">
                     <p className="truncate opacity-80" title={log.url}>{log.url}</p>
-                    {log.status === "SUCCESS" && <p className={`${color} font-semibold`}>=> Đọc thành công {log.bytesRead} bytes</p>}
+                    {log.status === "SUCCESS" && <p className={`${color} font-semibold`}>=> {log.message || `Đọc thành công ${log.bytesRead || 0} bytes`}</p>}
                     {log.status === "ERROR" && <p className={`${color}`}>=> Lỗi: {log.message}</p>}
                     {log.status === "PENDING" && <p className={`${color} animate-pulse`}>=> Đang kết nối Jina Reader...</p>}
                  </div>

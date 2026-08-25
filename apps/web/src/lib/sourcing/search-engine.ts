@@ -1039,7 +1039,15 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
       
       batch.forEach(url => {
           const log = logMap.get(url);
-          if (log) { log.status = "SUCCESS"; log.timestamp = new Date().toISOString(); }
+          if (log) { 
+             log.status = "SUCCESS"; 
+             log.timestamp = new Date().toISOString(); 
+             if (data.status === "SHADOW_PROCESSED") {
+                 log.message = "Đang đọc ngầm (Sẽ có sau 1-2 phút)";
+             } else {
+                 log.message = "Đã lấy dữ liệu";
+             }
+          }
       });
       
       return data;
