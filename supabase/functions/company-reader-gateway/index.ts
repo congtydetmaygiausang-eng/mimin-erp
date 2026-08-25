@@ -20,7 +20,7 @@ function validRequest(value: unknown): value is GatewayRequest {
   if (!Array.isArray(input.urls) || input.urls.length < 1 || input.urls.length > 5) return false;
   return new Set(input.urls).size === input.urls.length && input.urls.every((url) => {
     if (typeof url !== "string" || url.length > 2_000) return false;
-    try { return new URL(url).protocol === "https:"; } catch { return false; }
+    try { return new URL(url).protocol.startsWith("http"); } catch { return false; }
   });
 }
 
