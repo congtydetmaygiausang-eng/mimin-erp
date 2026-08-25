@@ -76,24 +76,24 @@ export function EntityCard({
       <div className={`flex items-start ${compact ? "gap-2 mb-2" : "gap-3 mb-3"}`}>
         <Avatar name={name} src={avatarUrl} size={avatarSize} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold truncate text-base">{name}</h3>
+          <div className={`flex gap-2 ${compact ? "flex-col items-start gap-0.5" : "items-center"}`}>
+            <h3 className={`font-bold ${compact ? "text-sm leading-tight whitespace-normal break-words" : "truncate text-base"}`}>{name}</h3>
             {rating !== undefined && (
               <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Star
                     key={s}
-                    className={`w-3.5 h-3.5 ${s <= rating ? "text-amber-400 fill-amber-400" : "text-slate-300"}`}
+                    className={`${compact ? "w-3 h-3" : "w-3.5 h-3.5"} ${s <= rating ? "text-amber-400 fill-amber-400" : "text-slate-300"}`}
                   />
                 ))}
               </div>
             )}
           </div>
-          {subtitle && <div className="text-sm opacity-75 mt-0.5 truncate">{subtitle}</div>}
+          {subtitle && <div className={`${compact ? "text-xs" : "text-sm"} opacity-75 mt-0.5 ${compact ? "whitespace-normal" : "truncate"}`}>{subtitle}</div>}
           {badges.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {badges.map((b, i) => (
-                <span key={i} className={`text-xs px-2 py-0.5 rounded font-semibold ${b.bg || "bg-brand-500/15"} ${b.color || "text-brand-700"}`}>
+                <span key={i} className={`${compact ? "text-[10px]" : "text-xs"} px-2 py-0.5 rounded font-semibold ${b.bg || "bg-brand-500/15"} ${b.color || "text-brand-700"}`}>
                   {b.label}
                 </span>
               ))}
@@ -138,7 +138,7 @@ export function EntityCard({
       {/* Status */}
       {status && (
         <div className={compact ? "mb-2" : "mb-3"}>
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${status.bg} ${status.color}`}>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full ${compact ? "text-[10px]" : "text-xs"} font-bold ${status.bg} ${status.color}`}>
             {status.label}
           </span>
         </div>
@@ -151,11 +151,11 @@ export function EntityCard({
             const Icon = s.icon;
             return (
               <div key={i} className={`bg-white/30 dark:bg-white/5 rounded ${compact ? "p-2" : "p-2.5"}`}>
-                <div className="text-xs opacity-75 flex items-center gap-1.5">
+                <div className={`${compact ? "text-[10px]" : "text-xs"} opacity-75 flex items-center gap-1.5`}>
                   {Icon && <Icon className="w-3.5 h-3.5" />}
                   {s.label}
                 </div>
-                <div className={`text-sm md:text-base font-bold mt-1 ${s.color || ""}`}>{s.value}</div>
+                <div className={`${compact ? "text-xs md:text-sm" : "text-sm md:text-base"} font-bold mt-1 ${s.color || ""}`}>{s.value}</div>
               </div>
             );
           })}
@@ -171,7 +171,7 @@ export function EntityCard({
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#0068FF] text-white hover:bg-blue-700 text-sm font-bold transition shadow-sm ${compact ? "py-1.5" : "py-2"}`}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#0068FF] text-white hover:bg-blue-700 font-bold transition shadow-sm ${compact ? "py-1.5 text-xs" : "py-2 text-sm"}`}
           >
             <MessageCircle className="w-4 h-4" />
             Zalo
@@ -179,7 +179,7 @@ export function EntityCard({
           <a
             href={`tel:${String(contactPhone).replace(/\D/g, '')}`}
             onClick={(e) => e.stopPropagation()}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#00A65A] text-white hover:bg-emerald-700 text-sm font-bold transition shadow-sm ${compact ? "py-1.5" : "py-2"}`}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#00A65A] text-white hover:bg-emerald-700 font-bold transition shadow-sm ${compact ? "py-1.5 text-xs" : "py-2 text-sm"}`}
           >
             <Phone className="w-4 h-4" />
             Gọi
