@@ -8,8 +8,8 @@ export function TransactionTable({ filteredGD }: { filteredGD: GiaoDichKho[] }) 
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
+        <table className="w-full text-sm tabular-nums">
+          <thead className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
             <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
               <th className="p-3">Mã GD</th>
               <th className="p-3">Ngày</th>
@@ -28,16 +28,16 @@ export function TransactionTable({ filteredGD }: { filteredGD: GiaoDichKho[] }) 
               <tr><td colSpan={10} className="p-8 text-center opacity-60 text-sm">Chưa có giao dịch</td></tr>
             ) : filteredGD.map((g) => (
               <tr key={g.id} className="border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
-                <td className="p-3 font-mono text-xs opacity-70">{g.id}</td>
-                <td className="p-3 text-xs">{g.ngay}</td>
-                <td className="p-3">{g.loai === "NHAP" ? <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 text-[10px] font-semibold">+NHẬP</span> : <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 text-[10px] font-semibold">-XUẤT</span>}</td>
-                <td className="p-3 font-mono text-xs">{g.maVT}</td>
+                <td className="p-3 text-sm font-medium opacity-80 whitespace-nowrap">{g.id}</td>
+                <td className="p-3 text-sm whitespace-nowrap">{g.ngay}</td>
+                <td className="p-3">{g.loai === "NHAP" ? <span className="px-2 py-1 rounded bg-sky-500/15 text-sky-700 text-xs font-semibold">+NHẬP</span> : <span className="px-2 py-1 rounded bg-amber-500/15 text-amber-700 text-xs font-semibold">-XUẤT</span>}</td>
+                <td className="p-3 text-sm font-semibold whitespace-nowrap">{g.maVT}</td>
                 <td className="p-3">{g.tenVT}</td>
-                <td className="p-3 text-right font-mono font-semibold">{g.soLuong.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono">{g.donGia.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-emerald-600">{formatVNDShort(g.thanhTien)}</td>
-                <td className="p-3 text-xs">{g.nguonNhap || "—"}</td>
-                <td className="p-3 text-xs">{g.nguoiThucHien}</td>
+                <td className="p-3 text-right font-semibold whitespace-nowrap">{g.soLuong.toLocaleString("vi-VN")}</td>
+                <td className="p-3 text-right whitespace-nowrap">{g.donGia.toLocaleString("vi-VN")}</td>
+                <td className="p-3 text-right font-semibold text-emerald-600 whitespace-nowrap">{formatVNDShort(g.thanhTien)}</td>
+                <td className="p-3 text-sm">{g.nguonNhap || "—"}</td>
+                <td className="p-3 text-sm">{g.nguoiThucHien}</td>
               </tr>
             ))}
           </tbody>

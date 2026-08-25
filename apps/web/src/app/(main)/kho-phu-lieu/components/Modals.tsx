@@ -255,8 +255,8 @@ export function PLLichSu({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho;
             </div>
           </div>
           <div className="overflow-x-auto flex-1 h-0 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white dark:bg-slate-900 shadow-sm z-10">
+            <table className="w-full text-sm tabular-nums">
+              <thead className="sticky top-0 bg-white dark:bg-slate-900 shadow-sm z-10 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                 <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
                   <th className="p-2">Ngày</th>
                   <th className="p-2">Loại</th>
@@ -272,13 +272,13 @@ export function PLLichSu({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho;
                   <tr><td colSpan={7} className="p-6 text-center opacity-60 text-sm">Chưa có giao dịch</td></tr>
                 ) : ds.map((g) => (
                   <tr key={g.id} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
-                    <td className="p-2 text-xs">{g.ngay}</td>
-                    <td className="p-2 text-xs">{g.loai === "NHAP" ? <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 text-[10px] font-semibold">+NHẬP</span> : <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 text-[10px] font-semibold">-XUẤT</span>}</td>
-                    <td className="p-2 text-right text-xs">{g.soLuong.toLocaleString()}</td>
-                    <td className="p-2 text-right text-xs font-mono">{g.donGia.toLocaleString()}</td>
-                    <td className="p-2 text-right text-xs font-mono">{(g.thanhTien || 0).toLocaleString()}</td>
-                    <td className="p-2 text-xs">{g.nguonNhap || "—"}</td>
-                    <td className="p-2 text-xs">{g.nguoiThucHien}</td>
+                    <td className="p-2 text-sm whitespace-nowrap">{g.ngay}</td>
+                    <td className="p-2 text-sm">{g.loai === "NHAP" ? <span className="px-2 py-1 rounded bg-sky-500/15 text-sky-700 text-xs font-semibold">+NHẬP</span> : <span className="px-2 py-1 rounded bg-amber-500/15 text-amber-700 text-xs font-semibold">-XUẤT</span>}</td>
+                    <td className="p-2 text-right text-sm font-semibold whitespace-nowrap">{g.soLuong.toLocaleString("vi-VN")}</td>
+                    <td className="p-2 text-right text-sm whitespace-nowrap">{g.donGia.toLocaleString("vi-VN")}</td>
+                    <td className="p-2 text-right text-sm font-semibold whitespace-nowrap">{(g.thanhTien || 0).toLocaleString("vi-VN")}</td>
+                    <td className="p-2 text-sm">{g.nguonNhap || "—"}</td>
+                    <td className="p-2 text-sm">{g.nguoiThucHien}</td>
                   </tr>
                 ))}
               </tbody>
