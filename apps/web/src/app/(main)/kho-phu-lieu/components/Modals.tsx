@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { Plus, Minus, X, Box, History, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useKho } from "@/lib/data/kho-store";
-import { KHO_VAT_TU, KHO_VAI, type KhoVai } from "@/lib/data/real-data";
+import { KHO_VAT_TU, KHO_VAI, formatVND, type KhoVai } from "@/lib/data/real-data";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { Portal } from "@/components/ui/Portal";
 import type { LoaiKho } from "../data";
@@ -276,7 +276,7 @@ export function PLLichSu({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho;
                     <td className="p-2 text-sm">{g.loai === "NHAP" ? <span className="px-2 py-1 rounded bg-sky-500/15 text-sky-700 text-xs font-semibold">+NHẬP</span> : <span className="px-2 py-1 rounded bg-amber-500/15 text-amber-700 text-xs font-semibold">-XUẤT</span>}</td>
                     <td className="p-2 text-right text-sm font-semibold whitespace-nowrap">{g.soLuong.toLocaleString("vi-VN")}</td>
                     <td className="p-2 text-right text-sm whitespace-nowrap">{g.donGia.toLocaleString("vi-VN")}</td>
-                    <td className="p-2 text-right text-sm font-semibold whitespace-nowrap">{(g.thanhTien || 0).toLocaleString("vi-VN")}</td>
+                    <td className="p-2 text-right text-sm font-semibold whitespace-nowrap">{formatVND(g.thanhTien || 0)}</td>
                     <td className="p-2 text-sm">{g.nguonNhap || "—"}</td>
                     <td className="p-2 text-sm">{g.nguoiThucHien}</td>
                   </tr>

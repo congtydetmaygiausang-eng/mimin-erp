@@ -1,7 +1,7 @@
 // ============ TRANSACTION TABLE (NHAP/XUAT/LICHSU) ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.8)
 
-import { formatVNDShort } from "@/lib/data/real-data";
+import { formatVND } from "@/lib/data/real-data";
 import type { GiaoDichKho } from "@/lib/data/kho-store";
 
 export function TransactionTable({ filteredGD }: { filteredGD: GiaoDichKho[] }) {
@@ -35,7 +35,7 @@ export function TransactionTable({ filteredGD }: { filteredGD: GiaoDichKho[] }) 
                 <td className="p-3">{g.tenVT}</td>
                 <td className="p-3 text-right font-semibold whitespace-nowrap">{g.soLuong.toLocaleString("vi-VN")}</td>
                 <td className="p-3 text-right whitespace-nowrap">{g.donGia.toLocaleString("vi-VN")}</td>
-                <td className="p-3 text-right font-semibold text-emerald-600 whitespace-nowrap">{formatVNDShort(g.thanhTien)}</td>
+                <td className="p-3 text-right font-semibold text-emerald-600 whitespace-nowrap">{formatVND(g.thanhTien)}</td>
                 <td className="p-3 text-sm">{g.nguonNhap || "—"}</td>
                 <td className="p-3 text-sm">{g.nguoiThucHien}</td>
               </tr>
