@@ -5,7 +5,7 @@ import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export type FieldDef =
-  | { name: string; label: string; type: "text"; required?: boolean; placeholder?: string }
+  | { name: string; label: string; type: "text"; required?: boolean; placeholder?: string; readOnly?: boolean }
   | { name: string; label: string; type: "email"; required?: boolean; placeholder?: string }
   | { name: string; label: string; type: "number"; required?: boolean; placeholder?: string; min?: number; max?: number; step?: number | "any" }
   | { name: string; label: string; type: "date"; required?: boolean }
@@ -107,7 +107,7 @@ export function CrudModal({
                 />
               ) : f.type === "select" ? (
                 <select
-                  className="input"
+                  className={`input ${f.type === "text" && f.readOnly ? "cursor-not-allowed bg-slate-100 text-slate-600 dark:bg-slate-800" : ""}`}
                   value={values[f.name] || ""}
                   onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
                 >
@@ -145,6 +145,7 @@ export function CrudModal({
                   type={f.type}
                   placeholder={"placeholder" in f ? f.placeholder : undefined}
                   required={f.required}
+                  readOnly={f.type === "text" ? f.readOnly : undefined}
                   min={f.type === "number" ? f.min : undefined}
                   max={f.type === "number" ? f.max : undefined}
                   step={f.type === "number" ? f.step : undefined}

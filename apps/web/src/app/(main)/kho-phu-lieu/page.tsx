@@ -14,7 +14,7 @@ import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
 
 const NEW_ACCESSORY_FIELDS: FieldDef[] = [
-  { name: "maVT", label: "Mã phụ liệu", type: "text", required: true, placeholder: "VD: NUT-001" },
+  { name: "maVT", label: "Mã phụ liệu (tự động)", type: "text", required: true, readOnly: true },
   { name: "tenVT", label: "Tên phụ liệu", type: "text", required: true, placeholder: "VD: Nút áo đen" },
   { name: "loai", label: "Loại phụ liệu", type: "select", required: true, options: [
     { value: "Nút", label: "Nút" }, { value: "Dây kéo", label: "Dây kéo" },
@@ -185,6 +185,14 @@ export default function KhoPhuLieuPage() {
     .sort((a, b) => b.ngay.localeCompare(a.ngay)),
   [giaoDich, search, tab, inventory]);
 
+  const nextAccessoryCode = useMemo(() => {
+    const maxSequence = inventory.reduce((max, item) => {
+      const sequence = Number(item.maVT.match(/^PL-(\d+)$/i)?.[1] || 0);
+      return Math.max(max, sequence);
+    }, 0);
+    return `PL-${String(Math.max(maxSequence, inventory.length) + 1).padStart(3, "0")}`;
+  }, [inventory]);
+
   const handleSaveEdit = async (v: KhoVai) => {
     const updated = { ...v, ...editForm };
     // 1. Cập nhật state React
@@ -230,7 +238,7 @@ export default function KhoPhuLieuPage() {
   };
 
   const handleAddAccessory = async (values: Record<string, string>) => {
-    const maVT = values.maVT.trim().toUpperCase().replace(/\s+/g, "-");
+    const maVT = nextAccessoryCode;
     if (inventory.some((item) => item.maVT.toUpperCase() === maVT)) {
       throw new Error(`Mã phụ liệu ${maVT} đã tồn tại`);
     }
@@ -250,7 +258,7 @@ export default function KhoPhuLieuPage() {
       ghiChu: values.ghiChu?.trim() || "",
     };
     if (isSupabaseEnabled && supabase) {
-      const { error } = await supabase.from("kho").upsert({
+      const { error } = await supabase.from("kho").insert({
         sku: newItem.maVT,
         ten_vt: newItem.tenVT,
         loai: "Phu lieu",
@@ -266,7 +274,7 @@ export default function KhoPhuLieuPage() {
         kho: newItem.kho,
         ghi_chu: newItem.ghiChu || null,
         updated_at: new Date().toISOString(),
-      }, { onConflict: "sku" });
+      });
       if (error) throw new Error(error.message);
     }
     setInventory((prev) => [...prev, newItem].sort((a, b) => a.maVT.localeCompare(b.maVT)));
@@ -347,7 +355,7 @@ export default function KhoPhuLieuPage() {
           onClose={() => setShowAdd(false)}
           title="Thêm phụ liệu mới"
           fields={NEW_ACCESSORY_FIELDS}
-          initial={{ loai: "Phụ liệu khác", dvt: "cái", donGia: "0" }}
+          initial={{ maVT: nextAccessoryCode, loai: "Phụ liệu khác", dvt: "cái", donGia: "0" }}
           submitLabel="Tạo mã phụ liệu"
           onSubmit={handleAddAccessory}
         />
