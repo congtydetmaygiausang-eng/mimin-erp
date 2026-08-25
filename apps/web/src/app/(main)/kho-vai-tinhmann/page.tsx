@@ -11,6 +11,7 @@ import { useSession } from "@/components/session-provider";
 import { logAudit } from "@/lib/audit-log";
 import {
   getAllInventory, truTonKho, nhapKho, resetInventory, resetInventoryToZero, updateVaiInfo,
+  getInventoryByMaVT, upsertInventoryItem, subscribeInventoryChanges,
   tinhMan, parseSize, goiYVai, syncInventoryWithSupabase,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   addNewVai, getVaiImages, saveVaiImage,
@@ -117,6 +118,10 @@ export default function KhoVaiPage() {
     loadGiaoDich();
     syncInventoryWithSupabase().then(() => {
       setInventory(getAllInventory());
+    });
+    return subscribeInventoryChanges(() => {
+      setInventory(getAllInventory());
+      loadGiaoDich();
     });
   }, []);
 
@@ -399,7 +404,7 @@ export default function KhoVaiPage() {
                     {editingVT === v.maVT ? (
                       <>
                         <button 
-                          onClick={() => {
+                          onClick={async () => {
                             // Persist vào localStorage qua inventory-engine
                             updateVaiInfo(v.maVT, {
                               tenVT: editForm.tenVT ?? v.tenVT,
@@ -407,6 +412,18 @@ export default function KhoVaiPage() {
                               donGia: editForm.donGia ?? v.donGia,
                               tonKho: editForm.tonKho ?? v.tonKho,
                             });
+                            const updated = getInventoryByMaVT(v.maVT);
+                            if (!updated) {
+                              toast.error("Không tìm thấy mã vải vừa cập nhật.");
+                              return;
+                            }
+                            try {
+                              await upsertInventoryItem(updated);
+                            } catch (error) {
+                              const message = error instanceof Error ? error.message : "Lỗi không xác định";
+                              toast.error(`Chưa đồng bộ được lên Supabase: ${message}`);
+                              return;
+                            }
                             refresh(); // đọc lại từ localStorage
                             toast.success(`✅ Đã lưu: ${editForm.tenVT || v.tenVT} — tồn kho: ${editForm.tonKho ?? v.tonKho}kg`);
                             setEditingVT(null);
@@ -910,27 +927,14 @@ export default function KhoVaiPage() {
                       setVaiImages(prev => ({ ...prev, [maVT]: newVaiForm.previewImg }));
                     }
                     
-                    toast.success(`✅ Đã lưu ${maVT} vào localStorage`);
-
-                    // Đồng bộ trực tiếp lên Supabase để bắt lỗi
-                    import("@/lib/supabase/client").then(async ({ supabase, isSupabaseEnabled }) => {
-                      if (isSupabaseEnabled && supabase) {
-                        const { error } = await supabase.from("kho").upsert({
-                          sku: newVai.maVT,
-                          ten: newVai.tenVT,
-                          sl: newVai.tonKho,
-                          don_vi: newVai.dvt,
-                          don_gia: newVai.donGia,
-                          loai: "vai",
-                        }, { onConflict: "sku" });
-                        
-                        if (error) {
-                          toast.error("Lỗi đồng bộ Supabase: " + error.message);
-                        } else {
-                          toast.success("✅ Đã đồng bộ mã vải mới lên Supabase!");
-                        }
-                      }
-                    });
+                    try {
+                      await upsertInventoryItem(newVai as KhoVai);
+                      toast.success(`✅ Đã lưu ${maVT} và đồng bộ cho toàn hệ thống`);
+                    } catch (error) {
+                      const message = error instanceof Error ? error.message : "Lỗi không xác định";
+                      toast.error(`Mã vải chỉ mới lưu trên máy này, chưa lên Supabase: ${message}`);
+                      return;
+                    }
 
                     setNewVaiForm({ tenVT: "", mauSac: "", donGia: 0, tonToiThieu: 50, ghiChu: "", previewImg: "" });
                     refresh();
@@ -1013,7 +1017,7 @@ function VaiNhapKho({
 
   const thanhTien = form.soLuong * form.donGia;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.soLuong <= 0) {
       toast.error("Số lượng phải > 0");
@@ -1030,6 +1034,18 @@ function VaiNhapKho({
       nguoiThucHien: form.nguoiThucHien,
     });
     if (r.ok) {
+      const updated = getInventoryByMaVT(maVT);
+      if (!updated) {
+        toast.error("Không tìm thấy mã vải vừa nhập kho.");
+        return;
+      }
+      try {
+        await upsertInventoryItem(updated);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Lỗi không xác định";
+        toast.error(`Đã lưu tạm trên máy này nhưng chưa đồng bộ Supabase: ${message}`);
+        return;
+      }
       toast.success(`✅ Nhập kho ${vt.tenVT}: +${form.soLuong.toLocaleString()}kg (${formatVND(thanhTien)})`);
       onSuccess();
       onClose();

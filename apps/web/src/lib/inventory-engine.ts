@@ -128,6 +128,74 @@ import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 
 const TON_KHO_KEY = "mimin_kho_vai_inventory";
 
+const KHO_VAI_LOAI = "Vai";
+
+type KhoSupabaseRow = {
+  sku: string;
+  ten_vt: string;
+  loai: string;
+  loai_chi_tiet: string | null;
+  mau_sac: string | null;
+  dvt: string | null;
+  don_gia: number | null;
+  ton_kho: number | null;
+  ton_toi_thieu: number | null;
+  so_cay_nhap: number | null;
+  ton_cay: number | null;
+  ty_le_hao_hut: number | null;
+  kho: string | null;
+  ghi_chu: string | null;
+};
+
+function toSupabaseKhoRow(v: KhoVai) {
+  return {
+    sku: v.maVT,
+    ten_vt: v.tenVT,
+    loai: KHO_VAI_LOAI,
+    loai_chi_tiet: v.loai || null,
+    mau_sac: v.mauSac || null,
+    dvt: v.dvt || "kg",
+    don_gia: v.donGia || 0,
+    ton_kho: v.tonKho || 0,
+    ton_toi_thieu: v.tonToiThieu || 0,
+    so_cay_nhap: v.soCayNhap || 0,
+    ton_cay: v.tonCay || 0,
+    ty_le_hao_hut: v.tyLeHaoHut || 0,
+    kho: v.kho || "Kho vải",
+    ghi_chu: v.ghiChu || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function fromSupabaseKhoRow(row: KhoSupabaseRow, current?: KhoVai): KhoVai {
+  return {
+    ...(current || {}),
+    maVT: row.sku,
+    tenVT: row.ten_vt,
+    loai: row.loai_chi_tiet || current?.loai || "Vải",
+    mauSac: row.mau_sac || "",
+    dvt: row.dvt || "kg",
+    donGia: Number(row.don_gia) || 0,
+    tonKho: Number(row.ton_kho) || 0,
+    tonToiThieu: Number(row.ton_toi_thieu) || 0,
+    soCayNhap: Number(row.so_cay_nhap) || 0,
+    tonCay: Number(row.ton_cay) || 0,
+    tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
+    kho: row.kho || "Kho vải",
+    ghiChu: row.ghi_chu || "",
+  };
+}
+
+export async function upsertInventoryItem(v: KhoVai): Promise<void> {
+  if (!isSupabaseEnabled || !supabase) {
+    throw new Error("Supabase chưa được cấu hình");
+  }
+  const { error } = await supabase
+    .from("kho")
+    .upsert(toSupabaseKhoRow(v), { onConflict: "sku" });
+  if (error) throw error;
+}
+
 export function getInventory(): Record<string, KhoVai> {
   if (typeof window === "undefined") return {};
   try {
@@ -149,16 +217,9 @@ export function saveInventory(inv: Record<string, KhoVai>) {
   if (isSupabaseEnabled && supabase) {
     const db = supabase;
     Promise.all(Object.values(inv).map(async (v) => {
-      const payload = {
-        sku: v.maVT,
-        ten: v.tenVT,
-        sl: v.tonKho,
-        don_vi: v.dvt || "kg",
-        don_gia: v.donGia || 0,
-        loai: "vai",
-      };
-      await db.from("kho").upsert(payload, { onConflict: "sku" });
-    })).catch(console.error);
+      const { error } = await db.from("kho").upsert(toSupabaseKhoRow(v), { onConflict: "sku" });
+      if (error) throw error;
+    })).catch((error: unknown) => console.error("[inventory] Supabase upsert failed:", error));
   }
 }
 
@@ -166,7 +227,10 @@ export async function syncInventoryWithSupabase(): Promise<void> {
   if (!isSupabaseEnabled || !supabase) return;
   try {
     // 2026-08-08 - Fix 404: bang kho co the chua ton tai, query khong crash
-    const { data, error } = await supabase!.from("kho").select("sku, ton_kho").eq("loai", "vai");
+    const { data, error } = await supabase!
+      .from("kho")
+      .select("sku, ten_vt, loai, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu")
+      .eq("loai", KHO_VAI_LOAI);
     if (error) {
       // 404 = bang chua ton tai, 400 = schema chua co loai column
       // Silent fail - van dung localStorage
@@ -178,11 +242,9 @@ export async function syncInventoryWithSupabase(): Promise<void> {
     if (data && data.length > 0) {
       const current = getInventory();
       let changed = false;
-      data.forEach((d: any) => {
-        if (current[d.sku]) {
-          current[d.sku].tonKho = d.ton_kho ?? d.tonKho ?? 0;
-          changed = true;
-        }
+      (data as KhoSupabaseRow[]).forEach((row) => {
+        current[row.sku] = fromSupabaseKhoRow(row, current[row.sku]);
+        changed = true;
       });
       if (changed) {
         localStorage.setItem(TON_KHO_KEY, JSON.stringify(current));
@@ -191,6 +253,25 @@ export async function syncInventoryWithSupabase(): Promise<void> {
   } catch (err) {
     console.warn("[inventory] Sync error (silent):", err);
   }
+}
+
+export function subscribeInventoryChanges(onChange: () => void): () => void {
+  if (!isSupabaseEnabled || !supabase) return () => undefined;
+  const channel = supabase
+    .channel(`kho-vai-realtime-${Math.random().toString(36).slice(2)}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "kho", filter: `loai=eq.${KHO_VAI_LOAI}` },
+      async () => {
+        await syncInventoryWithSupabase();
+        onChange();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase?.removeChannel(channel);
+  };
 }
 
 export function getAllInventory(): KhoVai[] {
