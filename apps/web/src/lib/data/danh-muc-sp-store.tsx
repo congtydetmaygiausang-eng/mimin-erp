@@ -48,6 +48,10 @@ function mapSanPhamFromDB(item: any): SanPham {
     hinhAnh: item.hinh_anh || "",
     giaBanLe: item.gia_ban_le || 0,
     giaBanSi: item.gia_ban_si || 0,
+    giaBanLo: item.gia_ban_lo || 0,
+    giaTikTok: item.gia_tiktok || 0,
+    giaShopee: item.gia_shopee || 0,
+    kenhBan: Array.isArray(item.kenh_ban) ? item.kenh_ban : undefined,
   };
 }
 
@@ -90,6 +94,10 @@ export interface SanPham {
   hinhAnh?: string; // URL hinh anh that (placeholder hien tai)
   giaBanLe?: number;
   giaBanSi?: number;
+  giaBanLo?: number;
+  giaTikTok?: number;
+  giaShopee?: number;
+  kenhBan?: ("ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee")[];
 }
 
 const DEFAULT_BANGSIZE_5SIZE: BangSize = {

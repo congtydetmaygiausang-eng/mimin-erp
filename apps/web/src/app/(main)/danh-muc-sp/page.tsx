@@ -6,7 +6,7 @@
 // ============================================
 
 import { useState, useEffect, useMemo } from "react";
-import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart } from "lucide-react";
+import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store } from "lucide-react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { useGioHang } from "@/lib/data/gio-hang-store";
 import { useDonHang } from "@/lib/data/don-hang-store";
@@ -21,15 +21,15 @@ import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, gener
 import { generateVariants } from "@/lib/data/product-variants";
 import type { Order, OrderItem } from "@/components/order-detail/types";
 import type { GioHangItem } from "@/lib/data/gio-hang-store";
-import { layTonKhoTheoSanPham, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
+import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
-  { id: "ao", label: "Áo", icon: Shirt },
-  { id: "bo", label: "Bộ", icon: Shirt },
-  { id: "phu-kien", label: "Phụ kiện", icon: Sparkles },
-  { id: "ban-san", label: "Bán Sàn", icon: Package },
-  { id: "ban-sale", label: "Bán Sale", icon: Tag },
+  { id: "ban-le", label: "Bán lẻ", icon: Store },
+  { id: "ban-si", label: "Bán sỉ", icon: Package },
+  { id: "ban-lo", label: "Bán lô", icon: Package },
+  { id: "tiktok", label: "TikTok", icon: Tag },
+  { id: "shopee", label: "Shopee", icon: ShoppingCart },
 ];
 
 export default function DanhMucSanPhamPage() {
@@ -49,6 +49,7 @@ export default function DanhMucSanPhamPage() {
   const [orderFromCart, setOrderFromCart] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
+  const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
 
   useEffect(() => {
     setMounted(true);
@@ -59,11 +60,66 @@ export default function DanhMucSanPhamPage() {
   // này sau khi đã ở trang khác sẽ thấy dữ liệu cũ, phải F5 mới cập nhật.
   useEffect(() => {
     refresh();
-    layTonKhoTheoSanPham().then(setTonKho).catch(() => setTonKho({}));
+    Promise.all([layTonKhoTheoSanPham(), layDanhMucKhoThanhPham()])
+      .then(([stock, catalog]) => {
+        setTonKho(stock);
+        setDanhMucKho(catalog);
+      })
+      .catch(() => {
+        setTonKho({});
+        setDanhMucKho({});
+      });
   }, [refresh]);
 
+  const dsDongBo = useMemo<SanPham[]>(() => {
+    const map = new Map((dsSanPham || []).map((sp) => [sp.id, sp]));
+    for (const item of Object.values(danhMucKho)) {
+      const sizes = Array.from(new Set(item.mau.flatMap((mau) => mau.sizes.map((size) => size.size))));
+      const colors = item.mau.map((mau, index) => ({
+        ten: mau.ten,
+        maSKU: `${item.maSP}-${String(index + 1).padStart(2, "0")}`,
+        dinhMuc: 0,
+        img: mau.img,
+      }));
+      const current = map.get(item.maSP);
+      const loaiSP: SanPham["loaiSP"] = /áo|polo/i.test(item.phanLoai)
+        ? "AoPolo"
+        : /phụ kiện|quần/i.test(item.phanLoai)
+          ? "PhuKien"
+          : "BoTru";
+      map.set(item.maSP, {
+        ...(current || {
+          id: item.maSP,
+          tenSP: item.tenSP,
+          loaiSP,
+          giaBanDuKien: item.giaBanLe || item.giaBanSi || item.giaBanLo,
+          giaVonDuKien: item.giaVon,
+          tiLeSize: item.tiLeSize,
+          bangSize: { sizes, ratios: sizes.map(() => 1), riSo: sizes.length || 1 },
+          dsMau: colors,
+          ghiChu: "Đồng bộ từ Kho thành phẩm",
+          ngayTao: new Date().toISOString().slice(0, 10),
+        }),
+        tenSP: item.tenSP || current?.tenSP || item.maSP,
+        dsMau: colors.length ? colors : current?.dsMau || [],
+        bangSize: sizes.length
+          ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length }
+          : current?.bangSize || { sizes: [], ratios: [], riSo: 1 },
+        giaVonDuKien: item.giaVon || current?.giaVonDuKien || 0,
+        giaBanDuKien: item.giaBanLe || item.giaBanSi || item.giaBanLo || current?.giaBanDuKien || 0,
+        giaBanLe: item.giaBanLe || current?.giaBanLe || 0,
+        giaBanSi: item.giaBanSi || current?.giaBanSi || 0,
+        giaBanLo: item.giaBanLo,
+        giaTikTok: item.giaTikTok,
+        giaShopee: item.giaShopee,
+        kenhBan: item.kenhBan,
+      });
+    }
+    return Array.from(map.values());
+  }, [dsSanPham, danhMucKho]);
+
   const filtered = useMemo(() => {
-    let result = dsSanPham || [];
+    let result = dsDongBo;
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -72,18 +128,9 @@ export default function DanhMucSanPhamPage() {
           (sp.tenSP || "").toLowerCase().includes(q)
       );
     }
-    if (activeFilter !== "all") {
-      result = result.filter((sp) => {
-        if (activeFilter === "ao") return sp.loaiSP === "AoTru" || sp.loaiSP === "AoCoTron" || sp.loaiSP === "AoPolo";
-        if (activeFilter === "bo") return sp.loaiSP === "BoTru" || sp.loaiSP === "BoCoTron";
-        if (activeFilter === "phu-kien") return sp.loaiSP === "PhuKien";
-        if (activeFilter === "ban-san") return sp.ghiChu?.toLowerCase().includes("sàn") || sp.tenSP.toLowerCase().includes("sàn");
-        if (activeFilter === "ban-sale") return sp.ghiChu?.toLowerCase().includes("sale") || sp.tenSP.toLowerCase().includes("sale");
-        return true;
-      });
-    }
+    if (activeFilter !== "all") result = result.filter((sp) => sp.kenhBan?.includes(activeFilter as KenhBanKho));
     return result;
-  }, [dsSanPham, search, activeFilter]);
+  }, [dsDongBo, search, activeFilter]);
 
   // === HANDLERS (3 CTA buttons) ===
   const handleAddToCart = (sp: SanPham) => {
