@@ -10,7 +10,7 @@ import { Portal } from "@/components/ui/Portal";
 import { CrudModal } from "@/components/ui/CrudModal";
 
 // ============ TYPES ============
-type TrangThaiKHSX = "LÃªn káº¿ hoáº¡ch" | "Äang SX" | "HoÃ n thÃ nh" | "Trá»… háº¡n";
+type TrangThaiKHSX = "Lên kế hoạch" | "Đang SX" | "Hoàn thành" | "Trễ hạn";
 
 interface KHSX {
   id: string;
@@ -19,7 +19,7 @@ interface KHSX {
   tuNgay: string;
   denNgay: string;
   sanPham: string;
-  loai: "Ão" | "Bá»™" | "Quáº§n" | "Phá»¥ kiá»‡n";
+  loai: "Áo" | "Bộ" | "Quần" | "Phụ kiện";
   soLuong: number;
   daHoanThanh: number;
   xuongPhuTrach: string;
@@ -30,27 +30,27 @@ interface KHSX {
 const LS_KEY = "mimin_ke_hoach_sx";
 
 const TRANG_THAI_STYLE: Record<TrangThaiKHSX, { color: string; bg: string; dot: string }> = {
-  "LÃªn káº¿ hoáº¡ch": { color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-700/50", dot: "bg-slate-400" },
-  "Äang SX":      { color: "text-amber-700 dark:text-amber-400",  bg: "bg-amber-100 dark:bg-amber-500/20",  dot: "bg-amber-500" },
-  "HoÃ n thÃ nh":   { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-500/20", dot: "bg-emerald-500" },
-  "Trá»… háº¡n":      { color: "text-red-700 dark:text-red-400",      bg: "bg-red-100 dark:bg-red-500/20",      dot: "bg-red-500" },
+  "Lên kế hoạch": { color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-700/50", dot: "bg-slate-400" },
+  "Đang SX":      { color: "text-amber-700 dark:text-amber-400",  bg: "bg-amber-100 dark:bg-amber-500/20",  dot: "bg-amber-500" },
+  "Hoàn thành":   { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-500/20", dot: "bg-emerald-500" },
+  "Trễ hạn":      { color: "text-red-700 dark:text-red-400",      bg: "bg-red-100 dark:bg-red-500/20",      dot: "bg-red-500" },
 };
 
 const XUONG_LIST = [
-  "XÆ°á»Ÿng May 1 â€“ Polomimin", "XÆ°á»Ÿng May 2 â€“ Polomimin",
-  "Gia cÃ´ng ngoÃ i â€“ Cty A", "Gia cÃ´ng ngoÃ i â€“ Cty B",
-  "Tá»• hoÃ n thiá»‡n", "Tá»• cáº¯t",
+  "Xưởng May 1 - Polomimin", "Xưởng May 2 - Polomimin",
+  "Gia công ngoài - Cty A", "Gia công ngoài - Cty B",
+  "Tổ hoàn thiện", "Tổ cắt",
 ];
 
 const FORM_EMPTY = {
   tuan: "", tuNgay: "", denNgay: "", sanPham: "",
-  loai: "Ão" as KHSX["loai"], soLuong: 0, daHoanThanh: 0,
-  xuongPhuTrach: XUONG_LIST[0], trangThai: "LÃªn káº¿ hoáº¡ch" as TrangThaiKHSX, ghiChu: "",
+  loai: "Áo" as KHSX["loai"], soLuong: 0, daHoanThanh: 0,
+  xuongPhuTrach: XUONG_LIST[0], trangThai: "Lên kế hoạch" as TrangThaiKHSX, ghiChu: "",
 };
 
 function autoTrangThai(k: KHSX): TrangThaiKHSX {
-  if (k.daHoanThanh >= k.soLuong && k.soLuong > 0) return "HoÃ n thÃ nh";
-  if (k.trangThai !== "HoÃ n thÃ nh" && k.denNgay && new Date(k.denNgay) < new Date()) return "Trá»… háº¡n";
+  if (k.daHoanThanh >= k.soLuong && k.soLuong > 0) return "Hoàn thành";
+  if (k.trangThai !== "Hoàn thành" && k.denNgay && new Date(k.denNgay) < new Date()) return "Trễ hạn";
   return k.trangThai;
 }
 
@@ -78,9 +78,9 @@ export default function KeHoachSXPage() {
   const tongSL = list.reduce((s, k) => s + k.soLuong, 0);
   const tongXong = list.reduce((s, k) => s + k.daHoanThanh, 0);
   const tienDoChung = tongSL > 0 ? (tongXong / tongSL) * 100 : 0;
-  const dsTreHan = list.filter(k => k.trangThai === ("Trá»… háº¡n" as any));
-  const dsDangSX = list.filter(k => k.trangThai === ("Ä ang SX" as any));
-  const filtered = filterTT === "Táº¥t cáº£" ? list : list.filter(k => k.trangThai === (filterTT as any));
+  const dsTreHan = list.filter(k => k.trangThai === "Trễ hạn");
+  const dsDangSX = list.filter(k => k.trangThai === "Đang SX");
+  const filtered = filterTT === "Tất cả" ? list : list.filter(k => k.trangThai === filterTT);
 
   const handleEdit = (k: KHSX) => {
     setEditItem(k);
@@ -213,8 +213,8 @@ export default function KeHoachSXPage() {
                   <button onClick={() => handleEdit(k)} className="flex-1 text-xs py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-bold hover:bg-amber-100 transition flex items-center justify-center gap-1">
                     <Edit2 className="w-3 h-3" /> Sửa
                   </button>
-                  <button onClick={() => handleDelete(k)} className="flex-1 text-xs py-1.5 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 rounded-lg font-bold hover:bg-red-100 transition flex items-center justify-center gap-1">
-                    <Trash2 className="w-3 h-3" /> Xóa
+                  <button onClick={() => handleDelete(k)} className="flex-1 text-xs py-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 rounded-lg font-bold hover:bg-rose-100 transition flex items-center justify-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Xoá
                   </button>
                 </div>
               </div>

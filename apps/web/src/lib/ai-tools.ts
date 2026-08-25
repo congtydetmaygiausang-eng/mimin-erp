@@ -502,7 +502,6 @@ export const getAllToolsForDomain = (domains: string[]) => {
     tools.updateCongDoan = updateCongDoan;
     tools.deletePhieu = deletePhieu;
     tools.approvePhieu = approvePhieu;
-    // tools.getLenhCatList = getLenhCatList;
   }
 
   return tools;

@@ -51,6 +51,15 @@ export const TRANG_THAI_LC_STYLE: Record<TrangThaiLenhCat, { bg: string; color: 
   "ChuyenTiep": { bg: "bg-purple-500/15", color: "text-purple-700" },
 };
 
+export type SizeDetail = {
+  size: string;
+  sl: number;       // SL thực tế (Cắt, Đóng gói, etc)
+  nhan?: number;    // SL nhận từ khâu trước
+  dat?: number;     // SL đạt (QC)
+  loi?: number;     // SL lỗi (QC)
+  nguyenNhan?: string; // Nguyên nhân lỗi nếu có
+};
+
 export type MauVai = {
   ten: string;
   maSKU?: string;
@@ -69,13 +78,14 @@ export type MauVai = {
   dinhMucQuan?: number;
   imgQuan?: string;    // Ảnh mẫu QUẦN (hàng Bộ) - img ở trên là ảnh ÁO
 
-  // Màu phối - danh sách TÊN MÀU dùng để phối (viền, phối màu...), không gắn mã vải trong kho.
-  // CHỈ mang tính tham khảo, KHÔNG tính vào định mức/tiền vải (chỉ vải chính maVai/maVaiQuan mới tính).
+  // Màu phối
   mauPhoi?: string[];
 
   // Tracking tỉ lệ size chi tiết theo từng khâu (Cắt, May Áo, May Quần, In/Thêu, Ủi/QC...)
-  // Key: id khâu (vidu: "cat", "mayAo") -> Value: list size distribution
-  tyLeSizeChiTiet?: Record<string, { size: string; sl: number }[]>;
+  tyLeSizeChiTiet?: Record<string, SizeDetail[]>;
+
+  // Bảng đối chiếu Ghép Bộ (Áo + Quần = Bộ) sau khi QC
+  bangGhepBo?: { size: string; aoDat: number; quanDat: number; boGhepDuoc: number; aoDu: number; quanDu: number }[];
 
   // Kết quả Ghép Áo+Quần theo Size tại khâu QC (2026-08-22) - phần dư 1 bên
   // không có bên kia ghép cùng, giữ lại theo từng size để QC/quản lý biết còn
@@ -404,6 +414,7 @@ interface LenhCatStore {
     catChiTiet?: CatChiTiet;
     chiTietMau?: any;
   }) => void;
+  ghiNhanLichSuNhap: (idLenh: string, khauId: string, soLuong: number, nguoiNhap: string, ghiChu?: string) => void;
   reset: () => void;
   loading: boolean;
 }
@@ -774,6 +785,19 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     }
   }, [upsertTuLenhCat, dsLenhCat]);
 
+  const ghiNhanLichSuNhap = useCallback((idLenh: string, khauId: string, soLuong: number, nguoiNhap: string, ghiChu?: string) => {
+    const item: LichSuNhapSLItem = {
+      ngay: new Date().toISOString(),
+      loai: "nhan_viec", // Mặc định loại thao tác
+      nguoiNhap,
+      soLuong,
+      ghiChu
+    };
+    capNhatCongDoan(idLenh, khauId, {
+      lichSuNhapSL: [item]
+    });
+  }, [capNhatCongDoan]);
+
   const reset = useCallback(() => {
     setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
@@ -784,7 +808,23 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   if (!isLoaded || !isSupabaseDone) return null;
 
   return (
-    <LenhCatContext.Provider value={{ dsLenhCat, themLenhCat, suaLenhCat, xoaLenhCat, dsMauCongDoan, themMauCongDoan, xoaMauCongDoan, dsMauChiPhi, themMauChiPhi, xoaMauChiPhi, capNhatTrangThai, capNhatCongDoan, reset, loading }}>
+    <LenhCatContext.Provider value={{ 
+      dsLenhCat, 
+      themLenhCat, 
+      suaLenhCat, 
+      xoaLenhCat, 
+      dsMauCongDoan, 
+      themMauCongDoan, 
+      xoaMauCongDoan, 
+      dsMauChiPhi, 
+      themMauChiPhi,
+      xoaMauChiPhi,
+      capNhatTrangThai,
+      capNhatCongDoan,
+      ghiNhanLichSuNhap,
+      reset,
+      loading
+    }}>
       {children}
     </LenhCatContext.Provider>
   );
