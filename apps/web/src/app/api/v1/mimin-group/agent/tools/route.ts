@@ -99,7 +99,7 @@ async function executeToolCall(
     }
     const product = typeof args.product === "string" ? args.product.trim() : "";
     const radiusKm = typeof args.radius_km === "number" ? args.radius_km : undefined;
-    const limit = typeof args.limit === "number" ? Math.min(Math.max(Math.round(args.limit), 1), 50) : 20;
+    const limit = typeof args.limit === "number" ? Math.min(Math.max(Math.round(args.limit), 1), 100) : 50;
     const roles = partnerTypeToRoles(args.partner_type);
     const queryText = [specialty, product].filter(Boolean).join(", ");
 
@@ -146,7 +146,7 @@ async function executeToolCall(
     const startIndex = turnResults.length;
     turnResults.push(...limited);
 
-    const digestResults = limited.slice(0, 20).map((item, i) => ({
+    const digestResults = limited.slice(0, 50).map((item, i) => ({
       index: startIndex + i,
       legalName: item.candidate.legalName,
       phone: item.candidate.phone || null,
@@ -174,7 +174,7 @@ async function executeToolCall(
         internalMatches: internalDigest.length ? internalDigest : undefined,
         internalNote: internalDigest.length ? "Đã có sẵn trong hệ thống - báo cho người dùng biết trước khi liệt kê kết quả tìm mới." : undefined,
         count: limited.length,
-        truncatedForDisplay: limited.length > 20,
+        truncatedForDisplay: limited.length > 50,
         results: digestResults,
       },
       results: payload,
@@ -240,7 +240,7 @@ async function executeToolCall(
     if (sortBy === "confidence") filtered = [...filtered].sort((a, b) => b.item.candidate.confidence - a.item.candidate.confidence);
     else if (sortBy === "distance") filtered = [...filtered].sort((a, b) => (a.item.candidate.distanceKm ?? Infinity) - (b.item.candidate.distanceKm ?? Infinity));
 
-    const digestResults = filtered.slice(0, 20).map(({ item, index }) => ({
+    const digestResults = filtered.slice(0, 50).map(({ item, index }) => ({
       index,
       legalName: item.candidate.legalName,
       phone: item.candidate.phone || null,
