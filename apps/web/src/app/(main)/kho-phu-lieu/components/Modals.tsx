@@ -14,10 +14,10 @@ import { uploadProductFile } from "@/lib/product-upload";
 
 // ============ MODAL NHAP KHO ============
 export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai; onImageSaved?: (maVT: string, imageUrl: string) => void }) {
-  const { themGiaoDich, xoaGiaoDich } = useKho();
+  const { themGiaoDich } = useKho();
   const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
   const vt = vatTu || dsVT.find((v) => v.maVT === maVT)!;
-  const { list: nccList, suaNCC } = useNhaCungCap();
+  const { list: nccList } = useNhaCungCap();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [form, setForm] = useState({
@@ -48,17 +48,11 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
         .eq("sku", vt.maVT);
       if (stockError) return toast.error(`Không cộng được tồn kho phụ liệu: ${stockError.message}`);
     }
-    const ghiChuGiaoDich = form.ghiChu;
+    const ghiChuGiaoDich = [form.ghiChu, `NCC: ${ncc.ma_ncc}`].filter(Boolean).join(" · ");
     const giaoDich = await themGiaoDich({ ngay: form.ngay, soLuong: form.soLuong, donGia: form.donGia, nguonNhap: ncc.ten_ncc, nguoiThucHien: form.nguoiThucHien, ghiChu: ghiChuGiaoDich, loai: "NHAP", loaiKho: "phu-lieu", maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
     if (!giaoDich) {
       if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
       return;
-    }
-    const debtSaved = await suaNCC({ ...ncc, cong_no: (Number(ncc.cong_no) || 0) + thanhTien });
-    if (!debtSaved) {
-      xoaGiaoDich(giaoDich.id);
-      if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
-      return toast.error("Không cộng được công nợ NCC nên hệ thống đã hoàn tác giao dịch và tồn kho");
     }
     if (imageUrl && isSupabaseEnabled && supabase) {
       const metadata = JSON.stringify({ note: form.ghiChu || "", imageUrl });

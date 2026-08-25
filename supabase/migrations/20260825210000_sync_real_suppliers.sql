@@ -10,6 +10,9 @@ ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS don_gia text;
 ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS rating numeric DEFAULT 4;
 ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS facebook_url text;
 ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS danh_muc_chi_tiet text[] DEFAULT '{}';
+ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS cong_no numeric NOT NULL DEFAULT 0;
+ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE public.nha_cung_cap ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
 INSERT INTO public.nha_cung_cap (
   stt, ma_ncc, ten_ncc, loai, chuyen_mon, dia_chi, sdt, email,
@@ -58,5 +61,45 @@ USING (ma_ncc ~ '^NCC-[0-9]+$' AND loai IS DISTINCT FROM 'doi_tac_gia_cong')
 WITH CHECK (ma_ncc ~ '^NCC-[0-9]+$' AND loai IS DISTINCT FROM 'doi_tac_gia_cong');
 
 GRANT SELECT, INSERT, UPDATE ON public.nha_cung_cap TO authenticated;
+
+-- Ứng dụng production hiện dùng khóa anon ở phía trình duyệt. Chỉ cho anon đọc
+-- các mã NCC và cập nhật duy nhất cột công nợ; không mở quyền sửa hồ sơ NCC.
+DROP POLICY IF EXISTS ncc_anon_read_suppliers ON public.nha_cung_cap;
+CREATE POLICY ncc_anon_read_suppliers ON public.nha_cung_cap
+FOR SELECT TO anon USING (ma_ncc ~ '^NCC-[0-9]+$');
+
+GRANT SELECT ON public.nha_cung_cap TO anon;
+REVOKE UPDATE ON public.nha_cung_cap FROM anon;
+
+CREATE OR REPLACE FUNCTION public.sync_accessory_receipt_supplier_debt()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_ma_ncc text;
+BEGIN
+  v_ma_ncc := substring(COALESCE(NEW.ghi_chu, '') FROM 'NCC: (NCC-[0-9]+)');
+  IF v_ma_ncc IS NULL OR COALESCE(NEW.thanh_tien, 0) <= 0 THEN
+    RAISE EXCEPTION 'Giao dịch nhập phụ liệu thiếu mã NCC hoặc thành tiền hợp lệ';
+  END IF;
+  UPDATE public.nha_cung_cap
+  SET cong_no = COALESCE(cong_no, 0) + NEW.thanh_tien,
+      updated_at = now()
+  WHERE ma_ncc = v_ma_ncc;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Không tìm thấy nhà cung cấp %', v_ma_ncc;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_accessory_receipt_supplier_debt ON public.giao_dich_kho;
+CREATE TRIGGER trg_accessory_receipt_supplier_debt
+AFTER INSERT ON public.giao_dich_kho
+FOR EACH ROW
+WHEN (NEW.loai = 'NHAP' AND NEW.loai_kho = 'phu-lieu')
+EXECUTE FUNCTION public.sync_accessory_receipt_supplier_debt();
 NOTIFY pgrst, 'reload schema';
 COMMIT;
