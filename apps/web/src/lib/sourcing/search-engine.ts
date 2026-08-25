@@ -1057,20 +1057,30 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
         if (result.status === "fulfilled") {
            const batch = batches[index];
            const profs = Array.isArray(result.value.profiles) ? result.value.profiles : [];
-           batch.forEach((url, pIndex) => {
+           const sources = Array.isArray(result.value.sources) ? result.value.sources : [];
+
+           profs.forEach((p, pIndex) => {
+               const evidence = p.fields?.flatMap((f: any) => f.evidence ?? []) ?? [];
+               const pUrl = evidence.find((e: any) => typeof e.source_url === "string" && e.source_url)?.source_url || "";
+               const item = companyReaderProfileSource(p, index * 5 + pIndex, pUrl);
+               if (item) items.push(item);
+           });
+
+           batch.forEach((url) => {
               const log = logMap.get(url);
               if (log && log.status !== "ERROR" && result.value.status !== "SHADOW_PROCESSED") {
-                  const p = profs[pIndex];
-                  if (p) {
-                      const item = companyReaderProfileSource(p, index * 5 + pIndex, url);
-                      if (item) {
-                          items.push(item);
-                          log.message = "Đã trích xuất thông tin";
-                          log.status = "SUCCESS";
-                      } else {
-                          log.message = "Trang web chặn hoặc không có thông tin";
-                          log.status = "ERROR";
-                      }
+                  const report = sources.find((s: any) => s.source_url === url);
+                  const itemExists = items.some(i => i.url === url || canonicalSourceUrl(i.url) === canonicalSourceUrl(url));
+
+                  if (itemExists) {
+                      log.message = "Đã trích xuất thông tin";
+                      log.status = "SUCCESS";
+                  } else if (report && report.status === "NO_ENTITY") {
+                      log.message = "Trang web chặn hoặc không có thông tin";
+                      log.status = "ERROR";
+                  } else if (report && report.status === "FAILED") {
+                      log.message = "Lỗi kỹ thuật khi đọc trang: " + (report.error_code || "Unknown");
+                      log.status = "ERROR";
                   } else {
                       log.message = "Không trích xuất được hồ sơ";
                       log.status = "ERROR";
