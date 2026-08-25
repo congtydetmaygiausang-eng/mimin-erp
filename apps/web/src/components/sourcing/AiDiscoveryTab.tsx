@@ -338,7 +338,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       let loopCount = 0;
       let finalReply = "";
 
-      while (loopCount < 3) {
+      while (loopCount < 5) {
         loopCount++;
         
         // 1. GỌI DEEPSEEK (Chỉ suy nghĩ, không chạy tool)
@@ -415,6 +415,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
       }
 
       if (chatRequestId.current !== currentRequestId) return;
+      if (!finalReply) finalReply = "Đã hoàn thành tìm kiếm (đạt giới hạn bước xử lý của AI). Vui lòng thử đổi từ khóa hoặc mở rộng bán kính.";
 
       // Xóa tin nhắn "Đang phân tích..." nếu có và thêm câu trả lời cuối
       setChatBubbles((current) => {
