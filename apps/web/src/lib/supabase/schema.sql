@@ -62,20 +62,7 @@ CREATE TABLE IF NOT EXISTS giao_dich_kho (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Bảng NCC (Nhà cung cấp)
-CREATE TABLE IF NOT EXISTS ncc (
-  stt INTEGER PRIMARY KEY,
-  ten TEXT NOT NULL,
-  vai_tro TEXT,
-  sdt TEXT,
-  mail TEXT,
-  dia_chi TEXT,
-  ma_so_thue TEXT,
-  cong_no NUMERIC DEFAULT 0,
-  rating NUMERIC DEFAULT 4,
-  ghi_chu TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 4. Nhà cung cấp dùng duy nhất bảng chuẩn public.nha_cung_cap.
 
 -- 5. Bảng Khách hàng
 CREATE TABLE IF NOT EXISTS khach_hang (
