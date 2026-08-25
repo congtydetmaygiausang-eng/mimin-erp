@@ -12,7 +12,13 @@ from .extraction_models import ExtractionStatus
 from .extractor import TrafilaturaExtractor
 from .fallback import JinaFallbackCoordinator
 from .fetcher import SafeFetcher
-from .service_models import CompanyReadResponse, SourceProcessingReport, SourceProcessingStatus
+from .candidate_models import CandidateField, CompanyCandidateBundle
+from .service_models import (
+    CompanyReadResponse,
+    SourceContactSnapshot,
+    SourceProcessingReport,
+    SourceProcessingStatus,
+)
 
 MAX_RESPONSE_PROFILES = 25
 
@@ -27,6 +33,30 @@ class CompanyReaderPipeline:
     resolver: CompanyEntityResolver
     selector: CanonicalFieldSelector
 
+    @staticmethod
+    def _contact_snapshot(bundle: CompanyCandidateBundle) -> SourceContactSnapshot | None:
+        def values(field: CandidateField) -> tuple[str, ...]:
+            return tuple(dict.fromkeys(
+                item.normalized_value
+                for item in bundle.candidates
+                if item.field is field and item.normalized_value
+            ))
+
+        snapshot = SourceContactSnapshot(
+            legal_names=tuple(dict.fromkeys(
+                item.value for item in bundle.candidates
+                if item.field is CandidateField.LEGAL_NAME and item.value
+            )),
+            addresses=tuple(dict.fromkeys(
+                item.value for item in bundle.candidates
+                if item.field is CandidateField.ADDRESS and item.value
+            )),
+            phones=values(CandidateField.PHONE),
+            emails=values(CandidateField.EMAIL),
+            websites=values(CandidateField.WEBSITE),
+        )
+        return snapshot if any((snapshot.addresses, snapshot.phones, snapshot.emails, snapshot.websites)) else None
+
     def read(self, request_id: str, urls: tuple[str, ...]) -> CompanyReadResponse:
         segmentations = []
         reports: list[SourceProcessingReport] = []
@@ -35,10 +65,19 @@ class CompanyReaderPipeline:
         trafilatura_lock = threading.Lock()
 
         def process_url(url: str):
+            contact_snapshot = None
             try:
-                jina_outcome = self.fallback.read_primary(url)
-                
-                if jina_outcome.decision.name == "JINA_ACCEPTED":
+                jina_exception = None
+                try:
+                    jina_outcome = self.fallback.read_primary(url)
+                except Exception as error:
+                    # Jina is an enrichment provider, never a single point of failure.
+                    # Provider/SDK errors (including AttributeError) must fall through
+                    # to the local extractor for the same URL.
+                    jina_exception = type(error).__name__.upper()
+                    jina_outcome = None
+
+                if jina_outcome is not None and jina_outcome.decision.name == "JINA_ACCEPTED":
                     selected = jina_outcome.selected_document
                     fallback_decision = "JINA_PRIMARY"
                     fetch_status = "JINA_OK"
@@ -49,12 +88,18 @@ class CompanyReaderPipeline:
                         fetched = self.fetcher.fetch(url)
                         primary = self.extractor.extract(fetched)
                     selected = primary
-                    fallback_decision = f"JINA_FAILED_TRAFILATURA_USED({jina_outcome.decision.name})"
+                    jina_reason = (
+                        f"EXCEPTION_{jina_exception}"
+                        if jina_exception
+                        else jina_outcome.decision.name
+                    )
+                    fallback_decision = f"JINA_FAILED_TRAFILATURA_USED({jina_reason})"
                     fetch_status = fetched.status.name
                     extraction_status = primary.status.name
                     error_code = primary.error_code
 
                 bundle = self.candidate_extractor.extract(selected)
+                contact_snapshot = self._contact_snapshot(bundle)
                 if selected.status.name in {"OK", "TRUNCATED"}:
                     status = SourceProcessingStatus.PROCESSED
                     segmentation = self.segmenter.segment(selected, bundle)
@@ -77,6 +122,7 @@ class CompanyReaderPipeline:
                     fallback_decision=fallback_decision,
                     entity_count=len(segmentation.entities),
                     error_code=error_code,
+                    contact_snapshot=contact_snapshot,
                 )
                 return segmentation, report
             except Exception as error:
@@ -86,7 +132,10 @@ class CompanyReaderPipeline:
                     fetch_status="INTERNAL_ERROR",
                     extraction_status="INTERNAL_ERROR",
                     fallback_decision="NOT_RUN",
-                    error_code=f"UNEXPECTED_{type(error).__name__.upper()}",
+                    # Keep the provider response safe but actionable. Contacts already
+                    # extracted before a later segmentation failure remain available.
+                    error_code=f"PIPELINE_{type(error).__name__.upper()}",
+                    contact_snapshot=contact_snapshot,
                 )
                 from .segmentation_models import EntitySegmentationResult, SegmentationStatus
                 seg = EntitySegmentationResult(

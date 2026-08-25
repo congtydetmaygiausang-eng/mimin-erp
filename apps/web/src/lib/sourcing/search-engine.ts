@@ -129,7 +129,11 @@ interface CandidateSource { url:string;title:string;sourceType?:SourceEvidenceTy
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number; score?:number; sourceType?:SourceEvidenceType; provider?:string; searchQuery?:string }
 interface CompanyReaderFieldDecision { field?:unknown;status?:unknown;selected_value?:unknown;confidence?:unknown;evidence?:Array<{source_url?:unknown;excerpt?:unknown}> }
 interface CompanyReaderProfile { status?:unknown;fields?:CompanyReaderFieldDecision[];source_count?:unknown }
-interface CompanyReaderResponse { status?:unknown;profiles?:CompanyReaderProfile[];profile_count?:unknown;source_count?:unknown;warning_count?:unknown;error?:unknown }
+interface CompanyReaderSourceReport {
+  source_url?:unknown; status?:unknown; error_code?:unknown;
+  contact_snapshot?:{legal_names?:unknown;addresses?:unknown;phones?:unknown;emails?:unknown;websites?:unknown}|null;
+}
+interface CompanyReaderResponse { status?:unknown;profiles?:CompanyReaderProfile[];sources?:CompanyReaderSourceReport[];profile_count?:unknown;source_count?:unknown;warning_count?:unknown;error?:unknown }
 export interface JinaRadarLog { timestamp: string; url: string; status: "PENDING" | "SUCCESS" | "ERROR"; message?: string; bytesRead?: number; }
 interface CompanyReaderEnrichment { items:SourceResult[];health:{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}; radarLogs?: JinaRadarLog[]; }
 interface SearchCenter {
@@ -194,8 +198,30 @@ function blockedSource(value: string): boolean {
 }
 
 function canonicalSourceUrl(value:string):string{
-  try { const url=new URL(value); url.hash=""; ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","gclid","fbclid"].forEach((key)=>url.searchParams.delete(key)); return url.toString(); }
+  try {
+    const url=new URL(value);
+    url.hash="";
+    const tracking=/^(?:utm_.+|gclid|dclid|fbclid|msclkid|srsltid|yclid|_ga|_gl|ref|ref_|source|campaign|mc_cid|mc_eid)$/i;
+    Array.from(url.searchParams.keys()).forEach((key)=>{if(tracking.test(key))url.searchParams.delete(key)});
+    url.hostname=url.hostname.toLowerCase().replace(/^www\./,"");
+    if((url.protocol==="https:"&&url.port==="443")||(url.protocol==="http:"&&url.port==="80"))url.port="";
+    if(url.pathname!=="/")url.pathname=url.pathname.replace(/\/+$/,"");
+    url.searchParams.sort();
+    return url.toString();
+  }
   catch { return value; }
+}
+
+const SHARED_WEBSITE_DOMAINS = [
+  "blogspot.com", "wordpress.com", "wixsite.com", "jimdosite.com", "sites.google.com",
+  "facebook.com", "linkedin.com", "zalo.me", "youtube.com", "tiktok.com",
+];
+
+function identityBearingDomain(value:string):string{
+  const domain=domainOf(value);
+  if(!domain)return"";
+  const shared=[...DIRECTORY_DOMAINS,...SHARED_WEBSITE_DOMAINS];
+  return shared.some((entry)=>domain===entry||domain.endsWith(`.${entry}`))?"":domain;
 }
 
 function classifySource(url:string,title:string,content:string):SourceEvidenceType{
@@ -259,6 +285,9 @@ function sameEntity(left: Candidate, right: Candidate): EntityMatch {
     if(nameSimilarity>=0.15||addresses>=0.2)return{matched:true,matchedBy:"PHONE",conflicts:[]};
   }
   if (left.email && right.email && left.email.toLowerCase() === right.email.toLowerCase()) return{matched:true,matchedBy:"EMAIL",conflicts:[]};
+  const leftDomain=identityBearingDomain(left.website),rightDomain=identityBearingDomain(right.website);
+  const officialDomainMatch=Boolean(leftDomain&&leftDomain===rightDomain);
+  if(officialDomainMatch)return{matched:true,matchedBy:"OFFICIAL_DOMAIN",conflicts:[]};
   if(leftName.length>=5&&leftName===rightName&&addresses>=0.35)return{matched:true,matchedBy:"NAME_ADDRESS",conflicts:[]};
   return{matched:false,matchedBy:"",conflicts:[]};
 }
@@ -1020,6 +1049,40 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number, f
   };
 }
 
+function stringList(value:unknown):string[]{
+  return Array.isArray(value)?Array.from(new Set(value.filter((item):item is string=>typeof item==="string"&&Boolean(item.trim())).map((item)=>item.trim()))):[];
+}
+
+function companyReaderContactSource(report:CompanyReaderSourceReport,index:number):SourceResult|null{
+  const url=typeof report.source_url==="string"?canonicalSourceUrl(report.source_url):"";
+  const snapshot=report.contact_snapshot;
+  if(!url||!snapshot||blockedSource(url))return null;
+  const legalNames=stringList(snapshot.legal_names),addresses=stringList(snapshot.addresses),phones=stringList(snapshot.phones),emails=stringList(snapshot.emails),websites=stringList(snapshot.websites);
+  const values=[...legalNames.map((value)=>`LEGAL_NAME: ${value}`),...addresses.map((value)=>`ADDRESS: ${value}`),...phones.map((value)=>`PHONE: ${value}`),...emails.map((value)=>`EMAIL: ${value}`),...websites.map((value)=>`WEBSITE: ${value}`)];
+  if(!values.length)return null;
+  return{title:legalNames[0]||`Thông tin liên hệ từ ${domainOf(url)}`,url,content:values.join("\n"),rawContent:values.join("\n"),score:.86,sourceType:classifySource(url,legalNames[0]??"",values.join(" ")),provider:"Jina Reader",searchQuery:`company-reader-contact-${index+1}`};
+}
+
+function mergeCompanyReaderSources(items:SourceResult[]):SourceResult[]{
+  const merged=new Map<string,SourceResult>();
+  items.forEach((item)=>{
+    const key=canonicalSourceUrl(item.url),current=merged.get(key);
+    if(!current){merged.set(key,{...item,url:key});return}
+    const values=Array.from(new Set(`${current.content}\n${item.content}`.split("\n").map((value)=>value.trim()).filter(Boolean)));
+    const rawValues=Array.from(new Set(`${current.rawContent??""}\n${item.rawContent??""}`.split("\n").map((value)=>value.trim()).filter(Boolean)));
+    const itemHasLegalName=!item.title.startsWith("Thông tin liên hệ từ ");
+    merged.set(key,{
+      ...current,
+      title:itemHasLegalName?item.title:current.title,
+      content:values.join("\n").slice(0,12_000),
+      rawContent:rawValues.join("\n").slice(0,50_000),
+      score:Math.max(current.score??0,item.score??0),
+      sourceType:current.sourceType==="OFFICIAL"||item.sourceType!=="OFFICIAL"?current.sourceType:item.sourceType,
+    });
+  });
+  return Array.from(merged.values());
+}
+
 async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
   const radarLogs: JinaRadarLog[] = [];
   if(process.env.COMPANY_READER_ENRICHMENT_ENABLED==="false")return{items:[],health:{name:"Jina Reader",status:"DISABLED",count:0,code:"NOT_ENABLED"}, radarLogs};
@@ -1074,19 +1137,23 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
         if (result.status === "fulfilled") {
            const batch = batches[index];
            const profs = Array.isArray(result.value.profiles) ? result.value.profiles : [];
-           const sources = Array.isArray(result.value.sources) ? result.value.sources : [];
+            const sources = Array.isArray(result.value.sources) ? result.value.sources : [];
 
-           profs.forEach((p, pIndex) => {
+            profs.forEach((p, pIndex) => {
                const evidence = p.fields?.flatMap((f: any) => f.evidence ?? []) ?? [];
                const pUrl = evidence.find((e: any) => typeof e.source_url === "string" && e.source_url)?.source_url || "";
                const item = companyReaderProfileSource(p, index * 5 + pIndex, pUrl);
                if (item) items.push(item);
-           });
+            });
+            sources.forEach((source, sourceIndex)=>{
+              const item=companyReaderContactSource(source,index*5+sourceIndex);
+              if(item)items.push(item);
+            });
 
            batch.forEach((url) => {
               const log = logMap.get(url);
               if (log && log.status !== "ERROR" && result.value.status !== "SHADOW_PROCESSED") {
-                  const report = sources.find((s: any) => s.source_url === url);
+                   const report = sources.find((s) => typeof s.source_url==="string"&&canonicalSourceUrl(s.source_url)===canonicalSourceUrl(url));
                   const itemExists = items.some(i => i.url === url || canonicalSourceUrl(i.url) === canonicalSourceUrl(url));
 
                   if (itemExists) {
@@ -1106,9 +1173,10 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
            });
         }
     });
-    console.log("JINA_ITEMS_GENERATED:", items.length);
+    const mergedItems=mergeCompanyReaderSources(items);
+    console.log("JINA_ITEMS_GENERATED:", mergedItems.length);
     const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
-    return{items,health:{name:"Jina Reader",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}, radarLogs};
+    return{items:mergedItems,health:{name:"Jina Reader",status:mergedItems.length?"OK":shadowOnly?"EMPTY":"ERROR",count:mergedItems.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}, radarLogs};
   }catch(error){
     const isTimeout = error instanceof Error && (error.name === "AbortError" || /timeout|aborted/i.test(error.message));
     const msg = isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE");
