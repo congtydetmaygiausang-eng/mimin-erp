@@ -71,7 +71,8 @@ export function CrudModal({
       toast.success("Đã lưu thành công");
       onClose();
     } catch (err) {
-      toast.error("Có lỗi xảy ra");
+      const message = err instanceof Error ? err.message : "Có lỗi xảy ra";
+      toast.error(message, { duration: 8000 });
     } finally {
       setLoading(false);
     }

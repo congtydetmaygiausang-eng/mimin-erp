@@ -238,7 +238,7 @@ export default function KhoPhuLieuPage() {
       ghiChu: values.ghiChu?.trim() || "",
     };
     if (isSupabaseEnabled && supabase) {
-      const { error } = await supabase.from("kho").insert({
+      const { error } = await supabase.from("kho").upsert({
         sku: newItem.maVT,
         ten_vt: newItem.tenVT,
         loai: "Phu lieu",
@@ -254,7 +254,7 @@ export default function KhoPhuLieuPage() {
         kho: newItem.kho,
         ghi_chu: newItem.ghiChu || null,
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: "sku" });
       if (error) throw new Error(error.message);
     }
     setInventory((prev) => [...prev, newItem].sort((a, b) => a.maVT.localeCompare(b.maVT)));
