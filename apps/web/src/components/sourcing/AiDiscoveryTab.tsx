@@ -211,12 +211,50 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   const [learningSummary, setLearningSummary] = useState<{approvedCount:number;rejectedCount:number;applied:boolean}|null>(null);
   const [diagnostics, setDiagnostics] = useState<SearchDiagnostics|null>(null);
   const [agentDiagnostics, setAgentDiagnostics] = useState<any>(null);
+  const lastSearchArgsRef = useRef<any>(null);
   const [resultCriteria, setResultCriteria] = useState<SearchCriteriaSnapshot|null>(null);
   const [cacheReady,setCacheReady]=useState(false);
   const [chatBubbles,setChatBubbles]=useState<Array<{role:"user"|"assistant"|"error";content:string;payload?:string}>>([]);
   const [chatInput,setChatInput]=useState("");
   const [chatLoading,setChatLoading]=useState(false);
   const chatRequestId=useRef(0);
+  // Auto-refresh when Jina Reader is processing in the background
+  useEffect(() => {
+    if (!agentDiagnostics || chatLoading) return;
+    const diagList = Array.isArray(agentDiagnostics) ? agentDiagnostics : [agentDiagnostics];
+    const hasShadow = diagList.some(d => d?.api0Baseline?.operations?.some((op: any) => op.name === "Jina Reader" && op.code === "SHADOW_ONLY") || d?.api0Operations?.some((op: any) => op.name === "Jina Reader" && op.code === "SHADOW_ONLY"));
+    if (hasShadow) {
+      const timer = setTimeout(async () => {
+         if (!lastSearchArgsRef.current) return;
+         try {
+           setChatBubbles(current => [...current, { role: "assistant", content: "Đang tự động tải lại dữ liệu từ Jina Reader (chạy ngầm)..." }]);
+           const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+           if (!token) return;
+           const toolsResponse = await fetch("/api/v1/mimin-group/agent/tools", {
+             method: "POST",
+             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+             body: JSON.stringify({ 
+               toolCalls: [{ id: "call_refresh", type: "function", function: { name: "search_partners", arguments: JSON.stringify(lastSearchArgsRef.current) } }], 
+               turnResults: [] 
+             }),
+           });
+           if (!toolsResponse.ok) return;
+           const toolsData = await toolsResponse.json();
+           if (toolsData.results) {
+             setDirectResults(toolsData.results.candidates || []);
+             setDirectProvider((toolsData.results.provider || []).join("+"));
+             setAgentDiagnostics(toolsData.results.diagnostics || null);
+             setChatBubbles(current => {
+               const filtered = current.filter(b => b.content !== "Đang tự động tải lại dữ liệu từ Jina Reader (chạy ngầm)...");
+               return [...filtered, { role: "assistant", content: "Đã tự động tải lại dữ liệu Jina Reader thành công!" }];
+             });
+           }
+         } catch (error) {}
+      }, 70000); // 70 seconds delay to ensure edge function cache is populated
+      return () => clearTimeout(timer);
+    }
+  }, [agentDiagnostics, chatLoading, supabase]);
+
   const refresh = useCallback(async () => { try { setItems(await loadDiscoveryCandidates()); } catch (error) { console.error("Không tải được ứng viên:", error); } }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -405,6 +443,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
           try {
             const args = JSON.parse(searchCall.function.arguments);
             syncFormFromToolCall(args);
+            lastSearchArgsRef.current = args;
           } catch {}
         }
         
