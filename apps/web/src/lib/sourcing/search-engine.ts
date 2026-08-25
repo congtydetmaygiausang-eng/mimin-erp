@@ -966,6 +966,23 @@ function companyReaderMaximumUrls():number{
   return Number.isFinite(configured)?Math.max(1,Math.min(20,Math.floor(configured))):15;
 }
 
+/**
+ * Company Reader chỉ nhận trang nội dung có thể đọc. URL kết quả tìm kiếm,
+ * Google Maps và các endpoint điều hướng không chứa hồ sơ doanh nghiệp ổn định;
+ * gửi chúng sang Jina chỉ tạo NO_MAIN_CONTENT và tiêu tốn quota.
+ */
+function isCompanyReaderReadableSource(source:SourceResult):boolean{
+  if(blockedSource(source.url))return false;
+  try{
+    const parsed=new URL(source.url);
+    const host=parsed.hostname.toLowerCase().replace(/^www\./,"");
+    if(host==="google.com"||host.endsWith(".google.com")||host==="maps.google.com")return false;
+    if(host==="bing.com"||host.endsWith(".bing.com")||host==="search.brave.com")return false;
+    if(/^\/(?:search|maps\/search|maps\/place\/\?)/i.test(parsed.pathname))return false;
+    return parsed.protocol==="https:"&&Boolean(parsed.hostname);
+  }catch{return false;}
+}
+
 function companyReaderSourceScore(source:SourceResult):number{
   const text=`${source.title} ${source.content}`;
   const identity=(/\b(?:công ty|doanh nghiệp|tnhh|cổ phần|mã số thuế|mst)\b/i.test(text)?4:0);
@@ -1006,7 +1023,7 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):S
 async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
   const radarLogs: JinaRadarLog[] = [];
   if(process.env.COMPANY_READER_ENRICHMENT_ENABLED==="false")return{items:[],health:{name:"Jina Reader",status:"DISABLED",count:0,code:"NOT_ENABLED"}, radarLogs};
-  const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
+  const urls=Array.from(new Set(sources.filter(isCompanyReaderReadableSource).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}, radarLogs};
   console.log("JINA_TARGET_URLS:", urls); const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
   urls.forEach(url => radarLogs.push({ timestamp: new Date().toISOString(), url, status: "PENDING" }));
@@ -1249,6 +1266,20 @@ function extractContactEvidence(candidate: Candidate, sources: SourceResult[]): 
   const newlyVerified = [["phone", "PHONE"], ["email", "EMAIL"], ["taxCode", "TAX_CODE"], ["website", "WEBSITE"], ["address", fieldNames.has("REGISTERED_ADDRESS") ? "REGISTERED_ADDRESS" : "OFFICE_ADDRESS"]] as const;
   const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), ...newlyVerified.filter(([, field]) => fieldNames.has(field)).map(([name]) => name)]));
   return { ...enriched, verifiedFields, confidence: Math.min(100, candidate.confidence + Math.min(12, extractedEvidence.length * 2)), lastVerifiedAt: new Date().toISOString() };
+}
+
+/** Ghép ngay bằng chứng Jina/Reader đã đọc vào hồ sơ do Agent chuẩn hóa. */
+function enrichCandidatesFromReadSources(candidates:Candidate[],sources:SourceResult[]):{candidates:Candidate[];enrichedCount:number}{
+  let enrichedCount=0;
+  const enriched=candidates.map((candidate)=>{
+    const next=extractContactEvidence(candidate,sources);
+    const changed=["phone","address","email","website","taxCode"].some((field)=>
+      String(next[field as keyof Candidate]??"")!==String(candidate[field as keyof Candidate]??""),
+    );
+    if(changed)enrichedCount+=1;
+    return next;
+  });
+  return{candidates:enriched,enrichedCount};
 }
 
 async function enrichCandidatesWithContacts(candidates: Candidate[], location: string): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
@@ -2320,7 +2351,13 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
 
     const supplementalCandidates = deterministicSourceCandidates(query, role, discoverySources);
     const normalizationPool = [...directoryCandidates, ...normalizedCandidates, ...supplementalCandidates];
-    const enrichment = await observeApi0Call("Contact Enrichment", api0ProcessingDurations, () => enrichCandidatesWithContacts(normalizationPool, location));
+    const readerMerge = enrichCandidatesFromReadSources(normalizationPool, companyReader.items);
+    api0Operations.push({
+      name:"Jina Contact Merge",role:"ENRICHMENT",status:readerMerge.enrichedCount?"OK":"SKIPPED",
+      durationMs:0,plannedRequests:0,rawItems:companyReader.items.length,uniqueItems:readerMerge.enrichedCount,
+      code:readerMerge.enrichedCount?undefined:"NO_MATCHING_CONTACT_EVIDENCE",
+    });
+    const enrichment = await observeApi0Call("Contact Enrichment", api0ProcessingDurations, () => enrichCandidatesWithContacts(readerMerge.candidates, location));
     api0Operations.push({
       name: "Contact Enrichment", role: "ENRICHMENT", status: enrichment.enrichedCount ? "OK" : "SKIPPED",
       durationMs: api0ProcessingDurations.get("Contact Enrichment") ?? 0,
