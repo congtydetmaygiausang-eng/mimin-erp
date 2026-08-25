@@ -133,7 +133,11 @@ export function NhaCungCapProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const { data, error } = await supabase!.from("nha_cung_cap").select("*").neq("loai", "doi_tac_gia_cong").order("created_at", { ascending: true });
+        const { data, error } = await supabase!
+          .from("nha_cung_cap")
+          .select("*")
+          .like("ma_ncc", "NCC-%")
+          .order("created_at", { ascending: true });
         if (error) throw error;
         
         if (mounted) {
