@@ -151,9 +151,9 @@ export function saveInventory(inv: Record<string, KhoVai>) {
     Promise.all(Object.values(inv).map(async (v) => {
       const payload = {
         sku: v.maVT,
-        ten: v.tenVT,
+        ten_vt: v.tenVT, // FIX: Changed 'ten' to 'ten_vt'
         ton_kho: v.tonKho, // FIX: Changed from 'sl' to 'ton_kho' to match database schema and select query
-        don_vi: v.dvt || "kg",
+        dvt: v.dvt || "kg", // FIX: Changed 'don_vi' to 'dvt'
         don_gia: v.donGia || 0,
         loai: "vai",
       };
