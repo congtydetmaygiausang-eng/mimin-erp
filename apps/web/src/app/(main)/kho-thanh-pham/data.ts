@@ -147,7 +147,7 @@ export async function truTonKhoThanhPham(
   if (checkSupabase()) {
     try {
       const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham");
-      if (rows.length > 0) ds = rows.map(fromSupabaseRow);
+      ds = rows.map(fromSupabaseRow);
     } catch (e) {
       console.error("[KhoTP] Không đọc được tồn kho mới nhất, dùng bản trong máy:", e);
     }

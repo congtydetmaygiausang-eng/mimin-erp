@@ -134,15 +134,11 @@ export function KhoProvider({ children }: { children: ReactNode }) {
         }
         if (!mounted || !data) return;
         const remote = data.map(fromSupabaseRow);
-        const remoteIds = new Set(remote.map((g) => g.id));
-        setGiaoDich((prev) => {
-          const localOnly = prev.filter((g) => !remoteIds.has(g.id));
-          const merged = [...remote, ...localOnly];
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
+        // Supabase là nguồn chính; danh sách rỗng phải xoá lịch sử cache trên máy.
+        setGiaoDich(remote);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
+        } catch {}
       } catch (err) {
         console.error("[KhoStore] Supabase fetch exception:", err);
       }

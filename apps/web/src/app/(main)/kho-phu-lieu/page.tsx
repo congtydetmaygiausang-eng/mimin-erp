@@ -20,7 +20,7 @@ export default function KhoPhuLieuPage() {
   const [showXuat, setShowXuat] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
 
-  const [inventory, setInventory] = useState(KHO_VAT_TU);
+  const [inventory, setInventory] = useState<KhoVai[]>([]);
   const [editingVT, setEditingVT] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
 
@@ -31,17 +31,63 @@ export default function KhoPhuLieuPage() {
   const PL_IMAGES_KEY = "mimin_kho_phuLieu_images";
   const PL_INVENTORY_KEY = "mimin_kho_phuLieu_custom";
 
-  // Load ảnh + inventory đã sửa từ localStorage khi mount
+  // Supabase là nguồn dữ liệu chính; không tự sinh lại danh mục phụ liệu mẫu.
   useEffect(() => {
+    let mounted = true;
     try {
       const imgRaw = localStorage.getItem(PL_IMAGES_KEY);
       if (imgRaw) setInventoryImages(JSON.parse(imgRaw));
-      const invRaw = localStorage.getItem(PL_INVENTORY_KEY);
-      if (invRaw) {
-        const saved = JSON.parse(invRaw) as Record<string, Partial<KhoVai>>;
-        setInventory(prev => prev.map(v => saved[v.maVT] ? { ...v, ...saved[v.maVT] } : v));
-      }
     } catch {}
+
+    const loadRemote = async () => {
+      if (!isSupabaseEnabled || !supabase) return;
+      const { data, error } = await supabase
+        .from("kho")
+        .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu")
+        .eq("loai", "Phu lieu")
+        .order("sku");
+      if (error) {
+        toast.error(`Không tải được Kho phụ liệu: ${error.message}`);
+        return;
+      }
+      if (!mounted) return;
+      const remote = (data || []).map((row) => {
+        const fallback = KHO_VAT_TU.find((item) => item.maVT === row.sku);
+        return {
+          ...(fallback || {}),
+          maVT: row.sku,
+          tenVT: row.ten_vt,
+          loai: row.loai_chi_tiet || fallback?.loai || "Phụ liệu",
+          mauSac: row.mau_sac || "",
+          dvt: row.dvt || "sp",
+          donGia: Number(row.don_gia) || 0,
+          tonKho: Number(row.ton_kho) || 0,
+          tonToiThieu: Number(row.ton_toi_thieu) || 0,
+          soCayNhap: Number(row.so_cay_nhap) || 0,
+          tonCay: Number(row.ton_cay) || 0,
+          tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
+          kho: row.kho || "Kho phụ liệu",
+          ghiChu: row.ghi_chu || "",
+        } satisfies KhoVai;
+      });
+      setInventory(remote);
+      localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(remote));
+    };
+
+    void loadRemote();
+    if (!isSupabaseEnabled || !supabase) return () => { mounted = false; };
+    const channel = supabase
+      .channel(`kho-phu-lieu-${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "kho", filter: "loai=eq.Phu lieu" },
+        () => { void loadRemote(); }
+      )
+      .subscribe();
+    return () => {
+      mounted = false;
+      void supabase?.removeChannel(channel);
+    };
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,12 +111,13 @@ export default function KhoPhuLieuPage() {
   };
 
   // KPIs
-  const dsTrangThai = danhSachTrangThai("phu-lieu");
+  const inventoryIds = new Set(inventory.map((item) => item.maVT));
+  const dsTrangThai = danhSachTrangThai("phu-lieu").filter((item) => inventoryIds.has(item.maVT));
   const tongGiaTri = dsTrangThai.reduce((s, t) => s + t.giaTriTon, 0);
   const dsCanhBao = dsTrangThai.filter((t) => t.canhBao);
   const tongNhap = giaoDich.filter((g) => g.loai === "NHAP" && inventory.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
   const dsCanhBaoDetails = dsCanhBao.slice(0, 5).map((t) => {
-    const vt = KHO_VAT_TU.find((v) => v.maVT === t.maVT);
+    const vt = inventory.find((v) => v.maVT === t.maVT);
     return `${vt?.tenVT} (còn ${t.tonKho.toFixed(0)})`;
   }).join(", ") + ".";
 
@@ -90,7 +137,7 @@ export default function KhoPhuLieuPage() {
     .sort((a, b) => b.ngay.localeCompare(a.ngay)),
   [giaoDich, search, tab, inventory]);
 
-  const handleSaveEdit = (v: KhoVai) => {
+  const handleSaveEdit = async (v: KhoVai) => {
     const updated = { ...v, ...editForm };
     // 1. Cập nhật state React
     setInventory((prev) => prev.map((item) => (item.maVT === v.maVT ? updated : item)));
@@ -103,18 +150,30 @@ export default function KhoPhuLieuPage() {
       localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(saved));
     } catch {}
 
-    // 3. Sync lên Supabase (fire-and-forget, có guard)
+    // 3. Chỉ báo thành công sau khi Supabase xác nhận.
     if (isSupabaseEnabled && supabase) {
-      supabase.from("kho").upsert(
-        { sku: v.maVT, ten: updated.tenVT, sl: v.tonKho, don_vi: v.dvt, don_gia: updated.donGia, loai: "phu-lieu" },
+      const { error } = await supabase.from("kho").upsert(
+        {
+          sku: v.maVT,
+          ten_vt: updated.tenVT,
+          loai: "Phu lieu",
+          loai_chi_tiet: updated.loai,
+          mau_sac: updated.mauSac,
+          dvt: updated.dvt,
+          don_gia: updated.donGia,
+          ton_kho: updated.tonKho,
+          ton_toi_thieu: updated.tonToiThieu,
+          kho: updated.kho || "Kho phụ liệu",
+          ghi_chu: updated.ghiChu || null,
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: "sku" }
-      ).then(({ error }) => {
-        if (error) {
-          toast.error("Lỗi đồng bộ Supabase: " + error.message);
-        } else {
-          toast.success("✅ Đã lưu thông tin phụ liệu lên Supabase!");
-        }
-      });
+      );
+      if (error) {
+        toast.error("Lỗi đồng bộ Supabase: " + error.message);
+        return;
+      }
+      toast.success("✅ Đã lưu thông tin phụ liệu lên Supabase!");
     } else {
       toast.success("Đã lưu thông tin phụ liệu (localStorage)!");
     }

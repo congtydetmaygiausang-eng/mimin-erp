@@ -202,12 +202,9 @@ export function getInventory(): Record<string, KhoVai> {
     const raw = localStorage.getItem(TON_KHO_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  const init: Record<string, KhoVai> = {};
-  KHO_VAI.forEach((v) => {
-    init[v.maVT] = { ...v, tonKho: 500 };
-  });
-  localStorage.setItem(TON_KHO_KEY, JSON.stringify(init));
-  return init;
+  // Supabase là nguồn dữ liệu chính. Không tự sinh lại danh mục/tồn kho mẫu
+  // khi kho thật đang trống hoặc người quản trị vừa xoá toàn bộ dữ liệu vải.
+  return {};
 }
 
 export function saveInventory(inv: Record<string, KhoVai>) {
@@ -239,16 +236,18 @@ export async function syncInventoryWithSupabase(): Promise<void> {
       }
       return;
     }
-    if (data && data.length > 0) {
+    if (data) {
       const current = getInventory();
-      let changed = false;
+      const remoteInventory: Record<string, KhoVai> = {};
       (data as KhoSupabaseRow[]).forEach((row) => {
-        current[row.sku] = fromSupabaseKhoRow(row, current[row.sku]);
-        changed = true;
+        const staticFallback = KHO_VAI.find((item) => item.maVT === row.sku);
+        remoteInventory[row.sku] = fromSupabaseKhoRow(
+          row,
+          current[row.sku] || staticFallback
+        );
       });
-      if (changed) {
-        localStorage.setItem(TON_KHO_KEY, JSON.stringify(current));
-      }
+      // Kể cả khi Supabase trả về mảng rỗng vẫn phải xoá cache cũ trên máy.
+      localStorage.setItem(TON_KHO_KEY, JSON.stringify(remoteInventory));
     }
   } catch (err) {
     console.warn("[inventory] Sync error (silent):", err);

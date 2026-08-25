@@ -74,16 +74,10 @@ export default function KhoThanhPhamPage() {
     (async () => {
       const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham");
       if (!mounted) return;
-      if (rows.length > 0) {
-        const remote = rows.map(fromSupabaseRow);
-        setDsSanPhamState((prev) => {
-          const remoteIds = new Set(remote.map((r) => r.id));
-          const localOnly = prev.filter((r) => !remoteIds.has(r.id));
-          const merged = [...remote, ...localOnly];
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
-          return merged;
-        });
-      }
+      const remote = rows.map(fromSupabaseRow);
+      // Supabase là nguồn chính. Mảng rỗng cũng phải xoá cache kho cũ trên máy.
+      setDsSanPhamState(remote);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)); } catch {}
     })();
     return () => { mounted = false; };
   }, []);

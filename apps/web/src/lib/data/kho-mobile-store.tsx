@@ -13,7 +13,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
-import { KHO_VAI, KHO_VAT_TU } from "./real-data";
 import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type LoaiKho = "vai" | "phu-lieu" | "thanh-pham";
@@ -102,99 +101,8 @@ function saveTonDelta(d: TonKhoDelta) {
 }
 
 function buildDefault(): PhieuKho[] {
-  // Tạo 3 phiếu mẫu từ data thật
-  const result: PhieuKho[] = [];
-  const today = new Date().toISOString().split("T")[0];
-  const now = new Date().toISOString();
-
-  // 1 phiếu nhập vải mẫu
-  if (KHO_VAI[0]) {
-    const v = KHO_VAI[0];
-    result.push({
-      id: "PK-NK-VAI-001",
-      loai: "nhap",
-      loaiKho: "vai",
-      maSP: v.maVT,
-      tenSP: v.tenVT,
-      soLuong: 100,
-      donVi: v.dvt || "kg",
-      donGia: v.donGia || 70000,
-      thanhTien: 100 * (v.donGia || 70000),
-      nhaCC: v.kho,
-      maNV: "NV001",
-      nguoiTao: "Nguyễn Văn A",
-      ngayTao: today,
-      trangThai: "Hoàn thành",
-      ghiChu: `Nhập ${v.tenVT} - ${v.kho}`,
-      lichSu: [{
-        ngay: now,
-        trangThaiCu: "Nháp",
-        trangThaiMoi: "Hoàn thành",
-        nguoiThucHien: "NV001",
-        ghiChu: "Nhập kho tự động từ data thật",
-      }],
-    });
-  }
-
-  // 1 phiếu nhập phụ liệu mẫu
-  if (KHO_VAT_TU[0]) {
-    const v = KHO_VAT_TU[0];
-    result.push({
-      id: "PK-NK-PL-001",
-      loai: "nhap",
-      loaiKho: "phu-lieu",
-      maSP: v.maVT,
-      tenSP: v.tenVT,
-      soLuong: 500,
-      donVi: v.dvt || "Bộ",
-      donGia: v.donGia || 6000,
-      thanhTien: 500 * (v.donGia || 6000),
-      nhaCC: v.kho,
-      maNV: "NV001",
-      nguoiTao: "Nguyễn Văn A",
-      ngayTao: today,
-      trangThai: "Hoàn thành",
-      ghiChu: `Nhập ${v.tenVT}`,
-      lichSu: [{
-        ngay: now,
-        trangThaiCu: "Nháp",
-        trangThaiMoi: "Hoàn thành",
-        nguoiThucHien: "NV001",
-        ghiChu: "Nhập kho tự động",
-      }],
-    });
-  }
-
-  // 1 phiếu xuất vải cho LSX
-  if (KHO_VAI[1]) {
-    const v = KHO_VAI[1];
-    result.push({
-      id: "PK-XK-VAI-001",
-      loai: "xuat",
-      loaiKho: "vai",
-      maSP: v.maVT,
-      tenSP: v.tenVT,
-      soLuong: 50,
-      donVi: v.dvt || "kg",
-      donGia: v.donGia || 91000,
-      thanhTien: 50 * (v.donGia || 91000),
-      lsx: "LSX-2026-001",
-      maNV: "NV006",
-      nguoiTao: "Nguyễn Hoàng Giang",
-      ngayTao: today,
-      trangThai: "Chờ duyệt",
-      ghiChu: `Xuất vải cho LSX-2026-001 (M758)`,
-      lichSu: [{
-        ngay: now,
-        trangThaiCu: "Nháp",
-        trangThaiMoi: "Chờ duyệt",
-        nguoiThucHien: "NV006",
-        ghiChu: "Tạo phiếu xuất",
-      }],
-    });
-  }
-
-  return result;
+  // Bắt đầu vận hành kho thật: không tự tạo phiếu nhập/xuất mẫu.
+  return [];
 }
 
 type StoreContext = {
@@ -246,14 +154,9 @@ export function KhoMobileProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     (async () => {
       const remote = await supabaseFetchAllRaw<PhieuKho>("kho_mobile", "created_at", false);
-      if (!mounted || remote.length === 0) return;
-      const ids = new Set(remote.map((r) => r.id));
-      setPhieu((prev) => {
-        const localOnly = prev.filter((x) => !ids.has(x.id));
-        const merged = [...remote, ...localOnly];
-        saveData(merged);
-        return merged;
-      });
+      if (!mounted) return;
+      setPhieu(remote);
+      saveData(remote);
     })();
     return () => { mounted = false; };
   }, []);
