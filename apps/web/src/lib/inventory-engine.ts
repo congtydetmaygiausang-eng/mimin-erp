@@ -147,7 +147,33 @@ type KhoSupabaseRow = {
   ghi_chu: string | null;
 };
 
+type KhoVaiWithImage = KhoVai & { imageUrl?: string };
+
+type KhoVaiMetadata = { note: string; imageUrl: string };
+
+function parseKhoVaiMetadata(value: string | null): KhoVaiMetadata {
+  if (!value) return { note: "", imageUrl: "" };
+  try {
+    const parsed = JSON.parse(value) as Partial<KhoVaiMetadata>;
+    if (typeof parsed === "object" && parsed !== null && ("note" in parsed || "imageUrl" in parsed)) {
+      return {
+        note: typeof parsed.note === "string" ? parsed.note : "",
+        imageUrl: typeof parsed.imageUrl === "string" ? parsed.imageUrl : "",
+      };
+    }
+  } catch {
+    // Dữ liệu cũ là ghi chú thuần văn bản.
+  }
+  return { note: value, imageUrl: "" };
+}
+
+function serializeKhoVaiMetadata(note: string | undefined, imageUrl: string | undefined): string | null {
+  if (!imageUrl) return note || null;
+  return JSON.stringify({ note: note || "", imageUrl } satisfies KhoVaiMetadata);
+}
+
 function toSupabaseKhoRow(v: KhoVai) {
+  const vaiWithImage = v as KhoVaiWithImage;
   return {
     sku: v.maVT,
     ten_vt: v.tenVT,
@@ -162,12 +188,13 @@ function toSupabaseKhoRow(v: KhoVai) {
     ton_cay: v.tonCay || 0,
     ty_le_hao_hut: v.tyLeHaoHut || 0,
     kho: v.kho || "Kho vải",
-    ghi_chu: v.ghiChu || null,
+    ghi_chu: serializeKhoVaiMetadata(v.ghiChu, vaiWithImage.imageUrl),
     updated_at: new Date().toISOString(),
   };
 }
 
 function fromSupabaseKhoRow(row: KhoSupabaseRow, current?: KhoVai): KhoVai {
+  const metadata = parseKhoVaiMetadata(row.ghi_chu);
   return {
     ...(current || {}),
     maVT: row.sku,
@@ -182,8 +209,9 @@ function fromSupabaseKhoRow(row: KhoSupabaseRow, current?: KhoVai): KhoVai {
     tonCay: Number(row.ton_cay) || 0,
     tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
     kho: row.kho || "Kho vải",
-    ghiChu: row.ghi_chu || "",
-  };
+    ghiChu: metadata.note,
+    imageUrl: metadata.imageUrl || (current as KhoVaiWithImage | undefined)?.imageUrl || "",
+  } as KhoVaiWithImage;
 }
 
 export async function upsertInventoryItem(v: KhoVai): Promise<void> {

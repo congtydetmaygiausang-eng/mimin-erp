@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  Package, AlertCircle, CheckCircle2, TrendingDown, TrendingUp,
+  Package, AlertCircle, TrendingUp,
   Scissors, Calculator, FileText, BarChart3, Plus, X,
   History, Search, ArrowDownToLine, ArrowUpFromLine, Filter
 } from "lucide-react";
@@ -29,6 +29,16 @@ const TINH_MAN_PHAN_LOAI = [
   "Quần",
   "Bộ trụ trơn",
 ];
+
+const LOAI_VAI_OPTIONS = ["Cotton 100%", "Cá sấu", "Polyester 4 chiều"] as const;
+type KhoVaiWithImage = KhoVai & { imageUrl?: string };
+type NewVaiForm = {
+  tenVT: string;
+  mauSac: string;
+  donGia: number;
+  ghiChu: string;
+  previewImg: string;
+};
 
 async function compressImage(file: File): Promise<string> {
   return new Promise((resolve) => {
@@ -75,12 +85,12 @@ export default function KhoVaiPage() {
   const [editingVT, setEditingVT] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
   const [vaiImages, setVaiImages] = useState<Record<string, string>>({});
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   // Form tạo mã vải mới — bind thật
-  const [newVaiForm, setNewVaiForm] = useState({
-    tenVT: "",
+  const [newVaiForm, setNewVaiForm] = useState<NewVaiForm>({
+    tenVT: LOAI_VAI_OPTIONS[0],
     mauSac: "",
     donGia: 0,
-    tonToiThieu: 50,
     ghiChu: "",
     previewImg: "",
   });
@@ -94,7 +104,12 @@ export default function KhoVaiPage() {
         const compressedUrl = await compressImage(file);
         saveVaiImage(uploadingVT, compressedUrl);
         setVaiImages(prev => ({ ...prev, [uploadingVT]: compressedUrl }));
-        setInventory(prev => prev.map(v => v.maVT === uploadingVT ? { ...v, imageUrl: compressedUrl } as any : v));
+        const currentVai = inventory.find(v => v.maVT === uploadingVT);
+        if (currentVai) {
+          const updatedVai: KhoVaiWithImage = { ...currentVai, imageUrl: compressedUrl };
+          await upsertInventoryItem(updatedVai);
+          setInventory(prev => prev.map(v => v.maVT === uploadingVT ? updatedVai : v));
+        }
         toast.success("Đã tải ảnh lên và lưu thành công (nén tự động)!");
       } catch (err) {
         toast.error("Lỗi khi xử lý ảnh");
@@ -134,8 +149,6 @@ export default function KhoVaiPage() {
   const tinh = tinhMan(selected, parseSize(soLuong, sizeStr));
   const totalTonKho = inventory.reduce((s, v) => s + v.tonKho, 0);
   const totalDonGia = inventory.reduce((s, v) => s + v.tonKho * v.donGia, 0);
-  const vaiSapHet = inventory.filter((v) => v.tonKho < 50).length;
-  const vaiNhieu = inventory.filter((v) => v.tonKho > 400).length;
 
   const handleTruKho = (phieuId: string) => {
     const p = ALL_REAL_PHIEU.find((x) => x.id === phieuId);
@@ -183,11 +196,11 @@ export default function KhoVaiPage() {
             <Package className="w-7 h-7" /> Kho Vải & Định Mức Vải
           </h1>
           <p className="text-sm opacity-95 mt-1.5">
-            Quản lý tồn kho 29 loại vải · Tính định mức vải theo sản phẩm + size · Trừ kho tự động khi cắt
+            Quản lý tồn kho {inventory.length} loại vải · Tính định mức vải theo sản phẩm + size · Trừ kho tự động khi cắt
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
             <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
               <div className="text-xs opacity-90 flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> Tổng tồn</div>
               <div className="text-xl md:text-2xl font-bold mt-1">{(totalTonKho / 1000).toFixed(1)} tấn</div>
@@ -195,14 +208,6 @@ export default function KhoVaiPage() {
             <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
               <div className="text-xs opacity-90 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Giá trị tồn</div>
               <div className="text-xl md:text-2xl font-bold mt-1">{(totalDonGia / 1_000_000).toFixed(1)}tr</div>
-            </div>
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-              <div className="text-xs opacity-90 flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Sắp hết (&lt;50kg)</div>
-              <div className="text-xl md:text-2xl font-bold mt-1">{vaiSapHet}</div>
-            </div>
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-              <div className="text-xs opacity-90 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Nhiều (&gt;400kg)</div>
-              <div className="text-xl md:text-2xl font-bold mt-1">{vaiNhieu}</div>
             </div>
           </div>
 
@@ -281,28 +286,35 @@ export default function KhoVaiPage() {
                   <div className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-sm font-bold text-slate-700 dark:text-slate-300 tracking-wider">
                     {`VAI-${(index + 1).toString().padStart(2, "0")}`}
                   </div>
-                  <div className="flex gap-2">
-                    {v.tonKho < 50 ? (
-                      <span className="bg-rose-50 dark:bg-rose-500/10 text-rose-600 px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider">Sắp hết</span>
-                    ) : v.tonKho > 400 ? (
-                      <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider">Nhiều</span>
-                    ) : null}
-                  </div>
                 </div>
 
                 {/* Main content: Color image & Name */}
                 <div className="flex gap-4 items-center mb-4">
                   <div 
-                    className="w-16 h-16 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group/img flex items-center justify-center bg-slate-100 dark:bg-slate-800 transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: (vaiImages[v.maVT] || (v as any).imageUrl) ? 'transparent' : getColorHex(v.mauSac) }}
-                    onClick={() => { setUploadingVT(v.maVT); fileInputRef.current?.click(); }}
-                    title="Bấm để tải ảnh lên"
+                    className="w-24 h-24 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden flex-shrink-0 cursor-pointer relative group/img flex items-center justify-center bg-slate-100 dark:bg-slate-800 transition-transform group-hover:scale-105"
+                    style={{ backgroundColor: (vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl) ? 'transparent' : getColorHex(v.mauSac) }}
+                    onClick={() => {
+                      const src = vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl;
+                      if (src) setPreviewImage({ src, alt: `${v.tenVT} - ${v.mauSac}` });
+                      else { setUploadingVT(v.maVT); fileInputRef.current?.click(); }
+                    }}
+                    title="Bấm để xem ảnh lớn"
                   >
-                    {(vaiImages[v.maVT] || (v as any).imageUrl) ? (
-                      <img src={vaiImages[v.maVT] || (v as any).imageUrl} alt={v.mauSac} className="w-full h-full object-cover" />
+                    {(vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl) ? (
+                      <img src={vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl} alt={v.mauSac} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-[10px] text-white/90 font-bold opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md">+Ảnh</span>
+                      <span className="text-xs text-white/90 font-bold opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md">+ Ảnh</span>
                     )}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setUploadingVT(v.maVT);
+                        fileInputRef.current?.click();
+                      }}
+                      className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-blue-600 text-white font-bold shadow-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
+                      title="Đổi ảnh vải"
+                    >+</button>
                   </div>
                   <div className="flex-1 min-w-0">
                     {editingVT === v.maVT ? (
@@ -795,14 +807,16 @@ export default function KhoVaiPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tên vải *</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="VD: Vải Cotton 100%"
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Loại vải *</label>
+                  <select
+                    className="input-field h-12 text-base font-semibold cursor-pointer"
                     value={newVaiForm.tenVT}
                     onChange={(e) => setNewVaiForm(f => ({ ...f, tenVT: e.target.value }))}
-                  />
+                  >
+                    {LOAI_VAI_OPTIONS.map((loaiVai) => (
+                      <option key={loaiVai} value={loaiVai}>{loaiVai}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Màu sắc *</label>
@@ -819,10 +833,10 @@ export default function KhoVaiPage() {
                   <button
                     type="button"
                     onClick={() => newVaiImgRef.current?.click()}
-                    className="w-full input-field flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="w-full min-h-24 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center gap-3 cursor-pointer hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-slate-800 transition-colors overflow-hidden"
                   >
                     {newVaiForm.previewImg ? (
-                      <img src={newVaiForm.previewImg} className="w-8 h-8 rounded object-cover" alt="preview" />
+                      <img src={newVaiForm.previewImg} className="w-24 h-20 rounded-lg object-cover" alt="Ảnh màu vải" />
                     ) : (
                       <Plus className="w-4 h-4 text-slate-400" />
                     )}
@@ -831,7 +845,7 @@ export default function KhoVaiPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Đơn giá (đ/kg)</label>
                   <input
@@ -841,17 +855,6 @@ export default function KhoVaiPage() {
                     placeholder="0"
                     value={newVaiForm.donGia || ""}
                     onChange={(e) => setNewVaiForm(f => ({ ...f, donGia: Number(e.target.value) }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Tồn tối thiểu (kg)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    className="input-field"
-                    placeholder="50"
-                    value={newVaiForm.tonToiThieu || ""}
-                    onChange={(e) => setNewVaiForm(f => ({ ...f, tonToiThieu: Number(e.target.value) }))}
                   />
                 </div>
                 <div>
@@ -869,7 +872,7 @@ export default function KhoVaiPage() {
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setNewVaiForm({ tenVT: "", mauSac: "", donGia: 0, tonToiThieu: 50, ghiChu: "", previewImg: "" })}
+                  onClick={() => setNewVaiForm({ tenVT: LOAI_VAI_OPTIONS[0], mauSac: "", donGia: 0, ghiChu: "", previewImg: "" })}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   Xóa form
@@ -886,13 +889,15 @@ export default function KhoVaiPage() {
                       tenVT: newVaiForm.tenVT.trim(),
                       mauSac: newVaiForm.mauSac.trim(),
                       donGia: newVaiForm.donGia || 0,
-                      tonToiThieu: newVaiForm.tonToiThieu || 50,
+                      tonToiThieu: 0,
                       loai: "Vải",
                       dvt: "kg",
                       tonKho: 0,
+                      ghiChu: newVaiForm.ghiChu.trim(),
+                      imageUrl: newVaiForm.previewImg || "",
                     };
 
-                    const ok = addNewVai(newVai as any);
+                    const ok = addNewVai(newVai as KhoVaiWithImage);
                     if (!ok) { toast.error(`Mã ${maVT} đã tồn tại!`); return; }
                     
                     // Lưu ảnh nếu có
@@ -902,7 +907,7 @@ export default function KhoVaiPage() {
                     }
                     
                     try {
-                      await upsertInventoryItem(newVai as KhoVai);
+                      await upsertInventoryItem(newVai as KhoVaiWithImage);
                       toast.success(`✅ Đã lưu ${maVT} và đồng bộ cho toàn hệ thống`);
                     } catch (error) {
                       const message = error instanceof Error ? error.message : "Lỗi không xác định";
@@ -910,7 +915,7 @@ export default function KhoVaiPage() {
                       return;
                     }
 
-                    setNewVaiForm({ tenVT: "", mauSac: "", donGia: 0, tonToiThieu: 50, ghiChu: "", previewImg: "" });
+                    setNewVaiForm({ tenVT: LOAI_VAI_OPTIONS[0], mauSac: "", donGia: 0, ghiChu: "", previewImg: "" });
                     refresh();
                   }}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
@@ -931,6 +936,29 @@ export default function KhoVaiPage() {
           onClose={() => setShowNhap(null)}
           onSuccess={() => refresh()}
         />
+      )}
+      {previewImage && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+            onClick={() => setPreviewImage(null)}
+          >
+            <button
+              type="button"
+              className="absolute right-5 top-5 rounded-full bg-white/15 p-2 text-white hover:bg-white/25"
+              onClick={() => setPreviewImage(null)}
+              aria-label="Đóng ảnh"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img
+              src={previewImage.src}
+              alt={previewImage.alt}
+              className="max-h-[88vh] max-w-[94vw] rounded-2xl object-contain shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            />
+          </div>
+        </Portal>
       )}
       </div>
     </div>
