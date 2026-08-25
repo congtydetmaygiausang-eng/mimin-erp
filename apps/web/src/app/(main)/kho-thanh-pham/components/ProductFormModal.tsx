@@ -12,9 +12,9 @@ import { DS_TI_LE_SIZE, DS_KHU_KE_HANG, DS_KENH_BAN, ALL_PHIEU, type KenhBan, ty
 import {
   SIZE_RATIO_PRESETS,
   type SizeRatioPreset,
-  loadCustomSizeRatioPresets,
+  loadSharedSizeRatioPresets,
   buildCustomSizeRatioPreset,
-  saveCustomSizeRatioPreset,
+  saveSharedSizeRatioPreset,
 } from "@/lib/size-ratio-presets";
 import { uploadProductFile } from "@/lib/product-upload";
 
@@ -78,16 +78,27 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [giaShopee, setGiaShopee] = useState(0);
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
-  useEffect(() => { setCustomPresets(loadCustomSizeRatioPresets()); }, []);
+  useEffect(() => {
+    let active = true;
+    loadSharedSizeRatioPresets().then((items) => {
+      if (active) setCustomPresets(items);
+    });
+    return () => { active = false; };
+  }, []);
 
   const allPresets = [...SIZE_RATIO_PRESETS, ...customPresets];
   const preset = allPresets.find((p) => p.id === presetId) || SIZE_RATIO_PRESETS[0];
 
-  const handleLuuBangSizeMoi = (p: SizeRatioPreset) => {
-    setCustomPresets(saveCustomSizeRatioPreset(p));
-    doiPresetChung(p.id, [...SIZE_RATIO_PRESETS, ...customPresets, p]);
-    setOpenSizeBuilder(false);
-    toast.success(`Đã lưu bảng size "${p.label}"`);
+  const handleLuuBangSizeMoi = async (p: SizeRatioPreset) => {
+    try {
+      const updated = await saveSharedSizeRatioPreset(p);
+      setCustomPresets(updated);
+      doiPresetChung(p.id, [...SIZE_RATIO_PRESETS, ...updated]);
+      setOpenSizeBuilder(false);
+      toast.success(`Đã lưu bảng size "${p.label}" lên Supabase`);
+    } catch (error) {
+      toast.error(`Chưa lưu được bảng size: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
+    }
   };
 
   // === Danh sách biến thể (chỉ khác Màu + số lượng theo size) ===

@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase/client";
+
 /**
  * Danh sách tỉ lệ size chuẩn POLOMIMIN
  * Cập nhật 2026-08-04 theo yêu cầu sếp Sang (2 bảng)
@@ -143,9 +145,66 @@ export function buildCustomSizeRatioPreset(
 }
 
 export function saveCustomSizeRatioPreset(preset: SizeRatioPreset): SizeRatioPreset[] {
-  const ds = [...loadCustomSizeRatioPresets(), preset];
+  const ds = [...loadCustomSizeRatioPresets().filter((item) => item.id !== preset.id), preset];
   if (typeof window !== "undefined") {
     try { localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(ds)); } catch {}
   }
   return ds;
+}
+
+type BangSizeRow = {
+  id: string;
+  ten_bang: string;
+  gia_tri: string;
+  sizes: string[];
+  ratios: number[];
+  ri_so: number;
+  ghi_chu: string | null;
+};
+
+function rowToPreset(row: BangSizeRow): SizeRatioPreset {
+  return {
+    id: row.id,
+    label: row.ten_bang,
+    value: row.gia_tri,
+    sizes: row.sizes,
+    ratios: row.ratios,
+    riSo: row.ri_so,
+    ghiChu: row.ghi_chu || undefined,
+  };
+}
+
+/** Đọc bảng size dùng chung từ Supabase; cache local chỉ là phương án dự phòng. */
+export async function loadSharedSizeRatioPresets(): Promise<SizeRatioPreset[]> {
+  const cached = loadCustomSizeRatioPresets();
+  if (!supabase) return cached;
+
+  const { data, error } = await supabase
+    .from("bang_size")
+    .select("id,ten_bang,gia_tri,sizes,ratios,ri_so,ghi_chu")
+    .order("created_at", { ascending: true });
+
+  if (error) return cached;
+  const shared = ((data || []) as BangSizeRow[]).map(rowToPreset);
+  if (typeof window !== "undefined") {
+    try { localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(shared)); } catch {}
+  }
+  return shared;
+}
+
+/** Lưu Supabase trước để bảng size xuất hiện trên mọi máy, sau đó cập nhật cache. */
+export async function saveSharedSizeRatioPreset(preset: SizeRatioPreset): Promise<SizeRatioPreset[]> {
+  if (!supabase) return saveCustomSizeRatioPreset(preset);
+
+  const { error } = await supabase.from("bang_size").insert({
+    id: preset.id,
+    ten_bang: preset.label,
+    gia_tri: preset.value,
+    sizes: preset.sizes,
+    ratios: preset.ratios,
+    ri_so: preset.riSo,
+    ghi_chu: preset.ghiChu || null,
+  });
+  if (error) throw new Error(error.message);
+  return saveCustomSizeRatioPreset(preset);
 }
