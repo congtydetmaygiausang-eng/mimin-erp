@@ -32,7 +32,7 @@ const NEW_ACCESSORY_FIELDS: FieldDef[] = [
 ];
 
 export default function KhoPhuLieuPage() {
-  const { giaoDich, danhSachTrangThai, reset } = useKho();
+  const { giaoDich, reset } = useKho();
   const [tab, setTab] = useState<Tab>("tongquan");
   const [search, setSearch] = useState("");
   const [showNhap, setShowNhap] = useState<string | null>(null);
@@ -147,8 +147,20 @@ export default function KhoPhuLieuPage() {
   };
 
   // KPIs
-  const inventoryIds = new Set(inventory.map((item) => item.maVT));
-  const dsTrangThai = danhSachTrangThai("phu-lieu").filter((item) => inventoryIds.has(item.maVT));
+  const dsTrangThai = inventory.map((item) => {
+    const tonKho = Number(item.tonKho) || 0;
+    const tonToiThieu = Number(item.tonToiThieu) || 0;
+    const giaoDichVatTu = giaoDich.filter((row) => row.maVT === item.maVT);
+    return {
+      maVT: item.maVT,
+      tonKho,
+      tonToiThieu,
+      canhBao: tonToiThieu > 0 && tonKho < tonToiThieu,
+      giaTriTon: tonKho * (Number(item.donGia) || 0),
+      tongNhap: giaoDichVatTu.filter((row) => row.loai === "NHAP").reduce((sum, row) => sum + row.soLuong, 0),
+      tongXuat: giaoDichVatTu.filter((row) => row.loai === "XUAT").reduce((sum, row) => sum + row.soLuong, 0),
+    };
+  });
   const tongGiaTri = dsTrangThai.reduce((s, t) => s + t.giaTriTon, 0);
   const dsCanhBao = dsTrangThai.filter((t) => t.canhBao);
   const tongNhap = giaoDich.filter((g) => g.loai === "NHAP" && inventory.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
