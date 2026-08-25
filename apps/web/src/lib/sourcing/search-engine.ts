@@ -131,7 +131,7 @@ interface CompanyReaderFieldDecision { field?:unknown;status?:unknown;selected_v
 interface CompanyReaderProfile { status?:unknown;fields?:CompanyReaderFieldDecision[];source_count?:unknown }
 interface CompanyReaderSourceReport {
   source_url?:unknown; status?:unknown; error_code?:unknown;
-  contact_snapshot?:{legal_names?:unknown;addresses?:unknown;phones?:unknown;emails?:unknown;websites?:unknown}|null;
+  contact_snapshot?:{legal_names?:unknown;addresses?:unknown;phones?:unknown;emails?:unknown;websites?:unknown;identity_safe?:unknown;distinct_legal_names?:unknown;distinct_tax_codes?:unknown}|null;
 }
 interface CompanyReaderResponse { status?:unknown;profiles?:CompanyReaderProfile[];sources?:CompanyReaderSourceReport[];profile_count?:unknown;source_count?:unknown;warning_count?:unknown;error?:unknown }
 export interface JinaRadarLog { timestamp: string; url: string; status: "PENDING" | "SUCCESS" | "ERROR"; message?: string; bytesRead?: number; }
@@ -360,7 +360,9 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
       continue;
     }
     existing.legalName = mergeText(existing.legalName, item.legalName);
-    existing.address = mergeText(existing.address, item.address);
+    // Địa chỉ không được ghép theo độ dài: một chuỗi dài hơn có thể thuộc doanh
+    // nghiệp khác trên cùng trang danh bạ. Bộ chọn evidence bên dưới quyết định.
+    if (!existing.address) existing.address = item.address;
     existing.province = mergeText(existing.province, item.province);
     existing.district = mergeText(existing.district, item.district);
     existing.phones=Array.from(new Set([...(existing.phones??Array.from(phoneSet(existing.phone))),...(item.phones??Array.from(phoneSet(item.phone)))])).slice(0,5);
@@ -1056,7 +1058,7 @@ function stringList(value:unknown):string[]{
 function companyReaderContactSource(report:CompanyReaderSourceReport,index:number):SourceResult|null{
   const url=typeof report.source_url==="string"?canonicalSourceUrl(report.source_url):"";
   const snapshot=report.contact_snapshot;
-  if(!url||!snapshot||blockedSource(url))return null;
+  if(!url||!snapshot||blockedSource(url)||snapshot.identity_safe===false)return null;
   const legalNames=stringList(snapshot.legal_names),addresses=stringList(snapshot.addresses),phones=stringList(snapshot.phones),emails=stringList(snapshot.emails),websites=stringList(snapshot.websites);
   const values=[...legalNames.map((value)=>`LEGAL_NAME: ${value}`),...addresses.map((value)=>`ADDRESS: ${value}`),...phones.map((value)=>`PHONE: ${value}`),...emails.map((value)=>`EMAIL: ${value}`),...websites.map((value)=>`WEBSITE: ${value}`)];
   if(!values.length)return null;
@@ -1347,9 +1349,20 @@ function evidenceFromContactSource(candidate: Candidate, source: SourceResult): 
   const body = `${source.title}\n${source.content}\n${source.rawContent ?? ""}`;
   const identityMatch = overlapRatio(tokenSet(candidate.legalName), tokenSet(body));
   const taxMatch = Boolean(candidate.taxCode && digits(body).includes(digits(candidate.taxCode)));
-  if (identityMatch < 0.55 && !taxMatch) return [];
+  const candidatePhones=new Set([...(candidate.phones??[]),...extractVietnamPhones(candidate.phone)].map(normalizeVietnamPhone).filter(Boolean));
+  const sourcePhones=new Set(extractVietnamContactPhones(body).map(normalizeVietnamPhone).filter(Boolean));
+  const phoneMatch=Array.from(candidatePhones).some((phone)=>sourcePhones.has(phone));
+  const candidateEmail=(candidate.email??"").trim().toLowerCase();
+  const emailMatch=Boolean(candidateEmail&&body.toLowerCase().includes(candidateEmail));
+  const candidateDomain=domainOf(candidate.website),sourceDomain=domainOf(source.url);
+  const officialDomainMatch=Boolean(candidateDomain&&candidateDomain===sourceDomain);
+  const hasExistingAnchor=Boolean(candidate.taxCode||candidatePhones.size||candidateEmail||candidateDomain);
+  const anchored=taxMatch||phoneMatch||emailMatch||officialDomainMatch;
+  // Khi hồ sơ đã có định danh, không được lấy contact chỉ vì tên chung chung
+  // (vd. "xưởng may gia công Tân Phú") trùng với nội dung trang.
+  if((hasExistingAnchor&&!anchored)||(!hasExistingAnchor&&identityMatch<0.72))return[];
   const sourceUrl = canonicalSourceUrl(source.url), type = source.sourceType ?? classifySource(source.url, source.title, source.content);
-  const isOfficialDomain = Boolean(domainOf(candidate.website) && domainOf(candidate.website) === domainOf(source.url));
+  const isOfficialDomain = officialDomainMatch;
   const confidence = Math.min(92, Math.round((isOfficialDomain ? 82 : sourceAuthority(type)) + Math.max(identityMatch, taxMatch ? 1 : 0) * 18));
   const excerpt = (value: string) => { const index = body.toLowerCase().indexOf(value.toLowerCase()); return (index >= 0 ? body.slice(Math.max(0, index - 90), index + value.length + 130) : body.slice(0, 350)).trim(); };
   const result: CandidateFieldEvidence[] = [];
@@ -1359,7 +1372,7 @@ function evidenceFromContactSource(candidate: Candidate, source: SourceResult): 
   add("TAX_CODE", body.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] ?? "");
   add("REGISTERED_ADDRESS", postalAddress(body.match(/(?:địa chỉ thuế|trụ sở(?: chính)?|địa chỉ đăng ký)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1] ?? ""));
   if (!result.some((entry) => entry.fieldName === "REGISTERED_ADDRESS")) add("OFFICE_ADDRESS", postalAddress(body.match(/(?:địa chỉ|văn phòng|xưởng(?: \d+)?)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1] ?? ""));
-  const sourceDomain = domainOf(source.url), candidateDomain = domainOf(candidate.website);
+
   const explicitWebsite = body.match(/(?:website|web|trang web)\s*[:#-]?\s*((?:https?:\/\/|www\.)[^\s,;<>]+)/i)?.[1]?.replace(/[.)\]]+$/, "") ?? "";
   if (explicitWebsite) add("WEBSITE", explicitWebsite);
   else if (sourceDomain && !DIRECTORY_DOMAINS.some((domain) => sourceDomain === domain || sourceDomain.endsWith(`.${domain}`)) && (!candidateDomain || sourceDomain === candidateDomain)) add("WEBSITE", `https://${sourceDomain}`);
@@ -2078,7 +2091,7 @@ function evidenceValue(item:Record<string,unknown>,key:string,field:FieldEvidenc
 }
 
 function sourceAuthority(type:SourceEvidenceType|undefined):number{return type==="REGISTRY"?75:type==="OFFICIAL"?62:type==="MAP"?55:type==="SOCIAL"?38:type==="SEARCH"?32:25}
-const CRITICAL_CONFLICT_FIELDS=new Set<FieldEvidenceName>(["LEGAL_NAME","TAX_CODE","REGISTERED_ADDRESS","OPERATING_STATUS"]);
+const CRITICAL_CONFLICT_FIELDS=new Set<FieldEvidenceName>(["LEGAL_NAME","TAX_CODE","REGISTERED_ADDRESS","FACTORY_ADDRESS","OFFICE_ADDRESS","OPERATING_STATUS"]);
 function buildFieldConfidence(candidate:Candidate):CandidateFieldConfidence[]{
   const sourceMap=new Map((candidate.sources??[]).map((source)=>[canonicalSourceUrl(source.url),source]));
   const byField=new Map<FieldEvidenceName,CandidateFieldEvidence[]>();
@@ -2104,14 +2117,15 @@ function applySelectedEvidence(candidate:Candidate):Candidate{
   const taxNumbers=new Set([candidate.taxCode,...(candidate.fieldEvidence??[]).filter((evidence)=>evidence.fieldName==="TAX_CODE").map((evidence)=>evidence.fieldValue)].flatMap((value)=>{const tax=digits(value);return tax?[tax,tax.slice(0,10)]:[];}));
   const fieldEvidence=(candidate.fieldEvidence??[]).filter((evidence)=>evidence.fieldName!=="PHONE"||Boolean(normalizeVietnamPhone(evidence.fieldValue)&&!taxNumbers.has(normalizeVietnamPhone(evidence.fieldValue))));
   const sanitizedCandidate={...candidate,fieldEvidence};
-  const fields=buildFieldConfidence(sanitizedCandidate),selected=(name:FieldEvidenceName)=>fields.find((field)=>field.fieldName===name&&field.status!=="CONFLICT")?.selectedValue??"";
+  const fields=buildFieldConfidence(sanitizedCandidate),selected=(name:FieldEvidenceName,minimumScore=0)=>fields.find((field)=>field.fieldName===name&&field.status!=="CONFLICT"&&field.score>=minimumScore)?.selectedValue??"";
   const phones=Array.from(new Set(fieldEvidence.filter((evidence)=>evidence.fieldName==="PHONE"&&evidence.confidence>=55).sort((left,right)=>right.confidence-left.confidence).map((evidence)=>normalizeVietnamPhone(evidence.fieldValue)).filter(Boolean))).slice(0,5);
   const fallbackPhones=Array.from(new Set([...(candidate.phones??[]).map(normalizeVietnamPhone),...extractVietnamPhones(candidate.phone)].filter((phone)=>phone&&!taxNumbers.has(phone)))).slice(0,5);
   const selectedPhones=phones.length?phones:fallbackPhones;
-  const registeredAddress=postalAddress(selected("REGISTERED_ADDRESS"))||candidate.registeredAddress||"";
-  const officeAddress=postalAddress(selected("OFFICE_ADDRESS"))||candidate.officeAddress||"";
-  const factoryAddress=postalAddress(selected("FACTORY_ADDRESS"))||candidate.factoryAddress||"";
-  const address=registeredAddress||factoryAddress||officeAddress||postalAddress(candidate.address);
+  const addressEvidence=fieldEvidence.some((evidence)=>["REGISTERED_ADDRESS","FACTORY_ADDRESS","OFFICE_ADDRESS"].includes(evidence.fieldName));
+  const registeredAddress=postalAddress(selected("REGISTERED_ADDRESS",55))||(!addressEvidence?candidate.registeredAddress:"")||"";
+  const officeAddress=postalAddress(selected("OFFICE_ADDRESS",55))||(!addressEvidence?candidate.officeAddress:"")||"";
+  const factoryAddress=postalAddress(selected("FACTORY_ADDRESS",55))||(!addressEvidence?candidate.factoryAddress:"")||"";
+  const address=registeredAddress||factoryAddress||officeAddress||(!addressEvidence?postalAddress(candidate.address):"");
   const businessLines=Array.from(new Set([...fields.filter((field)=>field.fieldName==="BUSINESS_LINE"&&field.status!=="CONFLICT").map((field)=>field.selectedValue),...(candidate.businessLines??[])])).slice(0,20);
   return{...sanitizedCandidate,
     legalName:cleanCompanyLegalName(selected("LEGAL_NAME")||candidate.legalName),tradeName:selected("TRADE_NAME")||candidate.tradeName,shortName:selected("SHORT_NAME")||candidate.shortName,

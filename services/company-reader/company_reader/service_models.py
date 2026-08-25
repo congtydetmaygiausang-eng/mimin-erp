@@ -18,6 +18,9 @@ class SourceContactSnapshot:
     phones: tuple[str, ...] = ()
     emails: tuple[str, ...] = ()
     websites: tuple[str, ...] = ()
+    identity_safe: bool = True
+    distinct_legal_names: int = 0
+    distinct_tax_codes: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -26,6 +29,9 @@ class SourceContactSnapshot:
             "phones": list(self.phones),
             "emails": list(self.emails),
             "websites": list(self.websites),
+            "identity_safe": self.identity_safe,
+            "distinct_legal_names": self.distinct_legal_names,
+            "distinct_tax_codes": self.distinct_tax_codes,
         }
 
 
