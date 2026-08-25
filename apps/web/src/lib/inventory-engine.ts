@@ -451,7 +451,9 @@ export function addNewVai(vai: Omit<KhoVai, "tonKho"> & { tonKho?: number }): bo
   const inv = getInventory();
   if (inv[vai.maVT]) return false; // đã tồn tại
   inv[vai.maVT] = { ...vai, tonKho: vai.tonKho ?? 0 };
-  saveInventory(inv);
+  // Mẫu mới đã được caller ghi và chờ Supabase xác nhận trước. Chỉ cập nhật cache
+  // tại đây để tránh mỗi lần thêm lại upsert toàn bộ danh sách, gây nghẽn khi nhập liên tục.
+  localStorage.setItem(TON_KHO_KEY, JSON.stringify(inv));
   return true;
 }
 

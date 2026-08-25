@@ -163,6 +163,10 @@ export default function KhoVaiPage() {
   const tinh = tinhMan(selected, parseSize(soLuong, sizeStr));
   const totalTonKho = inventory.reduce((s, v) => s + v.tonKho, 0);
   const totalDonGia = inventory.reduce((s, v) => s + v.tonKho * v.donGia, 0);
+  const nextVaiNumber = inventory.reduce((max, item) => {
+    const value = Number(item.maVT.match(/VAI-(\d+)/i)?.[1] || 0);
+    return Math.max(max, value);
+  }, 0) + 1;
 
   const handleTruKho = (phieuId: string) => {
     const p = ALL_REAL_PHIEU.find((x) => x.id === phieuId);
@@ -800,7 +804,7 @@ export default function KhoVaiPage() {
               <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-blue-600" /> Tạo mã vải mới
               </h3>
-              <span className="text-xs text-slate-400 font-mono">Mã: VAI-{String(inventory.length + 1).padStart(2, "0")}</span>
+              <span className="text-xs text-slate-400 font-mono">Mã: VAI-{String(nextVaiNumber).padStart(2, "0")}</span>
             </div>
 
             {/* Ẩnh preview */}
@@ -896,7 +900,7 @@ export default function KhoVaiPage() {
                   onClick={async () => {
                     if (!newVaiForm.tenVT.trim()) { toast.error("Vui lòng nhập tên vải"); return; }
                     if (!newVaiForm.mauSac.trim()) { toast.error("Vui lòng nhập màu sắc"); return; }
-                    const maVT = `VAI-${String(inventory.length + 1).padStart(2, "0")}`;
+                    const maVT = `VAI-${String(nextVaiNumber).padStart(2, "0")}`;
                     
                     const newVai = {
                       maVT,
@@ -911,23 +915,22 @@ export default function KhoVaiPage() {
                       imageUrl: newVaiForm.previewImg || "",
                     };
 
+                    try {
+                      await upsertInventoryItem(newVai as KhoVaiWithImage);
+                    } catch (error) {
+                      const message = error instanceof Error ? error.message : "Lỗi không xác định";
+                      toast.error(`Supabase chưa nhận mã ${maVT}: ${message}. Thẻ chưa được tạo, anh bấm lưu lại.`);
+                      return;
+                    }
+
                     const ok = addNewVai(newVai as KhoVaiWithImage);
                     if (!ok) { toast.error(`Mã ${maVT} đã tồn tại!`); return; }
-                    
-                    // Lưu ảnh nếu có
+
                     if (newVaiForm.previewImg) {
                       saveVaiImage(maVT, newVaiForm.previewImg);
                       setVaiImages(prev => ({ ...prev, [maVT]: newVaiForm.previewImg }));
                     }
-                    
-                    try {
-                      await upsertInventoryItem(newVai as KhoVaiWithImage);
-                      toast.success(`✅ Đã lưu ${maVT} và đồng bộ cho toàn hệ thống`);
-                    } catch (error) {
-                      const message = error instanceof Error ? error.message : "Lỗi không xác định";
-                      toast.error(`Mã vải chỉ mới lưu trên máy này, chưa lên Supabase: ${message}`);
-                      return;
-                    }
+                    toast.success(`✅ Đã lưu ${maVT} và đồng bộ cho toàn hệ thống`);
 
                     setNewVaiForm({ tenVT: LOAI_VAI_OPTIONS[0], mauSac: "", donGia: 0, ghiChu: "", previewImg: "" });
                     refresh();
