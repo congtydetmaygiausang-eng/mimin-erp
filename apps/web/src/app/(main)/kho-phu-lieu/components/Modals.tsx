@@ -34,6 +34,17 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
     if (form.soLuong <= 0) return toast.error("SL phải > 0");
     const ncc = nccList.find((item) => item.ma_ncc === form.nccMa);
     if (!ncc) return toast.error("Vui lòng chọn nhà cung cấp");
+    if (isSupabaseEnabled && supabase) {
+      const { data: currentRow, error: readError } = await supabase
+        .from("kho").select("ton_kho").eq("sku", vt.maVT).single();
+      if (readError) return toast.error(`Không đọc được tồn kho hiện tại: ${readError.message}`);
+      const tonKhoMoi = (Number(currentRow?.ton_kho) || 0) + form.soLuong;
+      const { error: stockError } = await supabase
+        .from("kho")
+        .update({ ton_kho: tonKhoMoi, don_gia: form.donGia, updated_at: new Date().toISOString() })
+        .eq("sku", vt.maVT);
+      if (stockError) return toast.error(`Không cộng được tồn kho phụ liệu: ${stockError.message}`);
+    }
     themGiaoDich({ ...form, nguonNhap: ncc.ten_ncc, loai: "NHAP" as const, maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
     const debtSaved = await suaNCC({ ...ncc, cong_no: (ncc.cong_no || 0) + thanhTien });
     if (!debtSaved) return toast.error("Đã nhập kho nhưng chưa cộng được công nợ nhà cung cấp");

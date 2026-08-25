@@ -21,6 +21,7 @@ import { KHO_VAI, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import { Portal } from "@/components/ui/Portal";
+import { useKho } from "@/lib/data/kho-store";
 
 const TINH_MAN_PHAN_LOAI = [
   "Áo thun cotton",
@@ -945,6 +946,7 @@ export default function KhoVaiPage() {
       {showNhap && (
         <VaiNhapKho
           maVT={showNhap}
+          vatTu={inventory.find((item) => item.maVT === showNhap)}
           user={user}
           onClose={() => setShowNhap(null)}
           onSuccess={() => refresh()}
@@ -1002,28 +1004,25 @@ function getColorHex(mau: string) {
 // ============ MODAL NHẬP KHO VẢI (chuẩn hoá theo form Kho Phụ liệu) ============
 function VaiNhapKho({
   maVT,
+  vatTu,
   user,
   onClose,
   onSuccess,
 }: {
   maVT: string;
+  vatTu?: KhoVai;
   user: any;
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const vt = KHO_VAI.find((v) => v.maVT === maVT);
-  const { list: _nccList } = useNhaCungCap();
-  const nccList = _nccList
-    .filter(n => {
-      const txt = (n.loai + " " + (n.danh_muc_chi_tiet?.join(" ") || "")).toLowerCase();
-      return txt.includes("sợi") || txt.includes("vải") || txt.includes("vai") || txt.includes("dệt") || txt.includes("nhuộm");
-    })
-    .map((n) => ({ maNCC: n.ma_ncc, tenDonVi: n.ten_ncc }));
+  const vt = vatTu || KHO_VAI.find((v) => v.maVT === maVT);
+  const { list: nccList, suaNCC } = useNhaCungCap();
+  const { themGiaoDich } = useKho();
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,
     donGia: vt?.donGia ?? 0,
-    nguonNhap: nccList[0]?.tenDonVi || "",
+    nccMa: nccList[0]?.ma_ncc || "",
     nguoiThucHien: user?.name || user?.id || "NV kho",
     ghiChu: "",
   });
@@ -1038,14 +1037,15 @@ function VaiNhapKho({
       toast.error("Số lượng phải > 0");
       return;
     }
-    if (!form.nguonNhap) {
+    const ncc = nccList.find((item) => item.ma_ncc === form.nccMa);
+    if (!ncc) {
       toast.error("Vui lòng chọn nguồn nhập (NCC)");
       return;
     }
     const r = nhapKho(maVT, form.soLuong, user, form.ghiChu, {
       ngay: form.ngay,
       donGia: form.donGia,
-      nguonNhap: form.nguonNhap,
+      nguonNhap: ncc.ten_ncc,
       nguoiThucHien: form.nguoiThucHien,
     });
     if (r.ok) {
@@ -1061,7 +1061,17 @@ function VaiNhapKho({
         toast.error(`Đã lưu tạm trên máy này nhưng chưa đồng bộ Supabase: ${message}`);
         return;
       }
-      toast.success(`✅ Nhập kho ${vt.tenVT}: +${form.soLuong.toLocaleString()}kg (${formatVND(thanhTien)})`);
+      themGiaoDich({
+        ngay: form.ngay, loai: "NHAP", loaiKho: "vai", maVT: vt.maVT,
+        tenVT: vt.tenVT, soLuong: form.soLuong, donVi: "kg", donGia: form.donGia,
+        thanhTien, nguonNhap: ncc.ten_ncc, nguoiThucHien: form.nguoiThucHien, ghiChu: form.ghiChu,
+      });
+      const debtSaved = await suaNCC({ ...ncc, cong_no: (ncc.cong_no || 0) + thanhTien });
+      if (!debtSaved) {
+        toast.error("Đã cộng tồn kho nhưng chưa cộng được công nợ NCC");
+        return;
+      }
+      toast.success(`✅ Đã cộng ${form.soLuong.toLocaleString()}kg vào tồn kho và ${formatVND(thanhTien)} công nợ ${ncc.ten_ncc}`);
       onSuccess();
       onClose();
     } else {
@@ -1158,13 +1168,13 @@ function VaiNhapKho({
               <select
                 required
                 className="input w-full"
-                value={form.nguonNhap}
-                onChange={(e) => setForm({ ...form, nguonNhap: e.target.value })}
+                value={form.nccMa}
+                onChange={(e) => setForm({ ...form, nccMa: e.target.value })}
               >
                 <option value="">-- Chọn NCC --</option>
                 {nccList.map((n) => (
-                  <option key={n.maNCC} value={n.tenDonVi}>
-                    {n.tenDonVi}
+                  <option key={n.ma_ncc} value={n.ma_ncc}>
+                    {n.ma_ncc} — {n.ten_ncc} (nợ {(n.cong_no || 0).toLocaleString()}đ)
                   </option>
                 ))}
               </select>
