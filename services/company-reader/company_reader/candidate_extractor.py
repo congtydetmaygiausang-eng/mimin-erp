@@ -254,7 +254,10 @@ class CompanyCandidateExtractor:
 
         # 3. Quét dự phòng (fallback) toàn bộ văn bản để tìm số điện thoại không có nhãn
         # Jina Reader thường ngắt dòng hoặc thêm ký tự markdown làm hỏng cấu trúc nhãn
-        found_normalized = {c.value_key for c in result if c.value_key}
+        # FieldCandidate exposes normalized_value (not value_key). The old
+        # attribute name raised AttributeError on every page containing a
+        # labelled phone and surfaced as PIPELINE_ATTRIBUTEERROR.
+        found_normalized = {c.normalized_value for c in result if c.normalized_value}
         for match in PHONE.finditer(text):
             normalized = self._normalize_vietnam_phone(match.group(0))
             if not normalized or normalized in tax_digits or normalized in found_normalized:

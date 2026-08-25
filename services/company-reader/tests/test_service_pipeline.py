@@ -67,6 +67,25 @@ class CompanyReaderPipelineTests(unittest.TestCase):
         assert snapshot is not None
         self.assertEqual(snapshot.addresses, ("12 Nguyễn Trãi, TP.HCM",))
         self.assertEqual(snapshot.phones, ("0901234567",))
+        self.assertTrue(snapshot.identity_safe)
+
+    def test_contact_snapshot_marks_multi_entity_directory_as_unsafe(self) -> None:
+        phone = FieldCandidate(
+            field=CandidateField.PHONE, value="0901 234 567", normalized_value="0901234567",
+            confidence=0.9, origin=EvidenceOrigin.MAIN_TEXT,
+            source_url="https://yellowpages.vn/category", text_sha256="sha",
+            excerpt="0901 234 567", start=10, end=22,
+        )
+        bundle = CompanyCandidateBundle(
+            source_url="https://yellowpages.vn/category", text_sha256="sha",
+            status=CandidateBundleStatus.MULTI_ENTITY_REVIEW,
+            candidates=(phone,), distinct_legal_names=2, distinct_tax_codes=0,
+            multi_entity=True,
+        )
+        snapshot = CompanyReaderPipeline._contact_snapshot(bundle)
+        self.assertIsNotNone(snapshot)
+        assert snapshot is not None
+        self.assertFalse(snapshot.identity_safe)
 
 
 if __name__ == "__main__":

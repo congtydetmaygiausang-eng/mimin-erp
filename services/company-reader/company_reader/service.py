@@ -54,6 +54,13 @@ class CompanyReaderPipeline:
             phones=values(CandidateField.PHONE),
             emails=values(CandidateField.EMAIL),
             websites=values(CandidateField.WEBSITE),
+            identity_safe=(
+                not bundle.multi_entity
+                and bundle.distinct_legal_names <= 1
+                and bundle.distinct_tax_codes <= 1
+            ),
+            distinct_legal_names=bundle.distinct_legal_names,
+            distinct_tax_codes=bundle.distinct_tax_codes,
         )
         return snapshot if any((snapshot.addresses, snapshot.phones, snapshot.emails, snapshot.websites)) else None
 
@@ -77,7 +84,13 @@ class CompanyReaderPipeline:
                     jina_exception = type(error).__name__.upper()
                     jina_outcome = None
 
-                if jina_outcome is not None and jina_outcome.decision.name == "JINA_ACCEPTED":
+                jina_document = jina_outcome.selected_document if jina_outcome is not None else None
+                jina_document_usable = (
+                    jina_document is not None
+                    and jina_document.status in {ExtractionStatus.OK}
+                    and bool((jina_document.main_text or "").strip())
+                )
+                if jina_outcome is not None and jina_outcome.decision.name == "JINA_ACCEPTED" and jina_document_usable:
                     selected = jina_outcome.selected_document
                     fallback_decision = "JINA_PRIMARY"
                     fetch_status = "JINA_OK"
@@ -91,7 +104,7 @@ class CompanyReaderPipeline:
                     jina_reason = (
                         f"EXCEPTION_{jina_exception}"
                         if jina_exception
-                        else jina_outcome.decision.name
+                        else (jina_outcome.decision.name if jina_outcome is not None else "NO_OUTCOME")
                     )
                     fallback_decision = f"JINA_FAILED_TRAFILATURA_USED({jina_reason})"
                     fetch_status = fetched.status.name
