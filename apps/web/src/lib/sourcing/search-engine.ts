@@ -1009,7 +1009,12 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}, radarLogs};
   console.log("JINA_TARGET_URLS:", urls); const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
-  urls.forEach(url => radarLogs.push({ timestamp: new Date().toISOString(), url, status: "PENDING" }));
+  const logMap = new Map<string, JinaRadarLog>();
+  urls.forEach(url => {
+      const log: JinaRadarLog = { timestamp: new Date().toISOString(), url, status: "PENDING" };
+      logMap.set(url, log);
+      radarLogs.push(log);
+  });
   const timeoutMs=Math.max(5_000,Math.min(115_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"95000")||95_000));
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
@@ -1025,14 +1030,18 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
       });
       const data=await response.json().catch(()=>({error:"INVALID_GATEWAY_RESPONSE"})) as CompanyReaderResponse;
       if(!response.ok) {
-         batch.forEach(url => radarLogs.push({ timestamp: new Date().toISOString(), url, status: "ERROR", message: typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}` }));
+         batch.forEach(url => {
+             const log = logMap.get(url);
+             if (log) { log.status = "ERROR"; log.message = typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}`; log.timestamp = new Date().toISOString(); }
+         });
          throw new Error(typeof data.error==="string"?data.error:`GATEWAY_HTTP_${response.status}`);
       }
-      if (Array.isArray(data.profiles)) {
-          data.profiles.forEach((p: any) => {
-             if (p.url) radarLogs.push({ timestamp: new Date().toISOString(), url: p.url, status: "SUCCESS", bytesRead: JSON.stringify(p).length });
-          });
-      }
+      
+      batch.forEach(url => {
+          const log = logMap.get(url);
+          if (log) { log.status = "SUCCESS"; log.timestamp = new Date().toISOString(); }
+      });
+      
       return data;
     }));
     const settled=await operation;
@@ -1044,7 +1053,10 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
   }catch(error){
     const isTimeout = error instanceof Error && (error.name === "AbortError" || /timeout|aborted/i.test(error.message));
     const msg = isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE");
-    urls.forEach(url => radarLogs.push({ timestamp: new Date().toISOString(), url, status: "ERROR", message: msg }));
+    urls.forEach(url => {
+       const log = logMap.get(url);
+       if (log && log.status === "PENDING") { log.status = "ERROR"; log.message = msg; log.timestamp = new Date().toISOString(); }
+    });
     return{items:[],health:{name:"Jina Reader",status:isTimeout?"EMPTY":"ERROR",count:0,code:msg}, radarLogs};
   }finally{clearTimeout(timeoutId)}
 }
