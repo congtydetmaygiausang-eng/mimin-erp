@@ -975,16 +975,16 @@ function companyReaderSourceScore(source:SourceResult):number{
 }
 
 function companyReaderProfileSource(profile:CompanyReaderProfile,index:number):SourceResult|null{
-  if(!Array.isArray(profile.fields)||profile.status!=="READY_FOR_REVIEW")return null;
+  if(!Array.isArray(profile.fields)) return null;
   const accepted=profile.fields.filter((field)=>
     COMPANY_READER_FIELDS.has(String(field.field??""))&&
     COMPANY_READER_ACCEPTED_FIELD_STATUS.has(String(field.status??""))&&
     typeof field.selected_value==="string"&&field.selected_value.trim()&&
-    typeof field.confidence==="number"&&field.confidence>=0.55,
+    typeof field.confidence==="number"&&field.confidence>=0.30,
   );
   const legalName=accepted.find((field)=>field.field==="LEGAL_NAME")?.selected_value;
   const taxCode=accepted.find((field)=>field.field==="TAX_CODE")?.selected_value;
-  if(typeof legalName!=="string"&&!taxCode)return null;
+  // Removed legalName/taxCode requirement to allow partial profiles with phone numbers
   const evidence=accepted.flatMap((field)=>field.evidence??[]);
   const url=evidence.map((item)=>typeof item.source_url==="string"?canonicalSourceUrl(item.source_url):"").find(Boolean);
   if(!url||blockedSource(url))return null;
@@ -1007,7 +1007,7 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
   const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}};
   const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
-  const timeoutMs=Math.max(5_000,Math.min(60_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"55000")||55_000));
+  const timeoutMs=Math.max(5_000,Math.min(115_000,Number(process.env.COMPANY_READER_ENRICHMENT_TIMEOUT_MS??"95000")||95_000));
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
   try{
