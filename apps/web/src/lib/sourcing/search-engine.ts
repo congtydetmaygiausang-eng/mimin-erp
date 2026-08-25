@@ -2443,6 +2443,7 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       rejectedInvalidIdentity: enrichment.candidates.length-cleanedCandidates.length,
       geocoding: geocoding.summary,
       locationQuality,
+      operations: api0Operations,
       providers: [
         ...source.providerHealth,
         ...expansionHealth,

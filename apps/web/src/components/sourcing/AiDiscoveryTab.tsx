@@ -134,13 +134,19 @@ function SearchProgressModal({ loading }: { loading: boolean }) {
 
 // --- Jina Radar Component ---
 function JinaRadar({ diagnostics }: { diagnostics: any }) {
-  if (!diagnostics || !diagnostics.api0Baseline || !Array.isArray(diagnostics.api0Baseline.operations)) return null;
+  if (!diagnostics) return null;
   
+  const diagList = Array.isArray(diagnostics) ? diagnostics : [diagnostics];
   const radarLogs: any[] = [];
-  for (const op of diagnostics.api0Baseline.operations) {
-     if (op.name === "Jina Reader" && Array.isArray(op.radarLogs)) {
-        radarLogs.push(...op.radarLogs);
-     }
+  
+  for (const diag of diagList) {
+    if (diag && Array.isArray(diag.operations)) {
+      for (const op of diag.operations) {
+         if (op.name === "Jina Reader" && Array.isArray(op.radarLogs)) {
+            radarLogs.push(...op.radarLogs);
+         }
+      }
+    }
   }
 
   if (radarLogs.length === 0) return null;
@@ -404,9 +410,6 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         
         if (toolsData.results) {
           const fetchedCandidates = toolsData.results.candidates || [];
-          if (searchCall && fetchedCandidates.length === 0) {
-            toast.warning("API trả về 0 kết quả hợp lệ. AI có thể sẽ tự sinh ra kết quả ảo.");
-          }
           setDirectResults(fetchedCandidates);
           setDirectProvider((toolsData.results.provider || []).join("+"));
           setResultCriteria({ query: trimmed, location, role, radiusKm, searchedAt: new Date().toISOString() });
