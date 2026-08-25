@@ -100,7 +100,7 @@ const DEFAULT_SEED: NhaCungCapModel[] = NCCS.map((n, i) => ({
   email: `ncc${i + 1}@${n.ten.toLowerCase().split(" ")[0] || "vendor"}.vn`,
   dia_chi: i % 2 === 0 ? "Quận 12, TP.HCM" : "Hóc Môn, TP.HCM",
   mst: `0312${String(456789 + i * 13).slice(0, 6)}`,
-  cong_no: n.congNo || 0,
+  cong_no: 0,
   don_gia: n.donGia || "",
   ghi_chu: `Hợp tác từ 2020. Rating:${4 + (i % 2) * 0.5}`,
   trang_thai: "Đang hợp tác",

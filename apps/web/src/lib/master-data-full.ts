@@ -25,7 +25,7 @@ export interface NCC {
   trangThai: "Đang hợp tác" | "Tạm dừng" | "Ngừng hợp tác";
 }
 
-export const NCC_FULL: NCC[] = [
+const NCC_FULL_LEGACY: NCC[] = [
   { id: "NCC-01", maNCC: "NCC-01", tenNCC: "Công ty Lucky Avanti",                      loai: "sợi",      diaChi: "KCN Tân Bình, TP.HCM",         sdt: "028-3812-3456", email: "luckyavanti@gmail.com",  mst: "0312445678", nguoiLH: "Anh Tuấn",     congNo: 0,           ghiChu: "Sợi cotton 30s/32s/40s, giao 3-5 ngày",      ngayTao: "2023-03-15", hanMuc: 300_000_000, trangThai: "Đang hợp tác" },
   { id: "NCC-02", maNCC: "NCC-02", tenNCC: "CT TNHH TM Quốc tế Sammoon",                 loai: "sợi",      diaChi: "Q.Bình Thạnh, TP.HCM",         sdt: "028-3899-1122", email: "sammoon@hcm.vn",         mst: "0305678901", nguoiLH: "Chị Hạnh",     congNo: 909_052_000, ghiChu: "Sợi 30s, đơn giá 42.000đ/kg",                  ngayTao: "2023-05-20", hanMuc: 1_000_000_000, trangThai: "Đang hợp tác" },
   { id: "NCC-03", maNCC: "NCC-03", tenNCC: "CT TNHH SX TM Dệt May Hải Dương",            loai: "dệt",      diaChi: "Hải Dương",                     sdt: "0220-3555-888", email: "haiduong@dvm.vn",         mst: "0801234567", nguoiLH: "Anh Hải",      congNo: 183_944_000, donGia: "10.000 đ/kg", ghiChu: "Dệt thoi 30s/32s, giao 7 ngày",              ngayTao: "2023-04-10", hanMuc: 300_000_000, trangThai: "Đang hợp tác" },
@@ -43,6 +43,9 @@ export const NCC_FULL: NCC[] = [
   { id: "NCC-15", maNCC: "NCC-15", tenNCC: "CT TNHH Bao Bì Phúc Vinh",                    loai: "túi",       diaChi: "Q.12, TP.HCM",                   sdt: "028-3715-9988", email: "phucvinh@bb.vn",           mst: "0305544332", nguoiLH: "Anh Vinh",     congNo: 3_450_000,   hanMuc: 300_000_000, ghiChu: "Bao bì PE, thùng carton",                      ngayTao: "2024-06-15", trangThai: "Đang hợp tác" },
   { id: "NCC-16", maNCC: "NCC-16", tenNCC: "Cty TNHH SX Cúc nút Kim Long",                loai: "phụ liệu", diaChi: "Q.Bình Thạnh, TP.HCM",         sdt: "028-3899-7766", email: "kimlong@cuc.vn",          mst: "0310099887", nguoiLH: "Anh Long",     congNo: 0,           donGia: "750đ/cái", ghiChu: "Cúc 15mm, cúc 12mm, nút bấm đủ loại",     ngayTao: "2024-07-01", hanMuc: 300_000_000, trangThai: "Đang hợp tác" },
 ];
+
+// Bắt đầu kỳ công nợ NCC mới từ 2026-08-25; giữ danh mục, xóa số dư cũ.
+export const NCC_FULL: NCC[] = NCC_FULL_LEGACY.map((ncc) => ({ ...ncc, congNo: 0 }));
 
 // ============ 12 KHÁCH HÀNG SỈ (thật + tham khảo thị trường VN) ============
 export interface KhachHangSi {
