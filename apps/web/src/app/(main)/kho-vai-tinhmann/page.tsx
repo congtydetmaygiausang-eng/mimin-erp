@@ -17,7 +17,7 @@ import {
   addNewVai, getVaiImages,
   type BaoCaoVai
 } from "@/lib/inventory-engine";
-import { KHO_VAI, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
+import { KHO_VAI, formatVND, type KhoVai } from "@/lib/data/real-data";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import { Portal } from "@/components/ui/Portal";
@@ -666,7 +666,7 @@ export default function KhoVaiPage() {
             <div className="card p-3 text-center">
               <div className="text-xs text-slate-500 mb-1">Tổng giá trị nhập</div>
               <div className="text-lg font-black text-violet-600">
-                {formatVNDShort(giaoDich.filter(g => g.loai === "NHAP").reduce((s: number, g: any) => s + (g.thanhTien || 0), 0))}
+                {formatVND(giaoDich.filter(g => g.loai === "NHAP").reduce((s: number, g: any) => s + (g.thanhTien || 0), 0))}
               </div>
             </div>
           </div>
@@ -725,7 +725,7 @@ export default function KhoVaiPage() {
                           <td className={`py-2.5 px-4 text-right font-bold ${
                             g.loai === "NHAP" ? "text-emerald-600" : "text-rose-600"
                           }`}>
-                            {formatVNDShort(g.thanhTien || 0)}
+                            {formatVND(g.thanhTien || 0)}
                           </td>
                           <td className="py-2.5 px-4 text-xs text-slate-500 max-w-[140px] truncate" title={g.nguonNhap || g.ghiChu}>
                             {g.nguonNhap || g.ghiChu || "—"}
