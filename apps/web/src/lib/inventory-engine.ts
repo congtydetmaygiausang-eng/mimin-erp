@@ -152,7 +152,7 @@ export function saveInventory(inv: Record<string, KhoVai>) {
       const payload = {
         sku: v.maVT,
         ten: v.tenVT,
-        sl: v.tonKho,
+        ton_kho: v.tonKho, // FIX: Changed from 'sl' to 'ton_kho' to match database schema and select query
         don_vi: v.dvt || "kg",
         don_gia: v.donGia || 0,
         loai: "vai",
