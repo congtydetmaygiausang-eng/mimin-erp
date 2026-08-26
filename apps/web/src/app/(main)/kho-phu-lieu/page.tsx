@@ -20,7 +20,7 @@ export default function KhoPhuLieuPage() {
   const [showXuat, setShowXuat] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
 
-  const [inventory, setInventory] = useState(KHO_VAT_TU);
+  const [inventory, setInventory] = useState<KhoVai[]>(KHO_VAT_TU);
   const [editingVT, setEditingVT] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
 
@@ -31,16 +31,42 @@ export default function KhoPhuLieuPage() {
   const PL_IMAGES_KEY = "mimin_kho_phuLieu_images";
   const PL_INVENTORY_KEY = "mimin_kho_phuLieu_custom";
 
-  // Load ảnh + inventory đã sửa từ localStorage khi mount
+  // Đồng bộ kho_phu_lieu từ Supabase
   useEffect(() => {
+    if (isSupabaseEnabled && supabase) {
+      supabase.from("kho_phu_lieu").select("*").then(({ data, error }) => {
+        if (data && data.length > 0) {
+          const mapped: KhoVai[] = data.map((d: any) => ({
+            maVT: d.sku || "",
+            tenVT: d.ten_vt || "",
+            loai: d.loai || "Phụ liệu",
+            dvt: d.dvt || "cái",
+            donGia: d.don_gia || 0,
+            tonKho: d.ton_kho || 0,
+            tonToiThieu: d.ton_toi_thieu || 0,
+            kho: "Kho phụ liệu",
+            mauSac: d.mau_sac || "",
+            ghiChu: d.ghi_chu || "",
+            soCayNhap: d.so_cay_nhap || 0,
+            tonCay: d.ton_cay || 0,
+          }));
+          setInventory(mapped);
+        } else {
+          // Fallback localStorage if Supabase is empty or fails
+          try {
+            const invRaw = localStorage.getItem(PL_INVENTORY_KEY);
+            if (invRaw) {
+              const saved = JSON.parse(invRaw) as Record<string, Partial<KhoVai>>;
+              setInventory(prev => prev.map(v => saved[v.maVT] ? { ...v, ...saved[v.maVT] } : v));
+            }
+          } catch {}
+        }
+      });
+    }
+
     try {
       const imgRaw = localStorage.getItem(PL_IMAGES_KEY);
       if (imgRaw) setInventoryImages(JSON.parse(imgRaw));
-      const invRaw = localStorage.getItem(PL_INVENTORY_KEY);
-      if (invRaw) {
-        const saved = JSON.parse(invRaw) as Record<string, Partial<KhoVai>>;
-        setInventory(prev => prev.map(v => saved[v.maVT] ? { ...v, ...saved[v.maVT] } : v));
-      }
     } catch {}
   }, []);
 
@@ -99,27 +125,31 @@ export default function KhoPhuLieuPage() {
     try {
       const raw = localStorage.getItem(PL_INVENTORY_KEY);
       const saved = raw ? JSON.parse(raw) : {};
-      saved[v.maVT] = { tenVT: updated.tenVT, donGia: updated.donGia };
+      saved[v.maVT] = updated;
       localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(saved));
     } catch {}
 
-    // 3. Sync lên Supabase (fire-and-forget, có guard)
+    // 3. Cập nhật lên Supabase
     if (isSupabaseEnabled && supabase) {
-      supabase.from("kho").upsert(
-        { sku: v.maVT, ten: updated.tenVT, sl: v.tonKho, don_vi: v.dvt, don_gia: updated.donGia, loai: "phu-lieu" },
-        { onConflict: "sku" }
-      ).then(({ error }) => {
+      supabase.from("kho_phu_lieu").upsert({
+        sku: v.maVT,
+        ten_vt: updated.tenVT,
+        loai: updated.loai || "Phụ liệu",
+        dvt: updated.dvt || "cái",
+        don_gia: updated.donGia,
+        ton_kho: v.tonKho,
+        ton_toi_thieu: v.tonToiThieu,
+      }, { onConflict: "sku" }).then(({ error }) => {
         if (error) {
           toast.error("Lỗi đồng bộ Supabase: " + error.message);
         } else {
           toast.success("✅ Đã lưu thông tin phụ liệu lên Supabase!");
         }
       });
-    } else {
-      toast.success("Đã lưu thông tin phụ liệu (localStorage)!");
     }
 
     setEditingVT(null);
+    setEditForm({});
   };
 
   return (
