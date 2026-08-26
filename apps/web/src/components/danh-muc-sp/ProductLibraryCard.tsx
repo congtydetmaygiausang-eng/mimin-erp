@@ -16,6 +16,7 @@ interface ProductLibraryCardProps {
   onCreateOrder?: (sp: SanPham) => void;
   onProduceOrder?: (sp: SanPham) => void;
   onFavorite?: (sp: SanPham) => void;
+  isFavorite?: boolean;
   onClick?: (sp: SanPham) => void;
 }
 
@@ -44,6 +45,7 @@ export default function ProductLibraryCard({
   onCreateOrder,
   onProduceOrder,
   onFavorite,
+  isFavorite = false,
   onClick,
 }: ProductLibraryCardProps) {
   const [mauMoRong, setMauMoRong] = useState<string | null>(null);
@@ -112,18 +114,6 @@ export default function ProductLibraryCard({
           </span>
         </div>
 
-        {/* === FAVORITE HEART (hover only) === */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onFavorite?.(sp);
-          }}
-          className="absolute top-9 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-white transition-all opacity-0 group-hover:opacity-100"
-          aria-label="Yeu thich"
-        >
-          <Heart className="w-4 h-4" />
-        </button>
-
         {/* Removed VARIANTS THUMBNAILS GOC DUOI TRAI */}
 
         {/* === SIZE COUNT GOC DUOI PHAI === */}
@@ -137,13 +127,22 @@ export default function ProductLibraryCard({
       {/* === INFO === */}
       <div className="p-3 md:p-4 flex flex-col flex-1">
         {/* Row 1: Ma SP + Loai SP chip */}
-        <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="relative flex items-center justify-between gap-2 mb-1.5 pr-11">
           <span className="text-[10px] font-mono font-bold text-cyan-600 uppercase tracking-wider">
             {sp.id}
           </span>
           <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${loaiInfo.color}`}>
             {loaiInfo.icon} {loaiInfo.label}
           </span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onFavorite?.(sp); }}
+            className={`absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border-2 bg-white shadow-md transition-all ${isFavorite ? "border-rose-400 text-rose-500" : "border-rose-200 text-rose-400 hover:border-rose-400 hover:text-rose-500"}`}
+            aria-label={isFavorite ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
+            title={isFavorite ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
+          >
+            <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
+          </button>
         </div>
 
         {/* Ten SP - 2 dong max */}

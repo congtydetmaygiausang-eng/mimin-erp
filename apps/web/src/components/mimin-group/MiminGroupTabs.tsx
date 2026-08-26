@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Newspaper, ShoppingBag, Compass, MessageCircle, CircleUserRound, Heart } from "lucide-react";
+import { Newspaper, ShoppingBag, Heart, Compass, MessageCircle, CircleUserRound } from "lucide-react";
 
 const TABS = [
   { href: "/bang-tin", label: "Bảng tin", icon: Newspaper, bg: "bg-sky-500" },
   { href: "/kho-mau", label: "Kho mẫu", icon: ShoppingBag, bg: "bg-amber-500" },
-  { href: "/mau-da-thich", label: "Đã thích", icon: Heart, bg: "bg-pink-500" },
+  { href: "/mau-da-thich", label: "Mẫu đã thích", icon: Heart, bg: "bg-rose-500" },
   { href: "/kham-pha", label: "Khám phá", icon: Compass, bg: "bg-emerald-500" },
   { href: "/tin-nhan", label: "Tin nhắn", icon: MessageCircle, bg: "bg-[#0B4D5D]" },
   { href: "/ca-nhan", label: "Cá nhân", icon: CircleUserRound, bg: "bg-[#0B4D5D]" },
@@ -66,5 +66,3 @@ export function MiminGroupTabs() {
     </>
   );
 }
-
-// Force redeploy

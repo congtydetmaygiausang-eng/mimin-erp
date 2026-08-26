@@ -1,235 +1,89 @@
 "use client";
 
-import { useState } from "react";
-import { Heart, Search, X, Send, CheckCircle2, Package } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Heart, RefreshCw, Search, Shirt } from "lucide-react";
 import { toast } from "sonner";
-import { MiminGroupTabs } from "@/components/mimin-group/MiminGroupTabs";
-import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
-import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { useSession } from "@/components/session-provider";
+import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { supabase } from "@/lib/supabase/client";
-import { useLikedSamplesStore } from "@/lib/data/liked-samples-store";
+import ProductLibraryCard from "@/components/danh-muc-sp/ProductLibraryCard";
+import { MiminGroupTabs } from "@/components/mimin-group/MiminGroupTabs";
 
-function anhSanPham(sp: SanPham): string {
-  if (sp.hinhAnh) return sp.hinhAnh;
-  const anhMau = sp.dsMau?.find((m) => m.img);
-  return anhMau?.img || "";
-}
-
-function formatTien(v: number) {
-  return v.toLocaleString("vi-VN") + "đ";
+interface FavoriteRow {
+  id: string;
+  user_id: string;
+  ma_sp: string;
+  created_at?: string;
 }
 
 export default function MauDaThichPage() {
   const { user } = useSession();
-  const tenNguoiDung = user?.name || "Khuyết danh";
-  const { dsSanPham, loading } = useDanhMucSP();
-  const { likedIds, toggleLike } = useLikedSamplesStore();
-
+  const { dsSanPham, loading: productsLoading } = useDanhMucSP();
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [dangXem, setDangXem] = useState<SanPham | null>(null);
-  const [tenKhach, setTenKhach] = useState("");
-  const [sdtKhach, setSdtKhach] = useState("");
-  const [soLuong, setSoLuong] = useState("");
-  const [ghiChu, setGhiChu] = useState("");
-  const [dangGui, setDangGui] = useState(false);
 
-  // Lọc theo id đã thích và search text
-  const filtered = dsSanPham.filter(
-    (sp) =>
-      likedIds.includes(sp.id) &&
-      (sp.tenSP.toLowerCase().includes(search.toLowerCase()) || sp.id.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const moChiTiet = (sp: SanPham) => {
-    setDangXem(sp);
-    setTenKhach("");
-    setSdtKhach("");
-    setSoLuong("");
-    setGhiChu("");
-  };
-
-  const guiYeuCau = async () => {
-    if (!dangXem) return;
-    if (!supabase) {
-      toast.error("Chưa kết nối được cơ sở dữ liệu.");
-      return;
-    }
-    setDangGui(true);
-    const yc = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      ma_sp: dangXem.id,
-      ten_sp: dangXem.tenSP,
-      hinh_anh: anhSanPham(dangXem) || null,
-      ten_khach: tenKhach.trim() || null,
-      sdt_khach: sdtKhach.trim() || null,
-      so_luong_yeu_cau: soLuong ? parseInt(soLuong, 10) : null,
-      ghi_chu: ghiChu.trim() || null,
-      nguoi_gui_name: tenNguoiDung,
-      trang_thai: "Mới",
-      created_at: new Date().toISOString(),
-    };
-    const { error } = await supabase.from("kho_mau_yeu_cau").insert(yc);
-    setDangGui(false);
+  const loadFavorites = useCallback(async () => {
+    if (!user?.id || !supabase) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("mau_da_thich")
+      .select("id, user_id, ma_sp, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
     if (error) {
-      toast.error("Gửi yêu cầu thất bại: " + error.message);
+      toast.error(`Không tải được mẫu đã thích: ${error.message}`);
+    } else {
+      setFavoriteIds(((data || []) as FavoriteRow[]).map((row) => row.ma_sp));
+    }
+    setLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => { void loadFavorites(); }, [loadFavorites]);
+
+  const favoriteProducts = useMemo(() => {
+    const favorites = new Set(favoriteIds);
+    const query = search.trim().toLowerCase();
+    return dsSanPham.filter((product) => {
+      const matchesFavorite = favorites.has(product.id);
+      const matchesSearch = !query || product.id.toLowerCase().includes(query) || product.tenSP.toLowerCase().includes(query);
+      return matchesFavorite && matchesSearch;
+    });
+  }, [dsSanPham, favoriteIds, search]);
+
+  const removeFavorite = async (product: SanPham) => {
+    if (!user?.id || !supabase) return;
+    const previous = favoriteIds;
+    setFavoriteIds((ids) => ids.filter((id) => id !== product.id));
+    const { error } = await supabase.from("mau_da_thich").delete().eq("user_id", user.id).eq("ma_sp", product.id);
+    if (error) {
+      setFavoriteIds(previous);
+      toast.error(`Không bỏ thích được: ${error.message}`);
       return;
     }
-    toast.success("Đã gửi yêu cầu sản xuất!");
-    setDangXem(null);
+    toast.success(`Đã bỏ thích ${product.tenSP}`);
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4 pb-24 md:pb-20">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Heart className="w-6 h-6 text-pink-500 fill-current" /> Mẫu đã thích
-        </h1>
-        <p className="text-sm opacity-70 mt-1">Danh sách các mẫu sản phẩm anh/chị đã đánh dấu yêu thích.</p>
-      </div>
-
+    <div className="space-y-5 animate-fade-in">
       <MiminGroupTabs />
-
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Tìm trong danh sách đã thích..."
-          className="w-full bg-white/40 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition"
-        />
-      </div>
-
-      {loading ? (
-        <div className="py-12 text-center opacity-50 text-sm">Đang tải...</div>
-      ) : likedIds.length === 0 ? (
-        <div className="py-12 text-center opacity-50 text-sm">Chưa có mẫu nào được thích. Hãy vào "Kho mẫu" để thêm!</div>
-      ) : filtered.length === 0 ? (
-        <div className="py-12 text-center opacity-50 text-sm">Không tìm thấy mẫu phù hợp.</div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filtered.map((sp) => {
-            const anh = anhSanPham(sp);
-            return (
-              <div
-                key={sp.id}
-                onClick={() => moChiTiet(sp)}
-                className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-brand-500/50 hover:shadow-lg transition group relative"
-              >
-                <div className="absolute top-2 right-2 z-10">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLike(sp.id);
-                    }}
-                    className="p-1.5 rounded-full backdrop-blur shadow-sm transition-all bg-pink-500/90 text-white hover:bg-pink-600"
-                  >
-                    <Heart className="w-4 h-4 fill-current" />
-                  </button>
-                </div>
-                <div className="aspect-square bg-slate-100 dark:bg-slate-800">
-                  {anh ? (
-                    <img src={anh} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-10 h-10 opacity-30" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-2.5 space-y-0.5">
-                  <div className="text-sm font-semibold truncate">{sp.tenSP}</div>
-                  <div className="text-xs opacity-60">{LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP}</div>
-                  <div className="text-sm font-bold text-brand-600">{formatTien(sp.giaBanDuKien)}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Modal chi tiết + gửi yêu cầu */}
-      {dangXem && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setDangXem(null)}>
-          <div className="absolute inset-0 bg-black/60" />
-          <div
-            className="relative bg-white dark:bg-slate-900 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="aspect-video bg-slate-100 dark:bg-slate-800 relative">
-              {anhSanPham(dangXem) ? (
-                <img src={anhSanPham(dangXem)} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Package className="w-16 h-16 opacity-30" />
-                </div>
-              )}
-              <button
-                onClick={() => setDangXem(null)}
-                className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
-              <div>
-                <h2 className="text-lg font-bold">{dangXem.tenSP}</h2>
-                <div className="text-sm opacity-60">{LOAI_SP_LABELS[dangXem.loaiSP] || dangXem.loaiSP} · Mã {dangXem.id}</div>
-              </div>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="font-bold text-brand-600">{formatTien(dangXem.giaBanDuKien)}</span>
-                {dangXem.chatLieu && <span className="opacity-70">{dangXem.chatLieu}</span>}
-              </div>
-              {dangXem.dsMau?.length > 0 && (
-                <div className="text-sm">
-                  <span className="opacity-60">Màu: </span>
-                  {dangXem.dsMau.map((m) => m.ten).join(", ")}
-                </div>
-              )}
-              <div className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-600">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Đã có quy trình sản xuất chuẩn
-              </div>
-
-              <div className="border-t border-black/10 dark:border-white/10 pt-3 space-y-2">
-                <div className="font-semibold text-sm">Gửi yêu cầu sản xuất</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    value={tenKhach}
-                    onChange={(e) => setTenKhach(e.target.value)}
-                    placeholder="Tên khách hàng"
-                    className="bg-white/40 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition"
-                  />
-                  <input
-                    value={sdtKhach}
-                    onChange={(e) => setSdtKhach(e.target.value)}
-                    placeholder="Số điện thoại"
-                    className="bg-white/40 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition"
-                  />
-                </div>
-                <input
-                  value={soLuong}
-                  onChange={(e) => setSoLuong(e.target.value.replace(/[^\d]/g, ""))}
-                  placeholder="Số lượng dự kiến"
-                  className="w-full bg-white/40 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition"
-                />
-                <textarea
-                  value={ghiChu}
-                  onChange={(e) => setGhiChu(e.target.value)}
-                  placeholder="Ghi chú thêm (màu, size, yêu cầu riêng...)"
-                  rows={2}
-                  className="w-full bg-white/40 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-brand-500 transition"
-                />
-                <button
-                  onClick={guiYeuCau}
-                  disabled={dangGui}
-                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white text-sm font-medium transition"
-                >
-                  <Send className="w-4 h-4" /> Gửi yêu cầu sản xuất
-                </button>
-              </div>
-            </div>
+      <section className="rounded-3xl bg-gradient-to-r from-rose-500 to-pink-600 p-6 text-white shadow-xl">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-semibold"><Heart className="h-4 w-4 fill-current" /> Công Cụ Nội Bộ · Mẫu sản phẩm</p>
+            <h1 className="mt-2 text-3xl font-black md:text-4xl">Mẫu đã thích</h1>
+            <p className="mt-2 text-sm">Các mẫu anh đã lưu từ Danh mục sản phẩm.</p>
           </div>
+          <button onClick={() => void loadFavorites()} className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30" title="Tải lại"><RefreshCw className="h-5 w-5" /> Tải lại</button>
         </div>
-      )}
+      </section>
+
+      <section className="card flex flex-wrap items-center justify-between gap-3 p-4">
+        <div className="flex items-center gap-2 font-bold text-slate-700"><Heart className="h-5 w-5 text-rose-500 fill-rose-500" /> {favoriteIds.length} mẫu đã thích</div>
+        <div className="relative w-full max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo mã hoặc tên mẫu..." className="input pl-9" /></div>
+      </section>
+
+      {loading || productsLoading ? <section className="card p-12 text-center text-slate-500">Đang tải mẫu đã thích...</section> : favoriteProducts.length === 0 ? <section className="card p-16 text-center text-slate-400"><Shirt className="mx-auto mb-3 h-12 w-12 opacity-25" /><p className="font-bold">Chưa có mẫu nào được thích</p><p className="mt-1 text-sm">Bấm biểu tượng trái tim trên sản phẩm để lưu mẫu tại đây.</p></section> : <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{favoriteProducts.map((product) => <div key={product.id} className="relative"><ProductLibraryCard sp={product} onFavorite={() => void removeFavorite(product)} /><button onClick={() => void removeFavorite(product)} className="absolute right-3 top-3 z-10 rounded-full bg-white/95 p-2 text-rose-500 shadow-md hover:bg-rose-50" title="Bỏ thích" aria-label={`Bỏ thích ${product.tenSP}`}><Heart className="h-5 w-5 fill-current" /></button></div>)}</section>}
     </div>
   );
 }

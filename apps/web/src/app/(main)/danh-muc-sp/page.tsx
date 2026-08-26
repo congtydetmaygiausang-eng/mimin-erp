@@ -57,10 +57,18 @@ export default function DanhMucSanPhamPage() {
   const [mounted, setMounted] = useState(false);
   const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
   const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    supabase.from("mau_da_thich").select("ma_sp").eq("user_id", user.id).then(({ data }) => {
+      setFavoriteIds((data || []).map((row: { ma_sp: string }) => row.ma_sp));
+    });
+  }, [user?.id]);
 
   // Provider dữ liệu chỉ mount 1 lần ở gốc app (không remount khi chuyển
   // trang bằng router) - nếu không tự gọi refresh() ở đây, vào lại trang
@@ -319,7 +327,13 @@ export default function DanhMucSanPhamPage() {
       return;
     }
     if (existing) {
-      toast.info(`Mẫu "${sp.tenSP}" đã có trong Mẫu đã thích`);
+      const { error } = await supabase.from("mau_da_thich").delete().eq("user_id", user.id).eq("ma_sp", sp.id);
+      if (error) {
+        toast.error(`Không bỏ thích được: ${error.message}`);
+        return;
+      }
+      setFavoriteIds((ids) => ids.filter((id) => id !== sp.id));
+      toast.success(`Đã bỏ thích "${sp.tenSP}"`);
       return;
     }
     const { error } = await supabase.from("mau_da_thich").insert({ id: crypto.randomUUID(), user_id: user.id, ma_sp: sp.id });
@@ -327,6 +341,7 @@ export default function DanhMucSanPhamPage() {
       toast.error(`Không lưu được mẫu yêu thích: ${error.message}`);
       return;
     }
+    setFavoriteIds((ids) => ids.includes(sp.id) ? ids : [...ids, sp.id]);
     toast.success(`Đã thêm "${sp.tenSP}" vào Mẫu đã thích`);
   };
 
@@ -500,6 +515,7 @@ export default function DanhMucSanPhamPage() {
                 onCreateOrder={handleCreateOrder}
                 onProduceOrder={handleProduceOrder}
                 onFavorite={handleFavorite}
+                isFavorite={favoriteIds.includes(sp.id)}
                 onClick={(product) => setSelectedProduct(product)}
               />
             ))}

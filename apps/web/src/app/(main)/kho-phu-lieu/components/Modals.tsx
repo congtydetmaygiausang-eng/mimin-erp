@@ -1,58 +1,66 @@
 // ============ 3 MODAL: NHAP/XUAT/LICH SU ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.8)
 
-import { useState } from "react";
-import { Plus, Minus, X, Box, History } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Minus, X, Box, History, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useKho } from "@/lib/data/kho-store";
-import { KHO_VAT_TU, KHO_VAI, type KhoVai } from "@/lib/data/real-data";
+import { KHO_VAT_TU, KHO_VAI, formatVND, type KhoVai } from "@/lib/data/real-data";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { Portal } from "@/components/ui/Portal";
 import type { LoaiKho } from "../data";
+import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
+import { uploadProductFile } from "@/lib/product-upload";
 
 // ============ MODAL NHAP KHO ============
-export function PLNhapKho({ maVT, inventory, loai, onClose }: { maVT: string; inventory?: KhoVai[]; loai: LoaiKho; onClose: () => void }) {
+export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved, simple = false }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai; onImageSaved?: (maVT: string, imageUrl: string) => void; simple?: boolean }) {
   const { themGiaoDich } = useKho();
-  const dsVT = inventory && inventory.length > 0 ? inventory : (loai === "vai" ? KHO_VAI : KHO_VAT_TU);
-  const vt = dsVT.find((v) => v.maVT === maVT) || dsVT[0];
-  const { list: _nccList, suaNCC } = useNhaCungCap();
-  const nccList = _nccList
-    .filter(n => {
-      const txt = (n.loai + " " + (n.danh_muc_chi_tiet?.join(" ") || "")).toLowerCase();
-      // Nếu là Kho Phụ Liệu thì ưu tiên các NCC có chữ "phụ liệu", "phu lieu", "khóa", "nút", "chỉ", "bo cổ", v.v.
-      // Hoặc đơn giản là loại trừ các NCC chuyên Vải/Sợi ra. Ở đây ta lọc tương đối:
-      if (txt.includes("phụ liệu") || txt.includes("phu lieu") || txt.includes("bo cổ") || txt.includes("chỉ") || txt.includes("nút") || txt.includes("khóa")) return true;
-      // Nếu NCC không có tag rõ ràng, tạm thời cho hiển thị nếu KHÔNG phải chuyên vải/sợi
-      return !txt.includes("sợi") && !txt.includes("vải") && !txt.includes("dệt") && !txt.includes("nhuộm");
-    })
-    .map((n) => ({ maDT: n.ma_ncc, tenDonVi: n.ten_ncc }));
+  const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
+  const vt = vatTu || dsVT.find((v) => v.maVT === maVT)!;
+  const { list: nccList } = useNhaCungCap();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageUrl, setImageUrl] = useState("");
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,
     donGia: vt.donGia,
-    nguonNhap: nccList[0]?.tenDonVi || "",
+    nccMa: nccList[0]?.ma_ncc || "",
     nguoiThucHien: "Trần Thị Bình",
     ghiChu: "",
   });
 
   const thanhTien = form.soLuong * form.donGia;
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vt) return toast.error("Không tìm thấy vật tư");
     if (form.soLuong <= 0) return toast.error("SL phải > 0");
-    
-    // Ghi nhận giao dịch
-    themGiaoDich({ ...form, loai: "NHAP" as const, maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
-    
-    // Ghi nhận công nợ cho nhà cung cấp
-    if (form.nguonNhap) {
-      const ncc = _nccList.find(n => n.ten_ncc === form.nguonNhap);
-      if (ncc) {
-        suaNCC({ ...ncc, cong_no: ncc.cong_no + thanhTien });
-      }
+    const ncc = nccList.find((item) => item.ma_ncc === form.nccMa);
+    if (!ncc) return toast.error("Vui lòng chọn nhà cung cấp");
+    let tonKhoCu = Number(vt.tonKho) || 0;
+    if (isSupabaseEnabled && supabase) {
+      const { data: currentRow, error: readError } = await supabase
+        .from("kho").select("ton_kho").eq("sku", vt.maVT).single();
+      if (readError) return toast.error(`Không đọc được tồn kho hiện tại: ${readError.message}`);
+      tonKhoCu = Number(currentRow?.ton_kho) || 0;
+      const tonKhoMoi = tonKhoCu + form.soLuong;
+      const { error: stockError } = await supabase
+        .from("kho")
+        .update({ ton_kho: tonKhoMoi, don_gia: form.donGia, updated_at: new Date().toISOString() })
+        .eq("sku", vt.maVT);
+      if (stockError) return toast.error(`Không cộng được tồn kho phụ liệu: ${stockError.message}`);
     }
-    
-    toast.success(`Đã nhập ${form.soLuong.toLocaleString()} ${vt.dvt} ${vt.tenVT} và cập nhật công nợ`);
+    const ghiChuGiaoDich = [form.ghiChu, `NCC: ${ncc.ma_ncc}`].filter(Boolean).join(" · ");
+    const giaoDich = await themGiaoDich({ ngay: form.ngay, soLuong: form.soLuong, donGia: form.donGia, nguonNhap: ncc.ten_ncc, nguoiThucHien: form.nguoiThucHien, ghiChu: ghiChuGiaoDich, loai: "NHAP", loaiKho: "phu-lieu", maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
+    if (!giaoDich) {
+      if (isSupabaseEnabled && supabase) await supabase.from("kho").update({ ton_kho: tonKhoCu }).eq("sku", vt.maVT);
+      return;
+    }
+    if (imageUrl && isSupabaseEnabled && supabase) {
+      const metadata = JSON.stringify({ note: form.ghiChu || "", imageUrl });
+      const { error } = await supabase.from("kho").update({ ghi_chu: metadata, updated_at: new Date().toISOString() }).eq("sku", vt.maVT);
+      if (error) return toast.error(`Đã nhập kho và cộng công nợ nhưng chưa lưu được ảnh: ${error.message}`);
+      onImageSaved?.(vt.maVT, imageUrl);
+    }
+    toast.success(`Đã nhập ${form.soLuong.toLocaleString()} ${vt.dvt} và cộng ${thanhTien.toLocaleString()}đ công nợ ${ncc.ten_ncc}`);
     onClose();
   };
 
@@ -61,14 +69,37 @@ export function PLNhapKho({ maVT, inventory, loai, onClose }: { maVT: string; in
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
         <div className="card max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold flex items-center gap-2"><Plus className="w-5 h-5 text-sky-600" /> Nhập kho: {vt.tenVT}</h3>
+            <h3 className="text-lg font-bold flex items-center gap-2"><Plus className="w-5 h-5 text-sky-600" /> Nhập kho phụ liệu: {vt.tenVT}</h3>
             <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
           </div>
-          <div className="bg-sky-500/10 rounded p-2 mb-3 text-xs">
-            <span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b> · <span className="opacity-70">ĐVT:</span> {vt.dvt} · <span className="opacity-70">Loại:</span> {vt.loai}
+          <div className="bg-sky-500/10 rounded p-3 mb-3 text-xs flex flex-wrap gap-x-3 gap-y-1">
+            <span><span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b></span>
+            <span><span className="opacity-70">ĐVT:</span> <b>{vt.dvt}</b></span>
+            <span><span className="opacity-70">Loại:</span> <b>{vt.loai || "—"}</b></span>
+            <span><span className="opacity-70">Màu/Quy cách:</span> <b>{vt.mauSac || "—"}</b></span>
+            <span><span className="opacity-70">Tồn hiện tại:</span> <b className="text-sky-700">{Number(vt.tonKho || 0).toLocaleString()} {vt.dvt}</b></span>
           </div>
+          {simple && vt.hinhAnh && <img src={vt.hinhAnh} alt={vt.tenVT} className="mb-3 h-36 w-full rounded-xl border object-contain bg-slate-50" />}
           <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            {simple && <div>
+              <label className="text-sm font-medium block mb-1">Số lượng ({vt.dvt}) *</label>
+              <input type="number" required min={1} className="input w-full" value={form.soLuong || ""} onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })} />
+            </div>}
+            {!simple && <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              try {
+                const sharedUrl = await uploadProductFile(file, `kho-phu-lieu-${vt.maVT}`);
+                setImageUrl(sharedUrl);
+                toast.success("Đã tải ảnh phụ liệu lên Supabase Storage");
+              } catch (error) {
+                toast.error(`Không tải được ảnh: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
+              }
+            }} />}
+            {!simple && <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full min-h-28 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50/50 dark:bg-violet-950/20 flex items-center justify-center gap-3 overflow-hidden hover:border-violet-500">
+              {imageUrl ? <img src={imageUrl} alt={`Ảnh ${vt.tenVT}`} className="h-28 w-full object-contain" /> : <><ImageIcon className="h-7 w-7 text-violet-500" /><span className="font-semibold text-violet-700">Tải ảnh phụ liệu lên</span></>}
+            </button>}
+            {!simple && <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium block mb-1">Ngày nhập *</label>
                 <input type="date" required className="input w-full" value={form.ngay} onChange={(e) => setForm({ ...form, ngay: e.target.value })} />
@@ -77,8 +108,8 @@ export function PLNhapKho({ maVT, inventory, loai, onClose }: { maVT: string; in
                 <label className="text-xs font-medium block mb-1">Số lượng ({vt.dvt}) *</label>
                 <input type="number" required min={1} className="input w-full" value={form.soLuong || ""} onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            </div>}
+            {!simple && <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium block mb-1">Đơn giá (đ/{vt.dvt}) *</label>
                 <input type="number" required min={0} className="input w-full" value={form.donGia} onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })} />
@@ -87,22 +118,22 @@ export function PLNhapKho({ maVT, inventory, loai, onClose }: { maVT: string; in
                 <label className="text-xs font-medium block mb-1">Thành tiền</label>
                 <div className="input w-full bg-emerald-500/10 text-emerald-700 font-bold flex items-center">{thanhTien.toLocaleString()}đ</div>
               </div>
-            </div>
+            </div>}
             <div>
               <label className="text-xs font-medium block mb-1">Nguồn nhập (NCC) *</label>
-              <select required className="input w-full" value={form.nguonNhap} onChange={(e) => setForm({ ...form, nguonNhap: e.target.value })}>
+              <select required className="input w-full" value={form.nccMa} onChange={(e) => setForm({ ...form, nccMa: e.target.value })}>
                 <option value="">-- Chọn NCC --</option>
-                {nccList.map((n) => <option key={n.maDT} value={n.tenDonVi}>{n.tenDonVi}</option>)}
+                {nccList.map((n) => <option key={n.ma_ncc} value={n.ma_ncc}>{n.ma_ncc} — {n.ten_ncc} (nợ {(n.cong_no || 0).toLocaleString()}đ)</option>)}
               </select>
             </div>
-            <div>
+            {!simple && <div>
               <label className="text-xs font-medium block mb-1">Người TH</label>
               <input className="input w-full" value={form.nguoiThucHien} onChange={(e) => setForm({ ...form, nguoiThucHien: e.target.value })} />
-            </div>
-            <div>
+            </div>}
+            {!simple && <div>
               <label className="text-xs font-medium block mb-1">Ghi chú</label>
               <textarea className="input w-full min-h-[50px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} />
-            </div>
+            </div>}
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
               <button type="submit" className="btn-primary flex-1 bg-sky-500 hover:bg-sky-600">Xác nhận nhập</button>
@@ -115,14 +146,11 @@ export function PLNhapKho({ maVT, inventory, loai, onClose }: { maVT: string; in
 }
 
 // ============ MODAL XUAT KHO ============
-export function PLXuatKho({ maVT, inventory, loai, onClose }: { maVT: string; inventory?: KhoVai[]; loai: LoaiKho; onClose: () => void }) {
-  const { themGiaoDich, giaoDichTheoVT } = useKho();
-  const dsVT = inventory && inventory.length > 0 ? inventory : (loai === "vai" ? KHO_VAI : KHO_VAT_TU);
-  const vt = dsVT.find((v) => v.maVT === maVT) || dsVT[0];
-  const ds = giaoDichTheoVT(maVT);
-  const tongNhap = ds.filter((g) => g.loai === "NHAP").reduce((s, g) => s + g.soLuong, 0);
-  const tongXuat = ds.filter((g) => g.loai === "XUAT").reduce((s, g) => s + g.soLuong, 0);
-  const tonHienTai = vt.tonKho + tongNhap - tongXuat;
+export function PLXuatKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho; onClose: () => void }) {
+  const { themGiaoDich, tinhTonKho } = useKho();
+  const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
+  const vt = dsVT.find((v) => v.maVT === maVT)!;
+  const tonHienTai = tinhTonKho(maVT, loai);
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,
@@ -196,10 +224,10 @@ export function PLXuatKho({ maVT, inventory, loai, onClose }: { maVT: string; in
 }
 
 // ============ MODAL LICH SU ============
-export function PLLichSu({ maVT, inventory, loai, onClose }: { maVT: string; inventory?: KhoVai[]; loai: LoaiKho; onClose: () => void }) {
+export function PLLichSu({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho; onClose: () => void }) {
   const { giaoDichTheoVT } = useKho();
-  const dsVT = inventory && inventory.length > 0 ? inventory : (loai === "vai" ? KHO_VAI : KHO_VAT_TU);
-  const vt = dsVT.find((v) => v.maVT === maVT) || dsVT[0];
+  const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
+  const vt = dsVT.find((v) => v.maVT === maVT)!;
   const ds = giaoDichTheoVT(maVT);
   const tongNhap = ds.filter((g) => g.loai === "NHAP").reduce((s, g) => s + g.soLuong, 0);
   const tongXuat = ds.filter((g) => g.loai === "XUAT").reduce((s, g) => s + g.soLuong, 0);
@@ -226,8 +254,8 @@ export function PLLichSu({ maVT, inventory, loai, onClose }: { maVT: string; inv
             </div>
           </div>
           <div className="overflow-x-auto flex-1 h-0 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white dark:bg-slate-900 shadow-sm z-10">
+            <table className="w-full text-sm tabular-nums">
+              <thead className="sticky top-0 bg-white dark:bg-slate-900 shadow-sm z-10 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                 <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
                   <th className="p-2">Ngày</th>
                   <th className="p-2">Loại</th>
@@ -243,83 +271,18 @@ export function PLLichSu({ maVT, inventory, loai, onClose }: { maVT: string; inv
                   <tr><td colSpan={7} className="p-6 text-center opacity-60 text-sm">Chưa có giao dịch</td></tr>
                 ) : ds.map((g) => (
                   <tr key={g.id} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
-                    <td className="p-2 text-xs">{g.ngay}</td>
-                    <td className="p-2 text-xs">{g.loai === "NHAP" ? <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-700 text-[10px] font-semibold">+NHẬP</span> : <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 text-[10px] font-semibold">-XUẤT</span>}</td>
-                    <td className="p-2 text-right text-xs">{g.soLuong.toLocaleString()}</td>
-                    <td className="p-2 text-right text-xs font-mono">{g.donGia.toLocaleString()}</td>
-                    <td className="p-2 text-right text-xs font-mono">{(g.thanhTien || 0).toLocaleString()}</td>
-                    <td className="p-2 text-xs">{g.nguonNhap || "—"}</td>
-                    <td className="p-2 text-xs">{g.nguoiThucHien}</td>
+                    <td className="p-2 text-sm whitespace-nowrap">{g.ngay}</td>
+                    <td className="p-2 text-sm">{g.loai === "NHAP" ? <span className="px-2 py-1 rounded bg-sky-500/15 text-sky-700 text-xs font-semibold">+NHẬP</span> : <span className="px-2 py-1 rounded bg-amber-500/15 text-amber-700 text-xs font-semibold">-XUẤT</span>}</td>
+                    <td className="p-2 text-right text-sm font-semibold whitespace-nowrap">{g.soLuong.toLocaleString("vi-VN")}</td>
+                    <td className="p-2 text-right text-sm whitespace-nowrap">{g.donGia.toLocaleString("vi-VN")}</td>
+                    <td className="p-2 text-right text-sm font-semibold whitespace-nowrap">{formatVND(g.thanhTien || 0)}</td>
+                    <td className="p-2 text-sm">{g.nguonNhap || "—"}</td>
+                    <td className="p-2 text-sm">{g.nguoiThucHien}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-    </Portal>
-  );
-}
-
-// ============ MODAL THÊM MỚI ============
-export function PLThemMoi({ onClose, onAdd }: { onClose: () => void; onAdd: (vt: Partial<KhoVai>) => void }) {
-  const [form, setForm] = useState<Partial<KhoVai>>({
-    tenVT: "",
-    loai: "Phụ liệu",
-    dvt: "cái",
-    donGia: 0,
-    tonToiThieu: 0,
-    mauSac: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.tenVT) return toast.error("Vui lòng nhập tên phụ liệu");
-    onAdd(form);
-  };
-
-  return (
-    <Portal>
-      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-        <div className="card max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold flex items-center gap-2"><Plus className="w-5 h-5 text-sky-600" /> Thêm phụ liệu mới</h3>
-            <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <label className="text-xs font-medium block mb-1">Tên phụ liệu *</label>
-              <input type="text" required className="input w-full" value={form.tenVT} onChange={(e) => setForm({ ...form, tenVT: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium block mb-1">Loại</label>
-                <input type="text" className="input w-full" value={form.loai} onChange={(e) => setForm({ ...form, loai: e.target.value })} placeholder="Phụ liệu, Nút, Chỉ..." />
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1">Đơn vị tính</label>
-                <input type="text" className="input w-full" value={form.dvt} onChange={(e) => setForm({ ...form, dvt: e.target.value })} placeholder="cái, bộ, m..." />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium block mb-1">Đơn giá (đ)</label>
-                <input type="number" min={0} className="input w-full" value={form.donGia || ""} onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1">Tồn tối thiểu</label>
-                <input type="number" min={0} className="input w-full" value={form.tonToiThieu || ""} onChange={(e) => setForm({ ...form, tonToiThieu: Number(e.target.value) })} />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium block mb-1">Màu sắc</label>
-              <input type="text" className="input w-full" value={form.mauSac || ""} onChange={(e) => setForm({ ...form, mauSac: e.target.value })} />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-              <button type="submit" className="btn-primary flex-1 bg-sky-500 hover:bg-sky-600">Thêm mới</button>
-            </div>
-          </form>
         </div>
       </div>
     </Portal>
