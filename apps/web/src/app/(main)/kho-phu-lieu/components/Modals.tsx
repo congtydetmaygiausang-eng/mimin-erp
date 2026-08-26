@@ -76,7 +76,7 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
             <span><span className="opacity-70">Mã:</span> <b className="font-mono">{vt.maVT}</b></span>
             <span><span className="opacity-70">ĐVT:</span> <b>{vt.dvt}</b></span>
             <span><span className="opacity-70">Loại:</span> <b>{vt.loai || "—"}</b></span>
-            <span><span className="opacity-70">Màu/Quy cách:</span> <b>{vt.mauSac || vt.ghiChu || "—"}</b></span>
+            <span><span className="opacity-70">Màu/Quy cách:</span> <b>{vt.mauSac || "—"}</b></span>
             <span><span className="opacity-70">Tồn hiện tại:</span> <b className="text-sky-700">{Number(vt.tonKho || 0).toLocaleString()} {vt.dvt}</b></span>
           </div>
           <form onSubmit={handleSubmit} className="space-y-3">
