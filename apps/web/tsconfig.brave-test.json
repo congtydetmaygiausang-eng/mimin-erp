@@ -55,6 +55,8 @@
     "src/lib/sourcing/b2b-company-policy.ts",
     "src/lib/sourcing/b2b-company-policy.test.ts",
     "src/lib/sourcing/agent-chat-contract.ts",
-    "src/lib/sourcing/agent-chat-contract.test.ts"
+    "src/lib/sourcing/agent-chat-contract.test.ts",
+    "src/lib/sourcing/gate4-agent-company-contract.ts",
+    "src/lib/sourcing/gate4-agent-company-contract.test.ts"
   ]
 }
