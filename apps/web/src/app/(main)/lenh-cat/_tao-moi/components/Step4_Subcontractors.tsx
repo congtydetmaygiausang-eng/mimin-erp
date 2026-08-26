@@ -1,7 +1,7 @@
 "use client";
 
 import { useWizard } from "../WizardContext";
-import { Users } from "lucide-react";
+import { Users, Briefcase } from "lucide-react";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 
@@ -49,6 +49,13 @@ export function Step4Subcontractors() {
 
   const options = getDoiTuongOptions();
 
+  // Calculate total labor cost
+  const totalLaborCost = phanCong.reduce((acc, pc) => acc + (pc.donGia || 0), 0);
+
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -58,46 +65,104 @@ export function Step4Subcontractors() {
         <p className="text-sm text-slate-500">Chỉ định đối tác/nhân viên thực hiện từng công đoạn</p>
       </div>
 
-      <div className="bg-slate-50/50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700/50">
-        <div className="space-y-4">
-          {phanCong.map((pc, idx) => (
-            <div key={pc.id} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 shadow-sm">
-              <div className="w-full md:w-48 font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center">
-                  <Users className="w-4 h-4" />
+      {/* Card Grid Layout - 2 columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {phanCong.map((pc, idx) => {
+          const selectedDT = options
+            .flatMap(g => g.items)
+            .find(item => item.ma === pc.nguoiMa);
+          
+          const isSubcontractor = pc.nguoiMa?.startsWith("GC-");
+          const displayName = pc.nguoiTen || (selectedDT ? selectedDT.ten.split(" - ")[1] : "Chưa chỉ định");
+
+          return (
+            <div 
+              key={pc.id} 
+              className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-violet-400 dark:hover:border-violet-500 shadow-sm hover:shadow-md transition-all p-6 space-y-4"
+            >
+              {/* Header - Công Đoạn */}
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/30 dark:to-indigo-900/30 flex items-center justify-center">
+                  <Briefcase className="w-6 h-6 text-violet-600 dark:text-violet-400" />
                 </div>
-                {pc.tenCongDoan}
-              </div>
-              
-              <div className="flex-1 w-full space-y-1">
-                <label className="text-xs text-slate-500 block">Đơn vị / Người thực hiện</label>
-                <select 
-                  className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  value={pc.nguoiMa} 
-                  onChange={(e) => handleUpdate(idx, "nguoiMa", e.target.value)}
-                >
-                  <option value="none">-- Không chỉ định --</option>
-                  {options.map(group => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.items.map(item => (
-                        <option key={item.ma} value={item.ma}>{item.ten}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-lg">{pc.tenCongDoan}</h3>
+                  <p className="text-xs text-slate-400">Công đoạn {idx + 1}/7</p>
+                </div>
               </div>
 
-              <div className="w-full md:w-48 space-y-1">
-                <label className="text-xs text-slate-500 block">Đơn giá (đ/sp)</label>
+              {/* Người Phụ Trách */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  👤 Người / Đơn vị phụ trách
+                </label>
+                <div className="space-y-2">
+                  <select 
+                    className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 dark:focus:border-violet-400 transition-colors"
+                    value={pc.nguoiMa} 
+                    onChange={(e) => handleUpdate(idx, "nguoiMa", e.target.value)}
+                  >
+                    <option value="">-- Chọn người / đơn vị --</option>
+                    {options.map(group => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.items.map(item => (
+                          <option key={item.ma} value={item.ma}>{item.ten}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  
+                  {pc.nguoiTen && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
+                      <Users className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                      <span className="text-sm font-medium text-violet-700 dark:text-violet-300">
+                        {displayName}
+                      </span>
+                      {isSubcontractor && (
+                        <span className="ml-auto text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full">
+                          Gia công ngoài
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Đơn Giá */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  💰 Đơn giá (đ/sp)
+                </label>
                 <input 
                   type="number" 
-                  className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  placeholder="0"
+                  className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 dark:focus:border-violet-400 transition-colors"
                   value={pc.donGia || ""} 
                   onChange={(e) => handleUpdate(idx, "donGia", Number(e.target.value))} 
                 />
+                {pc.donGia > 0 && (
+                  <div className="text-xs text-slate-500 dark:text-slate-400 text-right">
+                    = {formatCurrency(pc.donGia)}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* Summary Card */}
+      <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-2xl border-2 border-violet-200 dark:border-violet-800 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">💵 Tổng Chi Phí Gia Công (1 sản phẩm)</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Tổng cộng từ tất cả 7 công đoạn</p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl md:text-3xl font-bold text-violet-600 dark:text-violet-400">
+              {formatCurrency(totalLaborCost)}
+            </div>
+          </div>
         </div>
       </div>
     </div>
