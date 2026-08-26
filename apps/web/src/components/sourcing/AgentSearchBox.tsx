@@ -138,7 +138,10 @@ export default function AgentSearchBox({
       if (data.results) {
         // Gate 4 consumer boundary: Tổng quan kiểm chứng lại cùng contract với
         // Tìm nâng cao trước khi hiển thị, kể cả khi payload chat bị thay đổi.
-        const gate4Payload = normalizeAgentSearchPayload(data.results);
+        const gate4Payload = normalizeAgentSearchPayload<
+          AgentCandidate,
+          NonNullable<ChatApiResponse["results"]>
+        >(data.results);
         setResults(gate4Payload.candidates);
       }
     } catch (error) {
