@@ -10,7 +10,7 @@ import type { Tab, LoaiKho } from "./data";
 import { Header } from "./components/Header";
 import { InventoryGrid } from "./components/InventoryGrid";
 import { TransactionTable } from "./components/TransactionTable";
-import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
+import { PLNhapKho, PLXuatKho, PLLichSu, PLThemMoi } from "./components/Modals";
 
 export default function KhoPhuLieuPage() {
   const { giaoDich, reset } = useKho();
@@ -19,6 +19,7 @@ export default function KhoPhuLieuPage() {
   const [showNhap, setShowNhap] = useState<string | null>(null);
   const [showXuat, setShowXuat] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
+  const [showThemMoi, setShowThemMoi] = useState(false);
 
   const [inventory, setInventory] = useState<KhoVai[]>(KHO_VAT_TU);
   const [editingVT, setEditingVT] = useState<string | null>(null);
@@ -97,18 +98,53 @@ export default function KhoPhuLieuPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && uploadingVT) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const url = ev.target?.result as string;
-        // Persist ảnh qua F5
-        setInventoryImages(prev => {
-          const next = { ...prev, [uploadingVT]: url };
-          localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
-          return next;
-        });
-        toast.success("Đã tải ảnh và lưu thành công!");
-      };
-      reader.readAsDataURL(file);
+      const toastId = toast.loading("Đang tải ảnh lên hệ thống...");
+      
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "kho-phu-lieu");
+      
+      fetch("/api/product-uploads", {
+        method: "POST",
+        body: formData
+      }).then(res => res.json()).then(data => {
+        if (data.url) {
+           const url = data.url;
+           // 1. Cập nhật local fallback
+           setInventoryImages(prev => {
+             const next = { ...prev, [uploadingVT]: url };
+             localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
+             return next;
+           });
+           
+           // 2. Cập nhật lên Supabase (vào ghi_chu)
+           const vt = inventory.find(v => v.maVT === uploadingVT);
+           if (vt && isSupabaseEnabled && supabase) {
+              const baseGhiChu = vt.ghiChu ? vt.ghiChu.replace(/\[IMG:.*?\]/g, "").trim() : "";
+              const newGhiChu = baseGhiChu ? `${baseGhiChu} [IMG:${url}]` : `[IMG:${url}]`;
+              
+              supabase.from("kho_phu_lieu").update({ ghi_chu: newGhiChu }).eq("sku", uploadingVT).then(() => {
+                setInventory(prev => prev.map(item => item.maVT === uploadingVT ? { ...item, ghiChu: newGhiChu } : item));
+              });
+           }
+           toast.success("Đã tải ảnh lên Supabase thành công!", { id: toastId });
+        } else {
+           toast.error(data.error || "Lỗi tải ảnh", { id: toastId });
+        }
+      }).catch(() => {
+         // Fallback nếu API lỗi (chỉ lưu local)
+         const reader = new FileReader();
+         reader.onload = (ev) => {
+           const url = ev.target?.result as string;
+           setInventoryImages(prev => {
+             const next = { ...prev, [uploadingVT]: url };
+             localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
+             return next;
+           });
+           toast.success("Đã tải ảnh cục bộ thành công (API lỗi)", { id: toastId });
+         };
+         reader.readAsDataURL(file);
+      });
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
     setUploadingVT(null);
@@ -194,6 +230,50 @@ export default function KhoPhuLieuPage() {
     setEditForm({});
   };
 
+  const handleAddPhuLieu = (form: Partial<KhoVai>) => {
+    // Generate new sku
+    const newSku = `PL-${String(inventory.length + 1).padStart(3, "0")}`;
+    const newItem: KhoVai = {
+      maVT: newSku,
+      tenVT: form.tenVT || "",
+      loai: form.loai || "Phụ liệu",
+      dvt: form.dvt || "cái",
+      donGia: form.donGia || 0,
+      tonKho: form.tonKho || 0,
+      tonToiThieu: form.tonToiThieu || 0,
+      kho: "Kho phụ liệu",
+      mauSac: form.mauSac || "",
+      ghiChu: "",
+      soCayNhap: 0,
+      tonCay: 0,
+    };
+    
+    setInventory(prev => [newItem, ...prev]);
+    
+    if (isSupabaseEnabled && supabase) {
+      supabase.from("kho_phu_lieu").insert({
+        sku: newItem.maVT,
+        ten_vt: newItem.tenVT,
+        loai: newItem.loai,
+        dvt: newItem.dvt,
+        don_gia: newItem.donGia,
+        ton_kho: newItem.tonKho,
+        ton_toi_thieu: newItem.tonToiThieu,
+        mau_sac: newItem.mauSac,
+      }).then(({ error }) => {
+        if (error) {
+          toast.error("Lỗi đồng bộ thêm mới: " + error.message);
+        } else {
+          toast.success("Đã thêm phụ liệu mới vào Supabase!");
+        }
+      });
+    } else {
+      toast.success("Đã thêm phụ liệu mới (Local)");
+    }
+    
+    setShowThemMoi(false);
+  };
+
   return (
     <div className="min-h-[calc(100vh-64px)] -m-4 md:-m-6 p-4 md:p-6 bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800">
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in relative z-10">
@@ -204,6 +284,7 @@ export default function KhoPhuLieuPage() {
           dsCanhBaoDetails={dsCanhBaoDetails}
           tongNhap={tongNhap}
           onReset={() => { if (confirm("Reset?")) { reset(); toast.success("Đã reset"); } }}
+          onAdd={() => setShowThemMoi(true)}
           tab={tab}
           setTab={setTab}
         />
@@ -243,6 +324,7 @@ export default function KhoPhuLieuPage() {
         {showNhap && <PLNhapKho maVT={showNhap} inventory={inventory} loai="phu-lieu" onClose={() => setShowNhap(null)} />}
         {showXuat && <PLXuatKho maVT={showXuat} inventory={inventory} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
         {showHistory && <PLLichSu maVT={showHistory} inventory={inventory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
+        {showThemMoi && <PLThemMoi onClose={() => setShowThemMoi(false)} onAdd={handleAddPhuLieu} />}
       </div>
     </div>
   );

@@ -260,3 +260,68 @@ export function PLLichSu({ maVT, inventory, loai, onClose }: { maVT: string; inv
     </Portal>
   );
 }
+
+// ============ MODAL THÊM MỚI ============
+export function PLThemMoi({ onClose, onAdd }: { onClose: () => void; onAdd: (vt: Partial<KhoVai>) => void }) {
+  const [form, setForm] = useState<Partial<KhoVai>>({
+    tenVT: "",
+    loai: "Phụ liệu",
+    dvt: "cái",
+    donGia: 0,
+    tonToiThieu: 0,
+    mauSac: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.tenVT) return toast.error("Vui lòng nhập tên phụ liệu");
+    onAdd(form);
+  };
+
+  return (
+    <Portal>
+      <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+        <div className="card max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold flex items-center gap-2"><Plus className="w-5 h-5 text-sky-600" /> Thêm phụ liệu mới</h3>
+            <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="text-xs font-medium block mb-1">Tên phụ liệu *</label>
+              <input type="text" required className="input w-full" value={form.tenVT} onChange={(e) => setForm({ ...form, tenVT: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-1">Loại</label>
+                <input type="text" className="input w-full" value={form.loai} onChange={(e) => setForm({ ...form, loai: e.target.value })} placeholder="Phụ liệu, Nút, Chỉ..." />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">Đơn vị tính</label>
+                <input type="text" className="input w-full" value={form.dvt} onChange={(e) => setForm({ ...form, dvt: e.target.value })} placeholder="cái, bộ, m..." />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-1">Đơn giá (đ)</label>
+                <input type="number" min={0} className="input w-full" value={form.donGia || ""} onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">Tồn tối thiểu</label>
+                <input type="number" min={0} className="input w-full" value={form.tonToiThieu || ""} onChange={(e) => setForm({ ...form, tonToiThieu: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1">Màu sắc</label>
+              <input type="text" className="input w-full" value={form.mauSac || ""} onChange={(e) => setForm({ ...form, mauSac: e.target.value })} />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
+              <button type="submit" className="btn-primary flex-1 bg-sky-500 hover:bg-sky-600">Thêm mới</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Portal>
+  );
+}

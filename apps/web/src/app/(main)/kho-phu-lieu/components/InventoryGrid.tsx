@@ -55,7 +55,9 @@ export function InventoryGrid({ filteredVT, dsTrangThai, inventoryImages, editin
                 onClick={() => onUploadImage(v.maVT)}
                 title="Bấm để tải ảnh lên"
               >
-                {inventoryImages[v.maVT] ? (
+                {v.ghiChu?.includes("[IMG:") ? (
+                  <img src={v.ghiChu.match(/\[IMG:(https?:\/\/[^\]]+)\]/)?.[1] || inventoryImages[v.maVT]} alt={v.tenVT} className="w-full h-full object-cover" />
+                ) : inventoryImages[v.maVT] ? (
                   <img src={inventoryImages[v.maVT]} alt={v.tenVT} className="w-full h-full object-cover" />
                 ) : (
                   <>
