@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Search, X, Send, ListChecks, CheckCircle2, Package } from "lucide-react";
+import { ShoppingBag, Search, X, Send, ListChecks, CheckCircle2, Package, Heart } from "lucide-react";
 import { toast } from "sonner";
 import { MiminGroupTabs } from "@/components/mimin-group/MiminGroupTabs";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { useSession } from "@/components/session-provider";
 import { supabase } from "@/lib/supabase/client";
+import { useLikedSamplesStore } from "@/lib/data/liked-samples-store";
 
 type YeuCau = {
   id: string;
@@ -37,6 +38,7 @@ export default function KhoMauPage() {
   const { user } = useSession();
   const tenNguoiDung = user?.name || "Khuyết danh";
   const { dsSanPham, loading } = useDanhMucSP();
+  const { isLiked, toggleLike } = useLikedSamplesStore();
 
   const [search, setSearch] = useState("");
   const [dangXem, setDangXem] = useState<SanPham | null>(null);
@@ -186,8 +188,23 @@ export default function KhoMauPage() {
               <div
                 key={sp.id}
                 onClick={() => moChiTiet(sp)}
-                className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-brand-500/50 hover:shadow-lg transition group"
+                className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-brand-500/50 hover:shadow-lg transition group relative"
               >
+                <div className="absolute top-2 right-2 z-10">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLike(sp.id);
+                    }}
+                    className={`p-1.5 rounded-full backdrop-blur shadow-sm transition-all ${
+                      isLiked(sp.id)
+                        ? "bg-pink-500/90 text-white hover:bg-pink-600"
+                        : "bg-white/80 dark:bg-black/50 text-slate-400 hover:text-pink-500 hover:bg-white dark:hover:bg-black/70"
+                    }`}
+                  >
+                    <Heart className={`w-4 h-4 ${isLiked(sp.id) ? "fill-current" : ""}`} />
+                  </button>
+                </div>
                 <div className="aspect-square bg-slate-100 dark:bg-slate-800">
                   {anh ? (
                     <img src={anh} className="w-full h-full object-cover group-hover:scale-105 transition" />

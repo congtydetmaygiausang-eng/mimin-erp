@@ -13,8 +13,8 @@ import { extractVietnamContactPhones, extractVietnamPhones, normalizeVietnamPhon
 import { searchBraveWeb } from "@/lib/brave-search";
 import { getStaticCoordinate } from "@/lib/data/hcm-coordinates";
 import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/sourcing/search-history";
-
 export type Api0OperationObservation = any;
+import { buildB2BQueryVariants, evaluateB2BCandidate } from "@/lib/sourcing/b2b-company-policy";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -108,12 +108,16 @@ interface CandidateFieldConfidence {fieldName:FieldEvidenceName;selectedValue:st
 interface CandidateProfileQuality {score:number;completeness:number;evidenceCoverage:number;conflictCount:number;conflictFields:FieldEvidenceName[];grade:"STRONG"|"REVIEW"|"WEAK"|"CONFLICT"}
 type CandidateEntityType = "HOUSEHOLD_BUSINESS" | "COMPANY" | "INDIVIDUAL_SELLER" | "UNKNOWN";
 type QualificationTier = "QUALIFIED" | "NEEDS_VERIFICATION" | "INCOMPLETE";
-interface CandidateQualificationSignals { hasPhone: boolean; hasAddress: boolean; hasTaxCode: boolean; isFormalEntity: boolean }
+interface CandidateQualificationSignals { hasPhone: boolean; hasAddress: boolean; hasTaxCode: boolean; isFormalEntity: boolean; hasB2BCapability: boolean }
 interface CandidateSource { url:string;title:string;sourceType?:SourceEvidenceType;sourceProvider?:string;excerpt?:string;rawContent?:string;relevanceScore?:number;searchQuery?:string }
 interface SourceResult { title: string; url: string; content: string; rawContent?: string; latitude?: number; longitude?: number; score?:number; sourceType?:SourceEvidenceType; provider?:string; searchQuery?:string }
 interface CompanyReaderFieldDecision { field?:unknown;status?:unknown;selected_value?:unknown;confidence?:unknown;evidence?:Array<{source_url?:unknown;excerpt?:unknown}> }
 interface CompanyReaderProfile { status?:unknown;fields?:CompanyReaderFieldDecision[];source_count?:unknown }
-interface CompanyReaderResponse { status?:unknown;profiles?:CompanyReaderProfile[];profile_count?:unknown;source_count?:unknown;warning_count?:unknown;error?:unknown }
+interface CompanyReaderSourceReport {
+  source_url?:unknown; status?:unknown; error_code?:unknown;
+  contact_snapshot?:{legal_names?:unknown;addresses?:unknown;phones?:unknown;emails?:unknown;websites?:unknown;identity_safe?:unknown;distinct_legal_names?:unknown;distinct_tax_codes?:unknown}|null;
+}
+interface CompanyReaderResponse { status?:unknown;profiles?:CompanyReaderProfile[];sources?:CompanyReaderSourceReport[];profile_count?:unknown;source_count?:unknown;warning_count?:unknown;error?:unknown }
 export interface JinaRadarLog { timestamp: string; url: string; status: "PENDING" | "SUCCESS" | "ERROR"; message?: string; bytesRead?: number; }
 interface CompanyReaderEnrichment { items:SourceResult[];health:{name:string;status:"OK"|"EMPTY"|"ERROR"|"DISABLED";count:number;code?:string}; radarLogs?: JinaRadarLog[]; }
 interface SearchCenter {
@@ -178,8 +182,30 @@ function blockedSource(value: string): boolean {
 }
 
 function canonicalSourceUrl(value:string):string{
-  try { const url=new URL(value); url.hash=""; ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","gclid","fbclid"].forEach((key)=>url.searchParams.delete(key)); return url.toString(); }
+  try {
+    const url=new URL(value);
+    url.hash="";
+    const tracking=/^(?:utm_.+|gclid|dclid|fbclid|msclkid|srsltid|yclid|_ga|_gl|ref|ref_|source|campaign|mc_cid|mc_eid)$/i;
+    Array.from(url.searchParams.keys()).forEach((key)=>{if(tracking.test(key))url.searchParams.delete(key)});
+    url.hostname=url.hostname.toLowerCase().replace(/^www\./,"");
+    if((url.protocol==="https:"&&url.port==="443")||(url.protocol==="http:"&&url.port==="80"))url.port="";
+    if(url.pathname!=="/")url.pathname=url.pathname.replace(/\/+$/,"");
+    url.searchParams.sort();
+    return url.toString();
+  }
   catch { return value; }
+}
+
+const SHARED_WEBSITE_DOMAINS = [
+  "blogspot.com", "wordpress.com", "wixsite.com", "jimdosite.com", "sites.google.com",
+  "facebook.com", "linkedin.com", "zalo.me", "youtube.com", "tiktok.com",
+];
+
+function identityBearingDomain(value:string):string{
+  const domain=domainOf(value);
+  if(!domain)return"";
+  const shared=[...DIRECTORY_DOMAINS,...SHARED_WEBSITE_DOMAINS];
+  return shared.some((entry)=>domain===entry||domain.endsWith(`.${entry}`))?"":domain;
 }
 
 function classifySource(url:string,title:string,content:string):SourceEvidenceType{
@@ -243,6 +269,9 @@ function sameEntity(left: Candidate, right: Candidate): EntityMatch {
     if(nameSimilarity>=0.15||addresses>=0.2)return{matched:true,matchedBy:"PHONE",conflicts:[]};
   }
   if (left.email && right.email && left.email.toLowerCase() === right.email.toLowerCase()) return{matched:true,matchedBy:"EMAIL",conflicts:[]};
+  const leftDomain=identityBearingDomain(left.website),rightDomain=identityBearingDomain(right.website);
+  const officialDomainMatch=Boolean(leftDomain&&leftDomain===rightDomain);
+  if(officialDomainMatch)return{matched:true,matchedBy:"OFFICIAL_DOMAIN",conflicts:[]};
   if(leftName.length>=5&&leftName===rightName&&addresses>=0.35)return{matched:true,matchedBy:"NAME_ADDRESS",conflicts:[]};
   return{matched:false,matchedBy:"",conflicts:[]};
 }
@@ -315,7 +344,9 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
       continue;
     }
     existing.legalName = mergeText(existing.legalName, item.legalName);
-    existing.address = mergeText(existing.address, item.address);
+    // Địa chỉ không được ghép theo độ dài: một chuỗi dài hơn có thể thuộc doanh
+    // nghiệp khác trên cùng trang danh bạ. Bộ chọn evidence bên dưới quyết định.
+    if (!existing.address) existing.address = item.address;
     existing.province = mergeText(existing.province, item.province);
     existing.district = mergeText(existing.district, item.district);
     existing.phones=Array.from(new Set([...(existing.phones??Array.from(phoneSet(existing.phone))),...(item.phones??Array.from(phoneSet(item.phone)))])).slice(0,5);
@@ -403,14 +434,25 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     // đã tinh chỉnh - chỉ dùng để sắp thứ tự ưu tiên hiển thị + gắn nhãn UI.
     const hasTaxCode = Boolean(validTaxCode(item.taxCode));
     const isFormalEntity = item.entityType === "COMPANY" || item.entityType === "HOUSEHOLD_BUSINESS";
-    const qualificationSignals: CandidateQualificationSignals = { hasPhone: Boolean(item.phone), hasAddress: Boolean(item.address), hasTaxCode, isFormalEntity };
+    const b2bDecision = evaluateB2BCandidate({
+      legalName: item.legalName,
+      entityType: item.entityType,
+      evidenceText: `${item.companyIntroduction ?? ""} ${(item.businessLines ?? []).join(" ")}`,
+      capabilityEvidence: [
+        ...(item.fieldEvidence ?? []).filter((entry) => entry.fieldName === "CAPABILITY").map((entry) => entry.fieldValue),
+        ...item.capabilities,
+      ],
+      taxCode: item.taxCode,
+    });
+    const qualificationSignals: CandidateQualificationSignals = { hasPhone: Boolean(item.phone), hasAddress: Boolean(item.address), hasTaxCode, isFormalEntity, hasB2BCapability: b2bDecision.accepted };
     const signalCount = Object.values(qualificationSignals).filter(Boolean).length;
-    const qualificationTier: QualificationTier = signalCount === 4 ? "QUALIFIED" : signalCount >= 2 ? "NEEDS_VERIFICATION" : "INCOMPLETE";
+    const qualificationTier: QualificationTier = b2bDecision.accepted && signalCount === 5 ? "QUALIFIED" : b2bDecision.accepted && signalCount >= 3 ? "NEEDS_VERIFICATION" : "INCOMPLETE";
     const qualificationReasons = [
       !qualificationSignals.hasPhone ? "Thiếu số điện thoại" : "",
       !qualificationSignals.hasAddress ? "Thiếu địa chỉ rõ ràng" : "",
       !hasTaxCode ? "Chưa có mã số thuế · Chưa xác minh MST" : "Có mã số thuế · Chưa xác minh MST",
       item.entityType === "INDIVIDUAL_SELLER" ? "Có thể là cá nhân/page bán hàng, không phải pháp nhân" : (item.entityType === "UNKNOWN" || !item.entityType) ? "Chưa xác định loại hình kinh doanh" : "",
+      !b2bDecision.accepted ? "Chưa có bằng chứng năng lực B2B trực tiếp" : "",
     ].filter(Boolean);
     return { ...item, confidence, sourceCount, matchReasons, verifiedFields, fieldConfidence, profileQuality, verificationStatus: verifiedStatus, distanceKm: measuredDistance === null ? null : Number(measuredDistance.toFixed(2)), locationStatus, locationReason, distanceEvidence, qualificationSignals, qualificationTier, qualificationReasons };
   });
@@ -437,7 +479,8 @@ function postProcessCandidates(candidates: Candidate[], query: string, location:
     const strictCandidates = ordered.filter((item) => item.locationStatus === "INSIDE").slice(0, 50);
     return { candidates: strictCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.unknown + breakdown.conflict,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
   }
-  return { candidates: ordered.slice(0, 50), breakdown, excludedByStrictMode: 0,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
+  const preferCandidates = ordered.filter((item) => item.locationStatus === "INSIDE" || item.locationStatus === "UNKNOWN").slice(0, 50);
+  return { candidates: preferCandidates, breakdown, excludedByStrictMode: breakdown.outside + breakdown.conflict,entityResolution:{inputRecords:candidates.length,clusters:clusters.length,mergedRecords:candidates.length-clusters.length,taxConflictsPrevented} };
 }
 
 const LOCATION_NOISE_WORDS = new Set(["quan", "huyen", "phuong", "xa", "thi", "tran", "thanh", "pho", "tinh", "viet", "nam"]);
@@ -608,7 +651,18 @@ function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: 
   const distinctiveMatch = distinctiveTokens.length === 0 || distinctiveTokens.some((token) => evidenceTokens.has(token));
   const queryRelevant = overlapRatio(queryTokens, evidenceTokens) >= 0.5 && distinctiveMatch;
   if (!roleRelevant || !queryRelevant) return false;
-  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
+  const b2bDecision = evaluateB2BCandidate({
+    legalName: candidate.legalName,
+    entityType: candidate.entityType,
+    evidenceText: evidenceTextValue,
+    capabilityEvidence: [
+      ...(candidate.fieldEvidence ?? []).filter((entry) => entry.fieldName === "CAPABILITY").map((entry) => entry.fieldValue),
+      ...candidate.capabilities,
+    ],
+    taxCode: candidate.taxCode,
+  });
+  if (!b2bDecision.accepted) return false;
+  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|supplier|manufacturer)\b/i.test(candidate.legalName);
   const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
   const officialWebsite = Boolean(candidate.website && !blockedSource(candidate.website));
   return identityEvidence >= 2 || Boolean(candidate.taxCode) || (businessName && identityEvidence >= 1) || (officialWebsite && identityEvidence >= 1);
@@ -616,10 +670,21 @@ function isVerifiedBusinessCandidate(candidate: Candidate, role: string, query: 
 
 function isRelatedBusinessCandidate(candidate: Candidate, role: string, query: string): boolean {
   if (blockedSource(candidate.sourceUrl) || isGenericCompanyName(candidate.legalName) || noiseListing(candidate.sourceTitle)) return false;
-  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|cửa hàng|hộ kinh doanh|supplier|manufacturer)\b/i.test(candidate.legalName);
+  const businessName = /\b(?:công ty|tnhh|cổ phần|doanh nghiệp|nhà máy|xưởng|supplier|manufacturer)\b/i.test(candidate.legalName);
   const identityEvidence = [candidate.address, candidate.phone, candidate.email, candidate.website, candidate.taxCode].filter(Boolean).length;
   if (identityEvidence < 2 && !candidate.taxCode && !(businessName && identityEvidence >= 1)) return false;
   const evidence = normalized(`${candidate.legalName} ${candidate.capabilities.join(" ")} ${(candidate.businessLines ?? []).join(" ")} ${candidate.companyIntroduction ?? ""} ${candidate.sourceTitle}`);
+  const b2bDecision = evaluateB2BCandidate({
+    legalName: candidate.legalName,
+    entityType: candidate.entityType,
+    evidenceText: evidence,
+    capabilityEvidence: [
+      ...(candidate.fieldEvidence ?? []).filter((entry) => entry.fieldName === "CAPABILITY").map((entry) => entry.fieldValue),
+      ...candidate.capabilities,
+    ],
+    taxCode: candidate.taxCode,
+  });
+  if (!b2bDecision.accepted) return false;
   const roleRelevant = (ROLE_EVIDENCE_TERMS[role] ?? []).some((term) => evidence.includes(normalized(term)));
   const queryTokens = tokenSet(query);
   const evidenceTokens = tokenSet(evidence);
@@ -861,18 +926,8 @@ function balanceSearchQueries(queries: string[], fallback: string[], budget: num
 }
 
 function fallbackQueryPlan(query: string, location: string, role: string, radiusKm: number): string[] {
-  const roleTerms = ROLE_SEARCH_TERMS[role] ?? [];
   const budget = queryBudgetForRadius(radiusKm);
-  const queries = Array.from(new Set([
-    `${query} ${location}`,
-    `xưởng ${query} ${location}`,
-    `chuyên bán ${query} ${location}`,
-    `công ty ${query} ${location}`,
-    `cửa hàng ${query} ${location}`,
-    `nhà cung cấp ${query} ${location}`,
-    `phân phối ${query} ${location}`,
-    `bán buôn ${query} ${location}`
-  ].filter(Boolean)));
+  const queries = buildB2BQueryVariants(query, location, role);
   return balanceSearchQueries(queries, [], budget);
 }
 
@@ -893,7 +948,7 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
       temperature: 0.2,
       max_tokens: 900,
       messages: [
-        { role: "system", content: "Bạn là chuyên gia tìm nguồn cung ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn tìm kiếm RẤT NGẮN GỌN. QUAN TRỌNG:\n1. Tối ưu từ khóa ngắn gọn, tự nhiên như người dùng gõ Google (vd: 'xưởng vải cotton Hóc Môn', 'bán vải cotton Hóc Môn').\n2. CHỈ kết hợp với địa phương được yêu cầu, tuyệt đối không tự thêm các quận/huyện lân cận.\n3. Bỏ các từ rườm rà như 'website liên hệ', 'nhà cung cấp nguyên phụ liệu'. Càng ngắn càng tốt.\n4. Tối đa 1-2 truy vấn `site:trangvangvietnam.com`.\nTrả về JSON chuẩn." },
+        { role: "system", content: "Bạn là chuyên gia tìm nguồn cung B2B ngành dệt may Việt Nam. Tạo JSON {queries:[string]} gồm 8-12 truy vấn ngắn để tìm CÔNG TY, NHÀ MÁY, XƯỞNG SẢN XUẤT, NHÀ CUNG CẤP SỈ hoặc ĐƠN VỊ GIA CÔNG. Không tạo truy vấn cửa hàng, bán lẻ, theo mét, giá rẻ, tuyển dụng hoặc rao vặt. CHỈ kết hợp với địa phương được yêu cầu, không tự thêm quận/huyện lân cận. Tối đa 1-2 truy vấn site:trangvangvietnam.com. Trả JSON chuẩn." },
         { role: "user", content: JSON.stringify({ query, location, category: role, categoryTerms: ROLE_SEARCH_TERMS[role] ?? [], learnedPreferences: learning.applied ? learning.preferredTerms : [], previouslyRejectedPatterns: learning.applied ? learning.avoidedTerms : [] }) },
       ],
     };
@@ -914,7 +969,8 @@ async function buildQueryPlan(query: string, location: string, role: string, lea
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim().slice(0, 180))
       .filter((item) => item.length >= 4);
-    return balanceSearchQueries(aiQueries, fallback, budget);
+    const b2bOnly = aiQueries.filter((item) => !/\b(?:cửa hàng|bán lẻ|theo mét|giá rẻ|tuyển dụng|rao vặt)\b/i.test(item));
+    return balanceSearchQueries(b2bOnly, fallback, budget);
   } catch {
     return fallback;
   }
@@ -948,6 +1004,23 @@ const COMPANY_READER_ACCEPTED_FIELD_STATUS = new Set(["CONSENSUS","SINGLE_SOURCE
 function companyReaderMaximumUrls():number{
   const configured=Number(process.env.COMPANY_READER_ENRICHMENT_MAX_URLS??"15");
   return Number.isFinite(configured)?Math.max(1,Math.min(20,Math.floor(configured))):15;
+}
+
+/**
+ * Company Reader chỉ nhận trang nội dung có thể đọc. URL kết quả tìm kiếm,
+ * Google Maps và các endpoint điều hướng không chứa hồ sơ doanh nghiệp ổn định;
+ * gửi chúng sang Jina chỉ tạo NO_MAIN_CONTENT và tiêu tốn quota.
+ */
+function isCompanyReaderReadableSource(source:SourceResult):boolean{
+  if(blockedSource(source.url))return false;
+  try{
+    const parsed=new URL(source.url);
+    const host=parsed.hostname.toLowerCase().replace(/^www\./,"");
+    if(host==="google.com"||host.endsWith(".google.com")||host==="maps.google.com")return false;
+    if(host==="bing.com"||host.endsWith(".bing.com")||host==="search.brave.com")return false;
+    if(/^\/(?:search|maps\/search|maps\/place\/\?)/i.test(parsed.pathname))return false;
+    return parsed.protocol==="https:"&&Boolean(parsed.hostname);
+  }catch{return false;}
 }
 
 function companyReaderSourceScore(source:SourceResult):number{
@@ -987,10 +1060,44 @@ function companyReaderProfileSource(profile:CompanyReaderProfile,index:number, f
   };
 }
 
+function stringList(value:unknown):string[]{
+  return Array.isArray(value)?Array.from(new Set(value.filter((item):item is string=>typeof item==="string"&&Boolean(item.trim())).map((item)=>item.trim()))):[];
+}
+
+function companyReaderContactSource(report:CompanyReaderSourceReport,index:number):SourceResult|null{
+  const url=typeof report.source_url==="string"?canonicalSourceUrl(report.source_url):"";
+  const snapshot=report.contact_snapshot;
+  if(!url||!snapshot||blockedSource(url)||snapshot.identity_safe===false)return null;
+  const legalNames=stringList(snapshot.legal_names),addresses=stringList(snapshot.addresses),phones=stringList(snapshot.phones),emails=stringList(snapshot.emails),websites=stringList(snapshot.websites);
+  const values=[...legalNames.map((value)=>`LEGAL_NAME: ${value}`),...addresses.map((value)=>`ADDRESS: ${value}`),...phones.map((value)=>`PHONE: ${value}`),...emails.map((value)=>`EMAIL: ${value}`),...websites.map((value)=>`WEBSITE: ${value}`)];
+  if(!values.length)return null;
+  return{title:legalNames[0]||`Thông tin liên hệ từ ${domainOf(url)}`,url,content:values.join("\n"),rawContent:values.join("\n"),score:.86,sourceType:classifySource(url,legalNames[0]??"",values.join(" ")),provider:"Jina Reader",searchQuery:`company-reader-contact-${index+1}`};
+}
+
+function mergeCompanyReaderSources(items:SourceResult[]):SourceResult[]{
+  const merged=new Map<string,SourceResult>();
+  items.forEach((item)=>{
+    const key=canonicalSourceUrl(item.url),current=merged.get(key);
+    if(!current){merged.set(key,{...item,url:key});return}
+    const values=Array.from(new Set(`${current.content}\n${item.content}`.split("\n").map((value)=>value.trim()).filter(Boolean)));
+    const rawValues=Array.from(new Set(`${current.rawContent??""}\n${item.rawContent??""}`.split("\n").map((value)=>value.trim()).filter(Boolean)));
+    const itemHasLegalName=!item.title.startsWith("Thông tin liên hệ từ ");
+    merged.set(key,{
+      ...current,
+      title:itemHasLegalName?item.title:current.title,
+      content:values.join("\n").slice(0,12_000),
+      rawContent:rawValues.join("\n").slice(0,50_000),
+      score:Math.max(current.score??0,item.score??0),
+      sourceType:current.sourceType==="OFFICIAL"||item.sourceType!=="OFFICIAL"?current.sourceType:item.sourceType,
+    });
+  });
+  return Array.from(merged.values());
+}
+
 async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:string},sources:SourceResult[]):Promise<CompanyReaderEnrichment>{
   const radarLogs: JinaRadarLog[] = [];
   if(process.env.COMPANY_READER_ENRICHMENT_ENABLED==="false")return{items:[],health:{name:"Jina Reader",status:"DISABLED",count:0,code:"NOT_ENABLED"}, radarLogs};
-  const urls=Array.from(new Set(sources.filter((source)=>!blockedSource(source.url)).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
+  const urls=Array.from(new Set(sources.filter(isCompanyReaderReadableSource).sort((left,right)=>companyReaderSourceScore(right)-companyReaderSourceScore(left)).map((source)=>canonicalSourceUrl(source.url)))).slice(0,companyReaderMaximumUrls());
   if(!urls.length)return{items:[],health:{name:"Jina Reader",status:"EMPTY",count:0}, radarLogs};
   console.log("JINA_TARGET_URLS:", urls); const batches=Array.from({length:Math.ceil(urls.length/5)},(_,index)=>urls.slice(index*5,(index+1)*5));
   const logMap = new Map<string, JinaRadarLog>();
@@ -1043,17 +1150,21 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
            const profs = Array.isArray(result.value.profiles) ? result.value.profiles : [];
            const sources = Array.isArray((result.value as any).sources) ? (result.value as any).sources : [];
 
-           profs.forEach((p, pIndex) => {
+            profs.forEach((p, pIndex) => {
                const evidence = p.fields?.flatMap((f: any) => f.evidence ?? []) ?? [];
                const pUrl = evidence.find((e: any) => typeof e.source_url === "string" && e.source_url)?.source_url || "";
                const item = companyReaderProfileSource(p, index * 5 + pIndex, pUrl);
                if (item) items.push(item);
-           });
+            });
+            sources.forEach((source: any, sourceIndex: number)=>{
+              const item=companyReaderContactSource(source,index*5+sourceIndex);
+              if(item)items.push(item);
+            });
 
            batch.forEach((url) => {
               const log = logMap.get(url);
               if (log && log.status !== "ERROR" && result.value.status !== "SHADOW_PROCESSED") {
-                  const report = sources.find((s: any) => s.source_url === url);
+                   const report = sources.find((s: any) => typeof s.source_url==="string"&&canonicalSourceUrl(s.source_url)===canonicalSourceUrl(url));
                   const itemExists = items.some(i => i.url === url || canonicalSourceUrl(i.url) === canonicalSourceUrl(url));
 
                   if (itemExists) {
@@ -1073,9 +1184,10 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
            });
         }
     });
-    console.log("JINA_ITEMS_GENERATED:", items.length);
+    const mergedItems=mergeCompanyReaderSources(items);
+    console.log("JINA_ITEMS_GENERATED:", mergedItems.length);
     const shadowOnly=responses.length>0&&responses.every((response)=>response.status==="SHADOW_PROCESSED");
-    return{items,health:{name:"Jina Reader",status:items.length?"OK":shadowOnly?"EMPTY":"ERROR",count:items.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}, radarLogs};
+    return{items:mergedItems,health:{name:"Jina Reader",status:mergedItems.length?"OK":shadowOnly?"EMPTY":"ERROR",count:mergedItems.length,code:shadowOnly?"SHADOW_ONLY":responses.length?"NO_ACCEPTED_PROFILE":"GATEWAY_ERROR"}, radarLogs};
   }catch(error){
     const isTimeout = error instanceof Error && (error.name === "AbortError" || /timeout|aborted/i.test(error.message));
     const msg = isTimeout?"TIMEOUT":(error instanceof Error?error.message:"UNAVAILABLE");
@@ -1246,9 +1358,20 @@ function evidenceFromContactSource(candidate: Candidate, source: SourceResult): 
   const body = `${source.title}\n${source.content}\n${source.rawContent ?? ""}`;
   const identityMatch = overlapRatio(tokenSet(candidate.legalName), tokenSet(body));
   const taxMatch = Boolean(candidate.taxCode && digits(body).includes(digits(candidate.taxCode)));
-  if (identityMatch < 0.55 && !taxMatch) return [];
+  const candidatePhones=new Set([...(candidate.phones??[]),...extractVietnamPhones(candidate.phone)].map(normalizeVietnamPhone).filter(Boolean));
+  const sourcePhones=new Set(extractVietnamContactPhones(body).map(normalizeVietnamPhone).filter(Boolean));
+  const phoneMatch=Array.from(candidatePhones).some((phone)=>sourcePhones.has(phone));
+  const candidateEmail=(candidate.email??"").trim().toLowerCase();
+  const emailMatch=Boolean(candidateEmail&&body.toLowerCase().includes(candidateEmail));
+  const candidateDomain=domainOf(candidate.website),sourceDomain=domainOf(source.url);
+  const officialDomainMatch=Boolean(candidateDomain&&candidateDomain===sourceDomain);
+  const hasExistingAnchor=Boolean(candidate.taxCode||candidatePhones.size||candidateEmail||candidateDomain);
+  const anchored=taxMatch||phoneMatch||emailMatch||officialDomainMatch;
+  // Khi hồ sơ đã có định danh, không được lấy contact chỉ vì tên chung chung
+  // (vd. "xưởng may gia công Tân Phú") trùng với nội dung trang.
+  if((hasExistingAnchor&&!anchored)||(!hasExistingAnchor&&identityMatch<0.72))return[];
   const sourceUrl = canonicalSourceUrl(source.url), type = source.sourceType ?? classifySource(source.url, source.title, source.content);
-  const isOfficialDomain = Boolean(domainOf(candidate.website) && domainOf(candidate.website) === domainOf(source.url));
+  const isOfficialDomain = officialDomainMatch;
   const confidence = Math.min(92, Math.round((isOfficialDomain ? 82 : sourceAuthority(type)) + Math.max(identityMatch, taxMatch ? 1 : 0) * 18));
   const excerpt = (value: string) => { const index = body.toLowerCase().indexOf(value.toLowerCase()); return (index >= 0 ? body.slice(Math.max(0, index - 90), index + value.length + 130) : body.slice(0, 350)).trim(); };
   const result: CandidateFieldEvidence[] = [];
@@ -1258,7 +1381,7 @@ function evidenceFromContactSource(candidate: Candidate, source: SourceResult): 
   add("TAX_CODE", body.match(/(?:mã số thuế|mst|tax code)\s*[:#-]?\s*(\d{10}(?:-?\d{3})?)/i)?.[1] ?? "");
   add("REGISTERED_ADDRESS", postalAddress(body.match(/(?:địa chỉ thuế|trụ sở(?: chính)?|địa chỉ đăng ký)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1] ?? ""));
   if (!result.some((entry) => entry.fieldName === "REGISTERED_ADDRESS")) add("OFFICE_ADDRESS", postalAddress(body.match(/(?:địa chỉ|văn phòng|xưởng(?: \d+)?)\s*[:#-]?\s*([^\n|]{10,220})/i)?.[1] ?? ""));
-  const sourceDomain = domainOf(source.url), candidateDomain = domainOf(candidate.website);
+
   const explicitWebsite = body.match(/(?:website|web|trang web)\s*[:#-]?\s*((?:https?:\/\/|www\.)[^\s,;<>]+)/i)?.[1]?.replace(/[.)\]]+$/, "") ?? "";
   if (explicitWebsite) add("WEBSITE", explicitWebsite);
   else if (sourceDomain && !DIRECTORY_DOMAINS.some((domain) => sourceDomain === domain || sourceDomain.endsWith(`.${domain}`)) && (!candidateDomain || sourceDomain === candidateDomain)) add("WEBSITE", `https://${sourceDomain}`);
@@ -1287,6 +1410,20 @@ function extractContactEvidence(candidate: Candidate, sources: SourceResult[]): 
   const newlyVerified = [["phone", "PHONE"], ["email", "EMAIL"], ["taxCode", "TAX_CODE"], ["website", "WEBSITE"], ["address", fieldNames.has("REGISTERED_ADDRESS") ? "REGISTERED_ADDRESS" : "OFFICE_ADDRESS"]] as const;
   const verifiedFields = Array.from(new Set([...(candidate.verifiedFields ?? []), ...newlyVerified.filter(([, field]) => fieldNames.has(field)).map(([name]) => name)]));
   return { ...enriched, verifiedFields, confidence: Math.min(100, candidate.confidence + Math.min(12, extractedEvidence.length * 2)), lastVerifiedAt: new Date().toISOString() };
+}
+
+/** Ghép ngay bằng chứng Jina/Reader đã đọc vào hồ sơ do Agent chuẩn hóa. */
+function enrichCandidatesFromReadSources(candidates:Candidate[],sources:SourceResult[]):{candidates:Candidate[];enrichedCount:number}{
+  let enrichedCount=0;
+  const enriched=candidates.map((candidate)=>{
+    const next=extractContactEvidence(candidate,sources);
+    const changed=["phone","address","email","website","taxCode"].some((field)=>
+      String(next[field as keyof Candidate]??"")!==String(candidate[field as keyof Candidate]??""),
+    );
+    if(changed)enrichedCount+=1;
+    return next;
+  });
+  return{candidates:enriched,enrichedCount};
 }
 
 async function enrichCandidatesWithContacts(candidates: Candidate[], location: string): Promise<{ candidates: Candidate[]; sourceCount: number; enrichedCount: number }> {
@@ -1967,7 +2104,7 @@ function evidenceValue(item:Record<string,unknown>,key:string,field:FieldEvidenc
 }
 
 function sourceAuthority(type:SourceEvidenceType|undefined):number{return type==="REGISTRY"?75:type==="OFFICIAL"?62:type==="MAP"?55:type==="SOCIAL"?38:type==="SEARCH"?32:25}
-const CRITICAL_CONFLICT_FIELDS=new Set<FieldEvidenceName>(["LEGAL_NAME","TAX_CODE","REGISTERED_ADDRESS","OPERATING_STATUS"]);
+const CRITICAL_CONFLICT_FIELDS=new Set<FieldEvidenceName>(["LEGAL_NAME","TAX_CODE","REGISTERED_ADDRESS","FACTORY_ADDRESS","OFFICE_ADDRESS","OPERATING_STATUS"]);
 function buildFieldConfidence(candidate:Candidate):CandidateFieldConfidence[]{
   const sourceMap=new Map((candidate.sources??[]).map((source)=>[canonicalSourceUrl(source.url),source]));
   const byField=new Map<FieldEvidenceName,CandidateFieldEvidence[]>();
@@ -1993,20 +2130,23 @@ function applySelectedEvidence(candidate:Candidate):Candidate{
   const taxNumbers=new Set([candidate.taxCode,...(candidate.fieldEvidence??[]).filter((evidence)=>evidence.fieldName==="TAX_CODE").map((evidence)=>evidence.fieldValue)].flatMap((value)=>{const tax=digits(value);return tax?[tax,tax.slice(0,10)]:[];}));
   const fieldEvidence=(candidate.fieldEvidence??[]).filter((evidence)=>evidence.fieldName!=="PHONE"||Boolean(normalizeVietnamPhone(evidence.fieldValue)&&!taxNumbers.has(normalizeVietnamPhone(evidence.fieldValue))));
   const sanitizedCandidate={...candidate,fieldEvidence};
-  const fields=buildFieldConfidence(sanitizedCandidate),selected=(name:FieldEvidenceName)=>fields.find((field)=>field.fieldName===name&&field.status!=="CONFLICT")?.selectedValue??"";
+  const fields=buildFieldConfidence(sanitizedCandidate),selected=(name:FieldEvidenceName,minimumScore=0)=>fields.find((field)=>field.fieldName===name&&field.status!=="CONFLICT"&&field.score>=minimumScore)?.selectedValue??"";
   const phones=Array.from(new Set(fieldEvidence.filter((evidence)=>evidence.fieldName==="PHONE"&&evidence.confidence>=55).sort((left,right)=>right.confidence-left.confidence).map((evidence)=>normalizeVietnamPhone(evidence.fieldValue)).filter(Boolean))).slice(0,5);
+  const verifiedFields=new Set((candidate.verifiedFields??[]).map((field)=>field.toLowerCase()));
+  const verifiedFallback=(field:string,value:string|undefined)=>verifiedFields.has(field.toLowerCase())?(value??""):"";
   const fallbackPhones=Array.from(new Set([...(candidate.phones??[]).map(normalizeVietnamPhone),...extractVietnamPhones(candidate.phone)].filter((phone)=>phone&&!taxNumbers.has(phone)))).slice(0,5);
-  const selectedPhones=phones.length?phones:fallbackPhones;
-  const registeredAddress=postalAddress(selected("REGISTERED_ADDRESS"))||candidate.registeredAddress||"";
-  const officeAddress=postalAddress(selected("OFFICE_ADDRESS"))||candidate.officeAddress||"";
-  const factoryAddress=postalAddress(selected("FACTORY_ADDRESS"))||candidate.factoryAddress||"";
-  const address=registeredAddress||factoryAddress||officeAddress||postalAddress(candidate.address);
+  const selectedPhones=phones.length?phones:(verifiedFields.has("phone")?fallbackPhones:[]);
+  const addressEvidence=fieldEvidence.some((evidence)=>["REGISTERED_ADDRESS","FACTORY_ADDRESS","OFFICE_ADDRESS"].includes(evidence.fieldName));
+  const registeredAddress=postalAddress(selected("REGISTERED_ADDRESS",55))||verifiedFallback("address",candidate.registeredAddress);
+  const officeAddress=postalAddress(selected("OFFICE_ADDRESS",55))||verifiedFallback("address",candidate.officeAddress);
+  const factoryAddress=postalAddress(selected("FACTORY_ADDRESS",55))||verifiedFallback("address",candidate.factoryAddress);
+  const address=registeredAddress||factoryAddress||officeAddress||(!addressEvidence?postalAddress(verifiedFallback("address",candidate.address)):"");
   const businessLines=Array.from(new Set([...fields.filter((field)=>field.fieldName==="BUSINESS_LINE"&&field.status!=="CONFLICT").map((field)=>field.selectedValue),...(candidate.businessLines??[])])).slice(0,20);
   return{...sanitizedCandidate,
     legalName:cleanCompanyLegalName(selected("LEGAL_NAME")||candidate.legalName),tradeName:selected("TRADE_NAME")||candidate.tradeName,shortName:selected("SHORT_NAME")||candidate.shortName,
-    taxCode:selected("TAX_CODE")||candidate.taxCode,registeredAddress,factoryAddress,officeAddress,address,
-    phones:selectedPhones,phone:selectedPhones.join(" - "),zaloPhone:selected("ZALO")||candidate.zaloPhone,
-    email:selected("EMAIL")||candidate.email,website:selected("WEBSITE")||candidate.website,facebookUrl:selected("FACEBOOK")||candidate.facebookUrl,
+    taxCode:selected("TAX_CODE")||verifiedFallback("taxCode",candidate.taxCode),registeredAddress,factoryAddress,officeAddress,address,
+    phones:selectedPhones,phone:selectedPhones.join(" - "),zaloPhone:selected("ZALO")||verifiedFallback("zaloPhone",candidate.zaloPhone),
+    email:selected("EMAIL")||verifiedFallback("email",candidate.email),website:selected("WEBSITE")||verifiedFallback("website",candidate.website),facebookUrl:selected("FACEBOOK")||verifiedFallback("facebookUrl",candidate.facebookUrl),
     legalRepresentative:selected("LEGAL_REPRESENTATIVE")||candidate.legalRepresentative,businessLines,
     companyIntroduction:selected("COMPANY_INTRODUCTION")||candidate.companyIntroduction,operatingStatus:selected("OPERATING_STATUS")||candidate.operatingStatus,
     fieldConfidence:fields,
@@ -2361,7 +2501,13 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
 
     const supplementalCandidates = deterministicSourceCandidates(query, role, discoverySources);
     const normalizationPool = [...directoryCandidates, ...normalizedCandidates, ...supplementalCandidates];
-    const enrichment = await observeApi0Call("Contact Enrichment", api0ProcessingDurations, () => enrichCandidatesWithContacts(normalizationPool, location));
+    const readerMerge = enrichCandidatesFromReadSources(normalizationPool, companyReader.items);
+    api0Operations.push({
+      name:"Jina Contact Merge",role:"ENRICHMENT",status:readerMerge.enrichedCount?"OK":"SKIPPED",
+      durationMs:0,plannedRequests:0,rawItems:companyReader.items.length,uniqueItems:readerMerge.enrichedCount,
+      code:readerMerge.enrichedCount?undefined:"NO_MATCHING_CONTACT_EVIDENCE",
+    });
+    const enrichment = await observeApi0Call("Contact Enrichment", api0ProcessingDurations, () => enrichCandidatesWithContacts(readerMerge.candidates, location));
     api0Operations.push({
       name: "Contact Enrichment", role: "ENRICHMENT", status: enrichment.enrichedCount ? "OK" : "SKIPPED",
       durationMs: api0ProcessingDurations.get("Contact Enrichment") ?? 0,
@@ -2380,9 +2526,6 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
     const exactKeys = new Set(exactCandidates.map((candidate) => `${candidate.sourceUrl}|${normalized(candidate.legalName)}`));
     const relatedCandidates = cleanedCandidates.filter((candidate) =>
       !exactKeys.has(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) && isRelatedBusinessCandidate(candidate, role ?? "", query),
-    );
-    const noiseCandidates = cleanedCandidates.filter(
-      (candidate) => !exactKeys.has(`${candidate.sourceUrl}|${normalized(candidate.legalName)}`) && !isRelatedBusinessCandidate(candidate, role ?? "", query)
     );
     const businessCandidates = [
       ...exactCandidates.map((candidate) => ({ ...candidate, resultTier: "EXACT" as const })),
@@ -2415,8 +2558,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
         if (countExactInside(attempt) >= RADIUS_ESCALATION_MIN_EXACT_INSIDE) break;
       }
     }
-    const noiseWithTier = noiseCandidates.map((candidate) => ({ ...candidate, resultTier: "NOISE" as const, locationStatus: "UNKNOWN" as const }));
-    const candidates = [...processed.candidates, ...noiseWithTier];
+    // NOISE chỉ được giữ trong chẩn đoán; không đưa bài bán lẻ, danh sách tổng hợp
+    // hoặc hồ sơ thiếu bằng chứng B2B vào kết quả người dùng có thể lưu.
+    const candidates = processed.candidates;
     const measurableCount = processed.candidates.filter((candidate) => candidate.locationStatus === "INSIDE" || candidate.locationStatus === "OUTSIDE").length;
     const coordinateCoveragePercent = processed.candidates.length ? Math.round(measurableCount / processed.candidates.length * 100) : 0;
     const staleFallbackUsed = geocoding.summary.staleFallbacks > 0;

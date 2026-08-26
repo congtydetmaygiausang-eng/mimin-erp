@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 import { useKho } from "@/lib/data/kho-store";
@@ -10,26 +10,7 @@ import type { Tab, LoaiKho } from "./data";
 import { Header } from "./components/Header";
 import { InventoryGrid } from "./components/InventoryGrid";
 import { TransactionTable } from "./components/TransactionTable";
-import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
-import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
-
-const NEW_ACCESSORY_FIELDS: FieldDef[] = [
-  { name: "maVT", label: "Mã phụ liệu (tự động)", type: "text", required: true, readOnly: true },
-  { name: "tenVT", label: "Tên phụ liệu", type: "text", required: true, placeholder: "VD: Nút áo đen" },
-  { name: "loai", label: "Loại phụ liệu", type: "select", required: true, options: [
-    { value: "Nút", label: "Nút" }, { value: "Dây kéo", label: "Dây kéo" },
-    { value: "Thun", label: "Thun" }, { value: "Bo cổ", label: "Bo cổ" },
-    { value: "Nhãn", label: "Nhãn / Thẻ bài" }, { value: "Bao bì", label: "Bao bì" },
-    { value: "Phụ liệu khác", label: "Phụ liệu khác" },
-  ] },
-  { name: "dvt", label: "Đơn vị tính", type: "select", required: true, options: [
-    { value: "cái", label: "Cái" }, { value: "bộ", label: "Bộ" },
-    { value: "m", label: "Mét" }, { value: "kg", label: "Kg" },
-    { value: "cuộn", label: "Cuộn" }, { value: "gói", label: "Gói" },
-  ] },
-  { name: "donGia", label: "Đơn giá mặc định", type: "number", min: 0 },
-  { name: "ghiChu", label: "Ghi chú", type: "textarea", rows: 2 },
-];
+import { PLNhapKho, PLXuatKho, PLLichSu, PLThemMoi } from "./components/Modals";
 
 export default function KhoPhuLieuPage() {
   const { giaoDich, reset } = useKho();
@@ -38,10 +19,9 @@ export default function KhoPhuLieuPage() {
   const [showNhap, setShowNhap] = useState<string | null>(null);
   const [showXuat, setShowXuat] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<string | null>(null);
-  const [selectedNhapMaVT, setSelectedNhapMaVT] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
+  const [showThemMoi, setShowThemMoi] = useState(false);
 
-  const [inventory, setInventory] = useState<KhoVai[]>([]);
+  const [inventory, setInventory] = useState<KhoVai[]>(KHO_VAT_TU);
   const [editingVT, setEditingVT] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
 
@@ -52,115 +32,144 @@ export default function KhoPhuLieuPage() {
   const PL_IMAGES_KEY = "mimin_kho_phuLieu_images";
   const PL_INVENTORY_KEY = "mimin_kho_phuLieu_custom";
 
-  const readSharedImage = (ghiChu: string | null | undefined) => {
-    if (!ghiChu) return "";
-    try {
-      const parsed = JSON.parse(ghiChu) as { imageUrl?: unknown };
-      return typeof parsed.imageUrl === "string" ? parsed.imageUrl : "";
-    } catch { return ""; }
-  };
-
-  // Supabase là nguồn dữ liệu chính; không tự sinh lại danh mục phụ liệu mẫu.
+  // Đồng bộ kho_phu_lieu từ Supabase
   useEffect(() => {
-    let mounted = true;
+    if (isSupabaseEnabled && supabase) {
+      supabase.from("kho_phu_lieu").select("*").then(({ data, error }) => {
+        if (data && data.length > 0) {
+          const mapped: KhoVai[] = data.map((d: any) => ({
+            maVT: d.sku || "",
+            tenVT: d.ten_vt || "",
+            loai: d.loai || "Phụ liệu",
+            dvt: d.dvt || "cái",
+            donGia: d.don_gia || 0,
+            tonKho: d.ton_kho || 0,
+            tonToiThieu: d.ton_toi_thieu || 0,
+            kho: "Kho phụ liệu",
+            mauSac: d.mau_sac || "",
+            ghiChu: d.ghi_chu || "",
+            soCayNhap: d.so_cay_nhap || 0,
+            tonCay: d.ton_cay || 0,
+          }));
+          setInventory(mapped);
+          
+          // Khôi phục hình ảnh cũ (migrate BO-XXX to PL-XXX)
+          try {
+            const imgRaw = localStorage.getItem(PL_IMAGES_KEY);
+            if (imgRaw) {
+              const oldImgs = JSON.parse(imgRaw);
+              const newImgs = { ...oldImgs };
+              let migrated = false;
+              mapped.forEach(nv => {
+                if (!newImgs[nv.maVT]) {
+                  // Find old item by name
+                  const oldItem = KHO_VAT_TU.find(o => o.tenVT.toLowerCase() === nv.tenVT.toLowerCase());
+                  if (oldItem && oldImgs[oldItem.maVT]) {
+                    newImgs[nv.maVT] = oldImgs[oldItem.maVT];
+                    migrated = true;
+                  }
+                }
+              });
+              if (migrated) {
+                localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(newImgs));
+                setInventoryImages(newImgs);
+              }
+            }
+          } catch {}
+        } else {
+          // Fallback localStorage if Supabase is empty or fails
+          try {
+            const invRaw = localStorage.getItem(PL_INVENTORY_KEY);
+            if (invRaw) {
+              const saved = JSON.parse(invRaw) as Record<string, Partial<KhoVai>>;
+              setInventory(prev => prev.map(v => saved[v.maVT] ? { ...v, ...saved[v.maVT] } : v));
+            }
+          } catch {}
+        }
+      });
+    }
+
     try {
       const imgRaw = localStorage.getItem(PL_IMAGES_KEY);
       if (imgRaw) setInventoryImages(JSON.parse(imgRaw));
     } catch {}
-
-    const loadRemote = async () => {
-      if (!isSupabaseEnabled || !supabase) return;
-      const { data, error } = await supabase
-        .from("kho")
-        .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu")
-        .eq("loai", "Phu lieu")
-        .order("sku");
-      if (error) {
-        toast.error(`Không tải được Kho phụ liệu: ${error.message}`);
-        return;
-      }
-      if (!mounted) return;
-      const remote = (data || []).map((row) => {
-        const fallback = KHO_VAT_TU.find((item) => item.maVT === row.sku);
-        return {
-          ...(fallback || {}),
-          maVT: row.sku,
-          tenVT: row.ten_vt,
-          loai: row.loai_chi_tiet || fallback?.loai || "Phụ liệu",
-          mauSac: row.mau_sac || "",
-          dvt: row.dvt || "sp",
-          donGia: Number(row.don_gia) || 0,
-          tonKho: Number(row.ton_kho) || 0,
-          tonToiThieu: Number(row.ton_toi_thieu) || 0,
-          soCayNhap: Number(row.so_cay_nhap) || 0,
-          tonCay: Number(row.ton_cay) || 0,
-          tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
-          kho: row.kho || "Kho phụ liệu",
-          ghiChu: row.ghi_chu || "",
-        } satisfies KhoVai;
-      });
-      setInventoryImages(Object.fromEntries((data || []).map((row) => [row.sku, readSharedImage(row.ghi_chu)]).filter(([, image]) => Boolean(image))));
-      setInventory(remote);
-      localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(remote));
-    };
-
-    void loadRemote();
-    if (!isSupabaseEnabled || !supabase) return () => { mounted = false; };
-    const channel = supabase
-      .channel(`kho-phu-lieu-${Math.random().toString(36).slice(2)}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "kho", filter: "loai=eq.Phu lieu" },
-        () => { void loadRemote(); }
-      )
-      .subscribe();
-    return () => {
-      mounted = false;
-      void supabase?.removeChannel(channel);
-    };
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && uploadingVT) {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const url = ev.target?.result as string;
-        // Persist ảnh qua F5
-        setInventoryImages(prev => {
-          const next = { ...prev, [uploadingVT]: url };
-          localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
-          return next;
-        });
-        if (isSupabaseEnabled && supabase) {
-          const item = inventory.find((value) => value.maVT === uploadingVT);
-          const metadata = JSON.stringify({ note: item?.ghiChu || "", imageUrl: url });
-          const { error } = await supabase.from("kho").update({ ghi_chu: metadata, updated_at: new Date().toISOString() }).eq("sku", uploadingVT);
-          if (error) return toast.error(`Chưa lưu được ảnh lên Supabase: ${error.message}`);
+      const toastId = toast.loading("Đang tải ảnh lên hệ thống...");
+      
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "kho-phu-lieu");
+      
+      fetch("/api/product-uploads", {
+        method: "POST",
+        body: formData
+      }).then(res => res.json()).then(data => {
+        if (data.url) {
+           const url = data.url;
+           // 1. Cập nhật local fallback
+           setInventoryImages(prev => {
+             const next = { ...prev, [uploadingVT]: url };
+             localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
+             return next;
+           });
+           
+           // 2. Cập nhật lên Supabase (vào ghi_chu)
+           const vt = inventory.find(v => v.maVT === uploadingVT);
+           if (vt && isSupabaseEnabled && supabase) {
+              const baseGhiChu = vt.ghiChu ? vt.ghiChu.replace(/\[IMG:.*?\]/g, "").trim() : "";
+              const newGhiChu = baseGhiChu ? `${baseGhiChu} [IMG:${url}]` : `[IMG:${url}]`;
+              
+              supabase.from("kho_phu_lieu").update({ ghi_chu: newGhiChu }).eq("sku", uploadingVT).then(() => {
+                setInventory(prev => prev.map(item => item.maVT === uploadingVT ? { ...item, ghiChu: newGhiChu } : item));
+              });
+           }
+           toast.success("Đã tải ảnh lên Supabase thành công!", { id: toastId });
+        } else {
+           toast.error(data.error || "Lỗi tải ảnh", { id: toastId });
         }
-        toast.success("Đã tải ảnh và đồng bộ cho tất cả nhân viên!");
-      };
-      reader.readAsDataURL(file);
+      }).catch(() => {
+         // Fallback nếu API lỗi (chỉ lưu local)
+         const reader = new FileReader();
+         reader.onload = (ev) => {
+           const url = ev.target?.result as string;
+           setInventoryImages(prev => {
+             const next = { ...prev, [uploadingVT]: url };
+             localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(next));
+             return next;
+           });
+           toast.success("Đã tải ảnh cục bộ thành công (API lỗi)", { id: toastId });
+         };
+         reader.readAsDataURL(file);
+      });
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
     setUploadingVT(null);
   };
 
   // KPIs
-  const dsTrangThai = inventory.map((item) => {
-    const tonKho = Number(item.tonKho) || 0;
-    const tonToiThieu = Number(item.tonToiThieu) || 0;
-    const giaoDichVatTu = giaoDich.filter((row) => row.maVT === item.maVT);
-    return {
-      maVT: item.maVT,
-      tonKho,
-      tonToiThieu,
-      canhBao: tonToiThieu > 0 && tonKho < tonToiThieu,
-      giaTriTon: tonKho * (Number(item.donGia) || 0),
-      tongNhap: giaoDichVatTu.filter((row) => row.loai === "NHAP").reduce((sum, row) => sum + row.soLuong, 0),
-      tongXuat: giaoDichVatTu.filter((row) => row.loai === "XUAT").reduce((sum, row) => sum + row.soLuong, 0),
-    };
-  });
+  const dsTrangThai = useMemo(() => {
+    return inventory.map(v => {
+      const gd = giaoDich.filter((g) => g.maVT === v.maVT);
+      const tongNhap = gd.filter((g) => g.loai === "NHAP").reduce((s, g) => s + g.soLuong, 0);
+      const tongXuat = gd.filter((g) => g.loai === "XUAT").reduce((s, g) => s + g.soLuong, 0);
+      const tonKho = v.tonKho + tongNhap - tongXuat;
+      return {
+        maVT: v.maVT,
+        tonKho,
+        tonToiThieu: v.tonToiThieu || 0,
+        canhBao: tonKho < (v.tonToiThieu || 0),
+        giaTriTon: tonKho * v.donGia,
+        lanNhapGanNhat: gd.filter((g) => g.loai === "NHAP").sort((a, b) => b.ngay.localeCompare(a.ngay))[0]?.ngay,
+        lanXuatGanNhat: gd.filter((g) => g.loai === "XUAT").sort((a, b) => b.ngay.localeCompare(a.ngay))[0]?.ngay,
+        tongNhap,
+        tongXuat,
+      };
+    });
+  }, [inventory, giaoDich]);
   const tongGiaTri = dsTrangThai.reduce((s, t) => s + t.giaTriTon, 0);
   const dsCanhBao = dsTrangThai.filter((t) => t.canhBao);
   const tongNhap = giaoDich.filter((g) => g.loai === "NHAP" && inventory.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
@@ -185,15 +194,7 @@ export default function KhoPhuLieuPage() {
     .sort((a, b) => b.ngay.localeCompare(a.ngay)),
   [giaoDich, search, tab, inventory]);
 
-  const nextAccessoryCode = useMemo(() => {
-    const maxSequence = inventory.reduce((max, item) => {
-      const sequence = Number(item.maVT.match(/^PL-(\d+)$/i)?.[1] || 0);
-      return Math.max(max, sequence);
-    }, 0);
-    return `PL-${String(Math.max(maxSequence, inventory.length) + 1).padStart(3, "0")}`;
-  }, [inventory]);
-
-  const handleSaveEdit = async (v: KhoVai) => {
+  const handleSaveEdit = (v: KhoVai) => {
     const updated = { ...v, ...editForm };
     // 1. Cập nhật state React
     setInventory((prev) => prev.map((item) => (item.maVT === v.maVT ? updated : item)));
@@ -202,83 +203,75 @@ export default function KhoPhuLieuPage() {
     try {
       const raw = localStorage.getItem(PL_INVENTORY_KEY);
       const saved = raw ? JSON.parse(raw) : {};
-      saved[v.maVT] = { tenVT: updated.tenVT, donGia: updated.donGia };
+      saved[v.maVT] = updated;
       localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(saved));
     } catch {}
 
-    // 3. Chỉ báo thành công sau khi Supabase xác nhận.
+    // 3. Cập nhật lên Supabase
     if (isSupabaseEnabled && supabase) {
-      const { error } = await supabase.from("kho").upsert(
-        {
-          sku: v.maVT,
-          ten_vt: updated.tenVT,
-          loai: "Phu lieu",
-          loai_chi_tiet: updated.loai,
-          mau_sac: updated.mauSac,
-          dvt: updated.dvt,
-          don_gia: updated.donGia,
-          ton_kho: updated.tonKho,
-          ton_toi_thieu: updated.tonToiThieu,
-          kho: updated.kho || "Kho phụ liệu",
-          ghi_chu: updated.ghiChu || null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "sku" }
-      );
-      if (error) {
-        toast.error("Lỗi đồng bộ Supabase: " + error.message);
-        return;
-      }
-      toast.success("✅ Đã lưu thông tin phụ liệu lên Supabase!");
-    } else {
-      toast.success("Đã lưu thông tin phụ liệu (localStorage)!");
+      supabase.from("kho_phu_lieu").upsert({
+        sku: v.maVT,
+        ten_vt: updated.tenVT,
+        loai: updated.loai || "Phụ liệu",
+        dvt: updated.dvt || "cái",
+        don_gia: updated.donGia,
+        ton_kho: v.tonKho,
+        ton_toi_thieu: v.tonToiThieu,
+      }, { onConflict: "sku" }).then(({ error }) => {
+        if (error) {
+          toast.error("Lỗi đồng bộ Supabase: " + error.message);
+        } else {
+          toast.success("✅ Đã lưu thông tin phụ liệu lên Supabase!");
+        }
+      });
     }
 
     setEditingVT(null);
+    setEditForm({});
   };
 
-  const handleAddAccessory = async (values: Record<string, string>) => {
-    const maVT = nextAccessoryCode;
-    if (inventory.some((item) => item.maVT.toUpperCase() === maVT)) {
-      throw new Error(`Mã phụ liệu ${maVT} đã tồn tại`);
-    }
+  const handleAddPhuLieu = (form: Partial<KhoVai>) => {
+    // Generate new sku
+    const newSku = `PL-${String(inventory.length + 1).padStart(3, "0")}`;
     const newItem: KhoVai = {
-      maVT,
-      tenVT: values.tenVT.trim(),
-      loai: values.loai,
-      mauSac: "",
-      dvt: values.dvt,
-      donGia: Number(values.donGia) || 0,
-      tonKho: 0,
-      tonToiThieu: 0,
+      maVT: newSku,
+      tenVT: form.tenVT || "",
+      loai: form.loai || "Phụ liệu",
+      dvt: form.dvt || "cái",
+      donGia: form.donGia || 0,
+      tonKho: form.tonKho || 0,
+      tonToiThieu: form.tonToiThieu || 0,
+      kho: "Kho phụ liệu",
+      mauSac: form.mauSac || "",
+      ghiChu: "",
       soCayNhap: 0,
       tonCay: 0,
-      tyLeHaoHut: 0,
-      kho: "Kho phụ liệu",
-      ghiChu: values.ghiChu?.trim() || "",
     };
+    
+    setInventory(prev => [newItem, ...prev]);
+    
     if (isSupabaseEnabled && supabase) {
-      const { error } = await supabase.from("kho").insert({
+      supabase.from("kho_phu_lieu").insert({
         sku: newItem.maVT,
         ten_vt: newItem.tenVT,
-        loai: "Phu lieu",
-        loai_chi_tiet: newItem.loai,
-        mau_sac: newItem.mauSac,
+        loai: newItem.loai,
         dvt: newItem.dvt,
         don_gia: newItem.donGia,
-        ton_kho: 0,
-        ton_toi_thieu: 0,
-        so_cay_nhap: 0,
-        ton_cay: 0,
-        ty_le_hao_hut: 0,
-        kho: newItem.kho,
-        ghi_chu: newItem.ghiChu || null,
-        updated_at: new Date().toISOString(),
+        ton_kho: newItem.tonKho,
+        ton_toi_thieu: newItem.tonToiThieu,
+        mau_sac: newItem.mauSac,
+      }).then(({ error }) => {
+        if (error) {
+          toast.error("Lỗi đồng bộ thêm mới: " + error.message);
+        } else {
+          toast.success("Đã thêm phụ liệu mới vào Supabase!");
+        }
       });
-      if (error) throw new Error(error.message);
+    } else {
+      toast.success("Đã thêm phụ liệu mới (Local)");
     }
-    setInventory((prev) => [...prev, newItem].sort((a, b) => a.maVT.localeCompare(b.maVT)));
-    setSelectedNhapMaVT(newItem.maVT);
+    
+    setShowThemMoi(false);
   };
 
   return (
@@ -291,6 +284,7 @@ export default function KhoPhuLieuPage() {
           dsCanhBaoDetails={dsCanhBaoDetails}
           tongNhap={tongNhap}
           onReset={() => { if (confirm("Reset?")) { reset(); toast.success("Đã reset"); } }}
+          onAdd={() => setShowThemMoi(true)}
           tab={tab}
           setTab={setTab}
         />
@@ -298,8 +292,7 @@ export default function KhoPhuLieuPage() {
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
 
         <div className="card p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="relative max-w-md flex-1">
+          <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
             <input
               className="input pl-9"
@@ -307,25 +300,6 @@ export default function KhoPhuLieuPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-          <select className="input md:w-64" value={selectedNhapMaVT} onChange={(e) => setSelectedNhapMaVT(e.target.value)}>
-            <option value="">-- Chọn phụ liệu nhập --</option>
-            {inventory.map((item) => <option key={item.maVT} value={item.maVT}>{item.maVT} — {item.tenVT}</option>)}
-          </select>
-          <button
-            type="button"
-            className="btn-primary flex items-center justify-center gap-2 whitespace-nowrap"
-            onClick={() => selectedNhapMaVT ? setShowNhap(selectedNhapMaVT) : toast.error("Vui lòng chọn phụ liệu cần nhập")}
-          >
-            <Plus className="h-4 w-4" /> Nhập phụ liệu từ NCC
-          </button>
-          <button
-            type="button"
-            className="btn-secondary flex items-center justify-center gap-2 whitespace-nowrap"
-            onClick={() => setShowAdd(true)}
-          >
-            <Plus className="h-4 w-4" /> Thêm phụ liệu mới
-          </button>
           </div>
         </div>
 
@@ -347,18 +321,10 @@ export default function KhoPhuLieuPage() {
 
         {(tab === "nhap" || tab === "xuat" || tab === "lichsu") && <TransactionTable filteredGD={filteredGD} />}
 
-        {showNhap && <PLNhapKho maVT={showNhap} vatTu={inventory.find((item) => item.maVT === showNhap)} loai="phu-lieu" onClose={() => setShowNhap(null)} onImageSaved={(maVT, imageUrl) => setInventoryImages((prev) => ({ ...prev, [maVT]: imageUrl }))} />}
-        {showXuat && <PLXuatKho maVT={showXuat} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
-        {showHistory && <PLLichSu maVT={showHistory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
-        <CrudModal
-          open={showAdd}
-          onClose={() => setShowAdd(false)}
-          title="Thêm phụ liệu mới"
-          fields={NEW_ACCESSORY_FIELDS}
-          initial={{ maVT: nextAccessoryCode, loai: "Phụ liệu khác", dvt: "cái", donGia: "0" }}
-          submitLabel="Tạo mã phụ liệu"
-          onSubmit={handleAddAccessory}
-        />
+        {showNhap && <PLNhapKho maVT={showNhap} inventory={inventory} loai="phu-lieu" onClose={() => setShowNhap(null)} />}
+        {showXuat && <PLXuatKho maVT={showXuat} inventory={inventory} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
+        {showHistory && <PLLichSu maVT={showHistory} inventory={inventory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
+        {showThemMoi && <PLThemMoi onClose={() => setShowThemMoi(false)} onAdd={handleAddPhuLieu} />}
       </div>
     </div>
   );

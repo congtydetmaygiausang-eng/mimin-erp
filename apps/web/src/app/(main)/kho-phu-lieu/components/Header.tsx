@@ -13,11 +13,12 @@ interface HeaderProps {
   dsCanhBaoDetails: string;
   tongNhap: number;
   onReset: () => void;
+  onAdd: () => void;
   tab: Tab;
   setTab: (v: Tab) => void;
 }
 
-export function Header({ inventoryCount, tongGiaTri, dsCanhBao, dsCanhBaoDetails, tongNhap, onReset, tab, setTab }: HeaderProps) {
+export function Header({ inventoryCount, tongGiaTri, dsCanhBao, dsCanhBaoDetails, tongNhap, onReset, onAdd, tab, setTab }: HeaderProps) {
   return (
     <div className="rounded-3xl overflow-hidden shadow-xl mb-6" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
       <div className="p-5 md:p-6 text-white">
@@ -35,7 +36,12 @@ export function Header({ inventoryCount, tongGiaTri, dsCanhBao, dsCanhBaoDetails
               {dsCanhBao.length > 0 && <> · <b className="text-rose-200">⚠️ {dsCanhBao.length} mã dưới tồn tối thiểu</b></>}
             </p>
           </div>
-          <button onClick={onReset} className="bg-white/15 hover:bg-white/25 text-white text-xs px-3 py-1.5 rounded-lg border border-white/20 transition-colors">Reset</button>
+          <div className="flex gap-2">
+            <button onClick={onAdd} className="bg-sky-500 hover:bg-sky-600 shadow-md hover:shadow-lg text-white text-sm px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Thêm phụ liệu
+            </button>
+            <button onClick={onReset} className="bg-white/15 hover:bg-white/25 text-white text-xs px-3 py-2 rounded-lg border border-white/20 transition-colors hidden md:block">Reset</button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">

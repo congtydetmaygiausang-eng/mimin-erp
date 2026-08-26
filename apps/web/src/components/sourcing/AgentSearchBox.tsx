@@ -21,6 +21,8 @@ import { directCandidateSaveKey, saveDirectSearchCandidates, type DirectSearchCa
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import { MANG_LUOI_DANH_MUC } from "@/lib/data/mang-luoi-danh-muc";
+import { buildAgentChatMessages } from "@/lib/sourcing/agent-chat-contract";
+import { normalizeAgentSearchPayload } from "@/lib/sourcing/gate4-agent-company-contract";
 
 export type PartnerTypeChip = "factory" | "supplier" | "customer";
 
@@ -118,7 +120,7 @@ export default function AgentSearchBox({
     if (!trimmed || loading) return;
     const currentRequestId = requestId.current + 1;
     requestId.current = currentRequestId;
-    const history = bubbles.slice(-6).map((bubble) => ({ role: bubble.role, content: bubble.content }));
+    const messages = buildAgentChatMessages(bubbles, trimmed);
     setBubbles((current) => [...current, { role: "user", content: trimmed }]);
     setLoading(true);
     try {
@@ -127,13 +129,21 @@ export default function AgentSearchBox({
       const response = await fetch("/api/v1/mimin-group/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: trimmed, history, lastResults: results }),
+        body: JSON.stringify({ messages, lastResults: results }),
       });
       const data = (await response.json()) as ChatApiResponse;
       if (!response.ok) throw new Error(data.error ?? "AI Search Agent gặp lỗi");
       if (requestId.current !== currentRequestId) return;
       setBubbles((current) => [...current, { role: "assistant", content: data.reply ?? "Đã xử lý xong." }]);
-      if (data.results) setResults(data.results.candidates);
+      if (data.results) {
+        // Gate 4 consumer boundary: Tổng quan kiểm chứng lại cùng contract với
+        // Tìm nâng cao trước khi hiển thị, kể cả khi payload chat bị thay đổi.
+        const gate4Payload = normalizeAgentSearchPayload<
+          AgentCandidate,
+          NonNullable<ChatApiResponse["results"]>
+        >(data.results);
+        setResults(gate4Payload.candidates);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "AI Search Agent gặp lỗi";
       toast.error(message);

@@ -75,6 +75,24 @@ class TrafilaturaExtractor:
                 favor_precision=True,
             )
             if raw_result is None:
+                # Một số trang doanh nghiệp đặt thông tin liên hệ trong các khối
+                # phụ (card/footer/table). Lượt precision có thể loại toàn bộ các
+                # khối này dù HTML vẫn chứa địa chỉ và điện thoại. Chỉ khi lượt
+                # đầu rỗng mới thử lại theo recall; không làm thay đổi đường đi
+                # thành công thông thường.
+                raw_result = extract_function(
+                    evidence.body_text,
+                    url=evidence.final_url,
+                    output_format="json",
+                    with_metadata=True,
+                    include_comments=False,
+                    include_tables=True,
+                    include_images=False,
+                    include_links=False,
+                    deduplicate=True,
+                    favor_recall=True,
+                )
+            if raw_result is None:
                 return self._empty(evidence, version, "NO_MAIN_CONTENT")
             payload = json.loads(raw_result)
             if not isinstance(payload, dict):
