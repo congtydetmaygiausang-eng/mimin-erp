@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Search, X, Send, ListChecks, CheckCircle2, Package } from "lucide-react";
+import { ShoppingBag, Search, X, Send, ListChecks, CheckCircle2, Package, Heart } from "lucide-react";
 import { toast } from "sonner";
 import { MiminGroupTabs } from "@/components/mimin-group/MiminGroupTabs";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
@@ -48,6 +48,14 @@ export default function KhoMauPage() {
 
   const [hienYeuCau, setHienYeuCau] = useState(false);
   const [dsYeuCau, setDsYeuCau] = useState<YeuCau[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    supabase.from("mau_da_thich").select("ma_sp").eq("user_id", user.id).then(({ data }) => {
+      setFavoriteIds((data || []).map((row: { ma_sp: string }) => row.ma_sp));
+    });
+  }, [user?.id]);
 
   const filtered = dsSanPham.filter((sp) =>
     sp.tenSP.toLowerCase().includes(search.toLowerCase()) || sp.id.toLowerCase().includes(search.toLowerCase())
@@ -109,6 +117,24 @@ export default function KhoMauPage() {
   };
 
   const soYeuCauMoi = dsYeuCau.filter((y) => y.trang_thai === "Mới").length;
+
+  const toggleFavorite = async (sp: SanPham) => {
+    if (!user?.id || !supabase) {
+      toast.error("Vui lòng đăng nhập để lưu mẫu yêu thích");
+      return;
+    }
+    const isFavorite = favoriteIds.includes(sp.id);
+    const query = supabase.from("mau_da_thich").delete().eq("user_id", user.id).eq("ma_sp", sp.id);
+    const result = isFavorite
+      ? await query
+      : await supabase.from("mau_da_thich").insert({ id: crypto.randomUUID(), user_id: user.id, ma_sp: sp.id });
+    if (result.error) {
+      toast.error(`Không cập nhật được mẫu yêu thích: ${result.error.message}`);
+      return;
+    }
+    setFavoriteIds((ids) => isFavorite ? ids.filter((id) => id !== sp.id) : [...ids, sp.id]);
+    toast.success(isFavorite ? "Đã bỏ thích mẫu" : "Đã thêm mẫu vào Mẫu đã thích");
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4 pb-24 md:pb-20">
@@ -188,7 +214,7 @@ export default function KhoMauPage() {
                 onClick={() => moChiTiet(sp)}
                 className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-brand-500/50 hover:shadow-lg transition group"
               >
-                <div className="aspect-square bg-slate-100 dark:bg-slate-800">
+                <div className="relative aspect-square bg-slate-100 dark:bg-slate-800">
                   {anh ? (
                     <img src={anh} className="w-full h-full object-cover group-hover:scale-105 transition" />
                   ) : (
@@ -196,6 +222,15 @@ export default function KhoMauPage() {
                       <Package className="w-10 h-10 opacity-30" />
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={(event) => { event.stopPropagation(); void toggleFavorite(sp); }}
+                    className={`absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-white/95 shadow-md transition ${favoriteIds.includes(sp.id) ? "border-rose-400 text-rose-500" : "border-rose-200 text-rose-400 hover:border-rose-400 hover:text-rose-500"}`}
+                    aria-label={favoriteIds.includes(sp.id) ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
+                    title={favoriteIds.includes(sp.id) ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
+                  >
+                    <Heart className={`h-5 w-5 ${favoriteIds.includes(sp.id) ? "fill-current" : ""}`} />
+                  </button>
                 </div>
                 <div className="p-2.5 space-y-0.5">
                   <div className="text-sm font-semibold truncate">{sp.tenSP}</div>
