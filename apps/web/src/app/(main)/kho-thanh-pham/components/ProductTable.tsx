@@ -1,7 +1,7 @@
 // ============ PRODUCT TABLE VIEW ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.2)
 
-import { Edit, Truck, Trash2 } from "lucide-react";
+import { Edit, Truck, Trash2, Image as ImageIcon } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
 interface ProductTableProps {
@@ -18,6 +18,7 @@ export function ProductTable({ filtered, setEditing, handleXuatKho, handleDelete
         <thead className="bg-amber-50 text-amber-900">
           <tr>
             <th className="p-2 text-left">Mã SP</th>
+            <th className="p-2 text-center w-16">Hình ảnh</th>
             <th className="p-2 text-left">Tên SP</th>
             <th className="p-2 text-left">Màu/Size</th>
             <th className="p-2 text-left">LSX</th>
@@ -33,6 +34,22 @@ export function ProductTable({ filtered, setEditing, handleXuatKho, handleDelete
           {filtered.map((s) => (
             <tr key={s.id} className="border-t hover:bg-amber-50/30">
               <td className="p-2 font-mono font-bold text-amber-700">{s.maSP}</td>
+              <td className="p-2">
+                <div className="group relative w-12 h-12">
+                  <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-400">
+                    {s.hinhAnh?.[0] ? (
+                      <img src={s.hinhAnh[0]} alt={s.tenSP} className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageIcon className="h-5 w-5" />
+                    )}
+                  </div>
+                  {s.hinhAnh?.[0] && (
+                    <div className="pointer-events-none absolute left-14 top-1/2 z-50 hidden -translate-y-1/2 rounded-xl border-2 border-white bg-white p-1 shadow-2xl group-hover:block">
+                      <img src={s.hinhAnh[0]} alt={`Xem trước ${s.tenSP}`} className="h-48 w-48 max-w-none rounded-lg object-contain" />
+                    </div>
+                  )}
+                </div>
+              </td>
               <td className="p-2">
                 <div className="font-semibold">{s.tenSP}</div>
                 <div className="text-[10px] text-slate-500">{s.phanLoai}</div>

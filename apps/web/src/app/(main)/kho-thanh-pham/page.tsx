@@ -31,7 +31,7 @@ export default function KhoThanhPhamPage() {
   const [editing, setEditing] = useState<SanPhamTP | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showStats, setShowStats] = useState(true);
-  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -137,6 +137,12 @@ export default function KhoThanhPhamPage() {
       if (sortBy === "ngay") cmp = new Date(a.ngayNhap).getTime() - new Date(b.ngayNhap).getTime();
       if (sortBy === "sl") cmp = a.soLuong - b.soLuong;
       if (sortBy === "gt") cmp = a.giaTri - b.giaTri;
+      
+      // Nếu cùng ngày (cmp = 0), ưu tiên xếp theo ID (ID sinh sau sẽ lớn hơn -> đưa lên đầu nếu desc)
+      if (cmp === 0) {
+        cmp = a.id.localeCompare(b.id);
+      }
+      
       return sortDir === "asc" ? cmp : -cmp;
     });
     return result;
@@ -195,6 +201,60 @@ export default function KhoThanhPhamPage() {
     }
     const tongSL = newRows.reduce((s, r) => s + (r.soLuong || 0), 0);
     toast.success(newRows.length > 1 ? `Đã thêm ${newRows.length} biến thể (${tongSL} sp)` : `Đã thêm ${newRows[0]?.tenSP} (${tongSL} sp)`);
+    setShowAdd(false);
+
+    // Tự động đồng bộ lên Danh mục sản phẩm
+    const groupMaSP = newRows[0]?.maSP;
+    if (groupMaSP) {
+      const existingDM = dsDanhMuc.find(d => d.id === groupMaSP || d.maSP === groupMaSP);
+      const dsMauMoi = newRows.map((r) => ({
+        ten: r.mau,
+        maSKU: `${groupMaSP}-${r.mau}`,
+        dinhMuc: 0,
+        img: r.hinhAnh?.[0] || "",
+        video: r.video || "",
+      }));
+
+      const anhDaiDien = dsMauMoi.find(m => m.img)?.img || "";
+      const giaBanDuKien = newRows[0]?.giaBanLe || 0;
+      const giaVonDuKien = newRows[0]?.giaVon || 0;
+
+      if (existingDM) {
+         // Cập nhật Danh mục SP đã có
+         const dsMauGop = [...existingDM.dsMau];
+         dsMauMoi.forEach(m => {
+           const idx = dsMauGop.findIndex(old => old.ten === m.ten);
+           if (idx >= 0) dsMauGop[idx] = m;
+           else dsMauGop.push(m);
+         });
+         suaSP(existingDM.id, {
+           giaBanDuKien: Math.max(existingDM.giaBanDuKien || 0, giaBanDuKien),
+           dsMau: dsMauGop,
+           hinhAnh: existingDM.hinhAnh || anhDaiDien
+         });
+      } else {
+         // Thêm mới Danh mục SP
+         themSP({
+           id: groupMaSP,
+           maSP: groupMaSP,
+           tenSP: newRows[0]?.tenSP || groupMaSP,
+           loaiSP: newRows[0]?.phanLoai || "Áo",
+           giaBanDuKien,
+           giaVonDuKien,
+           tiLeSize: newRows[0]?.tiLeSize || "",
+           bangSize: {
+              sizes: newRows[0]?.chiTietSize?.map((s: any) => s.size) || [],
+              ratios: (newRows[0]?.tiLeSize || "").split(":").map((n: string) => parseInt(n) || 0),
+              riSo: (newRows[0]?.tiLeSize || "").split(":").reduce((s: number, n: string) => s + (parseInt(n) || 0), 0)
+           },
+           dsMau: dsMauMoi,
+           ghiChu: newRows[0]?.ghiChu || "",
+           ngayTao: new Date().toISOString().slice(0, 10),
+           trangThai: "con-hang",
+           hinhAnh: anhDaiDien
+         });
+      }
+    }
   };
 
   const handleEdit = (data: any) => {
