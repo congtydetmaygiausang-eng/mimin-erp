@@ -8,7 +8,7 @@ import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
 import type { Tab, LoaiKho } from "./data";
 import { Header } from "./components/Header";
-import { InventoryGrid } from "./components/InventoryGrid";
+import { InventoryTable } from "./components/InventoryTable";
 import { TransactionTable } from "./components/TransactionTable";
 import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
@@ -34,7 +34,7 @@ const NEW_ACCESSORY_FIELDS: FieldDef[] = [
 ];
 
 export default function KhoPhuLieuPage() {
-  const { giaoDich, reset } = useKho();
+  const { giaoDich } = useKho();
   const [tab, setTab] = useState<Tab>("tongquan");
   const [search, setSearch] = useState("");
   const [showNhap, setShowNhap] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export default function KhoPhuLieuPage() {
         .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu")
         .eq("loai", "Phu lieu")
         .order("sku");
-      let { data, error } = await supabase
+      let { data, error }: { data: Array<Record<string, any>> | null; error: { code?: string; message: string } | null } = await supabase
         .from("kho")
         .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu, hinh_anh")
         .eq("loai", "Phu lieu")
@@ -316,7 +316,7 @@ export default function KhoPhuLieuPage() {
           dsCanhBao={dsCanhBao}
           dsCanhBaoDetails={dsCanhBaoDetails}
           tongNhap={tongNhap}
-          onReset={() => { if (confirm("Reset?")) { reset(); toast.success("Đã reset"); } }}
+          onAdd={() => setShowAdd(true)}
           tab={tab}
           setTab={setTab}
         />
@@ -349,7 +349,7 @@ export default function KhoPhuLieuPage() {
         </div>
 
         {tab === "tongquan" && (
-          <InventoryGrid
+          <InventoryTable
             filteredVT={filteredVT}
             dsTrangThai={dsTrangThai}
             inventoryImages={inventoryImages}
