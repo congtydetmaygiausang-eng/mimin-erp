@@ -10,6 +10,8 @@ function compact(value:string,maximum:number):string{return value.replace(/[\u00
 
 export function cleanCompanyLegalName(value:string):string{
   let text=compact(value,500)
+    .replace(/!\[.*?\]\(.*?\)/g,"")
+    .replace(/\[(.*?)\]\(.*?\)/g,"$1")
     .replace(/^(?:image|hình)\s*\d+\s*[:.\-–—]*\s*/i,"")
     .replace(/^\d{10}(?:-\d{3})?\s*[-–—|:]\s*/,"")
     .replace(/\s*[-–—|]\s*(?:masothue|mã số thuế)\s*$/i,"");
