@@ -8,7 +8,7 @@ import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
 import type { Tab, LoaiKho } from "./data";
 import { Header } from "./components/Header";
-import { InventoryGrid } from "./components/InventoryGrid";
+import { InventoryTable } from "./components/InventoryTable";
 import { TransactionTable } from "./components/TransactionTable";
 import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
@@ -345,18 +345,11 @@ export default function KhoPhuLieuPage() {
           >
             <Plus className="h-4 w-4" /> Nhập phụ liệu từ NCC
           </button>
-          <button
-            type="button"
-            className="btn-secondary flex items-center justify-center gap-2 whitespace-nowrap"
-            onClick={() => setShowAdd(true)}
-          >
-            <Plus className="h-4 w-4" /> Thêm phụ liệu mới
-          </button>
           </div>
         </div>
 
         {tab === "tongquan" && (
-          <InventoryGrid
+          <InventoryTable
             filteredVT={filteredVT}
             dsTrangThai={dsTrangThai}
             inventoryImages={inventoryImages}
