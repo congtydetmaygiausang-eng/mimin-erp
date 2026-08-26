@@ -2,8 +2,10 @@
 // Xem size/số lượng, thêm nhiều ảnh + video, nhập giá bán lẻ/sỉ cho 1 màu.
 
 import { useRef, useState } from "react";
-import { X, Camera, Video, Trash2, Save, Box } from "lucide-react";
+import { X, Camera, Video, Trash2, Save, Box, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { SanPhamTP } from "../data";
+import { uploadProductFile } from "@/lib/product-upload";
 
 interface Props {
   sp: SanPhamTP;
@@ -19,22 +21,35 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [uploading, setUploading] = useState(false);
+
+  const handleAddImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => setHinhAnh((prev) => [...prev, ev.target?.result as string]);
-      reader.readAsDataURL(file);
-    });
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const urls = await Promise.all(files.map(f => uploadProductFile(f, "kho-tp")));
+      setHinhAnh((prev) => [...prev, ...urls]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không upload được ảnh");
+    } finally {
+      setUploading(false);
+    }
     e.target.value = "";
   };
 
-  const handleAddVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setVideo(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    setUploading(true);
+    try {
+      const url = await uploadProductFile(file, "kho-tp");
+      setVideo(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không upload được video");
+    } finally {
+      setUploading(false);
+    }
     e.target.value = "";
   };
 
@@ -95,10 +110,11 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
                 ))}
                 <button
                   onClick={() => imageInputRef.current?.click()}
-                  className="w-40 h-40 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
+                  disabled={uploading}
+                  className="w-40 h-40 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Camera className="w-8 h-8 mb-2" />
-                  <span className="text-xs font-bold">Thêm ảnh</span>
+                  {uploading ? <Loader2 className="w-8 h-8 mb-2 animate-spin" /> : <Camera className="w-8 h-8 mb-2" />}
+                  <span className="text-xs font-bold">{uploading ? "Đang tải..." : "Thêm ảnh"}</span>
                 </button>
                 <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAddImages} />
               </div>
@@ -119,10 +135,11 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
               ) : (
                 <button
                   onClick={() => videoInputRef.current?.click()}
-                  className="w-40 aspect-[9/16] rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white"
+                  disabled={uploading}
+                  className="w-40 aspect-[9/16] rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Video className="w-8 h-8 mb-2" />
-                  <span className="text-xs font-bold">Thêm video</span>
+                  {uploading ? <Loader2 className="w-8 h-8 mb-2 animate-spin" /> : <Video className="w-8 h-8 mb-2" />}
+                  <span className="text-xs font-bold">{uploading ? "Đang tải..." : "Thêm video"}</span>
                 </button>
               )}
               <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleAddVideo} />

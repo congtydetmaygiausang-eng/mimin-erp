@@ -176,7 +176,17 @@ export default function KhoThanhPhamPage() {
     const newRows: SanPhamTP[] = list.map((item, i) => {
       const { __tempImage, ...sp } = item;
       const id = `TP${Date.now().toString().slice(-6)}${i}`;
-      if (__tempImage) newImages[id] = __tempImage;
+      
+      // Khắc phục lỗi không sync được ảnh sang Danh mục SP: phải đẩy link vào mảng hinhAnh
+      if (__tempImage) {
+        newImages[id] = __tempImage;
+        if (!sp.hinhAnh || sp.hinhAnh.length === 0) {
+          sp.hinhAnh = [__tempImage];
+        } else if (!sp.hinhAnh.includes(__tempImage)) {
+          sp.hinhAnh = [__tempImage, ...sp.hinhAnh];
+        }
+      }
+      
       return { ...sp, id, giaTri: sp.soLuong * sp.donGia };
     });
     update([...newRows, ...dsSanPham]);
@@ -189,6 +199,15 @@ export default function KhoThanhPhamPage() {
 
   const handleEdit = (data: any) => {
     const { __tempImage, ...sp } = data;
+    
+    if (__tempImage) {
+      if (!sp.hinhAnh || sp.hinhAnh.length === 0) {
+        sp.hinhAnh = [__tempImage];
+      } else if (!sp.hinhAnh.includes(__tempImage)) {
+        sp.hinhAnh = [__tempImage, ...sp.hinhAnh];
+      }
+    }
+    
     update(dsSanPham.map((s) => (s.id === sp.id ? { ...sp, giaTri: sp.soLuong * sp.donGia } : s)));
     if (__tempImage) {
       setProductImages((prev) => ({ ...prev, [sp.id]: __tempImage }));

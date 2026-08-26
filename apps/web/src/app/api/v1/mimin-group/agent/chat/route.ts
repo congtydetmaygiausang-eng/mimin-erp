@@ -125,8 +125,9 @@ const TOOLS = [
   },
 ] as const;
 
-const BASE_SYSTEM_PROMPT = `Bạn là AI Search Agent của MIMIN GROUP - trợ lý tìm kiếm đối tác cho chuỗi cung ứng may mặc (xưởng sản xuất, nhà cung cấp nguyên phụ liệu, khách hàng).
+const BASE_SYSTEM_PROMPT = `Bạn là AI Search Agent của MIMIN GROUP - trợ lý tìm kiếm đối tác cho chuỗi cung ứng may mặc (xưởng sản xuất, nhà cung cấp nguyên phụ liệu, khách hàng B2B).
 Nguyên tắc:
+- CHỈ TÌM NHÀ CUNG CẤP / CÔNG TY SẢN XUẤT. TUYỆT ĐỐI KHÔNG tìm hoặc hiển thị các cửa hàng bán lẻ (retail shops, shop thời trang B2C).
 - Khi người dùng muốn TÌM đối tác mới ngoài internet → gọi search_partners. Không tự bịa tên công ty, SĐT, địa chỉ.
 - Khi người dùng hỏi chi tiết 1 đối tác đã có trong hệ thống → gọi get_partner_detail.
 - Khi người dùng muốn so sánh nhiều đối tác → gọi compare_partners.

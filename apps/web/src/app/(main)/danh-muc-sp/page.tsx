@@ -128,6 +128,7 @@ export default function DanhMucSanPhamPage() {
         giaTikTok: item.giaTikTok,
         giaShopee: item.giaShopee,
         kenhBan: item.kenhBan,
+        hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
       });
     }
     return Array.from(map.values());

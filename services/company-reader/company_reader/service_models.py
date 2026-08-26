@@ -9,6 +9,32 @@ from typing import Any
 from .canonical_models import CanonicalCompanyProfile
 
 
+@dataclass(frozen=True, slots=True)
+class SourceContactSnapshot:
+    """Contact facts found on one URL, even when no legal-name anchor exists."""
+
+    legal_names: tuple[str, ...] = ()
+    addresses: tuple[str, ...] = ()
+    phones: tuple[str, ...] = ()
+    emails: tuple[str, ...] = ()
+    websites: tuple[str, ...] = ()
+    identity_safe: bool = True
+    distinct_legal_names: int = 0
+    distinct_tax_codes: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "legal_names": list(self.legal_names),
+            "addresses": list(self.addresses),
+            "phones": list(self.phones),
+            "emails": list(self.emails),
+            "websites": list(self.websites),
+            "identity_safe": self.identity_safe,
+            "distinct_legal_names": self.distinct_legal_names,
+            "distinct_tax_codes": self.distinct_tax_codes,
+        }
+
+
 class SourceProcessingStatus(StrEnum):
     PROCESSED = "PROCESSED"
     NO_ENTITY = "NO_ENTITY"
@@ -24,6 +50,7 @@ class SourceProcessingReport:
     fallback_decision: str
     entity_count: int = 0
     error_code: str | None = None
+    contact_snapshot: SourceContactSnapshot | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +61,9 @@ class SourceProcessingReport:
             "fallback_decision": self.fallback_decision,
             "entity_count": self.entity_count,
             "error_code": self.error_code,
+            "contact_snapshot": (
+                self.contact_snapshot.to_dict() if self.contact_snapshot else None
+            ),
         }
 
 

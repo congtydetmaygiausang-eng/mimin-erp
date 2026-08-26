@@ -5,14 +5,28 @@
 // (Danh mục sản phẩm, Lệnh cắt, Kho thành phẩm). KHÔNG dùng readAsDataURL()
 // nhúng base64 thẳng vào JSONB - từng làm bảng san_pham phình to hàng trăm
 // MB khiến truy vấn bị Postgres huỷ do statement timeout.
-import { authFetch } from "@/lib/auth-fetch";
+import { supabase } from "@/lib/supabase/client";
 
 export async function uploadProductFile(file: File, folder: string): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("folder", folder);
-  const res = await authFetch("/api/product-uploads", { method: "POST", body: formData });
-  const json = await res.json();
-  if (!res.ok || json.error) throw new Error(json.error || "Không thể upload file");
-  return json.url as string;
+  if (!supabase) throw new Error("Chưa cấu hình Supabase");
+
+  const ext = file.name.split(".").pop();
+  const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+
+  const { data, error } = await supabase.storage
+    .from("san-pham-media")
+    .upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message || "Lỗi upload lên Supabase Storage");
+  }
+
+  const { data: urlData } = supabase.storage
+    .from("san-pham-media")
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl;
 }

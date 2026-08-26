@@ -135,7 +135,7 @@ export function CrudModal({
                 />
               ) : f.type === "select" ? (
                 <select
-                  className={`input ${f.type === "text" && f.readOnly ? "cursor-not-allowed bg-slate-100 text-slate-600 dark:bg-slate-800" : ""}`}
+                  className="input"
                   value={values[f.name] || ""}
                   onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
                 >

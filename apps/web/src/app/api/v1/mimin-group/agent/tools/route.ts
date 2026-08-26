@@ -17,6 +17,7 @@ import { canView } from "@/lib/permissions";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
 import type { DirectSearchCandidate } from "@/lib/production-discovery";
+import { normalizeAgentCompanyCandidates } from "@/lib/sourcing/gate4-agent-company-contract";
 
 export const maxDuration = 300;
 
@@ -142,7 +143,19 @@ async function executeToolCall(
         merged.push({ role: roles[i], candidate, searchQuery: `${queryText} | ${location}`, provider: result.provider });
       }
     }
-    const limited = merged.slice(0, limit);
+    // Gate 4: biên cuối Search Engine -> Agent UI. Chỉ tại đây mới loại tiêu đề
+    // bài viết, ghép bằng chứng Reader vào đúng hồ sơ và gộp URL theo dõi trùng.
+    // Không sửa dữ liệu nguồn hoặc danh mục ERP khác.
+    const normalized = normalizeAgentCompanyCandidates(
+      merged.map((item) => ({ ...item.candidate, role: item.role, searchQuery: item.searchQuery, provider: item.provider })),
+    );
+    const normalizedMerged: TurnResult[] = normalized.candidates.map((candidate) => ({
+      role: candidate.role,
+      candidate,
+      searchQuery: candidate.searchQuery,
+      provider: candidate.provider,
+    }));
+    const limited = normalizedMerged.slice(0, limit);
     const startIndex = turnResults.length;
     turnResults.push(...limited);
 
@@ -165,7 +178,16 @@ async function executeToolCall(
 
     const payload = {
       candidates: limited.map((item, i) => ({ ...item.candidate, role: item.role, roleLabel: ROLE_LABELS[item.role], resultIndex: startIndex + i })),
-      diagnostics: diagnosticsList,
+      diagnostics: [
+        ...diagnosticsList,
+        {
+          gate: "ECC_GATE_4",
+          inputCandidates: merged.length,
+          outputCandidates: normalizedMerged.length,
+          rejectedInvalidIdentity: normalized.rejected.length,
+          mergedDuplicates: Math.max(0, merged.length - normalized.rejected.length - normalizedMerged.length),
+        },
+      ],
       provider: providerList,
     };
 

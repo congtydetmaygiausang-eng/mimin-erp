@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   ShieldCheck,
   Shirt,
+  Heart,
   Boxes,
   Truck,
   FileText,
@@ -53,7 +54,6 @@ import {
   Search,
   Wind,
   Tag,
-  Heart,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";

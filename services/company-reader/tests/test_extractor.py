@@ -102,6 +102,28 @@ class TrafilaturaExtractorTests(unittest.TestCase):
                 self.assertEqual(result.status, expected_status)
                 self.assertIsNone(result.main_text)
 
+    def test_retries_with_recall_when_precision_returns_no_content(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def extract(_html: str, **options: object) -> str | None:
+            calls.append(options)
+            if options.get("favor_precision") is True:
+                return None
+            return json.dumps({
+                "text": "Công ty MIMIN\nĐịa chỉ: Hóc Môn, TP.HCM\nĐiện thoại: 0901234567",
+                "title": "Công ty MIMIN",
+            })
+
+        result = TrafilaturaExtractor(
+            loader=lambda: (extract, "2.2.0"), min_content_chars=20
+        ).extract(fetch_evidence("<html>contact card</html>"))
+
+        self.assertEqual(result.status, ExtractionStatus.OK)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(calls[0].get("favor_precision"))
+        self.assertTrue(calls[1].get("favor_recall"))
+        self.assertIn("0901234567", result.main_text or "")
+
     def test_normalizes_and_truncates_plain_text_without_trafilatura(self) -> None:
         body = "  Công ty   MIMIN  \n\n chuyên sản xuất vải cotton chất lượng cao.  "
         result = TrafilaturaExtractor(max_output_chars=32, min_content_chars=10).extract(
