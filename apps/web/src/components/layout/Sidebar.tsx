@@ -53,6 +53,7 @@ import {
   Search,
   Wind,
   Tag,
+  Heart,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -211,6 +212,7 @@ const NAV: NavItem[] = [
       { href: "/huong-dan-vai-tro", label: "Sơ đồ HD sử dụng", icon: Users, iconColor: "text-amber-500", permModule: "so-do-chien-luoc" },
       { href: "/so-do-chien-luoc", label: "Sơ Đồ Chiến Lược", icon: Palette, iconColor: "text-sky-600", permModule: "so-do-chien-luoc" },
       { href: "/cong-thuc-dinh-muc", label: "Công thức định mức", icon: Calculator, iconColor: "text-teal-600", permModule: "lenh-cat" },
+      { href: "/mau-da-thich", label: "Mẫu đã thích", icon: Heart, iconColor: "text-rose-400", permModule: "so-do-chien-luoc" },
       { href: "/bang-tin", label: "Bảng tin", icon: MessageSquare, iconColor: "text-pink-500", permModule: "so-do-chien-luoc" },
     ]
   },

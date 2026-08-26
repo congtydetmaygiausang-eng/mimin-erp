@@ -25,6 +25,7 @@ import type { GioHangItem } from "@/lib/data/gio-hang-store";
 import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 import { useKHSX } from "@/lib/data/khsx-store";
 import { useSession } from "@/components/session-provider";
+import { supabase } from "@/lib/supabase/client";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
@@ -301,8 +302,31 @@ export default function DanhMucSanPhamPage() {
     router.push("/ke-hoach-san-xuat");
   };
 
-  const handleFavorite = (sp: any) => {
-    toast.success(`Đã thêm "${sp.tenSP}" vào yêu thích`);
+  const handleFavorite = async (sp: SanPham) => {
+    if (!user?.id || !supabase) {
+      toast.error("Vui lòng đăng nhập để lưu mẫu yêu thích");
+      return;
+    }
+    const { data: existing, error: lookupError } = await supabase
+      .from("mau_da_thich")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("ma_sp", sp.id)
+      .maybeSingle();
+    if (lookupError) {
+      toast.error(`Không lưu được mẫu yêu thích: ${lookupError.message}`);
+      return;
+    }
+    if (existing) {
+      toast.info(`Mẫu "${sp.tenSP}" đã có trong Mẫu đã thích`);
+      return;
+    }
+    const { error } = await supabase.from("mau_da_thich").insert({ id: crypto.randomUUID(), user_id: user.id, ma_sp: sp.id });
+    if (error) {
+      toast.error(`Không lưu được mẫu yêu thích: ${error.message}`);
+      return;
+    }
+    toast.success(`Đã thêm "${sp.tenSP}" vào Mẫu đã thích`);
   };
 
   // Chốt giỏ hàng -> đơn hàng nháp, mở OrderFormModal để hoàn tất khách hàng/thanh toán

@@ -41,6 +41,7 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   // Kho + giao
   { match: "/giao-hang",       module: "giao-hang" },
   { match: "/nha-cung-cap",    module: "nha-cung-cap" },
+  { match: "/mau-da-thich",    module: "so-do-chien-luoc" },
   { match: "/master-data",     module: "nha-cung-cap" },
   { match: "/doi-tac-gia-cong", module: "nha-cung-cap" },
   { match: "/gia-cong-ngoai",  module: "gia-cong-ngoai" },
