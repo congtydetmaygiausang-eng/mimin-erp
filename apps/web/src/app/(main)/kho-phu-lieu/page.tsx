@@ -9,7 +9,6 @@ import { KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
 import type { Tab, LoaiKho } from "./data";
 import { Header } from "./components/Header";
 import { InventoryGrid } from "./components/InventoryGrid";
-import { InventoryTable } from "./components/InventoryTable";
 import { TransactionTable } from "./components/TransactionTable";
 import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
@@ -357,7 +356,7 @@ export default function KhoPhuLieuPage() {
         </div>
 
         {tab === "tongquan" && (
-          <InventoryTable
+          <InventoryGrid
             filteredVT={filteredVT}
             dsTrangThai={dsTrangThai}
             inventoryImages={inventoryImages}
