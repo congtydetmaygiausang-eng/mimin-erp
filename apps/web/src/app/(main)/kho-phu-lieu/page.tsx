@@ -9,6 +9,7 @@ import { KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
 import type { Tab, LoaiKho } from "./data";
 import { Header } from "./components/Header";
 import { InventoryGrid } from "./components/InventoryGrid";
+import { InventoryTable } from "./components/InventoryTable";
 import { TransactionTable } from "./components/TransactionTable";
 import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
@@ -72,7 +73,7 @@ export default function KhoPhuLieuPage() {
       if (!isSupabaseEnabled || !supabase) return;
       const { data, error } = await supabase
         .from("kho")
-        .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu")
+        .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu, hinh_anh")
         .eq("loai", "Phu lieu")
         .order("sku");
       if (error) {
@@ -97,9 +98,10 @@ export default function KhoPhuLieuPage() {
           tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
           kho: row.kho || "Kho phụ liệu",
           ghiChu: row.ghi_chu || "",
+          hinhAnh: row.hinh_anh || readSharedImage(row.ghi_chu),
         } satisfies KhoVai;
       });
-      setInventoryImages(Object.fromEntries((data || []).map((row) => [row.sku, readSharedImage(row.ghi_chu)]).filter(([, image]) => Boolean(image))));
+      setInventoryImages(Object.fromEntries((data || []).map((row) => [row.sku, row.hinh_anh || readSharedImage(row.ghi_chu)]).filter(([, image]) => Boolean(image))));
       setInventory(remote);
       localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(remote));
     };
@@ -134,8 +136,7 @@ export default function KhoPhuLieuPage() {
         });
         if (isSupabaseEnabled && supabase) {
           const item = inventory.find((value) => value.maVT === uploadingVT);
-          const metadata = JSON.stringify({ note: item?.ghiChu || "", imageUrl: url });
-          const { error } = await supabase.from("kho").update({ ghi_chu: metadata, updated_at: new Date().toISOString() }).eq("sku", uploadingVT);
+          const { error } = await supabase.from("kho").update({ hinh_anh: url, updated_at: new Date().toISOString() }).eq("sku", uploadingVT);
           if (error) return toast.error(`Chưa lưu được ảnh lên Supabase: ${error.message}`);
         }
         toast.success("Đã tải ảnh và đồng bộ cho tất cả nhân viên!");
@@ -221,6 +222,7 @@ export default function KhoPhuLieuPage() {
           ton_toi_thieu: updated.tonToiThieu,
           kho: updated.kho || "Kho phụ liệu",
           ghi_chu: updated.ghiChu || null,
+          hinh_anh: updated.hinhAnh || inventoryImages[v.maVT] || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "sku" }
@@ -273,6 +275,7 @@ export default function KhoPhuLieuPage() {
         ty_le_hao_hut: 0,
         kho: newItem.kho,
         ghi_chu: newItem.ghiChu || null,
+        hinh_anh: null,
         updated_at: new Date().toISOString(),
       });
       if (error) throw new Error(error.message);
@@ -330,7 +333,7 @@ export default function KhoPhuLieuPage() {
         </div>
 
         {tab === "tongquan" && (
-          <InventoryGrid
+          <InventoryTable
             filteredVT={filteredVT}
             dsTrangThai={dsTrangThai}
             inventoryImages={inventoryImages}
