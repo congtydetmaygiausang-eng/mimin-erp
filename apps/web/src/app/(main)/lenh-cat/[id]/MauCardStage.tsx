@@ -12,8 +12,8 @@ export function MauCardStage({
   lc: LenhCat; 
   type: "ao" | "quan";
 }) {
-  const imageUrl = type === "ao" ? mau.img : (mau as any).imgQuan;
-  const phanBoSize = type === "ao" ? mau.phanBoSize : ((mau as any).phanBoSizeQuan || mau.phanBoSize);
+  const imageUrl = type === "ao" ? mau.img : mau.imgQuan;
+  const phanBoSize = type === "ao" ? mau.phanBoSize : (mau.phanBoSizeQuan || mau.phanBoSize);
 
   return (
     <div className={`p-5 rounded-xl border-2 ${type === "ao" ? "border-blue-100 bg-blue-50/30" : "border-rose-100 bg-rose-50/30"}`}>

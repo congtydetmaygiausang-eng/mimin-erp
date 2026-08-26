@@ -1,25 +1,26 @@
 "use client";
 
-// ============ KHSX STORE (Đợt 4 - Kế hoạch sản xuất) ============
-// Lưu localStorage `mimin_khsx_v1` thay const KHSX_DATA mẫu
-// CRUD: themKHSX, suaKHSX, xoaKHSX, capNhatTienDo
-// Workflow: Lên kế hoạch → Đang SX → Hoàn thành (auto-detect Trễ hạn từ deadline)
-
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
-import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
+import type { LoaiSP, MauVai } from "./lenh-cat-store";
+import { logWorkflow } from "../audit-log";
+import { isSupabaseEnabled, supabaseDelete, supabaseFetchAll, supabaseUpsert } from "@/lib/supabase/client";
 
 export type TrangThaiKHSX = "Lên kế hoạch" | "Đang SX" | "Hoàn thành" | "Trễ hạn";
 
 export type KHSX = {
   id: string;
   maKHSX: string;
+  maSP?: string;
+  tenSP?: string;
+  loaiSP?: LoaiSP;
+  tiLeSize?: string;
+  dsMau?: MauVai[];
   tuan: string;
   tuNgay: string;
   denNgay: string;
   sanPham: string;
-  loai: "Áo" | "Bộ";
+  loai: "Áo" | "Bộ" | "Quần" | "Phụ kiện";
   soLuong: number;
   daHoanThanh: number;
   xuongPhuTrach: string;
@@ -27,200 +28,110 @@ export type KHSX = {
   ghiChu?: string;
   ngayTao?: string;
   nguoiTao?: string;
+  lenhCatId?: string;
 };
 
-const STORAGE_KEY = "mimin_khsx_v1";
-
-// Default data (chỉ dùng lần đầu khi localStorage rỗng)
-const DEFAULT: KHSX[] = [
-  { id: "KHSX-001", maKHSX: "KHSX-2026-W28", tuan: "Tuần 28 (07-13/07)", tuNgay: "2026-07-07", denNgay: "2026-07-13", sanPham: "Bộ trụ trơn M758", loai: "Bộ", soLuong: 500, daHoanThanh: 500, xuongPhuTrach: "Tổ cắt + May áo Liễu + May quần Hương", trangThai: "Hoàn thành" },
-  { id: "KHSX-002", maKHSX: "KHSX-2026-W29", tuan: "Tuần 29 (14-20/07)", tuNgay: "2026-07-14", denNgay: "2026-07-20", sanPham: "Áo trụ M873", loai: "Áo", soLuong: 546, daHoanThanh: 546, xuongPhuTrach: "Tổ cắt + In Bảo Ngân + May trụ Cúc", trangThai: "Hoàn thành" },
-  { id: "KHSX-003", maKHSX: "KHSX-2026-W30", tuan: "Tuần 30 (21-27/07)", tuNgay: "2026-07-21", denNgay: "2026-07-27", sanPham: "Bộ Polo cao cấp (M775)", loai: "Bộ", soLuong: 400, daHoanThanh: 180, xuongPhuTrach: "Xưởng may Hưng + Thêu Hạnh", trangThai: "Đang SX", ghiChu: "Đã hoàn thành 45% kế hoạch" },
-  { id: "KHSX-004", maKHSX: "KHSX-2026-W31", tuan: "Tuần 31 (28/07-03/08)", tuNgay: "2026-07-28", denNgay: "2026-08-03", sanPham: "Áo sơ mi công sở (M790)", loai: "Áo", soLuong: 800, daHoanThanh: 0, xuongPhuTrach: "Tổ cắt + May Minh Tâm", trangThai: "Lên kế hoạch" },
-  { id: "KHSX-005", maKHSX: "KHSX-2026-W32", tuan: "Tuần 32 (04-10/08)", tuNgay: "2026-08-04", denNgay: "2026-08-10", sanPham: "Bộ đồng phục HS", loai: "Bộ", soLuong: 600, daHoanThanh: 0, xuongPhuTrach: "May Hoàng Long + Thêu Hạnh", trangThai: "Lên kế hoạch" },
-];
+const STORAGE_KEY = "mimin_khsx_v2";
+const Ctx = createContext<StoreContext | null>(null);
+type RemoteKHSX = KHSX & { maKhsx?: string; maSp?: string; tenSp?: string; loaiSp?: LoaiSP };
 
 type StoreContext = {
   khsx: KHSX[];
-  themKHSX: (k: Omit<KHSX, "id">, user: AppUser | null) => KHSX;
+  themKHSX: (item: Omit<KHSX, "id">, user: AppUser | null) => KHSX;
   suaKHSX: (id: string, patch: Partial<KHSX>, user: AppUser | null) => void;
   xoaKHSX: (id: string, user: AppUser | null) => void;
-  capNhatTienDo: (id: string, soLuongHT: number, user: AppUser | null) => void;
+  capNhatTienDo: (id: string, value: number, user: AppUser | null) => void;
   batDauSX: (id: string, user: AppUser | null) => void;
   hoanThanh: (id: string, user: AppUser | null) => void;
   reset: () => void;
 };
 
-const Ctx = createContext<StoreContext | null>(null);
-
 function loadData(): KHSX[] {
-  if (typeof window === "undefined") return DEFAULT;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as KHSX[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {}
-  return DEFAULT;
+    return raw ? (JSON.parse(raw) as KHSX[]) : [];
+  } catch { return []; }
 }
 
-function saveData(d: KHSX[]) {
+function saveData(items: KHSX[]) {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-  } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+}
+
+function persist(item: KHSX) {
+  if (isSupabaseEnabled) supabaseUpsert("khsx", item).catch((error) => console.error("[KHSX] Supabase:", error));
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
-  const [khsx, setKHSX] = useState<KHSX[]>(DEFAULT);
-  const [hydrated, setHydrated] = useState(false);
+  const [khsx, setKHSX] = useState<KHSX[]>([]);
 
   useEffect(() => {
     setKHSX(loadData());
-    setHydrated(true);
-  }, []);
-
-  // Đọc lại 2 chiều từ Supabase (nguồn chính). Bảng camelCase → đọc/ghi không convert key.
-  // Merge: ưu tiên bản ghi Supabase, giữ thêm bản chỉ có ở local (tạo offline).
-  useEffect(() => {
     if (!isSupabaseEnabled) return;
-    let mounted = true;
-    (async () => {
-      const remote = await supabaseFetchAllRaw<KHSX>("khsx", "created_at", false);
-      if (!mounted || remote.length === 0) return;
-      const ids = new Set(remote.map((r) => r.id));
-      setKHSX((prev) => {
-        const localOnly = prev.filter((x) => !ids.has(x.id));
-        const merged = [...remote, ...localOnly];
-        saveData(merged);
-        return merged;
-      });
-    })();
-    return () => { mounted = false; };
+    let active = true;
+    supabaseFetchAll<RemoteKHSX>("khsx", "created_at", false).then((remote) => {
+      const normalized = remote.map((item) => ({
+        ...item,
+        maKHSX: item.maKHSX || item.maKhsx || "",
+        maSP: item.maSP || item.maSp,
+        tenSP: item.tenSP || item.tenSp,
+        loaiSP: item.loaiSP || item.loaiSp,
+      }));
+      if (active && normalized.length > 0) { setKHSX(normalized); saveData(normalized); }
+    });
+    return () => { active = false; };
   }, []);
+  useEffect(() => { saveData(khsx); }, [khsx]);
 
-  useEffect(() => {
-    if (hydrated) saveData(khsx);
-  }, [khsx, hydrated]);
-
-  const themKHSX = useCallback((k: Omit<KHSX, "id">, user: AppUser | null): KHSX => {
-    const newKHSX: KHSX = {
-      ...k,
-      id: `KHSX-${Date.now().toString().slice(-6)}`,
-      ngayTao: new Date().toISOString().split("T")[0],
-      nguoiTao: user?.id || user?.name,
-    };
-    setKHSX((prev) => [newKHSX, ...prev]);
-    logWorkflow(user, "create", k.maKHSX, newKHSX.id);
-    if (isSupabaseEnabled) {
-      supabaseUpsertRaw("khsx", newKHSX as any).catch((err) =>
-        console.error("[KHSXStore] Supabase upsert error:", err)
-      );
-    }
-    return newKHSX;
+  const themKHSX = useCallback((item: Omit<KHSX, "id">, user: AppUser | null) => {
+    const created: KHSX = { ...item, id: `KHSX-${Date.now()}`, ngayTao: new Date().toISOString().slice(0, 10), nguoiTao: user?.id || user?.name };
+    setKHSX((prev) => [created, ...prev]);
+    persist(created);
+    logWorkflow(user, "create", created.maKHSX, created.id);
+    return created;
   }, []);
 
   const suaKHSX = useCallback((id: string, patch: Partial<KHSX>, user: AppUser | null) => {
-    let updated: KHSX | null = null;
-    setKHSX((prev) => prev.map((k) => {
-      if (k.id !== id) return k;
-      updated = { ...k, ...patch };
+    setKHSX((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      const updated = { ...item, ...patch };
+      persist(updated);
       return updated;
     }));
     logWorkflow(user, "update", `KHSX ${id}`, id, { newValue: patch });
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
-        console.error("[KHSXStore] Supabase upsert error:", err)
-      );
-    }
   }, []);
 
   const xoaKHSX = useCallback((id: string, user: AppUser | null) => {
-    setKHSX((prev) => prev.filter((k) => k.id !== id));
+    setKHSX((prev) => prev.filter((item) => item.id !== id));
+    if (isSupabaseEnabled) supabaseDelete("khsx", id).catch(console.error);
     logWorkflow(user, "delete", `KHSX ${id}`, id);
-    if (isSupabaseEnabled) {
-      supabaseDelete("khsx", id).catch((err) =>
-        console.error("[KHSXStore] Supabase delete error:", err)
-      );
-    }
   }, []);
 
-  const capNhatTienDo = useCallback((id: string, soLuongHT: number, user: AppUser | null) => {
-    let updated: KHSX | null = null;
-    setKHSX((prev) =>
-      prev.map((k) => {
-        if (k.id !== id) return k;
-        const daHT = Math.min(soLuongHT, k.soLuong);
-        // Auto update trạng thái
-        let trangThai: TrangThaiKHSX = k.trangThai;
-        if (daHT >= k.soLuong) trangThai = "Hoàn thành";
-        else if (daHT > 0 && k.trangThai === "Lên kế hoạch") trangThai = "Đang SX";
-        // Auto detect trễ hạn
-        if (trangThai !== "Hoàn thành") {
-          const today = new Date();
-          if (new Date(k.denNgay) < today) trangThai = "Trễ hạn";
-        }
-        updated = { ...k, daHoanThanh: daHT, trangThai };
-        return updated;
-      })
-    );
-    logWorkflow(user, "update", `KHSX ${id}`, id, { newValue: { soLuongHT } });
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
-        console.error("[KHSXStore] Supabase upsert error:", err)
-      );
-    }
-  }, []);
-
-  const batDauSX = useCallback((id: string, user: AppUser | null) => {
-    let updated: KHSX | null = null;
-    setKHSX((prev) => prev.map((k) => {
-      if (k.id !== id) return k;
-      updated = { ...k, trangThai: "Đang SX" };
+  const capNhatTienDo = useCallback((id: string, value: number, user: AppUser | null) => {
+    setKHSX((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      const daHoanThanh = Math.min(Math.max(value, 0), item.soLuong);
+      const trangThai: TrangThaiKHSX = daHoanThanh >= item.soLuong ? "Hoàn thành" : daHoanThanh > 0 ? "Đang SX" : item.trangThai;
+      const updated = { ...item, daHoanThanh, trangThai };
+      persist(updated);
       return updated;
     }));
-    logWorkflow(user, "start", `KHSX ${id}`, id);
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
-        console.error("[KHSXStore] Supabase upsert error:", err)
-      );
-    }
+    logWorkflow(user, "update", `Tiến độ KHSX ${id}`, id, { newValue: { value } });
   }, []);
 
+  const batDauSX = useCallback((id: string, user: AppUser | null) => suaKHSX(id, { trangThai: "Đang SX" }, user), [suaKHSX]);
   const hoanThanh = useCallback((id: string, user: AppUser | null) => {
-    let updated: KHSX | null = null;
-    setKHSX((prev) =>
-      prev.map((k) => {
-        if (k.id !== id) return k;
-        updated = { ...k, trangThai: "Hoàn thành", daHoanThanh: k.soLuong };
-        return updated;
-      })
-    );
-    logWorkflow(user, "approve", `KHSX ${id}`, id);
-    if (isSupabaseEnabled && updated) {
-      supabaseUpsertRaw("khsx", updated as any).catch((err) =>
-        console.error("[KHSXStore] Supabase upsert error:", err)
-      );
-    }
-  }, []);
+    const item = khsx.find((x) => x.id === id);
+    if (item) suaKHSX(id, { trangThai: "Hoàn thành", daHoanThanh: item.soLuong }, user);
+  }, [khsx, suaKHSX]);
+  const reset = useCallback(() => setKHSX([]), []);
 
-  const reset = useCallback(() => {
-    setKHSX(DEFAULT);
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
-  }, []);
-
-  return (
-    <Ctx.Provider
-      value={{ khsx, themKHSX, suaKHSX, xoaKHSX, capNhatTienDo, batDauSX, hoanThanh, reset }}
-    >
-      {children}
-    </Ctx.Provider>
-  );
+  return <Ctx.Provider value={{ khsx, themKHSX, suaKHSX, xoaKHSX, capNhatTienDo, batDauSX, hoanThanh, reset }}>{children}</Ctx.Provider>;
 }
 
 export function useKHSX() {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useKHSX must be used within KHSXProvider");
-  return ctx;
+  const value = useContext(Ctx);
+  if (!value) throw new Error("useKHSX must be used within KHSXProvider");
+  return value;
 }

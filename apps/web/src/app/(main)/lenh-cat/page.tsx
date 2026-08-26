@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Scissors } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +44,14 @@ export default function LenhCatPage() {
   const [expandedMauCD, setExpandedMauCD] = useState<string | null>(null);
   const [expandedMauCP, setExpandedMauCP] = useState<string | null>(null);
   const [showDanhSachMau, setShowDanhSachMau] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("mimin_open_lenh_cat") === "1") {
+      localStorage.removeItem("mimin_open_lenh_cat");
+      setEditId(null);
+      setShowModal(true);
+    }
+  }, []);
 
   // KPIs
   const stats = {

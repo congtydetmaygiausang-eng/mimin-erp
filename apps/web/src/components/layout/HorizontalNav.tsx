@@ -86,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/doi-soat-tien-cong", label: "Đối soát tiền công" },
       { href: "/cong-no", label: "Công nợ công đoạn" },
       { href: "/don-hang", label: "Đơn hàng" },
+      { href: "/bang-gia", label: "Bảng giá bán" },
     ],
   },
   {

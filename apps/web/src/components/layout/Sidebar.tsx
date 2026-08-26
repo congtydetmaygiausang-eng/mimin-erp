@@ -52,6 +52,7 @@ import {
   Calculator,
   Search,
   Wind,
+  Tag,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -158,6 +159,7 @@ const NAV: NavItem[] = [
       { href: "/doi-soat-tien-cong", label: "Đối soát tiền công", icon: Wallet2, iconColor: "text-orange-400", permModule: "doi-soat-tien-cong" },
       { href: "/cong-no", label: "Công nợ công đoạn", icon: Wallet2, iconColor: "text-red-400", permModule: "cong-no-cong-doan" },
       { href: "/don-hang", label: "Đơn hàng", icon: ShoppingCart, iconColor: "text-pink-400", permModule: "don-hang" },
+      { href: "/bang-gia", label: "Bảng giá bán", icon: Tag, iconColor: "text-amber-400", permModule: "don-hang" },
     ]
   },
   {

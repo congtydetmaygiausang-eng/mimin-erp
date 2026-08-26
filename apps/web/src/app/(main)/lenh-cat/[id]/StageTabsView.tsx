@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { type LenhCat, type MauVai } from "@/lib/data/lenh-cat-store";
+import React from "react";
+import { type LenhCat } from "@/lib/data/lenh-cat-store";
 import { MauCardStage } from "./MauCardStage";
 
 export function StageTabsView({ lc }: { lc: LenhCat }) {

@@ -6,6 +6,7 @@
 // ============================================
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store } from "lucide-react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { useGioHang } from "@/lib/data/gio-hang-store";
@@ -22,6 +23,8 @@ import { generateVariants } from "@/lib/data/product-variants";
 import type { Order, OrderItem } from "@/components/order-detail/types";
 import type { GioHangItem } from "@/lib/data/gio-hang-store";
 import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
+import { useKHSX } from "@/lib/data/khsx-store";
+import { useSession } from "@/components/session-provider";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
@@ -33,6 +36,9 @@ const FILTER_TABS = [
 ];
 
 export default function DanhMucSanPhamPage() {
+  const router = useRouter();
+  const { user } = useSession();
+  const { themKHSX } = useKHSX();
   const { dsSanPham, loading, themSP, suaSP, xoaSP, refresh } = useDanhMucSP();
   const { items: gioHangItems, themVaoGio, themNhieuVaoGio, capNhatSoLuong, xoaKhoiGio, xoaGio, tongSoLuong: soLuongTrongGio } = useGioHang();
   const { dsOrder, themOrder } = useDonHang();
@@ -147,7 +153,8 @@ export default function DanhMucSanPhamPage() {
     thue: number,
     thanhToan: "tien-mat" | "cong-no",
     inPhieu: boolean,
-    xuatHD: boolean
+    xuatHD: boolean,
+    donGia?: number
   }) => {
     if (!productForCart) return;
     const sp = productForCart;
@@ -155,7 +162,7 @@ export default function DanhMucSanPhamPage() {
     const colorVariants = variants.filter(v => (v.mauTen === data.mau || (v.mauTen === undefined && sp.dsMau?.[0]?.ten === data.mau)));
     
     const newItems: OrderItem[] = [];
-    const unitPrice = data.mode === "si" ? (sp.giaBanSi || sp.giaBanDuKien) : (sp.giaBanLe || sp.giaBanDuKien);
+    const unitPrice = data.donGia ?? (data.mode === "si" ? (sp.giaBanSi || sp.giaBanDuKien) : (sp.giaBanLe || sp.giaBanDuKien));
     
     if (data.mode === "si" && data.ri) {
       const ratios = sp.bangSize?.ratios || [];
@@ -260,8 +267,38 @@ export default function DanhMucSanPhamPage() {
     setProductForCart(sp);
   };
   const handleProduceOrder = (sp: SanPham) => {
-    // Navigate to /ke-hoach-sx
-    window.location.href = "/ke-hoach-sx";
+    const today = new Date();
+    const deadline = new Date(today);
+    deadline.setDate(deadline.getDate() + 14);
+    const created = themKHSX({
+      maKHSX: `KHSX-${today.getFullYear()}-${String(Date.now()).slice(-6)}`,
+      maSP: sp.id,
+      tenSP: sp.tenSP,
+      loaiSP: sp.loaiSP,
+      tiLeSize: sp.tiLeSize,
+      dsMau: (sp.dsMau || []).map((mau) => ({
+        ten: mau.ten,
+        maSKU: mau.maSKU,
+        maVai: "",
+        dinhMuc: mau.dinhMuc || 0,
+        slDuKien: 0,
+        ghiChu: "",
+        img: mau.img || "",
+        phanBoSize: (sp.bangSize?.sizes || []).map((size) => ({ size, sl: 0 })),
+      })),
+      tuan: "",
+      tuNgay: today.toISOString().slice(0, 10),
+      denNgay: deadline.toISOString().slice(0, 10),
+      sanPham: sp.tenSP,
+      loai: sp.loaiSP.startsWith("Ao") ? "Áo" : sp.loaiSP === "PhuKien" ? "Phụ kiện" : "Bộ",
+      soLuong: 1,
+      daHoanThanh: 0,
+      xuongPhuTrach: "Tổ cắt",
+      trangThai: "Lên kế hoạch",
+      ghiChu: "Tạo từ Danh mục sản phẩm – vui lòng cập nhật số lượng kế hoạch",
+    }, user);
+    toast.success(`Đã chuyển ${sp.id} vào ${created.maKHSX}`);
+    router.push("/ke-hoach-san-xuat");
   };
 
   const handleFavorite = (sp: any) => {

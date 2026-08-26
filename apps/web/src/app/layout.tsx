@@ -110,7 +110,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png" />
         <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167.png" />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col font-sans">
         <Providers>
           {children}
           <ServiceWorkerRegister />

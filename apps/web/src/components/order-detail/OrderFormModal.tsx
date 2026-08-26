@@ -394,6 +394,7 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
 // ============================================
 
 function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p: Partial<Order>) => void; dsKhachHang: any[] }) {
+  const orderTypes: LoaiDonHang[] = ["ban-le", "ban-si", "ban-lo", "tiktok", "shopee"];
   return (
     <div className="space-y-4 max-w-2xl">
       {/* Loai don hang */}
@@ -401,14 +402,14 @@ function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p:
         <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-200">
           Loại đơn hàng <span className="text-rose-500">*</span>
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {(Object.keys(LOAI_DON_HANG_LABELS) as LoaiDonHang[]).map((k) => {
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+          {orderTypes.map((k) => {
             const active = order.loaiDonHang === k;
             return (
               <button
                 key={k}
                 type="button"
-                onClick={() => onChange({ loaiDonHang: k })}
+                onClick={() => onChange({ loaiDonHang: k, kenhBan: k === "tiktok" ? "TikTok Shop" : k === "shopee" ? "Shopee" : undefined })}
                 className={`px-4 py-3 rounded-xl border-2 font-semibold text-sm transition ${
                   active
                     ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300"
@@ -420,13 +421,13 @@ function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p:
             );
           })}
         </div>
-        {order.loaiDonHang === "ban-san" && (
+        {(order.loaiDonHang === "tiktok" || order.loaiDonHang === "shopee" || order.loaiDonHang === "ban-san") && (
           <div className="mt-3">
             <label className="block text-xs font-semibold mb-1.5 text-slate-600 dark:text-slate-300">
               Kênh bán sàn
             </label>
             <select
-              value={order.kenhBan || ""}
+              value={order.kenhBan || (order.loaiDonHang === "tiktok" ? "TikTok Shop" : order.loaiDonHang === "shopee" ? "Shopee" : "")}
               onChange={(e) => onChange({ kenhBan: e.target.value || undefined })}
               className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
             >
@@ -544,7 +545,8 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerSP, setPickerSP] = useState<SanPham | null>(null); // bán sỉ mode
 
-  const isSi = order.loaiDonHang === "ban-si";
+  const isSi = order.loaiDonHang === "ban-si" || order.loaiDonHang === "ban-lo";
+  const isLo = order.loaiDonHang === "ban-lo";
 
   return (
     <div className="space-y-4">
@@ -635,6 +637,8 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
               orderItems={order.items}
               onUpdateCell={onUpdateSiCell}
               isSi={isSi}
+              isLo={isLo}
+              orderType={order.loaiDonHang}
             />
           )}
         </>
@@ -644,7 +648,7 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
 
 // Picker chọn SP đa năng (Hiển thị list, click mở rộng bảng Size x Màu)
 function CatalogPicker({
-  dsSanPham, search, onSearch, onClose, orderItems, onUpdateCell, isSi
+  dsSanPham, search, onSearch, onClose, orderItems, onUpdateCell, isSi, isLo, orderType
 }: {
   dsSanPham: SanPham[];
   search: string;
@@ -653,12 +657,17 @@ function CatalogPicker({
   orderItems: OrderItem[];
   onUpdateCell: (sp: SanPham, mauCode: string, size: string, soLuong: number) => void;
   isSi: boolean;
+  isLo: boolean;
+  orderType?: Order["loaiDonHang"];
 }) {
   const [expandedSP, setExpandedSP] = useState<string | null>(null);
 
-  const filtered = dsSanPham.filter(
-    (sp) => sp.id.toLowerCase().includes(search.toLowerCase()) || sp.tenSP.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = dsSanPham.filter((sp) => {
+    const matchesSearch = sp.id.toLowerCase().includes(search.toLowerCase()) || sp.tenSP.toLowerCase().includes(search.toLowerCase());
+    const channel = orderType === "ban-san" ? undefined : orderType;
+    const matchesChannel = !sp.kenhBan?.length || !channel || sp.kenhBan.includes(channel as NonNullable<SanPham["kenhBan"]>[number]);
+    return matchesSearch && matchesChannel;
+  });
   return (
     <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col animate-slide-up">
@@ -716,7 +725,7 @@ function CatalogPicker({
                   </div>
                   {isExpanded && (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 overflow-x-auto">
-                      <ProductMatrixTable sp={sp} orderItems={orderItems} onUpdateCell={onUpdateCell} isSi={isSi} />
+                      <ProductMatrixTable sp={sp} orderItems={orderItems} onUpdateCell={onUpdateCell} isSi={isSi} isLo={isLo} />
                     </div>
                   )}
                 </div>
@@ -732,7 +741,7 @@ function CatalogPicker({
   );
 }
 
-function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi }: { sp: SanPham, orderItems: OrderItem[], onUpdateCell: any, isSi?: boolean }) {
+function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi, isLo }: { sp: SanPham, orderItems: OrderItem[], onUpdateCell: any, isSi?: boolean, isLo?: boolean }) {
   const sizes = sp.bangSize?.sizes.filter((_, i) => (sp.bangSize?.ratios[i] || 0) > 0) || [];
   const mauList = sp.dsMau;
   const itemsByKey = new Map<string, number>();
@@ -749,6 +758,11 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi }: { sp: SanPha
 
   const tongSL = Array.from(itemsByKey.values()).reduce((s, n) => s + n, 0);
 
+  const chiaTheoRi = (mauCode: string, slRi: number) => {
+    const ratios = sp.bangSize?.ratios || [];
+    sizes.forEach((size, index) => onUpdateCell(sp, mauCode, size, slRi * (ratios[index] || 0)));
+  };
+
   const handleRiChange = (slRi: number) => {
     const ratios = sp.bangSize?.ratios || [];
     mauList.forEach(mau => {
@@ -762,7 +776,7 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi }: { sp: SanPha
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
-      {isSi && (
+      {isSi && !isLo && (
         <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 border-b border-cyan-100 dark:border-cyan-800 flex items-center justify-between">
           <span className="text-sm font-bold text-cyan-800 dark:text-cyan-300">
             ⚡ Bán theo Ri (Áp dụng cho TẤT CẢ màu)
@@ -828,11 +842,15 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi }: { sp: SanPha
               });
             };
 
+            const ratioTotal = (sp.bangSize?.ratios || []).reduce((sum, ratio) => sum + ratio, 0);
+            const rowRi = ratioTotal > 0 && rowTotal > 0 ? Math.round(rowTotal / ratioTotal) : 0;
+
             return (
               <tr key={mau.ten} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <td className="p-2 border-b border-r border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 whitespace-nowrap">
                   {mau.img ? <img src={mau.img} className="w-6 h-6 rounded object-cover shadow-sm" /> : <div className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-700"></div>}
                   {mau.ten}
+                  {isLo && <label className="ml-1 flex flex-col items-center gap-0.5 text-[10px] font-bold text-amber-700"><span>Số Ri</span><input type="number" min={0} value={rowRi || ""} placeholder="0" onChange={(e) => chiaTheoRi(mauCode, Math.max(0, +e.target.value || 0))} className="h-11 w-20 rounded-lg border-2 border-amber-400 bg-amber-50 px-1 text-center text-lg font-black text-amber-700 outline-none focus:ring-2 focus:ring-amber-500" title="Số Ri của màu này" /></label>}
                 </td>
                 {sizes.map((s) => {
                   const val = itemsByKey.get(`${mauCode}-${s}`) || 0;
@@ -844,7 +862,7 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi }: { sp: SanPha
                         value={val || ""}
                         placeholder="0"
                         onChange={(e) => onUpdateCell(sp, mauCode, s, Math.max(0, +e.target.value || 0))}
-                        className="w-14 px-1 py-1 rounded text-center text-sm border border-slate-300 dark:border-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white dark:bg-slate-800 transition-all"
+                        className="h-11 w-20 rounded-lg border-2 border-slate-300 bg-white px-1 text-center text-lg font-black text-slate-800 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                       />
                     </td>
                   );
@@ -856,7 +874,7 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi }: { sp: SanPha
                     value={rowTotal || ""}
                     placeholder="0"
                     onChange={(e) => handleTotalChange(Math.max(0, +e.target.value || 0))}
-                    className="w-16 px-1 py-1 rounded text-center text-sm font-bold text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white dark:bg-slate-800 transition-all shadow-inner"
+                    className="h-11 w-28 rounded-lg border-2 border-cyan-400 bg-cyan-50 px-1 text-center text-lg font-black text-cyan-700 outline-none transition-all focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500 dark:border-cyan-700 dark:bg-slate-800 dark:text-cyan-300"
                   />
                 </td>
               </tr>

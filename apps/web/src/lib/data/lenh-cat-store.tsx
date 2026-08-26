@@ -68,6 +68,7 @@ export type MauVai = {
   maVaiQuan?: string;
   dinhMucQuan?: number;
   imgQuan?: string;    // Ảnh mẫu QUẦN (hàng Bộ) - img ở trên là ảnh ÁO
+  phanBoSizeQuan?: { size: string; sl: number }[];
 
   // Màu phối - danh sách TÊN MÀU dùng để phối (viền, phối màu...), không gắn mã vải trong kho.
   // CHỈ mang tính tham khảo, KHÔNG tính vào định mức/tiền vải (chỉ vải chính maVai/maVaiQuan mới tính).

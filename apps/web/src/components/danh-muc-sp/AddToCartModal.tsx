@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { X, ShoppingCart, Info, CheckCircle2, Printer, FileText, Banknote, Building2 } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
+import { useBangGia } from "@/lib/data/bang-gia-store";
 
 interface Props {
   sp: SanPham;
@@ -16,7 +17,8 @@ interface Props {
     thue: number,
     thanhToan: "tien-mat" | "cong-no",
     inPhieu: boolean,
-    xuatHD: boolean
+    xuatHD: boolean,
+    donGia: number
   }) => void;
 }
 
@@ -32,6 +34,7 @@ export default function AddToCartModal({ sp, onClose, onConfirm }: Props) {
   const [thanhToan, setThanhToan] = useState<"tien-mat" | "cong-no">("tien-mat");
   const [inPhieu, setInPhieu] = useState(true);
   const [xuatHD, setXuatHD] = useState(false);
+  const { layGia } = useBangGia();
 
   const tong1Ri = sp.bangSize?.riSo || 0;
   
@@ -41,17 +44,17 @@ export default function AddToCartModal({ sp, onClose, onConfirm }: Props) {
     let gia = 0;
     if (mode === "si") {
       sl = soRi * tong1Ri;
-      gia = sp.giaBanSi || sp.giaBanDuKien || 0;
+      gia = layGia("ban-si", sp.id, undefined, sl) ?? sp.giaBanSi ?? sp.giaBanDuKien ?? 0;
     } else {
       sl = Object.values(sizeInputs).reduce((a, b) => a + (b || 0), 0);
-      gia = sp.giaBanLe || sp.giaBanDuKien || 0;
+      gia = layGia("ban-le", sp.id, undefined, sl) ?? sp.giaBanLe ?? sp.giaBanDuKien ?? 0;
     }
     
     const tt = sl * gia;
     const sauThue = tt + (tt * thue / 100);
     
     return { tongSL: sl, donGia: gia, thanhTien: tt, tongSauThue: sauThue };
-  }, [mode, soRi, sizeInputs, thue, tong1Ri, sp.giaBanSi, sp.giaBanLe, sp.giaBanDuKien]);
+  }, [mode, soRi, sizeInputs, thue, tong1Ri, sp.id, sp.giaBanSi, sp.giaBanLe, sp.giaBanDuKien, layGia]);
   
   const handleConfirm = () => {
     if (!selectedMau) {
@@ -76,7 +79,8 @@ export default function AddToCartModal({ sp, onClose, onConfirm }: Props) {
       thue,
       thanhToan,
       inPhieu,
-      xuatHD
+      xuatHD,
+      donGia
     });
   };
 

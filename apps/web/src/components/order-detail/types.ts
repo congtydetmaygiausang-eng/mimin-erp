@@ -1,7 +1,7 @@
 export type OrderStatus = "Mới" | "Đã duyệt" | "Đang SX" | "Hoàn thành" | "Đã giao" | "Hủy";
 
 /** Loại đơn hàng - quyết định form render */
-export type LoaiDonHang = "ban-le" | "ban-si" | "ban-san";
+export type LoaiDonHang = "ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee" | "ban-san";
 
 /** Phương thức thanh toán */
 export type PhuongThucThanhToan = "ngan-hang" | "tien-mat" | "cong-no";
@@ -129,7 +129,10 @@ export function calcTotalQty(items: OrderItem[]): number {
 export const LOAI_DON_HANG_LABELS: Record<LoaiDonHang, string> = {
   "ban-le": "Bán lẻ",
   "ban-si": "Bán sỉ",
-  "ban-san": "Bán sàn (Shopee, TikTok...)",
+  "ban-lo": "Bán lô",
+  tiktok: "TikTok",
+  shopee: "Shopee",
+  "ban-san": "Bán sàn (cũ)",
 };
 
 export const PHUONG_THUC_THANH_TOAN_LABELS: Record<PhuongThucThanhToan, string> = {
