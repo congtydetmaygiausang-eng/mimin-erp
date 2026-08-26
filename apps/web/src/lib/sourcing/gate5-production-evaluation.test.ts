@@ -57,7 +57,10 @@ test("Gate 5 fails closed and reports every measurable production defect", () =>
   const report = evaluateGate5Scenario(GATE5_PRODUCTION_SCENARIOS[1], [
     observed({ isB2B: false, locationStatus: "OUT_OF_RADIUS", identityValid: false, duplicateGroupKey: "dup" }),
     observed({ locationStatus: "UNVERIFIED", duplicateGroupKey: "dup", phoneEvidence: false, emailEvidence: false }),
-    observed({ locationStatus: "OUT_OF_RADIUS", duplicateGroupKey: "unique", addressEvidence: false, rejectionReason: "OUT_OF_RADIUS" }),
+    observed({ locationStatus: "OUT_OF_RADIUS", duplicateGroupKey: "third", addressEvidence: false }),
+    observed({ locationStatus: "UNVERIFIED", duplicateGroupKey: "fourth", phoneEvidence: false }),
+    observed({ locationStatus: "OUT_OF_RADIUS", duplicateGroupKey: "fifth", identityValid: false }),
+    observed({ locationStatus: "OUT_OF_RADIUS", duplicateGroupKey: "rejected", rejectionReason: "OUT_OF_RADIUS" }),
   ]);
 
   assert.equal(report.status, "FAIL");
