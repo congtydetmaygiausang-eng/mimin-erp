@@ -13,25 +13,6 @@ import { extractVietnamContactPhones, extractVietnamPhones, normalizeVietnamPhon
 import { searchBraveWeb } from "@/lib/brave-search";
 import { getStaticCoordinate } from "@/lib/data/hcm-coordinates";
 import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/sourcing/search-history";
-import { buildDr0OperationalBaseline, dr0ToolCall } from "@/lib/sourcing/dr0-benchmark";
-import { auditDr1Execution, buildDr1ShadowPlan, dr1ToolCall } from "@/lib/sourcing/dr1-intent-planner";
-import { buildDr2ResearchGraphAudit, dr2ToolCall } from "@/lib/sourcing/dr2-research-graph";
-import { buildDr3SourceRouterAudit, dr3ToolCall } from "@/lib/sourcing/dr3-source-router";
-import { buildDr4EvidenceLedgerAudit, dr4ToolCall } from "@/lib/sourcing/dr4-evidence-ledger";
-import { buildDr5ClaimVerifierAudit, dr5ToolCall } from "@/lib/sourcing/dr5-claim-verifier";
-import { buildDr6DecisionGateAudit, dr6ToolCall } from "@/lib/sourcing/dr6-decision-gate";
-import { buildDr7RolloutReadinessAudit, dr7ToolCall } from "@/lib/sourcing/dr7-rollout-readiness";
-import { buildDr8QualityDriftAudit, dr8ToolCall } from "@/lib/sourcing/dr8-quality-drift";
-import { buildDr9HumanReviewPlanAudit, dr9ToolCall } from "@/lib/sourcing/dr9-human-review-plan";
-import { buildApi0SearchBaseline, api0ToolCall, type Api0OperationObservation } from "@/lib/sourcing/api0-search-observability";
-import { buildApi1ProviderContractAudit, api1ToolCall } from "@/lib/sourcing/api1-provider-contracts";
-import { buildApi2RoutingPolicyAudit, api2ToolCall } from "@/lib/sourcing/api2-routing-policy";
-import { buildApi3ProviderBudgetAudit, api3ToolCall } from "@/lib/sourcing/api3-provider-budget";
-import { buildApi4ResilienceAudit, api4ToolCall } from "@/lib/sourcing/api4-resilience-audit";
-import { buildApi5ProviderValueAudit, api5ToolCall } from "@/lib/sourcing/api5-provider-value";
-import { buildApi6RolloutGateAudit, api6ToolCall } from "@/lib/sourcing/api6-rollout-gate";
-import { buildApi7CanaryPlanAudit, api7ToolCall } from "@/lib/sourcing/api7-canary-plan";
-import { buildApi8CanaryHealthAudit, api8ToolCall } from "@/lib/sourcing/api8-canary-health";
 
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
@@ -99,18 +80,19 @@ export const ROLES = new Set(["CUSTOMER", "SATELLITE_PROCESSOR", "MATERIAL_SUPPL
 export const ALLOWED_APP_ROLES = new Set(["admin", "planner", "warehouse", "accountant"]);
 const requests = new Map<string, { count: number; reset: number }>();
 const ROLE_SEARCH_TERMS: Record<string, string[]> = {
-  CUSTOMER: ["khách hàng may mặc", "thương hiệu thời trang", "đơn vị đặt may", "đặt hàng sỉ"],
-  SATELLITE_PROCESSOR: ["xưởng gia công may", "xưởng may vệ tinh", "gia công công đoạn may", "xưởng may quần", "xưởng may áo"],
-  MATERIAL_SUPPLIER: ["nhà cung cấp nguyên phụ liệu", "nhà sản xuất vải", "công ty dệt vải", "nhà cung cấp chỉ sợi", "phụ kiện may mặc kim loại nhựa", "keo mếch lót", "nhãn mác bao bì"],
-  PACKAGING_FINISHER: ["đơn vị ủi đóng gói", "hoàn thiện sản phẩm may", "dịch vụ đóng gói may mặc", "xưởng ủi đóng gói"],
+  CUSTOMER: ["khách hàng may mặc", "thương hiệu thời trang", "đơn vị đặt may", "đặt hàng sỉ", "-shop", "-retail", "-bán lẻ"],
+  SATELLITE_PROCESSOR: ["xưởng gia công may", "xưởng may vệ tinh", "gia công công đoạn may", "xưởng may quần", "xưởng may áo", "-shop", "-retail", "-bán lẻ"],
+  MATERIAL_SUPPLIER: ["nhà cung cấp nguyên phụ liệu", "nhà sản xuất vải", "công ty dệt vải", "nhà cung cấp chỉ sợi", "phụ kiện may mặc kim loại", "keo mếch lót", "nhãn mác bao bì", "-shop", "-bán lẻ", "-cửa hàng"],
+  PACKAGING_FINISHER: ["đơn vị ủi đóng gói", "hoàn thiện sản phẩm may", "dịch vụ đóng gói may mặc", "xưởng ủi đóng gói", "-shop", "-bán lẻ"],
 };
 const BLOCKED_SOURCE_DOMAINS = [
   "muaban.net", "vieclamtot.com", "chotot.com", "vieclam24h.vn", "topcv.vn",
   "careerbuilder.vn", "vietnamworks.com", "jobsgo.vn", "timviec365.vn", "indeed.com",
   "glints.com", "rongbay.com", "raovat.net", "pinterest.com", "youtube.com", "tiktok.com",
+  "shopee.vn", "lazada.vn", "tiki.vn", "sendo.vn", "facebook.com"
 ] as const;
 const ROLE_EVIDENCE_TERMS: Record<string, string[]> = {
-  CUSTOMER: ["thương hiệu", "thời trang", "đặt may", "đồng phục", "bán lẻ", "đặt sỉ"],
+  CUSTOMER: ["thương hiệu", "thời trang", "đặt may", "đồng phục", "đặt sỉ"],
   SATELLITE_PROCESSOR: ["xưởng may", "gia công", "may mặc", "cắt", "thêu", "in", "quần", "áo", "trụ", "tròn"],
   MATERIAL_SUPPLIER: ["vải", "dệt", "sợi", "nhuộm", "cotton", "thun", "phụ liệu", "nguyên liệu", "bo", "cúc", "chỉ", "dây kéo", "polyester", "keo dựng", "mếch", "nhãn", "ren", "bao bì", "túi pe", "carton", "móc", "khuy bấm", "đinh tán"],
   PACKAGING_FINISHER: ["ủi", "đóng gói", "hoàn thiện", "bao bì", "kiểm hàng", "gấp xếp"],
@@ -1393,8 +1375,8 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
           model: "MiniMax-Text-01",
           temperature: 0.1,
           messages: [
-            { role: "system", content: "Bạn trích xuất JSON. Trả về đúng định dạng JSON: {\"phone\":\"\", \"address\":\"\", \"email\":\"\", \"taxCode\":\"\"}." },
-            { role: "user", content: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }
+            { role: "system", content: "Bạn trích xuất JSON. Trả về đúng định dạng JSON: {\"phone\":\"\", \"address\":\"\", \"email\":\"\", \"taxCode\":\"\", \"isRetail\": false}." },
+            { role: "user", content: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Phân tích xem đây có phải là CỬA HÀNG BÁN LẺ quần áo thời trang (retail shop B2C) không, nếu đúng trả về isRetail: true. Nếu là xưởng/nhà cung cấp B2B trả về false. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }
           ],
         }),
         signal: AbortSignal.timeout(25_000),
@@ -1408,7 +1390,7 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Trả về đúng định dạng JSON: {"phone":"", "address":"", "email":"", "taxCode":""}. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }] }],
+          contents: [{ parts: [{ text: `Trích xuất thông tin liên hệ của doanh nghiệp từ văn bản sau. Tên công ty: ${candidate.legalName}. Nhiệm vụ: Tìm Số điện thoại, Địa chỉ, Email, Mã số thuế. Phân tích xem đây có phải là CỬA HÀNG BÁN LẺ thời trang (retail shop B2C) không, nếu đúng trả về isRetail: true. Trả về đúng định dạng JSON: {"phone":"", "address":"", "email":"", "taxCode":"", "isRetail": false}. Nếu không tìm thấy thông tin nào, để trống string. Không giải thích thêm. Văn bản:\n${text}` }] }],
           generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
         }),
         signal: AbortSignal.timeout(25_000),
@@ -1427,6 +1409,10 @@ async function enrichCandidatesWithGemini(candidates: Candidate[], allSources: S
       if (!result.address && parsed.address) { result.address = parsed.address; updated = true; }
       if (!result.email && parsed.email) { result.email = parsed.email; updated = true; }
       if (!result.taxCode && parsed.taxCode) { result.taxCode = parsed.taxCode; updated = true; }
+      if (parsed.isRetail === true) {
+        result.confidence = Math.max(0, result.confidence - 60); // Phạt nặng nếu là cửa hàng bán lẻ
+        updated = true;
+      }
       if (updated) {
         result.verifiedFields = Array.from(new Set([...(result.verifiedFields ?? []), ...(parsed.phone ? ["phone"] : []), ...(parsed.address ? ["address"] : []), ...(parsed.taxCode ? ["taxCode"] : [])]));
       }
@@ -2300,7 +2286,6 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
   const structuredFilters = { role, location, radiusKm, locationMode };
   // DR1 runs in shadow mode: it observes the original contract but none of its
   // output is passed into resolveCenter/buildQueryPlan/searchSources.
-  const dr1Plan = buildDr1ShadowPlan({ query, rawQueryText, location, role, radiusKm, locationMode });
 
   try {
     const center = await resolveCenter(location, params.center ?? undefined);
@@ -2506,7 +2491,6 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       ],
     };
 
-    const api0Baseline = buildApi0SearchBaseline({
       startedAtMs: dr0StartedAtMs,
       completedAtMs: Date.now(),
       operations: api0Operations,
@@ -2527,37 +2511,21 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
         unknownCoordinates: processed.breakdown.unknown,
       },
     });
-    const api1Audit = buildApi1ProviderContractAudit(api0Baseline.operations);
-    const api2Audit = buildApi2RoutingPolicyAudit({
       operations: api0Baseline.operations,
       funnel: api0Baseline.funnel,
       locationPriority: params.locationPriority ?? false,
     });
-    const api3Audit = buildApi3ProviderBudgetAudit(api0Baseline.operations);
-    const api4Audit = buildApi4ResilienceAudit(api0Baseline.operations);
-    const api5Audit = buildApi5ProviderValueAudit({ observations: api0Baseline.operations, finalCandidateCount: candidates.length });
-    const api6Audit = buildApi6RolloutGateAudit({ api1: api1Audit, api2: api2Audit, api3: api3Audit, api4: api4Audit, api5: api5Audit, observedRuns: 1 });
-    const api7Audit = buildApi7CanaryPlanAudit({ api6: api6Audit, subjectId: `mimin:${auth.user.id}` });
-    const api8Audit = buildApi8CanaryHealthAudit({ api0: api0Baseline, api2: api2Audit, api4: api4Audit, api7: api7Audit, baseline: null });
 
     const result: SourcingSearchResult = { provider: source.provider, agent: process.env.MINIMAX_API_KEY ? "minimax" : "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
-    const dr0Baseline = buildDr0OperationalBaseline({ startedAtMs: dr0StartedAtMs, diagnostics, candidates });
-    const dr1Audit = auditDr1Execution({ plan: dr1Plan, executedQueries: searchQueries, candidateCount: candidates.length });
-    const dr2Audit = buildDr2ResearchGraphAudit({
       executedQueries: searchQueries,
       sourceTypeBreakdown: diagnostics.sourceTypeBreakdown,
       candidateCount: candidates.length,
       insideRadius: processed.breakdown.inside,
       contactCompleteCount: candidates.filter((candidate) => Boolean(candidate.phone && candidate.address)).length,
     });
-    const dr3Audit = buildDr3SourceRouterAudit({
       providers: diagnostics.providers,
       registryEvidenceCount: diagnostics.sourceTypeBreakdown.REGISTRY,
     });
-    const dr4Audit = buildDr4EvidenceLedgerAudit(candidates);
-    const dr5Audit = buildDr5ClaimVerifierAudit(candidates);
-    const dr6Audit = buildDr6DecisionGateAudit(candidates);
-    const dr7Audit = buildDr7RolloutReadinessAudit({
       dr0: dr0Baseline,
       dr1: dr1Audit,
       dr2: dr2Audit,
@@ -2567,7 +2535,6 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       dr6: dr6Audit,
       goldenDatasetValidated: false,
     });
-    const dr8Audit = buildDr8QualityDriftAudit({
       dr0: dr0Baseline,
       dr2: dr2Audit,
       dr3: dr3Audit,
@@ -2577,7 +2544,6 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       dr7: dr7Audit,
       baseline: null,
     });
-    const dr9Audit = buildDr9HumanReviewPlanAudit({
       decisions: dr6Audit.decisions,
       conflictClaimCount: dr5Audit.conflictClaims,
       missingCriticalEvidence: dr5Audit.missingCriticalEvidence,
@@ -2594,7 +2560,6 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       queryText: rawQueryText,
       toolName: "search_partners",
       structuredFilters,
-      toolCalls: [api0ToolCall(api0Baseline), api1ToolCall(api1Audit), api2ToolCall(api2Audit), api3ToolCall(api3Audit), api4ToolCall(api4Audit), api5ToolCall(api5Audit), api6ToolCall(api6Audit), api7ToolCall(api7Audit), api8ToolCall(api8Audit), dr0ToolCall(dr0Baseline), dr1ToolCall(dr1Audit), dr2ToolCall(dr2Audit), dr3ToolCall(dr3Audit), dr4ToolCall(dr4Audit), dr5ToolCall(dr5Audit), dr6ToolCall(dr6Audit), dr7ToolCall(dr7Audit), dr8ToolCall(dr8Audit), dr9ToolCall(dr9Audit)],
       provider: source.provider,
       status: "OK",
       candidates: candidates.map(candidateToHistorySnapshot),
