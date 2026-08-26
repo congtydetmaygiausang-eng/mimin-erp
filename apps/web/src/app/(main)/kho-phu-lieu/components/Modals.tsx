@@ -13,7 +13,7 @@ import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 import { uploadProductFile } from "@/lib/product-upload";
 
 // ============ MODAL NHAP KHO ============
-export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai; onImageSaved?: (maVT: string, imageUrl: string) => void }) {
+export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved, simple = false }: { maVT: string; loai: LoaiKho; onClose: () => void; vatTu?: KhoVai; onImageSaved?: (maVT: string, imageUrl: string) => void; simple?: boolean }) {
   const { themGiaoDich } = useKho();
   const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
   const vt = vatTu || dsVT.find((v) => v.maVT === maVT)!;
@@ -79,8 +79,13 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
             <span><span className="opacity-70">Màu/Quy cách:</span> <b>{vt.mauSac || "—"}</b></span>
             <span><span className="opacity-70">Tồn hiện tại:</span> <b className="text-sky-700">{Number(vt.tonKho || 0).toLocaleString()} {vt.dvt}</b></span>
           </div>
+          {simple && vt.hinhAnh && <img src={vt.hinhAnh} alt={vt.tenVT} className="mb-3 h-36 w-full rounded-xl border object-contain bg-slate-50" />}
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (event) => {
+            {simple && <div>
+              <label className="text-sm font-medium block mb-1">Số lượng ({vt.dvt}) *</label>
+              <input type="number" required min={1} className="input w-full" value={form.soLuong || ""} onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })} />
+            </div>}
+            {!simple && <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (event) => {
               const file = event.target.files?.[0];
               if (!file) return;
               try {
@@ -90,11 +95,11 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
               } catch (error) {
                 toast.error(`Không tải được ảnh: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
               }
-            }} />
-            <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full min-h-28 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50/50 dark:bg-violet-950/20 flex items-center justify-center gap-3 overflow-hidden hover:border-violet-500">
+            }} />}
+            {!simple && <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full min-h-28 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50/50 dark:bg-violet-950/20 flex items-center justify-center gap-3 overflow-hidden hover:border-violet-500">
               {imageUrl ? <img src={imageUrl} alt={`Ảnh ${vt.tenVT}`} className="h-28 w-full object-contain" /> : <><ImageIcon className="h-7 w-7 text-violet-500" /><span className="font-semibold text-violet-700">Tải ảnh phụ liệu lên</span></>}
-            </button>
-            <div className="grid grid-cols-2 gap-3">
+            </button>}
+            {!simple && <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium block mb-1">Ngày nhập *</label>
                 <input type="date" required className="input w-full" value={form.ngay} onChange={(e) => setForm({ ...form, ngay: e.target.value })} />
@@ -103,8 +108,8 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
                 <label className="text-xs font-medium block mb-1">Số lượng ({vt.dvt}) *</label>
                 <input type="number" required min={1} className="input w-full" value={form.soLuong || ""} onChange={(e) => setForm({ ...form, soLuong: Number(e.target.value) })} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            </div>}
+            {!simple && <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium block mb-1">Đơn giá (đ/{vt.dvt}) *</label>
                 <input type="number" required min={0} className="input w-full" value={form.donGia} onChange={(e) => setForm({ ...form, donGia: Number(e.target.value) })} />
@@ -113,7 +118,7 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
                 <label className="text-xs font-medium block mb-1">Thành tiền</label>
                 <div className="input w-full bg-emerald-500/10 text-emerald-700 font-bold flex items-center">{thanhTien.toLocaleString()}đ</div>
               </div>
-            </div>
+            </div>}
             <div>
               <label className="text-xs font-medium block mb-1">Nguồn nhập (NCC) *</label>
               <select required className="input w-full" value={form.nccMa} onChange={(e) => setForm({ ...form, nccMa: e.target.value })}>
@@ -121,14 +126,14 @@ export function PLNhapKho({ maVT, loai, onClose, vatTu, onImageSaved }: { maVT: 
                 {nccList.map((n) => <option key={n.ma_ncc} value={n.ma_ncc}>{n.ma_ncc} — {n.ten_ncc} (nợ {(n.cong_no || 0).toLocaleString()}đ)</option>)}
               </select>
             </div>
-            <div>
+            {!simple && <div>
               <label className="text-xs font-medium block mb-1">Người TH</label>
               <input className="input w-full" value={form.nguoiThucHien} onChange={(e) => setForm({ ...form, nguoiThucHien: e.target.value })} />
-            </div>
-            <div>
+            </div>}
+            {!simple && <div>
               <label className="text-xs font-medium block mb-1">Ghi chú</label>
               <textarea className="input w-full min-h-[50px]" value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} />
-            </div>
+            </div>}
             <div className="flex gap-2 pt-2">
               <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
               <button type="submit" className="btn-primary flex-1 bg-sky-500 hover:bg-sky-600">Xác nhận nhập</button>

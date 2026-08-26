@@ -10,6 +10,7 @@ export type FieldDef =
   | { name: string; label: string; type: "number"; required?: boolean; placeholder?: string; min?: number; max?: number; step?: number | "any" }
   | { name: string; label: string; type: "date"; required?: boolean }
   | { name: string; label: string; type: "textarea"; required?: boolean; placeholder?: string; rows?: number }
+  | { name: string; label: string; type: "image"; required?: boolean }
   | { name: string; label: string; type: "select"; required?: boolean; options: { value: string; label: string }[] }
   | { name: string; label: string; type: "checkbox-group"; required?: boolean; options: { value: string; label: string }[] };
 
@@ -21,6 +22,7 @@ export function CrudModal({
   onSubmit,
   initial,
   submitLabel = "Lưu",
+  onImageUpload,
 }: {
   open: boolean;
   onClose: () => void;
@@ -29,6 +31,7 @@ export function CrudModal({
   onSubmit: (values: Record<string, string>) => Promise<void> | void;
   initial?: Record<string, string>;
   submitLabel?: string;
+  onImageUpload?: (file: File) => Promise<string>;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -97,7 +100,32 @@ export function CrudModal({
               <label className="block text-sm font-medium mb-1">
                 {f.label} {f.required && <span className="text-red-500">*</span>}
               </label>
-              {f.type === "textarea" ? (
+              {f.type === "image" ? (
+                <div className="space-y-2">
+                  {values[f.name] && <img src={values[f.name]} alt={f.label} className="h-32 w-full rounded-lg border object-contain bg-slate-50" />}
+                  <input
+                    className="input"
+                    type="file"
+                    accept="image/*"
+                    required={f.required && !values[f.name]}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const url = onImageUpload ? await onImageUpload(file) : await new Promise<string>((resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onload = () => resolve(String(reader.result || ""));
+                          reader.onerror = () => reject(new Error("Không đọc được hình ảnh"));
+                          reader.readAsDataURL(file);
+                        });
+                        setValues((current) => ({ ...current, [f.name]: url }));
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Không tải được hình ảnh");
+                      }
+                    }}
+                  />
+                </div>
+              ) : f.type === "textarea" ? (
                 <textarea
                   className="input"
                   rows={f.rows || 3}

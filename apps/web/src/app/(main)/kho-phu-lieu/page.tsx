@@ -13,6 +13,7 @@ import { InventoryTable } from "./components/InventoryTable";
 import { TransactionTable } from "./components/TransactionTable";
 import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
+import { uploadProductFile } from "@/lib/product-upload";
 
 const NEW_ACCESSORY_FIELDS: FieldDef[] = [
   { name: "maVT", label: "Mã phụ liệu (tự động)", type: "text", required: true, readOnly: true },
@@ -29,6 +30,7 @@ const NEW_ACCESSORY_FIELDS: FieldDef[] = [
     { value: "cuộn", label: "Cuộn" }, { value: "gói", label: "Gói" },
   ] },
   { name: "donGia", label: "Đơn giá mặc định", type: "number", min: 0 },
+  { name: "hinhAnh", label: "Hình ảnh phụ liệu", type: "image" },
   { name: "ghiChu", label: "Ghi chú", type: "textarea", rows: 2 },
 ];
 
@@ -273,10 +275,11 @@ export default function KhoPhuLieuPage() {
       tonCay: 0,
       tyLeHaoHut: 0,
       kho: "Kho phụ liệu",
+      hinhAnh: values.hinhAnh || undefined,
       ghiChu: values.ghiChu?.trim() || "",
     };
     if (isSupabaseEnabled && supabase) {
-      const { error } = await supabase.from("kho").insert({
+      const payload = {
         sku: newItem.maVT,
         ten_vt: newItem.tenVT,
         loai: "Phu lieu",
@@ -291,9 +294,14 @@ export default function KhoPhuLieuPage() {
         ty_le_hao_hut: 0,
         kho: newItem.kho,
         ghi_chu: newItem.ghiChu || null,
-        hinh_anh: null,
+        hinh_anh: newItem.hinhAnh || null,
         updated_at: new Date().toISOString(),
-      });
+      };
+      let { error } = await supabase.from("kho").insert(payload);
+      if (error?.code === "PGRST204" || error?.code === "42703") {
+        const fallbackPayload = { ...payload, hinh_anh: undefined, ghi_chu: JSON.stringify({ note: newItem.ghiChu || "", imageUrl: newItem.hinhAnh || "" }) };
+        ({ error } = await supabase.from("kho").insert(fallbackPayload));
+      }
       if (error) throw new Error(error.message);
     }
     setInventory((prev) => [...prev, newItem].sort((a, b) => a.maVT.localeCompare(b.maVT)));
@@ -366,7 +374,7 @@ export default function KhoPhuLieuPage() {
 
         {(tab === "nhap" || tab === "xuat" || tab === "lichsu") && <TransactionTable filteredGD={filteredGD} />}
 
-        {showNhap && <PLNhapKho maVT={showNhap} vatTu={inventory.find((item) => item.maVT === showNhap)} loai="phu-lieu" onClose={() => setShowNhap(null)} onImageSaved={(maVT, imageUrl) => setInventoryImages((prev) => ({ ...prev, [maVT]: imageUrl }))} />}
+        {showNhap && <PLNhapKho maVT={showNhap} vatTu={inventory.find((item) => item.maVT === showNhap)} loai="phu-lieu" simple onClose={() => setShowNhap(null)} onImageSaved={(maVT, imageUrl) => setInventoryImages((prev) => ({ ...prev, [maVT]: imageUrl }))} />}
         {showXuat && <PLXuatKho maVT={showXuat} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
         {showHistory && <PLLichSu maVT={showHistory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
         <CrudModal
@@ -376,6 +384,7 @@ export default function KhoPhuLieuPage() {
           fields={NEW_ACCESSORY_FIELDS}
           initial={{ maVT: nextAccessoryCode, loai: "Phụ liệu khác", dvt: "cái", donGia: "0" }}
           submitLabel="Tạo mã phụ liệu"
+          onImageUpload={(file) => uploadProductFile(file, `kho-phu-lieu-${nextAccessoryCode}`)}
           onSubmit={handleAddAccessory}
         />
       </div>
