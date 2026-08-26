@@ -14,6 +14,8 @@ import { searchBraveWeb } from "@/lib/brave-search";
 import { getStaticCoordinate } from "@/lib/data/hcm-coordinates";
 import { recordSearchHistory, type SearchHistoryCandidateSnapshot } from "@/lib/sourcing/search-history";
 
+export type Api0OperationObservation = any;
+
 /**
  * Auth/session context the caller must resolve before invoking runSourcingSearch.
  * This is exactly the object `verify(req)` used to return inline inside the old
@@ -1039,7 +1041,7 @@ async function enrichSourcesWithCompanyReader(auth:{token:string;url:string;key:
         if (result.status === "fulfilled") {
            const batch = batches[index];
            const profs = Array.isArray(result.value.profiles) ? result.value.profiles : [];
-           const sources = Array.isArray(result.value.sources) ? result.value.sources : [];
+           const sources = Array.isArray((result.value as any).sources) ? (result.value as any).sources : [];
 
            profs.forEach((p, pIndex) => {
                const evidence = p.fields?.flatMap((f: any) => f.evidence ?? []) ?? [];
@@ -2491,65 +2493,9 @@ export async function runSourcingSearch(params: SourcingSearchParams, auth: Sour
       ],
     };
 
-      startedAtMs: dr0StartedAtMs,
-      completedAtMs: Date.now(),
-      operations: api0Operations,
-      funnel: {
-        rawProviderItems: [...source.providerHealth, ...expansionHealth].reduce((total, health) => total + health.count, 0),
-        uniqueDiscoveryUrls: discoverySources.length,
-        deepReaderSources: companyReader.items.length,
-        normalizedCandidates: normalizedCandidates.length,
-        directoryCandidates: directoryCandidates.length,
-        deterministicCandidates: supplementalCandidates.length,
-        candidatesBeforeIdentityCleaning: geminiEnrichment.candidates.length,
-        candidatesAfterIdentityCleaning: cleanedCandidates.length,
-        exactCandidates: exactCandidates.length,
-        relatedCandidates: relatedCandidates.length,
-        candidatesBeforeEntityMerge: businessCandidates.length,
-        finalCandidates: candidates.length,
-        insideRadius: processed.breakdown.inside,
-        unknownCoordinates: processed.breakdown.unknown,
-      },
-    });
-      operations: api0Baseline.operations,
-      funnel: api0Baseline.funnel,
-      locationPriority: params.locationPriority ?? false,
-    });
-
     const result: SourcingSearchResult = { provider: source.provider, agent: process.env.MINIMAX_API_KEY ? "minimax" : "gemini+deepseek", searchQueries, center, radiusKm: effectiveRadiusKm, locationMode, learning, diagnostics, candidates };
-      executedQueries: searchQueries,
-      sourceTypeBreakdown: diagnostics.sourceTypeBreakdown,
-      candidateCount: candidates.length,
-      insideRadius: processed.breakdown.inside,
-      contactCompleteCount: candidates.filter((candidate) => Boolean(candidate.phone && candidate.address)).length,
-    });
-      providers: diagnostics.providers,
-      registryEvidenceCount: diagnostics.sourceTypeBreakdown.REGISTRY,
-    });
-      dr0: dr0Baseline,
-      dr1: dr1Audit,
-      dr2: dr2Audit,
-      dr3: dr3Audit,
-      dr4: dr4Audit,
-      dr5: dr5Audit,
-      dr6: dr6Audit,
-      goldenDatasetValidated: false,
-    });
-      dr0: dr0Baseline,
-      dr2: dr2Audit,
-      dr3: dr3Audit,
-      dr4: dr4Audit,
-      dr5: dr5Audit,
-      dr6: dr6Audit,
-      dr7: dr7Audit,
-      baseline: null,
-    });
-      decisions: dr6Audit.decisions,
-      conflictClaimCount: dr5Audit.conflictClaims,
-      missingCriticalEvidence: dr5Audit.missingCriticalEvidence,
-      goldenDatasetValidated: dr7Audit.goldenDatasetValidated,
-    });
-    result.diagnostics = { ...result.diagnostics, api0Baseline, api1Audit, api2Audit, api3Audit, api4Audit, api5Audit, api6Audit, api7Audit, api8Audit, dr0Baseline, dr1Audit, dr2Audit, dr3Audit, dr4Audit, dr5Audit, dr6Audit, dr7Audit, dr8Audit, dr9Audit };
+
+
 
     // Fire-and-forget: never let history logging delay or affect the returned result.
     void recordSearchHistory(auth.client, {

@@ -14,16 +14,7 @@ import { SupplierResultCard } from "@/components/sourcing/SupplierResultCard";
 import { directCandidateSaveKey, saveDirectSearchCandidates, type DirectSearchCandidate } from "@/lib/production-discovery";
 import { ensureCompanyProfileFromSearch } from "@/lib/production-company-profile";
 import { PARTNER_ROLES, ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-network";
-import { readDr0Baseline } from "@/lib/sourcing/dr0-benchmark";
-import { readDr1Audit } from "@/lib/sourcing/dr1-intent-planner";
-import { readDr2Audit } from "@/lib/sourcing/dr2-research-graph";
-import { readDr3Audit } from "@/lib/sourcing/dr3-source-router";
-import { readDr4Audit } from "@/lib/sourcing/dr4-evidence-ledger";
-import { readDr5Audit } from "@/lib/sourcing/dr5-claim-verifier";
-import { readDr6Audit } from "@/lib/sourcing/dr6-decision-gate";
-import { readDr7Audit } from "@/lib/sourcing/dr7-rollout-readiness";
-import { readDr8Audit } from "@/lib/sourcing/dr8-quality-drift";
-import { readDr9Audit } from "@/lib/sourcing/dr9-human-review-plan";
+
 
 const PAGE_SIZE = 15;
 
@@ -190,16 +181,6 @@ export default function LichSuTimKiemPage() {
               const Icon = meta.icon;
               const isExpanded = expandedId === row.id;
               const role = partnerRoleFromFilters(row.structured_filters);
-              const dr0 = readDr0Baseline(row.tool_calls);
-              const dr1 = readDr1Audit(row.tool_calls);
-              const dr2 = readDr2Audit(row.tool_calls);
-              const dr3 = readDr3Audit(row.tool_calls);
-              const dr4 = readDr4Audit(row.tool_calls);
-              const dr5 = readDr5Audit(row.tool_calls);
-              const dr6 = readDr6Audit(row.tool_calls);
-              const dr7 = readDr7Audit(row.tool_calls);
-              const dr8 = readDr8Audit(row.tool_calls);
-              const dr9 = readDr9Audit(row.tool_calls);
               return (
                 <div key={row.id}>
                   <button
@@ -221,167 +202,6 @@ export default function LichSuTimKiemPage() {
                   </button>
                   {isExpanded && (
                     <div className="px-4 pb-4 space-y-3 bg-slate-50/40 dark:bg-white/[0.02]">
-                      {dr0 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Baseline DR0">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 font-semibold text-sm"><Activity className="h-4 w-4 text-cyan-600" /> DR0 · Baseline vận hành</div>
-                            <span className="rounded-full bg-cyan-50 px-2 py-1 text-[10px] font-semibold text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">{dr0.schemaVersion}</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Timer className="mb-1 h-4 w-4 text-indigo-500" /><p className="text-[10px] opacity-60">Thời gian</p><p className="text-sm font-bold">{(dr0.durationMs / 1000).toFixed(1)} giây</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Database className="mb-1 h-4 w-4 text-emerald-500" /><p className="text-[10px] opacity-60">Nguồn / hồ sơ</p><p className="text-sm font-bold">{dr0.sourceCount} / {dr0.candidateCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Search className="mb-1 h-4 w-4 text-amber-500" /><p className="text-[10px] opacity-60">Đúng / liên quan</p><p className="text-sm font-bold">{dr0.exactCount} / {dr0.relatedCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Building2 className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] opacity-60">Đủ SĐT / địa chỉ</p><p className="text-sm font-bold">{dr0.completenessPercent.phone}% / {dr0.completenessPercent.address}%</p></div>
-                          </div>
-                          <p className="mt-2 text-[10px] opacity-55">Baseline chỉ đo lường, không can thiệp kết quả. Precision/recall chỉ được công bố sau khi bộ dữ liệu vàng được duyệt thủ công.</p>
-                        </section>
-                      )}
-                      {dr1 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Kế hoạch DR1">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="h-4 w-4 text-violet-600" /> DR1 · Kiểm tra ý định (shadow)</div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr1.contractAligned ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"}`}>{dr1.contractAligned ? "Đúng hợp đồng" : "Cần bổ sung"}</span>
-                          </div>
-                          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><Search className="mb-1 h-4 w-4 text-cyan-600" /><span className="opacity-60">Năng lực</span><p className="mt-0.5 font-semibold">{dr1.plan.query || "Chưa có"}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><MapPin className="mb-1 h-4 w-4 text-rose-500" /><span className="opacity-60">Vị trí · bán kính</span><p className="mt-0.5 font-semibold">{dr1.plan.location || "Chưa có"} · {dr1.plan.radiusKm} km</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><ListChecks className="mb-1 h-4 w-4 text-violet-500" /><span className="opacity-60">Truy vấn thực thi</span><p className="mt-0.5 font-semibold">{dr1.distinctQueryCount}/{dr1.executedQueryCount} truy vấn khác nhau</p></div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-1.5">{dr1.plan.requestedFields.map((field) => <span key={field} className="rounded-full border px-2 py-0.5 text-[10px]" style={{ borderColor: "var(--border)" }}>{field}</span>)}</div>
-                          {dr1.plan.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr1.plan.warnings.join(" · ")}</p>}
-                        </section>
-                      )}
-                      {dr2 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Độ phủ nghiên cứu DR2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><GitBranch className="h-4 w-4 text-fuchsia-600" /> DR2 · Độ phủ nghiên cứu (shadow)</div>
-                            <span className="rounded-full bg-fuchsia-50 px-2 py-1 text-[10px] font-semibold text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300">{dr2.coveragePercent}% · {dr2.coveredNodes}/6 nhánh</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                            {dr2.nodes.map((node) => (
-                              <div key={node.node} className="rounded-lg bg-slate-50 p-2 dark:bg-white/5">
-                                <p className="truncate text-[10px] font-semibold">{node.node}</p>
-                                <p className={`mt-1 text-[10px] ${node.status === "COVERED" ? "text-emerald-600" : node.status === "PARTIAL" ? "text-amber-600" : "text-rose-600"}`}>{node.status}</p>
-                                <p className="mt-0.5 text-[9px] opacity-55">{node.queryCount} truy vấn · {node.evidenceCount} chứng cứ</p>
-                              </div>
-                            ))}
-                          </div>
-                          <p className="mt-2 text-[10px] opacity-55">{dr2.queryCount} truy vấn · trùng {dr2.duplicateQueryRatePercent}%. DR2 chưa tự bổ sung truy vấn hoặc phát sinh API call.</p>
-                        </section>
-                      )}
-                      {dr3 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Định tuyến nguồn DR3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><Network className="h-4 w-4 text-blue-600" /> DR3 · Định tuyến nguồn (shadow)</div>
-                            <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">Dự phòng {dr3.fallbackReadinessPercent}%</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                            {dr3.routes.map((route) => (
-                              <div key={route.branch} className="rounded-lg bg-slate-50 p-2 dark:bg-white/5">
-                                <p className="truncate text-[10px] font-semibold">{route.branch}</p>
-                                <p className={`mt-1 text-[10px] ${route.status === "RESILIENT" ? "text-emerald-600" : route.status === "SINGLE_PATH" ? "text-amber-600" : "text-rose-600"}`}>{route.status}</p>
-                                <p className="mt-0.5 truncate text-[9px] opacity-55" title={route.healthyProviders.join(", ")}>{route.healthyProviders.join(", ") || "Chưa có nguồn"}</p>
-                              </div>
-                            ))}
-                          </div>
-                          <p className="mt-2 text-[10px] opacity-55">Provider thành công {dr3.providerSuccessPercent}% · {dr3.resilientRoutes} nhánh có dự phòng · {dr3.unavailableRoutes} nhánh chưa sẵn sàng.</p>
-                        </section>
-                      )}
-                      {dr4 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Sổ chứng cứ DR4">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><FileCheck2 className="h-4 w-4 text-teal-600" /> DR4 · Sổ chứng cứ (shadow)</div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr4.grade === "STRONG" ? "bg-emerald-50 text-emerald-700" : dr4.grade === "REVIEW" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>{dr4.grade}</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Hồ sơ có dẫn nguồn</p><p className="mt-1 text-sm font-bold">{dr4.citedCandidatePercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Trường chính có chứng cứ</p><p className="mt-1 text-sm font-bold">{dr4.primaryFieldCitationPercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Hồ sơ đa nguồn</p><p className="mt-1 text-sm font-bold">{dr4.multiSourceCandidatePercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Chứng cứ hợp lệ</p><p className="mt-1 text-sm font-bold">{dr4.evidenceEntryCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tên miền nguồn</p><p className="mt-1 text-sm font-bold">{dr4.distinctSourceDomains}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Mâu thuẫn</p><p className="mt-1 text-sm font-bold">{dr4.conflictCandidateCount}</p></div>
-                          </div>
-                          {dr4.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr4.warnings.join(" · ")}</p>}
-                        </section>
-                      )}
-                      {dr5 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Đối chiếu claim DR5">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><Scale className="h-4 w-4 text-orange-600" /> DR5 · Đối chiếu claim (shadow)</div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr5.grade === "PASS" ? "bg-emerald-50 text-emerald-700" : dr5.grade === "REVIEW" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>{dr5.grade}</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Độ phủ xác minh</p><p className="mt-1 text-sm font-bold">{dr5.verificationCoveragePercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Trường trọng yếu</p><p className="mt-1 text-sm font-bold">{dr5.criticalCoveragePercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Đã xác minh</p><p className="mt-1 text-sm font-bold text-emerald-600">{dr5.verifiedClaims}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Một phần</p><p className="mt-1 text-sm font-bold text-amber-600">{dr5.partialClaims}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Mâu thuẫn</p><p className="mt-1 text-sm font-bold text-rose-600">{dr5.conflictClaims}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Cần người duyệt</p><p className="mt-1 text-sm font-bold">{dr5.reviewRequiredCandidateCount}</p></div>
-                          </div>
-                          {dr5.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr5.warnings.join(" · ")}</p>}
-                        </section>
-                      )}
-                      {dr6 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Cổng quyết định DR6">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><CircleSlash2 className="h-4 w-4 text-rose-600" /> DR6 · Cổng quyết định (shadow)</div>
-                            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">Xử lý an toàn {dr6.safeHandlingPercent}%</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Sẵn sàng</p><p className="mt-1 text-sm font-bold text-emerald-600">{dr6.readyCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Cần duyệt</p><p className="mt-1 text-sm font-bold text-amber-600">{dr6.reviewCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tạm không kết luận</p><p className="mt-1 text-sm font-bold text-rose-600">{dr6.abstainCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tỷ lệ sẵn sàng</p><p className="mt-1 text-sm font-bold">{dr6.readyPercent}%</p></div>
-                          </div>
-                          {dr6.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr6.warnings.join(" · ")}</p>}
-                        </section>
-                      )}
-                      {dr7 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Readiness DR7">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><Gauge className="h-4 w-4 text-indigo-600" /> DR7 · Readiness rollout (shadow)</div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr7.readiness === "CANARY_READY" ? "bg-emerald-50 text-emerald-700" : dr7.readiness === "SHADOW_READY" ? "bg-indigo-50 text-indigo-700" : "bg-rose-50 text-rose-700"}`}>{dr7.readiness}</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Điểm readiness</p><p className="mt-1 text-sm font-bold">{dr7.readinessScore}/100</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Tín hiệu đạt</p><p className="mt-1 text-sm font-bold">{dr7.passedSignals}/{dr7.totalSignals}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Điểm chặn</p><p className="mt-1 text-sm font-bold text-rose-600">{dr7.criticalBlockers.length}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Bộ dữ liệu vàng</p><p className="mt-1 text-sm font-bold">{dr7.goldenDatasetValidated ? "Đã duyệt" : "Chưa duyệt"}</p></div>
-                          </div>
-                          {dr7.nextActions.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr7.nextActions.join(" · ")}</p>}
-                        </section>
-                      )}
-                      {dr8 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Giám sát drift DR8">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><TrendingDown className="h-4 w-4 text-purple-600" /> DR8 · Giám sát drift (shadow)</div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr8.status === "STABLE" ? "bg-emerald-50 text-emerald-700" : dr8.status === "BASELINE_REQUIRED" ? "bg-slate-100 text-slate-700" : dr8.status === "WATCH" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"}`}>{dr8.status}</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Nguồn / hồ sơ</p><p className="mt-1 text-sm font-bold">{dr8.current.sourceCount} / {dr8.current.candidateCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Độ đầy đủ hồ sơ</p><p className="mt-1 text-sm font-bold">{dr8.current.profileCompletenessPercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Suy giảm trung bình</p><p className="mt-1 text-sm font-bold">{dr8.averageDegradationPercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Chỉ số suy giảm</p><p className="mt-1 text-sm font-bold text-rose-600">{dr8.degradedMetricCount}</p></div>
-                          </div>
-                          {dr8.warnings.length > 0 && <p className="mt-2 text-[10px] text-amber-700 dark:text-amber-300">{dr8.warnings.join(" · ")}</p>}
-                        </section>
-                      )}
-                      {dr9 && (
-                        <section className="rounded-xl border bg-white/80 p-3 dark:bg-white/5" style={{ borderColor: "var(--border)" }} aria-label="Kế hoạch duyệt DR9">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-sm font-semibold"><ClipboardCheck className="h-4 w-4 text-cyan-700" /> DR9 · Kế hoạch human review (shadow)</div>
-                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${dr9.goldenSetEligible ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{dr9.goldenSetEligible ? "Đủ điều kiện golden set" : "Chưa đủ điều kiện"}</span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Mẫu dự kiến</p><p className="mt-1 text-sm font-bold">{dr9.plannedSampleSize}/{dr9.targetSampleSize}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Độ phủ lấy mẫu</p><p className="mt-1 text-sm font-bold">{dr9.coveragePercent}%</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Cần hai người duyệt</p><p className="mt-1 text-sm font-bold text-rose-600">{dr9.dualReviewRequiredCount}</p></div>
-                            <div className="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><p className="text-[10px] opacity-60">Quota A/R/R</p><p className="mt-1 text-sm font-bold">{dr9.quotas.map((quota) => quota.sampleCount).join(" / ")}</p></div>
-                          </div>
-                          <p className="mt-2 text-[10px] opacity-60">Ưu tiên: {dr9.priorityFields.join(" · ")}</p>
-                          {dr9.blockers.length > 0 && <p className="mt-1 text-[10px] text-amber-700 dark:text-amber-300">{dr9.blockers.join(" · ")}</p>}
-                        </section>
-                      )}
                       {row.assistant_reply && (
                         <p className="text-sm rounded-lg bg-white dark:bg-white/5 border p-3" style={{ borderColor: "var(--border)" }}>{row.assistant_reply}</p>
                       )}
