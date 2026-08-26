@@ -13,7 +13,7 @@ import { TransactionTable } from "./components/TransactionTable";
 import { PLNhapKho, PLXuatKho, PLLichSu } from "./components/Modals";
 
 export default function KhoPhuLieuPage() {
-  const { giaoDich, danhSachTrangThai, reset } = useKho();
+  const { giaoDich, reset } = useKho();
   const [tab, setTab] = useState<Tab>("tongquan");
   const [search, setSearch] = useState("");
   const [showNhap, setShowNhap] = useState<string | null>(null);
@@ -91,12 +91,30 @@ export default function KhoPhuLieuPage() {
   };
 
   // KPIs
-  const dsTrangThai = danhSachTrangThai("phu-lieu");
+  const dsTrangThai = useMemo(() => {
+    return inventory.map(v => {
+      const gd = giaoDich.filter((g) => g.maVT === v.maVT);
+      const tongNhap = gd.filter((g) => g.loai === "NHAP").reduce((s, g) => s + g.soLuong, 0);
+      const tongXuat = gd.filter((g) => g.loai === "XUAT").reduce((s, g) => s + g.soLuong, 0);
+      const tonKho = v.tonKho + tongNhap - tongXuat;
+      return {
+        maVT: v.maVT,
+        tonKho,
+        tonToiThieu: v.tonToiThieu || 0,
+        canhBao: tonKho < (v.tonToiThieu || 0),
+        giaTriTon: tonKho * v.donGia,
+        lanNhapGanNhat: gd.filter((g) => g.loai === "NHAP").sort((a, b) => b.ngay.localeCompare(a.ngay))[0]?.ngay,
+        lanXuatGanNhat: gd.filter((g) => g.loai === "XUAT").sort((a, b) => b.ngay.localeCompare(a.ngay))[0]?.ngay,
+        tongNhap,
+        tongXuat,
+      };
+    });
+  }, [inventory, giaoDich]);
   const tongGiaTri = dsTrangThai.reduce((s, t) => s + t.giaTriTon, 0);
   const dsCanhBao = dsTrangThai.filter((t) => t.canhBao);
   const tongNhap = giaoDich.filter((g) => g.loai === "NHAP" && inventory.find((v) => v.maVT === g.maVT)).reduce((s, g) => s + g.thanhTien, 0);
   const dsCanhBaoDetails = dsCanhBao.slice(0, 5).map((t) => {
-    const vt = KHO_VAT_TU.find((v) => v.maVT === t.maVT);
+    const vt = inventory.find((v) => v.maVT === t.maVT);
     return `${vt?.tenVT} (còn ${t.tonKho.toFixed(0)})`;
   }).join(", ") + ".";
 
