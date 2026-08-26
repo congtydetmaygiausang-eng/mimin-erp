@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeAgentCompanyCandidates, type Gate4CompanyCandidate } from "./gate4-agent-company-contract";
+import {
+  normalizeAgentCompanyCandidates,
+  normalizeAgentSearchPayload,
+  type Gate4CompanyCandidate,
+} from "./gate4-agent-company-contract";
 
 function candidate(overrides: Partial<Gate4CompanyCandidate> = {}): Gate4CompanyCandidate {
   return {
@@ -98,4 +102,29 @@ test("never overwrites an existing contact with evidence from an unrelated sourc
   ]);
 
   assert.equal(result.candidates[0].phone, "0903111222");
+});
+
+test("normalizes the Overview AgentSearchBox payload through the same Gate 4 contract", () => {
+  const valid = candidate({
+    legalName: "Công ty TNHH Vải Minh Tâm",
+    sourceUrl: "https://minhtam.vn/gioi-thieu?utm_source=agent",
+    sourceTitle: "Giới thiệu Công ty TNHH Vải Minh Tâm",
+  });
+  const article = candidate({
+    legalName: "Top 10 công ty vải cotton uy tín tại TP.HCM",
+    sourceUrl: "https://directory.vn/top-10-cong-ty-vai",
+    sourceTitle: "Top 10 công ty vải cotton uy tín tại TP.HCM",
+  });
+
+  const result = normalizeAgentSearchPayload({
+    candidates: [valid, article],
+    diagnostics: [{ provider: "JINA" }],
+    provider: ["TAVILY", "JINA"],
+  });
+
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].legalName, "Công ty TNHH Vải Minh Tâm");
+  assert.deepEqual(result.provider, ["TAVILY", "JINA"]);
+  assert.deepEqual(result.diagnostics, [{ provider: "JINA" }]);
+  assert.equal(result.gate4.rejectedInvalidIdentity, 1);
 });

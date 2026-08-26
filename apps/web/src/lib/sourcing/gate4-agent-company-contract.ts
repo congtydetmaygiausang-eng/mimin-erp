@@ -55,6 +55,13 @@ export interface Gate4RejectedCandidate {
   reason: "INVALID_COMPANY_IDENTITY";
 }
 
+export interface Gate4PayloadMetrics {
+  inputCandidates: number;
+  outputCandidates: number;
+  rejectedInvalidIdentity: number;
+  mergedDuplicates: number;
+}
+
 const TRACKING_PARAMS = new Set([
   "fbclid", "gclid", "dclid", "msclkid", "ref", "ref_src", "srsltid",
 ]);
@@ -208,4 +215,29 @@ export function normalizeAgentCompanyCandidates<T extends Gate4CompanyCandidate>
   }
 
   return { candidates: clusters, rejected };
+}
+
+/**
+ * Consumer adapter dùng chung cho các giao diện AI Agent (Tổng quan và Tìm
+ * nâng cao). Payload từ API được kiểm chứng lại bằng đúng Gate 4 contract trước
+ * khi ghi vào state giao diện; metadata provider/diagnostics vẫn được giữ nguyên.
+ */
+export function normalizeAgentSearchPayload<
+  T extends Gate4CompanyCandidate,
+  P extends { candidates: readonly T[] },
+>(payload: P): Omit<P, "candidates"> & { candidates: T[]; gate4: Gate4PayloadMetrics } {
+  const normalized = normalizeAgentCompanyCandidates(payload.candidates);
+  return {
+    ...payload,
+    candidates: normalized.candidates,
+    gate4: {
+      inputCandidates: payload.candidates.length,
+      outputCandidates: normalized.candidates.length,
+      rejectedInvalidIdentity: normalized.rejected.length,
+      mergedDuplicates: Math.max(
+        0,
+        payload.candidates.length - normalized.rejected.length - normalized.candidates.length,
+      ),
+    },
+  };
 }
