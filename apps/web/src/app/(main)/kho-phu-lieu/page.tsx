@@ -345,13 +345,6 @@ export default function KhoPhuLieuPage() {
           >
             <Plus className="h-4 w-4" /> Nhập phụ liệu từ NCC
           </button>
-          <button
-            type="button"
-            className="btn-secondary flex items-center justify-center gap-2 whitespace-nowrap"
-            onClick={() => setShowAdd(true)}
-          >
-            <Plus className="h-4 w-4" /> Thêm phụ liệu mới
-          </button>
           </div>
         </div>
 
