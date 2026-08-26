@@ -3,6 +3,7 @@
 import { useWizard } from "../WizardContext";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
 
 export function Step1GeneralInfo() {
   const { state, updateState } = useWizard();
@@ -117,6 +118,53 @@ export function Step1GeneralInfo() {
           />
         </div>
       </div>
+     {/* Hình ảnh sản phẩm */}
+     <div className="mt-8 border-t border-slate-200 pt-8">
+       <div className="mb-4">
+         <h3 className="text-lg font-semibold text-slate-800">Hình Ảnh Sản Phẩm</h3>
+         <p className="text-sm text-slate-500">Tải lên hình ảnh để xem trước sản phẩm</p>
+       </div>
+
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         {/* Upload Section */}
+         <div className="space-y-4">
+           <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-8 border-2 border-dashed border-violet-200">
+             <ImageUploader
+               files={state.hinhAnhFiles}
+               onChange={(files: UploadedFile[]) => updateState({
+                 hinhAnhFiles: files,
+                 hinhAnh: files.find((file) => file.type.startsWith("image/"))?.dataUrl || "",
+               })}
+               category="Ảnh sản phẩm"
+               accept="image/*"
+               label="Tải Hình Ảnh Sản Phẩm"
+               hint="PNG, JPG hoặc GIF (tối đa 5MB)"
+             />
+           </div>
+         </div>
+
+         {/* Preview Section */}
+         {state.hinhAnh && (
+           <div className="space-y-4">
+             <div className="bg-slate-100 rounded-2xl p-4 border border-slate-200 overflow-hidden">
+               <img
+                 src={state.hinhAnh}
+                 alt="Sản phẩm"
+                 className="w-full h-auto rounded-lg object-cover max-h-80"
+               />
+             </div>
+             <div className="flex gap-2">
+               <button
+                 onClick={() => updateState({ hinhAnh: "", hinhAnhFiles: [] })}
+                 className="flex-1 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition"
+               >
+                 Xóa Hình
+               </button>
+             </div>
+           </div>
+         )}
+       </div>
+     </div>
     </div>
   );
 }

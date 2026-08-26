@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { type LoaiLenh, type LoaiSP, type TrangThaiLenhCat, type MauVai, type LenhCatPhuLieu, type PhanCongGiaCong, type ChiPhiCoDinh } from "@/lib/data/lenh-cat-store";
 import { BANG_CHI_PHI_CO_DINH } from "@/lib/data/lenh-cat-store";
+import { type UploadedFile } from "@/components/ui/ImageUploader";
 
 export interface SoDoCat {
   id: string;
@@ -30,6 +31,9 @@ interface WizardState {
   ghiChu: string;
   ghiChuKyThuat: string;
   tiLeSize: string;
+    hinhAnh: string;
+  hinhAnhFiles: UploadedFile[];
+
   
   // Step 2
   soMau: number;
@@ -82,6 +86,9 @@ const defaultState: WizardState = {
   ghiChu: "",
   ghiChuKyThuat: "",
   tiLeSize: "1:2:2:1",
+    hinhAnh: "",
+  hinhAnhFiles: [],
+
   soMau: 4,
   dsMau: [],
   daCoSoDo: false,

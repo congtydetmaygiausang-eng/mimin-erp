@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, ChevronRight, CheckCircle2, 
-  Scissors, Package, Users, Calculator, FileText 
+  Scissors, Package, Users, Calculator, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -102,123 +102,159 @@ function TaoLenhCatContent() {
     }
   };
 
+  const currentStepData = WIZARD_STEPS[currentStep - 1];
+  const CurrentStepIcon = currentStepData?.icon || FileText;
+
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-950 dark:to-slate-900 pb-20">
-      {/* Premium Header */}
-      <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 pb-20">
+      {/* Premium Header - Full Width */}
+      <div className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-b border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+        <div className="px-4 sm:px-6 lg:px-12 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 flex-1">
             <button 
               onClick={() => router.push("/lenh-cat")}
-              className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 text-slate-500 transition-colors"
+              className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent truncate">
                 Tạo Lệnh Cắt Mới
               </h1>
-              <p className="text-xs text-slate-500 font-medium">Thiết lập thông số và tính toán giá vốn</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">Bước {currentStep}/{WIZARD_STEPS.length}: {currentStepData?.title}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => router.push("/lenh-cat")}>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => router.push("/lenh-cat")} className="hidden sm:flex text-sm">
               Hủy bỏ
-            </Button>
-            <Button 
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/20"
-              onClick={currentStep === WIZARD_STEPS.length ? handleSubmit : handleNext}
-              disabled={isSubmitting}
-            >
-              {currentStep === WIZARD_STEPS.length ? (
-                isSubmitting ? "Đang lưu..." : "Phát Lệnh & Điều Chuyển"
-              ) : (
-                <>
-                  Tiếp tục <ChevronRight className="w-4 h-4 ml-1" />
-                </>
-              )}
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
-        {/* Left Sidebar: Step Indicator */}
-        <div className="w-full lg:w-72 shrink-0">
-          <div className="sticky top-28 bg-white/60 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/40 dark:border-white/10 p-4 shadow-xl shadow-slate-200/20 dark:shadow-none">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-6 px-2 uppercase tracking-wider">Tiến trình</h2>
-            <div className="space-y-1 relative before:absolute before:inset-0 before:ml-[23px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-700 before:to-transparent">
-              {WIZARD_STEPS.map((step, index) => {
-                const isActive = currentStep === step.id;
-                const isCompleted = currentStep > step.id;
-                const Icon = step.icon;
+      {/* Mobile Menu Drawer - Hidden */}
 
-                return (
-                  <div key={step.id} className="relative flex items-start gap-4 p-2 z-10 group cursor-pointer" onClick={() => setCurrentStep(step.id)}>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
-                      isActive 
-                        ? "bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/30 scale-110" 
-                        : isCompleted 
-                          ? "bg-emerald-500 text-white" 
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700"
-                    }`}>
-                      {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                    </div>
-                    <div className={`pt-1 transition-colors duration-300 ${isActive ? "opacity-100" : "opacity-60"}`}>
-                      <div className={`text-sm font-semibold ${isActive ? "text-violet-700 dark:text-violet-400" : "text-slate-700 dark:text-slate-300"}`}>
-                        {step.title}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5 leading-snug">{step.description}</div>
-                    </div>
+      {/* Main Card Container - Full Screen Responsive */}
+      <div className="w-full px-4 lg:px-8 mt-8 mb-12">
+        {/* Progress Bar - Full Width */}
+        <div className="mb-12">
+          <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-sm">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${(currentStep / WIZARD_STEPS.length) * 100}%` }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              className="h-full bg-gradient-to-r from-violet-500 via-indigo-500 to-violet-600"
+            />
+          </div>
+          <div className="mt-6 grid grid-cols-5 gap-2 md:gap-4">
+            {WIZARD_STEPS.map((step) => {
+              const isActive = currentStep === step.id;
+              const isCompleted = currentStep > step.id;
+              const Icon = step.icon;
+
+              return (
+                <motion.div
+                  key={step.id}
+                  className="flex flex-col items-center cursor-pointer group hidden lg:flex"
+                  onClick={() => setCurrentStep(step.id)}
+                  whileHover={{ scale: 1.08 }}
+                >
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-md ${
+                    isActive 
+                      ? "bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/50 scale-110" 
+                      : isCompleted 
+                        ? "bg-emerald-500 text-white shadow-emerald-500/30" 
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 group-hover:bg-slate-300 dark:group-hover:bg-slate-600"
+                  }`}>
+                    {isCompleted ? <CheckCircle2 className="w-7 h-7" /> : <Icon className="w-6 h-6" />}
                   </div>
-                );
-              })}
-            </div>
+                  <p className={`text-xs font-semibold mt-3 text-center leading-tight transition-colors ${
+                    isActive 
+                      ? "text-violet-700 dark:text-violet-400" 
+                      : isCompleted
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-slate-500 dark:text-slate-400"
+                  }`}>
+                    {step.title}
+                  </p>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Right Content: Step Content */}
-        <div className="flex-1 min-w-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white/60 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-white/40 dark:border-white/10 shadow-xl shadow-slate-200/20 dark:shadow-none min-h-[500px] p-6 sm:p-8"
-            >
+        {/* Main Card - Full Width Responsive */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.3 }}
+            className="w-full bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl shadow-slate-300/20 dark:shadow-none overflow-hidden"
+          >
+            {/* Card Header - Full Width */}
+            <div className="bg-gradient-to-r from-violet-50 via-indigo-50 to-violet-50 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700 px-6 lg:px-12 py-8 border-b border-slate-200/50 dark:border-slate-600/50">
+              <div className="flex items-center gap-5">
+                <div className="p-4 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl text-white shadow-lg shadow-violet-500/30">
+                  <CurrentStepIcon className="w-7 h-7" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+                    {currentStepData?.title}
+                  </h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                    {currentStepData?.description}
+                  </p>
+                </div>
+                <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-violet-100/50 dark:bg-violet-900/20 rounded-xl border border-violet-200/50 dark:border-violet-800/50">
+                  <span className="text-sm font-semibold text-violet-700 dark:text-violet-400">
+                    {currentStep} / {WIZARD_STEPS.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card Content - Full Width Scrollable */}
+            <div className="px-6 lg:px-12 py-10 md:py-12 min-h-[500px] overflow-y-auto max-h-[calc(100vh-400px)]">
               {currentStep === 1 && <Step1GeneralInfo />}
               {currentStep === 2 && <Step2Fabric />}
               {currentStep === 3 && <Step3Accessories />}
               {currentStep === 4 && <Step4Subcontractors />}
               {currentStep === 5 && <Step5COGS />}
-            </motion.div>
-          </AnimatePresence>
+            </div>
 
-          {/* Bottom Navigation */}
-          <div className="mt-6 flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={handlePrev}
-              disabled={currentStep === 1 || isSubmitting}
-              className="bg-white/60 dark:bg-white/5 backdrop-blur-sm"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" /> Quay lại
-            </Button>
-            <Button 
-              onClick={currentStep === WIZARD_STEPS.length ? handleSubmit : handleNext}
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/20"
-            >
-              {currentStep === WIZARD_STEPS.length ? (
-                isSubmitting ? "Đang lưu..." : "Hoàn tất"
-              ) : (
-                <>Tiếp theo <ChevronRight className="w-4 h-4 ml-2" /></>
-              )}
-            </Button>
-          </div>
-        </div>
+            {/* Card Footer - Full Width */}
+            <div className="px-6 lg:px-12 py-6 bg-gradient-to-r from-slate-50 to-slate-50/50 dark:from-slate-700/30 dark:to-slate-800/30 border-t border-slate-200/50 dark:border-slate-600/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <Button
+                variant="outline"
+                onClick={handlePrev}
+                disabled={currentStep === 1 || isSubmitting}
+                className="w-full sm:w-auto px-8 py-3 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" /> Quay lại
+              </Button>
+
+              <div className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                Bước {currentStep} / {WIZARD_STEPS.length}
+              </div>
+
+              <Button 
+                onClick={currentStep === WIZARD_STEPS.length ? handleSubmit : handleNext}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto px-8 py-3 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-violet-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+              >
+                {currentStep === WIZARD_STEPS.length ? (
+                  isSubmitting ? "Đang lưu..." : "🚀 Phát Lệnh"
+                ) : (
+                  <>
+                    Tiếp tục <ChevronRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
