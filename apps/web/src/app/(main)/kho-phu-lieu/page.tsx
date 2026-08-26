@@ -67,15 +67,28 @@ export default function KhoPhuLieuPage() {
     try {
       const imgRaw = localStorage.getItem(PL_IMAGES_KEY);
       if (imgRaw) setInventoryImages(JSON.parse(imgRaw));
+      const inventoryRaw = localStorage.getItem(PL_INVENTORY_KEY);
+      if (inventoryRaw) {
+        const cached = JSON.parse(inventoryRaw);
+        if (Array.isArray(cached) && cached.length > 0) setInventory(cached);
+      }
     } catch {}
 
     const loadRemote = async () => {
       if (!isSupabaseEnabled || !supabase) return;
-      const { data, error } = await supabase
+      const baseQuery = supabase
+        .from("kho")
+        .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu")
+        .eq("loai", "Phu lieu")
+        .order("sku");
+      let { data, error } = await supabase
         .from("kho")
         .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu, hinh_anh")
         .eq("loai", "Phu lieu")
         .order("sku");
+      if (error?.code === "PGRST204" || error?.code === "42703") {
+        ({ data, error } = await baseQuery);
+      }
       if (error) {
         toast.error(`Không tải được Kho phụ liệu: ${error.message}`);
         return;
@@ -101,9 +114,12 @@ export default function KhoPhuLieuPage() {
           hinhAnh: row.hinh_anh || readSharedImage(row.ghi_chu),
         } satisfies KhoVai;
       });
-      setInventoryImages(Object.fromEntries((data || []).map((row) => [row.sku, row.hinh_anh || readSharedImage(row.ghi_chu)]).filter(([, image]) => Boolean(image))));
-      setInventory(remote);
-      localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(remote));
+      const remoteImages = Object.fromEntries((data || []).map((row) => [row.sku, row.hinh_anh || readSharedImage(row.ghi_chu)]).filter(([, image]) => Boolean(image)));
+      setInventoryImages((current) => ({ ...current, ...remoteImages }));
+      if (remote.length > 0) {
+        setInventory(remote);
+        localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(remote));
+      }
     };
 
     void loadRemote();
