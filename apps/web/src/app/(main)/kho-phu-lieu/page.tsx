@@ -51,6 +51,30 @@ export default function KhoPhuLieuPage() {
             tonCay: d.ton_cay || 0,
           }));
           setInventory(mapped);
+          
+          // Khôi phục hình ảnh cũ (migrate BO-XXX to PL-XXX)
+          try {
+            const imgRaw = localStorage.getItem(PL_IMAGES_KEY);
+            if (imgRaw) {
+              const oldImgs = JSON.parse(imgRaw);
+              const newImgs = { ...oldImgs };
+              let migrated = false;
+              mapped.forEach(nv => {
+                if (!newImgs[nv.maVT]) {
+                  // Find old item by name
+                  const oldItem = KHO_VAT_TU.find(o => o.tenVT.toLowerCase() === nv.tenVT.toLowerCase());
+                  if (oldItem && oldImgs[oldItem.maVT]) {
+                    newImgs[nv.maVT] = oldImgs[oldItem.maVT];
+                    migrated = true;
+                  }
+                }
+              });
+              if (migrated) {
+                localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(newImgs));
+                setInventoryImages(newImgs);
+              }
+            }
+          } catch {}
         } else {
           // Fallback localStorage if Supabase is empty or fails
           try {
@@ -216,9 +240,9 @@ export default function KhoPhuLieuPage() {
 
         {(tab === "nhap" || tab === "xuat" || tab === "lichsu") && <TransactionTable filteredGD={filteredGD} />}
 
-        {showNhap && <PLNhapKho maVT={showNhap} loai="phu-lieu" onClose={() => setShowNhap(null)} />}
-        {showXuat && <PLXuatKho maVT={showXuat} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
-        {showHistory && <PLLichSu maVT={showHistory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
+        {showNhap && <PLNhapKho maVT={showNhap} inventory={inventory} loai="phu-lieu" onClose={() => setShowNhap(null)} />}
+        {showXuat && <PLXuatKho maVT={showXuat} inventory={inventory} loai="phu-lieu" onClose={() => setShowXuat(null)} />}
+        {showHistory && <PLLichSu maVT={showHistory} inventory={inventory} loai="phu-lieu" onClose={() => setShowHistory(null)} />}
       </div>
     </div>
   );

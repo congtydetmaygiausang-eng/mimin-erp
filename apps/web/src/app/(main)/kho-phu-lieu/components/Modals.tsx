@@ -11,11 +11,11 @@ import { Portal } from "@/components/ui/Portal";
 import type { LoaiKho } from "../data";
 
 // ============ MODAL NHAP KHO ============
-export function PLNhapKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho; onClose: () => void }) {
+export function PLNhapKho({ maVT, inventory, loai, onClose }: { maVT: string; inventory?: KhoVai[]; loai: LoaiKho; onClose: () => void }) {
   const { themGiaoDich } = useKho();
-  const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
-  const vt = dsVT.find((v) => v.maVT === maVT)!;
-  const { list: _nccList } = useNhaCungCap();
+  const dsVT = inventory && inventory.length > 0 ? inventory : (loai === "vai" ? KHO_VAI : KHO_VAT_TU);
+  const vt = dsVT.find((v) => v.maVT === maVT) || dsVT[0];
+  const { list: _nccList, suaNCC } = useNhaCungCap();
   const nccList = _nccList
     .filter(n => {
       const txt = (n.loai + " " + (n.danh_muc_chi_tiet?.join(" ") || "")).toLowerCase();
@@ -38,9 +38,21 @@ export function PLNhapKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho
   const thanhTien = form.soLuong * form.donGia;
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!vt) return toast.error("Không tìm thấy vật tư");
     if (form.soLuong <= 0) return toast.error("SL phải > 0");
+    
+    // Ghi nhận giao dịch
     themGiaoDich({ ...form, loai: "NHAP" as const, maVT: vt.maVT, tenVT: vt.tenVT, donVi: vt.dvt, thanhTien });
-    toast.success(`Đã nhập ${form.soLuong.toLocaleString()} ${vt.dvt} ${vt.tenVT}`);
+    
+    // Ghi nhận công nợ cho nhà cung cấp
+    if (form.nguonNhap) {
+      const ncc = _nccList.find(n => n.ten_ncc === form.nguonNhap);
+      if (ncc) {
+        suaNCC({ ...ncc, cong_no: ncc.cong_no + thanhTien });
+      }
+    }
+    
+    toast.success(`Đã nhập ${form.soLuong.toLocaleString()} ${vt.dvt} ${vt.tenVT} và cập nhật công nợ`);
     onClose();
   };
 
@@ -103,11 +115,14 @@ export function PLNhapKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho
 }
 
 // ============ MODAL XUAT KHO ============
-export function PLXuatKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho; onClose: () => void }) {
-  const { themGiaoDich, tinhTonKho } = useKho();
-  const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
-  const vt = dsVT.find((v) => v.maVT === maVT)!;
-  const tonHienTai = tinhTonKho(maVT, loai);
+export function PLXuatKho({ maVT, inventory, loai, onClose }: { maVT: string; inventory?: KhoVai[]; loai: LoaiKho; onClose: () => void }) {
+  const { themGiaoDich, giaoDichTheoVT } = useKho();
+  const dsVT = inventory && inventory.length > 0 ? inventory : (loai === "vai" ? KHO_VAI : KHO_VAT_TU);
+  const vt = dsVT.find((v) => v.maVT === maVT) || dsVT[0];
+  const ds = giaoDichTheoVT(maVT);
+  const tongNhap = ds.filter((g) => g.loai === "NHAP").reduce((s, g) => s + g.soLuong, 0);
+  const tongXuat = ds.filter((g) => g.loai === "XUAT").reduce((s, g) => s + g.soLuong, 0);
+  const tonHienTai = vt.tonKho + tongNhap - tongXuat;
   const [form, setForm] = useState({
     ngay: new Date().toISOString().split("T")[0],
     soLuong: 0,
@@ -181,10 +196,10 @@ export function PLXuatKho({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho
 }
 
 // ============ MODAL LICH SU ============
-export function PLLichSu({ maVT, loai, onClose }: { maVT: string; loai: LoaiKho; onClose: () => void }) {
+export function PLLichSu({ maVT, inventory, loai, onClose }: { maVT: string; inventory?: KhoVai[]; loai: LoaiKho; onClose: () => void }) {
   const { giaoDichTheoVT } = useKho();
-  const dsVT = loai === "vai" ? KHO_VAI : KHO_VAT_TU;
-  const vt = dsVT.find((v) => v.maVT === maVT)!;
+  const dsVT = inventory && inventory.length > 0 ? inventory : (loai === "vai" ? KHO_VAI : KHO_VAT_TU);
+  const vt = dsVT.find((v) => v.maVT === maVT) || dsVT[0];
   const ds = giaoDichTheoVT(maVT);
   const tongNhap = ds.filter((g) => g.loai === "NHAP").reduce((s, g) => s + g.soLuong, 0);
   const tongXuat = ds.filter((g) => g.loai === "XUAT").reduce((s, g) => s + g.soLuong, 0);
