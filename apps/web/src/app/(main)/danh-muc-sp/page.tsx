@@ -115,19 +115,19 @@ export default function DanhMucSanPhamPage() {
           ghiChu: "Đồng bộ từ Kho thành phẩm",
           ngayTao: new Date().toISOString().slice(0, 10),
         }),
-        tenSP: item.tenSP || current?.tenSP || item.maSP,
-        dsMau: colors.length ? colors : current?.dsMau || [],
-        bangSize: sizes.length
-          ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length }
-          : current?.bangSize || { sizes: [], ratios: [], riSo: 1 },
-        giaVonDuKien: item.giaVon || current?.giaVonDuKien || 0,
-        giaBanDuKien: item.giaBanLe || item.giaBanSi || item.giaBanLo || current?.giaBanDuKien || 0,
-        giaBanLe: item.giaBanLe || current?.giaBanLe || 0,
-        giaBanSi: item.giaBanSi || current?.giaBanSi || 0,
-        giaBanLo: item.giaBanLo,
-        giaTikTok: item.giaTikTok,
-        giaShopee: item.giaShopee,
-        kenhBan: item.kenhBan,
+        tenSP: current?.tenSP || item.tenSP || item.maSP,
+        dsMau: current?.dsMau?.length ? current.dsMau : (colors.length ? colors : []),
+        bangSize: current?.bangSize?.sizes?.length
+          ? current.bangSize
+          : (sizes.length ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length } : { sizes: [], ratios: [], riSo: 1 }),
+        giaVonDuKien: current?.giaVonDuKien || item.giaVon || 0,
+        giaBanDuKien: current?.giaBanDuKien || item.giaBanLe || item.giaBanSi || item.giaBanLo || 0,
+        giaBanLe: current?.giaBanLe || item.giaBanLe || 0,
+        giaBanSi: current?.giaBanSi || item.giaBanSi || 0,
+        giaBanLo: current?.giaBanLo || item.giaBanLo,
+        giaTikTok: current?.giaTikTok || item.giaTikTok,
+        giaShopee: current?.giaShopee || item.giaShopee,
+        kenhBan: current?.kenhBan || item.kenhBan,
         hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
       });
     }
@@ -396,9 +396,15 @@ export default function DanhMucSanPhamPage() {
   };
 
   const handleSaveProduct = async (sp: Partial<SanPham>) => {
-    if (productToEdit && suaSP) {
-      await suaSP(productToEdit.id, sp);
-      toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP}`);
+    if (productToEdit) {
+      const existsInDb = dsSanPham?.some(p => p.id === productToEdit.id);
+      if (existsInDb && suaSP) {
+        await suaSP(productToEdit.id, sp);
+        toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP}`);
+      } else if (themSP) {
+        await themSP(sp as SanPham);
+        toast.success(`Đã lưu sản phẩm từ Kho vào Danh mục: ${sp.tenSP}`);
+      }
     } else if (themSP) {
       await themSP(sp as SanPham);
       toast.success(`Đã tạo sản phẩm mới: ${sp.tenSP}`);
