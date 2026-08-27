@@ -19,7 +19,7 @@ import { ROLE_LABELS, type ProductionPartnerRole } from "@/lib/production-networ
 import type { DirectSearchCandidate } from "@/lib/production-discovery";
 import { normalizeAgentCompanyCandidates } from "@/lib/sourcing/gate4-agent-company-contract";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 interface TurnResult {
   role: ProductionPartnerRole;

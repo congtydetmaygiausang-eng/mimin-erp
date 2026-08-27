@@ -6,7 +6,7 @@ import { getActiveProfile, listActiveProfiles, profilesToPromptContext } from "@
 import { canView } from "@/lib/permissions";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 25000): Promise<Response> {
   const controller = new AbortController();
