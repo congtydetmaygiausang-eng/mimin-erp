@@ -1,9 +1,9 @@
 "use client";
 
-import { useWizard } from "../WizardContext";
+import { useEffect, useWizard } from "../WizardContext";
 import { Users, Briefcase } from "lucide-react";
-import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
+import { useNhanSu } from "@/lib/data/nhan-su-store";
 
 const DEFAULT_GIA_CONG: any[] = [
   { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 0 },
@@ -17,9 +17,21 @@ const DEFAULT_GIA_CONG: any[] = [
 
 export function Step4Subcontractors() {
   const { state, updateState } = useWizard();
+  const { list: nhanSuList } = useNhanSu();
   
   // Initialize if empty
   const phanCong = state.phanCong.length > 0 ? state.phanCong : DEFAULT_GIA_CONG;
+  const isBo = state.loaiSP.toLowerCase().includes("bo");
+  const visiblePhanCong = phanCong
+    .map((pc, idx) => ({ pc, idx }))
+    .filter(({ pc }) => isBo || !pc.tenCongDoan.toLowerCase().includes("quần"));
+
+  useEffect(() => {
+    if (state.phanCong.length > 0 && !isBo) {
+      const filtered = state.phanCong.filter(pc => !pc.tenCongDoan.toLowerCase().includes("quần"));
+      if (filtered.length !== state.phanCong.length) updateState({ phanCong: filtered });
+    }
+  }, [isBo, state.phanCong, updateState]);
 
   const handleUpdate = (index: number, field: string, value: any) => {
     const updated = [...phanCong];
@@ -32,8 +44,8 @@ export function Step4Subcontractors() {
         const dt = DOI_TAC_GIA_CONG.find(d => d.ma === value);
         if (dt) updated[index].nguoiTen = dt.tenDonVi;
       } else {
-        const nv = REAL_NHAN_VIEN.find(n => n.ma === value);
-        if (nv) updated[index].nguoiTen = nv.ten;
+        const nv = nhanSuList.find(n => n.maNV === value);
+        if (nv) updated[index].nguoiTen = nv.hoTen;
       }
     }
     
@@ -42,7 +54,7 @@ export function Step4Subcontractors() {
 
   const getDoiTuongOptions = () => {
     return [
-      { label: "Nội bộ", items: REAL_NHAN_VIEN.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten}` })) },
+      { label: "Nội bộ", items: nhanSuList.map(nv => ({ ma: nv.maNV, ten: `${nv.maNV} - ${nv.hoTen}` })) },
       { label: "Gia công ngoài", items: DOI_TAC_GIA_CONG.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi}` })) }
     ];
   };
@@ -50,7 +62,7 @@ export function Step4Subcontractors() {
   const options = getDoiTuongOptions();
 
   // Calculate total labor cost
-  const totalLaborCost = phanCong.reduce((acc, pc) => acc + (pc.donGia || 0), 0);
+  const totalLaborCost = visiblePhanCong.reduce((acc, { pc }) => acc + (pc.donGia || 0), 0);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -67,7 +79,7 @@ export function Step4Subcontractors() {
 
       {/* Card Grid Layout - 2 columns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {phanCong.map((pc, idx) => {
+        {visiblePhanCong.map(({ pc, idx }) => {
           const selectedDT = options
             .flatMap(g => g.items)
             .find(item => item.ma === pc.nguoiMa);
