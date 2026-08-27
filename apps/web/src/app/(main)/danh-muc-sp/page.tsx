@@ -384,6 +384,11 @@ export default function DanhMucSanPhamPage() {
     if (confirm(`Bạn có chắc muốn xóa sản phẩm ${sp.tenSP}?`)) {
       if (xoaSP) {
         xoaSP(sp.id);
+        setDanhMucKho(prev => {
+          const newDMK = { ...prev };
+          delete newDMK[sp.id];
+          return newDMK;
+        });
         setSelectedProduct(null);
         toast.success("Đã xóa sản phẩm thành công!");
       }
