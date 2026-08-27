@@ -4,9 +4,9 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge, useNodesState, useEdgesState, Connection, Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { MiminNode, MiminImageNode } from "@/components/mindmap/CustomNodes";
+import { MiminNode, MiminImageNode, MiminCommentNode } from "@/components/mindmap/CustomNodes";
 import { MOCK_PROJECTS, MAU_KHOI, DS_MAU_KHOI, type MauKhoi } from "@/lib/data/so-do-chien-luoc-data";
-import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Undo2, Copy, Trash2, Pencil, DownloadCloud } from "lucide-react";
+import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Undo2, Copy, Trash2, Pencil, DownloadCloud, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { toPng } from "html-to-image";
@@ -60,6 +60,7 @@ function SoDoCanvasInner() {
   const nodeTypes = useMemo(() => ({
     miminNode: MiminNode,
     miminImageNode: MiminImageNode,
+    miminCommentNode: MiminCommentNode,
   }), []);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
@@ -132,6 +133,18 @@ function SoDoCanvasInner() {
     };
     setNodes((nds) => [...nds, newNode]);
     toast.success("Đã thêm khối văn bản");
+  };
+
+  const addCommentNode = () => {
+    luuLichSu();
+    const newNode = {
+      id: `comment_${Date.now()}`,
+      position: { x: Math.random() * 200 + 150, y: Math.random() * 200 + 150 },
+      data: { label: "" },
+      type: "miminCommentNode",
+    };
+    setNodes((nds) => [...nds, newNode]);
+    toast.success("Đã thêm khối bình luận");
   };
 
   /** Tải ảnh TỪ MÁY lên sơ đồ (chọn được nhiều ảnh cùng lúc) */
@@ -464,7 +477,7 @@ function SoDoCanvasInner() {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full">
       {/* Toolbar */}
-      <div className="bg-white dark:bg-slate-900 border-b border-black/10 dark:border-white/10 px-4 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 z-10 overflow-x-auto">
+      <div className="bg-white dark:bg-slate-900 border-b border-black/10 dark:border-white/10 px-4 py-3 flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 z-10 flex-wrap">
         <div className="flex items-center gap-4 shrink-0">
           <Link href="/so-do-chien-luoc" className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition">
             <ArrowLeft className="w-5 h-5" />
@@ -476,12 +489,18 @@ function SoDoCanvasInner() {
           />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 xl:pb-0">
+        <div className="flex items-center gap-2 flex-wrap pb-1 xl:pb-0">
           <button 
             onClick={addTextNode}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-sm font-medium transition"
           >
             <Type className="w-4 h-4" /> Thêm Text
+          </button>
+          <button 
+            onClick={addCommentNode}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:hover:bg-yellow-900/60 text-yellow-800 dark:text-yellow-200 text-sm font-medium transition"
+          >
+            <MessageSquareText className="w-4 h-4" /> Bình luận
           </button>
           {/* Tải ảnh TỪ MÁY - trước đây chỉ dán được link nên không dùng ảnh máy được */}
           <input

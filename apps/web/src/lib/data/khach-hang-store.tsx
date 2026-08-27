@@ -26,6 +26,8 @@ export type KhachHangDBModel = {
   facebook_url?: string;
   // === 2026-08-18 - Nhu cau chinh ===
   nhu_cau_chinh?: string[];
+  // === 2026-08-27 - Ghi nho ===
+  ghi_nho?: boolean;
 };
 
 export type KhachHangUI = {
@@ -48,6 +50,8 @@ export type KhachHangUI = {
   facebookUrl?: string;
   // === 2026-08-18 - Nhu cau chinh ===
   nhuCauChinh?: string[];
+  // === 2026-08-27 - Ghi nho ===
+  ghiNho?: boolean;
 };
 
 // P1 - 2026-08-07 - Enum phan loai KH
@@ -71,6 +75,7 @@ function mapToDB(ui: KhachHangUI): any {
     trang_thai: ui.trangThai || "Thường",
     facebook_url: ui.facebookUrl || "", // 2026-08-08
     nhu_cau_chinh: ui.nhuCauChinh || [], // 2026-08-18
+    ghi_nho: ui.ghiNho || false,
   };
 }
 
@@ -104,6 +109,7 @@ function mapToUI(db: any): KhachHangUI {
     mst: mst,
     facebookUrl: db.facebook_url || "", // 2026-08-08
     nhuCauChinh: Array.isArray(db.nhu_cau_chinh) ? db.nhu_cau_chinh : [], // 2026-08-18
+    ghiNho: db.ghi_nho || false,
   };
 }
 
@@ -121,8 +127,8 @@ const Ctx = createContext<KhachHangContextType | null>(null);
 const STORAGE_KEY = "mimin_khach_hang_v1";
 
 const KHACH_HANG_MOCK: KhachHangUI[] = [
-  { maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0901234567", email: "hanoi@may.vn", diaChi: "Hà Nội", congNo: 15000000, rating: 5, ghiChu: "Khách VIP", loai: "Công ty", nhuCauChinh: [] },
-  { maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0901234568", email: "saigon@shop.vn", diaChi: "TPHCM", congNo: 0, rating: 4, ghiChu: "Khách lẻ", loai: "Shop", nhuCauChinh: [] },
+  { maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0901234568", email: "saigon@shop.vn", diaChi: "TPHCM", congNo: 0, rating: 4, ghiChu: "Khách lẻ", loai: "Shop", nhuCauChinh: [], ghiNho: false },
+  { maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0901234567", email: "hanoi@may.vn", diaChi: "Hà Nội", congNo: 15000000, rating: 5, ghiChu: "Khách VIP", loai: "Công ty", nhuCauChinh: [], ghiNho: true },
 ];
 
 export function KhachHangProvider({ children }: { children: ReactNode }) {
@@ -140,11 +146,13 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const { data, error } = await supabase!.from("khach_hang").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supabase!.from("khach_hang").select("*");
         if (error) throw error;
         
         if (mounted) {
           if (data && data.length > 0) {
+            // Sort by maKH descending so new customers appear first
+            data.sort((a: any, b: any) => (b.ma_kh || "").localeCompare(a.ma_kh || ""));
             const mapped = data.map((d: any) => mapToUI(d));
             setList(mapped);
             // Không lưu localStorage - 700+ rows quá lớn
@@ -156,6 +164,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err) {
+        console.error("Lỗi fetch khách hàng Supabase:", err);
         if (mounted && list.length === 0) setList(KHACH_HANG_MOCK);
       } finally {
         if (mounted) setLoading(false);
@@ -169,9 +178,28 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     setList(prev => [kh, ...prev]);
     if (isSupabaseEnabled) {
       try {
-        await supabaseUpsert("khach_hang", mapToDB(kh));
+        const payload = mapToDB(kh);
+        if (!payload.id) payload.id = crypto.randomUUID(); // Tự sinh UUID nếu thiếu
+        let { error } = await supabase!.from("khach_hang").insert(payload);
+        if (error?.code === "42703") {
+          // Fallback cho DB chưa cập nhật cột mới
+          const safePayload = { ...payload };
+          delete safePayload.han_muc_no;
+          delete safePayload.facebook_url;
+          delete safePayload.nhu_cau_chinh;
+          delete safePayload.rating;
+          delete safePayload.ghi_nho;
+          ({ error } = await supabase!.from("khach_hang").insert(safePayload));
+        }
+
+        if (error) {
+          console.error("Lỗi thêm khách hàng:", error.message, error.details, error.hint);
+          throw new Error(error.message);
+        }
         return true;
-      } catch (err) { return false; }
+      } catch (err: any) { 
+        throw new Error(err.message || "Lỗi không xác định");
+      }
     }
     return true;
   }, []);
@@ -180,9 +208,27 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     setList(prev => prev.map(x => x.maKH === kh.maKH ? kh : x));
     if (isSupabaseEnabled) {
       try {
-        await supabase!.from("khach_hang").update(mapToDB(kh)).eq("ma_kh", kh.maKH);
+        const payload = mapToDB(kh);
+        if (!payload.id) payload.id = crypto.randomUUID();
+        let { error } = await supabase!.from("khach_hang").update(payload).eq("ma_kh", kh.maKH);
+        if (error?.code === "42703") {
+          const safePayload = { ...payload };
+          delete safePayload.han_muc_no;
+          delete safePayload.facebook_url;
+          delete safePayload.nhu_cau_chinh;
+          delete safePayload.rating;
+          delete safePayload.ghi_nho;
+          ({ error } = await supabase!.from("khach_hang").update(safePayload).eq("ma_kh", kh.maKH));
+        }
+
+        if (error) {
+          console.error("Lỗi sửa khách hàng:", error.message, error.details, error.hint);
+          throw new Error(error.message);
+        }
         return true;
-      } catch (err) { return false; }
+      } catch (err: any) { 
+        throw new Error(err.message || "Lỗi không xác định");
+      }
     }
     return true;
   }, []);

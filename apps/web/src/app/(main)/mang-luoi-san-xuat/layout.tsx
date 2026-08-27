@@ -12,16 +12,14 @@ import {
   Sparkles,
   Link2,
   Search,
+  Building2,
 } from "lucide-react";
 
 const TABS: { href: string; label: string; icon: typeof LayoutDashboard }[] = [
   { href: "/mang-luoi-san-xuat", label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/mang-luoi-san-xuat/xuong-san-xuat", label: "Xưởng sản xuất", icon: Factory },
-  { href: "/mang-luoi-san-xuat/nha-cung-cap", label: "Nhà cung cấp", icon: Boxes },
-  { href: "/mang-luoi-san-xuat/nang-luc-chung-nhan", label: "Năng lực & Chứng nhận", icon: ShieldCheck },
-  { href: "/mang-luoi-san-xuat/danh-gia-xep-hang", label: "Đánh giá & Xếp hạng", icon: Sparkles },
+  { href: "/mang-luoi-san-xuat/tim-doi-tac", label: "Tìm đối tác AI", icon: Search },
+  { href: "/mang-luoi-san-xuat/danh-ba-doi-tac", label: "Danh bạ đối tác", icon: Building2 },
   { href: "/mang-luoi-san-xuat/co-hoi-hop-tac", label: "Cơ hội hợp tác", icon: Link2 },
-  { href: "/mang-luoi-san-xuat/lich-su-tim-kiem", label: "Lịch sử tìm kiếm", icon: Search },
 ];
 
 export default function MiminGroupLayout({ children }: { children: React.ReactNode }) {

@@ -153,7 +153,11 @@ export default function KhoPhuLieuPage() {
         });
         if (isSupabaseEnabled && supabase) {
           const item = inventory.find((value) => value.maVT === uploadingVT);
-          const { error } = await supabase.from("kho").update({ hinh_anh: url, updated_at: new Date().toISOString() }).eq("sku", uploadingVT);
+          let { error } = await supabase.from("kho").update({ hinh_anh: url, updated_at: new Date().toISOString() }).eq("sku", uploadingVT);
+          if (error?.code === "PGRST204" || error?.code === "42703" || error?.message?.includes("hinh_anh")) {
+            const fallbackGhiChu = JSON.stringify({ note: item?.ghiChu || "", imageUrl: url });
+            ({ error } = await supabase.from("kho").update({ ghi_chu: fallbackGhiChu, updated_at: new Date().toISOString() }).eq("sku", uploadingVT));
+          }
           if (error) return toast.error(`Chưa lưu được ảnh lên Supabase: ${error.message}`);
         }
         toast.success("Đã tải ảnh và đồng bộ cho tất cả nhân viên!");
@@ -226,24 +230,28 @@ export default function KhoPhuLieuPage() {
 
     // 3. Chỉ báo thành công sau khi Supabase xác nhận.
     if (isSupabaseEnabled && supabase) {
-      const { error } = await supabase.from("kho").upsert(
-        {
-          sku: v.maVT,
-          ten_vt: updated.tenVT,
-          loai: "Phu lieu",
-          loai_chi_tiet: updated.loai,
-          mau_sac: updated.mauSac,
-          dvt: updated.dvt,
-          don_gia: updated.donGia,
-          ton_kho: updated.tonKho,
-          ton_toi_thieu: updated.tonToiThieu,
-          kho: updated.kho || "Kho phụ liệu",
-          ghi_chu: updated.ghiChu || null,
-          hinh_anh: updated.hinhAnh || inventoryImages[v.maVT] || null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "sku" }
-      );
+      const payload = {
+        sku: v.maVT,
+        ten_vt: updated.tenVT,
+        loai: "Phu lieu",
+        loai_chi_tiet: updated.loai,
+        mau_sac: updated.mauSac,
+        dvt: updated.dvt,
+        don_gia: updated.donGia,
+        ton_kho: updated.tonKho,
+        ton_toi_thieu: updated.tonToiThieu,
+        kho: updated.kho || "Kho phụ liệu",
+        ghi_chu: updated.ghiChu || null,
+        hinh_anh: updated.hinhAnh || inventoryImages[v.maVT] || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      let { error } = await supabase.from("kho").update(payload).eq("sku", v.maVT);
+      if (error?.code === "PGRST204" || error?.code === "42703" || error?.message?.includes("hinh_anh")) {
+        const fallbackPayload = { ...payload, hinh_anh: undefined, ghi_chu: JSON.stringify({ note: updated.ghiChu || "", imageUrl: payload.hinh_anh || "" }) };
+        ({ error } = await supabase.from("kho").update(fallbackPayload).eq("sku", v.maVT));
+      }
+
       if (error) {
         toast.error("Lỗi đồng bộ Supabase: " + error.message);
         return;
@@ -297,7 +305,7 @@ export default function KhoPhuLieuPage() {
         updated_at: new Date().toISOString(),
       };
       let { error } = await supabase.from("kho").insert(payload);
-      if (error?.code === "PGRST204" || error?.code === "42703") {
+      if (error?.code === "PGRST204" || error?.code === "42703" || error?.message?.includes("hinh_anh")) {
         const fallbackPayload = { ...payload, hinh_anh: undefined, ghi_chu: JSON.stringify({ note: newItem.ghiChu || "", imageUrl: newItem.hinhAnh || "" }) };
         ({ error } = await supabase.from("kho").insert(fallbackPayload));
       }

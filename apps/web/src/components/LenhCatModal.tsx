@@ -21,7 +21,8 @@ import {
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { useSupabaseSync } from "@/lib/supabase/client";
-import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
+
+import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
@@ -40,61 +41,58 @@ import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
 
 
-const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string) => {
+const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, mappedNhanVien: any[]) => {
   const cd = (tenCongDoan || "").toLowerCase();
+  let recommended: any[] = [];
   
   // 1. Cắt
   if (cd.includes("cắt") || cd.includes("cat")) {
-    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("cắt") || (nv.ghiChu || "").toLowerCase().includes("cắt"))
+    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("cắt") || (nv.ghiChu || "").toLowerCase().includes("cắt"))
       .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Cắt)` }));
   }
-  
   // 2. Khuy nút
-  if (cd.includes("khuy") || cd.includes("nút") || cd.includes("cúc")) {
-    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("khuy") || (nv.ghiChu || "").toLowerCase().includes("khuy"))
+  else if (cd.includes("khuy") || cd.includes("nút") || cd.includes("cúc")) {
+    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("khuy") || (nv.ghiChu || "").toLowerCase().includes("khuy"))
       .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Khuy nút)` }));
   }
-  
   // 3. Ủi
-  if (cd.includes("ủi") || cd.includes("ui")) {
-    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("ủi") || (nv.ghiChu || "").toLowerCase().includes("ủi"))
+  else if (cd.includes("ủi") || cd.includes("ui")) {
+    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("ủi") || (nv.ghiChu || "").toLowerCase().includes("ủi"))
       .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Ủi)` }));
   }
-  
   // 4. Đóng Gói
-  if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
-    return REAL_NHAN_VIEN.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
+  else if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
+    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
       .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` }));
   }
-
   // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
-  if (cd.includes("trụ") || cd.includes("tru") || (cd.includes("may áo") && (loaiSP === "AoTru" || loaiSP === "BoTru" || loaiSP === "AoPolo"))) {
-    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU"))
+  else if (cd.includes("trụ") || cd.includes("tru") || (cd.includes("may áo") && (loaiSP === "AoTru" || loaiSP === "BoTru" || loaiSP === "AoPolo"))) {
+    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Trụ)` }));
   }
-  if (cd.includes("tròn") || cd.includes("tron") || (cd.includes("may áo") && (loaiSP === "AoCoTron" || loaiSP === "BoCoTron"))) {
-    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRON"))
+  else if (cd.includes("tròn") || cd.includes("tron") || (cd.includes("may áo") && (loaiSP === "AoCoTron" || loaiSP === "BoCoTron"))) {
+    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRON"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Tròn)` }));
   }
-  if (cd.includes("quần") || cd.includes("quan")) {
-    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-QUAN"))
+  else if (cd.includes("quần") || cd.includes("quan")) {
+    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-QUAN"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Quần)` }));
   }
-  if (cd.includes("in") || cd.includes("thêu") || cd.includes("dập")) {
-    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-IN"))
+  else if (cd.includes("in") || cd.includes("thêu") || cd.includes("dập")) {
+    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-IN"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công In/Thêu)` }));
   }
-
-  if (cd.includes("may") || cd.includes("gia công") || cd.includes("outsource")) {
+  else if (cd.includes("may") || cd.includes("gia công") || cd.includes("outsource")) {
     // Chỉ hiển thị các xưởng may nếu không phải in/thêu
-    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU") || dt.ma.startsWith("GC-TRON") || dt.ma.startsWith("GC-QUAN"))
+    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU") || dt.ma.startsWith("GC-TRON") || dt.ma.startsWith("GC-QUAN"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
   }
 
-  return [
-    ...REAL_NHAN_VIEN.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Nội bộ)` })),
-    ...DOI_TAC_GIA_CONG.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }))
-  ];
+  const usedIds = new Set(recommended.map(x => x.ma));
+  const others = mappedNhanVien.filter(nv => !usedIds.has(nv.ma)).map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Nội bộ)` }));
+  const otherDT = DOI_TAC_GIA_CONG.filter(dt => !usedIds.has(dt.ma)).map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
+  
+  return [...recommended, ...others, ...otherDT];
 };
 
 const isOutsourceStage = (tenCongDoan: string) => {
@@ -145,8 +143,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
+  const { list: dsNhanSu } = useNhanSu();
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
+
+  const mappedNhanVien = useMemo(() => dsNhanSu.map(nv => ({
+    ma: nv.maNV || "",
+    ten: nv.hoTen || (nv as any).ten || "",
+    boPhan: nv.boPhan || (nv as any).viecChinh || "",
+    ghiChu: nv.ghiChu || "",
+    sdt: nv.sdt || ""
+  })), [dsNhanSu]);
 
   // Sync editing data into states when editing changes
   useEffect(() => {
@@ -880,7 +887,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       <table class="info">
         <tr><td class="label">Mã SP / Tên SP</td><td>${maSP} — ${tenSP}</td><td class="label">Tổng SL</td><td>${tongSL || 0}</td></tr>
         <tr><td class="label">Tỉ lệ size</td><td>${tiLeSize}</td><td class="label">Hạn hoàn thành</td><td>${hanHoanThanh}</td></tr>
-        <tr><td class="label">Người phụ trách SX</td><td>${REAL_NHAN_VIEN.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX || "—"}</td><td class="label">Yêu cầu kỹ thuật</td><td>${ghiChuKyThuat || "—"}</td></tr>
+        <tr><td class="label">Người phụ trách SX</td><td>${mappedNhanVien.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX || "—"}</td><td class="label">Yêu cầu kỹ thuật</td><td>${ghiChuKyThuat || "—"}</td></tr>
         ${ghiChuInTheu ? `<tr><td class="label">Ghi chú In/Thêu</td><td colspan="3">${ghiChuInTheu}</td></tr>` : ""}
       </table>
       ${rows}
@@ -1200,21 +1207,26 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 <label className="text-sm font-bold text-slate-700 block mb-1">Người phụ trách sản xuất & SĐT liên hệ *</label>
                 <div className="flex items-center gap-2 max-w-2xl">
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm border-2 border-emerald-300 flex-shrink-0">
-                    {REAL_NHAN_VIEN.find(n => n.ma === phuTrachSX)?.ten?.substring(0,2) || "NV"}
+                    {mappedNhanVien.find(n => n.ma === phuTrachSX)?.ten?.substring(0,2) || "NV"}
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <select className="px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm" value={phuTrachSX} onChange={e => {
                       const val = e.target.value;
                       setPhuTrachSX(val);
                       if (val) {
-                        const numericPart = val.replace(/\D/g, "");
-                        setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                        const selectedNV = mappedNhanVien.find(nv => nv.ma === val);
+                        if (selectedNV && selectedNV.sdt) {
+                          setSdtLienHe(selectedNV.sdt);
+                        } else {
+                          // Nếu không có SĐT thì để trống cho user tự nhập
+                          setSdtLienHe("");
+                        }
                       } else {
                         setSdtLienHe("");
                       }
                     }}>
                       <option value="">-- Chọn Người phụ trách --</option>
-                      {REAL_NHAN_VIEN.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
+                      {mappedNhanVien.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
                     </select>
                     <input className="px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#2B4C3E]" value={sdtLienHe} onChange={e => setSdtLienHe(e.target.value)} placeholder="SĐT liên hệ..." />
                   </div>
@@ -1235,11 +1247,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   onChange={e => setPhuTrachSoDo(e.target.value)}
                 >
                   <option value="">-- Chọn NV phụ trách --</option>
-                  {REAL_NHAN_VIEN.filter(nv => nv.boPhan.includes("Sản xuất") || nv.boPhan.includes("Kỹ thuật")).map(nv => (
+                  {mappedNhanVien.filter(nv => nv.boPhan.includes("Sản xuất") || nv.boPhan.includes("Kỹ thuật") || nv.boPhan.includes("Cắt") || nv.boPhan.includes("Quản lý")).map(nv => (
                     <option key={nv.ma} value={nv.ma}>{nv.ten}</option>
                   ))}
                   {/* Fallback nếu không có NV nào thoả điều kiện lọc thì hiện hết */}
-                  {REAL_NHAN_VIEN.map(nv => (
+                  {mappedNhanVien.map(nv => (
                     <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>
                   ))}
                 </select>
@@ -1653,7 +1665,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         const next = [...(p as any[])];
                         const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
                         const selectedVal = e.target.value;
-                        const nv = REAL_NHAN_VIEN.find(n => n.ma === selectedVal);
+                        const nv = mappedNhanVien.find(n => n.ma === selectedVal);
                         const dt = DOI_TAC_GIA_CONG.find(d => d.ma === selectedVal);
                         const selectedTen = nv?.ten || dt?.tenDonVi || selectedVal;
 
@@ -1676,7 +1688,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     }}
                   >
                      <option value="">-- Chọn NV/Xưởng --</option>
-                     {getDoiTuongOptions("In/Thêu", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                     {getDoiTuongOptions("In/Thêu", loaiSP, mappedNhanVien).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                   </select>
                   <div className="flex items-center gap-1 w-full md:w-auto">
                     <span className="text-xs font-bold text-orange-700">Đơn giá:</span>
@@ -1724,7 +1736,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       const next = [...(p as any[])];
                       const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
                       if (idx >= 0) {
-                        const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                        const nv = mappedNhanVien.find(n => n.ma === e.target.value);
                         const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                         next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
                       }
@@ -1733,7 +1745,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   }}
                 >
                    <option value="">-- Chọn NV/Xưởng --</option>
-                   {getDoiTuongOptions("May Áo", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                   {getDoiTuongOptions("May Áo", loaiSP, mappedNhanVien).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                 </select>
                 <div className="flex items-center gap-1 w-full md:w-auto">
                   <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
@@ -1767,7 +1779,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         const next = [...(p as any[])];
                         const idx = next.findIndex(k => k.id === "mayQuan");
                         if (idx >= 0) {
-                          const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                          const nv = mappedNhanVien.find(n => n.ma === e.target.value);
                           const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                           next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
                         }
@@ -1776,7 +1788,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     }}
                   >
                      <option value="">-- Chọn NV/Xưởng --</option>
-                     {getDoiTuongOptions("May Quần", loaiSP).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                     {getDoiTuongOptions("May Quần", loaiSP, mappedNhanVien).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                   </select>
                   <div className="flex items-center gap-1 w-full md:w-auto">
                     <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
@@ -2430,13 +2442,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         <div className="col-span-3 font-semibold text-slate-700 text-sm truncate" title={kh.tenCongDoan}>{kh.tenCongDoan}</div>
                         <div className="col-span-6 flex items-center gap-2 min-w-0">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold overflow-hidden border flex-shrink-0 text-[10px] ${isOutsourceStage(kh.tenCongDoan) ? "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
-                            {kh.nguoiMa ? (REAL_NHAN_VIEN.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
+                            {kh.nguoiMa ? (mappedNhanVien.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
                           <select 
                           className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
                           value={kh.nguoiMa}
                           onChange={(e) => {
-                            const nv = REAL_NHAN_VIEN.find(n => n.ma === e.target.value);
+                            const nv = mappedNhanVien.find(n => n.ma === e.target.value);
                             const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                             const selectedName = nv?.ten || dt?.tenDonVi || e.target.value;
                             setPhanCong(p => {
@@ -2447,7 +2459,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                           }}
                         >
                           <option value="">-- Chọn NV/Xưởng --</option>
-                          {getDoiTuongOptions(kh.tenCongDoan, loaiSP).map(opt => (
+                          {getDoiTuongOptions(kh.tenCongDoan, loaiSP, mappedNhanVien).map(opt => (
                             <option key={opt.ma} value={opt.ma}>{opt.ten}</option>
                           ))}
                         </select>

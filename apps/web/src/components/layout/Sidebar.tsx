@@ -170,14 +170,9 @@ const NAV: NavItem[] = [
     ...cardStyle("from-sky-500", "to-indigo-600", "from-sky-50", "to-indigo-50", "text-sky-900"),
     subItems: [
       { href: "/mang-luoi-san-xuat", label: "Tổng quan", icon: Factory, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/xuong-san-xuat", label: "Xưởng sản xuất", icon: Factory, iconColor: "text-violet-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/nha-cung-cap", label: "Nhà cung cấp", icon: Boxes, iconColor: "text-amber-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/nang-luc-chung-nhan", label: "Năng lực & Chứng nhận", icon: ShieldCheck, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/danh-gia-xep-hang", label: "Đánh giá & Xếp hạng", icon: Sparkles, iconColor: "text-pink-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/tim-doi-tac", label: "Tìm đối tác AI", icon: Search, iconColor: "text-violet-400", permModule: "nha-cung-cap" },
+      { href: "/mang-luoi-san-xuat/danh-ba-doi-tac", label: "Danh bạ đối tác", icon: Building2, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
       { href: "/mang-luoi-san-xuat/co-hoi-hop-tac", label: "Cơ hội hợp tác", icon: Link2, iconColor: "text-indigo-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/lich-su-tim-kiem", label: "Lịch sử tìm kiếm", icon: Search, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/cong-ty-da-luu", label: "Công ty đã lưu", icon: Building2, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
-      { href: "/mang-luoi-san-xuat/cau-hinh-agent", label: "Cấu hình AI Agent", icon: Bot, iconColor: "text-violet-400", permModule: "nha-cung-cap" },
     ]
   },
   {
@@ -300,30 +295,36 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
   return (
     <>
       <div className={clsx("p-4 border-b border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
-        <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0" onClick={onItemClick}>
-          <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center overflow-hidden bg-white/5">
-            <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover" />
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <div className="font-black text-sm truncate text-white tracking-wide">MIMIN ERP</div>
-              <div className="text-[10px] truncate text-slate-400">Quản lý may mặc</div>
-            </div>
-          )}
-        </Link>
-
-        {toggleCollapse && (
-          <button
-            onClick={toggleCollapse}
-            className="hidden md:inline-flex ml-2 shrink-0 rounded-lg border border-white/10 p-1.5 transition-colors hover:bg-white/10 text-slate-400 hover:text-white"
-            aria-label={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
-            title={isCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
+        {!isCollapsed ? (
+          <>
+            <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 flex-1" onClick={onItemClick}>
+              <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center overflow-hidden bg-white/5">
+                <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-black text-sm truncate text-white tracking-wide">MIMIN ERP</div>
+                <div className="text-[10px] truncate text-slate-400">Quản lý may mặc</div>
+              </div>
+            </Link>
+            {toggleCollapse && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleCollapse(); }}
+                className="hidden md:flex p-1.5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0"
+                title="Thu gọn menu"
+              >
+                <PanelLeftClose className="w-5 h-5" />
+              </button>
+            )}
+          </>
+        ) : (
+          <button 
+            onClick={(e) => { e.stopPropagation(); toggleCollapse && toggleCollapse(); }}
+            className="p-2 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-colors bg-white/5"
+            title="Mở menu"
           >
-            {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            <PanelLeftOpen className="w-6 h-6" />
           </button>
-        )}
-
-        {onItemClick && (
+        )}        {onItemClick && (
           <button
             onClick={onItemClick}
             className="md:hidden p-1.5 rounded-lg hover:bg-white/20 text-white"
@@ -447,16 +448,11 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
           })
         )}
       </nav>
-      <div className={clsx("p-4 border-t border-white/10 text-xs text-slate-500 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
-        {!isCollapsed && <span>© 2026 Polo Mimin</span>}
-        {toggleCollapse && (
-          <button 
-            onClick={toggleCollapse} 
-            className="p-1 hover:text-slate-300 transition-colors"
-            title={isCollapsed ? "Mở menu" : "Thu gọn menu"}
-          >
-            {isCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
-          </button>
+      <div className={clsx("p-4 border-t border-white/10 text-xs text-slate-500 flex items-center justify-center")}>
+        {!isCollapsed ? (
+          <span>© 2026 Polo Mimin</span>
+        ) : (
+          <span className="font-bold">M</span>
         )}
       </div>
     </>
@@ -479,6 +475,22 @@ export function Sidebar() {
       window.localStorage.setItem("mimin-sidebar-collapsed", String(isCollapsed));
     }
   }, [isCollapsed]);
+
+  // Auto-collapse when clicking outside the sidebar (on the main content)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!isCollapsed && target && !target.closest("aside")) {
+        // Chỉ auto-collapse trên desktop vì mobile menu có cách đóng riêng
+        if (window.innerWidth >= 768) {
+          setIsCollapsed(true);
+        }
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isCollapsed]);
   
   // Không render sidebar ở trang login hoặc register
   if (pathname === "/login" || pathname === "/register" || pathname?.startsWith("/lark-login")) {
@@ -486,10 +498,17 @@ export function Sidebar() {
   }
 
   return (
-    <aside className={clsx(
-      "hidden md:flex flex-col h-screen sticky top-0 bg-[#0B4D5D] text-white border-r border-white/10 z-40 shadow-sm transition-all duration-300",
-      isCollapsed ? "w-20" : "w-64"
-    )}>
+    <aside 
+      className={clsx(
+        "hidden md:flex flex-col h-screen sticky top-0 bg-[#0B4D5D] text-white border-r border-white/10 z-40 shadow-sm transition-all duration-300",
+        isCollapsed ? "w-20 cursor-pointer" : "w-64"
+      )}
+      onClick={() => {
+        if (isCollapsed) {
+          setIsCollapsed(false);
+        }
+      }}
+    >
       <NavContent 
         pathname={pathname || ""} 
         isCollapsed={isCollapsed} 
