@@ -655,6 +655,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       const client = supabase;
       if (client) {
          await client.from("san_pham").delete().eq("ma_sp", id);
+         await client.from("kho_thanh_pham").delete().eq("ma_sp", id);
       }
     } catch(e) {
       console.error(e);
