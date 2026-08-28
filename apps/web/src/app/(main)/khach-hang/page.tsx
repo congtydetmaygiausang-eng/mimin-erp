@@ -51,9 +51,11 @@ export default function KhachHangPage() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KhachHangUI } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [showGhiNhoOnly, setShowGhiNhoOnly] = useState(false);
 
   const filtered = useMemo(() => {
     return list.filter((k: KhachHangUI) => {
+      if (showGhiNhoOnly && !k.ghiNho) return false;
       const s = search.toLowerCase();
       return (
         k.ten.toLowerCase().includes(s) ||
@@ -61,7 +63,7 @@ export default function KhachHangPage() {
         (k.maKH || "").toLowerCase().includes(s)
       );
     });
-  }, [list, search]);
+  }, [list, search, showGhiNhoOnly]);
 
   const tongKH = list.length;
   const dsVIP = list.filter((k) => (k.rating || 0) >= 4.5);
@@ -212,6 +214,17 @@ export default function KhachHangPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
             <input className="input pl-9" placeholder="Tìm tên, SĐT, email, địa chỉ…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <button
+            onClick={() => setShowGhiNhoOnly(!showGhiNhoOnly)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+              showGhiNhoOnly
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-500"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${showGhiNhoOnly ? "fill-current" : ""}`} />
+            <span className="hidden sm:inline">{showGhiNhoOnly ? "Đang lọc KH ghi nhớ" : "Lọc KH ghi nhớ"}</span>
+          </button>
           <DataViewToggle onChange={setViewMode} />
         </div>
       </div>

@@ -40,6 +40,7 @@ export function EntityCard({
   children,
   contactPhone,
   compact = false,
+  titleAccessory,
 }: {
   name: string;
   subtitle?: ReactNode;

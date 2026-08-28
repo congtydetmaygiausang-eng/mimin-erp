@@ -181,7 +181,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
         const payload = mapToDB(kh);
         if (!payload.id) payload.id = crypto.randomUUID(); // Tự sinh UUID nếu thiếu
         let { error } = await supabase!.from("khach_hang").insert(payload);
-        if (error?.code === "42703") {
+        if (error?.code === "42703" || error?.code === "PGRST204") {
           // Fallback cho DB chưa cập nhật cột mới
           const safePayload = { ...payload };
           delete safePayload.han_muc_no;
@@ -211,7 +211,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
         const payload = mapToDB(kh);
         if (!payload.id) payload.id = crypto.randomUUID();
         let { error } = await supabase!.from("khach_hang").update(payload).eq("ma_kh", kh.maKH);
-        if (error?.code === "42703") {
+        if (error?.code === "42703" || error?.code === "PGRST204") {
           const safePayload = { ...payload };
           delete safePayload.han_muc_no;
           delete safePayload.facebook_url;
