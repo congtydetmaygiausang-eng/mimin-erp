@@ -1142,12 +1142,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       open={isOpen}
       onClose={onClose}
       maxWidth="full"
-      className="bg-[#2B4C3E] text-white"
+      className="bg-[#2B4C3E] text-white overflow-hidden"
       overlayClassName="bg-black/60 backdrop-blur-sm"
     >
-      <div className="w-full h-[95vh] flex flex-col overflow-hidden">
+      <div className="w-full flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center gap-4 px-5 py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0">
+        <div className="sticky top-0 z-50 flex justify-between items-center gap-4 px-5 py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
               <Scissors className="w-4.5 h-4.5 text-white" />
@@ -1167,7 +1167,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4">
+        <div className="flex-1 bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4 text-slate-900">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -2794,7 +2794,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         </div>
 
         {/* Footer Buttons */}
-        <div className="shrink-0 bg-white px-6 py-4 flex items-center justify-between border-t border-slate-200 rounded-b-xl relative gap-4">
+        <div className="sticky bottom-0 z-50 shrink-0 bg-white px-6 py-4 flex items-center justify-between border-t border-slate-200 rounded-b-xl gap-4">
           {/* Left Actions */}
           <div className="flex items-center gap-2">
             <button
