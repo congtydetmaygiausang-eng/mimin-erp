@@ -6,6 +6,7 @@ import { checkRateLimit, recordLoginFailure, clearLoginFailures, getSessionWithT
 import { is2FAEnabled, generate2FACode, verify2FACode } from "@/lib/two-factor";
 import { migrateLegacyKeys } from "@/lib/migrate-legacy-keys";
 import { migrateLarkConfig } from "@/lib/lark-config";
+import { toast } from "sonner";
 
 export type AppUser = {
   id: string;
@@ -301,6 +302,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setAuthSource("none");
     clearSession();
+    toast.success("Đăng xuất thành công!");
   };
 
   return (
