@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   TrendingUp, TrendingDown, Users, Package, ShoppingCart, Wallet, Boxes,
   CheckCircle2, AlertCircle, Clock, ArrowRight, Calendar, DollarSign,
   Scissors, BarChart3, FileText, Hammer, ShieldCheck, Shirt, ClipboardList,
-  Truck, Building2, ClipboardCheck, ListChecks, Activity, Plus, Eye
+  Truck, Building2, ClipboardCheck, ListChecks, Activity, Plus, Eye,
+  Sparkles
 } from "lucide-react";
 import { useSession } from "./session-provider";
 import { getPersonalTasks, getTaskStats, priorityColor, priorityLabel, type Task } from "@/lib/personal-tasks";
@@ -16,26 +17,48 @@ import { ROLE_LABELS, type Role } from "@/lib/permissions";
 
 export function RoleDashboard() {
   const { user } = useSession();
+  const [timeGreeting, setTimeGreeting] = useState("Chào bạn");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) setTimeGreeting("buổi sáng");
+    else if (hour >= 11 && hour < 14) setTimeGreeting("buổi trưa");
+    else if (hour >= 14 && hour < 18) setTimeGreeting("buổi chiều");
+    else setTimeGreeting("buổi tối");
+  }, []);
+
   if (!user) return null;
   const role = (user.role || "admin") as Role;
   const tasks = useMemo(() => getPersonalTasks(role, user.name), [role, user.name]);
   const stats = useMemo(() => getTaskStats(tasks), [tasks]);
+  const firstName = user.name.split(" ").pop() || "bạn";
 
   return (
     <div className="space-y-5">
       {/* Welcome banner + role */}
-      <div className="card p-5 bg-gradient-to-r from-brand-500/10 via-violet-500/5 to-pink-500/10 border-brand-500/20">
-        <div className="flex items-center gap-3">
-          <Avatar name={user.name} size="xl" />
+      <div className="card p-5 bg-gradient-to-r from-brand-500/10 via-violet-500/5 to-pink-500/10 border-brand-500/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-brand-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-700"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-violet-500/10 to-transparent rounded-full blur-2xl translate-y-1/3 -translate-x-1/4 group-hover:scale-110 transition-transform duration-700"></div>
+        
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="relative">
+            <Avatar name={user.name} size="xl" />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse shadow-sm"></div>
+          </div>
           <div className="flex-1">
-            <div className="text-xs opacity-70">Chào buổi tối, {user.name.split(" ").slice(-1)[0]} 👋</div>
-            <h1 className="text-xl font-bold mt-0.5">{getGreeting(role)}</h1>
-            <div className="flex items-center gap-2 mt-1 text-sm opacity-80">
-              <span className="px-2 py-0.5 rounded bg-brand-500/20 text-brand-700 text-xs font-medium">
+            <div className="text-xs font-bold text-brand-600 flex items-center gap-1.5 uppercase tracking-wider mb-0.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Chào {timeGreeting}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent flex items-center gap-2">
+              {firstName}! <span className="inline-block hover:animate-bounce cursor-default text-black dark:text-white">👋</span>
+            </h1>
+            <div className="flex items-center gap-2 mt-1.5 text-sm opacity-90 flex-wrap">
+              <span className="px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-700 font-bold border border-brand-500/20 shadow-sm text-xs">
                 {ROLE_LABELS[role]}
               </span>
-              <span className="text-xs">·</span>
-              <span className="text-xs">Bạn có <b className="text-red-600">{stats.urgent}</b> việc khẩn, <b className="text-amber-600">{stats.high}</b> việc quan trọng</span>
+              <span className="text-slate-400 text-xs font-bold">·</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Bạn có <b className="text-red-600 px-0.5">{stats.urgent}</b> việc khẩn, <b className="text-amber-600 px-0.5">{stats.high}</b> việc quan trọng</span>
             </div>
           </div>
         </div>
@@ -106,13 +129,6 @@ export function RoleDashboard() {
       </div>
     </div>
   );
-}
-
-function getGreeting(role: Role): string {
-  const hour = new Date().getHours();
-  const time = hour < 12 ? "buổi sáng" : hour < 18 ? "buổi chiều" : "buổi tối";
-  const lastName = ({ admin: "An", planner: "Bình", warehouse: "Cường", sewing: "Dung", qc: "Đức", finishing: "Hương", accountant: "Hùng", content: "Vy", partner: "đối tác" } as Partial<Record<Role, string>>)[role] || "bạn";
-  return `Chào ${time}, ${lastName}!`;
 }
 
 // Stats cho từng role
