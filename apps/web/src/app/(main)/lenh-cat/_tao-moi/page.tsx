@@ -135,9 +135,9 @@ function TaoLenhCatContent() {
       {/* Mobile Menu Drawer - Hidden */}
 
       {/* Main Card Container - Full Screen Responsive */}
-      <div className="w-full px-4 lg:px-8 mt-8 mb-12">
+      <div className="w-full px-4 lg:px-8 mt-5 mb-8">
         {/* Progress Bar - Full Width */}
-        <div className="mb-12">
+        <div className="mb-8">
           <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-sm">
             <motion.div
               initial={{ width: 0 }}
@@ -216,7 +216,7 @@ function TaoLenhCatContent() {
             </div>
 
             {/* Card Content - Full Width Scrollable */}
-            <div className="px-6 lg:px-12 py-10 md:py-12 min-h-[500px] overflow-y-auto max-h-[calc(100vh-400px)]">
+            <div className="px-6 lg:px-10 py-8 md:py-9 min-h-[500px] overflow-y-auto max-h-[calc(100vh-330px)]">
               {currentStep === 1 && <Step1GeneralInfo />}
               {currentStep === 2 && <Step2Fabric />}
               {currentStep === 3 && <Step3Accessories />}
