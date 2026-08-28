@@ -298,7 +298,6 @@ export default function DanhMucSanPhamPage() {
         dinhMuc: mau.dinhMuc || 0,
         slDuKien: 0,
         ghiChu: "",
-        img: mau.img || "",
         phanBoSize: (sp.bangSize?.sizes || []).map((size) => ({ size, sl: 0 })),
       })),
       tuan: "",

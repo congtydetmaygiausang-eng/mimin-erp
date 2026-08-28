@@ -61,8 +61,7 @@ function saveData(items: KHSX[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); 
   } catch (e: any) { 
     console.error("[KHSX] Lỗi lưu localStorage:", e);
-    // @ts-ignore
-    if (window.toast) window.toast.error("Lỗi hệ thống: Không thể lưu dữ liệu kế hoạch sản xuất vào máy tính (" + e.message + ")");
+    toast.error("Lỗi hệ thống: Không thể lưu dữ liệu kế hoạch sản xuất vào máy tính (" + e.message + ")");
   }
 }
 
