@@ -144,7 +144,7 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
   if (!open) return null;
 
   return (
-  return (
+    <>
     <Portal>
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-4 animate-fade-in">
         <div 
@@ -297,6 +297,7 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
           </div>
 
         </div>
+      </div>
       </Portal>
 
       {aiMockupIdx !== null && (
@@ -315,6 +316,6 @@ export default function DanhMucSPModal({ open, onClose, editId }: Props) {
           defaultPrompt={buildAiPrompt(aiMockupIdx)}
         />
       )}
-    </div>
+    </>
   );
 }

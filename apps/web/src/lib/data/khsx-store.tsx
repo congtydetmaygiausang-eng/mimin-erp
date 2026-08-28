@@ -66,7 +66,30 @@ function saveData(items: KHSX[]) {
 }
 
 function persist(item: KHSX) {
-  if (isSupabaseEnabled) supabaseUpsertRaw("khsx", item).catch((error) => console.error("[KHSX] Supabase:", error));
+  if (!isSupabaseEnabled) return;
+  const updateData = {
+    id: item.id,
+    ma_khsx: item.maKHSX,
+    ma_sp: item.maSP,
+    ten_sp: item.tenSP,
+    loai_sp: item.loaiSP,
+    ti_le_size: item.tiLeSize,
+    ds_mau: item.dsMau,
+    tuan: item.tuan,
+    tu_ngay: item.tuNgay,
+    den_ngay: item.denNgay,
+    san_pham: item.sanPham,
+    loai: item.loai,
+    so_luong: item.soLuong,
+    da_hoan_thanh: item.daHoanThanh,
+    xuong_phu_trach: item.xuongPhuTrach,
+    trang_thai: item.trangThai,
+    ghi_chu: item.ghiChu,
+    ngay_tao: item.ngayTao,
+    nguoi_tao: item.nguoiTao,
+    lenh_cat_id: item.lenhCatId,
+  };
+  supabaseUpsertRaw("khsx", updateData as any).catch((error) => console.error("[KHSX] Supabase upsert error:", error));
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
@@ -75,24 +98,34 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const localData = loadData();
     setKHSX(localData);
-    
-    // Toast chẩn đoán lỗi F5
-    setTimeout(() => {
-      toast.info(`[System] Đã load ${localData.length} KHSX từ máy tính`, { duration: 3000 });
-    }, 500);
 
     if (!isSupabaseEnabled) return;
     
     let active = true;
-    supabaseFetchAllRaw<RemoteKHSX>("khsx", "created_at", false)
+    supabaseFetchAllRaw<any>("khsx", "created_at", false)
       .then((remote) => {
         if (!active) return;
         const normalized = remote.map((item) => ({
-          ...item,
-          maKHSX: item.maKHSX || item.maKhsx || "",
-          maSP: item.maSP || item.maSp,
-          tenSP: item.tenSP || item.tenSp,
-          loaiSP: item.loaiSP || item.loaiSp,
+          id: item.id,
+          maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || "",
+          maSP: item.ma_sp || item.maSp || item.maSP,
+          tenSP: item.ten_sp || item.tenSp || item.tenSP,
+          loaiSP: item.loai_sp || item.loaiSp || item.loaiSP,
+          tiLeSize: item.ti_le_size || item.tiLeSize,
+          dsMau: item.ds_mau || item.dsMau || [],
+          tuan: item.tuan || "",
+          tuNgay: item.tu_ngay || item.tuNgay,
+          denNgay: item.den_ngay || item.denNgay,
+          sanPham: item.san_pham || item.sanPham,
+          loai: item.loai,
+          soLuong: item.so_luong ?? item.soLuong ?? 0,
+          daHoanThanh: item.da_hoan_thanh ?? item.daHoanThanh ?? 0,
+          xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || "Tổ cắt",
+          trangThai: item.trang_thai || item.trangThai || "Lên kế hoạch",
+          ghiChu: item.ghi_chu || item.ghiChu,
+          ngayTao: item.ngay_tao || item.ngayTao,
+          nguoiTao: item.nguoi_tao || item.nguoiTao,
+          lenhCatId: item.lenh_cat_id || item.lenhCatId,
         }));
         
         const currentLocal = loadData();
@@ -102,8 +135,8 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
           ...currentLocal.filter((x) => !remoteIds.has(x.id)),
         ];
         
-        saveData(merged);
-        setKHSX(merged);
+        saveData(merged as KHSX[]);
+        setKHSX(merged as KHSX[]);
       })
       .catch((err) => console.error("Lỗi fetch khsx:", err));
       

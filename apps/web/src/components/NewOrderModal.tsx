@@ -275,3 +275,5 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
         </div>
       </div>
     </Portal>
+  );
+}
