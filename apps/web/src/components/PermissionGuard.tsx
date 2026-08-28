@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/session-provider";
 import { can, type Module, type Action } from "@/lib/permissions";
@@ -23,19 +23,23 @@ export function PermissionGuard({
 }) {
   const { user } = useSession();
   const role = user?.role;
+  const [allowed, setAllowed] = useState<boolean | null>(null);
 
-  const allowed = can(role, module, action);
+  useEffect(() => {
+    setAllowed(can(role, module, action));
+  }, [role, module, action]);
+
+  if (allowed === null) return null; // Wait for hydration
+
+  useEffect(() => {
+    if (!allowed && redirect) {
+      window.location.href = redirect;
+    }
+  }, [allowed, redirect]);
 
   if (allowed) return <>{children}</>;
 
-  if (redirect) {
-    // Server-side redirect happens in useEffect
-    if (typeof window !== "undefined") {
-      setTimeout(() => {
-        window.location.href = redirect;
-      }, 0);
-    }
-  }
+  if (redirect) return null; // Wait for redirect
 
   if (fallback) return <>{fallback}</>;
 

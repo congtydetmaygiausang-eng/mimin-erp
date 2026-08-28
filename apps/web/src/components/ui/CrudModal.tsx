@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ResponsiveModal } from "./ResponsiveModal";
+
 export type FieldDef =
   | { name: string; label: string; type: "text"; required?: boolean; placeholder?: string; readOnly?: boolean }
   | { name: string; label: string; type: "email"; required?: boolean; placeholder?: string }
@@ -35,24 +37,12 @@ export function CrudModal({
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
       setValues(initial || {});
     }
   }, [open, initial]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,116 +72,104 @@ export function CrudModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div
-        ref={dialogRef}
-        className="relative card w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up"
-      >
-        <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "var(--border)" }}>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/30 dark:hover:bg-white/5" aria-label="Đóng">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          {fields.map((f) => (
-            <div key={f.name}>
-              <label className="block text-sm font-medium mb-1">
-                {f.label} {f.required && <span className="text-red-500">*</span>}
-              </label>
-              {f.type === "image" ? (
-                <div className="space-y-2">
-                  {values[f.name] && <img src={values[f.name]} alt={f.label} className="h-32 w-full rounded-lg border object-contain bg-slate-50" />}
-                  <input
-                    className="input"
-                    type="file"
-                    accept="image/*"
-                    required={f.required && !values[f.name]}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        const url = onImageUpload ? await onImageUpload(file) : await new Promise<string>((resolve, reject) => {
-                          const reader = new FileReader();
-                          reader.onload = () => resolve(String(reader.result || ""));
-                          reader.onerror = () => reject(new Error("Không đọc được hình ảnh"));
-                          reader.readAsDataURL(file);
-                        });
-                        setValues((current) => ({ ...current, [f.name]: url }));
-                      } catch (error) {
-                        toast.error(error instanceof Error ? error.message : "Không tải được hình ảnh");
-                      }
-                    }}
-                  />
-                </div>
-              ) : f.type === "textarea" ? (
-                <textarea
-                  className="input"
-                  rows={f.rows || 3}
-                  placeholder={f.placeholder}
-                  value={values[f.name] || ""}
-                  onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
-                />
-              ) : f.type === "select" ? (
-                <select
-                  className="input"
-                  value={values[f.name] || ""}
-                  onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
-                >
-                  <option value="">-- Chọn --</option>
-                  {f.options.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              ) : f.type === "checkbox-group" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
-                  {f.options.map((option) => {
-                    const selected = (values[f.name] || "").split(",").filter(Boolean);
-                    const checked = selected.includes(option.value);
-                    return (
-                      <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            const next = checked
-                              ? selected.filter((value) => value !== option.value)
-                              : [...selected, option.value];
-                            setValues({ ...values, [f.name]: next.join(",") });
-                          }}
-                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                        />
-                        <span>{option.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              ) : (
+    <ResponsiveModal open={open} onClose={onClose} title={title} maxWidth="lg">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+        {fields.map((f) => (
+          <div key={f.name}>
+            <label className="block text-sm font-medium mb-1.5">
+              {f.label} {f.required && <span className="text-red-500">*</span>}
+            </label>
+            {f.type === "image" ? (
+              <div className="space-y-2">
+                {values[f.name] && <img src={values[f.name]} alt={f.label} className="h-32 w-full rounded-lg border object-contain bg-slate-50" />}
                 <input
                   className="input"
-                  type={f.type}
-                  placeholder={"placeholder" in f ? f.placeholder : undefined}
-                  required={f.required}
-                  readOnly={f.type === "text" ? f.readOnly : undefined}
-                  min={f.type === "number" ? f.min : undefined}
-                  max={f.type === "number" ? f.max : undefined}
-                  step={f.type === "number" ? f.step : undefined}
-                  value={values[f.name] || ""}
-                  onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+                  type="file"
+                  accept="image/*"
+                  required={f.required && !values[f.name]}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const url = onImageUpload ? await onImageUpload(file) : await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(String(reader.result || ""));
+                        reader.onerror = () => reject(new Error("Không đọc được hình ảnh"));
+                        reader.readAsDataURL(file);
+                      });
+                      setValues((current) => ({ ...current, [f.name]: url }));
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Không tải được hình ảnh");
+                    }
+                  }}
                 />
-              )}
-            </div>
-          ))}
-          <div className="flex justify-end gap-2 pt-3">
-            <button type="button" onClick={onClose} className="btn-secondary">Hủy</button>
-            <button type="submit" disabled={loading} className="btn-primary inline-flex items-center gap-2">
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {submitLabel}
-            </button>
+              </div>
+            ) : f.type === "textarea" ? (
+              <textarea
+                className="input"
+                rows={f.rows || 3}
+                placeholder={f.placeholder}
+                value={values[f.name] || ""}
+                onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+              />
+            ) : f.type === "select" ? (
+              <select
+                className="input"
+                value={values[f.name] || ""}
+                onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+              >
+                <option value="">-- Chọn --</option>
+                {f.options.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            ) : f.type === "checkbox-group" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border p-3 border-slate-200 dark:border-white/10">
+                {f.options.map((option) => {
+                  const selected = (values[f.name] || "").split(",").filter(Boolean);
+                  const checked = selected.includes(option.value);
+                  return (
+                    <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? selected.filter((value) => value !== option.value)
+                            : [...selected, option.value];
+                          setValues({ ...values, [f.name]: next.join(",") });
+                        }}
+                        className="h-4.5 w-4.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <input
+                className="input"
+                type={f.type}
+                placeholder={"placeholder" in f ? f.placeholder : undefined}
+                required={f.required}
+                readOnly={f.type === "text" ? f.readOnly : undefined}
+                min={f.type === "number" ? f.min : undefined}
+                max={f.type === "number" ? f.max : undefined}
+                step={f.type === "number" ? f.step : undefined}
+                value={values[f.name] || ""}
+                onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+              />
+            )}
           </div>
-        </form>
-      </div>
-    </div>
+        ))}
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/10 mt-2">
+          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">Hủy</button>
+          <button type="submit" disabled={loading} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {submitLabel}
+          </button>
+        </div>
+      </form>
+    </ResponsiveModal>
   );
 }

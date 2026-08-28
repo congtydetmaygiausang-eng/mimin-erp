@@ -616,6 +616,7 @@ export default function KhoThanhPhamPage() {
           ) : (
             <ProductTable
               filtered={filtered}
+              productImages={productImages}
               setEditing={setEditing}
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}

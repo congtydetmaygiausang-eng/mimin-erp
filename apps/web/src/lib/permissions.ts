@@ -547,14 +547,20 @@ export function getFullMatrix(): Record<Role, Partial<Record<Module, string>>> {
   return getEffectivePermissions();
 }
 
-export const ALL_ROLES: Role[] = ["admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner"];
+export const ALL_ROLES: Role[] = [
+  "admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner",
+  "cutting", "printing", "buttoning", "ironing", "packaging"
+];
+
 export const ALL_MODULES: Module[] = [
   "dashboard", "lenh-cat", "khach-hang", "ke-hoach-sx", "nhan-su",
   "kho-vai", "kho-phu-lieu", "kho-thanh-pham", "don-hang",
   "cong-no-cong-doan", "kiem-tra-chat-luong", "to-may", "hoan-thien",
   "giao-hang", "cham-cong", "bang-luong", "nha-cung-cap",
-  "gia-cong-ngoai", "bao-cao", "realtime", "cai-dat",
+  "gia-cong-ngoai", "bao-cao", "ai-tinh-gia", "khach-hang-tiem-nang",
+  "so-do-chien-luoc", "realtime", "cai-dat",
   "trang-chu-gia-cong", "bang-dieu-hanh-sx", "doi-soat-tien-cong",
   "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp",
   "cong-viec-gia-cong", "ban-giao-gia-cong", "san-luong-gia-cong", "tien-cong-gia-cong",
+  "to-cat", "to-in-theu", "to-khuy-nut", "to-ui", "to-dong-goi"
 ];
