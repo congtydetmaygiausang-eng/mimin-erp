@@ -67,25 +67,50 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
   const [khsx, setKHSX] = useState<KHSX[]>([]);
 
   useEffect(() => {
-    setKHSX(loadData());
+    const localData = loadData();
+    setKHSX(localData);
+
     if (!isSupabaseEnabled) return;
+    
     let active = true;
-    supabaseFetchAllRaw<RemoteKHSX>("khsx", "created_at", false).then((remote) => {
-      const normalized = remote.map((item) => ({
-        ...item,
-        maKHSX: item.maKHSX || item.maKhsx || "",
-        maSP: item.maSP || item.maSp,
-        tenSP: item.tenSP || item.tenSp,
-        loaiSP: item.loaiSP || item.loaiSp,
-      }));
-      if (active && normalized.length > 0) { setKHSX(normalized); saveData(normalized); }
-    });
+    supabaseFetchAllRaw<RemoteKHSX>("khsx", "created_at", false)
+      .then((remote) => {
+        if (!active) return;
+        const normalized = remote.map((item) => ({
+          ...item,
+          maKHSX: item.maKHSX || item.maKhsx || "",
+          maSP: item.maSP || item.maSp,
+          tenSP: item.tenSP || item.tenSp,
+          loaiSP: item.loaiSP || item.loaiSp,
+        }));
+        
+        // Luôn luôn đọc lại bản mới nhất từ localStorage trước khi merge
+        const currentLocal = loadData();
+        const remoteIds = new Set(normalized.map((r) => r.id));
+        const merged = [
+          ...normalized,
+          ...currentLocal.filter((x) => !remoteIds.has(x.id)),
+        ];
+        
+        saveData(merged);
+        setKHSX(merged);
+      })
+      .catch((err) => console.error("Lỗi fetch khsx:", err));
+      
     return () => { active = false; };
   }, []);
+  
+  // Tự động lưu khi khsx thay đổi (đề phòng)
   useEffect(() => { saveData(khsx); }, [khsx]);
 
   const themKHSX = useCallback((item: Omit<KHSX, "id">, user: AppUser | null) => {
     const created: KHSX = { ...item, id: `KHSX-${Date.now()}`, ngayTao: new Date().toISOString().slice(0, 10), nguoiTao: user?.id || user?.name };
+    
+    // Ép kiểu đồng bộ tuyệt đối: Đọc -> Thêm -> Ghi ngay lập tức
+    const currentLocal = loadData();
+    const nextLocal = [created, ...currentLocal];
+    saveData(nextLocal);
+    
     setKHSX((prev) => [created, ...prev]);
     persist(created);
     logWorkflow(user, "create", created.maKHSX, created.id);
