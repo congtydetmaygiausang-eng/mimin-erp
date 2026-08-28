@@ -181,7 +181,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
                             onChange={e => handleSizeChange(khau.id, sIdx, Number(e.target.value))}
                             onFocus={e => e.target.select()}
                             disabled={daKhoa}
-                            className={`w-14 px-1 py-1 text-center border rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${loi > 0 ? "border-rose-300 bg-rose-50 text-rose-700" : du > 0 ? "border-sky-400 bg-sky-50 text-sky-700" : "border-slate-300 bg-white"}`}
+                            className={`w-14 px-1 py-1 min-h-[44px] text-center border rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${loi > 0 ? "border-rose-300 bg-rose-50 text-rose-700" : du > 0 ? "border-sky-400 bg-sky-50 text-sky-700" : "border-slate-300 bg-white"}`}
                             min="0"
                           />
                           {du > 0 && <div className="text-[9px] font-black text-sky-600 mt-0.5">+{du} dư</div>}
@@ -287,13 +287,13 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
           <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
             <button
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
             >
               Hủy
             </button>
             <button
               onClick={handleSave}
-              className="px-5 py-2.5 rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center gap-2 transition-colors shadow-sm"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center justify-center gap-2 transition-colors shadow-sm"
             >
               <Save className="w-4 h-4" /> Lưu thông số
             </button>
