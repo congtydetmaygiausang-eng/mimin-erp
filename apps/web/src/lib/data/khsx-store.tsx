@@ -82,16 +82,15 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
         loaiSP: item.loaiSP || item.loaiSp,
       }));
       if (active) { 
-        // Merge thay vì ghi đè: ưu tiên Supabase, nhưng giữ lại các dòng local chưa kịp lên
-        setKHSX((prev) => {
-          const remoteIds = new Set(normalized.map((r) => r.id));
-          const merged = [
-            ...normalized,
-            ...prev.filter((x) => !remoteIds.has(x.id)),
-          ];
-          saveData(merged);
-          return merged;
-        });
+        // Đọc lại từ localStorage để đảm bảo không bị ảnh hưởng bởi React batching state "trễ"
+        const currentLocal = loadData();
+        const remoteIds = new Set(normalized.map((r) => r.id));
+        const merged = [
+          ...normalized,
+          ...currentLocal.filter((x) => !remoteIds.has(x.id)),
+        ];
+        saveData(merged);
+        setKHSX(merged);
       }
     });
     return () => { active = false; };
