@@ -302,7 +302,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setAuthSource("none");
     clearSession();
-    toast.success("Đăng xuất thành công!");
+    toast.dismiss();
+    toast.success("Đăng xuất thành công!", { id: "auth-toast", duration: 2000 });
   };
 
   return (
