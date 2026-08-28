@@ -546,97 +546,7 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
   }))).filter((section) => section.items.length);
 
   return <div className="space-y-5 animate-fade-in">
-    {resultsAreStale&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"><b>Đây là kết quả của lần tìm trước.</b> Anh đã thay đổi năng lực, khu vực hoặc bán kính; hãy bấm <b>Tìm tự động</b> để chạy lại. Kết quả cũ không được gắn nhãn theo bộ lọc mới.</div>}
-    {learningSummary&&<div className="text-xs px-1 opacity-70">{learningSummary.applied?`AI đang học từ ${learningSummary.approvedCount} kết quả đã duyệt và ${learningSummary.rejectedCount} kết quả đã loại.`:`Cần ít nhất 3 quyết định duyệt/loại để AI bắt đầu học. Hiện có ${learningSummary.approvedCount+learningSummary.rejectedCount}.`}</div>}
-    {diagnostics?.discoveryExpanded&&<div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900 inline-flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5 shrink-0"/>Chưa đủ hồ sơ ở vòng tìm chính nên AI đã chạy thêm Tavily/Brave tại các khu vực lân cận đến <b>{diagnostics.discoveryExpansionRadiusKm} km</b>.</div>}
-    {diagnostics?.radiusEscalated&&<div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900 inline-flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5 shrink-0"/>Kết quả đã được xếp lại theo bán kính thực tế <b>{diagnostics.effectiveRadiusKm} km</b>.</div>}
-    {diagnostics?.locationQuality&&<div className={`rounded-lg border px-3 py-2 text-xs ${diagnostics.locationQuality.grade==="HIGH"?"border-emerald-300 bg-emerald-50 text-emerald-900":diagnostics.locationQuality.grade==="MEDIUM"?"border-amber-300 bg-amber-50 text-amber-900":"border-red-300 bg-red-50 text-red-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><b>Chất lượng định vị: {diagnostics.locationQuality.grade==="HIGH"?"Cao":diagnostics.locationQuality.grade==="MEDIUM"?"Trung bình":"Thấp"} · phủ tọa độ {diagnostics.locationQuality.coordinateCoveragePercent}%</b><span className="font-mono text-[10px]">Mã lượt: {diagnostics.locationQuality.runId.slice(0,8)} · {diagnostics.locationQuality.algorithmVersion}</span></div>{diagnostics.locationQuality.warnings.length>0&&<ul className="mt-1 list-disc pl-4">{diagnostics.locationQuality.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul>}</div>}
-    {diagnostics&&<div className="card p-4 space-y-3">{diagnostics.executedQueries&&diagnostics.executedQueries.length>0&&<div className="rounded-lg border bg-brand-50/50 p-3 text-xs" style={{borderColor:"var(--border)"}}><b className="block mb-1.5 text-brand-800">Từ khóa AI đã sinh ra & gửi cho tìm kiếm:</b><div className="flex flex-wrap gap-1.5">{diagnostics.executedQueries.map(q=><span key={q} className="rounded bg-white px-2 py-1 border text-brand-900 shadow-sm" style={{borderColor:"var(--border)"}}>{q}</span>)}</div></div>}<div className="flex flex-wrap gap-2">{diagnostics.providers.map(item=><span key={item.name} className="text-xs rounded-full border px-3 py-1" style={{borderColor:"var(--border)"}}>{item.name}: {item.status==="OK"?`${item.count} nguồn`:item.status==="EMPTY"?"không có kết quả":item.status==="DISABLED"?"chưa cấu hình":item.status==="SKIPPED"?"bỏ qua (đã đủ dữ liệu)":`tạm lỗi${item.code?` (${item.code})`:""}`}</span>)}{typeof diagnostics.enrichmentSources==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Làm giàu: {diagnostics.enrichmentSources} nguồn · bổ sung {diagnostics.enrichedCandidates??0} hồ sơ</span>}{Boolean(diagnostics.directoryCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-indigo-300 text-indigo-700">Vét danh bạ: +{diagnostics.directoryCandidates} hồ sơ</span>}{Boolean(diagnostics.supplementedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-cyan-300 text-cyan-700">Trích xuất trực tiếp: +{diagnostics.supplementedCandidates} hồ sơ</span>}{typeof diagnostics.exactCandidates==="number"&&<span className="text-xs rounded-full border px-3 py-1 border-emerald-300 text-emerald-700">Đúng năng lực: {diagnostics.exactCandidates}</span>}{Boolean(diagnostics.relatedCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-amber-300 text-amber-700">Liên quan cần xác minh: {diagnostics.relatedCandidates}</span>}{Boolean(diagnostics.rejectedNoiseCandidates)&&<span className="text-xs rounded-full border px-3 py-1 border-slate-300 text-slate-600">Đã loại {diagnostics.rejectedNoiseCandidates} kết quả không đủ hồ sơ công ty</span>}{diagnostics.geocoding&&<span className="text-xs rounded-full border px-3 py-1 border-sky-300 text-sky-700">Định vị: xác minh {diagnostics.geocoding.verified+diagnostics.geocoding.retainedFromSource}/{diagnostics.geocoding.attempted+diagnostics.geocoding.retainedFromSource} hồ sơ</span>}</div>{diagnostics.qualityGate&&<div className="rounded-lg border bg-brand-500/5 p-3 text-xs" style={{borderColor:"var(--border)"}}><div className="flex flex-wrap items-center justify-between gap-2"><b className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-brand-700"/>Cổng chất lượng hồ sơ · trung bình {diagnostics.qualityGate.averageScore}/100</b><div className="flex flex-wrap gap-2"><span className="text-emerald-700">Mạnh {diagnostics.qualityGate.strong}</span><span className="text-amber-700">Cần duyệt {diagnostics.qualityGate.review}</span><span className="text-slate-600">Yếu {diagnostics.qualityGate.weak}</span><span className="text-red-700">Xung đột {diagnostics.qualityGate.conflicts}</span></div></div></div>}{diagnostics.strictLocationFallback&&<div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Chưa có hồ sơ nào đủ tọa độ để xác nhận trong {radiusKm} km. Hệ thống đang hiển thị hồ sơ chưa có tọa độ để anh kiểm tra; các hồ sơ này không được tính là nằm trong bán kính.</div>}<div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center"><div><b>{diagnostics.collectedSources}</b><p className="text-[11px] opacity-60">Nguồn thu thập</p></div><div><b>{diagnostics.finalCandidates}</b><p className="text-[11px] opacity-60">Hồ sơ sau gộp</p></div><div><b>{diagnostics.verified}</b><p className="text-[11px] opacity-60">Đối chiếu nhiều nguồn</p></div><div><b>{diagnostics.partial}</b><p className="text-[11px] opacity-60">Đối chiếu một phần</p></div><div><b>{diagnostics.insideRadius}</b><p className="text-[11px] opacity-60">Trong bán kính</p></div><div><b>{diagnostics.unknownCoordinates}</b><p className="text-[11px] opacity-60">Thiếu tọa độ</p></div></div></div>}
-    <div className="card p-5 space-y-4 relative z-20">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <label className="text-xs font-medium">Năng lực cần tìm
-          <select className="input mt-1" value={query} onChange={(e) => setQuery(e.target.value)}>
-            <option value="">-- Chọn 1 năng lực --</option>
-            {MANG_LUOI_DANH_MUC[role].map(opt => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
-        </label>
-        <label className="text-xs font-medium">Hoặc nhập từ khóa khác
-          <input className="input mt-1" value={manualKeyword} onChange={(e) => setManualKeyword(e.target.value)} placeholder="VD: Xưởng dệt kim cao cấp..." />
-        </label>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        <label className="text-xs font-medium md:col-span-2">
-          Lấy tâm tìm kiếm tại
-          {locationType === "GPS" ? (
-            <div className="flex items-center justify-between input mt-1 bg-slate-50 border-emerald-200">
-              <span className="text-emerald-700 font-medium flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> Đang dùng tọa độ GPS</span>
-              <button onClick={cancelCurrentLocation} className="text-rose-500 hover:text-rose-700" title="Hủy định vị"><X className="w-4 h-4"/></button>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              <select className="input mt-1" value={location} onChange={(e) => {lastDistrictLocation.current=e.target.value;setLocation(e.target.value);setCenter(null);setResolvedCenter(null);}}>
-                <option value="">Chọn Quận/Huyện tại TP.HCM...</option>
-                {HCM_DISTRICTS.map(d => <option key={d} value={`${d}, TP.HCM`}>{d}</option>)}
-              </select>
-              <p className="text-[10px] text-slate-500 font-normal leading-tight">(Hệ thống sẽ lấy điểm chính giữa Quận/Huyện làm tâm, sau đó quét compa theo bán kính)</p>
-            </div>
-          )}
-        </label>
-        <label className="text-xs font-medium">Bán kính<select className="input mt-1" value={radiusKm} onChange={e=>setRadiusKm(Number(e.target.value))}>{[5,10,20,30,50,100,9999].map(value=><option key={value} value={value}>{value === 9999 ? "Không giới hạn" : `${value} km`}</option>)}</select></label>
-        <label className="text-xs font-medium">Chế độ
-          <select className="input mt-1" value={locationMode} onChange={(e) => setLocationMode(e.target.value as "PREFER" | "STRICT")}>
-            <option value="PREFER">Ưu tiên gần · mở rộng nếu thiếu</option>
-            <option value="STRICT">Chỉ tìm chính xác khu vực này</option>
-          </select>
-        </label>
-        <div className="flex flex-col gap-1 justify-end">
-          <button type="button" className={`btn-secondary inline-flex justify-center items-center gap-2 ${locationType === "GPS" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`} onClick={locationType === "GPS" ? cancelCurrentLocation : useCurrentLocation}>
-            <Navigation className="w-4 h-4"/>{locationType === "GPS" ? "Đang dùng GPS • Hủy" : "Vị trí hiện tại"}
-          </button>
-          {center && <p className="text-[10px] text-emerald-700 text-center">số {Math.round(center.accuracy??0)} m</p>}
-        </div>
-      </div>
-      <div>
-        <span className="text-xs font-medium block mb-1.5">Loại hình doanh nghiệp <span className="opacity-50 font-normal">(lọc kết quả đang có, không cần tìm lại)</span></span>
-        <div className="flex flex-wrap gap-1.5">
-          {([
-            { value: "ALL", label: "Không giới hạn" },
-            { value: "COMPANY", label: "Công ty / Doanh nghiệp" },
-            { value: "HOUSEHOLD_BUSINESS", label: "Hộ kinh doanh" },
-          ] as const).map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setEntityTypeFilter(option.value)}
-              className={`text-xs rounded-full border px-2.5 py-1 transition ${entityTypeFilter === option.value ? "bg-brand-500 text-white border-brand-500" : "border-slate-200 text-slate-600 hover:border-brand-300 dark:text-slate-300"}`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <p className="text-xs opacity-60">{center ? `✅ GPS: ${center.latitude.toFixed(5)}, ${center.longitude.toFixed(5)} · sai số ~${Math.round(center.accuracy??0)} m` : ""}</p>
-        <button onClick={() => void search(false)} disabled={loading} className="btn-primary inline-flex items-center justify-center gap-2">
-          <Search className={`w-4 h-4 ${loading ? "animate-pulse" : ""}`} /> {loading ? "Đang tìm..." : "Tìm tự động"}
-        </button>
-      </div>
-    </div>
-    <SearchProgressModal loading={loading} />
-    <JinaRadar diagnostics={agentDiagnostics} />
-    {items.length === 0 && !loading && !directResults.length && (
-      <div className="rounded-xl bg-slate-50 border p-4 text-sm text-slate-700" style={{borderColor: "var(--border)"}}>
-      <div className="flex items-center gap-2 font-bold mb-2 text-brand-700"><Sparkles className="w-4 h-4"/> Mẹo tìm kiếm hiệu quả</div>
-      <ul className="list-disc pl-5 space-y-1 text-xs opacity-80">
-        <li><b>Danh mục & Cần tìm:</b> Chọn chính xác loại năng lực (VD: Vải cotton). Có thể chọn nhiều năng lực cùng lúc.</li>
-        <li><b>Vị trí:</b> Chọn một Quận cụ thể hoặc bật "Vị trí hiện tại" để AI quét các xưởng xung quanh tâm đó.</li>
-        <li><b>Bán kính & Chế độ:</b> 
-          <ul className="list-circle pl-4 mt-1">
-            <li><i>Mở rộng thêm nếu thiếu:</i> AI sẽ rà soát từ gần đến xa, lấy cả các xưởng ngoài bán kính nếu rất phù hợp.</li>
-          </ul>
-        </li>
-      </ul>
-    </div>)}
+
         <div className="card p-5 space-y-3">
       <div className="flex items-center gap-2"><Bot className="w-5 h-5 text-brand-700" /><div><h2 className="font-bold">Trò chuyện với AI Agent</h2><p className="text-xs opacity-60">Gõ nhu cầu bằng lời — AI tự hiểu, lọc điều kiện và gọi tìm kiếm; kết quả hiện ở khu vực phía trên.</p></div></div>
       <div className="flex flex-wrap gap-1.5">
@@ -648,12 +558,9 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
             </button>
           );
         })}
-        <button type="button" disabled={chatLoading} onClick={sendFormConditions} title="Ghép Năng lực/Khu vực/Bán kính đã chọn ở form phía trên thành 1 câu, gửi thẳng cho AI" className="text-xs rounded-full border px-2.5 py-1.5 font-medium inline-flex items-center gap-1.5 border-brand-300 text-brand-700 hover:bg-brand-500/5 disabled:opacity-50">
-          <Send className="w-3.5 h-3.5" />Nạp điều kiện đã chọn
-        </button>
       </div>
-      <div className="space-y-2 max-h-72 overflow-y-auto rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
-        {chatBubbles.length === 0 && <p className="text-xs opacity-50">VD: "Tìm xưởng cắt tại Quận 12" hoặc "chỉ lấy công ty có website" để lọc lại kết quả vừa tìm.</p>}
+      <div className="space-y-4 min-h-[400px] max-h-[600px] overflow-y-auto rounded-xl border p-4 bg-white/50" style={{ borderColor: "var(--border)" }}>
+        {chatBubbles.length === 0 && <p className="text-sm opacity-60 text-center mt-10">VD: "Tìm xưởng cắt tại Quận 12" hoặc "chỉ lấy công ty có website" để lọc lại kết quả vừa tìm.</p>}
         {chatBubbles.map((bubble, index) => (
           <div key={index} className={`flex items-start gap-2 text-sm ${bubble.role === "user" ? "justify-end" : ""}`}>
             {bubble.role === "assistant" && <Bot className="w-4 h-4 mt-0.5 shrink-0 text-brand-600" />}
@@ -682,25 +589,20 @@ export function AiDiscoveryTab({ role }: { role: ProductionPartnerRole }) {
         ))}
         {chatLoading && <div className="flex items-center gap-2 text-sm opacity-60"><Bot className="w-4 h-4 shrink-0 text-brand-600" /><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Đang tìm kiếm...</div>}
       </div>
-      <div className="flex items-center gap-2">
-        <input
+      <div className="flex items-end gap-3 mt-4">
+        <textarea
           value={chatInput}
           onChange={(event) => setChatInput(event.target.value)}
-          onKeyDown={(event) => { if (event.key === "Enter" && !chatLoading) { event.preventDefault(); void sendChat(chatInput); setChatInput(""); } }}
+          onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !chatLoading) { event.preventDefault(); void sendChat(chatInput); setChatInput(""); } }}
           disabled={chatLoading}
-          className="input text-sm flex-1"
-          placeholder="Nhắn cho AI Agent..."
+          className="input text-sm flex-1 min-h-[60px] max-h-32 py-3 resize-y"
+          placeholder="Nhắn cho AI Agent (Shift + Enter để xuống dòng)..."
+          rows={2}
         />
-        <button type="button" onClick={() => { void sendChat(chatInput); setChatInput(""); }} disabled={chatLoading || !chatInput.trim()} className="btn-primary text-sm shrink-0">Gửi</button>
+        <button type="button" onClick={() => { void sendChat(chatInput); setChatInput(""); }} disabled={chatLoading || !chatInput.trim()} className="btn-primary text-sm shrink-0 px-6 py-3 h-[60px] font-semibold">Gửi</button>
       </div>
     </div>
     {directResults.length>0&&<div className="card p-5 space-y-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-bold">Kết quả trực tiếp từ Gemini + DeepSeek</h2><p className="text-xs opacity-60">Nguồn: {directProvider} · Tâm: {resolvedCenter?.label??"chưa xác định"} · {radiusKm} km · Tự phục hồi khi quay lại</p>{resolvedCenter&&<p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5"/>Đã xác minh tâm · {resolvedCenter.source==="GPS"?"GPS":`Địa giới ${resolvedCenter.placeType}`} · độ tin cậy {resolvedCenter.validationConfidence==="HIGH"?"cao":"trung bình"}</p>}</div><button className="btn-primary" onClick={()=>void saveDirectResults()}>Lưu {selectedResultKeys.size||directResults.filter(item=>!isDirectCandidateSaved(item,items)).length} công ty</button></div>{directResultSections.map((section)=><section key={section.key} className="space-y-3"><div><h3 className="font-semibold">{section.title} <span className="text-xs font-normal opacity-60">({section.items.length})</span></h3><p className="text-xs opacity-60">{section.description}</p></div><div className="grid md:grid-cols-2 gap-3">{section.items.map((item,index)=>{const itemKey=`${item.sourceUrl}-${section.key}-${index}`;const saveKey=directCandidateSaveKey(item);const saved=isDirectCandidateSaved(item,items);return <SupplierResultCard key={itemKey} item={item} opening={openingProfile===itemKey} verifying={verifyingLocation===itemKey} saving={savingCard===itemKey} selected={selectedResultKeys.has(saveKey)} saved={saved} onToggle={()=>setSelectedResultKeys(current=>{const next=new Set(current);if(next.has(saveKey))next.delete(saveKey);else next.add(saveKey);return next})} onViewDetails={()=>void viewCompanyProfile(item,itemKey)} onVerifyLocation={()=>void verifyLocation(item,itemKey)} onSaveOne={()=>void saveOneResult(item,itemKey)}/>})}</div></section>)}</div>}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items.map((item) => <article key={item.id} className="card p-5 space-y-3">
-      <div className="flex justify-between gap-3"><div><div className="text-[10px] text-brand-700">{ROLE_LABELS[item.role]} · {item.sourceProvider}</div><h3 className="font-bold">{item.legalName}</h3></div><span className="text-xs">{item.status === "PENDING" ? "Chờ duyệt" : item.status === "APPROVED" ? "Phù hợp" : "Đã loại"}</span></div>
-      <p className="text-sm flex gap-2"><MapPin className="w-4 h-4 shrink-0 mt-0.5" />{item.address}</p>
-      <div className="flex justify-between"><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-700 inline-flex gap-1">Kiểm tra nguồn <ExternalLink className="w-3 h-3" /></a>
-      {item.status === "PENDING" && <div className="flex gap-2"><button onClick={() => void review(item.id,"REJECTED")} className="btn-secondary p-2" aria-label="Loại"><X className="w-4 h-4" /></button><button onClick={() => void review(item.id,"APPROVED")} className="btn-primary p-2" aria-label="Đánh dấu phù hợp"><Check className="w-4 h-4" /></button></div>}</div>
-    </article>)}</div>
-    {!loading && items.length === 0 && <div className="card p-10 text-center opacity-60">Chưa có ứng viên. Nhập nhu cầu để bắt đầu tìm kiếm.</div>}
+
   </div>;
 }

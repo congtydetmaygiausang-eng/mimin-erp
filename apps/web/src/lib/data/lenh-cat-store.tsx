@@ -555,11 +555,10 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase!.from("lenh_cat").upsert({
       id: lenh.id, loai_lenh: lenh.loaiLenh, khach_hang: lenh.khachHang, loai_sp: lenh.loaiSP, ma_sp: lenh.maSP,
       ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe,
-      tong_sl_thuc_te_ao: lenh.tongSLThucTeAo, tong_sl_thuc_te_quan: lenh.tongSLThucTeQuan,
       han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
       mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
       chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
-      phu_trach_sx: lenh.phuTrachSX, phu_trach_so_do: lenh.phuTrachSoDo, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
+      phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
       phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao
     });
     if (error) throw error;
@@ -578,8 +577,6 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.tenSP !== undefined)             updateData.ten_sp = lenh.tenSP;
       if (lenh.tongSL !== undefined)            updateData.tong_sl = lenh.tongSL;
       if (lenh.tongSLThucTe !== undefined)      updateData.tong_sl_thuc_te = lenh.tongSLThucTe;
-      if (lenh.tongSLThucTeAo !== undefined)    updateData.tong_sl_thuc_te_ao = lenh.tongSLThucTeAo;
-      if (lenh.tongSLThucTeQuan !== undefined)  updateData.tong_sl_thuc_te_quan = lenh.tongSLThucTeQuan;
       if (lenh.hanHoanThanh !== undefined)      updateData.han_hoan_thanh = lenh.hanHoanThanh;
       if (lenh.tiLeSize !== undefined)          updateData.ti_le_size = lenh.tiLeSize;
       if (lenh.dsMau !== undefined)             updateData.ds_mau = lenh.dsMau;
@@ -590,7 +587,6 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.bangCOGS !== undefined)          updateData.bang_cogs = lenh.bangCOGS;
       if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
       if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
-      if (lenh.phuTrachSoDo !== undefined)      updateData.phu_trach_so_do = lenh.phuTrachSoDo;
       if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
       if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;
       if (lenh.phienBanDinhMuc !== undefined)   updateData.phien_ban_dinh_muc = lenh.phienBanDinhMuc;

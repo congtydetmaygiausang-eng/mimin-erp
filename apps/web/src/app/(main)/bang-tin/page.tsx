@@ -295,7 +295,7 @@ export default function BangTinPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4 pb-24 md:pb-20">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4 pb-24 md:pb-20">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Newspaper className="w-6 h-6 text-brand-500" /> Bảng tin
@@ -305,6 +305,7 @@ export default function BangTinPage() {
 
       <MiminGroupTabs />
 
+      <div className="max-w-3xl space-y-4">
       {/* Composer */}
       <div className="bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-xl p-4 space-y-3">
         <div className="flex items-start gap-3">
@@ -415,6 +416,7 @@ export default function BangTinPage() {
           <img src={previewImg} className="relative max-w-full max-h-[90vh] rounded-lg" />
         </div>
       )}
+      </div>
     </div>
   );
 }

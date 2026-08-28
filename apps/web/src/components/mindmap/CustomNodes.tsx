@@ -4,7 +4,57 @@ import { Handle, Position, useReactFlow, NodeResizer } from "@xyflow/react";
 import { MAU_KHOI, type MauKhoi } from "@/lib/data/so-do-chien-luoc-data";
 import { useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { Maximize2, X } from "lucide-react";
+import { Maximize2, X, MessageSquareText } from "lucide-react";
+
+export function MiminCommentNode({
+  id,
+  data,
+  selected,
+}: {
+  id: string;
+  data: { label: string; bold?: boolean };
+  selected?: boolean;
+}) {
+  const { updateNodeData } = useReactFlow();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <>
+      <NodeResizer color="#f59e0b" isVisible={selected} minWidth={150} minHeight={80} />
+      <div
+        className={`px-3 py-2 rounded-lg border shadow-md text-left transition group relative cursor-text flex flex-col w-full h-full bg-yellow-100 dark:bg-yellow-900/60 text-slate-800 dark:text-yellow-100 border-yellow-300 dark:border-yellow-700
+        ${selected ? "ring-2 ring-offset-2 ring-yellow-400" : ""}
+        `}
+        onDoubleClick={() => inputRef.current?.focus()}
+      >
+        <div className="text-xs font-bold mb-1 opacity-60 flex items-center gap-1">
+           <MessageSquareText className="w-3 h-3" /> Bình luận
+        </div>
+        <TextareaAutosize 
+          ref={inputRef as any}
+          value={data.label} 
+          onChange={(e) => updateNodeData(id, { label: e.target.value })}
+          onDoubleClick={(e) => e.stopPropagation()}
+          className={`bg-transparent border-none focus:outline-none w-full min-w-[120px] cursor-pointer resize-none nodrag nopan flex-1 text-sm ${data.bold ? "font-black" : "font-medium"}`}
+          placeholder="Viết bình luận hoặc trả lời..."
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+              e.preventDefault();
+              updateNodeData(id, { bold: !data.bold });
+            }
+            e.stopPropagation();
+          }}
+          minRows={2}
+        />
+        <Handle type="target" position={Position.Top} className="!bg-yellow-500 !w-3 !h-3 opacity-0 group-hover:opacity-100 transition" />
+        <Handle type="source" position={Position.Bottom} className="!bg-yellow-500 !w-3 !h-3 opacity-0 group-hover:opacity-100 transition" />
+        <Handle type="target" position={Position.Left} id="left" className="!bg-yellow-500 !w-3 !h-3 opacity-0 group-hover:opacity-100 transition" />
+        <Handle type="source" position={Position.Right} id="right" className="!bg-yellow-500 !w-3 !h-3 opacity-0 group-hover:opacity-100 transition" />
+      </div>
+    </>
+  );
+}
 
 export function MiminNode({
   id,

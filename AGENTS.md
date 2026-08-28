@@ -56,7 +56,9 @@
 1. ❌ **CẤM** sửa `next.config.ts` làm mất `output: 'export'`.
 2. ❌ **CẤM** viết API routes hoặc Server Actions (vì đang dùng Static Export). Toàn bộ logic phải nằm ở Client.
 3. ❌ **CẤM** tạo file Data mới tĩnh. Nếu cần data test, hãy thêm vào `real-data.ts` hoặc `cong-no.ts`.
-4. ❌ **CẤM** thay đổi thư viện icon (`lucide-react`) sang loại khác.
+5. ❌ **CẤM** thay đổi thư viện icon (`lucide-react`) sang loại khác.
+6. ❌ **CẤM** tự động `git push`. Chỉ được phép deploy lên Vercel khi hoàn thành.
+
 
 ---
 

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { AppUser } from "@/components/session-provider";
 import type { LoaiSP, MauVai } from "./lenh-cat-store";
 import { logWorkflow } from "../audit-log";
-import { isSupabaseEnabled, supabaseDelete, supabaseFetchAll, supabaseUpsert } from "@/lib/supabase/client";
+import { isSupabaseEnabled, supabaseDelete, supabaseFetchAllRaw, supabaseUpsertRaw } from "@/lib/supabase/client";
 
 export type TrangThaiKHSX = "Lên kế hoạch" | "Đang SX" | "Hoàn thành" | "Trễ hạn";
 
@@ -60,7 +60,7 @@ function saveData(items: KHSX[]) {
 }
 
 function persist(item: KHSX) {
-  if (isSupabaseEnabled) supabaseUpsert("khsx", item).catch((error) => console.error("[KHSX] Supabase:", error));
+  if (isSupabaseEnabled) supabaseUpsertRaw("khsx", item).catch((error) => console.error("[KHSX] Supabase:", error));
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
@@ -70,7 +70,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     setKHSX(loadData());
     if (!isSupabaseEnabled) return;
     let active = true;
-    supabaseFetchAll<RemoteKHSX>("khsx", "created_at", false).then((remote) => {
+    supabaseFetchAllRaw<RemoteKHSX>("khsx", "created_at", false).then((remote) => {
       const normalized = remote.map((item) => ({
         ...item,
         maKHSX: item.maKHSX || item.maKhsx || "",

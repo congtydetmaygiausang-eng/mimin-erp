@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   Award,
   FileText,
+  Bookmark,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -50,9 +51,11 @@ export default function KhachHangPage() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KhachHangUI } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [showGhiNhoOnly, setShowGhiNhoOnly] = useState(false);
 
   const filtered = useMemo(() => {
     return list.filter((k: KhachHangUI) => {
+      if (showGhiNhoOnly && !k.ghiNho) return false;
       const s = search.toLowerCase();
       return (
         k.ten.toLowerCase().includes(s) ||
@@ -60,7 +63,7 @@ export default function KhachHangPage() {
         (k.maKH || "").toLowerCase().includes(s)
       );
     });
-  }, [list, search]);
+  }, [list, search, showGhiNhoOnly]);
 
   const tongKH = list.length;
   const dsVIP = list.filter((k) => (k.rating || 0) >= 4.5);
@@ -71,12 +74,25 @@ export default function KhachHangPage() {
     return [...list].sort((a, b) => (DOANH_THU_KH[b.ten] || 0) - (DOANH_THU_KH[a.ten] || 0)).slice(0, 3);
   }, [list]);
 
+  const toggleGhiNho = async (kh: KhachHangUI, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await suaKhachHang({ ...kh, ghiNho: !kh.ghiNho });
+      if (!kh.ghiNho) toast.success(`Đã ghi nhớ KH: ${kh.ten}`);
+    } catch (err: any) {
+      toast.error(`Lỗi: ${err.message}`);
+    }
+  };
+
   const handleSave = async (kh: KhachHangUI) => {
     const isEdit = showForm?.mode === "edit";
     if (isEdit) {
-      const ok = await suaKhachHang(kh);
-      if (ok) toast.success(`Đã cập nhật: ${kh.ten}`);
-      else toast.error("Lỗi khi cập nhật");
+      try {
+        await suaKhachHang(kh);
+        toast.success(`Đã cập nhật KH: ${kh.ten}`);
+      } catch (err: any) {
+        toast.error(`Lỗi khi sửa: ${err.message}`);
+      }
     } else {
       // Chặn CỨNG khi mã KH bị trùng (khác với trùng tên/SĐT bên dưới - trùng mã
       // luôn luôn sai, không có trường hợp "có thể là cùng người"). themKhachHang
@@ -106,9 +122,12 @@ export default function KhachHangPage() {
           return;
         }
       }
-      const ok = await themKhachHang(kh);
-      if (ok) toast.success(`Đã thêm KH: ${kh.ten}`);
-      else toast.error("Lỗi khi thêm mới");
+      try {
+        await themKhachHang(kh);
+        toast.success(`Đã thêm KH: ${kh.ten}`);
+      } catch (err: any) {
+        toast.error(`Lỗi khi thêm mới: ${err.message}`);
+      }
     }
     setShowForm(null);
   };
@@ -195,6 +214,17 @@ export default function KhachHangPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
             <input className="input pl-9" placeholder="Tìm tên, SĐT, email, địa chỉ…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <button
+            onClick={() => setShowGhiNhoOnly(!showGhiNhoOnly)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+              showGhiNhoOnly
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-500"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${showGhiNhoOnly ? "fill-current" : ""}`} />
+            <span className="hidden sm:inline">{showGhiNhoOnly ? "Đang lọc KH ghi nhớ" : "Lọc KH ghi nhớ"}</span>
+          </button>
           <DataViewToggle onChange={setViewMode} />
         </div>
       </div>
@@ -228,7 +258,12 @@ export default function KhachHangPage() {
                         <div className="flex items-center gap-2">
                           <Avatar name={k.ten} size="sm" />
                           <div>
-                            <div className="font-medium">{k.ten}</div>
+                            <div className="font-medium flex items-center gap-1.5">
+                              {k.ten}
+                              <button onClick={(e) => toggleGhiNho(k, e)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition" title="Ghi nhớ khách hàng">
+                                <Bookmark className={`w-3.5 h-3.5 ${k.ghiNho ? "fill-amber-500 text-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
+                              </button>
+                            </div>
                             {k.mst && <div className="text-[10px] opacity-60">MST: {k.mst}</div>}
                           </div>
                         </div>
@@ -295,6 +330,11 @@ export default function KhachHangPage() {
                 key={k.maKH}
                 onClick={() => setShowForm({ mode: "edit", kh: k })}
                 name={k.ten}
+                titleAccessory={
+                  <button onClick={(e) => toggleGhiNho(k, e)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition" title="Ghi nhớ khách hàng">
+                    <Bookmark className={`w-4 h-4 ${k.ghiNho ? "fill-amber-500 text-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
+                  </button>
+                }
                 avatarSize="xl"
                 contactPhone={k.sdt || undefined}
                 rating={k.rating}
@@ -325,7 +365,12 @@ export default function KhachHangPage() {
               <div key={k.maKH} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => setShowForm({ mode: "edit", kh: k })}>
                 <Avatar name={k.ten} size="md" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm truncate">{k.ten}</div>
+                  <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+                    {k.ten}
+                    <button onClick={(e) => toggleGhiNho(k, e)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition" title="Ghi nhớ khách hàng">
+                      <Bookmark className={`w-4 h-4 ${k.ghiNho ? "fill-amber-500 text-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
+                    </button>
+                  </div>
                   <div className="text-[10px] opacity-60 flex items-center gap-2">
                     <span className="font-mono">{k.maKH}</span>
                     <span>·</span>

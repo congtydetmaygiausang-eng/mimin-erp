@@ -1,9 +1,10 @@
 "use client";
 
-import { Sun, Moon, LogOut, Menu } from "lucide-react";
+import { Sun, Moon, LogOut, Menu, Sparkles } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import GlobalSearch from "@/components/GlobalSearch";
 import type { AppUser } from "@/components/session-provider";
 import { DemoBanner } from "@/components/DemoBanner";
@@ -36,6 +37,17 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
         <div className="flex-1" />
         
         <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white hidden sm:block"
+            onClick={() => {
+              localStorage.removeItem("mimin_hide_ai");
+              window.dispatchEvent(new Event("mimin_restore_ai"));
+              toast.success("Đã bật lại MIMIN AI!");
+            }}
+            title="Bật lại MIMIN AI (nếu đã ẩn)"
+          >
+            <Sparkles className="w-5 h-5 text-amber-300" />
+          </button>
           <button
             className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
