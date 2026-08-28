@@ -114,24 +114,24 @@ export default function GlobalSearch() {
 
       {/* COMMAND PALETTE MODAL */}
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-0 sm:pt-[15vh]">
           {/* BACKDROP */}
           <div 
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity hidden sm:block" 
             onClick={() => setOpen(false)} 
           />
           
           {/* MODAL CONTENT */}
-          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative w-full h-[100dvh] sm:h-auto sm:max-w-2xl bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl overflow-hidden border-0 sm:border border-slate-200 dark:border-slate-800 flex flex-col animate-in fade-in zoom-in-95 duration-200">
             {/* SEARCH INPUT */}
-            <div className="flex items-center px-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center px-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
               <Search className="w-5 h-5 text-blue-500 shrink-0" />
               <input
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                className="flex-1 h-16 bg-transparent border-none outline-none px-4 text-lg text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
-                placeholder="Tìm kiếm danh mục, tính năng, báo cáo..."
+                className="flex-1 h-14 sm:h-16 bg-transparent border-none outline-none px-4 text-base sm:text-lg text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+                placeholder="Tìm danh mục, tính năng..."
               />
               <button 
                 onClick={() => setOpen(false)}
@@ -142,7 +142,7 @@ export default function GlobalSearch() {
             </div>
 
             {/* SEARCH RESULTS */}
-            <div className="max-h-[60vh] overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto sm:max-h-[60vh] p-2 bg-slate-50/50 dark:bg-slate-900/50">
               {q.trim() === "" && (
                 <div className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Truy cập nhanh
@@ -186,7 +186,7 @@ export default function GlobalSearch() {
             </div>
             
             {/* FOOTER */}
-            <div className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
+            <div className="hidden sm:flex bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 px-4 py-3 items-center justify-between text-xs text-slate-500 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1"><kbd className="font-mono bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 shadow-sm">Enter</kbd> Chọn</span>
                 <span className="flex items-center gap-1"><kbd className="font-mono bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 shadow-sm">ESC</kbd> Đóng</span>

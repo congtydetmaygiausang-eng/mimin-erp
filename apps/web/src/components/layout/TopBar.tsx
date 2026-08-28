@@ -55,7 +55,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
             <Sparkles className="w-5 h-5 text-amber-300" />
           </button>
           <button
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white hidden sm:block"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Đổi theme"
           >
@@ -67,7 +67,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
           {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
           
           <div className="flex items-center gap-3 pl-2 sm:pl-3 border-l border-white/10">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white/10">
+            <div className="hidden sm:flex w-9 h-9 rounded-full bg-white/20 items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white/10 shrink-0">
               {user.name?.charAt(0) || "U"}
             </div>
             <div className="hidden lg:block leading-tight">
