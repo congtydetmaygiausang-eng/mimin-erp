@@ -21,11 +21,13 @@ import {
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { useSupabaseSync } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
+import { Portal } from "@/components/ui/Portal";
 import {
   type LenhCat, type LoaiSP, type MauVai, type LenhCatPhuLieu,
   type PhanCongGiaCong, type TrangThaiLenhCat, type LoaiLenh,
@@ -140,6 +142,7 @@ const MAU_CARD_ACCENT = [
 ] as const;
 
 export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
+  const router = useRouter();
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
@@ -608,6 +611,31 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     }
   }, [loaiSP, editId]);
 
+  const handleCloseAttempt = () => {
+    const draftStr = localStorage.getItem("lenhCatDraft");
+    let isFromKHSX = false;
+    if (draftStr) {
+      try {
+        const parsed = JSON.parse(draftStr);
+        if (parsed.khsxId) isFromKHSX = true;
+      } catch (e) {}
+    }
+
+    if (!editId && isFromKHSX && maSP) {
+      if (window.confirm("Lệnh cắt chưa được lưu. Bạn có muốn lưu thành Bản nháp không?")) {
+        handleSave("Nhap");
+        return;
+      }
+    }
+    localStorage.removeItem("lenhCatDraft");
+    onClose();
+    
+    if (!editId && isFromKHSX) {
+      router.push("/ke-hoach-san-xuat");
+    }
+  };
+
+
   // Cảnh báo tồn kho
   useEffect(() => {
     const alerts: string[] = [];
@@ -960,7 +988,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const giaVonBinhQuan = binhQuanVai + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-0 md:p-4 animate-fade-in">
+    <Portal>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-0 md:p-4 animate-fade-in">
       <div
         className="bg-[#2B4C3E] rounded-none md:rounded-xl shadow-2xl w-full h-full md:w-[99vw] md:h-[97vh] max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-0 md:border-4 border-[#2B4C3E]"
         onClick={(e) => e.stopPropagation()}
@@ -980,7 +1009,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             <span className="bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full font-medium">
               Version BOM: {phienBanDinhMuc}.0
             </span>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors">
+            <button onClick={handleCloseAttempt} className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -1000,35 +1029,48 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
           <div className="bg-slate-100 p-3 md:p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-6">
-              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
-              <div className="flex gap-4 items-center pr-0 md:pr-6">
-                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
-                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="accent-[#2B4C3E]" />
-                  <span className="text-sm font-bold text-slate-700">Hàng Nhà</span>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 md:mb-6">
+              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide flex items-center gap-2">
+                <Info className="w-5 h-5 md:w-6 md:h-6" />
+                THÔNG TIN CHUNG & KẾ HOẠCH
+              </h2>
+              <div className="flex gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <label className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md shadow-sm cursor-pointer transition-all flex-1 md:flex-none ${loaiLenh === "HangNha" ? 'bg-white border border-slate-300 text-slate-900 font-bold' : 'bg-transparent text-slate-500 font-medium hover:bg-slate-200'}`}>
+                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="hidden" />
+                  <div className={`w-3 h-3 rounded-full border-2 ${loaiLenh === "HangNha" ? 'border-[#2B4C3E] bg-[#2B4C3E]' : 'border-slate-400 bg-white'}`}></div>
+                  Hàng Nhà
                 </label>
-                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
-                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangDat"} onChange={() => setLoaiLenh("HangDat")} className="accent-[#2B4C3E]" />
-                  <span className="text-sm font-bold text-slate-700">Hàng Đặt</span>
+                <label className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md shadow-sm cursor-pointer transition-all flex-1 md:flex-none ${loaiLenh === "HangDat" ? 'bg-white border border-slate-300 text-slate-900 font-bold' : 'bg-transparent text-slate-500 font-medium hover:bg-slate-200'}`}>
+                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangDat"} onChange={() => setLoaiLenh("HangDat")} className="hidden" />
+                  <div className={`w-3 h-3 rounded-full border-2 ${loaiLenh === "HangDat" ? 'border-[#2B4C3E] bg-[#2B4C3E]' : 'border-slate-400 bg-white'}`}></div>
+                  Hàng Đặt
                 </label>
               </div>
             </div>
             
             {/* ID + Ngày bắt đầu banner */}
-            <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-[#2B4C3E]/10 rounded-xl">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">ID Lệnh cắt</span>
-                <span className="px-3 py-1 bg-[#2B4C3E] text-white rounded-lg text-sm font-bold tracking-widest">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 p-4 md:p-5 bg-gradient-to-r from-[#2B4C3E]/10 to-[#2B4C3E]/5 rounded-xl border border-[#2B4C3E]/20 shadow-sm">
+              <div className="flex items-center gap-3 justify-between lg:justify-start">
+                <span className="text-xs md:text-sm font-bold text-slate-600 uppercase whitespace-nowrap">ID Lệnh cắt</span>
+                <span className="px-4 py-1.5 bg-[#2B4C3E] text-white rounded-lg text-sm md:text-base font-bold tracking-widest shadow-inner">
                   {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">Ngày bắt đầu</span>
-                <input type="date" className="px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
-              </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs font-bold text-slate-500 uppercase">→ Hoàn thành</span>
-                <input type="date" className="px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
+              
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full lg:w-auto mt-2 lg:mt-0">
+                <div className="flex items-center justify-between sm:justify-start gap-3">
+                  <span className="text-xs md:text-sm font-bold text-slate-600 uppercase whitespace-nowrap">Ngày bắt đầu</span>
+                  <input type="date" className="px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm flex-1 sm:flex-none" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
+                </div>
+                
+                <div className="hidden sm:flex items-center justify-center text-slate-400 font-bold px-2">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                
+                <div className="flex items-center justify-between sm:justify-start gap-3">
+                  <span className="text-xs md:text-sm font-bold text-slate-600 uppercase whitespace-nowrap">Hoàn thành</span>
+                  <input type="date" className="px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm flex-1 sm:flex-none" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
+                </div>
               </div>
             </div>
             
@@ -2567,7 +2609,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           {/* Left Actions */}
           <div className="flex items-center gap-2">
             <button
-              onClick={onClose}
+              onClick={handleCloseAttempt}
               className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
             >
               Đóng
@@ -2802,6 +2844,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       />
     )}
   </div>
+  </Portal>
   );
 
 }
