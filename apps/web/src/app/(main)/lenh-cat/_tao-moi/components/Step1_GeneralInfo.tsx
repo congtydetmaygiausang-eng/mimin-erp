@@ -125,10 +125,10 @@ export function Step1GeneralInfo() {
          <p className="text-sm text-slate-500">Tải lên hình ảnh để xem trước sản phẩm</p>
        </div>
 
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,1.1fr)] gap-6 items-start">
          {/* Upload Section */}
          <div className="space-y-4">
-           <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-8 border-2 border-dashed border-violet-200">
+           <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-6 border-2 border-dashed border-violet-200">
              <ImageUploader
                files={state.hinhAnhFiles}
                onChange={(files: UploadedFile[]) => updateState({
@@ -146,11 +146,11 @@ export function Step1GeneralInfo() {
          {/* Preview Section */}
          {state.hinhAnh && (
            <div className="space-y-4">
-             <div className="bg-slate-100 rounded-2xl p-4 border border-slate-200 overflow-hidden">
+             <div className="bg-slate-100 rounded-2xl p-4 border border-slate-200 overflow-hidden aspect-[4/3] min-h-[280px] max-h-[460px] flex items-center justify-center">
                <img
                  src={state.hinhAnh}
                  alt="Sản phẩm"
-                 className="w-full h-auto rounded-lg object-cover max-h-80"
+                 className="w-full h-full rounded-lg object-contain"
                />
              </div>
              <div className="flex gap-2">
