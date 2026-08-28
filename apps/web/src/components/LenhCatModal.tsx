@@ -1749,7 +1749,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
              </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-orange-200 shadow-sm mt-6">
+          <div className="order-3 bg-white p-4 rounded-lg border border-orange-200 shadow-sm mt-6">
             <label className="text-sm font-bold text-slate-700 block mb-2">Công đoạn In / Thêu / Dập</label>
             <select
               className="w-full md:max-w-md px-3 py-2 border border-orange-300 rounded bg-white text-sm font-semibold text-orange-900"
