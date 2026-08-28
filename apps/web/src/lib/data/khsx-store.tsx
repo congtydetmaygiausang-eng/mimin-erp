@@ -99,53 +99,61 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
 
   const themKHSX = useCallback((item: Omit<KHSX, "id">, user: AppUser | null) => {
     const created: KHSX = { ...item, id: `KHSX-${Date.now()}`, ngayTao: new Date().toISOString().slice(0, 10), nguoiTao: user?.id || user?.name };
-    setKHSX((prev) => {
-      const next = [created, ...prev];
-      saveData(next); // Lưu đồng bộ ngay lập tức tránh mất data khi chuyển trang nhanh
-      return next;
-    });
+    
+    // Đọc và lưu trực tiếp xuống localStorage (100% đồng bộ, không sợ React batching hay chuyển trang làm mất)
+    const currentLocal = loadData();
+    const nextLocal = [created, ...currentLocal];
+    saveData(nextLocal);
+    
+    // Vẫn cập nhật React state cho UI
+    setKHSX((prev) => [created, ...prev]);
     persist(created);
     logWorkflow(user, "create", created.maKHSX, created.id);
     return created;
   }, []);
 
   const suaKHSX = useCallback((id: string, patch: Partial<KHSX>, user: AppUser | null) => {
-    setKHSX((prev) => {
-      const next = prev.map((item) => {
-        if (item.id !== id) return item;
-        const updated = { ...item, ...patch };
-        persist(updated);
-        return updated;
-      });
-      saveData(next);
-      return next;
+    const currentLocal = loadData();
+    const nextLocal = currentLocal.map((item) => {
+      if (item.id !== id) return item;
+      const updated = { ...item, ...patch };
+      persist(updated);
+      return updated;
     });
+    saveData(nextLocal);
+    
+    setKHSX((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
     logWorkflow(user, "update", `KHSX ${id}`, id, { newValue: patch });
   }, []);
 
   const xoaKHSX = useCallback((id: string, user: AppUser | null) => {
-    setKHSX((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      saveData(next);
-      return next;
-    });
+    const currentLocal = loadData();
+    const nextLocal = currentLocal.filter((item) => item.id !== id);
+    saveData(nextLocal);
+    
+    setKHSX((prev) => prev.filter((item) => item.id !== id));
     if (isSupabaseEnabled) supabaseDelete("khsx", id).catch(console.error);
     logWorkflow(user, "delete", `KHSX ${id}`, id);
   }, []);
 
   const capNhatTienDo = useCallback((id: string, value: number, user: AppUser | null) => {
-    setKHSX((prev) => {
-      const next = prev.map((item) => {
-        if (item.id !== id) return item;
-        const daHoanThanh = Math.min(Math.max(value, 0), item.soLuong);
-        const trangThai: TrangThaiKHSX = daHoanThanh >= item.soLuong ? "Hoàn thành" : daHoanThanh > 0 ? "Đang SX" : item.trangThai;
-        const updated = { ...item, daHoanThanh, trangThai };
-        persist(updated);
-        return updated;
-      });
-      saveData(next);
-      return next;
+    const currentLocal = loadData();
+    const nextLocal = currentLocal.map((item) => {
+      if (item.id !== id) return item;
+      const daHoanThanh = Math.min(Math.max(value, 0), item.soLuong);
+      const trangThai: TrangThaiKHSX = daHoanThanh >= item.soLuong ? "Hoàn thành" : daHoanThanh > 0 ? "Đang SX" : item.trangThai;
+      const updated = { ...item, daHoanThanh, trangThai };
+      persist(updated);
+      return updated;
     });
+    saveData(nextLocal);
+    
+    setKHSX((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      const daHoanThanh = Math.min(Math.max(value, 0), item.soLuong);
+      const trangThai: TrangThaiKHSX = daHoanThanh >= item.soLuong ? "Hoàn thành" : daHoanThanh > 0 ? "Đang SX" : item.trangThai;
+      return { ...item, daHoanThanh, trangThai };
+    }));
     logWorkflow(user, "update", `Tiến độ KHSX ${id}`, id, { newValue: { value } });
   }, []);
 
