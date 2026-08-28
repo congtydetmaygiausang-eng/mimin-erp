@@ -139,9 +139,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else if (event === "SIGNED_OUT") {
-          setUser(null);
-          setAuthSource("none");
-          localStorage.removeItem(STORAGE_KEY);
+          setUser((prev) => {
+            if (prev && prev.source === "supabase") {
+              setAuthSource("none");
+              localStorage.removeItem(STORAGE_KEY);
+              return null;
+            }
+            return prev;
+          });
         }
       });
       
