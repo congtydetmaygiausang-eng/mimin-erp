@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { CrudModal } from "@/components/ui/CrudModal";
 import { useSession } from "@/components/session-provider";
 import { useKHSX, type KHSX, type TrangThaiKHSX } from "@/lib/data/khsx-store";
+import { useLenhCat, generateLenhCatId } from "@/lib/data/lenh-cat-store";
 
 const TRANG_THAI: TrangThaiKHSX[] = ["Lên kế hoạch", "Đang SX", "Hoàn thành", "Trễ hạn"];
 const XUONG = ["Tổ cắt", "Xưởng May 1 – Polomimin", "Xưởng May 2 – Polomimin", "Gia công ngoài"];
@@ -15,6 +16,8 @@ export default function KeHoachSXPage() {
   const router = useRouter();
   const { user } = useSession();
   const { khsx, themKHSX, suaKHSX, xoaKHSX } = useKHSX();
+  const { dsLenhCat, themLenhCat } = useLenhCat();
+  
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<KHSX | null>(null);
   const [filter, setFilter] = useState<TrangThaiKHSX | "Tất cả">("Tất cả");
@@ -22,6 +25,7 @@ export default function KeHoachSXPage() {
   const tongSL = khsx.reduce((sum, item) => sum + item.soLuong, 0);
   const tongXong = khsx.reduce((sum, item) => sum + item.daHoanThanh, 0);
   const tienDo = tongSL ? (tongXong / tongSL) * 100 : 0;
+  
   const formInitial: Record<string, string> = editing ? {
     maKHSX: editing.maKHSX,
     maSP: editing.maSP || "",
@@ -41,21 +45,37 @@ export default function KeHoachSXPage() {
     trangThai: "Lên kế hoạch",
   };
 
-  const taoLenhCat = (item: KHSX) => {
-    localStorage.setItem("lenhCatDraft", JSON.stringify({
-      khsxId: item.id,
-      maSP: item.maSP || "",
-      tenSP: item.tenSP || item.sanPham,
-      loaiSP: item.loaiSP || "BoTru",
-      tongSL: item.soLuong,
-      ngayBatDau: item.tuNgay,
-      hanHoanThanh: item.denNgay,
-      tiLeSize: item.tiLeSize || "1:2:2:1",
-      dsMau: item.dsMau || [],
-      ghiChu: `Tạo từ kế hoạch ${item.maKHSX}`,
-    }));
-    localStorage.setItem("mimin_open_lenh_cat", "1");
-    router.push("/lenh-cat");
+  const taoLenhCat = async (item: KHSX) => {
+    try {
+      const newId = generateLenhCatId(dsLenhCat);
+      const now = new Date().toISOString().slice(0, 10);
+      
+      const newLenhCat = {
+        id: newId,
+        loaiLenh: "HangNha" as const,
+        loaiSP: (item.loaiSP as any) || "BoTru",
+        maSP: item.maSP || "",
+        tenSP: item.tenSP || item.sanPham,
+        tongSL: item.soLuong,
+        hanHoanThanh: item.denNgay,
+        tiLeSize: item.tiLeSize || "1:2:2:1",
+        dsMau: item.dsMau || [],
+        dsPhuLieu: [],
+        phanCong: [],
+        chiPhiCoDinh: {},
+        phuTrachCat: "NV006",
+        ghiChu: `Tạo từ kế hoạch ${item.maKHSX}`,
+        trangThai: "Nhap" as const,
+        phienBanDinhMuc: 1,
+        ngayTao: now,
+      };
+
+      await themLenhCat(newLenhCat, user as any);
+      toast.success(`Đã chuyển ${item.maSP || item.sanPham} thành Lệnh cắt ${newId}`);
+      router.push("/lenh-cat");
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi tạo lệnh cắt");
+    }
   };
 
   return <div className="space-y-5 animate-fade-in">
