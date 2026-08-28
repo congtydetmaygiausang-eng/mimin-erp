@@ -56,7 +56,13 @@ function loadData(): KHSX[] {
 
 function saveData(items: KHSX[]) {
   if (typeof window === "undefined") return;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+  try { 
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); 
+  } catch (e: any) { 
+    console.error("[KHSX] Lỗi lưu localStorage:", e);
+    // @ts-ignore
+    if (window.toast) window.toast.error("Lỗi hệ thống: Không thể lưu dữ liệu kế hoạch sản xuất vào máy tính (" + e.message + ")");
+  }
 }
 
 function persist(item: KHSX) {
@@ -67,44 +73,53 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
   const [khsx, setKHSX] = useState<KHSX[]>([]);
 
   useEffect(() => {
-    // Initial load from local storage
+    // Đảm bảo chỉ chạy 1 lần
     const localData = loadData();
     setKHSX(localData);
+    console.log("[KHSX] Mount: loadData returned", localData.length);
+    // @ts-ignore
+    if (window.toast) window.toast.info(`[System] Đã load ${localData.length} KHSX từ bộ nhớ`, { duration: 2000 });
 
     if (!isSupabaseEnabled) return;
+    
     let active = true;
-    supabaseFetchAllRaw<RemoteKHSX>("khsx", "created_at", false).then((remote) => {
-      const normalized = remote.map((item) => ({
-        ...item,
-        maKHSX: item.maKHSX || item.maKhsx || "",
-        maSP: item.maSP || item.maSp,
-        tenSP: item.tenSP || item.tenSp,
-        loaiSP: item.loaiSP || item.loaiSp,
-      }));
-      if (active) { 
-        // Đọc lại từ localStorage để đảm bảo không bị ảnh hưởng bởi React batching state "trễ"
+    supabaseFetchAllRaw<RemoteKHSX>("khsx", "created_at", false)
+      .then((remote) => {
+        if (!active) return;
+        const normalized = remote.map((item) => ({
+          ...item,
+          maKHSX: item.maKHSX || item.maKhsx || "",
+          maSP: item.maSP || item.maSp,
+          tenSP: item.tenSP || item.tenSp,
+          loaiSP: item.loaiSP || item.loaiSp,
+        }));
+        
+        // Luôn luôn đọc lại bản mới nhất từ localStorage trước khi merge
         const currentLocal = loadData();
         const remoteIds = new Set(normalized.map((r) => r.id));
         const merged = [
           ...normalized,
           ...currentLocal.filter((x) => !remoteIds.has(x.id)),
         ];
+        
         saveData(merged);
         setKHSX(merged);
-      }
-    });
+      })
+      .catch((err) => console.error("Lỗi fetch khsx:", err));
+      
     return () => { active = false; };
   }, []);
 
   const themKHSX = useCallback((item: Omit<KHSX, "id">, user: AppUser | null) => {
     const created: KHSX = { ...item, id: `KHSX-${Date.now()}`, ngayTao: new Date().toISOString().slice(0, 10), nguoiTao: user?.id || user?.name };
     
-    // Đọc và lưu trực tiếp xuống localStorage (100% đồng bộ, không sợ React batching hay chuyển trang làm mất)
+    // Ép kiểu đồng bộ tuyệt đối:
+    // Đọc -> Thêm -> Ghi ngay lập tức
     const currentLocal = loadData();
     const nextLocal = [created, ...currentLocal];
     saveData(nextLocal);
     
-    // Vẫn cập nhật React state cho UI
+    // Cập nhật giao diện
     setKHSX((prev) => [created, ...prev]);
     persist(created);
     logWorkflow(user, "create", created.maKHSX, created.id);
