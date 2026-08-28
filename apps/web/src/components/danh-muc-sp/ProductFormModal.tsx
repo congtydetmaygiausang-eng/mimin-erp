@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
@@ -147,18 +147,20 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
 
   if (!mounted) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div 
-        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col animate-slide-up my-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="p-4 bg-[#2B4C3E] text-white flex justify-between items-center rounded-t-2xl">
-          <h2 className="text-xl font-bold flex items-center gap-2"><Package className="w-5 h-5"/> TẠO SẢN PHẨM MỚI</h2>
-          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+  return (
+    <ResponsiveModal
+      open={true}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2 text-[#2B4C3E]">
+          <Package className="w-5 h-5"/> 
+          <span>TẠO SẢN PHẨM MỚI</span>
         </div>
-
-        <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-5 bg-slate-50">
+      }
+      maxWidth="2xl"
+    >
+      <div className="flex flex-col bg-slate-50 h-full">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-5">
           <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm mb-2 shadow-sm">
             <strong>Lưu ý:</strong> Đây là các trường dữ liệu bắt buộc để có thể liên kết tự động khi tạo Lệnh Cắt (KHSX).
           </div>
@@ -447,14 +449,13 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
 
         </div>
 
-        <div className="p-4 border-t border-slate-200 bg-white flex justify-end gap-3 rounded-b-2xl">
+        <div className="p-4 border-t border-slate-200 bg-white flex justify-end gap-3 sticky bottom-0 z-10">
           <button onClick={onClose} className="px-5 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Hủy</button>
           <button onClick={handleSave} className="px-5 py-2 font-bold text-white bg-[#2B4C3E] hover:bg-[#2B4C3E]/90 rounded-lg flex items-center gap-2 shadow-md">
             <Save className="w-4 h-4" /> Lưu Sản Phẩm
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </ResponsiveModal>
   );
 }

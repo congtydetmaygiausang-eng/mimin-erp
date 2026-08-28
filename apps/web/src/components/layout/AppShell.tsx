@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sidebar, MobileMenu as MobileSidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { BottomNav } from "./BottomNav";
 import { FloatingAI } from "@/components/FloatingAI";
 
 export function AppShell({ children, moduleClass = "bg-module-default" }: { children: React.ReactNode; moduleClass?: string }) {
@@ -45,6 +46,7 @@ export function AppShell({ children, moduleClass = "bg-module-default" }: { chil
         </main>
       </div>
 
+      <BottomNav onMenuClick={() => setMobileOpen(true)} />
       <FloatingAI />
     </div>
   );

@@ -46,6 +46,13 @@ export default function LenhCatPage() {
   const [showDanhSachMau, setShowDanhSachMau] = useState(false);
 
   useEffect(() => {
+    const editIdToOpen = localStorage.getItem("mimin_edit_lenh_cat_id");
+    if (editIdToOpen) {
+      localStorage.removeItem("mimin_edit_lenh_cat_id");
+      setEditId(editIdToOpen);
+      setShowModal(true);
+      return;
+    }
     if (localStorage.getItem("mimin_open_lenh_cat") === "1") {
       localStorage.removeItem("mimin_open_lenh_cat");
       setEditId(null);

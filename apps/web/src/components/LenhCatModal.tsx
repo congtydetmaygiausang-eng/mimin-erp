@@ -27,7 +27,7 @@ import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
-import { Portal } from "@/components/ui/Portal";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import {
   type LenhCat, type LoaiSP, type MauVai, type LenhCatPhuLieu,
   type PhanCongGiaCong, type TrangThaiLenhCat, type LoaiLenh,
@@ -864,7 +864,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     onClose();
   };
 
-  if (!open) return null;
+  if (!isOpen) return null;
 
   // ============ Calculate Auto Values ============
   const validTongSL = (tongSL || 1) as number;
@@ -988,12 +988,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const giaVonBinhQuan = binhQuanVai + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
-    <Portal>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-0 md:p-4 animate-fade-in">
-      <div
-        className="bg-[#2B4C3E] rounded-none md:rounded-xl shadow-2xl w-full h-full md:w-[99vw] md:h-[97vh] max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-0 md:border-4 border-[#2B4C3E]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ResponsiveModal
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="full"
+      className="bg-[#2B4C3E] text-white"
+      overlayClassName="bg-black/60 backdrop-blur-sm"
+    >
+      <div className="w-full h-[95vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center gap-4 px-5 py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -1171,23 +1173,6 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     )}
                   </div>
                   
-                  {/* Selected Product Preview */}
-                  {maSP && (() => {
-                    const sp = dsSanPham.find(s => s.id === maSP);
-                    if (sp) {
-                      const spImg = sp.hinhAnh || sp.dsMau?.[0]?.img || "https://placehold.co/100x100/e2e8f0/64748b?text=No+Image";
-                      return (
-                        <div className="w-full md:w-64 shrink-0 flex items-center gap-3 p-2 bg-white rounded-lg border border-blue-100 shadow-sm">
-                          <img src={spImg} alt={sp.tenSP} className="w-12 h-12 rounded object-cover border border-slate-200" />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-sm text-slate-800 truncate">{sp.tenSP}</div>
-                            <div className="text-xs text-slate-500 font-mono mt-0.5">{sp.id} • {LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP}</div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
                 </div>
               </div>
 
@@ -1275,6 +1260,44 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 </div>
               </div>
             </div>
+
+            {/* Selected Product Banner Preview at the bottom of the section */}
+            {(maSP || tenSP) && (() => {
+              const sp = dsSanPham.find(s => s.id === maSP);
+              const spImg = sp?.hinhAnh || sp?.dsMau?.[0]?.img || dsMau?.[0]?.img || "https://placehold.co/400x400/e2e8f0/64748b?text=No+Image";
+              const spTen = sp?.tenSP || tenSP || "Chưa có tên SP";
+              const spId = sp?.id || maSP || "Chưa có mã SP";
+              const spLoai = sp ? (LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP) : (LOAI_SP_LABELS[loaiSP] || loaiSP);
+              const totalColors = sp?.dsMau?.length || soMau || 1;
+              
+              return (
+                <div className="mt-6 p-4 md:p-5 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center">
+                  <div className="relative w-full md:w-32 md:h-32 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center">
+                    <img src={spImg} alt={spTen} className="w-full h-full object-cover" />
+                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm uppercase">
+                      {spLoai}
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col min-w-0 w-full">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-1 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-md font-mono">{spId}</span>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-md">{totalColors} MÀU</span>
+                        </div>
+                        <h3 className="text-lg md:text-xl font-bold text-slate-800 truncate mb-1">{spTen}</h3>
+                        <div className="text-sm font-medium text-slate-500 mb-2">Tỉ lệ size: <span className="text-slate-700">{tiLeSize}</span></div>
+                      </div>
+                      
+                      <div className="flex items-center md:flex-col md:items-end gap-2 shrink-0 bg-slate-50 p-2 md:p-3 rounded-lg border border-slate-100">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng dự kiến</span>
+                        <div className="text-xl md:text-2xl font-black text-amber-600 font-mono">{tongSL.toLocaleString()} <span className="text-sm font-bold text-slate-500">SP</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* SƠ ĐỒ ÁO/QUẦN (PLT) - dùng chiều dài sơ đồ để tự tính định mức kg/SP */}
@@ -2686,7 +2709,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   {/* Modal Tạo Mẫu Công Đoạn */}
   {showTaoMauCD && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
         <div className="space-y-3 mb-6">
@@ -2761,7 +2784,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   {/* Modal Tạo Mẫu Chi Phí Cố Định */}
   {showTaoMauChiPhi && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Mới</h3>
         <div className="space-y-3 mb-6">
@@ -2843,8 +2866,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         defaultPrompt={buildAiPrompt(aiMockupIdx)}
       />
     )}
-  </div>
-  </Portal>
+  </ResponsiveModal>
   );
 
 }

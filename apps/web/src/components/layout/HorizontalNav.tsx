@@ -147,13 +147,13 @@ export function HorizontalNav() {
 
       {/* === HÀNG 1: Tìm kiếm, Thông báo, Theme, Avatar === */}
       <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 h-14 border-b border-[#0d4a59]">
-        <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
-            M
+        <Link href="/dashboard" className="flex items-center gap-3 shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white font-extrabold text-sm shadow-sm border border-white/20 overflow-hidden">
+            <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
           </div>
           <div className="hidden sm:block leading-tight">
-            <div className="text-sm font-extrabold text-white">MIMIN ERP</div>
-            <div className="text-[10px] text-white/70">Quản lý may mặc</div>
+            <div className="text-base font-black text-white drop-shadow-sm">MIMIN ERP</div>
+            <div className="text-xs text-white/80 font-medium">Quản lý may mặc</div>
           </div>
         </Link>
         <div className="flex items-center gap-2 shrink-0">
