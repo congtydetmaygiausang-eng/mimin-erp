@@ -127,11 +127,12 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
   const themKHSX = useCallback((item: Omit<KHSX, "id">, user: AppUser | null) => {
     const created: KHSX = { ...item, id: `KHSX-${Date.now()}`, ngayTao: new Date().toISOString().slice(0, 10), nguoiTao: user?.id || user?.name };
     
-    const currentLocal = loadData();
-    const nextLocal = [created, ...currentLocal];
-    saveData(nextLocal);
+    setKHSX((prev) => {
+      const nextLocal = [created, ...prev];
+      saveData(nextLocal);
+      return nextLocal;
+    });
     
-    setKHSX(nextLocal);
     persist(created);
     logWorkflow(user, "create", created.maKHSX, created.id);
     return created;
