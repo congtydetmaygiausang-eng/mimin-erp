@@ -67,29 +67,10 @@ function saveData(items: KHSX[]) {
 
 function persist(item: KHSX) {
   if (!isSupabaseEnabled) return;
-  const updateData = {
-    id: item.id,
-    ma_khsx: item.maKHSX,
-    ma_sp: item.maSP,
-    ten_sp: item.tenSP,
-    loai_sp: item.loaiSP,
-    ti_le_size: item.tiLeSize,
-    ds_mau: item.dsMau,
-    tuan: item.tuan,
-    tu_ngay: item.tuNgay,
-    den_ngay: item.denNgay,
-    san_pham: item.sanPham,
-    loai: item.loai,
-    so_luong: item.soLuong,
-    da_hoan_thanh: item.daHoanThanh,
-    xuong_phu_trach: item.xuongPhuTrach,
-    trang_thai: item.trangThai,
-    ghi_chu: item.ghiChu,
-    ngay_tao: item.ngayTao,
-    nguoi_tao: item.nguoiTao,
-    lenh_cat_id: item.lenhCatId,
-  };
-  supabaseUpsertRaw("khsx", updateData as any).catch((error) => console.error("[KHSX] Supabase upsert error:", error));
+  
+  // Bảng khsx trên Supabase của dự án này đang dùng cột camelCase (cùng tên với type KHSX)
+  // Nên ta không map sang snake_case nữa mà truyền thẳng dữ liệu item
+  supabaseUpsertRaw("khsx", item).catch((error) => console.error("[KHSX] Supabase upsert error:", error));
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
