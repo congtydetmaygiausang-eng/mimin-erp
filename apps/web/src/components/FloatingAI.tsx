@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   MessageSquare, X, Send, Sparkles, Loader2,
-  Minimize2, Maximize2, Warehouse, ArrowUpRight
+  Minimize2, Maximize2, Warehouse, ArrowUpRight, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
@@ -109,6 +109,14 @@ export function FloatingAI() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // DRAG & DROP STATE
+  const [pos, setPos] = useState({ x: 24, y: 24 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [overTrash, setOverTrash] = useState(false);
+  const dragRef = useRef({ startX: 0, startY: 0, initPosX: 0, initPosY: 0, dragging: false, moved: false });
+
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useSession();
@@ -129,12 +137,26 @@ export function FloatingAI() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Don't show on AI assistant page (already has full chat)
-  if (pathname === "/ai-assistant" || pathname === "/agents-chat") return null;
-
+  // Early return moved to the bottom to prevent React Error #300 (rendered fewer hooks)
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (localStorage.getItem("mimin_hide_ai") === "true") setIsHidden(true);
+      const savedPos = localStorage.getItem("mimin_ai_pos");
+      if (savedPos) {
+        try { setPos(JSON.parse(savedPos)); } catch(e) {}
+      } else {
+        setPos({ x: 24, y: window.innerWidth < 768 ? 80 : 24 }); // Mặc định góc trái dưới
+      }
+      
+      const handleRestore = () => setIsHidden(false);
+      window.addEventListener("mimin_restore_ai", handleRestore);
+      return () => window.removeEventListener("mimin_restore_ai", handleRestore);
+    }
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -257,13 +279,68 @@ export function FloatingAI() {
     setInput("");
   };
 
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY, initPosX: pos.x, initPosY: pos.y, dragging: true, moved: false };
+    setIsDragging(true);
+    setShowTrash(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!dragRef.current.dragging) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = dragRef.current.startY - e.clientY; 
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragRef.current.moved = true;
+    
+    setPos({ x: dragRef.current.initPosX + dx, y: dragRef.current.initPosY + dy });
+
+    if (e.clientY > window.innerHeight - 120 && Math.abs(e.clientX - window.innerWidth / 2) < 100) {
+      setOverTrash(true);
+    } else {
+      setOverTrash(false);
+    }
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!dragRef.current.dragging) return;
+    dragRef.current.dragging = false;
+    setIsDragging(false);
+    setShowTrash(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
+    if (overTrash) {
+      setIsHidden(true);
+      localStorage.setItem("mimin_hide_ai", "true");
+    } else {
+      localStorage.setItem("mimin_ai_pos", JSON.stringify(pos));
+      if (!dragRef.current.moved) setOpen(true);
+    }
+    setOverTrash(false);
+  };
+
+  if (pathname === "/ai-assistant" || pathname === "/agents-chat" || isHidden) return null;
+
   return (
     <>
+      {/* Trash Zone */}
+      {showTrash && !open && (
+        <div className={`fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-red-500/20 to-transparent z-[80] flex items-end justify-center pb-6 transition-all duration-300 pointer-events-none ${overTrash ? 'from-red-500/40 pb-8' : ''}`}>
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${overTrash ? 'bg-red-500 text-white scale-110 shadow-xl shadow-red-500/50' : 'bg-slate-800/80 text-slate-400 backdrop-blur-md'}`}>
+            <Trash2 className="w-8 h-8" />
+          </div>
+        </div>
+      )}
+
       {/* Floating AI Bubble */}
       {!open && (
         <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-20 right-6 md:bottom-6 z-[90] group"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          style={{ left: `${pos.x}px`, bottom: `${pos.y}px`, touchAction: "none" }}
+          className={`fixed z-[90] group ${isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab transition-all duration-300'}`}
           aria-label="Mở AI Assistant"
         >
           {/* Pulse rings */}
@@ -274,13 +351,13 @@ export function FloatingAI() {
             </>
           )}
           {/* Main bubble */}
-          <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${theme.bubbleGradient} shadow-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${theme.iconTextClass} overflow-hidden`}>
+          <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${theme.bubbleGradient} shadow-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${theme.iconTextClass} overflow-hidden pointer-events-none`}>
             {isImageAvatar ? (
-              <img src={agentAvatar} alt={theme.botName} className="w-full h-full object-cover" />
+              <img src={agentAvatar} alt={theme.botName} className="w-full h-full object-cover pointer-events-none" draggable={false} />
             ) : hasCharacterAvatar ? (
-              <span className="text-3xl sm:text-4xl drop-shadow" role="img" aria-label={theme.botName}>{agentAvatar}</span>
+              <span className="text-3xl sm:text-4xl drop-shadow pointer-events-none" role="img" aria-label={theme.botName} draggable={false}>{agentAvatar}</span>
             ) : (
-              <theme.BubbleIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" />
+              <theme.BubbleIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow pointer-events-none" />
             )}
           </div>
           {/* Label tooltip */}

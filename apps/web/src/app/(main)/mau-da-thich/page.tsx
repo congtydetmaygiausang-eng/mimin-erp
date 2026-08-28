@@ -65,18 +65,23 @@ export default function MauDaThichPage() {
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <MiminGroupTabs />
-      <section className="rounded-3xl bg-gradient-to-r from-rose-500 to-pink-600 p-6 text-white shadow-xl">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-semibold"><Heart className="h-4 w-4 fill-current" /> Công Cụ Nội Bộ · Mẫu sản phẩm</p>
-            <h1 className="mt-2 text-3xl font-black md:text-4xl">Mẫu đã thích</h1>
-            <p className="mt-2 text-sm">Các mẫu anh đã lưu từ Danh mục sản phẩm.</p>
-          </div>
-          <button onClick={() => void loadFavorites()} className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30" title="Tải lại"><RefreshCw className="h-5 w-5" /> Tải lại</button>
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4 pb-24 md:pb-20 animate-fade-in">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Heart className="w-6 h-6 text-rose-500" /> Mẫu đã thích
+          </h1>
+          <p className="text-sm opacity-70 mt-1">Các mẫu anh đã lưu từ Danh mục sản phẩm.</p>
         </div>
-      </section>
+        <button
+          onClick={() => void loadFavorites()}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/5 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10 transition shrink-0"
+        >
+          <RefreshCw className="w-4 h-4" /> Tải lại
+        </button>
+      </div>
+
+      <MiminGroupTabs />
 
       <section className="card flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="flex items-center gap-2 font-bold text-slate-700"><Heart className="h-5 w-5 text-rose-500 fill-rose-500" /> {favoriteIds.length} mẫu đã thích</div>

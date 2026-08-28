@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Bot, Building2, Factory, Boxes, Sparkles, Star, TrendingUp, Calendar, ShoppingCart } from "lucide-react";
+import { Bot, Building2, Factory, Boxes, Sparkles, Star, TrendingUp, Calendar, ShoppingCart, Search, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import AgentSearchBox from "@/components/sourcing/AgentSearchBox";
@@ -134,33 +134,26 @@ export default function MiminGroupOverviewPage() {
           </div>
           <Factory className="w-8 h-8 text-violet-400" />
         </Link>
-        <Link href="/mang-luoi-san-xuat/nha-cung-cap" className="card p-5 flex items-center justify-between hover:shadow-md transition">
+        <Link href="/mang-luoi-san-xuat/tim-doi-tac" className="card p-5 flex items-center justify-between hover:shadow-md transition">
           <div>
-            <h3 className="font-bold">Nhà cung cấp</h3>
-            <p className="text-xs opacity-60 mt-1">{roleCounts.MATERIAL_SUPPLIER + roleCounts.PACKAGING_FINISHER} NCC — vải, phụ liệu, bao bì, đóng gói...</p>
+            <h3 className="font-bold">Tìm đối tác AI</h3>
+            <p className="text-xs opacity-60 mt-1">Sử dụng AI Agent để tìm kiếm xưởng, nhà cung cấp...</p>
           </div>
-          <Boxes className="w-8 h-8 text-amber-400" />
+          <Search className="w-8 h-8 text-violet-400" />
         </Link>
-        <Link href="/mang-luoi-san-xuat/xuong-san-xuat?role=CUSTOMER" className="card p-5 flex items-center justify-between hover:shadow-md transition">
+        <Link href="/mang-luoi-san-xuat/danh-ba-doi-tac" className="card p-5 flex items-center justify-between hover:shadow-md transition">
           <div>
-            <h3 className="font-bold">Khách hàng</h3>
-            <p className="text-xs opacity-60 mt-1">{roleCounts.CUSTOMER} đầu ra sản xuất — brand, đại lý, đồng phục...</p>
+            <h3 className="font-bold">Danh bạ đối tác</h3>
+            <p className="text-xs opacity-60 mt-1">Danh sách công ty đã lưu, năng lực và xếp hạng</p>
           </div>
-          <span className="text-xs rounded-full bg-emerald-100 text-emerald-700 px-2 py-1 font-semibold">{ROLE_LABELS.CUSTOMER}</span>
+          <Building2 className="w-8 h-8 text-emerald-400" />
         </Link>
-        <Link href="/mang-luoi-san-xuat/lich-su-tim-kiem" className="card p-5 flex items-center justify-between hover:shadow-md transition">
+        <Link href="/mang-luoi-san-xuat/co-hoi-hop-tac" className="card p-5 flex items-center justify-between hover:shadow-md transition">
           <div>
-            <h3 className="font-bold">Lịch sử tìm kiếm AI</h3>
-            <p className="text-xs opacity-60 mt-1">Xem lại các lượt tìm kiếm và kết quả đã lưu</p>
+            <h3 className="font-bold">Cơ hội hợp tác</h3>
+            <p className="text-xs opacity-60 mt-1">Khám phá các yêu cầu báo giá và hợp đồng mở</p>
           </div>
-          <Sparkles className="w-8 h-8 text-cyan-400" />
-        </Link>
-        <Link href="/mang-luoi-san-xuat/cau-hinh-agent" className="card p-5 flex items-center justify-between hover:shadow-md transition">
-          <div>
-            <h3 className="font-bold">Cấu hình AI Agent</h3>
-            <p className="text-xs opacity-60 mt-1">Nạp hồ sơ công ty để AI hiểu ngữ cảnh sẵn</p>
-          </div>
-          <Bot className="w-8 h-8 text-violet-400" />
+          <Link2 className="w-8 h-8 text-indigo-400" />
         </Link>
       </div>
     </div>

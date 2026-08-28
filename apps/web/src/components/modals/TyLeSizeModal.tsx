@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Save, Scissors, Shirt, Package } from "lucide-react";
 import type { LenhCat, MauVai, PhanCongGiaCong } from "@/lib/data/lenh-cat-store";
+import { Portal } from "@/components/ui/Portal";
 
 interface Props {
   lc: LenhCat;
@@ -180,7 +181,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
                             onChange={e => handleSizeChange(khau.id, sIdx, Number(e.target.value))}
                             onFocus={e => e.target.select()}
                             disabled={daKhoa}
-                            className={`w-14 px-1 py-1 text-center border rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${loi > 0 ? "border-rose-300 bg-rose-50 text-rose-700" : du > 0 ? "border-sky-400 bg-sky-50 text-sky-700" : "border-slate-300 bg-white"}`}
+                            className={`w-14 px-1 py-1 min-h-[44px] text-center border rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${loi > 0 ? "border-rose-300 bg-rose-50 text-rose-700" : du > 0 ? "border-sky-400 bg-sky-50 text-sky-700" : "border-slate-300 bg-white"}`}
                             min="0"
                           />
                           {du > 0 && <div className="text-[9px] font-black text-sky-600 mt-0.5">+{du} dư</div>}
@@ -239,64 +240,66 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
   const sizesCat = catKhau ? tyLeChiTiet[catKhau.id] : null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <div>
-            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-sky-500" />
-              Nhập Tỷ Lệ Size Từng Khâu
-            </h2>
-            <div className="text-sm font-bold text-slate-500 mt-1">
-              Màu: <span className="text-sky-600">{mau.ten}</span> {mau.maVai ? `(${mau.maVai})` : ""}
+    <Portal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <div>
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-sky-500" />
+                Nhập Tỷ Lệ Size Từng Khâu
+              </h2>
+              <div className="text-sm font-bold text-slate-500 mt-1">
+                Màu: <span className="text-sky-600">{mau.ten}</span> {mau.maVai ? `(${mau.maVai})` : ""}
+              </div>
             </div>
+            <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-full transition-colors">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        {/* Body - bảng ngang: mỗi HÀNG là 1 khâu công đoạn, mỗi CỘT là 1 size */}
-        <div className="p-6 overflow-y-auto flex-1">
-          {khauList.length === 0 ? (
-            <div className="text-center text-slate-500 italic py-10">Chưa có phân công gia công nào để nhập tỷ lệ.</div>
-          ) : phanBoGoc.length === 0 ? (
-            <div className="text-center text-slate-500 italic py-10">Màu này chưa có phân bổ size ban đầu.</div>
-          ) : (
-            <div className="space-y-6">
-              {hasQuan ? (
-                <>
-                  {renderTable("1. Khâu Cắt Bộ", khauChungDau, null)}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    {renderTable("2. Gia Công Áo", khauAo, sizesCat, true)}
-                    {renderTable("3. Gia Công Quần", khauQuan, sizesCat, true)}
-                  </div>
-                  {renderTable("4. Hoàn Thiện (Đã Ghép Bộ)", khauChungCuoi, qcInitialSizesTruoc)}
-                </>
-              ) : (
-                renderTable("Quy Trình Gia Công", khauList, null)
-              )}
-            </div>
-          )}
-        </div>
+          {/* Body - bảng ngang: mỗi HÀNG là 1 khâu công đoạn, mỗi CỘT là 1 size */}
+          <div className="p-6 overflow-y-auto flex-1">
+            {khauList.length === 0 ? (
+              <div className="text-center text-slate-500 italic py-10">Chưa có phân công gia công nào để nhập tỷ lệ.</div>
+            ) : phanBoGoc.length === 0 ? (
+              <div className="text-center text-slate-500 italic py-10">Màu này chưa có phân bổ size ban đầu.</div>
+            ) : (
+              <div className="space-y-6">
+                {hasQuan ? (
+                  <>
+                    {renderTable("1. Khâu Cắt Bộ", khauChungDau, null)}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                      {renderTable("2. Gia Công Áo", khauAo, sizesCat, true)}
+                      {renderTable("3. Gia Công Quần", khauQuan, sizesCat, true)}
+                    </div>
+                    {renderTable("4. Hoàn Thiện (Đã Ghép Bộ)", khauChungCuoi, qcInitialSizesTruoc)}
+                  </>
+                ) : (
+                  renderTable("Quy Trình Gia Công", khauList, null)
+                )}
+              </div>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center gap-2 transition-colors shadow-sm"
-          >
-            <Save className="w-4 h-4" /> Lưu thông số
-          </button>
+          {/* Footer */}
+          <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center justify-center gap-2 transition-colors shadow-sm"
+            >
+              <Save className="w-4 h-4" /> Lưu thông số
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }

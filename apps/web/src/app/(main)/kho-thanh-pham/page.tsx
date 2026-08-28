@@ -207,29 +207,26 @@ export default function KhoThanhPhamPage() {
     const groupMaSP = newRows[0]?.maSP;
     if (groupMaSP) {
       const existingDM = dsDanhMuc.find(d => d.id === groupMaSP || d.maSP === groupMaSP);
-      const dsMauMoi = newRows.map((r) => ({
-        ten: r.mau,
-        maSKU: `${groupMaSP}-${r.mau}`,
-        dinhMuc: 0,
-        img: r.hinhAnh?.[0] || "",
-        video: r.video || "",
-      }));
+      const dsMauMoi = newRows.map((r) => {
+        const oldMau = existingDM?.dsMau.find(old => old.ten === r.mau);
+        return {
+          ten: r.mau,
+          maSKU: `${groupMaSP}-${r.mau}`,
+          dinhMuc: oldMau ? oldMau.dinhMuc : 0,
+          img: r.hinhAnh?.[0] || oldMau?.img || "",
+          video: r.video || oldMau?.video || "",
+        };
+      });
 
       const anhDaiDien = dsMauMoi.find(m => m.img)?.img || "";
       const giaBanDuKien = newRows[0]?.giaBanLe || 0;
       const giaVonDuKien = newRows[0]?.giaVon || 0;
 
       if (existingDM) {
-         // Cập nhật Danh mục SP đã có
-         const dsMauGop = [...existingDM.dsMau];
-         dsMauMoi.forEach(m => {
-           const idx = dsMauGop.findIndex(old => old.ten === m.ten);
-           if (idx >= 0) dsMauGop[idx] = m;
-           else dsMauGop.push(m);
-         });
+         // Ghi đè dsMau bằng danh sách màu thực tế từ Kho Thành Phẩm (xóa các màu rác/mặc định cũ)
          suaSP(existingDM.id, {
            giaBanDuKien: Math.max(existingDM.giaBanDuKien || 0, giaBanDuKien),
-           dsMau: dsMauGop,
+           dsMau: dsMauMoi,
            hinhAnh: existingDM.hinhAnh || anhDaiDien
          });
       } else {
@@ -238,7 +235,7 @@ export default function KhoThanhPhamPage() {
            id: groupMaSP,
            maSP: groupMaSP,
            tenSP: newRows[0]?.tenSP || groupMaSP,
-           loaiSP: newRows[0]?.phanLoai || "Áo",
+           loaiSP: (newRows[0]?.phanLoai as any) || "AoTru",
            giaBanDuKien,
            giaVonDuKien,
            tiLeSize: newRows[0]?.tiLeSize || "",

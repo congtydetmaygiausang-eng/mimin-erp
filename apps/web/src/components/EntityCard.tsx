@@ -40,6 +40,7 @@ export function EntityCard({
   children,
   contactPhone,
   compact = false,
+  titleAccessory,
 }: {
   name: string;
   subtitle?: ReactNode;
@@ -62,6 +63,7 @@ export function EntityCard({
   children?: ReactNode;
   contactPhone?: string;
   compact?: boolean;
+  titleAccessory?: ReactNode;
 }) {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -77,7 +79,10 @@ export function EntityCard({
         <Avatar name={name} src={avatarUrl} size={avatarSize} />
         <div className="flex-1 min-w-0">
           <div className={`flex gap-2 ${compact ? "flex-col items-start gap-0.5" : "items-center"}`}>
-            <h3 className={`font-bold ${compact ? "text-sm leading-tight whitespace-normal break-words" : "truncate text-base"}`}>{name}</h3>
+            <div className="flex items-center gap-1">
+              <h3 className={`font-bold ${compact ? "text-sm leading-tight whitespace-normal break-words" : "truncate text-base"}`}>{name}</h3>
+              {titleAccessory}
+            </div>
             {rating !== undefined && (
               <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map((s) => (

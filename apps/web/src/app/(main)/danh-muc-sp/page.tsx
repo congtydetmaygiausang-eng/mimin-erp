@@ -116,7 +116,12 @@ export default function DanhMucSanPhamPage() {
           ngayTao: new Date().toISOString().slice(0, 10),
         }),
         tenSP: current?.tenSP || item.tenSP || item.maSP,
-        dsMau: current?.dsMau?.length ? current.dsMau : (colors.length ? colors : []),
+        dsMau: colors.length 
+          ? colors.map(c => {
+              const existing = current?.dsMau?.find(x => x.ten === c.ten);
+              return existing ? { ...c, dinhMuc: existing.dinhMuc || 0, img: existing.img || c.img, video: existing.video, hinhAnhChiTiet: existing.hinhAnhChiTiet } : c;
+            })
+          : (current?.dsMau || []),
         bangSize: current?.bangSize?.sizes?.length
           ? current.bangSize
           : (sizes.length ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length } : { sizes: [], ratios: [], riSo: 1 }),
@@ -293,7 +298,6 @@ export default function DanhMucSanPhamPage() {
         dinhMuc: mau.dinhMuc || 0,
         slDuKien: 0,
         ghiChu: "",
-        img: mau.img || "",
         phanBoSize: (sp.bangSize?.sizes || []).map((size) => ({ size, sl: 0 })),
       })),
       tuan: "",

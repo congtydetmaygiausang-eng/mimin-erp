@@ -131,7 +131,7 @@ function statusLabel(status:DiscoveryStatus):string{
   return "Đã loại";
 }
 
-export default function CongTyDaLuuPage(){
+export default function DanhBaDoiTacPage(){
   const[items,setItems]=useState<DiscoveryCandidate[]>([]);
   const[loading,setLoading]=useState(true);
   const[updatingId,setUpdatingId]=useState("");
@@ -261,7 +261,7 @@ export default function CongTyDaLuuPage(){
   };
 
   return <div className="space-y-5 animate-fade-in">
-    <PageHeader moduleLabel="MIMIN ERP — Mạng lưới sản xuất" title="Công ty đã lưu" subtitle="Quản lý vùng chờ Supabase; chỉ hồ sơ được duyệt mới đi vào danh mục đối tác chính thức." icon={<Building2 className="w-5 h-5"/>} actions={<div className="flex flex-wrap gap-2"><button type="button" onClick={()=>setShowImport(current=>!current)} className="btn-secondary inline-flex items-center gap-2"><FileSpreadsheet className="w-4 h-4"/>Nhập Excel</button><Link href="/mang-luoi-san-xuat" className="btn-secondary inline-flex items-center gap-2"><Search className="w-4 h-4"/>Tìm thêm công ty</Link><button type="button" onClick={()=>void refresh()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className={`w-4 h-4 ${loading?"animate-spin":""}`}/>Làm mới</button></div>}/>
+    <PageHeader moduleLabel="MIMIN ERP — Mạng lưới sản xuất" title="Danh bạ đối tác" subtitle="Quản lý vùng chờ Supabase; chỉ hồ sơ được duyệt mới đi vào danh mục đối tác chính thức." icon={<Building2 className="w-5 h-5"/>} actions={<div className="flex flex-wrap gap-2"><button type="button" onClick={()=>setShowImport(current=>!current)} className="btn-secondary inline-flex items-center gap-2"><FileSpreadsheet className="w-4 h-4"/>Nhập Excel</button><Link href="/mang-luoi-san-xuat/tim-doi-tac" className="btn-secondary inline-flex items-center gap-2"><Search className="w-4 h-4"/>Tìm đối tác</Link><button type="button" onClick={()=>void refresh()} className="btn-secondary inline-flex items-center gap-2"><RefreshCw className={`w-4 h-4 ${loading?"animate-spin":""}`}/>Làm mới</button></div>}/>
 
     {showImport&&<div className="card p-4 space-y-4">
       <div className="flex items-center justify-between gap-3"><h2 className="font-bold inline-flex items-center gap-2"><FileSpreadsheet className="w-4 h-4 text-emerald-600"/>Nhập danh sách công ty từ Excel/CSV</h2><button type="button" onClick={()=>{setShowImport(false);setImportPreview([]);setImportFileName("")}} className="opacity-60 hover:opacity-100"><X className="w-4 h-4"/></button></div>

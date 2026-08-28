@@ -195,6 +195,23 @@ export async function POST(req: NextRequest) {
 
     if (!history.length) return NextResponse.json({ error: "Tin nhắn trống" }, { status: 400 });
 
+    const lastMessage = history[history.length - 1];
+    if (lastMessage.role === "user" && (lastMessage.content.trim() === "/kiem-tra-token" || lastMessage.content.trim() === "/check-tokens")) {
+      const { checkAllTokens } = await import("@/lib/sourcing/token-checker");
+      const md = await checkAllTokens();
+      
+      const stream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(encoder.encode(JSON.stringify({
+            message: { role: "assistant", content: md }
+          })));
+          controller.close();
+        }
+      });
+      return new Response(stream, { headers: { "Content-Type": "application/json" } });
+    }
+
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const minimaxKey = process.env.MINIMAX_API_KEY;
     if (!deepseekKey && !minimaxKey) {
@@ -202,8 +219,8 @@ export async function POST(req: NextRequest) {
     }
 
     let activeKey = deepseekKey || minimaxKey;
-    let activeUrl = deepseekKey ? "https://api.deepseek.com/v1/chat/completions" : "https://api.minimax.chat/v1/chat/completions";
-    let activeModel = deepseekKey ? "deepseek-chat" : "abab6.5s-chat";
+    let activeUrl = deepseekKey ? "https://api.deepseek.com/v1/chat/completions" : "https://api.minimax.io/v1/chat/completions";
+    let activeModel = deepseekKey ? "deepseek-chat" : "MiniMax-Text-01";
 
     const [agentConfig, activeProfiles] = await Promise.all([
       getAgentConfig(auth.client),
@@ -230,8 +247,8 @@ export async function POST(req: NextRequest) {
       if (!response.ok && deepseekKey && minimaxKey && activeKey === deepseekKey) {
         console.warn(`[agent] DeepSeek failed, fallback to MiniMax...`);
         activeKey = minimaxKey;
-        activeUrl = "https://api.minimax.chat/v1/chat/completions";
-        baseBody.model = "abab6.5s-chat";
+        activeUrl = "https://api.minimax.io/v1/chat/completions";
+        baseBody.model = "MiniMax-Text-01";
         response = await fetchWithTimeout(activeUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${activeKey}` },
