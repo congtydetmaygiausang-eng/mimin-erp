@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { X, Check, XCircle, AlertTriangle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 
 export interface ActionProposal {
   type: "action_proposal";
@@ -137,18 +138,16 @@ export function ActionConfirmModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
-      onClick={() => !executing && onClose()}
-      data-testid="action-confirm-modal"
+    <ResponsiveModal
+      open={open}
+      onClose={() => !executing && onClose()}
+      maxWidth="md"
+      className="bg-white rounded-2xl"
     >
-      <div
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex flex-col max-h-[92vh]">
         {/* Header */}
         <div
-          className={`flex items-center justify-between p-4 bg-gradient-to-r ${meta.color} text-white`}
+          className={`flex items-center justify-between p-4 bg-gradient-to-r ${meta.color} text-white shrink-0 -m-0 md:-m-0 rounded-b-none`}
         >
           <div className="flex items-center gap-2">
             <span className="text-2xl">{meta.icon}</span>
@@ -214,11 +213,11 @@ export function ActionConfirmModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t bg-slate-50">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 p-4 border-t bg-slate-50 shrink-0 rounded-b-2xl">
           <button
             onClick={handleReject}
             disabled={executing}
-            className="px-4 py-2 text-slate-700 font-medium text-sm hover:bg-slate-200 rounded-lg flex items-center gap-1.5 disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-3 sm:py-2 text-slate-700 font-medium text-sm hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5 disabled:opacity-50 min-h-[44px]"
           >
             <XCircle className="w-4 h-4" />
             Huỷ
@@ -227,7 +226,7 @@ export function ActionConfirmModal({
             onClick={handleApprove}
             disabled={executing}
             data-testid="btn-approve-action"
-            className={`px-4 py-2 bg-gradient-to-r ${meta.color} text-white font-bold text-sm rounded-lg hover:opacity-90 flex items-center gap-1.5 disabled:opacity-50`}
+            className={`w-full sm:w-auto px-4 py-3 sm:py-2 bg-gradient-to-r ${meta.color} text-white font-bold text-sm rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm min-h-[44px]`}
           >
             {executing ? (
               <>
@@ -243,6 +242,6 @@ export function ActionConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </ResponsiveModal>
   );
 }

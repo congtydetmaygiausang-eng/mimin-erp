@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Package } from "lucide-react";
 import { toast } from "sonner";
-import { Portal } from "@/components/ui/Portal";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 
 export interface NewOrderData {
   maSP: string;
@@ -67,22 +67,22 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
   };
 
   return (
-    <Portal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col" onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
-          <div className="sticky top-0 bg-gradient-to-r from-brand-500 to-cyan-500 text-white p-4 flex items-center justify-between z-10 shrink-0">
-            <div>
-              <div className="text-xs opacity-90">Tạo mới</div>
-              <h2 className="text-lg font-bold">Lệnh cắt mới</h2>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-              <X className="w-5 h-5" />
-            </button>
+    <ResponsiveModal
+      open={open}
+      onClose={onClose}
+      title={
+        <div className="flex items-center justify-between text-slate-800 dark:text-white w-full pr-4">
+          <div>
+            <div className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-0.5">Tạo mới</div>
+            <h2 className="text-lg font-bold">Lệnh cắt mới</h2>
           </div>
-
-          {/* Body */}
-          <div className="p-4 space-y-4 flex-1">
+        </div>
+      }
+      maxWidth="2xl"
+    >
+      <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900/50">
+        {/* Body */}
+        <div className="p-4 sm:p-6 flex-1 space-y-5 overflow-y-auto">
             {/* Loại SP */}
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 block">Loại sản phẩm *</label>
@@ -264,7 +264,7 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t flex flex-col sm:flex-row gap-3 shrink-0">
+          <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 flex flex-col sm:flex-row gap-3 shrink-0 sticky bottom-0 z-10 rounded-b-2xl">
             <button onClick={onClose} className="w-full sm:w-1/2 py-2.5 min-h-[44px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg font-semibold hover:bg-slate-200 transition-colors">
               Huỷ
             </button>
@@ -272,8 +272,7 @@ export default function NewOrderModal({ open, onClose, onCreate }: Props) {
               <Plus className="w-4 h-4" /> Tạo lệnh cắt
             </button>
           </div>
-        </div>
       </div>
-    </Portal>
+    </ResponsiveModal>
   );
 }

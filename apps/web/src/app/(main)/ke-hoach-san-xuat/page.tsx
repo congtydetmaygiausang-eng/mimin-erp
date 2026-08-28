@@ -59,7 +59,32 @@ export default function KeHoachSXPage() {
         tongSL: item.soLuong,
         hanHoanThanh: item.denNgay,
         tiLeSize: item.tiLeSize || "1:2:2:1",
-        dsMau: item.dsMau || [],
+        dsMau: (item.dsMau || []).map((mau) => {
+          let mergedImg = mau.img;
+          let mergedImgQuan = (mau as any).imgQuan;
+          if (!mergedImg && item.maSP) {
+            try {
+              // Dùng đúng key của danh mục sản phẩm (không phải v2)
+              const spRaw = localStorage.getItem("mimin_danh_muc_sp");
+              if (spRaw) {
+                const spList = JSON.parse(spRaw);
+                const sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
+                if (sp && sp.dsMau) {
+                  const spMau = sp.dsMau.find((sm: any) => sm.ten === mau.ten || sm.maSKU === mau.maSKU);
+                  if (spMau) {
+                    mergedImg = spMau.img || "";
+                    mergedImgQuan = spMau.imgQuan || "";
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+          return {
+            ...mau,
+            img: mergedImg || "",
+            imgQuan: mergedImgQuan || "",
+          };
+        }),
         dsPhuLieu: [],
         phanCong: [],
         chiPhiCoDinh: {},
@@ -72,6 +97,7 @@ export default function KeHoachSXPage() {
 
       await themLenhCat(newLenhCat, user as any);
       toast.success(`Đã chuyển ${item.maSP || item.sanPham} thành Lệnh cắt ${newId}`);
+      localStorage.setItem("mimin_edit_lenh_cat_id", newId);
       router.push("/lenh-cat");
     } catch (err: any) {
       toast.error(err.message || "Lỗi tạo lệnh cắt");

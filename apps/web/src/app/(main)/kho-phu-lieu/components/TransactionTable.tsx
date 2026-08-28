@@ -6,9 +6,9 @@ import type { GiaoDichKho } from "@/lib/data/kho-store";
 
 export function TransactionTable({ filteredGD }: { filteredGD: GiaoDichKho[] }) {
   return (
-    <div className="card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm tabular-nums">
+    <div className="card shadow-sm">
+      <div className="overflow-x-auto hidden md:block">
+        <table className="w-full text-sm tabular-nums border-collapse">
           <thead className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
             <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
               <th className="p-3">Mã GD</th>
@@ -42,6 +42,51 @@ export function TransactionTable({ filteredGD }: { filteredGD: GiaoDichKho[] }) 
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* MOBILE CARD VIEW */}
+      <div className="md:hidden flex flex-col gap-3 p-2">
+        {filteredGD.length === 0 ? (
+          <div className="p-8 text-center opacity-60 text-sm">Chưa có giao dịch</div>
+        ) : filteredGD.map((g) => (
+          <div key={g.id} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden p-3 space-y-2 relative">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="font-bold text-slate-800 text-sm">{g.tenVT}</div>
+                <div className="text-xs font-mono text-slate-500 mt-0.5">{g.maVT}</div>
+              </div>
+              <div>
+                {g.loai === "NHAP" ? (
+                  <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 text-[10px] font-bold">+NHẬP</span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">-XUẤT</span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100">
+              <div>
+                <div className="text-[10px] text-slate-400">Số lượng</div>
+                <div className="font-bold text-slate-700">{g.soLuong.toLocaleString("vi-VN")}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-slate-400">Đơn giá</div>
+                <div className="font-semibold text-slate-600">{g.donGia.toLocaleString("vi-VN")}đ</div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center bg-slate-50 p-2 rounded mt-1">
+              <div className="text-[10px] text-slate-500">
+                <div>{g.ngay}</div>
+                <div className="truncate w-24" title={g.nguoiThucHien}>{g.nguoiThucHien}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-slate-400">Tổng tiền</div>
+                <div className="font-bold text-emerald-600">{formatVND(g.thanhTien)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
