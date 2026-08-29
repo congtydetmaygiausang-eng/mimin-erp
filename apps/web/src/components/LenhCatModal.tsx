@@ -3027,7 +3027,6 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
 
       </div>
-    </div>
 
     {previewImage && (
       <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setPreviewImage(null)}>
