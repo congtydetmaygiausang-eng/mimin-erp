@@ -1196,21 +1196,21 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
             
             {/* ID + Ngày bắt đầu banner */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 p-3 bg-[#2B4C3E]/10 rounded-xl">
-              <div className="flex items-center justify-between md:justify-start gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase shrink-0">ID Lệnh cắt</span>
-                <span className="px-3 py-1 bg-[#2B4C3E] text-white rounded-lg text-sm font-bold tracking-widest shrink-0">
-                  {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between md:justify-start gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase shrink-0">Ngày bắt đầu</span>
-                <input type="date" className="flex-1 min-w-0 w-full md:w-auto px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
-              </div>
-              <div className="flex items-center justify-between md:justify-start gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase shrink-0">→ Hoàn thành</span>
-                <input type="date" className="flex-1 min-w-0 w-full md:w-auto px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
-              </div>
+            <div className="grid grid-cols-[100px_1fr] md:grid-cols-[120px_1fr_120px_1fr] items-center gap-y-3 gap-x-3 md:gap-x-6 mb-6 p-3 md:p-5 bg-gradient-to-r from-[#2B4C3E]/10 to-[#2B4C3E]/5 rounded-xl border border-[#2B4C3E]/20 shadow-sm w-full">
+              <span className="text-xs md:text-sm font-bold text-slate-600 uppercase">Mã Lệnh cắt</span>
+              <span className="px-2 py-1 md:px-4 md:py-1.5 bg-[#2B4C3E] text-white rounded-md md:rounded-lg text-xs md:text-base font-bold tracking-widest shadow-inner truncate">
+                {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
+              </span>
+              
+              <div className="hidden md:block col-span-2"></div>
+            </div>
+
+            <div className="grid grid-cols-[100px_1fr] md:grid-cols-[120px_1fr_120px_1fr] items-center gap-x-3 gap-y-3 md:gap-x-6 md:gap-y-4 mb-6 p-3 md:p-5 bg-slate-50 rounded-xl border border-slate-200 shadow-sm w-full">
+              <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Ngày bắt đầu</label>
+              <input type="date" className="w-full px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-base font-medium border border-slate-300 rounded md:rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
+              
+              <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Hoàn thành</label>
+              <input type="date" className="w-full px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-base font-medium border border-slate-300 rounded md:rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
@@ -1884,12 +1884,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   </div>
                 )}
                 
-                <div className="flex-1 bg-orange-50 border-2 border-orange-300 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm w-full">
-                  <span className="text-sm font-black text-orange-800 whitespace-nowrap">
-                    GIA CÔNG {congDoanInTheu?.toUpperCase() || "IN/THÊU"}{loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
+                <div className="flex-1 bg-orange-50 border-2 border-orange-300 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm w-full min-w-0">
+                  <span className="text-sm font-black text-orange-800 whitespace-nowrap shrink-0">
+                    GIA CÔNG IN/THÊU{loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
                   </span>
                   <select 
-                    className="flex-1 min-w-0 px-2 py-1.5 border border-orange-300 rounded text-sm focus:outline-none bg-white font-semibold text-orange-900"
+                    className="w-full flex-1 min-w-0 px-2 py-1.5 border border-orange-300 rounded text-sm focus:outline-none bg-white font-semibold text-orange-900"
                     value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id?.startsWith("in_theu"))?.nguoiMa || ""}
                     onChange={e => {
                       setPhanCong(p => {
@@ -1960,7 +1960,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm min-w-0">
                 <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG ÁO:</span>
                 <select 
-                  className="w-full min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                  className="w-full flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
                   value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.nguoiMa || ""}
                   onChange={e => {
                     setPhanCong(p => {
@@ -1983,9 +1983,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   <input 
                     type="number" min={0}
                     placeholder="0" 
-                    className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
+                    className="w-full md:w-24 px-2 py-1 border border-emerald-300 rounded text-sm bg-white text-right font-bold text-emerald-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.donGia || ""}
                     onChange={e => {
+                      const v = e.target.value === "" ? "" : Number(e.target.value);
                       setPhanCong(p => {
                         const next = [...(p as any[])];
                         const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
@@ -2001,7 +2002,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               {/* Box Quần (Chỉ hiện nếu là hàng Bộ) */}
               {loaiSP?.toLowerCase().includes("bo") && (
                 <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm min-w-0">
-                  <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG QUẦN:</span>
+                  <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG QUẦN:</span>
                   <select 
                     className="w-full flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
                     value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.nguoiMa || ""}
