@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useMemo, ReactNode } from "react";
 import type { SanPham } from "./san-pham";
-import { MOCK_DANH_MUC } from "./real-data";
 import { useSupabaseSync, camelToSnake } from "@/lib/supabase/sync-helper";
 import { isSupabaseEnabled, supabaseDelete } from "@/lib/supabase/client";
 
