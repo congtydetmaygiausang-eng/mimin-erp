@@ -125,11 +125,31 @@ export default function UiHoanThienPage() {
     }
   }
 
-  const tongSPDangHT = lcHT.reduce((s, lc) => {
+  const loDangHT = lcHT.filter(lc => {
+    if (lc.trangThai === "HoanThanh") return false;
     const htPCs = getHTPC(lc);
-    const dangLam = htPCs.some((pc: any) => pc.trangThaiCD === "dang_lam");
-    return dangLam ? s + (lc.tongSL || 0) : s;
-  }, 0);
+    // Đang hoàn thiện: Có ít nhất 1 khâu HT đang làm, hoặc có khâu đã xong nhưng chưa xong toàn bộ
+    const coDangLam = htPCs.some((pc: any) => pc.trangThaiCD === "dang_lam");
+    const coHoanThanh = htPCs.some((pc: any) => pc.trangThaiCD === "hoan_thanh");
+    const chuaXongHet = !htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+    return coDangLam || (coHoanThanh && chuaXongHet);
+  });
+
+  const tongSPDangHT = loDangHT.reduce((s, lc) => s + (lc.tongSL || 0), 0);
+
+  const loChoNhan = lcHT.filter(lc => {
+    if (lc.trangThai === "HoanThanh") return false;
+    const htPCs = getHTPC(lc);
+    // Chờ nhận: Tất cả các khâu HT đều chưa bắt đầu
+    return htPCs.every((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao");
+  });
+
+  const loHoanThanh = lcHT.filter(lc => {
+    // Hoàn thành: Đã đóng lệnh cắt, HOẶC tất cả khâu HT đã hoàn thành
+    if (lc.trangThai === "HoanThanh") return true;
+    const htPCs = getHTPC(lc);
+    return htPCs.length > 0 && htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+  });
 
   // Chỉ hiện lệnh đã có khai báo thật ở ít nhất 1 khâu, ưu tiên lệnh lỗi nhiều lên đầu
   const thongKeLoi = lcHT
@@ -146,17 +166,17 @@ export default function UiHoanThienPage() {
             <ClipboardList className="w-7 h-7 text-sky-600" /> Hoàn Thiện – Công việc
           </h1>
           <p className="text-sm font-bold text-slate-600 mt-1">
-            Ủi · Gấp mác · Đóng gói · Kiểm tra cuối
+            Ủi · Khuy nút · Gấp mác · Đóng gói · Kiểm tra cuối
           </p>
         </div>
 
         {/* KPI */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Lô đang hoàn thiện", value: lcHT.filter(lc => getHTPC(lc).some((pc: any) => pc.trangThaiCD === "dang_lam")).length, color: "text-amber-700", icon: Clock },
+            { label: "Lô đang hoàn thiện", value: loDangHT.length, color: "text-amber-700", icon: Clock },
             { label: "SP đang xử lý", value: tongSPDangHT, color: "text-sky-700", icon: Shirt },
-            { label: "Lô chờ nhận", value: lcHT.filter(lc => getHTPC(lc).every((pc: any) => !pc.trangThaiCD || pc.trangThaiCD === "cho_giao")).length, color: "text-slate-800", icon: Package },
-            { label: "Lô hoàn thành", value: lcHT.filter(lc => lc.trangThai === "HoanThanh").length, color: "text-emerald-700", icon: CheckCircle2 },
+            { label: "Lô chờ nhận", value: loChoNhan.length, color: "text-slate-800", icon: Package },
+            { label: "Lô hoàn thành", value: loHoanThanh.length, color: "text-emerald-700", icon: CheckCircle2 },
           ].map(k => (
             <div key={k.label} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
