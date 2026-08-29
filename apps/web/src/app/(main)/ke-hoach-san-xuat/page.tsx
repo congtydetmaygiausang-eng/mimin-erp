@@ -8,6 +8,7 @@ import { CrudModal } from "@/components/ui/CrudModal";
 import { useSession } from "@/components/session-provider";
 import { useKHSX, type KHSX, type TrangThaiKHSX } from "@/lib/data/khsx-store";
 import { useLenhCat, generateLenhCatId } from "@/lib/data/lenh-cat-store";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 
 const TRANG_THAI: TrangThaiKHSX[] = ["Lên kế hoạch", "Đang SX", "Hoàn thành", "Trễ hạn"];
 const XUONG = ["Tổ cắt", "Xưởng May 1 – Polomimin", "Xưởng May 2 – Polomimin", "Gia công ngoài"];
@@ -17,6 +18,7 @@ export default function KeHoachSXPage() {
   const { user } = useSession();
   const { khsx, themKHSX, suaKHSX, xoaKHSX } = useKHSX();
   const { dsLenhCat, themLenhCat } = useLenhCat();
+  const { dsSanPham } = useDanhMucSP();
   
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<KHSX | null>(null);
@@ -50,28 +52,52 @@ export default function KeHoachSXPage() {
       const newId = generateLenhCatId(dsLenhCat);
       const now = new Date().toISOString().slice(0, 10);
       
-      const newLenhCat = {
+      const sp = dsSanPham.find(p => p.id === item.maSP || p.id === item.sanPham || p.tenSP === item.sanPham);
+      let mappedDsMau: any[] = [];
+      let tiLeSize = item.tiLeSize || "1:2:2:1";
+      
+      if (sp) {
+        if (sp.tiLeSize) tiLeSize = sp.tiLeSize;
+        if (sp.dsMau && sp.dsMau.length > 0) {
+          mappedDsMau = sp.dsMau.map(m => ({
+            ten: m.ten,
+            maSKU: m.maSKU || "",
+            dinhMuc: m.dinhMuc || 0.25,
+            img: "", // Do not pass base64 img via localStorage to avoid QuotaExceededError. LenhCatModal will dynamically fetch it from dsSanPham.
+            maVai: "",
+            slDuKien: 0,
+            tonKho: 0,
+            tonMau: 0
+          }));
+        }
+      } else {
+        mappedDsMau = item.dsMau || [];
+      }
+
+      const draftLenhCat = {
         id: newId,
         loaiLenh: "HangNha" as const,
-        loaiSP: (item.loaiSP as any) || "BoTru",
+        loaiSP: (sp?.loaiSP as any) || (item.loaiSP as any) || "BoTru",
         maSP: item.maSP || "",
         tenSP: item.tenSP || item.sanPham,
         tongSL: item.soLuong,
         hanHoanThanh: item.denNgay,
-        tiLeSize: item.tiLeSize || "1:2:2:1",
-        dsMau: item.dsMau || [],
+        tiLeSize: tiLeSize,
+        dsMau: mappedDsMau,
         dsPhuLieu: [],
         phanCong: [],
         chiPhiCoDinh: {},
-        phuTrachCat: "NV006",
+        phuTrachCat: "",
         ghiChu: `Tạo từ kế hoạch ${item.maKHSX}`,
         trangThai: "Nhap" as const,
         phienBanDinhMuc: 1,
         ngayTao: now,
       };
 
-      await themLenhCat(newLenhCat, user as any);
-      toast.success(`Đã chuyển ${item.maSP || item.sanPham} thành Lệnh cắt ${newId}`);
+      // Lưu draft để trang /lenh-cat mở form Tạo mới có sẵn dữ liệu
+      localStorage.setItem("mimin_draft_lenh_cat", JSON.stringify(draftLenhCat));
+      localStorage.setItem("mimin_open_lenh_cat", "1");
+      
       router.push("/lenh-cat");
     } catch (err: any) {
       toast.error(err.message || "Lỗi tạo lệnh cắt");

@@ -141,7 +141,7 @@ const MAU_CARD_ACCENT = [
   { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-50/50", ring: "focus-within:ring-fuchsia-200" },
 ] as const;
 
-export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
+export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen: boolean; onClose: () => void; editId?: string | null; initialData?: any }) {
   const router = useRouter();
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
@@ -158,61 +158,78 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     sdt: nv.sdt || ""
   })), [dsNhanSu]);
 
-  // Sync editing data into states when editing changes
+  // Sync editing data or initialData into states
   useEffect(() => {
-    if (editing) {
-      setLoaiLenh(editing.loaiLenh);
-      setKhachHang(editing.khachHang || "");
-      setLoaiSP(editing.loaiSP);
-      setMaSP(editing.maSP);
-      setTenSP(editing.tenSP);
-      setTongSL(editing.tongSL);
-      setTongSLThucTe(editing.tongSLThucTe || "");
-      if (editing.ngayTao) setNgayBatDau(editing.ngayTao);
-      setHanHoanThanh(editing.hanHoanThanh);
-      setPhuTrachCat(editing.phuTrachCat || "NV006");
-      setPhuTrachSX(editing.phuTrachSX || "");
-      setPhuTrachSoDo(editing.phuTrachSoDo || "");
-      setGhiChu(editing.ghiChu || "");
-      setGhiChuKyThuat(editing.ghiChuKyThuat || "");
-      setTrangThai(editing.trangThai || "Nhap");
-      setTiLeSize(editing.tiLeSize || "1:2:2:1");
-      setSoMau(editing.dsMau?.length || 4);
-      setDsMau(editing.dsMau || []);
-      setDsPhuLieu(editing.dsPhuLieu || []);
-      setMauCongDoan(editing.mauCongDoan || "BoTheThao");
-      if (editing.phanCong) {
-        setPhanCong(editing.phanCong);
-        const inTheuItem = (editing.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
+    const data = editing || initialData;
+    if (data) {
+      setLoaiLenh(data.loaiLenh || "HangNha");
+      setKhachHang(data.khachHang || "");
+      setLoaiSP(data.loaiSP || "BoTru");
+      setMaSP(data.maSP || "");
+      setTenSP(data.tenSP || "");
+      setTongSL(data.tongSL || "");
+      setTongSLThucTe(data.tongSLThucTe || "");
+      if (data.ngayTao) setNgayBatDau(data.ngayTao);
+      setHanHoanThanh(data.hanHoanThanh || "");
+      setPhuTrachCat(data.phuTrachCat || "");
+      setPhuTrachSX(data.phuTrachSX || "");
+      setPhuTrachSoDo(data.phuTrachSoDo || "");
+      setGhiChu(data.ghiChu || "");
+      setGhiChuKyThuat(data.ghiChuKyThuat || "");
+      setTrangThai(data.trangThai || "Nhap");
+      setTiLeSize(data.tiLeSize || "1:2:2:1");
+      setSoMau(data.dsMau?.length || 4);
+      
+      let newDsMau = data.dsMau || [];
+      if (data.maSP && dsSanPham.length > 0) {
+        const foundSP = dsSanPham.find(p => p.id === data.maSP);
+        if (foundSP && foundSP.dsMau) {
+          newDsMau = newDsMau.map((m: any) => {
+            if (!m.img) {
+              const originalMau = foundSP.dsMau.find((om: any) => om.ten === m.ten);
+              if (originalMau?.img) {
+                return { ...m, img: originalMau.img };
+              }
+            }
+            return m;
+          });
+        }
+      }
+      setDsMau(newDsMau);
+      
+      setDsPhuLieu(data.dsPhuLieu || []);
+      setMauCongDoan(data.mauCongDoan || "BoTheThao");
+      if (data.phanCong) {
+        setPhanCong(data.phanCong);
+        const inTheuItem = (data.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
         if (inTheuItem) {
           if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
           else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
           else setLoaiInTheu("bo");
         }
       }
-      setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
-      setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
-      setSoDoChinh(editing.soDoChinh || "");
-      setPdfSoDoChinh(editing.pdfSoDoChinh || "");
-      setKhoSoDoChinh(editing.khoSoDoChinh || "");
-      setDaiSoDoChinh(editing.daiSoDoChinh || "");
-      setSoDoPhoi(editing.soDoPhoi || "");
-      setPdfSoDoPhoi(editing.pdfSoDoPhoi || "");
-      setKhoSoDoPhoi(editing.khoSoDoPhoi || "");
-      setDaiSoDoPhoi(editing.daiSoDoPhoi || "");
-      // FIX: 2 dòng dưới trước đây bị thiếu -> mở lại lệnh cắt để sửa sẽ mất ghi chú sơ đồ đã lưu
-      setGhiChuSoDoChinh(editing.ghiChuSoDoChinh || "");
-      setGhiChuSoDoPhoi(editing.ghiChuSoDoPhoi || "");
-      setDaCoSoDo(editing.daCoSoDo || false);
-      setDaiSoDoAo(editing.daiSoDoAo || "");
-      setSoDoAo(editing.soDoAo || "");
-      setDaiSoDoQuan(editing.daiSoDoQuan || "");
-      setSoDoQuan(editing.soDoQuan || "");
-      setHinhMauInTheu(editing.hinhMauInTheu || "");
-      setFileGocInTheu(editing.fileGocInTheu || "");
-      setGhiChuInTheu(editing.ghiChuInTheu || "");
+      setChiPhiCoDinh(data.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[data.loaiSP] || {});
+      setPhienBanDinhMuc(data.phienBanDinhMuc || 1);
+      setSoDoChinh(data.soDoChinh || "");
+      setPdfSoDoChinh(data.pdfSoDoChinh || "");
+      setKhoSoDoChinh(data.khoSoDoChinh || "");
+      setDaiSoDoChinh(data.daiSoDoChinh || "");
+      setSoDoPhoi(data.soDoPhoi || "");
+      setPdfSoDoPhoi(data.pdfSoDoPhoi || "");
+      setKhoSoDoPhoi(data.khoSoDoPhoi || "");
+      setDaiSoDoPhoi(data.daiSoDoPhoi || "");
+      setGhiChuSoDoChinh(data.ghiChuSoDoChinh || "");
+      setGhiChuSoDoPhoi(data.ghiChuSoDoPhoi || "");
+      setDaCoSoDo(data.daCoSoDo || false);
+      setDaiSoDoAo(data.daiSoDoAo || "");
+      setSoDoAo(data.soDoAo || "");
+      setDaiSoDoQuan(data.daiSoDoQuan || "");
+      setSoDoQuan(data.soDoQuan || "");
+      setHinhMauInTheu(data.hinhMauInTheu || "");
+      setFileGocInTheu(data.fileGocInTheu || "");
+      setGhiChuInTheu(data.ghiChuInTheu || "");
     }
-  }, [editing]);
+  }, [editing, initialData, dsSanPham]);
 
   // ============ Form state ============
   const [loaiLenh, setLoaiLenh] = useState<LoaiLenh>("HangNha");
@@ -366,7 +383,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     sp.tenSP.toLowerCase().includes(productSearch.toLowerCase())
   );
   
-  const [phuTrachCat, setPhuTrachCat] = useState("NV006");
+  const [phuTrachCat, setPhuTrachCat] = useState("");
   const [phuTrachSX, setPhuTrachSX] = useState("");
   const [phuTrachSoDo, setPhuTrachSoDo] = useState("");
   const [ghiChu, setGhiChu] = useState("");
@@ -753,7 +770,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     };
 
     const catStage = phanCong.find(x => x.tenCongDoan.toLowerCase().includes("cắt") || x.tenCongDoan.toLowerCase().includes("cat"));
-    const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "NV006";
+    const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "";
 
     if (editing) {
       suaLenhCat(editing.id, {
@@ -991,7 +1008,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     <Portal>
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-0 md:p-4 animate-fade-in">
       <div
-        className="bg-[#2B4C3E] rounded-none md:rounded-xl shadow-2xl w-full h-full md:w-[99vw] md:h-[97vh] max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-0 md:border-4 border-[#2B4C3E]"
+        className="bg-[#2B4C3E] rounded-none md:rounded-xl shadow-2xl w-full h-full max-w-full md:w-[99vw] md:h-[97vh] md:max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-0 md:border-4 border-[#2B4C3E]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1015,7 +1032,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -1281,10 +1298,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           <div className="bg-[#F3E8FC] p-5 rounded-lg border border-purple-200/80 shadow-sm mt-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
               <h2 className="text-xl font-bold text-purple-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
-              <div className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-md border border-purple-200">
+              <div className="flex items-center flex-wrap gap-2 bg-white/60 px-3 py-1.5 rounded-md border border-purple-200">
                 <span className="text-sm font-bold text-purple-800">Phụ trách sơ đồ:</span>
                 <select 
-                  className="px-2 py-1 text-sm border border-purple-300 rounded font-semibold text-purple-900 focus:outline-none bg-white min-w-[150px]"
+                  className="px-2 py-1 text-sm border border-purple-300 rounded font-semibold text-purple-900 focus:outline-none bg-white flex-1 min-w-0 sm:min-w-[150px]"
                   value={phuTrachSoDo}
                   onChange={e => setPhuTrachSoDo(e.target.value)}
                 >
@@ -1302,10 +1319,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>
               {/* Sơ đồ áo */}
               <div>
-                <div className="flex items-center justify-between mb-2 gap-2">
+                <div className="flex flex-wrap items-center justify-between mb-2 gap-2">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4" /> Sơ đồ áo (PLT)</label>
-                  <div className="flex items-center gap-2">
-                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
+                  <div className="flex items-center gap-2 max-w-full">
+                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-full min-w-0 sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
                     <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
                       {dinhMucAoTuDong ? dinhMucAoTuDong.toFixed(4) : "0"} kg/áo
                     </span>
@@ -1345,10 +1362,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               {/* Sơ đồ quần - chỉ hiện khi loại SP là Bộ */}
               {isBo && (
                 <div>
-                  <div className="flex items-center justify-between mb-2 gap-2">
+                  <div className="flex flex-wrap items-center justify-between mb-2 gap-2">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4 rotate-180" /> Sơ đồ quần (PLT)</label>
-                    <div className="flex items-center gap-2">
-                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
+                    <div className="flex items-center gap-2 max-w-full">
+                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-full min-w-0 sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
                       <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
                         {dinhMucQuanTuDong ? dinhMucQuanTuDong.toFixed(4) : "0"} kg/quần
                       </span>

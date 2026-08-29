@@ -27,14 +27,30 @@ export default function CongViecCatPage() {
   const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: any } | null>(null);
 
   function getPhanCongCat(lc: any) {
-    return lc.phanCong?.find((pc: any) => {
+    let pcCat = lc.phanCong?.find((pc: any) => {
       const isCat = pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt");
-      if (user?.laCongNhan) {
-        const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
-        return isCat && isMyTask;
+      if (user?.laCongNhan && isCat) {
+        if (pc.nguoiMa && pc.nguoiMa !== user.id && pc.nguoiMa !== user.maNV && !pc.nguoiTen?.includes(user.name)) {
+          return false;
+        }
+        return true;
       }
       return isCat;
     });
+
+    if (!pcCat) {
+      if (user?.laCongNhan && lc.phuTrachCat && lc.phuTrachCat !== user.id && lc.phuTrachCat !== user.maNV) {
+        return undefined;
+      }
+      pcCat = {
+        id: "cat",
+        tenCongDoan: "Cắt",
+        nguoiMa: lc.phuTrachCat || "",
+        trangThaiCD: "cho_giao",
+        catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" }
+      };
+    }
+    return pcCat;
   }
 
   // Lọc LC có công đoạn cắt CỦA TÔI, đang cần xử lý
