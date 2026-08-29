@@ -1066,25 +1066,21 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
             </div>
             
             {/* ID + Ngày bắt đầu banner */}
-            <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto_1fr] items-center gap-y-4 gap-x-6 mb-6 p-4 md:p-5 bg-gradient-to-r from-[#2B4C3E]/10 to-[#2B4C3E]/5 rounded-xl border border-[#2B4C3E]/20 shadow-sm w-full min-w-0">
-              <span className="text-xs md:text-sm font-bold text-slate-600 uppercase shrink-0">Mã Lệnh cắt</span>
-              <span className="px-3 md:px-4 py-1.5 bg-[#2B4C3E] text-white rounded-lg text-sm md:text-base font-bold tracking-widest shadow-inner inline-flex justify-center md:justify-start w-full md:w-auto">
+            <div className="grid grid-cols-[100px_1fr] md:grid-cols-[120px_1fr_120px_1fr] items-center gap-y-3 gap-x-3 md:gap-x-6 mb-6 p-3 md:p-5 bg-gradient-to-r from-[#2B4C3E]/10 to-[#2B4C3E]/5 rounded-xl border border-[#2B4C3E]/20 shadow-sm w-full">
+              <span className="text-xs md:text-sm font-bold text-slate-600 uppercase">Mã Lệnh cắt</span>
+              <span className="px-2 py-1 md:px-4 md:py-1.5 bg-[#2B4C3E] text-white rounded-md md:rounded-lg text-xs md:text-base font-bold tracking-widest shadow-inner truncate">
                 {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
               </span>
               
-              <div className="hidden md:block col-span-2"></div> {/* Spacer for desktop to force next row if needed, or adjust grid-cols */}
+              <div className="hidden md:block col-span-2"></div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 mb-6 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 shadow-sm">
-              <div className="flex flex-col gap-1.5 min-w-0">
-                <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Ngày bắt đầu</label>
-                <input type="date" className="w-full px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
-              </div>
+            <div className="grid grid-cols-[100px_1fr] md:grid-cols-[120px_1fr_120px_1fr] items-center gap-x-3 gap-y-3 md:gap-x-6 md:gap-y-4 mb-6 p-3 md:p-5 bg-slate-50 rounded-xl border border-slate-200 shadow-sm w-full">
+              <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Ngày bắt đầu</label>
+              <input type="date" className="w-full px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-base font-medium border border-slate-300 rounded md:rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
               
-              <div className="flex flex-col gap-1.5 min-w-0">
-                <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Hạn hoàn thành</label>
-                <input type="date" className="w-full px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
-              </div>
+              <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Hoàn thành</label>
+              <input type="date" className="w-full px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-base font-medium border border-slate-300 rounded md:rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
