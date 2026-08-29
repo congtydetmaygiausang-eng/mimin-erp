@@ -2801,21 +2801,42 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         </div>
 
         {/* Footer Buttons */}
-        <div className="sticky bottom-0 z-50 shrink-0 bg-white px-6 py-4 flex items-center justify-between border-t border-slate-200 rounded-b-xl gap-4">
-          {/* Left Actions */}
-          <div className="flex items-center gap-2">
+        <div className="sticky bottom-0 z-[100] shrink-0 bg-white p-3 md:px-6 md:py-4 flex flex-col md:flex-row items-stretch md:items-center justify-between border-t border-slate-200 rounded-b-xl gap-3 w-full">
+          
+          {/* Right Actions (Primary) - Đưa lên trên ở mobile */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 order-1 md:order-2 w-full md:w-auto">
+            {/* Tam cap 2: xac nhan lenh da du dieu kien */}
+            <button
+              className="flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all text-center justify-center"
+              onClick={() => handleSave("DaTao")}
+            >
+              Hoàn tất lệnh
+            </button>
+
+            {/* Tam cap 1 (CTA chinh): chuyen sang khau san xuat tiep theo */}
+            <button
+              className="flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] hover:bg-[#d9930f] transition-all shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+              onClick={() => handleSave("ChuyenTiep")}
+            >
+              <Send className="w-4 h-4" />
+              Chuyển khâu
+            </button>
+          </div>
+
+          {/* Left Actions (Secondary) - Nằm dưới ở mobile */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 order-2 md:order-1 w-full md:w-auto">
             <button
               onClick={onClose}
-              className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
+              className="px-3 py-1.5 md:py-2 rounded-lg text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
             >
               Đóng
             </button>
             
-            <span className="w-px h-6 bg-slate-200 mx-1" />
+            <span className="hidden md:block w-px h-6 bg-slate-200 mx-1" />
             
             {/* Tam cap 3: hanh dong nhe nhat - luu tam, chua can du dieu kien */}
             <button
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
+              className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
               onClick={() => handleSave("Nhap")}
             >
               Lưu nháp
@@ -2823,7 +2844,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             
             <button
               onClick={handleInPhieuGiaCong}
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2"
+              className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-slate-600 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-1.5"
             >
               <Printer className="w-4 h-4" /> In phiếu
             </button>
@@ -2831,12 +2852,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             <div className="relative">
               <button
                 onClick={() => setZaloPickerOpen(v => !v)}
-                className="px-4 py-2 rounded-lg font-semibold text-sm text-sky-600 bg-transparent border border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-sky-600 bg-transparent border border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center gap-1.5"
               >
                 <Share2 className="w-4 h-4" /> Zalo
               </button>
               {zaloPickerOpen && (
-                <div className="absolute bottom-full mb-2 left-0 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                <div className="absolute bottom-full mb-2 left-0 md:left-auto md:right-0 w-[calc(100vw-32px)] md:w-72 max-w-[280px] bg-white border border-slate-200 rounded-xl shadow-xl z-[150] overflow-hidden">
                   <div className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-50 border-b border-slate-200">
                     Chọn người nhận - họ chỉ thấy giá của chính mình
                   </div>
@@ -2857,27 +2878,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               )}
             </div>
           </div>
-          
-          {/* Right Actions */}
-          <div className="flex items-center gap-3">
 
-            {/* Tam cap 2: xac nhan lenh da du dieu kien */}
-            <button
-              className="px-5 py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all"
-              onClick={() => handleSave("DaTao")}
-            >
-              Hoàn tất lệnh
-            </button>
-
-            {/* Tam cap 1 (CTA chinh): chuyen sang khau san xuat tiep theo */}
-            <button
-              className="px-7 py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] hover:bg-[#d9930f] transition-all shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5 flex items-center gap-2"
-              onClick={() => handleSave("ChuyenTiep")}
-            >
-              <Send className="w-4 h-4" />
-              Chuyển khâu
-            </button>
-          </div>
+        </div>
 
 
   {/* Modal Tạo Mẫu Công Đoạn */}
