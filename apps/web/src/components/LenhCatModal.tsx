@@ -1465,11 +1465,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>
               {/* Sơ đồ áo */}
               <div>
-                <div className="flex items-center justify-between mb-2 gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4" /> Sơ đồ áo (PLT)</label>
-                  <div className="flex items-center gap-2">
-                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
-                    <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="flex-1 min-w-0 w-full sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
+                    <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap shrink-0">
                       {dinhMucAoTuDong ? dinhMucAoTuDong.toFixed(4) : "0"} kg/áo
                     </span>
                   </div>
@@ -1514,11 +1514,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               {/* Sơ đồ quần - chỉ hiện khi loại SP là Bộ */}
               {isBo && (
                 <div>
-                  <div className="flex items-center justify-between mb-2 gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4 rotate-180" /> Sơ đồ quần (PLT)</label>
-                    <div className="flex items-center gap-2">
-                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
-                      <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="flex-1 min-w-0 w-full sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
+                      <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap shrink-0">
                         {dinhMucQuanTuDong ? dinhMucQuanTuDong.toFixed(4) : "0"} kg/quần
                       </span>
                     </div>
