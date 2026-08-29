@@ -105,13 +105,16 @@ export default function KeHoachSXPage() {
   };
 
   return <div className="space-y-5 animate-fade-in">
-    <section className="rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-500 p-6 text-white shadow-xl">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div>
-        <p className="flex items-center gap-2 text-sm font-semibold"><Calendar className="h-4 w-4" /> MIMIN ERP · Sản xuất & Kế hoạch</p>
-        <h1 className="mt-2 text-3xl font-black md:text-4xl">Kế hoạch sản xuất</h1>
-        <p className="mt-2 text-sm">{khsx.length} kế hoạch · Tổng SL {tongSL.toLocaleString("vi-VN")} · Hoàn thành {tongXong.toLocaleString("vi-VN")} · Tiến độ {tienDo.toFixed(1)}%</p>
-        <div className="mt-4 h-2 w-80 max-w-full overflow-hidden rounded-full bg-white/25"><div className="h-full rounded-full bg-white" style={{ width: `${Math.min(tienDo, 100)}%` }} /></div>
-      </div><button onClick={() => { setEditing(null); setShowForm(true); }} className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30"><Plus className="h-5 w-5" /> Tạo KHSX</button></div>
+    <section className="rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-500 p-5 sm:p-6 text-white shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 w-full">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Calendar className="h-4 w-4" /> MIMIN ERP · Sản xuất & Kế hoạch</p>
+          <h1 className="mt-2 text-3xl font-black md:text-4xl">Kế hoạch sản xuất</h1>
+          <p className="mt-2 text-sm leading-relaxed">{khsx.length} kế hoạch · Tổng SL {tongSL.toLocaleString("vi-VN")} · Hoàn thành {tongXong.toLocaleString("vi-VN")} · Tiến độ {tienDo.toFixed(1)}%</p>
+          <div className="mt-4 h-2 w-full max-w-sm overflow-hidden rounded-full bg-white/25"><div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${Math.min(tienDo, 100)}%` }} /></div>
+        </div>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30 shrink-0"><Plus className="h-5 w-5" /> Tạo KHSX</button>
+      </div>
     </section>
 
     <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">{[

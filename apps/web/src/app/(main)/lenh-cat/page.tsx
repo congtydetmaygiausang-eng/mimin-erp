@@ -40,6 +40,7 @@ export default function LenhCatPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [draftData, setDraftData] = useState<any>(null);
   const [filterTrangThai, setFilterTrangThai] = useState<"ALL" | TrangThaiLenhCat>("ALL");
   const [expandedMauCD, setExpandedMauCD] = useState<string | null>(null);
   const [expandedMauCP, setExpandedMauCP] = useState<string | null>(null);
@@ -55,6 +56,17 @@ export default function LenhCatPage() {
     }
     if (localStorage.getItem("mimin_open_lenh_cat") === "1") {
       localStorage.removeItem("mimin_open_lenh_cat");
+      
+      const draftStr = localStorage.getItem("mimin_draft_lenh_cat");
+      if (draftStr) {
+        try {
+          setDraftData(JSON.parse(draftStr));
+        } catch (e) {
+          console.error("Lỗi parse draft data:", e);
+        }
+        localStorage.removeItem("mimin_draft_lenh_cat");
+      }
+      
       setEditId(null);
       setShowModal(true);
     }
@@ -234,8 +246,9 @@ export default function LenhCatPage() {
       {showModal && (
         <LenhCatModal
           isOpen={true}
-          onClose={() => { setShowModal(false); setEditId(null); }}
+          onClose={() => { setShowModal(false); setEditId(null); setDraftData(null); }}
           editId={editId}
+          initialData={draftData}
         />
       )}
     </div>

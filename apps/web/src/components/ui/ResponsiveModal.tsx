@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Drawer } from "vaul";
 import { X } from "lucide-react";
 
@@ -48,7 +49,7 @@ export function ResponsiveModal({
       full: "max-w-full m-4",
     }[maxWidth];
 
-    return (
+    const modalContent = (
       <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in`}>
         <div className={`absolute inset-0 ${overlayClassName}`} onClick={onClose} />
         <div className={`relative ${className} rounded-xl shadow-2xl w-full ${maxWidthClass} max-h-[90vh] flex flex-col animate-slide-up border border-slate-200 dark:border-white/10`}>
@@ -66,6 +67,11 @@ export function ResponsiveModal({
         </div>
       </div>
     );
+
+    if (typeof document !== "undefined") {
+      return createPortal(modalContent, document.body);
+    }
+    return modalContent;
   }
 
   // Mobile Bottom Sheet using Vaul
