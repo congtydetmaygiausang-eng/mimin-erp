@@ -124,12 +124,34 @@ export async function supabaseUpsertRaw<T extends { id: string }>(
   onConflict: string = "id"
 ): Promise<T | null> {
   if (!checkSupabase()) return null;
+  const payload = { ...row } as any;
+  if (onConflict !== 'id') delete payload.id;
+
   const { data, error } = await supabase!
     .from(table)
-    .upsert(row, { onConflict })
+    .upsert(payload, { onConflict })
     .select()
     .single();
   if (error) {
+    if (error.code === 'PGRST204' || error.message.includes('column')) {
+       const fallback = { ...payload } as any;
+       delete fallback.hinh_anh; delete fallback.trang_thai; delete fallback.chat_lieu;
+       delete fallback.ncc; delete fallback.da_ban; delete fallback.rating; delete fallback.luot_xem;
+       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien; delete fallback.ti_le_size;
+       delete fallback.bang_size; delete fallback.ds_mau; delete fallback.ghi_chu; delete fallback.ngay_tao;
+       
+       const { data: d2, error: e2 } = await supabase!
+         .from(table)
+         .upsert(fallback, { onConflict })
+         .select()
+         .single();
+         
+       if (e2) {
+         console.warn(`[Supabase] upsertRaw(${table}) fallback error:`, e2.message);
+         return null;
+       }
+       return (d2 as T) ?? null;
+    }
     console.warn(`[Supabase] upsertRaw(${table}) error:`, error.message, error.details);
     return null;
   }
@@ -229,7 +251,10 @@ export function useSupabaseSync<T extends { id: string }>(
     (async () => {
       try {
         if (checkSupabase()) {
-          const remote = await supabaseFetchAll<T>(table);
+          let remote = await supabaseFetchAll<any>(table);
+          if (options?.mapIn) {
+            remote = remote.map(options.mapIn);
+          }
           if (!cancelled) {
             if (remote.length > 0) {
               setDataState(remote);
@@ -285,7 +310,7 @@ export function useSupabaseSync<T extends { id: string }>(
           setDataState((prev) => {
             let next = [...prev];
             if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const newRow = payload.new as T;
+              const newRow = options?.mapIn ? options.mapIn(snakeToCamel(payload.new)) : (payload.new as T);
               const idx = next.findIndex((r) => r.id === newRow.id);
               if (idx >= 0) next[idx] = newRow;
               else next = [newRow, ...next];
