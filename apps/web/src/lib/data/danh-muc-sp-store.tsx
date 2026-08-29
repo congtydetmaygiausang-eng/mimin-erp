@@ -19,33 +19,10 @@ type StoreContext = {
 
 const DanhMucSPContext = createContext<StoreContext | undefined>(undefined);
 
-// Helper chuyển từ DB về App (kết hợp với dữ liệu local nếu DB thiếu cột do chưa chạy script SQL)
-function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
-  const local = localData.find(x => x.id === item.maSp);
-  return {
-    id: item.maSp,
-    tenSP: item.tenSp || local?.tenSP || "",
-    loaiSP: item.loaiSp || local?.loaiSP || "AoPolo",
-    giaBanDuKien: item.giaBanDuKien ?? local?.giaBanDuKien ?? 0,
-    giaVonDuKien: item.giaVonDuKien ?? local?.giaVonDuKien ?? 0,
-    tiLeSize: item.tiLeSize || local?.tiLeSize || "1:2:2:2:1",
-    bangSize: item.bangSize ? (typeof item.bangSize === 'string' ? JSON.parse(item.bangSize) : item.bangSize) : (local?.bangSize || { sizes: [], ratios: [], riSo: 1 }),
-    dsMau: item.dsMau ? (typeof item.dsMau === 'string' ? JSON.parse(item.dsMau) : item.dsMau) : (local?.dsMau || []),
-    ghiChu: item.ghiChu || local?.ghiChu || "",
-    ngayTao: item.ngayTao || local?.ngayTao || "",
-    trangThai: item.trangThai || local?.trangThai || "con-hang",
-    daBan: item.daBan ?? local?.daBan ?? 0,
-    ncc: item.ncc || local?.ncc || "",
-    chatLieu: item.chatLieu || local?.chatLieu || "",
-    luotXem: item.luotXem ?? local?.luotXem ?? 0,
-    rating: item.rating ?? local?.rating ?? 0,
-    hinhAnh: item.hinhAnh || local?.hinhAnh || "",
-  };
-}
 
 // Chuyển từ App lên DB (snake_case), bỏ qua các cột chưa có nếu DB cũ
 function buildDBPayload(sp: SanPham) {
-  return {
+  const payload: any = {
     ma_sp: sp.id,
     ma_dm: `DM-${sp.loaiSP}`,
     ten_sp: sp.tenSP,
@@ -61,7 +38,37 @@ function buildDBPayload(sp: SanPham) {
     chat_lieu: sp.chatLieu || "",
     luot_xem: sp.luotXem || 0,
     rating: sp.rating || 0,
-    hinh_anh: sp.hinhAnh || "",
+    hinh_anh: sp.hinhAnh && sp.hinhAnh.length > 0 ? sp.hinhAnh[0] : "",
+  };
+  if (sp.dbId) {
+    payload.id = sp.dbId;
+  }
+  return payload;
+}
+
+function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
+  // Use ma_sp for finding local match since local state uses ma_sp as id
+  const local = localData.find((x) => x.id === item.ma_sp);
+
+  return {
+    id: item.ma_sp || item.id, // Application ID (ma_sp string)
+    dbId: item.id, // UUID in database
+    tenSP: item.ten_sp || "Sản phẩm mới",
+    loaiSP: (item.loai_sp as any) || "AoCoTron",
+    giaBanDuKien: item.gia_ban_du_kien || 0,
+    giaVonDuKien: item.gia_von_du_kien || 0,
+    tiLeSize: item.ti_le_size || "1:2:2:2:1",
+    bangSize: item.bang_size || { sizes: [], ratios: [], riSo: 1 },
+    dsMau: item.ds_mau || [],
+    ghiChu: item.ghi_chu || "",
+    ngayTao: item.created_at ? item.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
+    hinhAnh: item.hinh_anh ? [item.hinh_anh] : (local?.hinhAnh || []),
+    trangThai: item.trang_thai || "con-hang",
+    ncc: item.ncc || "",
+    chatLieu: item.chat_lieu || "",
+    daBan: item.da_ban || 0,
+    rating: item.rating || 0,
+    luotXem: item.luot_xem || 0,
   };
 }
 
@@ -74,14 +81,14 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     } catch { return []; }
   };
 
-  const { data: dsSanPham, setData: setDsSanPham, loading, source } = useSupabaseSync<SanPham>(
+  const { data: dsSanPham, setData: setDsSanPham, loading } = useSupabaseSync<SanPham>(
     STORAGE_KEY,
     "san_pham",
     [],
     {
-      mapOut: (row) => ({ ...buildDBPayload(row), id: row.id }),
+      mapOut: (row) => buildDBPayload(row),
       mapIn: (row) => mapSanPhamFromDB(row, getLocalData()),
-      onConflict: "ma_sp"
+      onConflict: "id"
     }
   );
 
