@@ -21,9 +21,14 @@ export default function UiHoanThienPage() {
 
   function getHTPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
+      const tc = pc.tenCongDoan?.toLowerCase() || "";
       const isHT = pc.id === "ui" || pc.id === "dongGoi" ||
-                   pc.tenCongDoan?.toLowerCase().includes("ủi") ||
-                   pc.tenCongDoan?.toLowerCase().includes("đóng gói");
+                   tc.includes("ủi") ||
+                   tc.includes("đóng gói") ||
+                   tc.includes("khuy nút") ||
+                   tc.includes("gấp mác") ||
+                   tc.includes("kiểm tra") ||
+                   tc.includes("hoàn thiện");
 
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
@@ -33,21 +38,16 @@ export default function UiHoanThienPage() {
     }) || [];
   }
 
-  // LC chờ hoàn thiện: các công đoạn trước (May áo, May quần...) ĐÃ XONG (đủ bộ), chuẩn bị Ủy/Đóng gói
+  // LC chờ hoàn thiện: Lệnh cắt có chứa công đoạn Hoàn Thiện
   const lcHT = dsLenhCat.filter(lc => {
-    // 1. Phải có công đoạn HT của TÔI
+    // 1. Phải có công đoạn HT của TÔI (nếu là quản lý thì thấy tất cả HT)
     const htPCs = getHTPC(lc);
     if (htPCs.length === 0) return false;
 
-    // 2. Tất cả công đoạn gia công trước đó (Cắt, May, In...) phải hoàn thành thì mới "đủ bộ"
-    const prevPCs = lc.phanCong?.filter((pc: any) =>
-      !(pc.id === "ui" || pc.id === "dongGoi" ||
-        pc.tenCongDoan?.toLowerCase().includes("ủi") ||
-        pc.tenCongDoan?.toLowerCase().includes("đóng gói"))
-    ) || [];
-
-    // Nếu chưa hoàn thành tất cả công đoạn trước -> Chưa đủ bộ -> Không hiển thị ở Hoàn thiện
-    return prevPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+    // 2. Không cần ép buộc các khâu trước (May, In) phải 100% hoàn thành. 
+    // Trong xưởng thực tế, May ra tới đâu là HT nhận tới đó (nhận lắt nhắt).
+    // Nên chỉ cần LC chưa ở trạng thái "HoanThanh" hoặc đã hoàn thành HT thì vẫn hiển thị để xem.
+    return true;
   });
 
   const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
