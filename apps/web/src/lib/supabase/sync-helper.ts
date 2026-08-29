@@ -215,12 +215,21 @@ export function useSupabaseSync<T extends { id: string }>(
      * nguoiPhuTrach.ma). Trả về object snake_case hoàn chỉnh, kể cả `id`.
      */
     mapOut?: (row: T) => Record<string, any> & { id: string };
+    /**
+     * Map thủ công 1 row snake_case từ Supabase → row app.
+     */
+    mapIn?: (row: any) => T;
+    /**
+     * Cột để check conflict khi upsert (mặc định 'id')
+     */
+    onConflict?: string;
   }
 ) {
   const mapOut = options?.mapOut;
+  const onConflict = options?.onConflict || "id";
   const upsertRow = useCallback(
-    (row: T) => (mapOut ? supabaseUpsertRaw(table, mapOut(row)) : supabaseUpsert(table, row)),
-    [table, mapOut]
+    (row: T) => (mapOut ? supabaseUpsertRaw(table, mapOut(row), onConflict) : supabaseUpsert(table, row, onConflict)),
+    [table, mapOut, onConflict]
   );
   const [data, setDataState] = useState<T[]>(initialData);
   const [loading, setLoading] = useState(true);

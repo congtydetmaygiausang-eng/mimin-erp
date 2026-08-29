@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, ReactNode } from "react";
-import type { SanPham } from "./san-pham";
+import type { SanPham, MauTieuChuan, BangSize } from "./san-pham";
+export type { SanPham, MauTieuChuan, BangSize };
 import { useSupabaseSync, camelToSnake } from "@/lib/supabase/sync-helper";
 import { isSupabaseEnabled, supabaseDelete } from "@/lib/supabase/client";
 
@@ -76,7 +77,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   const { data: dsSanPham, setData: setDsSanPham, loading, source } = useSupabaseSync<SanPham>(
     STORAGE_KEY,
     "san_pham",
-    MOCK_DANH_MUC,
+    [],
     {
       mapOut: (row) => ({ ...buildDBPayload(row), id: row.id }),
       mapIn: (row) => mapSanPhamFromDB(row, getLocalData()),
