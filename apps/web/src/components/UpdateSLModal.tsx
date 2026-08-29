@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { X, Save, Package, AlertTriangle, CheckCircle2, Calculator } from "lucide-react";
-import { Portal } from "@/components/ui/Portal";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 
 export interface UpdateSLPayload {
   soLuongDat: number;
@@ -54,14 +54,15 @@ export default function UpdateSLModal({ open, onClose, onSave, phieu, donGia, mo
   };
 
   return (
-    <Portal>
-      <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-        <div
-          className="w-full md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className={`p-4 bg-gradient-to-r ${moduleColor} text-white rounded-t-2xl flex items-center justify-between shrink-0`}>
+    <ResponsiveModal
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      className="bg-white rounded-t-2xl md:rounded-2xl"
+    >
+      <div className="flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className={`p-4 bg-gradient-to-r ${moduleColor} text-white rounded-t-2xl flex items-center justify-between shrink-0 -m-0 md:-m-0 rounded-b-none`}>
             <div>
               <div className="text-xs opacity-90">{moduleName}</div>
               <div className="font-bold text-lg">{phieu.maSP} - {phieu.phanLoai}</div>
@@ -175,7 +176,7 @@ export default function UpdateSLModal({ open, onClose, onSave, phieu, donGia, mo
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t flex flex-col sm:flex-row gap-3 shrink-0">
+          <div className="p-4 border-t flex flex-col sm:flex-row gap-3 shrink-0 rounded-b-2xl">
             <button onClick={onClose} className="w-full sm:w-1/2 py-3 min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors">
               Huỷ
             </button>
@@ -183,8 +184,7 @@ export default function UpdateSLModal({ open, onClose, onSave, phieu, donGia, mo
               <Save className="w-5 h-5" /> Lưu cập nhật
             </button>
           </div>
-        </div>
       </div>
-    </Portal>
+    </ResponsiveModal>
   );
 }

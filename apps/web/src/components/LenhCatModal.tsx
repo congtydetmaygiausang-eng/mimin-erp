@@ -21,13 +21,10 @@ import {
 import { toast } from "sonner";
 import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { useSupabaseSync } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
-
-import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
-import { Portal } from "@/components/ui/Portal";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import {
   type LenhCat, type LoaiSP, type MauVai, type LenhCatPhuLieu,
   type PhanCongGiaCong, type TrangThaiLenhCat, type LoaiLenh,
@@ -38,68 +35,162 @@ import {
   generateLenhCatId,
 } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
+import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
 
 
-const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, mappedNhanVien: any[]) => {
+type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
+
+const getAllOutsourceOptions = (suffix = "Gia công ngoài", excludePrefix?: string) => DOI_TAC_GIA_CONG
+  .filter(dt => !excludePrefix || !dt.ma.startsWith(excludePrefix))
+  .map(dt => ({
+    ma: dt.ma,
+    ten: `${dt.ma} - ${dt.tenDonVi} (${suffix})`,
+  }));
+
+const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions: NhanVienOption[]) => {
   const cd = (tenCongDoan || "").toLowerCase();
-  let recommended: any[] = [];
   
   // 1. Cắt
   if (cd.includes("cắt") || cd.includes("cat")) {
-    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("cắt") || (nv.ghiChu || "").toLowerCase().includes("cắt"))
-      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Cắt)` }));
+    return [
+      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("cắt") || (nv.ghiChu || "").toLowerCase().includes("cắt"))
+        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Cắt)` })),
+      ...getAllOutsourceOptions("Gia công ngoài - Cắt"),
+    ];
   }
+  
   // 2. Khuy nút
-  else if (cd.includes("khuy") || cd.includes("nút") || cd.includes("cúc")) {
-    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("khuy") || (nv.ghiChu || "").toLowerCase().includes("khuy"))
-      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Khuy nút)` }));
+  if (cd.includes("khuy") || cd.includes("nút") || cd.includes("cúc")) {
+    return [
+      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("khuy") || (nv.ghiChu || "").toLowerCase().includes("khuy"))
+        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Khuy nút)` })),
+      ...getAllOutsourceOptions("Gia công ngoài - Khuy nút"),
+    ];
   }
+  
   // 3. Ủi
-  else if (cd.includes("ủi") || cd.includes("ui")) {
-    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("ủi") || (nv.ghiChu || "").toLowerCase().includes("ủi"))
-      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Ủi)` }));
+  if (cd.includes("ủi") || cd.includes("ui")) {
+    return [
+      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("ủi") || (nv.ghiChu || "").toLowerCase().includes("ủi"))
+        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Ủi)` })),
+      ...getAllOutsourceOptions("Gia công ngoài - Ủi"),
+    ];
   }
+  
   // 4. Đóng Gói
-  else if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
-    recommended = mappedNhanVien.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
-      .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` }));
+  if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
+    return [
+      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
+        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` })),
+      ...getAllOutsourceOptions("Gia công ngoài - Đóng gói"),
+    ];
   }
+
   // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
-  else if (cd.includes("trụ") || cd.includes("tru") || (cd.includes("may áo") && (loaiSP === "AoTru" || loaiSP === "BoTru" || loaiSP === "AoPolo"))) {
-    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU"))
-      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Trụ)` }));
+  if (cd.includes("trụ") || cd.includes("tru") || (cd.includes("may áo") && (loaiSP === "AoTru" || loaiSP === "BoTru" || loaiSP === "AoPolo"))) {
+    return [
+      ...DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU"))
+        .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Trụ)` })),
+      ...getAllOutsourceOptions("Gia công ngoài", "GC-TRU"),
+    ];
   }
-  else if (cd.includes("tròn") || cd.includes("tron") || (cd.includes("may áo") && (loaiSP === "AoCoTron" || loaiSP === "BoCoTron"))) {
-    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRON"))
-      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Tròn)` }));
+  if (cd.includes("tròn") || cd.includes("tron") || (cd.includes("may áo") && (loaiSP === "AoCoTron" || loaiSP === "BoCoTron"))) {
+    return [
+      ...DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRON"))
+        .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Tròn)` })),
+      ...getAllOutsourceOptions("Gia công ngoài", "GC-TRON"),
+    ];
   }
-  else if (cd.includes("quần") || cd.includes("quan")) {
-    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-QUAN"))
-      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Quần)` }));
+  if (cd.includes("quần") || cd.includes("quan")) {
+    return [
+      ...DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-QUAN"))
+        .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công Quần)` })),
+      ...getAllOutsourceOptions("Gia công ngoài", "GC-QUAN"),
+    ];
   }
-  else if (cd.includes("in") || cd.includes("thêu") || cd.includes("dập")) {
-    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-IN"))
-      .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công In/Thêu)` }));
+  if (cd.includes("in") || cd.includes("thêu") || cd.includes("dập")) {
+    return [
+      ...DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-IN"))
+        .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công In/Thêu)` })),
+      ...getAllOutsourceOptions("Gia công ngoài - In/Thêu", "GC-IN"),
+    ];
   }
-  else if (cd.includes("may") || cd.includes("gia công") || cd.includes("outsource")) {
+
+  if (cd.includes("may") || cd.includes("gia công") || cd.includes("outsource")) {
     // Chỉ hiển thị các xưởng may nếu không phải in/thêu
-    recommended = DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU") || dt.ma.startsWith("GC-TRON") || dt.ma.startsWith("GC-QUAN"))
+    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU") || dt.ma.startsWith("GC-TRON") || dt.ma.startsWith("GC-QUAN"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
   }
 
-  const usedIds = new Set(recommended.map(x => x.ma));
-  const others = mappedNhanVien.filter(nv => !usedIds.has(nv.ma)).map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Nội bộ)` }));
-  const otherDT = DOI_TAC_GIA_CONG.filter(dt => !usedIds.has(dt.ma)).map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
-  
-  return [...recommended, ...others, ...otherDT];
+  return [
+    ...nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Nội bộ)` })),
+    ...DOI_TAC_GIA_CONG.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }))
+  ];
 };
 
 const isOutsourceStage = (tenCongDoan: string) => {
   const cd = (tenCongDoan || "").toLowerCase();
   return cd.includes("may") || cd.includes("in") || cd.includes("thêu") || cd.includes("dập") || cd.includes("gia công");
+};
+
+const isInTheuStage = (tenCongDoan: string) => {
+  const cd = (tenCongDoan || "").toLowerCase();
+  return cd.includes("in") || cd.includes("thêu") || cd.includes("dập") || cd.includes("chuyển nhiệt");
+};
+const IN_THEU_OPTIONS = ["In", "Thêu", "Dập", "In chuyển nhiệt"] as const;
+type InTheuOption = typeof IN_THEU_OPTIONS[number];
+
+const getInTheuStage = (stages: PhanCongGiaCong) => stages.find(stage => isInTheuStage(stage.tenCongDoan));
+
+const getTemplateIdForProduct = (loaiSP: LoaiSP) => {
+  if (loaiSP === "BoTru") return "MCD-BO-TRU";
+  if (loaiSP === "BoCoTron") return "MCD-BO-TRON";
+  if (loaiSP === "AoTru" || loaiSP === "AoPolo") return "MCD-AO-TRU";
+  return "MCD-AO-TRON";
+};
+
+const splitPhoiFiles = (value?: string) => {
+  if (!value) return { ao: "", quan: "" };
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && ("ao" in parsed || "quan" in parsed)) {
+      return { ao: parsed.ao || "", quan: parsed.quan || "" };
+    }
+  } catch {}
+  return { ao: value, quan: "" };
+};
+
+const splitDiagramFiles = (value?: string) => {
+  if (!value) return { file: "", image: "" };
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && ("file" in parsed || "image" in parsed)) {
+      return { file: parsed.file || "", image: parsed.image || "" };
+    }
+  } catch {}
+  return { file: value, image: "" };
+};
+
+const getDistinctColorOptions = (baseColor: string, selectedColors: string[] = []) => {
+  const base = MAU_VAI.find(color => color.ten.toLowerCase() === baseColor.toLowerCase());
+  return MAU_VAI.filter(color =>
+    color.ten !== baseColor &&
+    !selectedColors.includes(color.ten) &&
+    (!base || color.nhom !== base.nhom)
+  );
+};
+
+const isQuanStage = (tenCongDoan: string) => {
+  const cd = (tenCongDoan || "").toLowerCase();
+  return cd.includes("quần") || cd.includes("quan");
+};
+
+const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP) => {
+  const isBo = loaiSP.toLowerCase().includes("bo");
+  return stages.filter(stage => isBo || !isQuanStage(stage.tenCongDoan));
 };
 
 // Constants
@@ -141,95 +232,83 @@ const MAU_CARD_ACCENT = [
   { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-50/50", ring: "focus-within:ring-fuchsia-200" },
 ] as const;
 
-export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen: boolean; onClose: () => void; editId?: string | null; initialData?: any }) {
-  const router = useRouter();
+export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
+  const { list: nhanSuList } = useNhanSu();
+  const nhanVienOptions: NhanVienOption[] = nhanSuList.map(nv => ({
+    ma: nv.maNV,
+    ten: nv.hoTen,
+    boPhan: nv.boPhan,
+    ghiChu: nv.ghiChu,
+  }));
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
-  const { list: dsNhanSu } = useNhanSu();
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
-  const mappedNhanVien = useMemo(() => dsNhanSu.map(nv => ({
-    ma: nv.maNV || "",
-    ten: nv.hoTen || (nv as any).ten || "",
-    boPhan: nv.boPhan || (nv as any).viecChinh || "",
-    ghiChu: nv.ghiChu || "",
-    sdt: nv.sdt || ""
-  })), [dsNhanSu]);
-
-  // Sync editing data or initialData into states
+  // Sync editing data into states when editing changes
   useEffect(() => {
-    const data = editing || initialData;
-    if (data) {
-      setLoaiLenh(data.loaiLenh || "HangNha");
-      setKhachHang(data.khachHang || "");
-      setLoaiSP(data.loaiSP || "BoTru");
-      setMaSP(data.maSP || "");
-      setTenSP(data.tenSP || "");
-      setTongSL(data.tongSL || "");
-      setTongSLThucTe(data.tongSLThucTe || "");
-      if (data.ngayTao) setNgayBatDau(data.ngayTao);
-      setHanHoanThanh(data.hanHoanThanh || "");
-      setPhuTrachCat(data.phuTrachCat || "");
-      setPhuTrachSX(data.phuTrachSX || "");
-      setPhuTrachSoDo(data.phuTrachSoDo || "");
-      setGhiChu(data.ghiChu || "");
-      setGhiChuKyThuat(data.ghiChuKyThuat || "");
-      setTrangThai(data.trangThai || "Nhap");
-      setTiLeSize(data.tiLeSize || "1:2:2:1");
-      setSoMau(data.dsMau?.length || 4);
-      
-      let newDsMau = data.dsMau || [];
-      if (data.maSP && dsSanPham.length > 0) {
-        const foundSP = dsSanPham.find(p => p.id === data.maSP);
-        if (foundSP && foundSP.dsMau) {
-          newDsMau = newDsMau.map((m: any) => {
-            if (!m.img) {
-              const originalMau = foundSP.dsMau.find((om: any) => om.ten === m.ten);
-              if (originalMau?.img) {
-                return { ...m, img: originalMau.img };
-              }
-            }
-            return m;
-          });
-        }
-      }
-      setDsMau(newDsMau);
-      
-      setDsPhuLieu(data.dsPhuLieu || []);
-      setMauCongDoan(data.mauCongDoan || "BoTheThao");
-      if (data.phanCong) {
-        setPhanCong(data.phanCong);
-        const inTheuItem = (data.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
+    if (editing) {
+      setLoaiLenh(editing.loaiLenh);
+      setKhachHang(editing.khachHang || "");
+      setLoaiSP(editing.loaiSP);
+      setMaSP(editing.maSP);
+      setTenSP(editing.tenSP);
+      setTongSL(editing.tongSL);
+      setTongSLThucTe(editing.tongSLThucTe || "");
+      if (editing.ngayTao) setNgayBatDau(editing.ngayTao);
+      setHanHoanThanh(editing.hanHoanThanh);
+      setPhuTrachCat(editing.phuTrachCat || "");
+      setPhuTrachSX(editing.phuTrachSX || "");
+      setPhuTrachSoDo(editing.phuTrachSoDo || "");
+      setGhiChu(editing.ghiChu || "");
+      setGhiChuKyThuat(editing.ghiChuKyThuat || "");
+      setTrangThai(editing.trangThai || "Nhap");
+      setTiLeSize(editing.tiLeSize || "1:2:2:1");
+      setSoMau(editing.dsMau?.length || 4);
+      setDsMau(editing.dsMau || []);
+      setDsPhuLieu(editing.dsPhuLieu || []);
+      setMauCongDoan(editing.mauCongDoan || "BoTheThao");
+      if (editing.phanCong) {
+        setPhanCong(editing.phanCong);
+        const inTheuItem = getInTheuStage(editing.phanCong);
         if (inTheuItem) {
+          setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
           if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
           else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
           else setLoaiInTheu("bo");
         }
       }
-      setChiPhiCoDinh(data.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[data.loaiSP] || {});
-      setPhienBanDinhMuc(data.phienBanDinhMuc || 1);
-      setSoDoChinh(data.soDoChinh || "");
-      setPdfSoDoChinh(data.pdfSoDoChinh || "");
-      setKhoSoDoChinh(data.khoSoDoChinh || "");
-      setDaiSoDoChinh(data.daiSoDoChinh || "");
-      setSoDoPhoi(data.soDoPhoi || "");
-      setPdfSoDoPhoi(data.pdfSoDoPhoi || "");
-      setKhoSoDoPhoi(data.khoSoDoPhoi || "");
-      setDaiSoDoPhoi(data.daiSoDoPhoi || "");
-      setGhiChuSoDoChinh(data.ghiChuSoDoChinh || "");
-      setGhiChuSoDoPhoi(data.ghiChuSoDoPhoi || "");
-      setDaCoSoDo(data.daCoSoDo || false);
-      setDaiSoDoAo(data.daiSoDoAo || "");
-      setSoDoAo(data.soDoAo || "");
-      setDaiSoDoQuan(data.daiSoDoQuan || "");
-      setSoDoQuan(data.soDoQuan || "");
-      setHinhMauInTheu(data.hinhMauInTheu || "");
-      setFileGocInTheu(data.fileGocInTheu || "");
-      setGhiChuInTheu(data.ghiChuInTheu || "");
+      setChiPhiCoDinh(editing.chiPhiCoDinh || BANG_CHI_PHI_CO_DINH[editing.loaiSP] || {});
+      setPhienBanDinhMuc(editing.phienBanDinhMuc || 1);
+      setSoDoChinh(editing.soDoChinh || "");
+      setPdfSoDoChinh(editing.pdfSoDoChinh || "");
+      setKhoSoDoChinh(editing.khoSoDoChinh || "");
+      setDaiSoDoChinh(editing.daiSoDoChinh || "");
+      setSoDoPhoi(editing.soDoPhoi || "");
+      const phoiFiles = splitPhoiFiles(editing.soDoPhoi);
+      setSoDoPhoiAo(phoiFiles.ao);
+      setSoDoPhoiQuan(phoiFiles.quan);
+      setPdfSoDoPhoi(editing.pdfSoDoPhoi || "");
+      setKhoSoDoPhoi(editing.khoSoDoPhoi || "");
+      setDaiSoDoPhoi(editing.daiSoDoPhoi || "");
+      // FIX: 2 dòng dưới trước đây bị thiếu -> mở lại lệnh cắt để sửa sẽ mất ghi chú sơ đồ đã lưu
+      setGhiChuSoDoChinh(editing.ghiChuSoDoChinh || "");
+      setGhiChuSoDoPhoi(editing.ghiChuSoDoPhoi || "");
+      setDaCoSoDo(editing.daCoSoDo || false);
+      setDaiSoDoAo(editing.daiSoDoAo || "");
+      const diagramAo = splitDiagramFiles(editing.soDoAo);
+      setSoDoAo(diagramAo.file);
+      setHinhAnhSoDoAo(diagramAo.image);
+      setDaiSoDoQuan(editing.daiSoDoQuan || "");
+      const diagramQuan = splitDiagramFiles(editing.soDoQuan);
+      setSoDoQuan(diagramQuan.file);
+      setHinhAnhSoDoQuan(diagramQuan.image);
+      setHinhMauInTheu(editing.hinhMauInTheu || "");
+      setFileGocInTheu(editing.fileGocInTheu || "");
+      setGhiChuInTheu(editing.ghiChuInTheu || "");
     }
-  }, [editing, initialData, dsSanPham]);
+  }, [editing]);
 
   // ============ Form state ============
   const [loaiLenh, setLoaiLenh] = useState<LoaiLenh>("HangNha");
@@ -257,10 +336,14 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
   // Sơ đồ áo/quần (PLT) - dùng để tự tính định mức kg/SP
   const [daiSoDoAo, setDaiSoDoAo] = useState("");
   const [soDoAo, setSoDoAo] = useState("");
+  const [hinhAnhSoDoAo, setHinhAnhSoDoAo] = useState("");
   const [daiSoDoQuan, setDaiSoDoQuan] = useState("");
   const [soDoQuan, setSoDoQuan] = useState("");
+  const [hinhAnhSoDoQuan, setHinhAnhSoDoQuan] = useState("");
   const fileAoRef = useRef<HTMLInputElement>(null);
   const fileQuanRef = useRef<HTMLInputElement>(null);
+  const imageAoRef = useRef<HTMLInputElement>(null);
+  const imageQuanRef = useRef<HTMLInputElement>(null);
 
   // Sơ đồ cắt
   const [soDoChinh, setSoDoChinh] = useState("");
@@ -268,6 +351,9 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
   const [khoSoDoChinh, setKhoSoDoChinh] = useState("");
   const [daiSoDoChinh, setDaiSoDoChinh] = useState("");
   const [soDoPhoi, setSoDoPhoi] = useState("");
+  const [soDoPhoiAo, setSoDoPhoiAo] = useState("");
+  const [soDoPhoiQuan, setSoDoPhoiQuan] = useState("");
+  const [loaiSoDoPhoi, setLoaiSoDoPhoi] = useState<"ao" | "quan" | "ca-hai" | "">("");
   const [pdfSoDoPhoi, setPdfSoDoPhoi] = useState("");
   const [khoSoDoPhoi, setKhoSoDoPhoi] = useState("");
   const [daiSoDoPhoi, setDaiSoDoPhoi] = useState("");
@@ -281,13 +367,15 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
 
   // Tài liệu In/Thêu (mẫu)
   const [hinhMauInTheu, setHinhMauInTheu] = useState("");
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
   const [fileGocInTheu, setFileGocInTheu] = useState("");
   const [ghiChuInTheu, setGhiChuInTheu] = useState("");
   const [loaiInTheu, setLoaiInTheu] = useState<"ao" | "quan" | "bo">("bo");
+    const [congDoanInTheu, setCongDoanInTheu] = useState<InTheuOption | "">("");
   const fileInTheuAnhRef = useRef<HTMLInputElement>(null);
   const fileInTheuFileRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi" | "pdf-chinh" | "pdf-phoi" | "ao" | "quan" | "in-theu-anh" | "in-theu-file") => {
+  const handleUploadSoDo = async (e: React.ChangeEvent<HTMLInputElement>, type: "chinh" | "phoi" | "pdf-chinh" | "pdf-phoi" | "ao" | "quan" | "anh-ao" | "anh-quan" | "in-theu-anh" | "in-theu-file") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -305,7 +393,11 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         setSoDoChinh(fileData);
         setDaCoSoDo(true);
       } else if (type === "phoi") {
-        setSoDoPhoi(fileData);
+        if (loaiSoDoPhoi === "quan") setSoDoPhoiQuan(fileData);
+        else if (loaiSoDoPhoi === "ca-hai") {
+          setSoDoPhoiAo(fileData);
+          setSoDoPhoiQuan(fileData);
+        } else setSoDoPhoiAo(fileData);
         setDaCoSoDo(true);
       } else if (type === "pdf-chinh") {
         setPdfSoDoChinh(fileData);
@@ -315,6 +407,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         setSoDoAo(fileData);
       } else if (type === "quan") {
         setSoDoQuan(fileData);
+      } else if (type === "anh-ao") {
+        setHinhAnhSoDoAo(fileData);
+      } else if (type === "anh-quan") {
+        setHinhAnhSoDoQuan(fileData);
       } else if (type === "in-theu-anh") {
         setHinhMauInTheu(fileData);
       } else if (type === "in-theu-file") {
@@ -343,6 +439,36 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
     }
   };
 
+  const handleSelectInTheu = (value: InTheuOption | "") => {
+    setCongDoanInTheu(value);
+    setPhanCong(prev => {
+      const next = [...prev];
+      const index = next.findIndex(stage => isInTheuStage(stage.tenCongDoan));
+      if (!value) return next.filter(stage => !isInTheuStage(stage.tenCongDoan));
+      const existing = index >= 0 ? next[index] : {
+        id: "in_theu",
+        loaiNguoi: "xuong_ngoai",
+        nguoiMa: "",
+        nguoiTen: "",
+        donGia: 0,
+        soLuong: 0,
+        thanhTien: 0,
+        daThanhToan: 0,
+        conLai: 0,
+        trangThaiTT: "chua_tra",
+      } as PhanCongGiaCong[number];
+      const updated = { ...existing, tenCongDoan: value };
+      if (index >= 0) next[index] = updated;
+      else next.push(updated);
+      return next;
+    });
+    if (!value) {
+      setHinhMauInTheu("");
+      setFileGocInTheu("");
+      setGhiChuInTheu("");
+    }
+  };
+
   const handlePreviewPDF = (e: React.MouseEvent, fileDataStr: string) => {
     e.stopPropagation();
     try {
@@ -365,6 +491,17 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
     } catch (err) {
       console.error(err);
       toast.error("Không thể xem trước file PDF");
+    }
+  };
+
+  const handlePreviewImage = (e: React.MouseEvent, imageDataStr: string) => {
+    e.stopPropagation();
+    try {
+      const imageData = JSON.parse(imageDataStr);
+      if (!imageData.url) return;
+      setPreviewImage({ url: imageData.url, name: imageData.name || "Ảnh" });
+    } catch {
+      toast.error("Không thể xem ảnh");
     }
   };
   
@@ -519,6 +656,9 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
   // Section 4 - Phân công
   const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
   const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || []);
+  const visiblePhanCong = useMemo(() => getVisibleStages(phanCong, loaiSP), [phanCong, loaiSP]);
+  const hasInTheuStage = Boolean(congDoanInTheu) && visiblePhanCong.some(stage => isInTheuStage(stage.tenCongDoan));
+  const activeSoDoPhoi = loaiSoDoPhoi === "quan" ? soDoPhoiQuan : soDoPhoiAo || soDoPhoiQuan;
   
   const [showTaoMauCD, setShowTaoMauCD] = useState(false);
   const [newMauCD, setNewMauCD] = useState<{ id: string, ten: string, giaCong: any[] }>({ id: "", ten: "", giaCong: [] });
@@ -566,6 +706,9 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
           if (parsed.khoSoDoChinh) setKhoSoDoChinh(parsed.khoSoDoChinh);
           if (parsed.daiSoDoChinh) setDaiSoDoChinh(parsed.daiSoDoChinh);
           if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
+          const phoiFiles = splitPhoiFiles(parsed.soDoPhoi);
+          setSoDoPhoiAo(phoiFiles.ao);
+          setSoDoPhoiQuan(phoiFiles.quan);
           if (parsed.pdfSoDoPhoi) setPdfSoDoPhoi(parsed.pdfSoDoPhoi);
           if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
           if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
@@ -573,16 +716,21 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
           if (parsed.ghiChuSoDoPhoi) setGhiChuSoDoPhoi(parsed.ghiChuSoDoPhoi);
           if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
           if (parsed.daiSoDoAo) setDaiSoDoAo(parsed.daiSoDoAo);
-          if (parsed.soDoAo) setSoDoAo(parsed.soDoAo);
+          const diagramAo = splitDiagramFiles(parsed.soDoAo);
+          setSoDoAo(diagramAo.file);
+          setHinhAnhSoDoAo(diagramAo.image);
           if (parsed.daiSoDoQuan) setDaiSoDoQuan(parsed.daiSoDoQuan);
-          if (parsed.soDoQuan) setSoDoQuan(parsed.soDoQuan);
+          const diagramQuan = splitDiagramFiles(parsed.soDoQuan);
+          setSoDoQuan(diagramQuan.file);
+          setHinhAnhSoDoQuan(diagramQuan.image);
           if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
           if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
           if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
           
           if (parsed.phanCong) {
-            const inTheuItem = (parsed.phanCong as any[]).find(k => k.id?.startsWith("in_theu"));
+            const inTheuItem = getInTheuStage(parsed.phanCong);
             if (inTheuItem) {
+              setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
               if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
               else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
               else setLoaiInTheu("bo");
@@ -602,13 +750,13 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
         ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat,
         tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
-        daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan,
+        daiSoDoAo, soDoAo: JSON.stringify({ file: soDoAo, image: hinhAnhSoDoAo }), daiSoDoQuan, soDoQuan: JSON.stringify({ file: soDoQuan, image: hinhAnhSoDoQuan }),
         soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh,
-        soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo,
+        soDoPhoi: JSON.stringify({ ao: soDoPhoiAo, quan: soDoPhoiQuan }), pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo,
         hinhMauInTheu, fileGocInTheu, ghiChuInTheu,
       }));
     }
-  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, daiSoDoAo, soDoAo, daiSoDoQuan, soDoQuan, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoi, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, hinhMauInTheu, fileGocInTheu, ghiChuInTheu, editId, draftLoaded]);
+  }, [loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe, ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat, tiLeSize, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh, daiSoDoAo, soDoAo, hinhAnhSoDoAo, daiSoDoQuan, soDoQuan, hinhAnhSoDoQuan, soDoChinh, pdfSoDoChinh, khoSoDoChinh, daiSoDoChinh, soDoPhoiAo, soDoPhoiQuan, pdfSoDoPhoi, khoSoDoPhoi, daiSoDoPhoi, ghiChuSoDoChinh, ghiChuSoDoPhoi, daCoSoDo, hinhMauInTheu, fileGocInTheu, ghiChuInTheu, editId, draftLoaded]);
 
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
@@ -622,36 +770,21 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
   }, [dsMauCongDoan, phanCong]);
 
   useEffect(() => {
+    if (dsMauCongDoan.length === 0) return;
+    const templateId = getTemplateIdForProduct(loaiSP);
+    const template = dsMauCongDoan.find(item => item.id === templateId);
+    if (template && template.id !== mauCongDoan) {
+      setMauCongDoan(template.id);
+      setPhanCong(template.giaCong);
+    }
+  }, [loaiSP, dsMauCongDoan]);
+
+  useEffect(() => {
     if (!editId) {
       // Khi user chưa lưu nháp phần chi phí, và chuyển loaiSP -> tự động reset chi phí theo bảng
       setChiPhiCoDinh(BANG_CHI_PHI_CO_DINH[loaiSP] || {});
     }
   }, [loaiSP, editId]);
-
-  const handleCloseAttempt = () => {
-    const draftStr = localStorage.getItem("lenhCatDraft");
-    let isFromKHSX = false;
-    if (draftStr) {
-      try {
-        const parsed = JSON.parse(draftStr);
-        if (parsed.khsxId) isFromKHSX = true;
-      } catch (e) {}
-    }
-
-    if (!editId && isFromKHSX && maSP) {
-      if (window.confirm("Lệnh cắt chưa được lưu. Bạn có muốn lưu thành Bản nháp không?")) {
-        handleSave("Nhap");
-        return;
-      }
-    }
-    localStorage.removeItem("lenhCatDraft");
-    onClose();
-    
-    if (!editId && isFromKHSX) {
-      router.push("/ke-hoach-san-xuat");
-    }
-  };
-
 
   // Cảnh báo tồn kho
   useEffect(() => {
@@ -786,7 +919,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         dsMau,
         dsPhuLieu,
         mauCongDoan,
-        phanCong,
+        phanCong: visiblePhanCong,
         chiPhiCoDinh,
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
@@ -804,7 +937,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         pdfSoDoChinh,
         khoSoDoChinh,
         daiSoDoChinh,
-        soDoPhoi,
+        soDoPhoi: JSON.stringify({ ao: soDoPhoiAo, quan: soDoPhoiQuan }),
         pdfSoDoPhoi,
         khoSoDoPhoi,
         daiSoDoPhoi,
@@ -838,7 +971,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         dsMau,
         dsPhuLieu,
         mauCongDoan,
-        phanCong,
+        phanCong: visiblePhanCong,
         chiPhiCoDinh,
         bangCOGS: cogsData,
         phuTrachCat: actualPhuTrachCat,
@@ -857,7 +990,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         pdfSoDoChinh,
         khoSoDoChinh,
         daiSoDoChinh,
-        soDoPhoi,
+        soDoPhoi: JSON.stringify({ ao: soDoPhoiAo, quan: soDoPhoiQuan }),
         pdfSoDoPhoi,
         khoSoDoPhoi,
         daiSoDoPhoi,
@@ -881,7 +1014,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
     onClose();
   };
 
-  if (!open) return null;
+  if (!isOpen) return null;
 
   // ============ Calculate Auto Values ============
   const validTongSL = (tongSL || 1) as number;
@@ -932,7 +1065,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
       <table class="info">
         <tr><td class="label">Mã SP / Tên SP</td><td>${maSP} — ${tenSP}</td><td class="label">Tổng SL</td><td>${tongSL || 0}</td></tr>
         <tr><td class="label">Tỉ lệ size</td><td>${tiLeSize}</td><td class="label">Hạn hoàn thành</td><td>${hanHoanThanh}</td></tr>
-        <tr><td class="label">Người phụ trách SX</td><td>${mappedNhanVien.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX || "—"}</td><td class="label">Yêu cầu kỹ thuật</td><td>${ghiChuKyThuat || "—"}</td></tr>
+        <tr><td class="label">Người phụ trách SX</td><td>${nhanVienOptions.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX || "—"}</td><td class="label">Yêu cầu kỹ thuật</td><td>${ghiChuKyThuat || "—"}</td></tr>
         ${ghiChuInTheu ? `<tr><td class="label">Ghi chú In/Thêu</td><td colspan="3">${ghiChuInTheu}</td></tr>` : ""}
       </table>
       ${rows}
@@ -995,7 +1128,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
   let tongTienPhuLieu = dsPhuLieu.reduce((s, p) => s + p.soLuong * p.donGia, 0);
   
   let giaCong1SP = 0;
-  (Array.isArray(phanCong) ? phanCong : []).forEach((kh: any) => {
+  visiblePhanCong.forEach((kh: any) => {
     if (kh && kh.donGia) giaCong1SP += kh.donGia;
   });
 
@@ -1005,14 +1138,16 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
   const giaVonBinhQuan = binhQuanVai + (tongTienPhuLieu / validTongSL) + giaCong1SP + tongChiPhiCoDinh;
 
   return (
-    <Portal>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#2B4C3E]/80 backdrop-blur-sm p-0 md:p-4 animate-fade-in">
-      <div
-        className="bg-[#2B4C3E] rounded-none md:rounded-xl shadow-2xl w-full h-full max-w-full md:w-[99vw] md:h-[97vh] md:max-w-[1800px] overflow-hidden flex flex-col animate-slide-up border-0 md:border-4 border-[#2B4C3E]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ResponsiveModal
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="full"
+      className="bg-[#2B4C3E] text-white overflow-hidden"
+      overlayClassName="bg-black/60 backdrop-blur-sm"
+    >
+      <div className="w-full flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center gap-4 px-5 py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0">
+        <div className="sticky top-0 z-50 flex justify-between items-center gap-4 px-5 py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
               <Scissors className="w-4.5 h-4.5 text-white" />
@@ -1026,13 +1161,13 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
             <span className="bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full font-medium">
               Version BOM: {phienBanDinhMuc}.0
             </span>
-            <button onClick={handleCloseAttempt} className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors">
+            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4">
+        <div className="flex-1 bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4 text-slate-900">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -1045,22 +1180,17 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
           )}
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
-          <div className="bg-slate-100 p-3 md:p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 md:mb-6">
-              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide flex items-center gap-2">
-                <Info className="w-5 h-5 md:w-6 md:h-6" />
-                THÔNG TIN CHUNG & KẾ HOẠCH
-              </h2>
-              <div className="flex gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                <label className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md shadow-sm cursor-pointer transition-all flex-1 md:flex-none ${loaiLenh === "HangNha" ? 'bg-white border border-slate-300 text-slate-900 font-bold' : 'bg-transparent text-slate-500 font-medium hover:bg-slate-200'}`}>
-                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="hidden" />
-                  <div className={`w-3 h-3 rounded-full border-2 ${loaiLenh === "HangNha" ? 'border-[#2B4C3E] bg-[#2B4C3E]' : 'border-slate-400 bg-white'}`}></div>
-                  Hàng Nhà
+          <div className="order-1 bg-slate-100 p-3 md:p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-6">
+              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
+              <div className="flex gap-4 items-center pr-0 md:pr-6">
+                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
+                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="accent-[#2B4C3E]" />
+                  <span className="text-sm font-bold text-slate-700">Hàng Nhà</span>
                 </label>
-                <label className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md shadow-sm cursor-pointer transition-all flex-1 md:flex-none ${loaiLenh === "HangDat" ? 'bg-white border border-slate-300 text-slate-900 font-bold' : 'bg-transparent text-slate-500 font-medium hover:bg-slate-200'}`}>
-                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangDat"} onChange={() => setLoaiLenh("HangDat")} className="hidden" />
-                  <div className={`w-3 h-3 rounded-full border-2 ${loaiLenh === "HangDat" ? 'border-[#2B4C3E] bg-[#2B4C3E]' : 'border-slate-400 bg-white'}`}></div>
-                  Hàng Đặt
+                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
+                  <input type="radio" name="loaiLenh" checked={loaiLenh === "HangDat"} onChange={() => setLoaiLenh("HangDat")} className="accent-[#2B4C3E]" />
+                  <span className="text-sm font-bold text-slate-700">Hàng Đặt</span>
                 </label>
               </div>
             </div>
@@ -1180,23 +1310,6 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                     )}
                   </div>
                   
-                  {/* Selected Product Preview */}
-                  {maSP && (() => {
-                    const sp = dsSanPham.find(s => s.id === maSP);
-                    if (sp) {
-                      const spImg = sp.hinhAnh || sp.dsMau?.[0]?.img || "https://placehold.co/100x100/e2e8f0/64748b?text=No+Image";
-                      return (
-                        <div className="w-full md:w-64 shrink-0 flex items-center gap-3 p-2 bg-white rounded-lg border border-blue-100 shadow-sm">
-                          <img src={spImg} alt={sp.tenSP} className="w-12 h-12 rounded object-cover border border-slate-200" />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-sm text-slate-800 truncate">{sp.tenSP}</div>
-                            <div className="text-xs text-slate-500 font-mono mt-0.5">{sp.id} • {LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP}</div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
                 </div>
               </div>
 
@@ -1258,51 +1371,92 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                 <label className="text-sm font-bold text-slate-700 block mb-1">Người phụ trách sản xuất & SĐT liên hệ *</label>
                 <div className="flex items-center gap-2 max-w-2xl">
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm border-2 border-emerald-300 flex-shrink-0">
-                    {mappedNhanVien.find(n => n.ma === phuTrachSX)?.ten?.substring(0,2) || "NV"}
+                    {nhanVienOptions.find(n => n.ma === phuTrachSX)?.ten?.substring(0,2) || "NV"}
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <select className="px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm" value={phuTrachSX} onChange={e => {
                       const val = e.target.value;
                       setPhuTrachSX(val);
                       if (val) {
-                        const selectedNV = mappedNhanVien.find(nv => nv.ma === val);
-                        if (selectedNV && selectedNV.sdt) {
-                          setSdtLienHe(selectedNV.sdt);
-                        } else {
-                          // Nếu không có SĐT thì để trống cho user tự nhập
-                          setSdtLienHe("");
-                        }
+                        const numericPart = val.replace(/\D/g, "");
+                        setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
                       } else {
                         setSdtLienHe("");
                       }
                     }}>
                       <option value="">-- Chọn Người phụ trách --</option>
-                      {mappedNhanVien.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
+                      {nhanVienOptions.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
                     </select>
                     <input className="px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#2B4C3E]" value={sdtLienHe} onChange={e => setSdtLienHe(e.target.value)} placeholder="SĐT liên hệ..." />
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Selected Product Banner Preview at the bottom of the section */}
+            {(maSP || tenSP) && (() => {
+              const sp = dsSanPham.find(s => s.id === maSP);
+              const spImg = sp?.hinhAnh || sp?.dsMau?.[0]?.img || dsMau?.[0]?.img || "https://placehold.co/400x400/e2e8f0/64748b?text=No+Image";
+              const spTen = sp?.tenSP || tenSP || "Chưa có tên SP";
+              const spId = sp?.id || maSP || "Chưa có mã SP";
+              const spLoai = sp ? (LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP) : (LOAI_SP_LABELS[loaiSP] || loaiSP);
+              const totalColors = sp?.dsMau?.length || soMau || 1;
+              
+              return (
+                <div className="mt-6 p-4 md:p-5 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center">
+                  <div className="relative w-full md:w-32 md:h-32 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center">
+                    <img src={spImg} alt={spTen} className="w-full h-full object-cover" />
+                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm uppercase">
+                      {spLoai}
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col min-w-0 w-full">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-1 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-md font-mono">{spId}</span>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-md">{totalColors} MÀU</span>
+                        </div>
+                        <h3 className="text-lg md:text-xl font-bold text-slate-800 truncate mb-1">{spTen}</h3>
+                        <div className="text-sm font-medium text-slate-500 mb-2">Tỉ lệ size: <span className="text-slate-700">{tiLeSize}</span></div>
+                      </div>
+                      
+                      <div className="flex items-center md:flex-col md:items-end gap-2 shrink-0 bg-slate-50 p-2 md:p-3 rounded-lg border border-slate-100">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng dự kiến</span>
+                        <div className="text-xl md:text-2xl font-black text-amber-600 font-mono">{tongSL.toLocaleString()} <span className="text-sm font-bold text-slate-500">SP</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* SƠ ĐỒ ÁO/QUẦN (PLT) - dùng chiều dài sơ đồ để tự tính định mức kg/SP */}
-          <div className="bg-[#F3E8FC] p-5 rounded-lg border border-purple-200/80 shadow-sm mt-6">
+          <div className="order-2 bg-[#D9ECE8] p-5 rounded-lg border border-teal-300/80 shadow-sm mt-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-              <h2 className="text-xl font-bold text-purple-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
-              <div className="flex items-center flex-wrap gap-2 bg-white/60 px-3 py-1.5 rounded-md border border-purple-200">
-                <span className="text-sm font-bold text-purple-800">Phụ trách sơ đồ:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold text-teal-900 uppercase tracking-wide">Sơ đồ áo/quần (PLT)</h2>
+                {isBo && <>
+                  <button type="button" onClick={() => setLoaiSoDoPhoi("ao")} className={`px-2 py-1 rounded text-xs font-bold ${loaiSoDoPhoi === "ao" ? "bg-teal-700 text-white" : "bg-white text-teal-800 border border-teal-200"}`}>Phối áo</button>
+                  <button type="button" onClick={() => setLoaiSoDoPhoi("quan")} className={`px-2 py-1 rounded text-xs font-bold ${loaiSoDoPhoi === "quan" ? "bg-teal-700 text-white" : "bg-white text-teal-800 border border-teal-200"}`}>Phối quần</button>
+                  <button type="button" onClick={() => setLoaiSoDoPhoi("ca-hai")} className={`px-2 py-1 rounded text-xs font-bold ${loaiSoDoPhoi === "ca-hai" ? "bg-teal-700 text-white" : "bg-white text-teal-800 border border-teal-200"}`}>Phối áo và quần</button>
+                  <button type="button" onClick={() => setLoaiSoDoPhoi("")} className={`px-2 py-1 rounded text-xs font-bold ${!loaiSoDoPhoi ? "bg-slate-600 text-white" : "bg-white text-slate-700 border border-slate-300"}`}>Mẫu trơn</button>
+                </>}
+              </div>
+              <div className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-md border border-teal-200">
+                <span className="text-sm font-bold text-teal-800">Phụ trách sơ đồ:</span>
                 <select 
-                  className="px-2 py-1 text-sm border border-purple-300 rounded font-semibold text-purple-900 focus:outline-none bg-white flex-1 min-w-0 sm:min-w-[150px]"
+                  className="px-2 py-1 text-sm border border-teal-300 rounded font-semibold text-teal-900 focus:outline-none bg-white min-w-[150px]"
                   value={phuTrachSoDo}
                   onChange={e => setPhuTrachSoDo(e.target.value)}
                 >
                   <option value="">-- Chọn NV phụ trách --</option>
-                  {mappedNhanVien.filter(nv => nv.boPhan.includes("Sản xuất") || nv.boPhan.includes("Kỹ thuật") || nv.boPhan.includes("Cắt") || nv.boPhan.includes("Quản lý")).map(nv => (
+                  {nhanVienOptions.filter(nv => nv.boPhan?.includes("Sản xuất") || nv.boPhan?.includes("Kỹ thuật")).map(nv => (
                     <option key={nv.ma} value={nv.ma}>{nv.ten}</option>
                   ))}
                   {/* Fallback nếu không có NV nào thoả điều kiện lọc thì hiện hết */}
-                  {mappedNhanVien.map(nv => (
+                  {nhanVienOptions.map(nv => (
                     <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>
                   ))}
                 </select>
@@ -1311,18 +1465,23 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
             <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>
               {/* Sơ đồ áo */}
               <div>
-                <div className="flex flex-wrap items-center justify-between mb-2 gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4" /> Sơ đồ áo (PLT)</label>
-                  <div className="flex items-center gap-2 max-w-full">
-                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-full min-w-0 sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
-                    <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="flex-1 min-w-0 w-full sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
+                    <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap shrink-0">
                       {dinhMucAoTuDong ? dinhMucAoTuDong.toFixed(4) : "0"} kg/áo
                     </span>
                   </div>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input type="file" accept="image/*" className="hidden" ref={imageAoRef} onChange={(e) => handleUploadSoDo(e, "anh-ao")} />
+                <div className="relative w-full h-40 bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer overflow-hidden group hover:border-teal-500 transition-colors flex items-center justify-center" onClick={(e) => hinhAnhSoDoAo ? handlePreviewImage(e, hinhAnhSoDoAo) : imageAoRef.current?.click()}>
+                  {hinhAnhSoDoAo ? <div className="relative w-full h-full flex items-center justify-center p-3"><img src={JSON.parse(hinhAnhSoDoAo).url} alt="Ảnh sơ đồ áo" className="w-full h-full object-contain" /><div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1"><button type="button" onClick={(e) => handlePreviewImage(e, hinhAnhSoDoAo)} className="px-2 py-1 text-xs font-bold text-blue-700 bg-blue-50 rounded">Xem</button><button type="button" onClick={(e) => handleDownloadSoDo(e, hinhAnhSoDoAo)} className="px-2 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 rounded">Tải về</button></div><button type="button" onClick={(e) => { e.stopPropagation(); setHinhAnhSoDoAo(""); if (imageAoRef.current) imageAoRef.current.value = ""; }} className="absolute top-2 right-2 px-2 py-1 text-xs font-bold text-red-600 bg-red-50 rounded">Xóa</button></div> : <div className="flex flex-col items-center opacity-60 group-hover:opacity-100"><UploadCloud className="w-8 h-8 mb-1 text-teal-600" /><span className="text-xs font-medium">Tải ảnh sơ đồ áo</span></div>}
+                </div>
                 <input type="file" accept=".plt,.zip" className="hidden" ref={fileAoRef} onChange={(e) => handleUploadSoDo(e, "ao")} />
                 <div
-                  className="relative w-full h-24 bg-white border-2 border-dashed border-violet-300 rounded cursor-pointer overflow-hidden group hover:border-violet-500 transition-colors flex items-center justify-center"
+                  className="relative w-full h-40 bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer overflow-hidden group hover:border-teal-500 transition-colors flex items-center justify-center"
                   onClick={() => !soDoAo && fileAoRef.current?.click()}
                 >
                   {soDoAo ? (
@@ -1345,27 +1504,33 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                   ) : (
                     <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
                       <UploadCloud className="w-8 h-8 mb-1" />
-                      <span className="text-xs font-medium text-center">Tải PLT sơ đồ áo<br/>(.plt dùng để in sơ đồ)</span>
+                      <span className="text-xs font-medium text-center">Tải file sơ đồ áo<br/>(.plt, .zip)</span>
                     </div>
                   )}
+                </div>
                 </div>
               </div>
 
               {/* Sơ đồ quần - chỉ hiện khi loại SP là Bộ */}
               {isBo && (
                 <div>
-                  <div className="flex flex-wrap items-center justify-between mb-2 gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4 rotate-180" /> Sơ đồ quần (PLT)</label>
-                    <div className="flex items-center gap-2 max-w-full">
-                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-full min-w-0 sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
-                      <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="flex-1 min-w-0 w-full sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
+                      <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap shrink-0">
                         {dinhMucQuanTuDong ? dinhMucQuanTuDong.toFixed(4) : "0"} kg/quần
                       </span>
                     </div>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="file" accept="image/*" className="hidden" ref={imageQuanRef} onChange={(e) => handleUploadSoDo(e, "anh-quan")} />
+                  <div className="relative w-full h-40 bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer overflow-hidden group hover:border-teal-500 transition-colors flex items-center justify-center" onClick={(e) => hinhAnhSoDoQuan ? handlePreviewImage(e, hinhAnhSoDoQuan) : imageQuanRef.current?.click()}>
+                    {hinhAnhSoDoQuan ? <div className="relative w-full h-full flex items-center justify-center p-3"><img src={JSON.parse(hinhAnhSoDoQuan).url} alt="Ảnh sơ đồ quần" className="w-full h-full object-contain" /><div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1"><button type="button" onClick={(e) => handlePreviewImage(e, hinhAnhSoDoQuan)} className="px-2 py-1 text-xs font-bold text-blue-700 bg-blue-50 rounded">Xem</button><button type="button" onClick={(e) => handleDownloadSoDo(e, hinhAnhSoDoQuan)} className="px-2 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 rounded">Tải về</button></div><button type="button" onClick={(e) => { e.stopPropagation(); setHinhAnhSoDoQuan(""); if (imageQuanRef.current) imageQuanRef.current.value = ""; }} className="absolute top-2 right-2 px-2 py-1 text-xs font-bold text-red-600 bg-red-50 rounded">Xóa</button></div> : <div className="flex flex-col items-center opacity-60 group-hover:opacity-100"><UploadCloud className="w-8 h-8 mb-1 text-teal-600" /><span className="text-xs font-medium">Tải ảnh sơ đồ quần</span></div>}
+                  </div>
                   <input type="file" accept=".plt,.zip" className="hidden" ref={fileQuanRef} onChange={(e) => handleUploadSoDo(e, "quan")} />
                   <div
-                    className="relative w-full h-24 bg-white border-2 border-dashed border-violet-300 rounded cursor-pointer overflow-hidden group hover:border-violet-500 transition-colors flex items-center justify-center"
+                    className="relative w-full h-40 bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer overflow-hidden group hover:border-teal-500 transition-colors flex items-center justify-center"
                     onClick={() => !soDoQuan && fileQuanRef.current?.click()}
                   >
                     {soDoQuan ? (
@@ -1388,9 +1553,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                     ) : (
                       <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-slate-500">
                         <UploadCloud className="w-8 h-8 mb-1" />
-                        <span className="text-xs font-medium text-center">Tải PLT sơ đồ quần<br/>(.plt dùng để in sơ đồ)</span>
+                          <span className="text-xs font-medium text-center">Tải file sơ đồ quần<br/>(.plt, .zip)</span>
                       </div>
                     )}
+                  </div>
                   </div>
                 </div>
               )}
@@ -1404,7 +1570,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
           </div>
 
           {/* SƠ ĐỒ CẮT (MARKER) */}
-          <div className="bg-[#F0F7FF] p-5 rounded-lg border border-blue-200/80 shadow-sm mt-6">
+          <div className={`${loaiSoDoPhoi ? "" : "hidden"} order-5 bg-[#DCEAF2] p-5 rounded-lg border border-blue-300/80 shadow-sm mt-6`}>
              <div className="flex justify-between items-center mb-4">
                <h2 className="text-xl font-bold text-[#1E3A8A] uppercase tracking-wide">SƠ ĐỒ CẮT (MARKER)</h2>
                <div className="flex items-center gap-2 bg-blue-100/50 px-3 py-1.5 rounded-full">
@@ -1416,7 +1582,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                {/* Sơ đồ chính */}
                <div>
                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
-                   <label className="text-sm font-bold text-slate-700">Sơ đồ vải chính</label>
+                     <label className="text-sm font-bold text-slate-700">Sơ đồ phối áo</label>
                    <div className="flex gap-2">
                      <input type="text" placeholder="Khổ..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={khoSoDoChinh} onChange={e => setKhoSoDoChinh(e.target.value)} />
                      <input type="text" placeholder="Dài..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={daiSoDoChinh} onChange={e => setDaiSoDoChinh(e.target.value)} />
@@ -1500,33 +1666,33 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                {/* Sơ đồ phối */}
                <div>
                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
-                   <label className="text-sm font-bold text-slate-700">Sơ đồ phối (nếu có)</label>
-                   <div className="flex gap-2">
+                   <label className="text-sm font-bold text-slate-700">Sơ đồ phối quần</label>
+                   <div className={`${loaiSoDoPhoi ? "flex" : "hidden"} gap-2`}>
                      <input type="text" placeholder="Khổ..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={khoSoDoPhoi} onChange={e => setKhoSoDoPhoi(e.target.value)} />
                      <input type="text" placeholder="Dài..." className="w-28 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500" value={daiSoDoPhoi} onChange={e => setDaiSoDoPhoi(e.target.value)} />
                    </div>
                  </div>
-                 <div className="grid grid-cols-2 gap-2 mt-2">
+                 <div className={`${loaiSoDoPhoi ? "grid" : "hidden"} grid-cols-2 gap-2 mt-2`}>
                    {/* File Sơ đồ phối */}
                    <div>
                      <input type="file" className="hidden" ref={filePhoiRef} onChange={(e) => handleUploadSoDo(e, "phoi")} />
                      <div 
                        className="relative w-full h-24 bg-white border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
-                       onClick={() => !soDoPhoi && filePhoiRef.current?.click()}
+                       onClick={() => !activeSoDoPhoi && filePhoiRef.current?.click()}
                      >
-                       {soDoPhoi ? (
+                       {activeSoDoPhoi ? (
                          <div className="flex flex-col items-center gap-2">
                            <div className="flex items-center gap-2">
                              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                              <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">
-                               {(() => { try { return JSON.parse(soDoPhoi).name; } catch { return "Sơ đồ phối"; } })()}
+                               {(() => { try { return JSON.parse(activeSoDoPhoi).name; } catch { return `Sơ đồ phối ${loaiSoDoPhoi}`; } })()}
                              </span>
                            </div>
                            <div className="flex gap-2">
-                             <button onClick={(e) => handleDownloadSoDo(e, soDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
+                             <button onClick={(e) => handleDownloadSoDo(e, activeSoDoPhoi)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
                                <Download size={14} /> Tải
                              </button>
-                             <button onClick={(e) => { e.stopPropagation(); setSoDoPhoi(""); filePhoiRef.current && (filePhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
+                             <button onClick={(e) => { e.stopPropagation(); if (loaiSoDoPhoi === "ao") setSoDoPhoiAo(""); else if (loaiSoDoPhoi === "quan") setSoDoPhoiQuan(""); else { setSoDoPhoiAo(""); setSoDoPhoiQuan(""); } filePhoiRef.current && (filePhoiRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded">
                                <X size={14} /> Xóa
                              </button>
                            </div>
@@ -1576,15 +1742,27 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                      </div>
                    </div>
                  </div>
-                 <div className="mt-2">
+                  <div className={`${loaiSoDoPhoi ? "block" : "hidden"} mt-2`}>
                     <textarea rows={2} placeholder="Ghi chú sơ đồ phối (dành cho cắt may)..." className="w-full px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y" value={ghiChuSoDoPhoi} onChange={e => setGhiChuSoDoPhoi(e.target.value)} />
                   </div>
                </div>
              </div>
           </div>
 
+          <div className="order-3 bg-white p-4 rounded-lg border border-orange-200 shadow-sm mt-6">
+            <label className="text-sm font-bold text-slate-700 block mb-2">Công đoạn In / Thêu / Dập</label>
+            <select
+              className="w-full md:max-w-md px-3 py-2 border border-orange-300 rounded bg-white text-sm font-semibold text-orange-900"
+              value={congDoanInTheu}
+              onChange={e => handleSelectInTheu(e.target.value as InTheuOption | "")}
+            >
+              <option value="">-- Không thực hiện In/Thêu/Dập --</option>
+              {IN_THEU_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </div>
+
           {/* TÀI LIỆU IN/THÊU (MẪU) */}
-          <div className="bg-[#FFF7ED] p-5 rounded-lg border border-orange-200/80 shadow-sm mt-6">
+          <div className={`order-3 bg-[#F8E6D2] p-5 rounded-lg border border-orange-300/80 shadow-sm mt-6 ${hasInTheuStage ? "" : "hidden"}`}>
             <h2 className="text-xl font-bold text-orange-900 uppercase tracking-wide mb-4">Tài liệu In/Thêu (Mẫu)</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Hình ảnh mẫu In/Thêu */}
@@ -1593,10 +1771,11 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                 <input type="file" accept=".jpg,.jpeg,.png" className="hidden" ref={fileInTheuAnhRef} onChange={(e) => handleUploadSoDo(e, "in-theu-anh")} />
                 <div
                   className="relative w-full h-32 bg-orange-50/50 border-2 border-dashed border-orange-300 rounded cursor-pointer overflow-hidden group hover:border-orange-500 transition-colors flex items-center justify-center"
-                  onClick={() => !hinhMauInTheu && fileInTheuAnhRef.current?.click()}
+                  onClick={(e) => hinhMauInTheu ? handlePreviewImage(e, hinhMauInTheu) : fileInTheuAnhRef.current?.click()}
                 >
                   {hinhMauInTheu ? (
                     <div className="flex flex-col items-center gap-2">
+                      {(() => { try { return <img src={JSON.parse(hinhMauInTheu).url} alt="Ảnh mẫu In/Thêu" className="h-20 max-w-full object-contain rounded border border-slate-200" />; } catch { return null; } })()}
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                         <span className="text-sm font-medium text-slate-700 truncate max-w-[220px]">
@@ -1604,6 +1783,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                         </span>
                       </div>
                       <div className="flex gap-2">
+                        <button onClick={(e) => handlePreviewImage(e, hinhMauInTheu)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">Xem</button>
                         <button onClick={(e) => handleDownloadSoDo(e, hinhMauInTheu)} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded">
                           <Download size={14} /> Tải
                         </button>
@@ -1716,7 +1896,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                         const next = [...(p as any[])];
                         const idx = next.findIndex(k => k.id?.startsWith("in_theu"));
                         const selectedVal = e.target.value;
-                        const nv = mappedNhanVien.find(n => n.ma === selectedVal);
+                        const nv = nhanVienOptions.find(n => n.ma === selectedVal);
                         const dt = DOI_TAC_GIA_CONG.find(d => d.ma === selectedVal);
                         const selectedTen = nv?.ten || dt?.tenDonVi || selectedVal;
 
@@ -1739,7 +1919,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                     }}
                   >
                      <option value="">-- Chọn NV/Xưởng --</option>
-                     {getDoiTuongOptions("In/Thêu", loaiSP, mappedNhanVien).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                     {getDoiTuongOptions(congDoanInTheu || "In/Thêu", loaiSP, nhanVienOptions).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                   </select>
                   <div className="flex items-center gap-1 w-full md:w-auto">
                     <span className="text-xs font-bold text-orange-700">Đơn giá:</span>
@@ -1765,11 +1945,11 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
           </div>
 
           {/* KHỐI 2: MÀU SẮC, VẢI, NGUYÊN PHỤ LIỆU */}
-          <div className="bg-[#E6F3EE] p-5 rounded-lg border border-emerald-200/80 shadow-sm">
+          <div className="order-4 bg-[#2B7770] p-5 rounded-lg border border-[#1B625F] shadow-sm">
             <div className="flex justify-between items-center mb-4">
-               <h2 className="text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">MÀU SẮC, VẢI & CHIA SIZE</h2>
+               <h2 className="text-xl font-bold text-white uppercase tracking-wide">MÀU SẮC, VẢI & CHIA SIZE</h2>
                <div className="flex items-center gap-2">
-                 <label className="text-sm font-bold text-[#2B4C3E]">Số màu vải cắt:</label>
+                 <label className="text-sm font-bold text-white">Số màu vải cắt:</label>
                  <input type="number" className="w-16 px-2 py-1 text-center rounded border border-white" value={soMau} onChange={e => setSoMau(Math.max(1, parseInt(e.target.value) || 1))} />
                </div>
             </div>
@@ -1787,7 +1967,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                       const next = [...(p as any[])];
                       const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
                       if (idx >= 0) {
-                        const nv = mappedNhanVien.find(n => n.ma === e.target.value);
+                        const nv = nhanVienOptions.find(n => n.ma === e.target.value);
                         const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                         next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
                       }
@@ -1796,7 +1976,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                   }}
                 >
                    <option value="">-- Chọn NV/Xưởng --</option>
-                   {getDoiTuongOptions("May Áo", loaiSP, mappedNhanVien).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                   {getDoiTuongOptions("May Áo", loaiSP, nhanVienOptions).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                 </select>
                 <div className="flex items-center gap-1 w-full md:w-auto">
                   <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
@@ -1831,7 +2011,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                         const next = [...(p as any[])];
                         const idx = next.findIndex(k => k.id === "mayQuan");
                         if (idx >= 0) {
-                          const nv = mappedNhanVien.find(n => n.ma === e.target.value);
+                          const nv = nhanVienOptions.find(n => n.ma === e.target.value);
                           const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                           next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
                         }
@@ -1840,10 +2020,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                     }}
                   >
                      <option value="">-- Chọn NV/Xưởng --</option>
-                     {getDoiTuongOptions("May Quần", loaiSP, mappedNhanVien).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
+                     {getDoiTuongOptions("May Quần", loaiSP, nhanVienOptions).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                   </select>
                   <div className="flex items-center gap-1 w-full md:w-auto">
-                    <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
+                    <span className="text-xs font-bold text-emerald-700">Đơn giá thực tế:</span>
                     <input 
                       type="number" min={0}
                       placeholder="0" 
@@ -1870,13 +2050,13 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                 const isBo = loaiSP?.toLowerCase().includes("bo");
                 const accent = MAU_CARD_ACCENT[idx % MAU_CARD_ACCENT.length];
                 return (
-                <div key={idx} className={`${accent.tint} ${accent.ring} rounded-lg shadow-md p-3 md:p-5 flex flex-col md:flex-row gap-4 md:gap-6 border border-slate-200/60 border-l-4 ${accent.stripe} focus-within:ring-2 transition-shadow`}>
+                <div key={idx} className={`bg-[#D7ECE7] ${accent.ring} w-full min-w-0 rounded-lg shadow-md p-3 md:p-5 grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-4 md:gap-5 border border-[#A6CEC3] border-l-4 border-l-[#2B4C3E] focus-within:ring-2 transition-shadow`}>
 
                   {/* Left: Image */}
-                  <div className="w-full md:w-[320px] shrink-0 flex flex-col gap-3">
-                    <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
+                  <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-3 rounded-lg border-2 border-blue-300 bg-white/95 p-2 shadow-sm">
+                    <div className="flex items-center gap-2 border-b border-blue-300 pb-1.5">
                       <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${accent.badge} text-white text-xs font-black shrink-0`}>{idx + 1}</span>
-                      <span className="text-sm font-bold text-[#2B4C3E] uppercase tracking-wide">Màu {idx + 1}</span>
+                      <span className="text-sm font-bold text-blue-800 uppercase tracking-wide">Ảnh màu áo</span>
                     </div>
                     <input
                       type="text"
@@ -1887,16 +2067,16 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                         const next = [...dsMau]; next[idx].ten = e.target.value; setDsMau(next);
                       }}
                     />
-                    <div className={isBo ? "flex gap-2" : ""}>
+                    <div className="grid grid-cols-1 gap-2">
                       {/* Ảnh mẫu ÁO (hàng Bộ hiển thị cạnh ảnh QUẦN) */}
                       <div
-                        className="relative flex-1 aspect-square bg-slate-100 border-2 border-dashed border-slate-300 rounded cursor-pointer overflow-hidden group hover:border-[#2B4C3E] transition-colors flex items-center justify-center"
+                        className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto bg-white border-2 border-dashed border-blue-300 rounded-lg cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
                         onClick={() => handleColorImageUpload(idx, "ao")}
                       >
                         {mau.img ? (
                           <>
                             <img src={mau.img} className="w-full h-full object-cover" />
-                            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[10px] font-bold">{isBo ? "ÁO" : "MẪU"}</span>
+                            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[10px] font-bold">ÁO</span>
                             <span className="absolute bottom-0 inset-x-0 py-1 bg-black/60 text-white text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
                               Bấm để thay ảnh {isBo ? "ÁO" : ""}
                             </span>
@@ -1909,28 +2089,6 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                         )}
                       </div>
 
-                      {/* Ảnh mẫu QUẦN - chỉ hàng Bộ */}
-                      {isBo && (
-                        <div
-                          className="relative flex-1 aspect-square bg-slate-100 border-2 border-dashed border-rose-300 rounded cursor-pointer overflow-hidden group hover:border-rose-500 transition-colors flex items-center justify-center"
-                          onClick={() => handleColorImageUpload(idx, "quan")}
-                        >
-                          {mau.imgQuan ? (
-                            <>
-                              <img src={mau.imgQuan} className="w-full h-full object-cover" />
-                              <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-rose-600/90 text-white text-[10px] font-bold">QUẦN</span>
-                              <span className="absolute bottom-0 inset-x-0 py-1 bg-black/60 text-white text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                Bấm để thay ảnh QUẦN
-                              </span>
-                            </>
-                          ) : (
-                            <div className="flex flex-col items-center opacity-50 group-hover:opacity-100 transition-opacity">
-                              <Plus className="w-8 h-8 text-rose-500" />
-                              <span className="text-xs mt-2 text-slate-600 font-medium">Tải ảnh QUẦN</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
 
 
@@ -1946,18 +2104,6 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                       >
                         <Plus className="w-3.5 h-3.5" /> Vật tư áo
                       </button>
-                      {isBo && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const p = KHO_VAT_TU[0];
-                            setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "quan", mauIdx: idx }]);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-rose-600 text-white text-xs font-bold rounded hover:bg-rose-600/80 transition"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Vật tư quần
-                        </button>
-                      )}
                     </div>
 
                     {/* Vật tư đã gắn với ĐÚNG màu này - hiện ngay tại đây để bên gia công
@@ -1973,7 +2119,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Vật tư của màu này</div>
                           {vtCuaMau.map(({ p, i }) => (
                             <div key={i} className="flex items-center justify-between gap-1.5 text-[11px] bg-slate-50 rounded px-1.5 py-1">
-                              <span className={`shrink-0 px-1 rounded text-white font-bold ${p.apDungCho === "quan" ? "bg-rose-500" : "bg-[#2B4C3E]"}`}>
+                              <span className={`shrink-0 px-1 rounded text-white font-bold ${p.apDungCho === "quan" ? "bg-teal-700" : "bg-[#2B4C3E]"}`}>
                                 {p.apDungCho === "quan" ? "Q" : "A"}
                               </span>
                               <select 
@@ -2040,9 +2186,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                     const tongTienVaiMau = tienVai1SP * (mau.slDuKien || 0);
 
                     return (
-                      <div className={`flex-1 min-w-0 grid grid-cols-1 ${isBo ? 'lg:grid-cols-2' : ''} gap-6`}>
+                      <div className={`flex-1 min-w-0 grid grid-cols-1 ${isBo ? 'md:grid-cols-[minmax(0,380px)_minmax(0,1fr)]' : ''} gap-4 md:gap-5`}>
                         {/* CỘT 1: Áo và Thông tin dùng chung */}
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2 min-w-0 min-h-[300px] rounded-lg border-2 border-blue-300 bg-white/95 p-2 text-xs shadow-sm [&_input]:py-1 [&_select]:py-1 [&_textarea]:py-1">
+                          <div className="text-[10px] font-black uppercase tracking-wider text-blue-700 border-b border-blue-200 pb-2">Thông tin áo</div>
                           <div>
                             <label className="text-[10px] font-bold text-slate-500 mb-1 block">Mã SKU Biến Thể</label>
                             <input 
@@ -2156,7 +2303,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                                     <option value="">+ Thêm màu phối...</option>
                                     {NHOM_MAU.map((nhom) => (
                                       <optgroup key={nhom} label={nhom}>
-                                        {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                        {getDistinctColorOptions(mau.ten, mau.mauPhoi || []).filter((sw) => sw.nhom === nhom).map((sw) => (
                                           <option key={sw.id} value={sw.ten}>{sw.ten}</option>
                                         ))}
                                       </optgroup>
@@ -2259,11 +2406,31 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                         </div>
 
                         {/* CỘT 2: Quần và Thông tin Bổ sung (Ghi chú, Tổng tiền) */}
-                        <div className="flex flex-col gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-[160px_minmax(0,1fr)] gap-2 min-w-0 min-h-[300px] rounded-lg border-2 border-teal-300 bg-white/95 p-2 text-xs shadow-sm [&_input]:py-1 [&_select]:py-1 [&_textarea]:py-1">
                           {isBo && (
-                            <div className="p-2 bg-rose-50/50 rounded border border-rose-200 flex flex-col gap-2">
+                            <div
+                              className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto md:row-span-2 self-start bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer overflow-hidden group hover:border-teal-500 transition-colors flex items-center justify-center"
+                              onClick={() => handleColorImageUpload(idx, "quan")}
+                            >
+                              {mau.imgQuan ? (
+                                <>
+                                  <img src={mau.imgQuan} alt={`Ảnh màu quần ${mau.ten || idx + 1}`} className="w-full h-full object-cover" />
+                                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-teal-700/90 text-white text-[10px] font-bold">QUẦN</span>
+                                  <span className="absolute bottom-0 inset-x-0 py-1.5 bg-black/60 text-white text-xs font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">Bấm để thay ảnh quần</span>
+                                </>
+                              ) : (
+                                <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity">
+                                  <Plus className="w-8 h-8 text-teal-600" />
+                                  <span className="text-sm mt-2 text-slate-600 font-bold">Tải ảnh màu quần</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {isBo && <div className="text-[10px] font-black uppercase tracking-wider text-teal-800 border-b border-teal-300 pb-2 md:col-start-2">Thông tin quần</div>}
+                          {isBo && (
+                            <div className="p-2 bg-teal-50/50 rounded border border-teal-200 flex flex-col gap-2 md:col-start-2">
                               <div>
-                                <div className="text-[10px] font-bold text-rose-700 mb-1">QUẦN - Kho Vải</div>
+                                <div className="text-[10px] font-bold text-teal-800 mb-1">QUẦN - Kho Vải</div>
                                 <select 
                                   className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
                                   value={mau.maVaiQuan || ""}
@@ -2307,7 +2474,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                                   <option value="">+ Thêm màu phối...</option>
                                   {NHOM_MAU.map((nhom) => (
                                     <optgroup key={nhom} label={nhom}>
-                                      {MAU_VAI.filter((sw) => sw.nhom === nhom).map((sw) => (
+                                      {getDistinctColorOptions(mau.ten, mau.mauPhoi || []).filter((sw) => sw.nhom === nhom).map((sw) => (
                                         <option key={sw.id} value={sw.ten}>{sw.ten}</option>
                                       ))}
                                     </optgroup>
@@ -2317,7 +2484,20 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                             </div>
                           )}
 
-                          <div className="flex flex-col flex-1 bg-amber-50/50 p-2 rounded border border-amber-200/50">
+                          {isBo && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const p = KHO_VAT_TU[0];
+                                setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "quan", mauIdx: idx }]);
+                              }}
+                              className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-teal-700 text-white text-xs font-bold rounded hover:bg-teal-800 transition md:col-start-2"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Vật tư quần
+                            </button>
+                          )}
+
+                          <div className="flex flex-col flex-1 bg-amber-50/50 p-2 rounded border border-amber-200/50 md:col-span-2">
                             <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
                             <textarea 
                               className="w-full flex-1 px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
@@ -2331,7 +2511,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                             />
                           </div>
 
-                          <div className="bg-emerald-50 p-2 rounded border border-emerald-200">
+                          <div className="bg-emerald-50 p-2 rounded border border-emerald-200 md:col-span-2">
                             <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này</div>
                             <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}</div>
                           </div>
@@ -2345,7 +2525,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
             </div>
 
             {/* Nguyên Phụ Liệu - tách theo Áo/Quần, không còn là 1 bảng gộp chung */}
-            <div className="bg-white/40 p-4 rounded-lg space-y-4">
+            <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm space-y-4">
               {([["ao", "👕 Vật tư ÁO (bo cổ, bo tay, nút, nhãn...)"], ...(isBo ? [["quan", "👖 Vật tư QUẦN (thun/dây rút, nhãn...)"]] as const : [])] as const).map(([nhom, tieuDe]) => {
                 const dsNhom = dsPhuLieu.filter(p => (nhom === "ao" ? (p.apDungCho || "ao") === "ao" : p.apDungCho === "quan"));
                 return (
@@ -2461,7 +2641,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
             </div>
 
           {/* KHỐI 3: GIA CÔNG VÀ ĐƠN GIÁ */}
-          <div className="bg-[#FCF5E8] p-5 rounded-lg border border-amber-200/80 shadow-sm mb-2">
+          <div className="order-last bg-[#F1E2BE] p-5 rounded-lg border border-amber-300/80 shadow-sm mb-2">
             <h2 className="text-xl font-bold text-slate-900 mb-6 uppercase tracking-wide drop-shadow-sm">
               MẪU CÔNG ĐOẠN & CHI PHÍ
             </h2>
@@ -2487,20 +2667,20 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                 </div>
                 
                 <div className="space-y-2">
-                  {(Array.isArray(phanCong) ? phanCong : []).map((kh, idx) => {
+                  {visiblePhanCong.map((kh, idx) => {
                     if (!kh) return null;
                     return (
                       <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
                         <div className="col-span-3 font-semibold text-slate-700 text-sm truncate" title={kh.tenCongDoan}>{kh.tenCongDoan}</div>
                         <div className="col-span-6 flex items-center gap-2 min-w-0">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold overflow-hidden border flex-shrink-0 text-[10px] ${isOutsourceStage(kh.tenCongDoan) ? "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
-                            {kh.nguoiMa ? (mappedNhanVien.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
+                            {kh.nguoiMa ? (nhanVienOptions.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
                           <select 
                           className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
                           value={kh.nguoiMa}
                           onChange={(e) => {
-                            const nv = mappedNhanVien.find(n => n.ma === e.target.value);
+                            const nv = nhanVienOptions.find(n => n.ma === e.target.value);
                             const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                             const selectedName = nv?.ten || dt?.tenDonVi || e.target.value;
                             setPhanCong(p => {
@@ -2511,7 +2691,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                           }}
                         >
                           <option value="">-- Chọn NV/Xưởng --</option>
-                          {getDoiTuongOptions(kh.tenCongDoan, loaiSP, mappedNhanVien).map(opt => (
+                          {getDoiTuongOptions(kh.tenCongDoan, loaiSP, nhanVienOptions).map(opt => (
                             <option key={opt.ma} value={opt.ma}>{opt.ten}</option>
                           ))}
                         </select>
@@ -2615,21 +2795,21 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         </div>
 
         {/* Footer Buttons */}
-        <div className="shrink-0 bg-white px-4 sm:px-6 py-4 flex flex-col-reverse md:flex-row items-stretch md:items-center justify-between border-t border-slate-200 rounded-b-xl relative gap-3 sm:gap-4">
+        <div className="sticky bottom-0 z-50 shrink-0 bg-white px-6 py-4 flex items-center justify-between border-t border-slate-200 rounded-b-xl gap-4">
           {/* Left Actions */}
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleCloseAttempt}
-              className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all flex-1 md:flex-none text-center"
+              onClick={onClose}
+              className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
             >
               Đóng
             </button>
             
-            <span className="hidden md:block w-px h-6 bg-slate-200 mx-1" />
+            <span className="w-px h-6 bg-slate-200 mx-1" />
             
             {/* Tam cap 3: hanh dong nhe nhat - luu tam, chua can du dieu kien */}
             <button
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex-1 md:flex-none text-center"
+              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
               onClick={() => handleSave("Nhap")}
             >
               Lưu nháp
@@ -2637,15 +2817,15 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
             
             <button
               onClick={handleInPhieuGiaCong}
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center justify-center gap-2 flex-1 md:flex-none"
+              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2"
             >
-              <Printer className="w-4 h-4" /> <span className="hidden sm:inline">In phiếu</span><span className="sm:hidden">In</span>
+              <Printer className="w-4 h-4" /> In phiếu
             </button>
             
-            <div className="relative flex-1 md:flex-none">
+            <div className="relative">
               <button
                 onClick={() => setZaloPickerOpen(v => !v)}
-                className="w-full px-4 py-2 rounded-lg font-semibold text-sm text-sky-600 bg-transparent border border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center justify-center gap-2"
+                className="px-4 py-2 rounded-lg font-semibold text-sm text-sky-600 bg-transparent border border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center gap-2"
               >
                 <Share2 className="w-4 h-4" /> Zalo
               </button>
@@ -2657,7 +2837,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
                   {phanCong.length === 0 && (
                     <div className="px-3 py-3 text-xs text-slate-400">Chưa có phân công gia công nào</div>
                   )}
-                  {phanCong.map((item, i) => (
+                  {visiblePhanCong.map((item, i) => (
                     <button
                       key={i}
                       onClick={() => handleShareZaloItem(item)}
@@ -2673,11 +2853,11 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
           </div>
           
           {/* Right Actions */}
-          <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3">
 
             {/* Tam cap 2: xac nhan lenh da du dieu kien */}
             <button
-              className="flex-1 md:flex-none px-2 sm:px-5 py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all text-center whitespace-nowrap"
+              className="px-5 py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all"
               onClick={() => handleSave("DaTao")}
             >
               Hoàn tất lệnh
@@ -2685,7 +2865,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
 
             {/* Tam cap 1 (CTA chinh): chuyen sang khau san xuat tiep theo */}
             <button
-              className="flex-1 md:flex-none px-2 sm:px-7 py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] hover:bg-[#d9930f] transition-all shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap"
+              className="px-7 py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] hover:bg-[#d9930f] transition-all shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5 flex items-center gap-2"
               onClick={() => handleSave("ChuyenTiep")}
             >
               <Send className="w-4 h-4" />
@@ -2696,7 +2876,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
 
   {/* Modal Tạo Mẫu Công Đoạn */}
   {showTaoMauCD && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
         <div className="space-y-3 mb-6">
@@ -2771,7 +2951,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
 
   {/* Modal Tạo Mẫu Chi Phí Cố Định */}
   {showTaoMauChiPhi && (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Mới</h3>
         <div className="space-y-3 mb-6">
@@ -2841,6 +3021,18 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
       </div>
     </div>
 
+    {previewImage && (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setPreviewImage(null)}>
+        <div className="relative max-w-[95vw] max-h-[92vh] rounded-xl bg-white p-3 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <img src={previewImage.url} alt={previewImage.name} className="max-w-[90vw] max-h-[82vh] object-contain rounded-lg" />
+          <div className="flex justify-center gap-2 pt-3">
+            <a href={previewImage.url} download={previewImage.name} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-bold">Tải về</a>
+            <button type="button" onClick={() => setPreviewImage(null)} className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-sm font-bold">Đóng</button>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* ============ AI MOCKUP MODAL (MiniMax image-01) - component riêng ============ */}
     {aiMockupIdx !== null && (
       <AIMockupModal
@@ -2853,8 +3045,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialData }: { isOpen:
         defaultPrompt={buildAiPrompt(aiMockupIdx)}
       />
     )}
-  </div>
-  </Portal>
+  </ResponsiveModal>
   );
 
 }

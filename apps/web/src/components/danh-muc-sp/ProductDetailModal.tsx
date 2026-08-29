@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle, Plus, Image as ImageIcon, FileText } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
@@ -46,15 +46,19 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
 
   if (!mounted) return null;
 
-  return createPortal(
+  return (
     <>
-    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 md:p-8 md:pt-20 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={(e) => {
-      if (videoRef.current) { videoRef.current.pause(); }
-      onClose();
-    }}>
+    <ResponsiveModal
+      open={true}
+      onClose={() => {
+        if (videoRef.current) { videoRef.current.pause(); }
+        onClose();
+      }}
+      maxWidth="6xl"
+      className="bg-white overflow-hidden"
+    >
       <div 
-        className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full flex flex-col md:flex-row animate-slide-up my-auto"
-        onClick={e => e.stopPropagation()}
+        className="w-full flex flex-col md:flex-row min-h-[70vh]"
       >
         {/* Left: Image Panel */}
         <div className="w-full md:w-1/2 bg-gradient-to-br from-cyan-50 to-teal-50 relative flex flex-col justify-center items-center min-h-[400px] md:min-h-[600px] border-b md:border-b-0 md:border-r border-slate-200">
@@ -313,11 +317,11 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
           </div>
         </div>
       </div>
-    </div>
+    </ResponsiveModal>
     
     {/* Full Screen Viewer */}
     {showFullScreen && (
-      <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center animate-fade-in" onClick={() => {
+      <div className="fixed inset-0 z-[130] bg-black/95 flex flex-col items-center justify-center animate-fade-in" onClick={() => {
         if (fsVideoRef.current) fsVideoRef.current.pause();
         setShowFullScreen(false);
       }}>
@@ -339,7 +343,6 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
         </div>
       </div>
     )}
-    </>,
-    document.body
+    </>
   );
 }

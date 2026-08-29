@@ -8,7 +8,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0ea5e9",
+  "background_color": "#f8fafc",
   "theme_color": "#14b8a6",
   "categories": ["business", "productivity", "utilities"],
   "icons": [
@@ -39,15 +39,15 @@
   ],
   "shortcuts": [
     {
-      "name": "Lệnh cắt",
-      "short_name": "Lệnh cắt",
-      "url": "/lenh-cat",
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Công nợ",
-      "short_name": "Công nợ",
-      "url": "/cong-no",
+      "name": "Lệnh cắt",
+      "short_name": "Lệnh cắt",
+      "url": "/lenh-cat",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {

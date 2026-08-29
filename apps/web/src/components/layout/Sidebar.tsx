@@ -297,13 +297,13 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
       <div className={clsx("p-4 border-b border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
         {!isCollapsed ? (
           <>
-            <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 flex-1" onClick={onItemClick}>
-              <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center overflow-hidden bg-white/5">
-                <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover" />
+            <Link href="/dashboard" className="flex items-center gap-3 min-w-0 flex-1" onClick={onItemClick}>
+              <div className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20 shadow-lg shadow-white/5">
+                <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
               </div>
               <div className="min-w-0">
-                <div className="font-black text-sm truncate text-white tracking-wide">MIMIN ERP</div>
-                <div className="text-[10px] truncate text-slate-400">Quản lý may mặc</div>
+                <div className="font-black text-xl truncate text-white tracking-wider drop-shadow-md">MIMIN ERP</div>
+                <div className="text-sm truncate text-cyan-200 font-medium">Quản lý may mặc</div>
               </div>
             </Link>
             {toggleCollapse && (

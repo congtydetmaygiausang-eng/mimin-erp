@@ -24,13 +24,19 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="md:hidden p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors"
             aria-label="Mở menu"
           >
-            <Menu className="w-5 h-5 text-white" />
+            <Menu className="w-6 h-6 text-white" />
           </button>
         )}
-        <div className="md:hidden font-black text-xl tracking-tight text-white">MIMIN</div>
+        <div className="md:hidden flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10 border border-white/20 shadow-lg shadow-white/5 flex items-center justify-center shrink-0">
+            <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
+          </div>
+          <div className="font-black text-2xl tracking-widest text-white drop-shadow-md bg-gradient-to-r from-white to-cyan-200 text-transparent bg-clip-text">MIMIN</div>
+        </div>
+        
         <GlobalSearch />
         
         {/* Đẩy các nút sang phải */}
@@ -49,7 +55,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
             <Sparkles className="w-5 h-5 text-amber-300" />
           </button>
           <button
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white hidden sm:block"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Đổi theme"
           >
@@ -61,7 +67,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
           {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
           
           <div className="flex items-center gap-3 pl-2 sm:pl-3 border-l border-white/10">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white/10">
+            <div className="hidden sm:flex w-9 h-9 rounded-full bg-white/20 items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white/10 shrink-0">
               {user.name?.charAt(0) || "U"}
             </div>
             <div className="hidden lg:block leading-tight">

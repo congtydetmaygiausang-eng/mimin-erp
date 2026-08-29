@@ -8,7 +8,6 @@ import { CrudModal } from "@/components/ui/CrudModal";
 import { useSession } from "@/components/session-provider";
 import { useKHSX, type KHSX, type TrangThaiKHSX } from "@/lib/data/khsx-store";
 import { useLenhCat, generateLenhCatId } from "@/lib/data/lenh-cat-store";
-import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 
 const TRANG_THAI: TrangThaiKHSX[] = ["Lên kế hoạch", "Đang SX", "Hoàn thành", "Trễ hạn"];
 const XUONG = ["Tổ cắt", "Xưởng May 1 – Polomimin", "Xưởng May 2 – Polomimin", "Gia công ngoài"];
@@ -18,7 +17,6 @@ export default function KeHoachSXPage() {
   const { user } = useSession();
   const { khsx, themKHSX, suaKHSX, xoaKHSX } = useKHSX();
   const { dsLenhCat, themLenhCat } = useLenhCat();
-  const { dsSanPham } = useDanhMucSP();
   
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<KHSX | null>(null);
@@ -52,52 +50,54 @@ export default function KeHoachSXPage() {
       const newId = generateLenhCatId(dsLenhCat);
       const now = new Date().toISOString().slice(0, 10);
       
-      const sp = dsSanPham.find(p => p.id === item.maSP || p.id === item.sanPham || p.tenSP === item.sanPham);
-      let mappedDsMau: any[] = [];
-      let tiLeSize = item.tiLeSize || "1:2:2:1";
-      
-      if (sp) {
-        if (sp.tiLeSize) tiLeSize = sp.tiLeSize;
-        if (sp.dsMau && sp.dsMau.length > 0) {
-          mappedDsMau = sp.dsMau.map(m => ({
-            ten: m.ten,
-            maSKU: m.maSKU || "",
-            dinhMuc: m.dinhMuc || 0.25,
-            img: "", // Do not pass base64 img via localStorage to avoid QuotaExceededError. LenhCatModal will dynamically fetch it from dsSanPham.
-            maVai: "",
-            slDuKien: 0,
-            tonKho: 0,
-            tonMau: 0
-          }));
-        }
-      } else {
-        mappedDsMau = item.dsMau || [];
-      }
-
-      const draftLenhCat = {
+      const newLenhCat = {
         id: newId,
         loaiLenh: "HangNha" as const,
-        loaiSP: (sp?.loaiSP as any) || (item.loaiSP as any) || "BoTru",
+        loaiSP: (item.loaiSP as any) || "BoTru",
         maSP: item.maSP || "",
         tenSP: item.tenSP || item.sanPham,
         tongSL: item.soLuong,
         hanHoanThanh: item.denNgay,
-        tiLeSize: tiLeSize,
-        dsMau: mappedDsMau,
+        tiLeSize: item.tiLeSize || "1:2:2:1",
+        dsMau: (item.dsMau || []).map((mau) => {
+          let mergedImg = mau.img;
+          let mergedImgQuan = (mau as any).imgQuan;
+          if (!mergedImg && item.maSP) {
+            try {
+              // Dùng đúng key của danh mục sản phẩm (không phải v2)
+              const spRaw = localStorage.getItem("mimin_danh_muc_sp");
+              if (spRaw) {
+                const spList = JSON.parse(spRaw);
+                const sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
+                if (sp && sp.dsMau) {
+                  const spMau = sp.dsMau.find((sm: any) => sm.ten === mau.ten || sm.maSKU === mau.maSKU);
+                  if (spMau) {
+                    mergedImg = spMau.img || "";
+                    mergedImgQuan = spMau.imgQuan || "";
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+          return {
+            ...mau,
+            img: mergedImg || "",
+            imgQuan: mergedImgQuan || "",
+          };
+        }),
         dsPhuLieu: [],
         phanCong: [],
         chiPhiCoDinh: {},
-        phuTrachCat: "",
+        phuTrachCat: "NV006",
         ghiChu: `Tạo từ kế hoạch ${item.maKHSX}`,
         trangThai: "Nhap" as const,
         phienBanDinhMuc: 1,
         ngayTao: now,
       };
 
-      // Lưu draft để trang /lenh-cat mở form Tạo mới có sẵn dữ liệu
-      localStorage.setItem("mimin_draft_lenh_cat", JSON.stringify(draftLenhCat));
-      localStorage.setItem("mimin_open_lenh_cat", "1");
-      
+      await themLenhCat(newLenhCat, user as any);
+      toast.success(`Đã chuyển ${item.maSP || item.sanPham} thành Lệnh cắt ${newId}`);
+      localStorage.setItem("mimin_edit_lenh_cat_id", newId);
       router.push("/lenh-cat");
     } catch (err: any) {
       toast.error(err.message || "Lỗi tạo lệnh cắt");
@@ -105,13 +105,16 @@ export default function KeHoachSXPage() {
   };
 
   return <div className="space-y-5 animate-fade-in">
-    <section className="rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-500 p-6 text-white shadow-xl">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div>
-        <p className="flex items-center gap-2 text-sm font-semibold"><Calendar className="h-4 w-4" /> MIMIN ERP · Sản xuất & Kế hoạch</p>
-        <h1 className="mt-2 text-3xl font-black md:text-4xl">Kế hoạch sản xuất</h1>
-        <p className="mt-2 text-sm">{khsx.length} kế hoạch · Tổng SL {tongSL.toLocaleString("vi-VN")} · Hoàn thành {tongXong.toLocaleString("vi-VN")} · Tiến độ {tienDo.toFixed(1)}%</p>
-        <div className="mt-4 h-2 w-80 max-w-full overflow-hidden rounded-full bg-white/25"><div className="h-full rounded-full bg-white" style={{ width: `${Math.min(tienDo, 100)}%` }} /></div>
-      </div><button onClick={() => { setEditing(null); setShowForm(true); }} className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30"><Plus className="h-5 w-5" /> Tạo KHSX</button></div>
+    <section className="rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-500 p-5 sm:p-6 text-white shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 w-full">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Calendar className="h-4 w-4" /> MIMIN ERP · Sản xuất & Kế hoạch</p>
+          <h1 className="mt-2 text-3xl font-black md:text-4xl">Kế hoạch sản xuất</h1>
+          <p className="mt-2 text-sm leading-relaxed">{khsx.length} kế hoạch · Tổng SL {tongSL.toLocaleString("vi-VN")} · Hoàn thành {tongXong.toLocaleString("vi-VN")} · Tiến độ {tienDo.toFixed(1)}%</p>
+          <div className="mt-4 h-2 w-full max-w-sm overflow-hidden rounded-full bg-white/25"><div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${Math.min(tienDo, 100)}%` }} /></div>
+        </div>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30 shrink-0"><Plus className="h-5 w-5" /> Tạo KHSX</button>
+      </div>
     </section>
 
     <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">{[

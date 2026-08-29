@@ -247,3 +247,29 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+@layer utilities {
+  /* Touch target size for mobile accessibility */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Safe area padding for mobile home indicators and notches */
+  .safe-padding-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  .safe-margin-bottom {
+    margin-bottom: env(safe-area-inset-bottom, 20px);
+  }
+}
+
+/* Prevent text size adjustment on orientation change on iOS */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Optimize touch interactions */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
