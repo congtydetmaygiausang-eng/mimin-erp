@@ -1147,21 +1147,24 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     >
       <div className="w-full flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 z-50 flex justify-between items-center gap-4 px-5 py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0 shadow-sm">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-              <Scissors className="w-4.5 h-4.5 text-white" />
+        <div className="sticky top-0 z-50 flex flex-wrap md:flex-nowrap justify-between items-start md:items-center gap-3 md:gap-4 px-4 md:px-5 py-3 md:py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0 shadow-sm w-full overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0 w-full md:w-auto flex-1">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+              <Scissors className="w-4 h-4 md:w-4.5 md:h-4.5 text-white" />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-white font-bold text-base leading-tight truncate">Tạo Lệnh Cắt Sản Xuất</h2>
-              <p className="text-white/60 text-xs font-mono truncate">{editId || "LC-" + new Date().getFullYear() + "-XXXX"}</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-white font-bold text-sm md:text-base leading-tight truncate">Tạo Lệnh Cắt Sản Xuất</h2>
+              <p className="text-white/60 text-[10px] md:text-xs font-mono truncate">{editId || "LC-" + new Date().getFullYear() + "-XXXX"}</p>
             </div>
+            <button onClick={onClose} className="md:hidden p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors shrink-0 ml-auto">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="flex gap-2 items-center shrink-0">
-            <span className="bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full font-medium">
+          <div className="flex gap-2 items-center shrink-0 w-full md:w-auto justify-between md:justify-end border-t border-white/10 pt-2 md:border-0 md:pt-0">
+            <span className="bg-white/10 text-white/80 text-[10px] md:text-xs px-2.5 py-1 md:px-3 md:py-1.5 rounded-full font-medium">
               Version BOM: {phienBanDinhMuc}.0
             </span>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors">
+            <button onClick={onClose} className="hidden md:block p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -1181,14 +1184,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
           <div className="order-1 bg-slate-100 p-3 md:p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-6">
-              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
-              <div className="flex gap-4 items-center pr-0 md:pr-6">
-                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
+              <h2 className="text-base md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide break-words">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
+              <div className="flex gap-3 md:gap-4 items-center pr-0 md:pr-6">
+                <label className="flex flex-1 md:flex-none items-center justify-center gap-2 bg-white px-3 py-2 md:py-1.5 rounded-lg border shadow-sm cursor-pointer">
                   <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="accent-[#2B4C3E]" />
                   <span className="text-sm font-bold text-slate-700">Hàng Nhà</span>
                 </label>
-                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
+                <label className="flex flex-1 md:flex-none items-center justify-center gap-2 bg-white px-3 py-2 md:py-1.5 rounded-lg border shadow-sm cursor-pointer">
                   <input type="radio" name="loaiLenh" checked={loaiLenh === "HangDat"} onChange={() => setLoaiLenh("HangDat")} className="accent-[#2B4C3E]" />
                   <span className="text-sm font-bold text-slate-700">Hàng Đặt</span>
                 </label>
@@ -1196,21 +1199,24 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
             
             {/* ID + Ngày bắt đầu banner */}
-            <div className="grid grid-cols-[100px_1fr] md:grid-cols-[120px_1fr_120px_1fr] items-center gap-y-3 gap-x-3 md:gap-x-6 mb-6 p-3 md:p-5 bg-gradient-to-r from-[#2B4C3E]/10 to-[#2B4C3E]/5 rounded-xl border border-[#2B4C3E]/20 shadow-sm w-full">
+            <div className="flex flex-col md:grid md:grid-cols-[120px_1fr_120px_1fr] md:items-center gap-y-2 md:gap-x-6 mb-6 p-3 md:p-5 bg-gradient-to-r from-[#2B4C3E]/10 to-[#2B4C3E]/5 rounded-xl border border-[#2B4C3E]/20 shadow-sm w-full">
               <span className="text-xs md:text-sm font-bold text-slate-600 uppercase">Mã Lệnh cắt</span>
-              <span className="px-2 py-1 md:px-4 md:py-1.5 bg-[#2B4C3E] text-white rounded-md md:rounded-lg text-xs md:text-base font-bold tracking-widest shadow-inner truncate">
+              <span className="px-3 py-2 md:px-4 md:py-1.5 bg-[#2B4C3E] text-white rounded-lg text-sm md:text-base font-bold tracking-widest shadow-inner truncate block w-full text-center md:text-left">
                 {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
               </span>
-              
               <div className="hidden md:block col-span-2"></div>
             </div>
 
-            <div className="grid grid-cols-[100px_1fr] md:grid-cols-[120px_1fr_120px_1fr] items-center gap-x-3 gap-y-3 md:gap-x-6 md:gap-y-4 mb-6 p-3 md:p-5 bg-slate-50 rounded-xl border border-slate-200 shadow-sm w-full">
-              <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Ngày bắt đầu</label>
-              <input type="date" className="w-full px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-base font-medium border border-slate-300 rounded md:rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
+            <div className="flex flex-col md:grid md:grid-cols-[120px_1fr_120px_1fr] md:items-center gap-4 md:gap-6 mb-6 p-3 md:p-5 bg-slate-50 rounded-xl border border-slate-200 shadow-sm w-full">
+              <div className="flex flex-col gap-1.5 md:contents">
+                <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Ngày bắt đầu</label>
+                <input type="date" className="w-full px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
+              </div>
               
-              <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Hoàn thành</label>
-              <input type="date" className="w-full px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-base font-medium border border-slate-300 rounded md:rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
+              <div className="flex flex-col gap-1.5 md:contents">
+                <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Hoàn thành</label>
+                <input type="date" className="w-full px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
+              </div>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
