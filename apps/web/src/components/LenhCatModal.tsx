@@ -258,7 +258,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setTongSLThucTe(editing.tongSLThucTe || "");
       if (editing.ngayTao) setNgayBatDau(editing.ngayTao);
       setHanHoanThanh(editing.hanHoanThanh);
-      setPhuTrachCat(editing.phuTrachCat || "NV006");
+      setPhuTrachCat(editing.phuTrachCat || "");
       setPhuTrachSX(editing.phuTrachSX || "");
       setPhuTrachSoDo(editing.phuTrachSoDo || "");
       setGhiChu(editing.ghiChu || "");
@@ -520,7 +520,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     sp.tenSP.toLowerCase().includes(productSearch.toLowerCase())
   );
   
-  const [phuTrachCat, setPhuTrachCat] = useState("NV006");
+  const [phuTrachCat, setPhuTrachCat] = useState("");
   const [phuTrachSX, setPhuTrachSX] = useState("");
   const [phuTrachSoDo, setPhuTrachSoDo] = useState("");
   const [ghiChu, setGhiChu] = useState("");
@@ -903,7 +903,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     };
 
     const catStage = phanCong.find(x => x.tenCongDoan.toLowerCase().includes("cắt") || x.tenCongDoan.toLowerCase().includes("cat"));
-    const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "NV006";
+    const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "";
 
     if (editing) {
       suaLenhCat(editing.id, {

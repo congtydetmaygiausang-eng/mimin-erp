@@ -535,9 +535,6 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const themLenhCat = useCallback(async (lenh: LenhCat, u: AppUser) => {
-    // Chốt chặn cuối: upsert theo id nên nếu mã bị trùng sẽ GHI ĐÈ mất lệnh cũ.
-    // Kiểm tra thẳng trên Supabase (không tin cache client vì có thể chưa tải xong
-    // hoặc người khác vừa tạo) - trùng thì báo lỗi, KHÔNG ghi đè.
     {
       const { supabase: sb } = await import("@/lib/supabase/client");
       if (sb) {
@@ -548,7 +545,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setDsLenhCat((prev) => [lenh, ...prev]); // Optimistic
+    setDsLenhCat((prev) => [lenh, ...prev]);
     logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
     const { supabase } = await import("@/lib/supabase/client");
     if (!supabase) throw new Error("Supabase chưa kết nối");
@@ -558,8 +555,14 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
       mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
       chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
-      phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
-      phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao
+      phu_trach_sx: lenh.phuTrachSX, phu_trach_so_do: lenh.phuTrachSoDo, ghi_chu: lenh.ghiChu, 
+      ghi_chu_ky_thuat: lenh.ghiChuKyThuat, trang_thai: lenh.trangThai,
+      phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao,
+      dai_so_do_ao: lenh.daiSoDoAo, so_do_ao: lenh.soDoAo, dai_so_do_quan: lenh.daiSoDoQuan, so_do_quan: lenh.soDoQuan,
+      so_do_chinh: lenh.soDoChinh, pdf_so_do_chinh: lenh.pdfSoDoChinh, kho_so_do_chinh: lenh.khoSoDoChinh, dai_so_do_chinh: lenh.daiSoDoChinh,
+      so_do_phoi: lenh.soDoPhoi, pdf_so_do_phoi: lenh.pdfSoDoPhoi, kho_so_do_phoi: lenh.khoSoDoPhoi, dai_so_do_phoi: lenh.daiSoDoPhoi,
+      ghi_chu_so_do_chinh: lenh.ghiChuSoDoChinh, ghi_chu_so_do_phoi: lenh.ghiChuSoDoPhoi, da_co_so_do: lenh.daCoSoDo,
+      hinh_mau_in_theu: lenh.hinhMauInTheu, file_goc_in_theu: lenh.fileGocInTheu, ghi_chu_in_theu: lenh.ghiChuInTheu
     });
     if (error) throw error;
   }, []);
@@ -587,10 +590,32 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.bangCOGS !== undefined)          updateData.bang_cogs = lenh.bangCOGS;
       if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
       if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
+      if (lenh.phuTrachSoDo !== undefined)      updateData.phu_trach_so_do = lenh.phuTrachSoDo;
       if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
       if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;
       if (lenh.phienBanDinhMuc !== undefined)   updateData.phien_ban_dinh_muc = lenh.phienBanDinhMuc;
       if (lenh.ngayTao !== undefined)           updateData.ngay_tao = lenh.ngayTao;
+
+      // New BOM fields
+      if (lenh.daiSoDoAo !== undefined)         updateData.dai_so_do_ao = lenh.daiSoDoAo;
+      if (lenh.soDoAo !== undefined)            updateData.so_do_ao = lenh.soDoAo;
+      if (lenh.daiSoDoQuan !== undefined)       updateData.dai_so_do_quan = lenh.daiSoDoQuan;
+      if (lenh.soDoQuan !== undefined)          updateData.so_do_quan = lenh.soDoQuan;
+      if (lenh.soDoChinh !== undefined)         updateData.so_do_chinh = lenh.soDoChinh;
+      if (lenh.pdfSoDoChinh !== undefined)      updateData.pdf_so_do_chinh = lenh.pdfSoDoChinh;
+      if (lenh.khoSoDoChinh !== undefined)      updateData.kho_so_do_chinh = lenh.khoSoDoChinh;
+      if (lenh.daiSoDoChinh !== undefined)      updateData.dai_so_do_chinh = lenh.daiSoDoChinh;
+      if (lenh.soDoPhoi !== undefined)          updateData.so_do_phoi = lenh.soDoPhoi;
+      if (lenh.pdfSoDoPhoi !== undefined)       updateData.pdf_so_do_phoi = lenh.pdfSoDoPhoi;
+      if (lenh.khoSoDoPhoi !== undefined)       updateData.kho_so_do_phoi = lenh.khoSoDoPhoi;
+      if (lenh.daiSoDoPhoi !== undefined)       updateData.dai_so_do_phoi = lenh.daiSoDoPhoi;
+      if (lenh.ghiChuSoDoChinh !== undefined)   updateData.ghi_chu_so_do_chinh = lenh.ghiChuSoDoChinh;
+      if (lenh.ghiChuSoDoPhoi !== undefined)    updateData.ghi_chu_so_do_phoi = lenh.ghiChuSoDoPhoi;
+      if (lenh.daCoSoDo !== undefined)          updateData.da_co_so_do = lenh.daCoSoDo;
+      if (lenh.hinhMauInTheu !== undefined)     updateData.hinh_mau_in_theu = lenh.hinhMauInTheu;
+      if (lenh.fileGocInTheu !== undefined)     updateData.file_goc_in_theu = lenh.fileGocInTheu;
+      if (lenh.ghiChuInTheu !== undefined)      updateData.ghi_chu_in_theu = lenh.ghiChuInTheu;
+      if (lenh.ghiChuKyThuat !== undefined)     updateData.ghi_chu_ky_thuat = lenh.ghiChuKyThuat;
 
       if (Object.keys(updateData).length > 0) {
         const { error } = await supabase!.from("lenh_cat").update(updateData).eq("id", id);
@@ -656,7 +681,6 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (supabase) await supabase!.from("lenh_cat").update({ trang_thai: tt }).eq("id", id);
     } catch(e) { console.error(e); }
   }, []);
-
   const capNhatCongDoan = useCallback((lenhId: string, congDoanId: string, data: {
     trangThaiCD?: TrangThaiCongDoan;
     soLuongHoanThanh?: number;
@@ -673,19 +697,13 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     soLuongDatCuoi?: number;     // SL đạt cuối - dùng cho công nợ/lương
     lichSuNhapSL?: LichSuNhapSLItem[];
   }) => {
-    // Tính TRƯỚC, đồng bộ, từ closure `dsLenhCat` hiện tại - KHÔNG được gán biến
-    // ngoài bên trong callback của setDsLenhCat rồi đọc lại ngay sau đó. Callback
-    // updater không đảm bảo chạy đồng bộ tại chỗ gọi (không phải hợp đồng API công
-    // khai của React, chỉ là 1 tối ưu nội bộ đôi khi có đôi khi không) - kiểm tra
-    // thật trên Supabase cho thấy cách làm cũ CHỈ đồng bộ đúng lần gọi capNhatCongDoan
-    // ĐẦU TIÊN trong 1 chuỗi bấm liên tiếp, các lần sau (kể cả "Hoàn thành") bị rơi
-    // mất - state React cục bộ vẫn đúng nên không ai để ý, nhưng Supabase (và công
-    // nợ công đoạn) thì sai.
+    let found = false;
     const lcCurrent = dsLenhCat.find(x => x.id === lenhId);
-    const newPhanCong = lcCurrent
-      ? lcCurrent.phanCong.map((pc: any) =>
-          pc.id === congDoanId
-            ? {
+    let newPhanCong = lcCurrent
+      ? lcCurrent.phanCong.map((pc: any) => {
+          if (pc.id === congDoanId) {
+            found = true;
+            return {
                 ...pc,
                 trangThaiCD: data.trangThaiCD ?? pc.trangThaiCD,
                 soLuongHoanThanh: data.soLuongHoanThanh ?? pc.soLuongHoanThanh,
@@ -709,9 +727,10 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 ngayHoanThanh: data.trangThaiCD === 'hoan_thanh'
                   ? new Date().toISOString().slice(0, 10)
                   : pc.ngayHoanThanh,
-              }
-            : pc
-        )
+              };
+          }
+          return pc;
+        })
       : null;
 
     let congNoSyncInfo: {
