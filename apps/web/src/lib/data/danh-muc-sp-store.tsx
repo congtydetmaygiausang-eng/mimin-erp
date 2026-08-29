@@ -598,7 +598,21 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       const { supabase } = await import("@/lib/supabase/client");
       const client = supabase;
       if (client) {
-        await client.from("san_pham").insert(buildDBPayload(sp));
+        const payload = buildDBPayload(sp);
+        const { error } = await client.from("san_pham").insert(payload);
+        if (error) {
+          console.warn("Loi them SP (Supabase):", error.message);
+          if (error.code === 'PGRST204' || error.message.includes("column")) {
+             delete (payload as any).hinh_anh;
+             delete (payload as any).trang_thai;
+             delete (payload as any).chat_lieu;
+             delete (payload as any).ncc;
+             delete (payload as any).da_ban;
+             delete (payload as any).rating;
+             delete (payload as any).luot_xem;
+             await client.from("san_pham").insert(payload);
+          }
+        }
       }
     } catch(e) {
       console.error(e);
@@ -636,7 +650,22 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
          if (data.luotXem !== undefined) snakeData.luot_xem = data.luotXem;
          
          if (Object.keys(snakeData).length > 0) {
-           await client.from("san_pham").update(snakeData).eq("ma_sp", id);
+           const { error } = await client.from("san_pham").update(snakeData).eq("ma_sp", id);
+           if (error) {
+             console.warn("Loi cap nhat SP (Supabase):", error.message);
+             if (error.code === 'PGRST204' || error.message.includes("column")) {
+               delete snakeData.hinh_anh;
+               delete snakeData.trang_thai;
+               delete snakeData.chat_lieu;
+               delete snakeData.ncc;
+               delete snakeData.da_ban;
+               delete snakeData.rating;
+               delete snakeData.luot_xem;
+               if (Object.keys(snakeData).length > 0) {
+                 await client.from("san_pham").update(snakeData).eq("ma_sp", id);
+               }
+             }
+           }
          }
       }
     } catch(e) {
