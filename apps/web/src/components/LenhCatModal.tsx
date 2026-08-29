@@ -1196,20 +1196,20 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
             
             {/* ID + Ngày bắt đầu banner */}
-            <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-[#2B4C3E]/10 rounded-xl">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">ID Lệnh cắt</span>
-                <span className="px-3 py-1 bg-[#2B4C3E] text-white rounded-lg text-sm font-bold tracking-widest">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 p-3 bg-[#2B4C3E]/10 rounded-xl">
+              <div className="flex items-center justify-between md:justify-start gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase shrink-0">ID Lệnh cắt</span>
+                <span className="px-3 py-1 bg-[#2B4C3E] text-white rounded-lg text-sm font-bold tracking-widest shrink-0">
                   {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">Ngày bắt đầu</span>
-                <input type="date" className="px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
+              <div className="flex items-center justify-between md:justify-start gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase shrink-0">Ngày bắt đầu</span>
+                <input type="date" className="flex-1 min-w-0 w-full md:w-auto px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
               </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs font-bold text-slate-500 uppercase">→ Hoàn thành</span>
-                <input type="date" className="px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
+              <div className="flex items-center justify-between md:justify-start gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase shrink-0">→ Hoàn thành</span>
+                <input type="date" className="flex-1 min-w-0 w-full md:w-auto px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
               </div>
             </div>
             
@@ -1922,7 +1922,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                      {getDoiTuongOptions(congDoanInTheu || "In/Thêu", loaiSP, nhanVienOptions).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                   </select>
                   <div className="flex items-center gap-1 w-full md:w-auto">
-                    <span className="text-xs font-bold text-orange-700">Đơn giá thực tế:</span>
+                    <span className="text-xs font-bold text-orange-700">Đơn giá:</span>
                     <input 
                       type="number" min={0}
                       placeholder="0" 
@@ -1957,10 +1957,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             {/* THÔNG TIN GIA CÔNG MAY (ÁO / QUẦN) */}
             <div className="flex flex-col md:flex-row gap-4 mb-4">
               {/* Box Áo */}
-              <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
-                <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG ÁO:</span>
+              <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm min-w-0">
+                <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG ÁO:</span>
                 <select 
-                  className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                  className="w-full min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
                   value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.nguoiMa || ""}
                   onChange={e => {
                     setPhanCong(p => {
@@ -1979,7 +1979,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                    {getDoiTuongOptions("May Áo", loaiSP, nhanVienOptions).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                 </select>
                 <div className="flex items-center gap-1 w-full md:w-auto">
-                  <span className="text-xs font-bold text-emerald-700">Đơn giá thực tế:</span>
+                  <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
                   <input 
                     type="number" min={0}
                     placeholder="0" 
@@ -2000,10 +2000,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
               {/* Box Quần (Chỉ hiện nếu là hàng Bộ) */}
               {loaiSP?.toLowerCase().includes("bo") && (
-                <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
+                <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm min-w-0">
                   <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG QUẦN:</span>
                   <select 
-                    className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                    className="w-full flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
                     value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.nguoiMa || ""}
                     onChange={e => {
                       setPhanCong(p => {
