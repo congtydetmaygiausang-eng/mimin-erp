@@ -54,7 +54,7 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
         if (videoRef.current) { videoRef.current.pause(); }
         onClose();
       }}
-      maxWidth="6xl"
+      maxWidth="5xl"
       className="bg-white overflow-hidden"
     >
       <div 

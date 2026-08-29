@@ -1,12 +1,14 @@
-const fs = require('fs');
-let code = fs.readFileSync('apps/web/src/lib/data/danh-muc-sp-store.tsx', 'utf8');
+import sys
+path = 'apps/web/src/lib/data/danh-muc-sp-store.tsx'
+with open(path, 'r', encoding='utf-8') as f:
+    content = f.read()
 
-code = code.replace(
-  'await client.from("san_pham").insert(buildDBPayload(sp));',
-  `const payload = buildDBPayload(sp);
+content = content.replace(
+    'await client.from("san_pham").insert(buildDBPayload(sp));',
+    '''const payload = buildDBPayload(sp);
         const { error } = await client.from("san_pham").insert(payload);
         if (error) {
-          console.warn("Loi them SP (Supabase):", error.message);
+          console.warn("L?i thêm SP (Supabase):", error.message);
           if (error.code === 'PGRST204' || error.message.includes("column")) {
              delete (payload as any).hinh_anh;
              delete (payload as any).trang_thai;
@@ -17,14 +19,14 @@ code = code.replace(
              delete (payload as any).luot_xem;
              await client.from("san_pham").insert(payload);
           }
-        }`
-);
+        }'''
+)
 
-code = code.replace(
-  'await client.from("san_pham").update(snakeData).eq("ma_sp", id);',
-  `const { error } = await client.from("san_pham").update(snakeData).eq("ma_sp", id);
+content = content.replace(
+    'await client.from("san_pham").update(snakeData).eq("ma_sp", id);',
+    '''const { error } = await client.from("san_pham").update(snakeData).eq("ma_sp", id);
            if (error) {
-             console.warn("Loi cap nhat SP (Supabase):", error.message);
+             console.warn("L?i c?p nh?t SP (Supabase):", error.message);
              if (error.code === 'PGRST204' || error.message.includes("column")) {
                delete snakeData.hinh_anh;
                delete snakeData.trang_thai;
@@ -37,7 +39,8 @@ code = code.replace(
                  await client.from("san_pham").update(snakeData).eq("ma_sp", id);
                }
              }
-           }`
-);
+           }'''
+)
 
-fs.writeFileSync('apps/web/src/lib/data/danh-muc-sp-store.tsx', code);
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(content)
