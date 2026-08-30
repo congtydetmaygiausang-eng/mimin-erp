@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useWizard } from "../WizardContext";
-import { getAllInventory } from "@/lib/inventory-engine";
+import { getAllInventory, syncInventoryWithSupabase } from "@/lib/inventory-engine";
 import type { KhoVai } from "@/lib/data/real-data";
 import { Plus, Trash2, Layers, UploadCloud, Download, X, Eye, CheckCircle2, Wand2 } from "lucide-react";
 import { AIMockupModal } from "@/components/AIMockupModal";
@@ -17,6 +17,9 @@ export function Step2Fabric() {
 
   useEffect(() => {
     setKhoVaiList(getAllInventory());
+    syncInventoryWithSupabase().then(() => {
+      setKhoVaiList(getAllInventory());
+    });
   }, []);
   
   // Sơ đồ Marker refs
