@@ -10,9 +10,11 @@ import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCo
 import { kiemTraTruocHoanThanh, thongKeLoiLenhCat } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
+import { DoiSoatModal } from "@/components/DoiSoatModal";
 
 export default function UiHoanThienPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const [selectedDoiSoatLc, setSelectedDoiSoatLc] = useState<LenhCat | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const [soThung, setSoThung] = useState<Record<string, number>>({});
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
@@ -360,6 +362,15 @@ export default function UiHoanThienPage() {
                       </button>
                     </div>
                   )}
+
+                  <div className="border-t border-slate-100 pt-3 mt-2">
+                    <button
+                      onClick={() => setSelectedDoiSoatLc(lc)}
+                      className="w-full py-2.5 rounded-xl bg-slate-50 text-sky-700 font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-100 transition-all border border-slate-200"
+                    >
+                      <ClipboardList className="w-4 h-4" /> Xem chi tiết đối soát tổng
+                    </button>
+                  </div>
                 </div>
               </LenhCatCardV2>
             );
@@ -378,6 +389,13 @@ export default function UiHoanThienPage() {
           onSave={handleSaveColorModal}
         />
       )}
+
+      {/* Modal Đối Soát */}
+      <DoiSoatModal 
+        isOpen={!!selectedDoiSoatLc}
+        onClose={() => setSelectedDoiSoatLc(null)}
+        lc={selectedDoiSoatLc}
+      />
     </div>
   );
 }
