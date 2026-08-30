@@ -15,13 +15,18 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
   }
   
   if (!token && typeof window !== "undefined") {
-    // Nếu không có token, thử kiểm tra xem có đang dùng tài khoản Demo không
+    // Nếu không có token (vd: tài khoản Demo, hoặc tài khoản Supabase bị lỗi mất session/chưa confirm email),
+    // thử kiểm tra xem có đang đăng nhập ở local (localStorage) không.
     const stored = localStorage.getItem("mimin_erp_session");
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (parsed?.user?.source === "demo" && parsed?.user?.email) {
-          demoFallback = parsed.user.email;
+        // Hỗ trợ 2 định dạng: 
+        // 1. { user: { email: ... } } (của Demo có TTL)
+        // 2. { email: ... } (của Supabase lưu trực tiếp)
+        const fallbackEmail = parsed?.user?.email || parsed?.email;
+        if (fallbackEmail) {
+          demoFallback = fallbackEmail;
         }
       } catch {}
     }
