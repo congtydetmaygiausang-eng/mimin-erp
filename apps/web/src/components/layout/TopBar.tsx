@@ -10,6 +10,7 @@ import type { AppUser } from "@/components/session-provider";
 import { DemoBanner } from "@/components/DemoBanner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { InstallPWAButton } from "@/components/InstallPWAButton";
 
 export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSignOut: () => Promise<void>; onMenuClick?: () => void }) {
   const { theme, setTheme } = useTheme();
@@ -43,6 +44,8 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
         <div className="flex-1" />
         
         <div className="flex items-center gap-2 sm:gap-3">
+          <InstallPWAButton />
+          
           <button
             className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white hidden sm:block"
             onClick={() => {

@@ -93,6 +93,12 @@ export default function RootLayout({
               console.warn('LocalStorage quota exceeded for key:', key);
             }
           };
+
+          window.pwaDeferredPrompt = null;
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window.pwaDeferredPrompt = e;
+          });
         `}} />
         {/* PWA Meta Tags */}
         <meta name="mobile-web-app-capable" content="yes" />
