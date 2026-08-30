@@ -66,14 +66,13 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
 
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-    if (!supabaseUrl || !anonKey) {
-      return NextResponse.json({ error: "Supabase URL hoặc Anon Key chưa cấu hình" }, { status: 500 });
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ error: "Supabase service role chưa cấu hình" }, { status: 500 });
     }
 
     const payload = await request.json();
-    const supabase = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: request.headers.get("Authorization") || "" } },
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
