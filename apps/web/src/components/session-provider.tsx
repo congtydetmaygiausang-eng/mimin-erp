@@ -71,10 +71,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     migrateLarkConfig();
     // Xoá session nếu còn dùng email mock cũ (force re-login)
     clearMockSession();
+    let currentUserSource = "none";
+
     const ttlUser = getSessionWithTTL();
     if (ttlUser) {
       setUser(ttlUser);
-      setAuthSource(ttlUser.source || "demo");
+      currentUserSource = ttlUser.source || "demo";
+      setAuthSource(currentUserSource);
       setLoading(false);
       // Bỏ 'return;' ở đây để code chạy tiếp xuống dưới, 
       // cho phép đăng ký supabase.auth.onAuthStateChange!
@@ -84,7 +87,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           setUser(parsed);
-          setAuthSource(parsed.source || "demo");
+          currentUserSource = parsed.source || "demo";
+          setAuthSource(currentUserSource);
         } catch {
           // ignore
         }
@@ -99,7 +103,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // thì phải force logout ngay lập tức để tránh lỗi "Thiếu access token".
       supabase.auth.getSession().then(({ data, error }) => {
         if (error || !data.session) {
-          if (ttlUser && ttlUser.source === "supabase") {
+          if (currentUserSource === "supabase") {
             console.log("[session] Supabase session lost. Forcing logout.");
             setUser(null);
             setAuthSource("none");
