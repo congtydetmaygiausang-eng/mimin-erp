@@ -100,19 +100,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     
     // Lắng nghe thay đổi trạng thái từ Supabase (đặc biệt quan trọng cho OAuth/Google Login)
     if (isSupabaseEnabled && supabase) {
-      // Ngay lập tức kiểm tra xem session của Supabase có còn hợp lệ không.
-      // Nếu user đang dùng Supabase nhưng session Supabase đã mất (hết hạn/bị xoá), 
-      // thì phải force logout ngay lập tức để tránh lỗi "Thiếu access token".
+      // Tạm thời vô hiệu hoá tính năng force logout vì gây ra lỗi vòng lặp đăng nhập
+      // (user vừa login xong thì data.session = null, dẫn tới bị đá văng ra liên tục).
       supabase.auth.getSession().then(({ data, error }) => {
         if (error || !data.session) {
-          if (currentUserSource === "supabase") {
-            console.log("[session] Supabase session lost. Forcing logout.");
-            setUser(null);
-            setAuthSource("none");
-            localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem("mimin_erp_session_ttl");
-            window.location.href = "/login";
-          }
+          console.warn("[session] Supabase session is null on mount. Token might be missing.");
         }
       });
 
