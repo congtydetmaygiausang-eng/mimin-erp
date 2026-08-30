@@ -71,27 +71,45 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     migrateLarkConfig();
     // Xoá session nếu còn dùng email mock cũ (force re-login)
     clearMockSession();
-    // Get session with TTL check
     const ttlUser = getSessionWithTTL();
     if (ttlUser) {
       setUser(ttlUser);
       setAuthSource(ttlUser.source || "demo");
       setLoading(false);
-      return;
-    }
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setUser(parsed);
-        setAuthSource(parsed.source || "demo");
-      } catch {
-        // ignore
+      // Bỏ 'return;' ở đây để code chạy tiếp xuống dưới, 
+      // cho phép đăng ký supabase.auth.onAuthStateChange!
+    } else {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setUser(parsed);
+          setAuthSource(parsed.source || "demo");
+        } catch {
+          // ignore
+        }
       }
+      setLoading(false);
     }
     
     // Lắng nghe thay đổi trạng thái từ Supabase (đặc biệt quan trọng cho OAuth/Google Login)
     if (isSupabaseEnabled && supabase) {
+      // Ngay lập tức kiểm tra xem session của Supabase có còn hợp lệ không.
+      // Nếu user đang dùng Supabase nhưng session Supabase đã mất (hết hạn/bị xoá), 
+      // thì phải force logout ngay lập tức để tránh lỗi "Thiếu access token".
+      supabase.auth.getSession().then(({ data, error }) => {
+        if (error || !data.session) {
+          if (ttlUser && ttlUser.source === "supabase") {
+            console.log("[session] Supabase session lost. Forcing logout.");
+            setUser(null);
+            setAuthSource("none");
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem("mimin_erp_session_ttl");
+            window.location.href = "/login";
+          }
+        }
+      });
+
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
           const appMeta = (session.user.app_metadata as Record<string, unknown>) || {};
