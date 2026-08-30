@@ -16,8 +16,6 @@ export default function UiHoanThienPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const [selectedDoiSoatLc, setSelectedDoiSoatLc] = useState<LenhCat | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
-  const [soThung, setSoThung] = useState<Record<string, number>>({});
-  const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
 
@@ -60,72 +58,15 @@ export default function UiHoanThienPage() {
 
     try {
       const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
+      const newList = existingIdx >= 0 ? [...(pc.chiTietMau || [])] : [...(pc.chiTietMau || []), data];
+      if (existingIdx >= 0) newList[existingIdx] = data;
 
-      if (existingIdx >= 0) {
-        newChiTiet[existingIdx] = data;
-      } else {
-        newChiTiet.push(data);
-      }
-
-      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
-
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          const newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
-        }
-      }
-
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) {
-      toast.error(e.message);
+      capNhatCongDoan(lc.id, pcId, { chiTietMau: newList });
+      toast.success(`Đã cập nhật số lượng màu ${data.mau}`);
+    } catch (error) {
+      toast.error("Lỗi cập nhật màu");
     }
   };
-
-  function handleNhanHang(lc: any, pc: any) {
-    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
-    toast.success(`🧺 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
-  }
-
-  function handleXong(lc: any, pc: any) {
-    const key = `${lc.id}-${pc.id}`;
-
-    // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
-    const kiemTra = kiemTraTruocHoanThanh(lc, pc);
-    if (!kiemTra.ok) {
-      toast.error(kiemTra.loi!, { duration: 6000 });
-      return;
-    }
-    const { slDat, slLoi } = kiemTra;
-
-    const numThung = soThung[key] ?? 0;
-    const lyDoKemThung = numThung > 0 ? `Đóng được: ${numThung} thùng` : "";
-
-    const thanhTienDat = slDat * (pc.donGia || 0);
-
-    capNhatCongDoan(lc.id, pc.id, {
-      trangThaiCD: "hoan_thanh",
-      soLuongHoanThanh: slDat,
-      soLuongLoi: slLoi,
-      lyDoLoi: lyDoKemThung,
-      thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
-      conLai: thanhTienDat - (pc.daThanhToan || 0)
-    });
-
-    // Nếu tất cả công đoạn HT đã xong → cập nhật LC HoanThanh
-    const allPCs = getHTPC(lc);
-    const allDone = allPCs.every((p: any) =>
-      p.id === pc.id ? true : p.trangThaiCD === "hoan_thanh"
-    );
-    if (allDone) {
-      toast.success(`🎉 ${lc.id} hoàn thành toàn bộ – Đang chờ Nhập kho thành phẩm!`);
-    } else {
-      toast.success(`✅ ${pc.tenCongDoan} xong: ${slDat} SP`);
-    }
-  }
 
   const loDangHT = lcHT.filter(lc => {
     if (lc.trangThai === "HoanThanh") return false;
@@ -278,7 +219,7 @@ export default function UiHoanThienPage() {
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between">
                           <div>
                             <div className="font-black text-slate-800">{pc.tenCongDoan}</div>
                             <div className="text-xs text-slate-500">{pc.nguoiTen || "Chưa giao"}</div>
@@ -288,80 +229,22 @@ export default function UiHoanThienPage() {
                           </span>
                         </div>
 
-                        {tt === "dang_lam" && (
-                          <div className="mb-3">
-                            <div className="text-[11px] font-bold text-sky-600 mb-1">Số thùng/kiện</div>
-                            <input type="number"
-                              value={soThung[key] ?? ""}
-                              onChange={e => setSoThung(p => ({ ...p, [key]: +e.target.value }))}
-                              placeholder="0"
-                              className="w-full px-3 py-2 border border-sky-300 rounded-lg text-sm font-bold text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400/30" />
+                        {tt === "hoan_thanh" && (
+                          <div className="mt-3 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
+                            <div className="flex items-center gap-2 font-bold text-emerald-700">
+                              <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
+                            </div>
+                            {(pc.soLuongLoi > 0) && (
+                              <div className="text-xs text-rose-600 font-semibold pl-6">
+                                ⚠️ Lỗi: {pc.soLuongLoi} SP - {pc.lyDoLoi}
+                              </div>
+                            )}
                           </div>
                         )}
-
-                        <div className="flex gap-2">
-                          {tt === "cho_giao" && (
-                            <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 flex items-center justify-center gap-1.5">
-                              <Package className="w-4 h-4" /> Nhận hàng
-                            </button>
-                          )}
-                          {tt === "dang_lam" && (
-                            <button onClick={() => handleXong(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-1.5">
-                              <CheckCircle2 className="w-4 h-4" /> Xong
-                            </button>
-                          )}
-                          {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
-                              <div className="flex items-center gap-2 font-bold text-emerald-700">
-                                <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
-                              </div>
-                              {(pc.soLuongLoi > 0) && (
-                                <div className="text-xs text-rose-600 font-semibold pl-6">
-                                  ⚠️ Lỗi: {pc.soLuongLoi} SP - {pc.lyDoLoi}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     );
                   })}
 
-                  {/* Nhập kho khi tất cả xong */}
-                  {isAllDone && !isLCDone && (
-                    <div className="border-t border-slate-100 pt-4 mt-2">
-                      <div className="mb-3">
-                        <label className="text-xs font-bold text-slate-600 block mb-1">Khu vực Nhập kho *</label>
-                        <select
-                          value={khuVuc[lc.id] || ""}
-                          onChange={e => setKhuVuc(p => ({ ...p, [lc.id]: e.target.value }))}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30"
-                        >
-                          <option value="">-- Chọn khu vực lưu trữ --</option>
-                          <option value="Khu A - Tầng 1">Khu A - Tầng 1</option>
-                          <option value="Khu A - Tầng 2">Khu A - Tầng 2</option>
-                          <option value="Khu B - Kệ 01">Khu B - Kệ 01</option>
-                          <option value="Khu B - Kệ 02">Khu B - Kệ 02</option>
-                          <option value="Khu C chờ xuất">Khu C chờ xuất</option>
-                        </select>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (!khuVuc[lc.id]) {
-                            toast.error("Vui lòng chọn khu vực nhập kho!");
-                            return;
-                          }
-                          capNhatTrangThai(lc.id, "HoanThanh", null);
-                          toast.success(`📦 Đã nhập kho ${lc.id} tại ${khuVuc[lc.id]}`);
-                        }}
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02]"
-                      >
-                        <Box className="w-5 h-5" /> Nhập kho thành phẩm
-                      </button>
-                    </div>
-                  )}
 
                   <div className="border-t border-slate-100 pt-3 mt-2">
                     <button
