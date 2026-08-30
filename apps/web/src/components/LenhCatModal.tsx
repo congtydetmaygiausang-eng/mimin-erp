@@ -2980,7 +2980,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium flex-1">{tenKhoan}</span>
+                <span className="text-sm font-medium flex-1 text-slate-900">{tenKhoan}</span>
               </div>
               <div className="flex items-center gap-1 w-32 border rounded px-2">
                 <input type="number" className="w-full py-1 focus:outline-none bg-transparent text-slate-900" placeholder="Đơn giá" value={donGia || ""} onChange={e => {
