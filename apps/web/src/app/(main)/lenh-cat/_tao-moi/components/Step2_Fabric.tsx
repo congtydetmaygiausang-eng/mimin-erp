@@ -475,7 +475,7 @@ export function Step2Fabric() {
                         }}
                       >
                         <option value="">-- Chọn vải --</option>
-                        {KHO_VAI.map((kv) => (
+                        {khoVaiList.map((kv) => (
                           <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
                         ))}
                       </select>
