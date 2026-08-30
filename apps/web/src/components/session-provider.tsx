@@ -87,7 +87,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           setUser(parsed);
-          currentUserSource = parsed.source || "demo";
+          // Những session cũ (trước khi thêm field 'source') nếu không có TTL (rơi xuống else block này)
+          // thì CHẮC CHẮN là Supabase session. Mặc định phải là "supabase", không phải "demo".
+          currentUserSource = parsed.source || "supabase";
           setAuthSource(currentUserSource);
         } catch {
           // ignore
