@@ -192,10 +192,12 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
-  const suaNhanSu = useCallback(async (nv: NhanSuExt) => {
+  const suaNhanSu = useCallback(async (nv: NhanSuExt & { oldMaNV?: string }) => {
     const display = (await resolveEmployeeImageUrls([nv]))[0];
+    const targetMa = nv.oldMaNV || nv.maNV;
+    
     setList(prev => {
-      const newList = prev.map(x => x.maNV === nv.maNV ? display : x);
+      const newList = prev.map(x => x.maNV === targetMa ? display : x);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
       return newList;
     });
