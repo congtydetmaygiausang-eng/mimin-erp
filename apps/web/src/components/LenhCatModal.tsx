@@ -1410,9 +1410,16 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               
               return (
                 <div className="mt-6 p-4 md:p-5 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center">
-                  <div className="relative w-full md:w-32 md:h-32 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center">
-                    <img src={spImg} alt={spTen} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm uppercase">
+                  <div 
+                    className="relative w-full md:w-32 md:h-32 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center group cursor-zoom-in"
+                    onClick={(e) => {
+                      if (spImg && !spImg.includes("placehold.co")) {
+                        handlePreviewImage(e, JSON.stringify({ url: spImg, name: spTen }));
+                      }
+                    }}
+                  >
+                    <img src={spImg} alt={spTen} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm uppercase pointer-events-none">
                       {spLoai}
                     </div>
                   </div>
@@ -1458,13 +1465,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   onChange={e => setPhuTrachSoDo(e.target.value)}
                 >
                   <option value="">-- Chọn NV phụ trách --</option>
-                  {nhanVienOptions.filter(nv => nv.boPhan?.includes("Sản xuất") || nv.boPhan?.includes("Kỹ thuật")).map(nv => (
-                    <option key={nv.ma} value={nv.ma}>{nv.ten}</option>
-                  ))}
-                  {/* Fallback nếu không có NV nào thoả điều kiện lọc thì hiện hết */}
-                  {nhanVienOptions.map(nv => (
-                    <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>
-                  ))}
+                  {(() => {
+                    const filtered = nhanVienOptions.filter(nv => nv.boPhan?.includes("Sản xuất") || nv.boPhan?.includes("Kỹ thuật"));
+                    if (filtered.length > 0) {
+                      return filtered.map(nv => <option key={nv.ma} value={nv.ma}>{nv.ma} - {nv.ten}</option>);
+                    }
+                    return nhanVienOptions.map(nv => <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>);
+                  })()}
                 </select>
               </div>
             </div>
@@ -2885,12 +2892,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   {/* Modal Tạo Mẫu Công Đoạn */}
   {showTaoMauCD && (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
+        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Tạo Mẫu Công Đoạn Mới</h3>
         <div className="space-y-3 mb-6">
           <div>
-            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cd_" + Date.now() }))} />
+            <label className="block text-sm font-bold mb-1 text-slate-900 dark:text-slate-200">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border dark:border-slate-700 rounded bg-transparent text-slate-900 dark:text-white" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cd_" + Date.now() }))} />
           </div>
           {newMauCD.giaCong.map((item, index) => (
             <div key={index} className="flex items-center justify-between gap-2">
@@ -2899,17 +2906,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   const newGiaCong = [...newMauCD.giaCong];
                   newGiaCong.splice(index, 1);
                   setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
-                }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
+                }} className="text-rose-500 hover:bg-rose-500/20 p-1 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <input className="text-sm font-medium border-b border-dashed border-slate-300 focus:outline-none flex-1 bg-transparent" value={item.tenCongDoan} onChange={e => {
+                <input className="text-sm font-medium border-b border-dashed border-slate-300 dark:border-slate-700 focus:outline-none flex-1 bg-transparent text-slate-900 dark:text-white" value={item.tenCongDoan} onChange={e => {
                   const newGiaCong = [...newMauCD.giaCong];
                   newGiaCong[index] = { ...newGiaCong[index], tenCongDoan: e.target.value };
                   setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
                 }} />
               </div>
-              <div className="flex items-center gap-1 w-32 border rounded px-2">
-                <input type="number" className="w-full py-1 focus:outline-none bg-transparent" placeholder="Đơn giá" value={item.donGia || ""} onChange={e => {
+              <div className="flex items-center gap-1 w-32 border dark:border-slate-700 rounded px-2">
+                <input type="number" className="w-full py-1 focus:outline-none bg-transparent text-slate-900 dark:text-white" placeholder="Đơn giá" value={item.donGia || ""} onChange={e => {
                   const newGiaCong = [...newMauCD.giaCong];
                   newGiaCong[index] = { ...newGiaCong[index], donGia: parseInt(e.target.value) || 0 };
                   setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
@@ -2919,9 +2926,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
           ))}
           {/* Thêm công đoạn mới */}
-          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100 dark:border-slate-800">
             <input 
-              className="flex-1 px-3 py-1.5 border rounded text-sm" 
+              className="flex-1 px-3 py-1.5 border dark:border-slate-700 rounded text-sm bg-transparent text-slate-900 dark:text-white" 
               placeholder="Nhập tên công đoạn mới..." 
               value={customStepName} 
               onChange={e => setCustomStepName(e.target.value)}
@@ -2939,11 +2946,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 setNewMauCD(prev => ({ ...prev, giaCong: [...prev.giaCong, { id: newId, tenCongDoan: customStepName.trim(), nguoiMa: "", nguoiTen: "", donGia: 0 }] }));
                 setCustomStepName("");
               }
-            }} className="px-3 py-1.5 bg-slate-100 text-slate-700 font-medium text-sm rounded hover:bg-slate-200 whitespace-nowrap">+ Thêm</button>
+            }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-sm rounded hover:bg-slate-200 dark:hover:bg-slate-700 whitespace-nowrap">+ Thêm</button>
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border dark:border-slate-700 rounded text-slate-600 dark:text-slate-400">Huỷ</button>
           <button onClick={() => {
             if (!newMauCD.ten.trim()) { toast.error("Vui lòng nhập tên mẫu"); return; }
             themMauCongDoan({ id: newMauCD.id || "cd_" + Date.now(), ten: newMauCD.ten, giaCong: newMauCD.giaCong });
