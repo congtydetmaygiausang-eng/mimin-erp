@@ -69,7 +69,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
           
           {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
           
-          <div className="flex items-center gap-3 pl-2 sm:pl-3 border-l border-white/10">
+          <div className="flex items-center gap-1 sm:gap-3 pl-1.5 sm:pl-3 border-l border-white/10 shrink-0">
             <div className="hidden sm:flex w-9 h-9 rounded-full bg-white/20 items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white/10 shrink-0">
               {user.name?.charAt(0) || "U"}
             </div>
@@ -82,7 +82,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
               await onSignOut();
               router.replace("/login");
             }}
-            className="p-2 rounded-lg hover:bg-red-500/20 text-red-300 transition-colors ml-1"
+            className="p-1.5 sm:p-2 rounded-lg hover:bg-red-500/20 text-red-300 transition-colors shrink-0"
             aria-label="Đăng xuất"
             title="Đăng xuất"
           >
