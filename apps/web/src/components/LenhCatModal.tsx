@@ -2964,10 +2964,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   {showTaoMauChiPhi && (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Mới</h3>
+        <h3 className="text-lg font-bold mb-4 text-slate-900">Tạo Mẫu Chi Phí Mới</h3>
         <div className="space-y-3 mb-6">
           <div>
-            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
+            <label className="block text-sm font-bold mb-1 text-slate-900">Tên Mẫu</label>
             <input className="w-full px-3 py-2 border rounded text-slate-900" placeholder="VD: Chi Phí Hàng Thun" value={newMauChiPhi.ten} onChange={e => setNewMauChiPhi(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cp_" + Date.now() }))} />
           </div>
           {Object.entries(newMauChiPhi.chiPhi).map(([tenKhoan, donGia]) => (
