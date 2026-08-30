@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useWizard } from "../WizardContext";
-import { KHO_VAI } from "@/lib/data/real-data";
+import { getAllInventory } from "@/lib/inventory-engine";
+import type { KhoVai } from "@/lib/data/real-data";
 import { Plus, Trash2, Layers, UploadCloud, Download, X, Eye, CheckCircle2, Wand2 } from "lucide-react";
 import { AIMockupModal } from "@/components/AIMockupModal";
 
@@ -12,6 +13,11 @@ export const formatVND = (amount: number) => {
 
 export function Step2Fabric() {
   const { state, updateState } = useWizard();
+  const [khoVaiList, setKhoVaiList] = useState<KhoVai[]>([]);
+
+  useEffect(() => {
+    setKhoVaiList(getAllInventory());
+  }, []);
   
   // Sơ đồ Marker refs
   const fileChinhRef = useRef<HTMLInputElement>(null);
@@ -411,7 +417,7 @@ export function Step2Fabric() {
                           }}
                         >
                           <option value="">-- Chọn vải --</option>
-                          {KHO_VAI.map((kv) => (
+                          {khoVaiList.map((kv) => (
                             <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
                           ))}
                         </select>
@@ -439,7 +445,7 @@ export function Step2Fabric() {
                           }}
                         >
                           <option value="">-- Chọn vải --</option>
-                          {KHO_VAI.map((kv) => (
+                          {khoVaiList.map((kv) => (
                             <option key={kv.maVT} value={kv.maVT}>{kv.maVT} - {kv.tenVT}</option>
                           ))}
                         </select>
@@ -529,7 +535,7 @@ export function Step2Fabric() {
 
                 {/* TÍNH TOÁN TỒN KHO & GIÁ */}
                 {(() => {
-                  const v = KHO_VAI.find(x => x.maVT === mau.maVai);
+                  const v = khoVaiList.find(x => x.maVT === mau.maVai);
                   const donGia = v ? (v.donGia || 0) : 0;
                   const tonKho = v ? (v.tonKho || 0) : 0;
                   let tienVai1SP = mau.dinhMuc * donGia;
@@ -539,7 +545,7 @@ export function Step2Fabric() {
                   let tonKhoQuan = 0;
                   let kgCanQuan = 0;
                   if (isBo && mau.maVaiQuan) {
-                    vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
+                    vQuan = khoVaiList.find(x => x.maVT === mau.maVaiQuan);
                     tonKhoQuan = vQuan ? (vQuan.tonKho || 0) : 0;
                     kgCanQuan = (mau.dinhMucQuan || 0) * (mau.slDuKien || 0);
                     tienVai1SP += (mau.dinhMucQuan || 0) * (vQuan?.donGia || 0);
