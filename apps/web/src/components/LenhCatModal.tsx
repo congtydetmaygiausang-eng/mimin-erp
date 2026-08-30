@@ -1465,13 +1465,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   onChange={e => setPhuTrachSoDo(e.target.value)}
                 >
                   <option value="">-- Chọn NV phụ trách --</option>
-                  {(() => {
-                    const filtered = nhanVienOptions.filter(nv => nv.boPhan?.includes("Sản xuất") || nv.boPhan?.includes("Kỹ thuật"));
-                    if (filtered.length > 0) {
-                      return filtered.map(nv => <option key={nv.ma} value={nv.ma}>{nv.ma} - {nv.ten}</option>);
-                    }
-                    return nhanVienOptions.map(nv => <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>);
-                  })()}
+                  {nhanVienOptions.map(nv => (
+                    <option key={nv.ma} value={nv.ma}>{nv.ma} - {nv.ten}</option>
+                  ))}
                 </select>
               </div>
             </div>
