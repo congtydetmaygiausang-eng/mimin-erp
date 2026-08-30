@@ -69,11 +69,11 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                   <td className="px-4 py-3 text-slate-500 text-xs">-</td>
                 </tr>
                 {phanCongList.map((pc, idx) => {
-                  const slGiao = pc.soLuong || 0;
-                  const slDat = pc.soLuongHoanThanh ?? 0;
+                  const slGiao = pc.soLuong || catThucTe || lc.tongSL || 0;
+                  const slDat = pc.soLuongHoanThanh ?? (pc.trangThaiCD === "hoan_thanh" ? slGiao : 0);
                   const slLoi = pc.soLuongLoi ?? 0;
                   
-                  if (slDat > 0) tongDat = Math.min(tongDat, slDat); // Lấy số đạt nhỏ nhất theo dây chuyền
+                  if (slDat > 0 && pc.trangThaiCD === "hoan_thanh") tongDat = Math.min(tongDat, slDat);
                   if (slLoi > 0) {
                     tongLoi += slLoi;
                     dsLoi.push(`${pc.tenCongDoan}: ${slLoi} lỗi (${pc.lyDoLoi || "Không có lý do"})`);
