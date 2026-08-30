@@ -26,7 +26,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
   const phanCongList = lc.phanCong || [];
 
   return (
-    <ResponsiveModal isOpen={isOpen} onClose={onClose} title={`Đối Soát Tổng Hợp: ${lc.id}`}>
+    <ResponsiveModal open={isOpen} onClose={onClose} title={`Đối Soát Tổng Hợp: ${lc.id}`}>
       <div className="p-4 sm:p-5 space-y-5 animate-fade-in text-slate-800">
         
         {/* Tiêu đề & Thông tin cơ bản */}
