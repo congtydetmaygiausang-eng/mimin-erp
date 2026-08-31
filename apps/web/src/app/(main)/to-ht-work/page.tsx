@@ -82,6 +82,7 @@ export default function UiHoanThienPage() {
         lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0
       );
 
+      const fallbackImg = lc.dsMau?.[0]?.img || "";
       let remaining = tongDat;
       const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
         const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
@@ -107,7 +108,7 @@ export default function UiHoanThienPage() {
           giaTri: sl * giaVon1SP,
           viTri: "Kho Thành Phẩm",
           trangThai: "con",
-          hinhAnh: m.img ? [m.img] : [],
+          hinhAnh: m.img ? [m.img] : (fallbackImg ? [fallbackImg] : []),
           imgQuan: m.imgQuan || undefined,
           chiTietSize: chiTietSz,
           tiLeSize: strTiLeSize,
