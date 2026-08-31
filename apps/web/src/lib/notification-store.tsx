@@ -64,11 +64,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [noti, ...prev]);
-    // Trigger system notification nếu có permission
+    // Trigger system notification nếu có permission và user đã bật thông báo
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-      try {
-        new Notification(n.title, { body: n.body, icon: "/icons/icon-192.png", tag: noti.id });
-      } catch {}
+      const isEnabled = localStorage.getItem("mimin_notifications_enabled") === "true";
+      if (isEnabled) {
+        try {
+          new Notification(n.title, { body: n.body, icon: "/icons/icon-192.png", tag: noti.id });
+        } catch {}
+      }
     }
   }, []);
 
