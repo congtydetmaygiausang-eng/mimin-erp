@@ -101,6 +101,24 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
         kenhBan: [],
         mau: [],
       };
+    } else {
+      const giaVon = Number(r.gia_von ?? r.don_gia ?? r.giaVon ?? r.donGia) || 0;
+      if (giaVon > result[maSP].giaVon) result[maSP].giaVon = giaVon;
+      
+      const giaBanLe = Number(r.gia_ban_le ?? r.don_gia ?? r.giaBanLe ?? r.donGia) || 0;
+      if (giaBanLe > result[maSP].giaBanLe) result[maSP].giaBanLe = giaBanLe;
+
+      const giaBanSi = Number(r.gia_ban_si ?? r.giaBanSi) || 0;
+      if (giaBanSi > result[maSP].giaBanSi) result[maSP].giaBanSi = giaBanSi;
+
+      const giaBanLo = Number(r.gia_ban_lo ?? r.giaBanLo) || 0;
+      if (giaBanLo > result[maSP].giaBanLo) result[maSP].giaBanLo = giaBanLo;
+
+      const giaTikTok = Number(r.gia_tiktok ?? r.giaTikTok) || 0;
+      if (giaTikTok > result[maSP].giaTikTok) result[maSP].giaTikTok = giaTikTok;
+
+      const giaShopee = Number(r.gia_shopee ?? r.giaShopee) || 0;
+      if (giaShopee > result[maSP].giaShopee) result[maSP].giaShopee = giaShopee;
     }
     const item = result[maSP];
     item.kenhBan = Array.from(new Set([...item.kenhBan, ...channels]));
