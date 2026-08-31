@@ -131,6 +131,7 @@ export default function UiHoanThienPage() {
       });
 
       toast.success(`Đã nhập ${tongDat} SP vào kho thành phẩm!`);
+      setSelectedDoiSoatLc(null);
     } catch (e: any) {
       console.error(e);
       toast.error("Có lỗi xảy ra khi nhập kho");

@@ -662,7 +662,9 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     let lenhHienTai: LenhCat | undefined;
     setDsLenhCat(prev => {
       lenhHienTai = prev.find(x => x.id === id);
-      return prev.map(x => x.id === id ? { ...x, trangThai: tt } : x);
+      const next = prev.map(x => x.id === id ? { ...x, trangThai: tt } : x);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
     });
 
     // ĐÃ BỎ auto-xuất-kho ở đây (trước gọi xuatKhoChoLenhCat của inventory-engine).
