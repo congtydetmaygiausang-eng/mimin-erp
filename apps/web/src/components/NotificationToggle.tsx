@@ -62,6 +62,13 @@ export function NotificationToggle() {
       }
 
       const registration = await navigator.serviceWorker.ready;
+      
+      // Clear old subscription if it exists to avoid VAPID key conflict
+      const existingSub = await registration.pushManager.getSubscription();
+      if (existingSub) {
+        await existingSub.unsubscribe();
+      }
+
       const subscribeOptions = {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -96,7 +103,7 @@ export function NotificationToggle() {
       toast.success("Đã bật thông báo thành công!");
     } catch (err) {
       console.error("Lỗi đăng ký:", err);
-      toast.error("Không thể bật thông báo. Vui lòng thử lại.");
+      toast.error(`Không thể bật thông báo: ${err?.message || JSON.stringify(err)}`);
     } finally {
       setIsLoading(false);
     }
