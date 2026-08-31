@@ -72,6 +72,8 @@ export default function ProductLibraryCard({
     }
   }, [activeFilter, sp]);
 
+  const hasPrice = displayPrice > 0;
+
   const trangThai = sp.trangThai || "con-hang";
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
