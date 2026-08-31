@@ -75,6 +75,17 @@ export default function UiHoanThienPage() {
       capNhatTrangThai(lc.id, "HoanThanh", null);
 
       const dongGoiPCs = getHTPC(lc);
+      
+      // Đánh dấu toàn bộ công đoạn HT là hoàn thành khi nhập kho
+      dongGoiPCs.forEach((pc: any) => {
+        if (pc.trangThaiCD !== "hoan_thanh") {
+          capNhatCongDoan(lc.id, pc.id, { 
+            trangThaiCD: "hoan_thanh", 
+            soLuongHoanThanh: pc.soLuong || tongDat 
+          });
+        }
+      });
+
       const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
       const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
 
@@ -108,7 +119,7 @@ export default function UiHoanThienPage() {
           giaTri: sl * giaVon1SP,
           viTri: "Kho Thành Phẩm",
           trangThai: "con",
-          hinhAnh: m.img ? [m.img] : (fallbackImg ? [fallbackImg] : []),
+          hinhAnh: m.img ? [m.img] : [],
           imgQuan: m.imgQuan || undefined,
           chiTietSize: chiTietSz,
           tiLeSize: strTiLeSize,
