@@ -13,11 +13,13 @@ import { useSession } from "@/components/session-provider";
 import { DoiSoatModal } from "@/components/DoiSoatModal";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
 import { toSupabaseRow, type SanPhamTP, KHO_TP_CHANGED_EVENT } from "../kho-thanh-pham/data";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 
 export default function UiHoanThienPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const [selectedDoiSoatLc, setSelectedDoiSoatLc] = useState<LenhCat | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { dsSanPham, themSP } = useDanhMucSP();
 
   const { user } = useSession();
 
@@ -140,6 +142,33 @@ export default function UiHoanThienPage() {
           console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
         );
       });
+
+      // Tự động đẩy sản phẩm vào Danh Mục Sản Phẩm nếu chưa tồn tại
+      const maSPTarget = lc.maSP || lc.id;
+      const existingSP = dsSanPham.find((sp) => sp.id === maSPTarget);
+      if (!existingSP) {
+        const newSP = {
+          id: maSPTarget,
+          maSP: maSPTarget,
+          tenSP: lc.tenSP || "Sản phẩm từ Lệnh Cắt",
+          loaiSP: lc.loaiSP || "AoCoTron",
+          giaBanDuKien: giaVon1SP * 2,
+          giaVonDuKien: giaVon1SP,
+          tiLeSize: lc.dsMau?.[0]?.tiLeSize || "1:2:2:2:1",
+          bangSize: { sizes: [], ratios: [], riSo: 1 },
+          dsMau: lc.dsMau || [],
+          ghiChu: "Tự động tạo từ nhập kho thành phẩm",
+          ngayTao: new Date().toISOString().split("T")[0],
+          hinhAnh: fallbackImg,
+          trangThai: "con-hang",
+          ncc: "Xưởng Mimin",
+          chatLieu: "",
+          daBan: 0,
+          rating: 5,
+          luotXem: 0,
+        };
+        themSP(newSP as any);
+      }
 
       toast.success(`Đã nhập ${tongDat} SP vào kho thành phẩm!`);
       setSelectedDoiSoatLc(null);
