@@ -18,6 +18,7 @@ interface ProductLibraryCardProps {
   onFavorite?: (sp: SanPham) => void;
   isFavorite?: boolean;
   onClick?: (sp: SanPham) => void;
+  activeFilter?: string;
 }
 
 // Helper: render label trang thai
@@ -47,6 +48,7 @@ export default function ProductLibraryCard({
   onFavorite,
   isFavorite = false,
   onClick,
+  activeFilter = "all",
 }: ProductLibraryCardProps) {
   const [mauMoRong, setMauMoRong] = useState<string | null>(null);
   const topColors = (sp.dsMau || []).slice(0, 3);
@@ -54,10 +56,22 @@ export default function ProductLibraryCard({
   const soMau = (sp.dsMau || []).length;
   // Tổng số lượng thật toàn sản phẩm (cộng tất cả màu, tất cả size) - 0 nếu
   // chưa có dữ liệu kho_thanh_pham cho mã SP này (chưa nhập kho, không phải lỗi).
-  const tongTonKho = Object.values(tonKhoTheoMau || {}).reduce(
-    (tong, sizes) => tong + sizes.reduce((s, x) => s + (x.sl || 0), 0),
-    0
-  );
+  const tongTonKho = useMemo(() => {
+    if (!tonKhoTheoMau) return 0;
+    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + tonMau.reduce((s, row) => s + (row.sl || 0), 0), 0);
+  }, [tonKhoTheoMau]);
+
+  const displayPrice = useMemo(() => {
+    switch (activeFilter) {
+      case "ban-le": return sp.giaBanLe || sp.giaBanDuKien;
+      case "ban-si": return sp.giaBanSi || sp.giaBanDuKien;
+      case "ban-lo": return sp.giaBanLo || sp.giaBanDuKien;
+      case "tiktok": return sp.giaTikTok || sp.giaBanDuKien;
+      case "shopee": return sp.giaShopee || sp.giaBanDuKien;
+      default: return sp.giaBanDuKien;
+    }
+  }, [activeFilter, sp]);
+
   const trangThai = sp.trangThai || "con-hang";
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
@@ -302,20 +316,20 @@ export default function ProductLibraryCard({
 
         {/* === Gia ban + Gia von === */}
         <div className="mt-auto mb-3 pt-2 border-t border-slate-100">
-          {sp.giaBanDuKien > 0 ? (
+          {hasPrice ? (
             <>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
-                  {formatVNDShort(sp.giaBanDuKien)}
+                  {formatVNDShort(displayPrice)}
                 </span>
                 <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
               </div>
               {sp.giaVonDuKien > 0 && (
                 <div className="text-[10px] md:text-xs text-slate-400 line-through opacity-70 mt-0.5">
                   Vốn: {formatVNDShort(sp.giaVonDuKien)}
-                  {sp.giaBanDuKien > 0 && sp.giaVonDuKien > 0 && (
+                  {displayPrice > 0 && sp.giaVonDuKien > 0 && (
                     <span className="ml-1.5 text-emerald-600 font-bold">
-                      +{Math.round(((sp.giaBanDuKien - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
+                      +{Math.round(((displayPrice - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
                     </span>
                   )}
                 </div>
