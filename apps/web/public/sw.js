@@ -1,8 +1,8 @@
 // MIMIN ERP Service Worker
 // Handles: caching, offline, push notifications
 
-const CACHE_NAME = "mimin-erp-v1788105404240";
-const VAPID_PUBLIC_KEY = "BLc4xRzKlKORKG0LZ4W3c-OMmFhbS3rRnZYzLgJs1aL9MVp1EihP4o2jAgMTxb5-B6h0QFyTbApdRRG3eFcALXs";
+const CACHE_NAME = "mimin-erp-v1788138064479";
+const VAPID_PUBLIC_KEY = "BLxrje5fHlOUOWYTQTlsEZbQvr1unmu86pJu522Xr0lyUrhECLFe4KXuz7PszOphkF8ODQ9iklk58SyrJYWHnKg";
 
 // Cache assets
 const STATIC_ASSETS = [
