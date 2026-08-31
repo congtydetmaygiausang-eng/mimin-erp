@@ -1,7 +1,7 @@
 // ProductLibraryCard - Card compact cho thu vien (grid 3-4 cols)
 // 2026-08-07 - redesign theo sep Sang: layout "thu vien the card"
 // 2026-08-07 - them thong tin: trang thai, da ban, NCC, chat lieu, rating
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye, ChevronDown } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
