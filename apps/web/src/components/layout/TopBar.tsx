@@ -9,7 +9,6 @@ import GlobalSearch from "@/components/GlobalSearch";
 import type { AppUser } from "@/components/session-provider";
 import { DemoBanner } from "@/components/DemoBanner";
 import { NotificationBell } from "@/components/NotificationBell";
-import { NotificationToggle } from "@/components/NotificationToggle";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { InstallPWAButton } from "@/components/InstallPWAButton";
 
@@ -66,7 +65,6 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
             {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           
-          <NotificationToggle />
           <NotificationBell />
           
           {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
