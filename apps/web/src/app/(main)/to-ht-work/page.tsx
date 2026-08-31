@@ -163,6 +163,7 @@ export default function UiHoanThienPage() {
           trangThai: "con-hang",
           ncc: "Xưởng Mimin",
           chatLieu: "",
+          kenhBan: ["ban-le"],
           daBan: 0,
           rating: 5,
           luotXem: 0,

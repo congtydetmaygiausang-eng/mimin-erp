@@ -165,6 +165,25 @@ export default function KhoThanhPhamPage() {
     return map;
   }, [productImages, dsDanhMuc, dsSanPham]);
 
+  const mergedVariantImages = useMemo(() => {
+    const map: Record<string, string> = {};
+    dsDanhMuc.forEach(dm => {
+      if (dm.dsMau) {
+        dm.dsMau.forEach(m => {
+          if (m.img) {
+            map[`${dm.id}_${m.ten}`] = m.img;
+          }
+        });
+      }
+    });
+    dsSanPham.forEach(sp => {
+      if (sp.hinhAnh?.[0] && !map[`${sp.maSP}_${sp.mau}`]) {
+        map[`${sp.maSP}_${sp.mau}`] = sp.hinhAnh[0];
+      }
+    });
+    return map;
+  }, [dsDanhMuc, dsSanPham]);
+
   const groupedProducts = useMemo(() => {
     const groups: Record<string, SanPhamTP[]> = {};
     filtered.forEach(s => {
@@ -634,6 +653,7 @@ export default function KhoThanhPhamPage() {
             <ProductTable
               filtered={filtered}
               productImages={mergedProductImages}
+              productVariantImages={mergedVariantImages}
               setEditing={setEditing}
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}

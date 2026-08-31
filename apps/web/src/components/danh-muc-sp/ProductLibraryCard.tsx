@@ -76,10 +76,10 @@ export default function ProductLibraryCard({
   return (
     <div 
       onClick={() => onClick && onClick(sp)}
-      className={`group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
+      className={`group relative bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
     >
       {/* === ANH SAN PHAM === */}
-      <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden">
+      <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden rounded-t-2xl">
         {/* Placeholder icon */}
         <div className="absolute inset-0 flex items-center justify-center">
           <Shirt className="w-20 h-20 md:w-24 md:h-24 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-500" />
@@ -177,11 +177,16 @@ export default function ProductLibraryCard({
                     key={idx}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setMauMoRong(dangMo ? null : mau.ten); }}
-                    className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-xs font-bold transition-colors ${dangMo ? "border-cyan-500 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"}`}
+                    className={`group/skuimg relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-xs font-bold transition-colors ${dangMo ? "border-cyan-500 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"}`}
                     title={mau.maSKU || mau.ten}
                   >
                     {mau.img ? (
-                      <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                      <>
+                        <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
+                          <img src={mau.img} alt={`Xem trước màu ${mau.ten}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
+                        </div>
+                      </>
                     ) : (
                       <span
                         className="w-5 h-5 rounded-full border border-slate-200 shrink-0"
