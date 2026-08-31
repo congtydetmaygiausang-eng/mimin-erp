@@ -90,13 +90,13 @@ export function ProductTable({ filtered, productImages, setEditing, handleXuatKh
                     )}
                     <td className="p-3 text-xs align-middle">
                       <div className="group/skuimg relative flex items-center gap-2 w-max">
-                        {s.hinhAnh?.[0] ? (
+                        {mainImg ? (
                           <>
                             <div className="w-8 h-8 rounded-md overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
-                              <img src={s.hinhAnh[0]} alt={s.mau} className="w-full h-full object-cover" />
+                              <img src={mainImg} alt={s.mau} className="w-full h-full object-cover" />
                             </div>
                             <div className="pointer-events-none fixed top-1/2 left-1/2 z-[9999] hidden -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
-                              <img src={s.hinhAnh[0]} alt={`Xem trước màu ${s.mau}`} className="h-64 w-64 max-w-none rounded-xl object-contain bg-slate-50" />
+                              <img src={mainImg} alt={`Xem trước màu ${s.mau}`} className="h-64 w-64 max-w-none rounded-xl object-contain bg-slate-50" />
                             </div>
                           </>
                         ) : (
