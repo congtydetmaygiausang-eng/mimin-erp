@@ -287,7 +287,7 @@ export default function KhoVaiPage() {
               };
               
               return (
-              <div key={v.maVT} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all relative overflow-hidden group">
+              <div key={v.maVT} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all relative group hover:z-50">
                 
                 {/* Top row: ID and actions */}
                 <div className="flex justify-between items-start mb-3">
@@ -297,7 +297,7 @@ export default function KhoVaiPage() {
                 </div>
 
                 {/* Main content: Color image & Name */}
-                <div className="flex flex-col gap-3 mb-4">
+                <div className="flex flex-col gap-3 mb-4 relative group/imgwrap">
                   <div 
                     className="w-full h-40 rounded-2xl border-2 border-slate-200/50 dark:border-slate-700/50 shadow-sm overflow-hidden cursor-pointer relative group/img flex items-center justify-center bg-slate-100 dark:bg-slate-800 transition-transform group-hover:scale-[1.02]"
                     style={{ backgroundColor: (vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl) ? 'transparent' : getColorHex(v.mauSac) }}
@@ -324,6 +324,14 @@ export default function KhoVaiPage() {
                       title="Đổi ảnh vải"
                     >+</button>
                   </div>
+                  
+                  {/* Hover Popup */}
+                  {(vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl) && (
+                    <div className="pointer-events-none absolute bottom-[calc(100%-3rem)] left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/imgwrap:block">
+                      <img src={vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl} alt={`Xem trước vải ${v.tenVT}`} className="h-64 w-64 max-w-none rounded-xl object-contain bg-slate-50" />
+                    </div>
+                  )}
+
                   <div className="w-full min-w-0">
                     {editingVT === v.maVT ? (
                       <div className="space-y-2">
