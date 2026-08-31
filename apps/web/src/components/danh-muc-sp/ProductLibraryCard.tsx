@@ -76,7 +76,7 @@ export default function ProductLibraryCard({
   return (
     <div 
       onClick={() => onClick && onClick(sp)}
-      className={`group relative bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
+      className={`group relative bg-white rounded-2xl shadow-md hover:shadow-2xl hover:z-50 transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
     >
       {/* === ANH SAN PHAM === */}
       <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden rounded-t-2xl">

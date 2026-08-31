@@ -76,8 +76,8 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                             )}
                           </div>
                           {mainImg && (
-                            <div className="pointer-events-none fixed top-1/2 left-1/2 z-[9999] hidden -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/img:block">
-                              <img src={mainImg} alt={`Xem trước ${s.tenSP}`} className="h-64 w-64 max-w-none rounded-xl object-contain bg-slate-50" />
+                            <div className="pointer-events-none absolute left-full ml-3 top-1/2 z-[9999] hidden -translate-y-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/img:block">
+                              <img src={mainImg} alt={`Xem trước ${s.tenSP}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
                             </div>
                           )}
                         </div>
@@ -98,8 +98,8 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                               <div className="w-8 h-8 rounded-md overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
                                 <img src={variantImg} alt={s.mau} className="w-full h-full object-cover" />
                               </div>
-                              <div className="pointer-events-none fixed top-1/2 left-1/2 z-[9999] hidden -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
-                                <img src={variantImg} alt={`Xem trước màu ${s.mau}`} className="h-64 w-64 max-w-none rounded-xl object-contain bg-slate-50" />
+                              <div className="pointer-events-none absolute left-full ml-3 top-1/2 z-[9999] hidden -translate-y-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
+                                <img src={variantImg} alt={`Xem trước màu ${s.mau}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
                               </div>
                             </>
                           ) : (
