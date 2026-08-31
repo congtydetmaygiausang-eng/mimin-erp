@@ -134,31 +134,40 @@ export function useAutoNotify() {
     if (typeof window === "undefined") return;
     const checkAndNotify = () => {
       try {
-        // Check phanCong
+        const isEnabled = localStorage.getItem("mimin_notifications_enabled") === "true";
+        if (!isEnabled) return; // Dừng nếu user tắt thông báo
+
+        // Lấy danh sách các key đã thông báo để không bị lặp lại (spam)
+        // Lưu riêng khỏi array `notifications` vì array đó bị giới hạn 100 items.
+        const notifiedKeysRaw = localStorage.getItem("mimin_notified_keys_v1");
+        const notifiedKeys = notifiedKeysRaw ? JSON.parse(notifiedKeysRaw) : {};
+        let hasNew = false;
+
+        // Check phanCong (Trễ hạn)
         const pcRaw = localStorage.getItem("mimin_phanCong_v1");
         if (pcRaw) {
           const phanCong = JSON.parse(pcRaw);
           const today = new Date().toISOString().split("T")[0];
-          const newLates: typeof phanCong = [];
           for (const pc of phanCong) {
             if (pc.trangThai === "Đã thanh toán" || pc.trangThai === "Hoàn thành") continue;
             if (pc.ngayXongDuKien < today) {
               const key = `late-${pc.id}`;
-              const exists = notifications.find((n) => n.data?.key === key);
-              if (!exists) {
+              if (!notifiedKeys[key]) {
                 addNotification({
                   type: "late",
                   title: "⚠️ Trễ hạn deadline",
-                  body: `${pc.congDoan} - ${pc.nguoiPhuTrach.ten.split(" (")[0]}`,
+                  body: `${pc.congDoan} - ${pc.nguoiPhuTrach?.ten?.split(" (")[0] || ""}`,
                   link: `/cong-no?lenh=${pc.lenhCatId}`,
                   data: { key, phanCongId: pc.id, lenhCatId: pc.lenhCatId },
                 });
-                newLates.push(pc);
+                notifiedKeys[key] = true;
+                hasNew = true;
               }
             }
           }
         }
-        // Check low stock
+
+        // Check low stock (Tồn kho âm)
         const khoRaw = localStorage.getItem("mimin_kho_vai_v2");
         if (khoRaw) {
           const gd = JSON.parse(khoRaw);
@@ -171,8 +180,8 @@ export function useAutoNotify() {
           for (const [maVT, sl] of Object.entries(ton)) {
             if (sl < 0) {
               const key = `lowstock-${maVT}`;
-              const exists = notifications.find((n) => n.data?.key === key);
-              if (!exists) {
+              // Chỉ thông báo lại nếu số âm THAY ĐỔI (ví dụ: từ -5 xuống -8)
+              if (notifiedKeys[key] !== sl) {
                 addNotification({
                   type: "low_stock",
                   title: "📦 Tồn kho âm!",
@@ -180,11 +189,26 @@ export function useAutoNotify() {
                   link: "/kho-vai-tinhmann",
                   data: { key, maVT, ton: sl },
                 });
+                notifiedKeys[key] = sl; // Lưu giá trị số lượng để không thông báo lặp lại trừ khi số lượng thay đổi
+                hasNew = true;
+              }
+            } else {
+              // Nếu kho đã dương trở lại, xóa key để nếu tương lai bị âm lại thì vẫn báo
+              const key = `lowstock-${maVT}`;
+              if (notifiedKeys[key] !== undefined) {
+                delete notifiedKeys[key];
+                hasNew = true;
               }
             }
           }
         }
-      } catch {}
+
+        if (hasNew) {
+          localStorage.setItem("mimin_notified_keys_v1", JSON.stringify(notifiedKeys));
+        }
+      } catch (e) {
+        console.error("Auto notify error:", e);
+      }
     };
     checkAndNotify();
     const interval = setInterval(checkAndNotify, 60_000);  // Mỗi phút
