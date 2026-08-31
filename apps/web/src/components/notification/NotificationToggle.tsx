@@ -57,7 +57,9 @@ export function NotificationToggle() {
       setIsLoading(true);
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        toast.error("Bạn đã từ chối nhận thông báo.");
+        toast.error("Trình duyệt đang chặn thông báo!", {
+          description: "Vui lòng bấm vào biểu tượng 🔒 ở góc trái thanh địa chỉ trình duyệt (URL), chọn 'Cho phép' (Allow) mục Thông báo, sau đó tải lại trang (F5)."
+        });
         setIsLoading(false);
         return;
       }
