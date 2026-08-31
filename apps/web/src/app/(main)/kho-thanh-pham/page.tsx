@@ -148,6 +148,23 @@ export default function KhoThanhPhamPage() {
     return result;
   }, [dsSanPham, search, filterTrangThai, filterLoai, filterSize, filterViTri, sortBy, sortDir]);
 
+  // Map hình ảnh từ Danh Mục Sản Phẩm để tự động hiển thị cho các lô hàng mới nhập
+  const mergedProductImages = useMemo(() => {
+    const map: Record<string, string> = { ...productImages };
+    dsDanhMuc.forEach(dm => {
+      if (dm.hinhAnh && !map[dm.id]) {
+        map[dm.id] = dm.hinhAnh;
+      }
+    });
+    // Lấy thêm hình ảnh từ các dòng kho thành phẩm đã có (nếu dòng mới không có ảnh nhưng dòng cũ có)
+    dsSanPham.forEach(sp => {
+      if (sp.hinhAnh?.[0] && !map[sp.maSP]) {
+        map[sp.maSP] = sp.hinhAnh[0];
+      }
+    });
+    return map;
+  }, [productImages, dsDanhMuc, dsSanPham]);
+
   const groupedProducts = useMemo(() => {
     const groups: Record<string, SanPhamTP[]> = {};
     filtered.forEach(s => {
@@ -596,7 +613,7 @@ export default function KhoThanhPhamPage() {
           ) : viewMode === "grid" ? (
             <ProductGrid
               groups={groupedProducts}
-              productImages={productImages}
+              productImages={mergedProductImages}
               productVideos={productVideos}
               setUploadingSP={setUploadingSP}
               setUploadType={setUploadType}
@@ -616,7 +633,7 @@ export default function KhoThanhPhamPage() {
           ) : (
             <ProductTable
               filtered={filtered}
-              productImages={productImages}
+              productImages={mergedProductImages}
               setEditing={setEditing}
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}
@@ -629,9 +646,9 @@ export default function KhoThanhPhamPage() {
       </div>
 
       {/* Modals */}
-      {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={productImages} onClose={() => setShowMasterDetails(null)} />}
+      {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={mergedProductImages} onClose={() => setShowMasterDetails(null)} />}
       {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
-      {editing && <ProductFormModal sp={editing} initialImage={productImages[editing.id]} onClose={() => setEditing(null)} onSave={handleEdit} />}
+      {editing && <ProductFormModal sp={editing} initialImage={mergedProductImages[editing.id] || mergedProductImages[editing.maSP]} onClose={() => setEditing(null)} onSave={handleEdit} />}
       {dangBanGroup && (() => {
         const soMauCoAnh = dangBanGroup.items.filter((i) => i.hinhAnh?.[0]).length;
         const tongSoMau = dangBanGroup.items.length;
