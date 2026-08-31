@@ -142,8 +142,14 @@ export function useAutoNotify() {
             if (pc.trangThai === "Đã thanh toán" || pc.trangThai === "Hoàn thành") continue;
             if (pc.ngayXongDuKien < today) {
               const key = `late-${pc.id}`;
+              const isSuppressed = localStorage.getItem(`mimin_suppressed_${key}`);
               const exists = notifications.find((n) => n.data?.key === key);
-              if (!exists) {
+              if (!exists && !isSuppressed) {
+                const isEnabledLocal = localStorage.getItem("mimin_notifications_enabled") === "true";
+                if (!isEnabledLocal) {
+                  // Đang tắt thông báo -> lưu lại để bỏ qua sau này
+                  localStorage.setItem(`mimin_suppressed_${key}`, "true");
+                } else {
                 addNotification({
                   type: "late",
                   title: "⚠️ Trễ hạn deadline",
@@ -169,15 +175,22 @@ export function useAutoNotify() {
           for (const [maVT, sl] of Object.entries(ton)) {
             if (sl < 0) {
               const key = `lowstock-${maVT}`;
+              const isSuppressed = localStorage.getItem(`mimin_suppressed_${key}`);
               const exists = notifications.find((n) => n.data?.key === key);
-              if (!exists) {
-                addNotification({
-                  type: "low_stock",
-                  title: "📦 Tồn kho âm!",
-                  body: `${maVT} đang âm: ${sl.toFixed(0)}`,
-                  link: "/kho-vai-tinhmann",
-                  data: { key, maVT, ton: sl },
-                });
+              if (!exists && !isSuppressed) {
+                const isEnabledLocal = localStorage.getItem("mimin_notifications_enabled") === "true";
+                if (!isEnabledLocal) {
+                  // Đang tắt thông báo -> lưu lại để bỏ qua sau này
+                  localStorage.setItem(`mimin_suppressed_${key}`, "true");
+                } else {
+                  addNotification({
+                    type: "low_stock",
+                    title: "📦 Tồn kho âm!",
+                    body: `${maVT} đang âm: ${sl.toFixed(0)}`,
+                    link: "/kho-vai-tinhmann",
+                    data: { key, maVT, ton: sl },
+                  });
+                }
               }
             }
           }
