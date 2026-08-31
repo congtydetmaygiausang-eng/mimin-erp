@@ -28,7 +28,8 @@ export function NotificationToggle() {
       
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
+      const isEnabledLocal = localStorage.getItem("mimin_notifications_enabled") === "true";
+      setIsSubscribed(!!subscription || isEnabledLocal);
     } catch (err) {
       console.error("Lỗi khi kiểm tra thông báo:", err);
     } finally {
@@ -99,6 +100,7 @@ export function NotificationToggle() {
 
       if (error) throw error;
 
+      localStorage.setItem("mimin_notifications_enabled", "true");
       setIsSubscribed(true);
       toast.success("Đã bật thông báo thành công!");
     } catch (err) {
@@ -121,9 +123,11 @@ export function NotificationToggle() {
         if (error) console.error("Lỗi xoá trên DB:", error);
         
         await subscription.unsubscribe();
-        setIsSubscribed(false);
-        toast.success("Đã tắt thông báo.");
       }
+      
+      localStorage.setItem("mimin_notifications_enabled", "false");
+      setIsSubscribed(false);
+      toast.success("Đã tắt thông báo.");
     } catch (err) {
       console.error("Lỗi huỷ đăng ký:", err);
     } finally {

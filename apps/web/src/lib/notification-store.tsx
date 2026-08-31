@@ -64,8 +64,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [noti, ...prev]);
-    // Trigger system notification nếu có permission
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+    // Trigger system notification nếu có permission và đã bật thông báo
+    const isEnabledLocal = localStorage.getItem("mimin_notifications_enabled") === "true";
+    if (isEnabledLocal && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
       try {
         new Notification(n.title, { body: n.body, icon: "/icons/icon-192.png", tag: noti.id });
       } catch {}
