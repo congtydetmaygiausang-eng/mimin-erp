@@ -115,8 +115,8 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
               if (onNhapKho) onNhapKho(lc, tongDat);
               onClose();
             }}
-            disabled={tongDat <= 0}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100"
+            disabled={tongDat <= 0 || phanCongList.some(pc => pc.tenCongDoan !== "Nhập kho" && pc.trangThaiCD !== "hoan_thanh")}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed"
           >
             <Warehouse className="w-5 h-5" />
             Nhập {tongDat.toLocaleString()} SP Kho TP
