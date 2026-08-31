@@ -11,6 +11,7 @@ import { DemoBanner } from "@/components/DemoBanner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { InstallPWAButton } from "@/components/InstallPWAButton";
+import { NotificationToggle } from "@/components/notification/NotificationToggle";
 
 export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSignOut: () => Promise<void>; onMenuClick?: () => void }) {
   const { theme, setTheme } = useTheme();
@@ -64,6 +65,10 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
           >
             {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
+          
+          <div className="hidden sm:block">
+            <NotificationToggle />
+          </div>
           
           <NotificationBell />
           
