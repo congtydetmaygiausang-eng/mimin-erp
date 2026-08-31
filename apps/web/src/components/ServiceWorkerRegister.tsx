@@ -44,6 +44,7 @@ export function ServiceWorkerRegister() {
           document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
               reg.update().catch(() => undefined);
+              checkVersion(); // Cập nhật cả qua version.json
             }
           });
         })
@@ -52,12 +53,43 @@ export function ServiceWorkerRegister() {
         });
     };
 
+    // PWA Force Update qua file version.json
+    let currentVersion: string | null = null;
+    const checkVersion = async () => {
+      try {
+        const res = await fetch(`/version.json?t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const latestVersion = data.version?.toString();
+        
+        if (latestVersion) {
+          if (!currentVersion) {
+            // Lần check đầu tiên (khi mở app)
+            currentVersion = latestVersion;
+          } else if (currentVersion !== latestVersion) {
+            console.log(`[PWA] Phiên bản mới được phát hiện: ${latestVersion} (hiện tại: ${currentVersion}). Tải lại trang...`);
+            window.location.reload();
+          }
+        }
+      } catch (err) {
+        // Bỏ qua nếu lỗi mạng (offline)
+      }
+    };
+
+    // Định kỳ kiểm tra mỗi 10 phút để tránh bị kẹt bản cũ
+    const versionInterval = setInterval(checkVersion, 10 * 60 * 1000);
+    checkVersion();
+
     if (document.readyState === "complete") {
       onLoad();
     } else {
       window.addEventListener("load", onLoad);
-      return () => window.removeEventListener("load", onLoad);
     }
+    
+    return () => {
+      window.removeEventListener("load", onLoad);
+      clearInterval(versionInterval);
+    };
   }, []);
   return null;
 }
