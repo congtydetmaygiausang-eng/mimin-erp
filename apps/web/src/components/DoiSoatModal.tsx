@@ -67,7 +67,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
   const phanCongList = lc.phanCong || [];
 
   return (
-    <ResponsiveModal open={isOpen} onClose={onClose} title={`Đối Soát Tổng Hợp: ${lc.id}`}>
+    <ResponsiveModal open={isOpen} onClose={onClose} title={`Đối Soát Tổng Hợp: ${lc.id}`} maxWidth="4xl">
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -109,11 +109,13 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
               </thead>
               <tbody className="divide-y divide-slate-100">
                 <tr className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-bold text-slate-700 flex items-center justify-between group">
-                    <span>Tổ Cắt</span>
-                    <button onClick={() => handlePrint("cat")} className="p-1 text-slate-400 hover:text-sky-600 rounded transition opacity-0 group-hover:opacity-100" title="In phiếu Tổ Cắt">
-                      <Printer className="w-3.5 h-3.5" />
-                    </button>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-between group">
+                      <span className="font-bold text-slate-700">Tổ Cắt</span>
+                      <button onClick={() => handlePrint("cat")} className="p-1 text-slate-400 hover:text-sky-600 rounded transition opacity-0 group-hover:opacity-100" title="In phiếu Tổ Cắt">
+                        <Printer className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">Nội bộ</td>
                   <td className="px-4 py-3 text-right font-mono text-slate-500">{lc.tongSL.toLocaleString()}</td>
@@ -134,23 +136,27 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
 
                   return (
                     <tr key={pc.id || idx} className="hover:bg-slate-50/50">
-                      <td className="px-4 py-3 font-bold text-slate-700 flex items-center justify-between group">
-                        <span>{pc.tenCongDoan}</span>
-                        <button onClick={() => handlePrint(pc.id)} className="p-1 text-slate-400 hover:text-sky-600 rounded transition opacity-0 group-hover:opacity-100" title={`In phiếu ${pc.tenCongDoan}`}>
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 flex items-center justify-between group/notify">
-                        <span className="truncate pr-2">{pc.nguoiTen || "-"}</span>
-                        {pc.nguoiTen && (
-                          <button 
-                            onClick={() => handlePushNotification(pc)}
-                            className="p-1 text-slate-400 hover:text-amber-500 rounded transition opacity-0 group-hover/notify:opacity-100 shrink-0"
-                            title={`Nhắc việc ${pc.tenCongDoan} đến ${pc.nguoiTen}`}
-                          >
-                            <BellRing className="w-3.5 h-3.5" />
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-between group">
+                          <span className="font-bold text-slate-700">{pc.tenCongDoan}</span>
+                          <button onClick={() => handlePrint(pc.id)} className="p-1 text-slate-400 hover:text-sky-600 rounded transition opacity-0 group-hover:opacity-100" title={`In phiếu ${pc.tenCongDoan}`}>
+                            <Printer className="w-3.5 h-3.5" />
                           </button>
-                        )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        <div className="flex items-center justify-between group/notify">
+                          <span className="truncate pr-2">{pc.nguoiTen || "-"}</span>
+                          {pc.nguoiTen && (
+                            <button 
+                              onClick={() => handlePushNotification(pc)}
+                              className="p-1 text-slate-400 hover:text-amber-500 rounded transition opacity-0 group-hover/notify:opacity-100 shrink-0"
+                              title={`Nhắc việc ${pc.tenCongDoan} đến ${pc.nguoiTen}`}
+                            >
+                              <BellRing className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-slate-500">{slGiao.toLocaleString()}</td>
                       <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">{slDat > 0 ? slDat.toLocaleString() : "-"}</td>
