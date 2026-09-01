@@ -112,7 +112,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-between group">
                       <span className="font-bold text-slate-700">Tổ Cắt</span>
-                      <button onClick={() => handlePrint("cat")} className="p-1 text-slate-400 hover:text-sky-600 rounded transition opacity-0 group-hover:opacity-100" title="In phiếu Tổ Cắt">
+                      <button onClick={() => handlePrint("cat")} className="p-1 text-slate-400 hover:text-sky-600 rounded transition" title="In phiếu Tổ Cắt">
                         <Printer className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -139,7 +139,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-between group">
                           <span className="font-bold text-slate-700">{pc.tenCongDoan}</span>
-                          <button onClick={() => handlePrint(pc.id)} className="p-1 text-slate-400 hover:text-sky-600 rounded transition opacity-0 group-hover:opacity-100" title={`In phiếu ${pc.tenCongDoan}`}>
+                          <button onClick={() => handlePrint(pc.id)} className="p-1 text-slate-400 hover:text-sky-600 rounded transition" title={`In phiếu ${pc.tenCongDoan}`}>
                             <Printer className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -150,7 +150,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                           {pc.nguoiTen && (
                             <button 
                               onClick={() => handlePushNotification(pc)}
-                              className="p-1 text-slate-400 hover:text-amber-500 rounded transition opacity-0 group-hover/notify:opacity-100 shrink-0"
+                              className="p-1 text-slate-400 hover:text-amber-500 rounded transition shrink-0"
                               title={`Nhắc việc ${pc.tenCongDoan} đến ${pc.nguoiTen}`}
                             >
                               <BellRing className="w-3.5 h-3.5" />
