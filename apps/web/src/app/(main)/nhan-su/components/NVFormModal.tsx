@@ -117,7 +117,8 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
         avatar: avatarPath ?? nv?.avatarPath ?? form.avatar ?? "",
         cccdFrontImage: cccdFrontPath ?? nv?.cccdFrontPath ?? form.cccdFrontImage ?? "",
         cccdBackImage: cccdBackPath ?? nv?.cccdBackPath ?? form.cccdBackImage ?? "",
-      } as NhanSuExt;
+        oldMaNV: mode === "edit" ? nv?.maNV : undefined, // Gửi mã cũ để backend biết xoá nếu đổi mã
+      } as NhanSuExt & { oldMaNV?: string };
 
       const response = await authFetch("/api/employee-records", {
         method: "POST",
