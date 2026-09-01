@@ -25,8 +25,8 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
   };
 
   const handlePushNotification = async (pc: any) => {
-    if (!pc.nguoiTen || !pc.userId) {
-      toast.error("Chưa có thông tin User ID để gửi thông báo!");
+    if (!pc.nguoiTen) {
+      toast.error("Chưa có thông tin người nhận việc để gửi thông báo!");
       return;
     }
     
