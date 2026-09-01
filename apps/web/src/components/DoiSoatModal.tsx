@@ -97,14 +97,14 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase font-bold tracking-wide border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 text-[11px] uppercase font-bold tracking-wide border-b border-slate-200 whitespace-nowrap">
                 <tr>
-                  <th className="px-4 py-3">Khâu (Phiếu)</th>
-                  <th className="px-4 py-3">Người/Xưởng TH</th>
-                  <th className="px-4 py-3 text-right">SL Giao</th>
-                  <th className="px-4 py-3 text-right">SL Đạt</th>
-                  <th className="px-4 py-3 text-right">SL Lỗi</th>
-                  <th className="px-4 py-3">Ghi chú Lỗi</th>
+                  <th className="px-4 py-3 min-w-[130px]">Khâu (Phiếu)</th>
+                  <th className="px-4 py-3 min-w-[160px]">Người/Xưởng TH</th>
+                  <th className="px-4 py-3 text-right min-w-[80px]">SL Giao</th>
+                  <th className="px-4 py-3 text-right min-w-[80px]">SL Đạt</th>
+                  <th className="px-4 py-3 text-right min-w-[80px]">SL Lỗi</th>
+                  <th className="px-4 py-3 min-w-[120px]">Ghi chú Lỗi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
