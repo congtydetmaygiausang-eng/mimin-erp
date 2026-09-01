@@ -11,11 +11,15 @@ import { kiemTraTruocHoanThanh, thongKeLoiLenhCat } from "@/lib/data/cong-doan-h
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 import { DoiSoatModal } from "@/components/DoiSoatModal";
+import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
+import { toSupabaseRow, type SanPhamTP, KHO_TP_CHANGED_EVENT } from "../kho-thanh-pham/data";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 
 export default function UiHoanThienPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const [selectedDoiSoatLc, setSelectedDoiSoatLc] = useState<LenhCat | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { dsSanPham, themSP } = useDanhMucSP();
 
   const { user } = useSession();
 
@@ -65,6 +69,122 @@ export default function UiHoanThienPage() {
       toast.success(`Đã cập nhật số lượng màu ${data.mau}`);
     } catch (error) {
       toast.error("Lỗi cập nhật màu");
+    }
+  };
+
+  const handleNhapKho = async (lc: LenhCat, tongDat: number) => {
+    try {
+      capNhatTrangThai(lc.id, "HoanThanh", null);
+
+      const dongGoiPCs = getHTPC(lc);
+      
+      // Đánh dấu toàn bộ công đoạn HT là hoàn thành khi nhập kho
+      dongGoiPCs.forEach((pc: any) => {
+        if (pc.trangThaiCD !== "hoan_thanh") {
+          capNhatCongDoan(lc.id, pc.id, { 
+            trangThaiCD: "hoan_thanh", 
+            soLuongHoanThanh: pc.soLuong || tongDat 
+          });
+        }
+      });
+
+      // Cập nhật luôn công đoạn "Nhập kho" thành xanh
+      const nhapKhoPC = lc.phanCong?.find((pc: any) => pc.id === "nhap_kho" || pc.tenCongDoan?.toLowerCase().includes("nhập kho"));
+      if (nhapKhoPC && nhapKhoPC.trangThaiCD !== "hoan_thanh") {
+        capNhatCongDoan(lc.id, nhapKhoPC.id, { 
+          trangThaiCD: "hoan_thanh", 
+          soLuongHoanThanh: tongDat 
+        });
+      }
+
+      const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+      const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
+
+      const giaVon1SP = Math.round(
+        lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0
+      );
+
+      const fallbackImg = lc.dsMau?.[0]?.img || "";
+      let remaining = tongDat;
+      const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
+        const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+        let sl = ct?.soLuongDat ?? Math.round(tongDat / dsMauLC.length);
+        if (idx === dsMauLC.length - 1 && !ct?.soLuongDat) {
+          sl = remaining;
+        }
+        remaining -= sl;
+
+        const chiTietSz = ct?.sizes || m.phanBoSize || [];
+        const strTiLeSize = chiTietSz.filter((x: any) => x.sl > 0).map((x: any) => `${x.size}:${x.sl}`).join(", ");
+        return {
+          id: `SP-${Date.now()}-${idx}`,
+          maSP: lc.maSP || lc.id,
+          tenSP: lc.tenSP || "",
+          phanLoai: "Áo",
+          mau: m.ten,
+          size: "Nhiều size",
+          lsx: lc.id,
+          ngayNhap: new Date().toISOString().split("T")[0],
+          soLuong: sl,
+          donGia: giaVon1SP,
+          giaTri: sl * giaVon1SP,
+          viTri: "Kho Thành Phẩm",
+          trangThai: "con",
+          hinhAnh: m.img ? [m.img] : [],
+          imgQuan: m.imgQuan || undefined,
+          chiTietSize: chiTietSz,
+          tiLeSize: strTiLeSize,
+        };
+      });
+
+      const khoKey = "mimin_kho_thanh_pham_v2";
+      const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
+      currentKho.push(...newSPs);
+      localStorage.setItem(khoKey, JSON.stringify(currentKho));
+      
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(KHO_TP_CHANGED_EVENT));
+      }
+
+      newSPs.forEach((sp) => {
+        supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(sp)).catch((e) =>
+          console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
+        );
+      });
+
+      // Tự động đẩy sản phẩm vào Danh Mục Sản Phẩm nếu chưa tồn tại
+      const maSPTarget = lc.maSP || lc.id;
+      const existingSP = dsSanPham.find((sp) => sp.id === maSPTarget);
+      if (!existingSP) {
+        const newSP = {
+          id: maSPTarget,
+          maSP: maSPTarget,
+          tenSP: lc.tenSP || "Sản phẩm từ Lệnh Cắt",
+          loaiSP: lc.loaiSP || "AoCoTron",
+          giaBanDuKien: giaVon1SP * 2,
+          giaVonDuKien: giaVon1SP,
+          tiLeSize: lc.dsMau?.[0]?.tiLeSize || "1:2:2:2:1",
+          bangSize: { sizes: [], ratios: [], riSo: 1 },
+          dsMau: lc.dsMau || [],
+          ghiChu: "Tự động tạo từ nhập kho thành phẩm",
+          ngayTao: new Date().toISOString().split("T")[0],
+          hinhAnh: fallbackImg,
+          trangThai: "con-hang",
+          ncc: "Xưởng Mimin",
+          chatLieu: "",
+          kenhBan: ["ban-le"],
+          daBan: 0,
+          rating: 5,
+          luotXem: 0,
+        };
+        themSP(newSP as any);
+      }
+
+      toast.success(`Đã nhập ${tongDat} SP vào kho thành phẩm!`);
+      setSelectedDoiSoatLc(null);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Có lỗi xảy ra khi nhập kho");
     }
   };
 
@@ -278,6 +398,7 @@ export default function UiHoanThienPage() {
         isOpen={!!selectedDoiSoatLc}
         onClose={() => setSelectedDoiSoatLc(null)}
         lc={selectedDoiSoatLc}
+        onNhapKho={handleNhapKho}
       />
     </div>
   );

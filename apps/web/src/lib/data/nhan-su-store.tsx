@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 import { NHAN_SU_KHOI_DAU, type NhanSuExt } from "@/app/(main)/nhan-su/data";
 import { toSupabaseEmployeeRecord, normalizeEmployeeRecord } from "@/lib/employee-records";

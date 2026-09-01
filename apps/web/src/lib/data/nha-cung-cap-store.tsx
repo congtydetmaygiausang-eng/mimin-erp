@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 import { NCCS, formatVNDShort } from "@/lib/data/real-data";
 import { toast } from "sonner";

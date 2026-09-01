@@ -1465,13 +1465,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   onChange={e => setPhuTrachSoDo(e.target.value)}
                 >
                   <option value="">-- Chọn NV phụ trách --</option>
-                  {(() => {
-                    const filtered = nhanVienOptions.filter(nv => nv.boPhan?.includes("Sản xuất") || nv.boPhan?.includes("Kỹ thuật"));
-                    if (filtered.length > 0) {
-                      return filtered.map(nv => <option key={nv.ma} value={nv.ma}>{nv.ma} - {nv.ten}</option>);
-                    }
-                    return nhanVienOptions.map(nv => <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>);
-                  })()}
+                  {nhanVienOptions.map(nv => (
+                    <option key={nv.ma} value={nv.ma}>{nv.ma} - {nv.ten}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -2083,12 +2079,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     <div className="grid grid-cols-1 gap-2">
                       {/* Ảnh mẫu ÁO (hàng Bộ hiển thị cạnh ảnh QUẦN) */}
                       <div
-                        className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto bg-white border-2 border-dashed border-blue-300 rounded-lg cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                        className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto bg-white border-2 border-dashed border-blue-300 rounded-lg cursor-pointer group hover:border-blue-500 transition-colors flex items-center justify-center z-10 hover:z-50"
                         onClick={() => handleColorImageUpload(idx, "ao")}
                       >
                         {mau.img ? (
                           <>
-                            <img src={mau.img} className="w-full h-full object-cover" />
+                            <img src={mau.img} className="w-full h-full object-cover rounded-lg group-hover:scale-[1.75] transition-transform duration-300 group-hover:shadow-2xl origin-center" />
                             <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[10px] font-bold">ÁO</span>
                             <span className="absolute bottom-0 inset-x-0 py-1 bg-black/60 text-white text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
                               Bấm để thay ảnh {isBo ? "ÁO" : ""}
@@ -2422,12 +2418,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         <div className="grid grid-cols-1 md:grid-cols-[160px_minmax(0,1fr)] gap-2 min-w-0 min-h-[300px] rounded-lg border-2 border-teal-300 bg-white/95 p-2 text-xs shadow-sm [&_input]:py-1 [&_select]:py-1 [&_textarea]:py-1">
                           {isBo && (
                             <div
-                              className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto md:row-span-2 self-start bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer overflow-hidden group hover:border-teal-500 transition-colors flex items-center justify-center"
+                              className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto md:row-span-2 self-start bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer group hover:border-teal-500 transition-colors flex items-center justify-center z-10 hover:z-50"
                               onClick={() => handleColorImageUpload(idx, "quan")}
                             >
                               {mau.imgQuan ? (
                                 <>
-                                  <img src={mau.imgQuan} alt={`Ảnh màu quần ${mau.ten || idx + 1}`} className="w-full h-full object-cover" />
+                                  <img src={mau.imgQuan} alt={`Ảnh màu quần ${mau.ten || idx + 1}`} className="w-full h-full object-cover rounded-lg group-hover:scale-[1.75] transition-transform duration-300 group-hover:shadow-2xl origin-center" />
                                   <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-teal-700/90 text-white text-[10px] font-bold">QUẦN</span>
                                   <span className="absolute bottom-0 inset-x-0 py-1.5 bg-black/60 text-white text-xs font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">Bấm để thay ảnh quần</span>
                                 </>
@@ -2968,11 +2964,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   {showTaoMauChiPhi && (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Mới</h3>
+        <h3 className="text-lg font-bold mb-4 text-slate-900">Tạo Mẫu Chi Phí Mới</h3>
         <div className="space-y-3 mb-6">
           <div>
-            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Chi Phí Hàng Thun" value={newMauChiPhi.ten} onChange={e => setNewMauChiPhi(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cp_" + Date.now() }))} />
+            <label className="block text-sm font-bold mb-1 text-slate-900">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border rounded text-slate-900" placeholder="VD: Chi Phí Hàng Thun" value={newMauChiPhi.ten} onChange={e => setNewMauChiPhi(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cp_" + Date.now() }))} />
           </div>
           {Object.entries(newMauChiPhi.chiPhi).map(([tenKhoan, donGia]) => (
             <div key={tenKhoan} className="flex items-center justify-between gap-2">
@@ -2984,10 +2980,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium flex-1">{tenKhoan}</span>
+                <span className="text-sm font-medium flex-1 text-slate-900">{tenKhoan}</span>
               </div>
               <div className="flex items-center gap-1 w-32 border rounded px-2">
-                <input type="number" className="w-full py-1 focus:outline-none bg-transparent" placeholder="Đơn giá" value={donGia || ""} onChange={e => {
+                <input type="number" className="w-full py-1 focus:outline-none bg-transparent text-slate-900" placeholder="Đơn giá" value={donGia || ""} onChange={e => {
                   const newChiPhi = { ...newMauChiPhi.chiPhi };
                   newChiPhi[tenKhoan] = parseInt(e.target.value) || 0;
                   setNewMauChiPhi(prev => ({ ...prev, chiPhi: newChiPhi }));
@@ -2999,7 +2995,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           {/* Thêm khoản chi phí mới */}
           <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
             <input 
-              className="flex-1 px-3 py-1.5 border rounded text-sm" 
+              className="flex-1 px-3 py-1.5 border rounded text-sm text-slate-900" 
               placeholder="Nhập khoản chi phí mới..." 
               value={customChiPhiName} 
               onChange={e => setCustomChiPhiName(e.target.value)}
