@@ -125,14 +125,14 @@ export default function DanhMucSanPhamPage() {
         bangSize: current?.bangSize?.sizes?.length
           ? current.bangSize
           : (sizes.length ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length } : { sizes: [], ratios: [], riSo: 1 }),
-        giaVonDuKien: current?.giaVonDuKien || item.giaVon || 0,
+        giaVonDuKien: item.giaVon || current?.giaVonDuKien || 0,
         giaBanDuKien: current?.giaBanDuKien || item.giaBanLe || item.giaBanSi || item.giaBanLo || 0,
-        giaBanLe: current?.giaBanLe || item.giaBanLe || 0,
-        giaBanSi: current?.giaBanSi || item.giaBanSi || 0,
-        giaBanLo: current?.giaBanLo || item.giaBanLo,
-        giaTikTok: current?.giaTikTok || item.giaTikTok,
-        giaShopee: current?.giaShopee || item.giaShopee,
-        kenhBan: current?.kenhBan || item.kenhBan,
+        giaBanLe: item.giaBanLe || current?.giaBanLe || 0,
+        giaBanSi: item.giaBanSi || current?.giaBanSi || 0,
+        giaBanLo: item.giaBanLo || current?.giaBanLo || 0,
+        giaTikTok: item.giaTikTok || current?.giaTikTok || 0,
+        giaShopee: item.giaShopee || current?.giaShopee || 0,
+        kenhBan: item.kenhBan?.length ? item.kenhBan : (current?.kenhBan || []),
         hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
       });
     }
@@ -528,6 +528,7 @@ export default function DanhMucSanPhamPage() {
                 key={sp.id}
                 sp={sp}
                 tonKhoTheoMau={tonKho[sp.id]}
+                activeFilter={activeFilter}
                 onAddToCart={handleAddToCart}
                 onCreateOrder={handleCreateOrder}
                 onProduceOrder={handleProduceOrder}

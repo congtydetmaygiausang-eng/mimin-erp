@@ -53,7 +53,9 @@ export default function KeHoachSXPage() {
       const newLenhCat = {
         id: newId,
         loaiLenh: "HangNha" as const,
-        loaiSP: (item.loaiSP as any) || "BoTru",
+        loaiSP: ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"].includes(item.loaiSP as string) 
+          ? (item.loaiSP as any) 
+          : "BoTru",
         maSP: item.maSP || "",
         tenSP: item.tenSP || item.sanPham,
         tongSL: item.soLuong,

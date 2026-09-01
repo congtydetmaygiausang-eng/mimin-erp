@@ -11,6 +11,7 @@ try {
   
   if (content !== updatedContent) {
     fs.writeFileSync(swPath, updatedContent);
+    fs.writeFileSync(path.join(__dirname, '..', 'public', 'version.json'), JSON.stringify({ version: timestamp }));
     console.log(`[PWA] Successfully updated Service Worker cache version to mimin-erp-v${timestamp}`);
   } else {
     console.log('[PWA] CACHE_NAME string not found in sw.js or already updated.');

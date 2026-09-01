@@ -1,7 +1,7 @@
 // ProductLibraryCard - Card compact cho thu vien (grid 3-4 cols)
 // 2026-08-07 - redesign theo sep Sang: layout "thu vien the card"
 // 2026-08-07 - them thong tin: trang thai, da ban, NCC, chat lieu, rating
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye, ChevronDown } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
@@ -18,6 +18,7 @@ interface ProductLibraryCardProps {
   onFavorite?: (sp: SanPham) => void;
   isFavorite?: boolean;
   onClick?: (sp: SanPham) => void;
+  activeFilter?: string;
 }
 
 // Helper: render label trang thai
@@ -47,6 +48,7 @@ export default function ProductLibraryCard({
   onFavorite,
   isFavorite = false,
   onClick,
+  activeFilter = "all",
 }: ProductLibraryCardProps) {
   const [mauMoRong, setMauMoRong] = useState<string | null>(null);
   const topColors = (sp.dsMau || []).slice(0, 3);
@@ -54,10 +56,24 @@ export default function ProductLibraryCard({
   const soMau = (sp.dsMau || []).length;
   // Tổng số lượng thật toàn sản phẩm (cộng tất cả màu, tất cả size) - 0 nếu
   // chưa có dữ liệu kho_thanh_pham cho mã SP này (chưa nhập kho, không phải lỗi).
-  const tongTonKho = Object.values(tonKhoTheoMau || {}).reduce(
-    (tong, sizes) => tong + sizes.reduce((s, x) => s + (x.sl || 0), 0),
-    0
-  );
+  const tongTonKho = useMemo(() => {
+    if (!tonKhoTheoMau) return 0;
+    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + tonMau.reduce((s, row) => s + (row.sl || 0), 0), 0);
+  }, [tonKhoTheoMau]);
+
+  const displayPrice = useMemo(() => {
+    switch (activeFilter) {
+      case "ban-le": return sp.giaBanLe || sp.giaBanDuKien;
+      case "ban-si": return sp.giaBanSi || sp.giaBanDuKien;
+      case "ban-lo": return sp.giaBanLo || sp.giaBanDuKien;
+      case "tiktok": return sp.giaTikTok || sp.giaBanDuKien;
+      case "shopee": return sp.giaShopee || sp.giaBanDuKien;
+      default: return sp.giaBanDuKien;
+    }
+  }, [activeFilter, sp]);
+
+  const hasPrice = displayPrice > 0;
+
   const trangThai = sp.trangThai || "con-hang";
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
@@ -76,10 +92,10 @@ export default function ProductLibraryCard({
   return (
     <div 
       onClick={() => onClick && onClick(sp)}
-      className={`group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
+      className={`group relative bg-white rounded-2xl shadow-md hover:shadow-2xl hover:z-50 transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
     >
       {/* === ANH SAN PHAM === */}
-      <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden">
+      <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden rounded-t-2xl">
         {/* Placeholder icon */}
         <div className="absolute inset-0 flex items-center justify-center">
           <Shirt className="w-20 h-20 md:w-24 md:h-24 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-500" />
@@ -177,11 +193,16 @@ export default function ProductLibraryCard({
                     key={idx}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setMauMoRong(dangMo ? null : mau.ten); }}
-                    className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-xs font-bold transition-colors ${dangMo ? "border-cyan-500 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"}`}
+                    className={`group/skuimg relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-xs font-bold transition-colors ${dangMo ? "border-cyan-500 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"}`}
                     title={mau.maSKU || mau.ten}
                   >
                     {mau.img ? (
-                      <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                      <>
+                        <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
+                          <img src={mau.img} alt={`Xem trước màu ${mau.ten}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
+                        </div>
+                      </>
                     ) : (
                       <span
                         className="w-5 h-5 rounded-full border border-slate-200 shrink-0"
@@ -297,20 +318,20 @@ export default function ProductLibraryCard({
 
         {/* === Gia ban + Gia von === */}
         <div className="mt-auto mb-3 pt-2 border-t border-slate-100">
-          {sp.giaBanDuKien > 0 ? (
+          {hasPrice ? (
             <>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
-                  {formatVNDShort(sp.giaBanDuKien)}
+                  {formatVNDShort(displayPrice)}
                 </span>
                 <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
               </div>
               {sp.giaVonDuKien > 0 && (
                 <div className="text-[10px] md:text-xs text-slate-400 line-through opacity-70 mt-0.5">
                   Vốn: {formatVNDShort(sp.giaVonDuKien)}
-                  {sp.giaBanDuKien > 0 && sp.giaVonDuKien > 0 && (
+                  {displayPrice > 0 && sp.giaVonDuKien > 0 && (
                     <span className="ml-1.5 text-emerald-600 font-bold">
-                      +{Math.round(((sp.giaBanDuKien - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
+                      +{Math.round(((displayPrice - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
                     </span>
                   )}
                 </div>

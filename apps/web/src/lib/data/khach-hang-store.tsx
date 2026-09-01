@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
+import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 
 export type KhachHangDBModel = {
   id: string;
@@ -173,6 +174,11 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     fetchSupabase();
     return () => { mounted = false; };
   }, []);
+
+  useSupabaseRealtime<KhachHangUI>("khach_hang", setList, {
+    mapIn: mapToUI,
+    primaryKey: "maKH",
+  });
 
   const themKhachHang = useCallback(async (kh: KhachHangUI) => {
     setList(prev => [kh, ...prev]);

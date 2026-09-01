@@ -139,6 +139,9 @@ export async function supabaseUpsertRaw<T extends { id: string }>(
        delete fallback.ncc; delete fallback.da_ban; delete fallback.rating; delete fallback.luot_xem;
        delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien; delete fallback.ti_le_size;
        delete fallback.bang_size; delete fallback.ds_mau; delete fallback.ghi_chu; delete fallback.ngay_tao;
+       delete fallback.gia_ban_le; delete fallback.gia_ban_si; delete fallback.gia_von; delete fallback.gia_ban_lo;
+       delete fallback.gia_tiktok; delete fallback.gia_shopee; delete fallback.kenh_ban; delete fallback.img_quan;
+       delete fallback.video; delete fallback.chi_tiet_size; delete fallback.khach_hang;
        
        const { data: d2, error: e2 } = await supabase!
          .from(table)
@@ -265,23 +268,11 @@ export function useSupabaseSync<T extends { id: string }>(
             remote = remote.map(options.mapIn);
           }
           if (!cancelled) {
-            if (remote.length > 0) {
-              setDataState(remote);
-              saveLocal(remote); // sync xuống local
-              setSource("supabase");
-              console.log(`[useSupabaseSync] ${table}: ${remote.length} rows from Supabase`);
-            } else {
-              // Supabase rỗng → lấy từ localStorage và push lên
-              const local = loadLocal();
-              setDataState(local);
-              if (local.length > 0) {
-                console.log(`[useSupabaseSync] ${table}: pushing ${local.length} rows to Supabase`);
-                for (const row of local) {
-                  await upsertRow(row);
-                }
-                setSource("merged");
-              }
-            }
+            // Nguồn Supabase luôn là chân lý khi fetch thành công (kể cả khi rỗng).
+            setDataState(remote);
+            saveLocal(remote); // sync xuống local
+            setSource("supabase");
+            console.log(`[useSupabaseSync] ${table}: ${remote.length} rows from Supabase`);
           }
         } else {
           // Supabase tắt → chỉ dùng localStorage
@@ -324,8 +315,12 @@ export function useSupabaseSync<T extends { id: string }>(
               if (idx >= 0) next[idx] = newRow;
               else next = [newRow, ...next];
             } else if (payload.eventType === "DELETE") {
-              const oldId = (payload.old as any).id;
-              next = next.filter((r) => r.id !== oldId);
+              const oldPayload = payload.old as any;
+              const oldId = oldPayload.id || oldPayload.ma_sp || oldPayload.ma_khsx || oldPayload.ma_lenh;
+              // So sánh cả id và dbId (vì danh-muc-sp-store map id thành dbId)
+              if (oldId) {
+                next = next.filter((r) => r.id !== oldId && (r as any).dbId !== oldId);
+              }
             }
             saveLocal(next);
             return next;
@@ -358,3 +353,71 @@ export function useSupabaseSync<T extends { id: string }>(
 
   return { data, setData, loading, error, source };
 }
+
+/**
+ * Hook `useSupabaseRealtime` dùng để gắn vào các module đang xài manual fetch (như Khách hàng, Lệnh cắt)
+ * để tự động Subscribe vào sự kiện INSERT/UPDATE/DELETE và cập nhật local state.
+ */
+export function useSupabaseRealtime<T>(
+  table: string,
+  setDataState: React.Dispatch<React.SetStateAction<T[]>>,
+  options?: {
+    mapIn?: (row: any) => T;
+    // Khóa chính trong CSDL để dò tìm dòng bị xóa, mặc định là "id"
+    primaryKey?: string; 
+  }
+) {
+  useEffect(() => {
+    if (!checkSupabase()) return;
+    
+    // Thêm random suffix để tránh trùng channel name khi mount
+    const channelName = `${table}-realtime-${Math.random().toString(36).slice(2)}`;
+    const channel = supabase!
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table },
+        (payload) => {
+          console.log(`[Realtime] ${table}:`, payload.eventType);
+          setDataState((prev) => {
+            let next = [...prev];
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              const newRow = options?.mapIn ? options.mapIn(snakeToCamel(payload.new)) : (payload.new as T);
+              const pk = options?.primaryKey || "id";
+              // Tìm bằng khóa chính của object đã map
+              const rowId = (newRow as any)[pk];
+              const idx = next.findIndex((r) => (r as any)[pk] === rowId);
+              
+              if (idx >= 0) next[idx] = newRow;
+              else next = [newRow, ...next];
+            } else if (payload.eventType === "DELETE") {
+              const oldPayload = payload.old as any;
+              // Khóa chính trên Supabase (vd: ma_sp, ma_khsx, id, v.v...)
+              const dbPrimaryKey = oldPayload.id || oldPayload.ma_sp || oldPayload.ma_khsx || oldPayload.ma_lenh || oldPayload.ma_kh || oldPayload.ma_nv || oldPayload.ma_ncc;
+              if (dbPrimaryKey) {
+                // Ta so sánh với tất cả các khóa có thể của local object để tìm
+                next = next.filter(
+                  (r: any) =>
+                    r.id !== dbPrimaryKey &&
+                    r.maKH !== dbPrimaryKey &&
+                    r.maNV !== dbPrimaryKey &&
+                    r.maNCC !== dbPrimaryKey &&
+                    r.maSP !== dbPrimaryKey &&
+                    r.maKHSX !== dbPrimaryKey &&
+                    r.maLenh !== dbPrimaryKey &&
+                    r.dbId !== dbPrimaryKey
+                );
+              }
+            }
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase!.removeChannel(channel);
+    };
+  }, [table, setDataState]);
+}
+

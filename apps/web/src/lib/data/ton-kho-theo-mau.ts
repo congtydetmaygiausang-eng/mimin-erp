@@ -38,16 +38,29 @@ function congDonSize(vao: TonKhoTheoSize, them: TonKhoTheoSize): TonKhoTheoSize 
 export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
   if (!checkSupabase()) return {};
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
+  const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
+  
+  // Create a map to deduplicate by ID if needed, or just combine them. 
+  // Supabase has snake_case, localStorage has camelCase. We'll handle both.
+  const allRows = [...rows, ...localKho];
+  // Deduplicate by id
+  const uniqueRows = Array.from(new Map(allRows.map(r => [r.id, r])).values());
+
   const result: TonKhoTheoSanPham = {};
-  for (const r of rows) {
-    if (r.trang_thai !== "con") continue;
-    const maSP = r.ma_sp;
+  for (const r of uniqueRows) {
+    const isCon = r.trang_thai === "con" || r.trangThai === "con";
+    if (!isCon) continue;
+    const maSP = r.ma_sp || r.maSP;
     const mau = r.mau || "";
     if (!maSP) continue;
     if (!result[maSP]) result[maSP] = {};
-    const chiTiet: TonKhoTheoSize = Array.isArray(r.chi_tiet_size) && r.chi_tiet_size.length > 0
-      ? r.chi_tiet_size.map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
-      : (r.size ? [{ size: r.size, sl: Number(r.so_luong) || 0 }] : []);
+    const ctSize = r.chi_tiet_size || r.chiTietSize;
+    const size = r.size;
+    const soLuong = r.so_luong || r.soLuong;
+    
+    const chiTiet: TonKhoTheoSize = Array.isArray(ctSize) && ctSize.length > 0
+      ? ctSize.map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
+      : (size ? [{ size: size, sl: Number(soLuong) || 0 }] : []);
     result[maSP][mau] = congDonSize(result[maSP][mau] || [], chiTiet);
   }
   return result;
@@ -57,36 +70,69 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
 export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
   if (!checkSupabase()) return {};
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
+  const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
+  
+  const allRows = [...rows, ...localKho];
+  const uniqueRows = Array.from(new Map(allRows.map(r => [r.id, r])).values());
+
   const result: DanhMucKhoThanhPham = {};
-  for (const r of rows) {
-    if (r.trang_thai !== "con" || !r.ma_sp) continue;
-    const maSP = String(r.ma_sp);
-    const sizes: TonKhoTheoSize = Array.isArray(r.chi_tiet_size)
-      ? r.chi_tiet_size.map((x: any) => ({ size: String(x.size), sl: Number(x.sl) || 0 }))
-      : [];
-    const channels = (Array.isArray(r.kenh_ban) && r.kenh_ban.length ? r.kenh_ban : ["ban-le"]) as KenhBanKho[];
+  for (const r of uniqueRows) {
+    const maSP = r.ma_sp || r.maSP;
+    if (!maSP) continue;
+    
+    const sizes: TonKhoTheoSize = Array.isArray(r.chi_tiet_size || r.chiTietSize) && (r.chi_tiet_size || r.chiTietSize).length > 0
+      ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
+      : (r.size ? [{ size: r.size, sl: Number(r.so_luong || r.soLuong) || 0 }] : []);
+    const kenhBanRaw = r.kenh_ban || r.kenhBan;
+    const channels = (Array.isArray(kenhBanRaw) && kenhBanRaw.length ? kenhBanRaw : ["ban-le"]) as KenhBanKho[];
+
     if (!result[maSP]) {
       result[maSP] = {
         maSP,
-        tenSP: r.ten_sp || maSP,
-        phanLoai: r.phan_loai || "",
-        tiLeSize: r.ti_le_size || "",
-        giaVon: Number(r.gia_von ?? r.don_gia) || 0,
-        giaBanLe: Number(r.gia_ban_le ?? r.don_gia) || 0,
-        giaBanSi: Number(r.gia_ban_si) || 0,
-        giaBanLo: Number(r.gia_ban_lo) || 0,
-        giaTikTok: Number(r.gia_tiktok) || 0,
-        giaShopee: Number(r.gia_shopee) || 0,
+        tenSP: r.ten_sp || r.tenSP || maSP,
+        phanLoai: r.phan_loai || r.phanLoai || "",
+        tiLeSize: r.ti_le_size || r.tiLeSize || "",
+        giaVon: Number(r.gia_von ?? r.don_gia ?? r.giaVon ?? r.donGia) || 0,
+        giaBanLe: Number(r.gia_ban_le ?? r.don_gia ?? r.giaBanLe ?? r.donGia) || 0,
+        giaBanSi: Number(r.gia_ban_si ?? r.giaBanSi) || 0,
+        giaBanLo: Number(r.gia_ban_lo ?? r.giaBanLo) || 0,
+        giaTikTok: Number(r.gia_tiktok ?? r.giaTikTok) || 0,
+        giaShopee: Number(r.gia_shopee ?? r.giaShopee) || 0,
         kenhBan: [],
         mau: [],
       };
+    } else {
+      const giaVon = Number(r.gia_von ?? r.don_gia ?? r.giaVon ?? r.donGia) || 0;
+      if (giaVon > result[maSP].giaVon) result[maSP].giaVon = giaVon;
+      
+      const giaBanLe = Number(r.gia_ban_le ?? r.don_gia ?? r.giaBanLe ?? r.donGia) || 0;
+      if (giaBanLe > result[maSP].giaBanLe) result[maSP].giaBanLe = giaBanLe;
+
+      const giaBanSi = Number(r.gia_ban_si ?? r.giaBanSi) || 0;
+      if (giaBanSi > result[maSP].giaBanSi) result[maSP].giaBanSi = giaBanSi;
+
+      const giaBanLo = Number(r.gia_ban_lo ?? r.giaBanLo) || 0;
+      if (giaBanLo > result[maSP].giaBanLo) result[maSP].giaBanLo = giaBanLo;
+
+      const giaTikTok = Number(r.gia_tiktok ?? r.giaTikTok) || 0;
+      if (giaTikTok > result[maSP].giaTikTok) result[maSP].giaTikTok = giaTikTok;
+
+      const giaShopee = Number(r.gia_shopee ?? r.giaShopee) || 0;
+      if (giaShopee > result[maSP].giaShopee) result[maSP].giaShopee = giaShopee;
     }
     const item = result[maSP];
     item.kenhBan = Array.from(new Set([...item.kenhBan, ...channels]));
     const color = String(r.mau || "Mặc định");
     const existing = item.mau.find((x) => x.ten === color);
+    
+    // Support hinhAnh array in new format
+    let imgToUse = "";
+    if (r.hinh_anh && Array.isArray(r.hinh_anh) && r.hinh_anh.length > 0) imgToUse = r.hinh_anh[0];
+    else if (r.hinhAnh && Array.isArray(r.hinhAnh) && r.hinhAnh.length > 0) imgToUse = r.hinhAnh[0];
+    else imgToUse = r.img_quan || r.imgQuan || "";
+
     if (existing) existing.sizes = congDonSize(existing.sizes, sizes);
-    else item.mau.push({ ten: color, img: r.hinh_anh?.[0] || r.img_quan || "", sizes });
+    else item.mau.push({ ten: color, img: imgToUse, sizes });
   }
   return result;
 }

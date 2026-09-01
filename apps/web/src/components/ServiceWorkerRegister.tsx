@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -29,7 +30,13 @@ export function ServiceWorkerRegister() {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (reloadedForUpdate) return;
       reloadedForUpdate = true;
-      window.location.reload();
+      
+      toast.info('Có bản cập nhật hệ thống mới!', {
+        description: 'Bản vá tính năng mới đã sẵn sàng.',
+        action: { label: 'Tải lại trang', onClick: () => window.location.reload() },
+        duration: Infinity,
+        id: 'pwa-update-toast'
+      });
     });
 
     const onLoad = () => {
@@ -44,6 +51,7 @@ export function ServiceWorkerRegister() {
           document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
               reg.update().catch(() => undefined);
+              checkVersion(); // Cập nhật cả qua version.json
             }
           });
         })
@@ -52,12 +60,52 @@ export function ServiceWorkerRegister() {
         });
     };
 
+    // PWA Force Update qua file version.json
+    let currentVersion: string | null = null;
+    const checkVersion = async () => {
+      try {
+        const res = await fetch(`/version.json?t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const latestVersion = data.version?.toString();
+        
+        if (latestVersion) {
+          if (!currentVersion) {
+            // Lần check đầu tiên (khi mở app)
+            currentVersion = latestVersion;
+          } else if (currentVersion !== latestVersion) {
+            console.log(`[PWA] Phiên bản mới được phát hiện: ${latestVersion} (hiện tại: ${currentVersion}).`);
+            
+            toast.info('Có bản cập nhật hệ thống mới!', {
+              description: 'Bản vá tính năng mới đã sẵn sàng.',
+              action: { label: 'Tải lại trang', onClick: () => window.location.reload() },
+              duration: Infinity,
+              id: 'pwa-update-toast'
+            });
+            
+            // Cập nhật currentVersion để không hiện toast liên tục
+            currentVersion = latestVersion;
+          }
+        }
+      } catch (err) {
+        // Bỏ qua nếu lỗi mạng (offline)
+      }
+    };
+
+    // Định kỳ kiểm tra mỗi 10 phút để tránh bị kẹt bản cũ
+    const versionInterval = setInterval(checkVersion, 10 * 60 * 1000);
+    checkVersion();
+
     if (document.readyState === "complete") {
       onLoad();
     } else {
       window.addEventListener("load", onLoad);
-      return () => window.removeEventListener("load", onLoad);
     }
+    
+    return () => {
+      window.removeEventListener("load", onLoad);
+      clearInterval(versionInterval);
+    };
   }, []);
   return null;
 }
