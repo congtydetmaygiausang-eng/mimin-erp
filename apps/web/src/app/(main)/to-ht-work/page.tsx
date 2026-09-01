@@ -88,6 +88,15 @@ export default function UiHoanThienPage() {
         }
       });
 
+      // Cập nhật luôn công đoạn "Nhập kho" thành xanh
+      const nhapKhoPC = lc.phanCong?.find((pc: any) => pc.id === "nhap_kho" || pc.tenCongDoan?.toLowerCase().includes("nhập kho"));
+      if (nhapKhoPC && nhapKhoPC.trangThaiCD !== "hoan_thanh") {
+        capNhatCongDoan(lc.id, nhapKhoPC.id, { 
+          trangThaiCD: "hoan_thanh", 
+          soLuongHoanThanh: tongDat 
+        });
+      }
+
       const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
       const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
 

@@ -68,9 +68,8 @@ function saveData(items: KHSX[]) {
 function persist(item: KHSX) {
   if (!isSupabaseEnabled) return;
   
-  // Bảng khsx trên Supabase của dự án này đang dùng cột camelCase (cùng tên với type KHSX)
-  // Nên ta không map sang snake_case nữa mà truyền thẳng dữ liệu item
-  supabaseUpsertRaw("khsx", item).catch((error) => console.error("[KHSX] Supabase upsert error:", error));
+  // Bảng khsx trên Supabase thực tế đang dùng cột camelCase, nên ta dùng supabaseUpsertRaw
+  supabaseUpsertRaw("khsx", item, "id").catch((error) => console.error("[KHSX] Supabase upsert error:", error));
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
@@ -83,6 +82,8 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseEnabled) return;
     
     let active = true;
+    let channel: any;
+    
     supabaseFetchAllRaw<any>("khsx", "created_at", false)
       .then((remote) => {
         if (!active) return;
@@ -109,19 +110,81 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
           lenhCatId: item.lenh_cat_id || item.lenhCatId,
         }));
         
-        const currentLocal = loadData();
-        const remoteIds = new Set(normalized.map((r) => r.id));
-        const merged = [
-          ...normalized,
-          ...currentLocal.filter((x) => !remoteIds.has(x.id)),
-        ];
+        // Remote là nguồn chân lý tuyệt đối khi fetch thành công.
+        const merged = normalized;
         
         saveData(merged as KHSX[]);
         setKHSX(merged as KHSX[]);
       })
       .catch((err) => console.error("Lỗi fetch khsx:", err));
       
-    return () => { active = false; };
+    // Đăng ký realtime lắng nghe thay đổi
+    import("@/lib/supabase/client").then(({ supabase }) => {
+      if (!supabase) return;
+      const channelName = `khsx-changes-${Math.random().toString(36).slice(2)}`;
+      channel = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "khsx" },
+          (payload) => {
+            console.log(`[Realtime] khsx:`, payload.eventType);
+            setKHSX((prev) => {
+              if (payload.eventType === "DELETE") {
+                const oldId = (payload.old as any).id;
+                const next = prev.filter((r) => r.id !== oldId);
+                saveData(next);
+                return next;
+              }
+              if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+                const item = payload.new as any;
+                const mapped: KHSX = {
+                  id: item.id,
+                  maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || "",
+                  maSP: item.ma_sp || item.maSp || item.maSP,
+                  tenSP: item.ten_sp || item.tenSp || item.tenSP,
+                  loaiSP: item.loai_sp || item.loaiSp || item.loaiSP,
+                  tiLeSize: item.ti_le_size || item.tiLeSize,
+                  dsMau: item.ds_mau || item.dsMau || [],
+                  tuan: item.tuan || "",
+                  tuNgay: item.tu_ngay || item.tuNgay,
+                  denNgay: item.den_ngay || item.denNgay,
+                  sanPham: item.san_pham || item.sanPham,
+                  loai: item.loai,
+                  soLuong: item.so_luong ?? item.soLuong ?? 0,
+                  daHoanThanh: item.da_hoan_thanh ?? item.daHoanThanh ?? 0,
+                  xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || "Tổ cắt",
+                  trangThai: item.trang_thai || item.trangThai || "Lên kế hoạch",
+                  ghiChu: item.ghi_chu || item.ghiChu,
+                  ngayTao: item.ngay_tao || item.ngayTao,
+                  nguoiTao: item.nguoi_tao || item.nguoiTao,
+                  lenhCatId: item.lenh_cat_id || item.lenhCatId,
+                };
+                const exists = prev.some((r) => r.id === mapped.id);
+                let next;
+                if (exists) {
+                  next = prev.map((r) => (r.id === mapped.id ? mapped : r));
+                } else {
+                  next = [mapped, ...prev];
+                }
+                saveData(next);
+                return next;
+              }
+              return prev;
+            });
+          }
+        )
+        .subscribe();
+    });
+
+    return () => { 
+      active = false;
+      if (channel) {
+        import("@/lib/supabase/client").then(({ supabase }) => {
+          supabase?.removeChannel(channel);
+        });
+      }
+    };
   }, []);
 
   const themKHSX = useCallback((item: Omit<KHSX, "id">, user: AppUser | null) => {

@@ -8,6 +8,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { logWorkflow } from "../audit-log";
+import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
 import type { AppUser } from "@/components/session-provider";
 import { usePhanCong } from "./cong-no-store";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -29,7 +30,13 @@ export function ServiceWorkerRegister() {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (reloadedForUpdate) return;
       reloadedForUpdate = true;
-      window.location.reload();
+      
+      toast.info('Có bản cập nhật hệ thống mới!', {
+        description: 'Bản vá tính năng mới đã sẵn sàng.',
+        action: { label: 'Tải lại trang', onClick: () => window.location.reload() },
+        duration: Infinity,
+        id: 'pwa-update-toast'
+      });
     });
 
     const onLoad = () => {
@@ -67,8 +74,17 @@ export function ServiceWorkerRegister() {
             // Lần check đầu tiên (khi mở app)
             currentVersion = latestVersion;
           } else if (currentVersion !== latestVersion) {
-            console.log(`[PWA] Phiên bản mới được phát hiện: ${latestVersion} (hiện tại: ${currentVersion}). Tải lại trang...`);
-            window.location.reload();
+            console.log(`[PWA] Phiên bản mới được phát hiện: ${latestVersion} (hiện tại: ${currentVersion}).`);
+            
+            toast.info('Có bản cập nhật hệ thống mới!', {
+              description: 'Bản vá tính năng mới đã sẵn sàng.',
+              action: { label: 'Tải lại trang', onClick: () => window.location.reload() },
+              duration: Infinity,
+              id: 'pwa-update-toast'
+            });
+            
+            // Cập nhật currentVersion để không hiện toast liên tục
+            currentVersion = latestVersion;
           }
         }
       } catch (err) {

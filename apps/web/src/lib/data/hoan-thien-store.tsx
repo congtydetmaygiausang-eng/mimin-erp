@@ -19,6 +19,7 @@ import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
 import { ALL_REAL_PHIEU } from "../real-workflow-data";
 import type { PhieuWorkflow } from "../workflow-data";
+import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type TrangThaiHoanThien =
@@ -174,6 +175,12 @@ export function HoanThienProvider({ children }: { children: ReactNode }) {
     setBanGhi(loadData());
     setHydrated(true);
   }, []);
+
+  
+  useSupabaseRealtime<any>("hoan_thien", setBanGhi, {
+    primaryKey: "id"
+  });
+  
 
   // Đọc lại 2 chiều từ Supabase (nguồn chính). Bảng camelCase → đọc/ghi không convert key.
   useEffect(() => {
