@@ -17,7 +17,16 @@ if (VAPID_PRIVATE_KEY) {
   )
 }
 
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     if (!VAPID_PRIVATE_KEY) {
       throw new Error('VAPID_PRIVATE_KEY is missing from environment variables')
@@ -56,7 +65,7 @@ serve(async (req) => {
 
       if (!subscriptions || subscriptions.length === 0) {
         console.log(`No push subscription found for user: ${targetName}`)
-        return new Response(JSON.stringify({ status: 'ignored', reason: 'no_subscription' }), { headers: { "Content-Type": "application/json" } })
+        return new Response(JSON.stringify({ status: 'ignored', reason: 'no_subscription' }), { headers: { ...corsHeaders, "Content-Type": "application/json" } })
       }
 
       const pushMessage = JSON.stringify({
@@ -89,13 +98,13 @@ serve(async (req) => {
 
       await Promise.all(pushPromises)
       
-      return new Response(JSON.stringify({ status: 'success', notified: subscriptions.length }), { headers: { "Content-Type": "application/json" } })
+      return new Response(JSON.stringify({ status: 'success', notified: subscriptions.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } })
     }
 
-    return new Response(JSON.stringify({ status: 'ignored', reason: 'not_a_task' }), { headers: { "Content-Type": "application/json" } })
+    return new Response(JSON.stringify({ status: 'ignored', reason: 'not_a_task' }), { headers: { ...corsHeaders, "Content-Type": "application/json" } })
 
   } catch (err: any) {
     console.error("Error in edge function:", err)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { "Content-Type": "application/json" } })
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } })
   }
 })
