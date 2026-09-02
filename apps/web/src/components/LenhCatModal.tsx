@@ -1975,10 +1975,20 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     setPhanCong(p => {
                       const next = [...(p as any[])];
                       const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                      const nv = nhanVienOptions.find(n => n.ma === e.target.value);
+                      const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                      const ten = nv?.ten || dt?.tenDonVi || e.target.value;
                       if (idx >= 0) {
-                        const nv = nhanVienOptions.find(n => n.ma === e.target.value);
-                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
-                        next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                        next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: ten };
+                      } else {
+                        next.push({
+                          id: loaiSP?.toLowerCase().includes("bo") ? "mayAo" : "may",
+                          tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
+                          nguoiMa: e.target.value,
+                          nguoiTen: ten,
+                          donGia: 0,
+                          trangThaiCD: "chua_bat_dau"
+                        });
                       }
                       return next as any;
                     });
@@ -1995,11 +2005,22 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     className="w-full md:w-24 px-2 py-1 border border-emerald-300 rounded text-sm bg-white text-right font-bold text-emerald-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.donGia || ""}
                     onChange={e => {
-                      const v = e.target.value === "" ? "" : Number(e.target.value);
+                      const val = parseInt(e.target.value) || 0;
                       setPhanCong(p => {
                         const next = [...(p as any[])];
                         const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
-                        if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                        if (idx >= 0) {
+                          next[idx] = { ...next[idx], donGia: val };
+                        } else {
+                          next.push({
+                            id: loaiSP?.toLowerCase().includes("bo") ? "mayAo" : "may",
+                            tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
+                            donGia: val,
+                            nguoiMa: "",
+                            nguoiTen: "",
+                            trangThaiCD: "chua_bat_dau"
+                          });
+                        }
                         return next as any;
                       });
                     }}
@@ -2019,10 +2040,20 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       setPhanCong(p => {
                         const next = [...(p as any[])];
                         const idx = next.findIndex(k => k.id === "mayQuan");
+                        const nv = nhanVienOptions.find(n => n.ma === e.target.value);
+                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                        const ten = nv?.ten || dt?.tenDonVi || e.target.value;
                         if (idx >= 0) {
-                          const nv = nhanVienOptions.find(n => n.ma === e.target.value);
-                          const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
-                          next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                          next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: ten };
+                        } else {
+                          next.push({
+                            id: "mayQuan",
+                            tenCongDoan: "May Quần",
+                            nguoiMa: e.target.value,
+                            nguoiTen: ten,
+                            donGia: 0,
+                            trangThaiCD: "chua_bat_dau"
+                          });
                         }
                         return next as any;
                       });
@@ -2039,10 +2070,22 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
                       value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.donGia || ""}
                       onChange={e => {
+                        const val = parseInt(e.target.value) || 0;
                         setPhanCong(p => {
                           const next = [...(p as any[])];
                           const idx = next.findIndex(k => k.id === "mayQuan");
-                          if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                          if (idx >= 0) {
+                            next[idx] = { ...next[idx], donGia: val };
+                          } else {
+                            next.push({
+                              id: "mayQuan",
+                              tenCongDoan: "May Quần",
+                              donGia: val,
+                              nguoiMa: "",
+                              nguoiTen: "",
+                              trangThaiCD: "chua_bat_dau"
+                            });
+                          }
                           return next as any;
                         });
                       }}
