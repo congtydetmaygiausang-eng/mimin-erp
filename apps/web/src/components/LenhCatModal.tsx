@@ -39,7 +39,7 @@ import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
-
+import { useKho } from "@/lib/data/kho-store";
 
 type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
 
@@ -243,6 +243,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
+  const { tinhTonKho } = useKho();
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
@@ -2267,7 +2268,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.map((kv) => (
+                                  {KHO_VAI.filter(kv => tinhTonKho(kv.maVT, "vai") > 0).map((kv) => (
                                     <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
@@ -2318,7 +2319,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.map((kv) => (
+                                  {KHO_VAI.filter(kv => tinhTonKho(kv.maVT, "vai") > 0).map((kv) => (
                                     <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
@@ -2491,7 +2492,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.map((kv) => (
+                                  {KHO_VAI.filter(kv => tinhTonKho(kv.maVT, "vai") > 0).map((kv) => (
                                     <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
