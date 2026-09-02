@@ -225,15 +225,13 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
               }
               html, body {
                 width: 100%;
-                height: 100%;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;
               }
               #print-area {
-                height: 100%;
-                display: flex;
-                flex-direction: column;
+                width: 100%;
+                display: block;
               }
             }
           `}
@@ -321,7 +319,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
             const slGiao = stage?.soLuong || catThucTe || lc.tongSL || 0;
             
             return (
-              <div className="w-full h-full border-2 border-black p-4 sm:p-6 print:p-4 rounded-lg text-sm sm:text-base print:text-[13px] flex flex-col overflow-hidden bg-white box-border print:h-full">
+              <div className="w-full border-2 border-black p-4 sm:p-6 print:p-4 rounded-lg text-sm sm:text-base print:text-[13px] flex flex-col overflow-hidden bg-white box-border print:min-h-[95vh] print:max-h-[98vh]">
                 {/* Header: Company Info */}
                 <div className="flex flex-col sm:flex-row print:flex-row items-center sm:items-start print:items-start justify-between border-b-2 border-black pb-3 print:pb-3 mb-4 print:mb-4 gap-3 print:gap-3 shrink-0">
                   <div className="flex items-center gap-3 sm:gap-4 print:gap-3">
