@@ -19,7 +19,7 @@ import {
   Wand2, CheckCircle2, UploadCloud, Download, Eye, Printer, Share2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { useSupabaseSync } from "@/lib/supabase/client";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
@@ -39,7 +39,7 @@ import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
-import { useKho } from "@/lib/data/kho-store";
+import { getAllInventory } from "@/lib/inventory-engine";
 
 type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
 
@@ -243,7 +243,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
-  const { tinhTonKho } = useKho();
+  const [khoVaiReals, setKhoVaiReals] = useState<any[]>([]);
+  useEffect(() => { setKhoVaiReals(getAllInventory()); }, []);
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
@@ -795,8 +796,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     dsMau.forEach((m, i) => {
       if (m.maVai && m.slDuKien && m.dinhMuc) {
         const req = m.slDuKien * m.dinhMuc;
-        // Mock inventory = 50 cho vui. Thực tế lấy từ KHO_VAI.find().tonKho
-        const v = KHO_VAI.find(x => x.maVT === m.maVai);
+        // Lấy từ khoVaiReals
+        const v = khoVaiReals.find((x: any) => x.maVT === m.maVai);
         const tonKhoThuc = v ? (v.tonKho || 50) : 50; 
         if (req > tonKhoThuc) {
           alerts.push(`Thiếu vải Màu ${i+1} (${v?.tenVT || m.maVai}): Cần ${req}kg, chỉ còn ${tonKhoThuc}kg`);
@@ -1113,13 +1114,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   dsMau.forEach(m => {
     if (m.maVai && m.slDuKien && m.dinhMuc) {
-      const v = KHO_VAI.find(x => x.maVT === m.maVai);
+      const v = khoVaiReals.find((x: any) => x.maVT === m.maVai);
       if (v) {
         tongTienVai += m.slDuKien * m.dinhMuc * (v.donGia || 0);
       }
     }
     if (isBo && m.maVaiQuan && m.slDuKien && m.dinhMucQuan) {
-      const vQuan = KHO_VAI.find(x => x.maVT === m.maVaiQuan);
+      const vQuan = khoVaiReals.find((x: any) => x.maVT === m.maVaiQuan);
       if (vQuan) {
         tongTienVai += m.slDuKien * m.dinhMucQuan * (vQuan.donGia || 0);
       }
@@ -2223,14 +2224,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   {/* Right: Details & Sizes */}
                   {(() => {
                     // Pre-calculate prices
-                    const v = KHO_VAI.find(x => x.maVT === mau.maVai);
+                    const v = khoVaiReals.find((x: any) => x.maVT === mau.maVai);
                     const donGia = v ? (v.donGia || 0) : 0;
                     let tienVaiAo1SP = mau.dinhMuc * donGia;
                     
                     let vQuan = null;
                     let tienVaiQuan1SP = 0;
                     if (isBo && mau.maVaiQuan) {
-                      vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
+                      vQuan = khoVaiReals.find((x: any) => x.maVT === mau.maVaiQuan);
                       const donGiaQuan = vQuan ? (vQuan.donGia || 0) : 0;
                       tienVaiQuan1SP = (mau.dinhMucQuan || 0) * donGiaQuan;
                     }
@@ -2268,7 +2269,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.filter(kv => tinhTonKho(kv.maVT, "vai") > 0).map((kv) => (
+                                  {khoVaiReals.map((kv: any) => (
                                     <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
@@ -2319,7 +2320,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.filter(kv => tinhTonKho(kv.maVT, "vai") > 0).map((kv) => (
+                                  {khoVaiReals.map((kv: any) => (
                                     <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
@@ -2492,7 +2493,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.filter(kv => tinhTonKho(kv.maVT, "vai") > 0).map((kv) => (
+                                  {khoVaiReals.map((kv: any) => (
                                     <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
