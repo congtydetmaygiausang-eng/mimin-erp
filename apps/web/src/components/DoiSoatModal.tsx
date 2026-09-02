@@ -67,7 +67,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
   const phanCongList = lc.phanCong || [];
 
   return (
-    <ResponsiveModal open={isOpen} onClose={onClose} title={`Đối Soát Tổng Hợp: ${lc.id}`} maxWidth="4xl">
+    <ResponsiveModal open={isOpen} onClose={onClose} title={`Đối Soát Tổng Hợp: ${lc.id}`} maxWidth="4xl" fullScreenMobile={true}>
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -212,24 +212,28 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
       </div>
 
       {/* === GIAO DIỆN IN (Chỉ hiển thị khi in) === */}
-      <div id="print-area" className="hidden print:block p-0 print:p-4 text-black bg-white w-full" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
+      <div id="print-area" className="hidden print:block p-0 text-black w-full" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
         <style type="text/css">
           {`
             @media print {
               @page {
-                size: landscape;
-                margin: 10mm;
+                size: auto;
+                margin: 8mm;
               }
               body > *:not(.print-modal-root) {
                 display: none !important;
               }
               html, body {
-                height: max-content;
                 width: 100%;
+                height: 100%;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: visible !important;
                 background: white !important;
+              }
+              #print-area {
+                height: 100%;
+                display: flex;
+                flex-direction: column;
               }
             }
           `}
@@ -317,89 +321,87 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
             const slGiao = stage?.soLuong || catThucTe || lc.tongSL || 0;
             
             return (
-              <div className="w-full border-2 border-black p-4 sm:p-6 print:p-6 rounded-lg text-sm sm:text-base print:text-base print:h-[185mm] print:flex print:flex-col print:overflow-hidden">
+              <div className="w-full h-full border-2 border-black p-4 sm:p-6 print:p-4 rounded-lg text-sm sm:text-base print:text-[13px] flex flex-col overflow-hidden bg-white box-border print:h-full">
                 {/* Header: Company Info */}
-                <div className="flex flex-col sm:flex-row print:flex-row items-center sm:items-start print:items-start justify-between border-b-2 border-black pb-4 print:pb-4 mb-6 print:mb-6 gap-4 print:gap-4">
-                  <div className="flex items-center gap-3 sm:gap-4 print:gap-4">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 print:w-20 print:h-20 bg-gray-200 border-2 border-black flex items-center justify-center font-black text-lg sm:text-xl print:text-xl tracking-tighter shrink-0">
+                <div className="flex flex-col sm:flex-row print:flex-row items-center sm:items-start print:items-start justify-between border-b-2 border-black pb-3 print:pb-3 mb-4 print:mb-4 gap-3 print:gap-3 shrink-0">
+                  <div className="flex items-center gap-3 sm:gap-4 print:gap-3">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 print:w-16 print:h-16 bg-gray-200 border-2 border-black flex items-center justify-center font-black text-lg sm:text-xl print:text-lg tracking-tighter shrink-0">
                       LOGO
                     </div>
                     <div>
-                      <h2 className="text-base sm:text-xl print:text-xl font-black uppercase">Công ty TNHH Dệt may Giàu Sang</h2>
-                      <p className="text-xs sm:text-sm font-semibold mt-1 print:mt-1">MST: 0318507560 · Hotline: 0774.480.916</p>
-                      <p className="text-xs sm:text-sm">Đ/C: 12/39 Xuân Thới Thượng 58C, Hóc Môn, HCM</p>
+                      <h2 className="text-base sm:text-xl print:text-lg font-black uppercase">Công ty TNHH Dệt may Giàu Sang</h2>
+                      <p className="text-xs sm:text-sm print:text-[11px] font-semibold mt-1 print:mt-1">MST: 0318507560 · Hotline: 0774.480.916</p>
+                      <p className="text-xs sm:text-sm print:text-[11px]">Đ/C: 12/39 Xuân Thới Thượng 58C, Hóc Môn, HCM</p>
                     </div>
                   </div>
                   <div className="text-center sm:text-right print:text-right shrink-0">
-                    <h1 className="text-xl sm:text-3xl print:text-2xl font-black uppercase tracking-widest text-gray-800">PHIẾU CÔNG ĐOẠN</h1>
-                    <p className="font-mono text-sm sm:text-lg print:text-lg font-bold mt-2 print:mt-2 border border-black inline-block px-3 print:px-3 py-1 print:py-1 bg-gray-100">
+                    <h1 className="text-xl sm:text-3xl print:text-xl font-black uppercase tracking-widest text-gray-800">PHIẾU CÔNG ĐOẠN</h1>
+                    <p className="font-mono text-sm sm:text-lg print:text-base font-bold mt-2 print:mt-2 border border-black inline-block px-3 print:px-2 py-1 print:py-0.5 bg-gray-100">
                       Mã LC: {lc.id}
                     </p>
                   </div>
                 </div>
 
                 {/* Ticket Details */}
-                <div className="flex flex-col sm:flex-row print:flex-row justify-between gap-4 sm:gap-6 print:gap-6 mb-6 print:mb-6">
-                  <div className="space-y-2 print:space-y-2 flex-1">
-                    <p><span className="font-bold w-24 sm:w-28 print:w-28 inline-block">Sản phẩm:</span> {lc.tenSP} ({lc.maSP})</p>
-                    <p><span className="font-bold w-24 sm:w-28 print:w-28 inline-block">Ngày giao:</span> {new Date().toLocaleDateString("vi-VN")}</p>
+                <div className="flex flex-col sm:flex-row print:flex-row justify-between gap-4 sm:gap-6 print:gap-4 mb-4 print:mb-4 shrink-0">
+                  <div className="space-y-2 print:space-y-1 flex-1">
+                    <p><span className="font-bold w-24 sm:w-28 print:w-24 inline-block">Sản phẩm:</span> {lc.tenSP} ({lc.maSP})</p>
+                    <p><span className="font-bold w-24 sm:w-28 print:w-24 inline-block">Ngày giao:</span> {new Date().toLocaleDateString("vi-VN")}</p>
                   </div>
-                  <div className="space-y-2 print:space-y-2 flex-1">
-                    <p><span className="font-bold w-28 sm:w-32 print:w-32 inline-block">Công đoạn:</span> <span className="uppercase font-black text-base sm:text-lg print:text-lg underline decoration-2">{stage?.tenCongDoan || "Không xác định"}</span></p>
-                    <p><span className="font-bold w-28 sm:w-32 print:w-32 inline-block">Xưởng nhận:</span> <span className="font-bold">{stage?.nguoiTen || "...................................."}</span></p>
+                  <div className="space-y-2 print:space-y-1 flex-1">
+                    <p><span className="font-bold w-28 sm:w-32 print:w-28 inline-block">Công đoạn:</span> <span className="uppercase font-black text-base sm:text-lg print:text-base underline decoration-2">{stage?.tenCongDoan || "Không xác định"}</span></p>
+                    <p><span className="font-bold w-28 sm:w-32 print:w-28 inline-block">Xưởng nhận:</span> <span className="font-bold">{stage?.nguoiTen || "...................................."}</span></p>
                   </div>
                 </div>
 
                 {/* Main Table for the specific stage */}
-                <div className="w-full mb-6 print:mb-6 overflow-hidden">
+                <div className="w-full mb-4 print:mb-4 overflow-hidden shrink-0">
                   <table className="w-full text-left border-collapse border-2 border-black">
                     <thead>
-                      <tr className="bg-gray-100 text-xs sm:text-base print:text-sm uppercase">
-                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-3">Nội dung</th>
-                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-3 text-center w-1/5">SL Giao</th>
-                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-3 text-center w-1/5">SL Đạt</th>
-                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-3 text-center w-1/5">SL Lỗi</th>
+                      <tr className="bg-gray-100 text-xs sm:text-base print:text-[12px] uppercase">
+                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-1.5">Nội dung</th>
+                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-1.5 text-center w-1/5">SL Giao</th>
+                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-1.5 text-center w-1/5">SL Đạt</th>
+                        <th className="border border-black px-2 sm:px-4 py-2 sm:py-3 print:py-1.5 text-center w-1/5">SL Lỗi</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-6 font-bold text-sm sm:text-lg print:text-lg">Giao việc: {stage?.tenCongDoan}</td>
-                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-6 text-center font-mono font-black text-lg sm:text-2xl print:text-2xl">{slGiao}</td>
-                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-6 text-center font-mono text-xl"></td>
-                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-6 text-center font-mono text-xl"></td>
+                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-3 font-bold text-sm sm:text-lg print:text-[13px]">Giao việc: {stage?.tenCongDoan}</td>
+                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-3 text-center font-mono font-black text-lg sm:text-2xl print:text-lg">{slGiao}</td>
+                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-3 text-center font-mono text-xl print:text-lg"></td>
+                        <td className="border border-black px-2 sm:px-4 py-4 sm:py-6 print:py-3 text-center font-mono text-xl print:text-lg"></td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
                 
                 {/* Notes & Defects area - FLEX GROW to fill empty space! */}
-                <div className="border border-black p-3 sm:p-4 print:p-4 mb-6 print:mb-8 bg-gray-50 flex flex-col break-inside-avoid print:flex-1">
-                  <span className="font-bold mb-4 print:mb-4 text-sm sm:text-base print:text-base">Ghi chú (Lý do lỗi/Yêu cầu đặc biệt):</span>
-                  <div className="border-b border-dotted border-gray-400 mt-2 print:mt-4"></div>
-                  <div className="border-b border-dotted border-gray-400 mt-6 print:mt-8"></div>
-                  <div className="border-b border-dotted border-gray-400 mt-6 print:mt-8"></div>
-                  <div className="border-b border-dotted border-gray-400 mt-6 print:mt-8 hidden print:block"></div>
-                  <div className="border-b border-dotted border-gray-400 mt-6 print:mt-8 hidden print:block"></div>
+                <div className="border border-black p-3 sm:p-4 print:p-3 mb-4 print:mb-4 bg-gray-50 flex flex-col print:flex-1 min-h-[100px]">
+                  <span className="font-bold mb-2 print:mb-2 text-sm sm:text-base print:text-[13px]">Ghi chú (Lý do lỗi/Yêu cầu đặc biệt):</span>
+                  <div className="border-b border-dotted border-gray-400 mt-2 print:mt-2 flex-1 min-h-[20px]"></div>
+                  <div className="border-b border-dotted border-gray-400 mt-2 print:mt-2 flex-1 min-h-[20px]"></div>
+                  <div className="border-b border-dotted border-gray-400 mt-2 print:mt-2 flex-1 min-h-[20px]"></div>
                 </div>
 
                 {/* Signatures */}
-                <div className="flex justify-between px-4 sm:px-10 print:px-12 break-inside-avoid">
+                <div className="flex justify-between px-4 sm:px-10 print:px-8 mt-auto pt-2 shrink-0">
                   <div className="text-center w-2/5">
-                    <p className="font-black text-sm sm:text-lg print:text-lg">NGƯỜI GIAO VIỆC</p>
-                    <p className="text-xs italic mt-1 print:text-xs">(Ký và ghi rõ họ tên)</p>
-                    <div className="mt-16 sm:mt-20 print:mt-20 border-b border-dashed border-gray-400 w-full mx-auto"></div>
+                    <p className="font-black text-sm sm:text-lg print:text-[14px]">NGƯỜI GIAO VIỆC</p>
+                    <p className="text-xs italic mt-1 print:text-[11px]">(Ký và ghi rõ họ tên)</p>
+                    <div className="mt-12 sm:mt-16 print:mt-12 border-b border-dashed border-gray-400 w-full mx-auto"></div>
                   </div>
                   <div className="text-center w-2/5">
-                    <p className="font-black text-sm sm:text-lg print:text-lg">NGƯỜI NHẬN VIỆC</p>
-                    <p className="text-xs italic mt-1 print:text-xs">(Ký và ghi rõ họ tên)</p>
-                    <div className="mt-16 sm:mt-20 print:mt-20 border-b border-dashed border-gray-400 w-full mx-auto"></div>
+                    <p className="font-black text-sm sm:text-lg print:text-[14px]">NGƯỜI NHẬN VIỆC</p>
+                    <p className="text-xs italic mt-1 print:text-[11px]">(Ký và ghi rõ họ tên)</p>
+                    <div className="mt-12 sm:mt-16 print:mt-12 border-b border-dashed border-gray-400 w-full mx-auto"></div>
                   </div>
                 </div>
                 
                 {/* Footer cutoff line */}
-                <div className="mt-12 sm:mt-16 print:mt-12 text-center text-[10px] sm:text-xs text-gray-500 flex items-center gap-2 break-inside-avoid">
+                <div className="mt-4 sm:mt-6 print:mt-4 text-center text-[10px] sm:text-xs print:text-[10px] text-gray-500 flex items-center gap-2 shrink-0">
                   <div className="h-px bg-dashed border-t border-dashed border-gray-400 flex-1"></div>
-                  <Scissors className="w-3 h-3 sm:w-4 sm:h-4 print:w-4 print:h-4" /> Liên 1: Lưu xưởng - Liên 2: Giao xưởng/người nhận
+                  <Scissors className="w-3 h-3 sm:w-4 sm:h-4 print:w-3 print:h-3" /> Liên 1: Lưu xưởng - Liên 2: Giao xưởng/người nhận
                   <div className="h-px bg-dashed border-t border-dashed border-gray-400 flex-1"></div>
                 </div>
               </div>
