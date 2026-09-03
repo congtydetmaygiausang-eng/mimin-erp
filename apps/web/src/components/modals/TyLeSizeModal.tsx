@@ -8,30 +8,96 @@ interface Props {
   lc: LenhCat;
   mauIdx: number;
   onClose: () => void;
-  onSave: (mauIdx: number, newTyLeChiTiet: Record<string, { size: string; sl: number }[]>, tongDuCat?: number) => void;
+  onSave: (mauIdx: number, newTyLeChiTiet: Record<string, { size: string; sl: number }[]>, tongDuCat?: number, fixedPhanCong?: PhanCongGiaCong) => void;
 }
 
 export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
   const mau = lc.dsMau?.[mauIdx];
   if (!mau) return null;
 
-  // Lấy danh sách các khâu từ phân công và sắp xếp theo quy trình chuẩn
-  const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
-  const khauList: any[] = [...(lc.phanCong || [])].sort((a: any, b: any) => {
+  // ===== FALLBACK KHI phanCong RỖNG (do Supabase chưa lưu hoặc race condition) =====
+  // Lấy thông tin người phụ trách cắt thực tế từ lệnh cắt
+  const phuTrachCatMa = lc.phuTrachCat || "";
+  const phuTrachCatTen = lc.phuTrachCat || "";
+  const catTenCongDoan = (lc.loaiSP || "").toLowerCase().includes("bo") ? "Cắt bộ" : "Cắt";
+
+  const buildFallbackStages = (isBo: boolean): PhanCongGiaCong => [
+    // Khâu Cắt: dùng thông tin người phụ trách cắt thực tế từ lệnh cắt
+    { id: "cat", tenCongDoan: catTenCongDoan, nguoiMa: phuTrachCatMa, nguoiTen: phuTrachCatTen,
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any,
+    { id: "in_theu_ao", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "",
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any,
+    { id: "may_ao", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "",
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any,
+    ...(isBo ? [{ id: "may_quan", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "",
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any] : []),
+    { id: "khuy_nut", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "",
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any,
+    { id: "qc", tenCongDoan: "QC (kiểm hàng)", nguoiMa: "", nguoiTen: "",
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any,
+    { id: "ui", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "",
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any,
+    { id: "dong_goi", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "",
+      donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", loaiNguoi: "noi_bo" } as any,
+  ];
+
+  const isBo = (lc.loaiSP || "").toLowerCase().includes("bo");
+  const phanCongSource = (lc.phanCong && lc.phanCong.length > 0)
+    ? lc.phanCong
+    : buildFallbackStages(isBo);
+  // Flag để biết có cần tự repair phanCong lên Supabase không
+  const needsRepair = !lc.phanCong || lc.phanCong.length === 0;
+
+  // Sắp xếp khâu theo quy trình chuẩn: Cắt → In/Thêu → May → QC → Hoàn thiện
+  const STAGE_ORDER = ["cat", "in_theu", "in", "theu", "may_ao", "may_quan", "may", "khuy_nut", "qc", "ui", "dong_goi", "nhap_kho"];
+  const khauList: any[] = [...phanCongSource].sort((a: any, b: any) => {
+    // BUG FIX: Không dùng || includes('cắt') toàn cục — chỉ xét id khâu
     const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
     const bRank = STAGE_ORDER.findIndex(k => (b.id || "").toLowerCase().includes(k));
+    // Nếu không match STAGE_ORDER, dùng tên khâu để xếp cắt lên đầu
+    const aIsCat = (a.id || "").toLowerCase().includes("cat") || (a.tenCongDoan || "").toLowerCase().includes("cắt");
+    const bIsCat = (b.id || "").toLowerCase().includes("cat") || (b.tenCongDoan || "").toLowerCase().includes("cắt");
+    if (aIsCat && !bIsCat) return -1;
+    if (!aIsCat && bIsCat) return 1;
     return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
   });
 
-  // Cột size cố định lấy theo phân bổ size gốc của màu (SL dự kiến) - mọi khâu
-  // dùng chung 1 danh sách size này để bảng thẳng cột.
   const phanBoGoc = mau.phanBoSize || [];
+
+  // Tính SL Cắt thực từ lệnh cắt khi phanBoSize.sl = 0 (Bản nháp chưa phân bổ)
+  // Công thức: tongSL / số màu, phân bổ theo tỷ lệ size lc.tiLeSize
+  const computedCatSizes = (() => {
+    if (phanBoGoc.length === 0) return null;
+    const phanBoTotal = phanBoGoc.reduce((s: number, sz: any) => s + (sz.sl || 0), 0);
+    if (phanBoTotal > 0) return null; // phanBoGoc đã có SL thực, không cần tính
+
+    // Tính từ tongSL / numMau
+    const numMau = (lc.dsMau || []).length || 1;
+    const slPerMau = Math.round((lc.tongSL || 0) / numMau);
+    if (slPerMau === 0) return null;
+
+    // Parse tiLeSize "1:2:2:2:1" thành mảng số
+    const ratios = (lc.tiLeSize || "")
+      .split(":")
+      .map((r: string) => parseFloat(r.trim()))
+      .filter((r: number) => !isNaN(r) && r > 0);
+
+    if (ratios.length === 0 || ratios.length !== phanBoGoc.length) {
+      // Không parse được tỷ lệ hoặc không khớp số size → chia đều
+      const slEach = Math.round(slPerMau / phanBoGoc.length);
+      return phanBoGoc.map((s: any) => ({ size: s.size, sl: slEach }));
+    }
+
+    const totalRatio = ratios.reduce((a: number, b: number) => a + b, 0);
+    return phanBoGoc.map((s: any, i: number) => ({
+      size: s.size,
+      sl: Math.round(slPerMau * ratios[i] / totalRatio),
+    }));
+  })();
 
   // Khởi tạo state bằng dữ liệu cũ. CHỈ khâu ĐẦU TIÊN (Cắt) được mặc định = SL
   // dự kiến ban đầu. Các khâu SAU không được tự copy số của khâu liền trước làm
-  // mặc định - mỗi khâu gia công đều có thể phát sinh lỗi/rớt số lượng, nên
-  // không có căn cứ gì để mặc định "y nguyên số khâu trước". Để trống buộc
-  // người thật phải nhập số thực tế của khâu đó.
+  // mặc định.
   const [tyLeChiTiet, setTyLeChiTiet] = useState<Record<string, { size: string; sl: number }[]>>(() => {
     const initial: Record<string, { size: string; sl: number }[]> = {};
 
@@ -40,12 +106,34 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
       Object.assign(initial, JSON.parse(JSON.stringify(mau.tyLeSizeChiTiet)));
     }
 
-    khauList.forEach((khau, idx) => {
-      if (!initial[khau.id] || initial[khau.id].length === 0) {
+    khauList.forEach((khau) => {
+      const existing = initial[khau.id];
+      // BUG FIX: Không dùng idx===0 vì sort có thể sai — kiểm tra trực tiếp id/tên
+      const isCatKhau = (khau.id || "").toLowerCase().includes("cat") ||
+                        (khau.tenCongDoan || "").toLowerCase().includes("cắt");
+
+      // Với khâu CẮT: nếu data cũ toàn sl=0 (chưa nhập hoặc bị mất),
+      // luôn fallback về phanBoSize để hiển thị SL dự kiến thực tế từ lệnh cắt.
+      if (isCatKhau) {
+        const existingTotal = (existing || []).reduce((s: number, sz: any) => s + (sz.sl || 0), 0);
+        if (existingTotal === 0) {
+          // Ưu tiên: phanBoSize → computedCatSizes (tính từ tongSL + tiLeSize) → 0
+          const phanBoTotal = phanBoGoc.reduce((s: number, sz: any) => s + (sz.sl || 0), 0);
+          if (phanBoTotal > 0) {
+            initial[khau.id] = phanBoGoc.map((s: any) => ({ size: s.size, sl: s.sl || 0 }));
+          } else if (computedCatSizes) {
+            initial[khau.id] = computedCatSizes;
+          } else {
+            initial[khau.id] = phanBoGoc.map((s: any) => ({ size: s.size, sl: 0 }));
+          }
+          return;
+        }
+      }
+
+      if (!existing || existing.length === 0) {
         initial[khau.id] = phanBoGoc.map((s: any) => ({
           size: s.size,
-          // idx === 0: khâu Cắt - mặc định = SL dự kiến. Các khâu sau: 0.
-          sl: idx === 0 ? (s.sl || 0) : 0,
+          sl: isCatKhau ? (s.sl || 0) : 0,
         }));
       }
     });
@@ -53,12 +141,17 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
     return initial;
   });
 
-  // Tính tổng SL khâu Cắt (đầu tiên trong danh sách) - dùng để khoá các khâu sau
-  const catKhau = khauList[0];
+
+  // Tìm khâu Cắt theo id/tên — KHÔNG dùng khauList[0] vì vị trí có thể sai
+  const catKhau = khauList.find((k: any) =>
+    (k.id || "").toLowerCase().includes("cat") ||
+    (k.tenCongDoan || "").toLowerCase().includes("cắt")
+  ) || khauList[0];
   const tongSLCat = catKhau
     ? (tyLeChiTiet[catKhau.id] || []).reduce((acc, s) => acc + (s.sl || 0), 0)
     : 0;
   const catDaNhap = tongSLCat > 0;
+
 
 
   const handleSizeChange = (khauId: string, sizeIdx: number, sl: number) => {
@@ -86,7 +179,9 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
     });
     const tongDuCat = Math.max(0, maxTotal - tongSLCat);
 
-    onSave(mauIdx, JSON.parse(JSON.stringify(tyLeChiTiet)), tongDuCat);
+    // Nếu phanCong của lệnh cắt đang rỗng (do race condition khi tạo Bản nháp),
+    // truyền thêm phanCongSource để caller lưu luôn lên Supabase repair.
+    onSave(mauIdx, JSON.parse(JSON.stringify(tyLeChiTiet)), tongDuCat, needsRepair ? phanCongSource : undefined);
     onClose();
   };
 
@@ -97,14 +192,14 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
     return <Shirt className="w-4 h-4 text-emerald-500 shrink-0" />;
   };
 
-  const khauChungDau = khauList.filter(k => k.id === "cat");
+  const khauChungDau = khauList.filter(k => (k.id || "").toLowerCase().includes("cat"));
   const khauAo = khauList.filter(k => {
-    const id = k.id.toLowerCase();
+    const id = (k.id || "").toLowerCase();
     return id.includes("ao") || id.includes("in") || id.includes("theu") || id.includes("khuy");
   });
-  const khauQuan = khauList.filter(k => k.id.toLowerCase().includes("quan"));
+  const khauQuan = khauList.filter(k => (k.id || "").toLowerCase().includes("quan"));
   const khauChungCuoi = khauList.filter(k => {
-    const id = k.id.toLowerCase();
+    const id = (k.id || "").toLowerCase();
     return id.includes("qc") || id.includes("ui") || id.includes("dong_goi") || id.includes("nhap_kho");
   });
   const hasQuan = khauQuan.length > 0;
@@ -112,7 +207,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
   const renderTable = (title: string, list: any[], initialSizesTruoc: { size: string, sl: number }[] | null, isGrid: boolean = false) => {
     if (list.length === 0) return null;
     return (
-      <div className={`mb-4 ${isGrid ? "min-w-[400px]" : "w-full"}`}>
+      <div className={`mb-4 ${isGrid ? "min-w-full md:min-w-[400px]" : "w-full"}`}>
         <h3 className="text-xs font-black text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-2">
           {title}
         </h3>
@@ -120,7 +215,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-3 py-2.5 font-bold text-slate-500 text-xs uppercase tracking-wide sticky left-0 bg-slate-50 whitespace-nowrap">
+                <th className="text-left px-3 py-2.5 font-bold text-slate-500 text-xs uppercase tracking-wide sticky left-0 z-10 bg-slate-50 whitespace-nowrap">
                   Khâu
                 </th>
                 {phanBoGoc.map((s: any) => (
@@ -136,7 +231,8 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
               {list.map((khau, khauIdx) => {
                 const sizes = tyLeChiTiet[khau.id] || [];
                 const tongSL = sizes.reduce((acc, curr) => acc + (curr.sl || 0), 0);
-                const daKhoa = khau.id !== "cat" && !catDaNhap;
+                const isCatStage = (khau.id || "").toLowerCase().includes("cat") || (khau.tenCongDoan || "").toLowerCase().includes("cắt");
+                const daKhoa = !isCatStage && !catDaNhap;
 
                 let sizesTruoc: any = null;
                 if (khauIdx === 0) {
@@ -159,8 +255,8 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
                 const tongDu = defectBySize.reduce((a, b) => a + b.du, 0);
 
                 return (
-                  <tr key={khau.id} className={`border-b border-slate-100 last:border-b-0 ${daKhoa ? "opacity-50 bg-slate-50/50" : "bg-white"}`}>
-                    <td className="px-3 py-2.5 sticky left-0 bg-inherit shadow-[1px_0_0_0_#f1f5f9]">
+                  <tr key={khau.id} className={`border-b border-slate-100 last:border-b-0 ${daKhoa ? "bg-slate-50/80 text-slate-400" : "bg-white"}`}>
+                    <td className={`px-3 py-2.5 sticky left-0 z-10 shadow-[1px_0_0_0_#e2e8f0] ${daKhoa ? "bg-slate-50" : "bg-white"}`}>
                       <div className="flex items-center gap-1.5 font-bold text-slate-800 whitespace-nowrap">
                         {getKhauIcon(khau.tenCongDoan)}
                         <span>{khau.tenCongDoan}</span>
@@ -182,7 +278,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
                             onChange={e => handleSizeChange(khau.id, sIdx, Number(e.target.value))}
                             onFocus={e => e.target.select()}
                             disabled={daKhoa}
-                            className={`w-14 px-1 py-1 min-h-[44px] text-center border rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${loi > 0 ? "border-rose-300 bg-rose-50 text-rose-700" : du > 0 ? "border-sky-400 bg-sky-50 text-sky-700" : "border-slate-300 bg-white"}`}
+                            className={`w-16 px-1 py-1 min-h-[44px] text-center border rounded focus:ring-2 focus:ring-sky-500/50 outline-none text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${loi > 0 ? "border-rose-300 bg-rose-50 text-rose-700" : du > 0 ? "border-sky-400 bg-sky-50 text-sky-700" : "border-slate-300 bg-white"}`}
                             min="0"
                           />
                           {du > 0 && <div className="text-[9px] font-black text-sky-600 mt-0.5">+{du} dư</div>}
@@ -245,6 +341,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
       open={true}
       onClose={onClose}
       maxWidth="4xl"
+      fullScreenMobile={true}
       title={
         <div>
           <div className="flex items-center gap-2">
@@ -268,9 +365,9 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
             {hasQuan ? (
               <>
                 {renderTable("1. Khâu Cắt Bộ", khauChungDau, null)}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  {renderTable("2. Gia Công Áo", khauAo, sizesCat, true)}
-                  {renderTable("3. Gia Công Quần", khauQuan, sizesCat, true)}
+                <div className="flex flex-col gap-6 items-stretch">
+                  {renderTable("2. Gia Công Áo", khauAo, sizesCat, false)}
+                  {renderTable("3. Gia Công Quần", khauQuan, sizesCat, false)}
                 </div>
                 {renderTable("4. Hoàn Thiện (Đã Ghép Bộ)", khauChungCuoi, qcInitialSizesTruoc)}
               </>

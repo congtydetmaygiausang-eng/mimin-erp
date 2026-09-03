@@ -245,6 +245,30 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const { dsSanPham } = useDanhMucSP();
   const [khoVaiReals, setKhoVaiReals] = useState<any[]>([]);
   useEffect(() => { setKhoVaiReals(getAllInventory()); }, []);
+
+  const { data: rawKho } = useSupabaseSync<any>("mimin_kho_all_real", "kho");
+  const khoPhuLieuReals = useMemo(() => {
+    if (!rawKho) return KHO_VAT_TU;
+    const phuLieu = rawKho.filter((x: any) => x.loai === "Phu lieu");
+    if (phuLieu.length === 0) return KHO_VAT_TU;
+    return phuLieu.map((r: any) => ({
+      maVT: r.sku || "",
+      tenVT: r.tenVt || "",
+      mauSac: r.mauSac || "",
+      dvt: r.dvt || "cái",
+      donGia: Number(r.donGia) || 0,
+      loai: r.loaiChiTiet || "Phụ liệu", 
+      tonKho: r.tonKho || 0, 
+      tonToiThieu: r.tonToiThieu || 0, 
+      kho: "Kho phụ liệu",
+      ghiChu: r.ghiChu || "",
+      soCayNhap: r.soCayNhap || 0,
+      tonCay: r.tonCay || 0,
+      tenChuan: r.tenVt || "",
+      maMoi: r.maMoi || "",
+    }));
+  }, [rawKho]);
+
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
@@ -807,7 +831,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
     dsPhuLieu.forEach((p) => {
       if (p.maPL && p.soLuong) {
-        const v = KHO_VAT_TU.find(x => x.maVT === p.maPL);
+        const v = khoPhuLieuReals.find(x => x.maVT === p.maPL);
         const tonKhoThuc = v ? (v.tonKho || 1000) : 1000;
         if (p.soLuong > tonKhoThuc) {
           alerts.push(`Thiếu phụ liệu ${p.tenPL}: Cần ${p.soLuong}, chỉ còn ${tonKhoThuc}`);
@@ -908,7 +932,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "";
 
     if (editing) {
-      suaLenhCat(editing.id, {
+      try {
+      await suaLenhCat(editing.id, {
         loaiLenh,
         khachHang: loaiLenh === "HangDat" ? khachHang : undefined,
         loaiSP,
@@ -950,8 +975,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         fileGocInTheu,
         ghiChuInTheu,
       }, user || getFallbackUser());
-
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
+      } catch (err: any) {
+        toast.error("Lỗi khi cập nhật: " + (err?.message || err));
+        return; // Dừng lại, không đóng modal nếu Supabase lỗi
+      }
     } else {
       // Dùng generateLenhCatId (max số hiện có + 1) thay vì dsLenhCat.length + 1:
       // đếm theo length sẽ sinh mã TRÙNG với lệnh đang tồn tại ngay khi có 1 lệnh
@@ -1327,7 +1355,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               </div>
               <div>
                 <label className="text-sm font-bold text-slate-700 block mb-1">Tên SP *</label>
-                <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tenSP} onChange={(e) => setTenSP(e.target.value)} placeholder="VD: Bộ Trụ" />
+                <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tenSP} onChange={(e) => {
+                  const val = e.target.value;
+                  setTenSP(val);
+                  const lowerVal = val.toLowerCase();
+                  if (lowerVal.includes("áo polo") || lowerVal.includes("ao polo")) setLoaiSP("AoPolo");
+                  else if (lowerVal.includes("áo trụ") || lowerVal.includes("ao tru")) setLoaiSP("AoTru");
+                  else if (lowerVal.includes("áo tròn") || lowerVal.includes("áo cổ tròn") || lowerVal.includes("cổ tròn")) setLoaiSP("AoCoTron");
+                  else if (lowerVal.includes("bộ tròn") || lowerVal.includes("bộ cổ tròn")) setLoaiSP("BoCoTron");
+                  else if (lowerVal.includes("bộ trụ") || lowerVal.includes("bo tru")) setLoaiSP("BoTru");
+                  else if (lowerVal.includes("phụ kiện") || lowerVal.includes("quần") || lowerVal.includes("quan")) setLoaiSP("PhuKien");
+                }} placeholder="VD: Bộ Trụ" />
               </div>
 
               {/* Row 3 */}
@@ -1972,11 +2010,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG ÁO:</span>
                 <select 
                   className="w-full flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
-                  value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.nguoiMa || ""}
+                  value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao")?.nguoiMa || ""}
                   onChange={e => {
                     setPhanCong(p => {
                       const next = [...(p as any[])];
-                      const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                      const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao");
                       const nv = nhanVienOptions.find(n => n.ma === e.target.value);
                       const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                       const ten = nv?.ten || dt?.tenDonVi || e.target.value;
@@ -1984,7 +2022,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: ten };
                       } else {
                         next.push({
-                          id: loaiSP?.toLowerCase().includes("bo") ? "mayAo" : "may",
+                          id: loaiSP?.toLowerCase().includes("bo") ? "may_ao" : "may",
                           tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
                           nguoiMa: e.target.value,
                           nguoiTen: ten,
@@ -2005,17 +2043,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     type="number" min={0}
                     placeholder="0" 
                     className="w-full md:w-24 px-2 py-1 border border-emerald-300 rounded text-sm bg-white text-right font-bold text-emerald-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.donGia || ""}
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao")?.donGia || ""}
                     onChange={e => {
                       const val = parseInt(e.target.value) || 0;
                       setPhanCong(p => {
                         const next = [...(p as any[])];
-                        const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                        const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao");
                         if (idx >= 0) {
                           next[idx] = { ...next[idx], donGia: val };
                         } else {
                           next.push({
-                            id: loaiSP?.toLowerCase().includes("bo") ? "mayAo" : "may",
+                            id: loaiSP?.toLowerCase().includes("bo") ? "may_ao" : "may",
                             tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
                             donGia: val,
                             nguoiMa: "",
@@ -2037,11 +2075,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG QUẦN:</span>
                   <select 
                     className="w-full flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
-                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.nguoiMa || ""}
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan" || k.id === "may_quan")?.nguoiMa || ""}
                     onChange={e => {
                       setPhanCong(p => {
                         const next = [...(p as any[])];
-                        const idx = next.findIndex(k => k.id === "mayQuan");
+                        const idx = next.findIndex(k => k.id === "mayQuan" || k.id === "may_quan");
                         const nv = nhanVienOptions.find(n => n.ma === e.target.value);
                         const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
                         const ten = nv?.ten || dt?.tenDonVi || e.target.value;
@@ -2049,7 +2087,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                           next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: ten };
                         } else {
                           next.push({
-                            id: "mayQuan",
+                            id: "may_quan",
                             tenCongDoan: "May Quần",
                             nguoiMa: e.target.value,
                             nguoiTen: ten,
@@ -2070,17 +2108,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       type="number" min={0}
                       placeholder="0" 
                       className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
-                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.donGia || ""}
+                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan" || k.id === "may_quan")?.donGia || ""}
                       onChange={e => {
                         const val = parseInt(e.target.value) || 0;
                         setPhanCong(p => {
                           const next = [...(p as any[])];
-                          const idx = next.findIndex(k => k.id === "mayQuan");
+                          const idx = next.findIndex(k => k.id === "mayQuan" || k.id === "may_quan");
                           if (idx >= 0) {
                             next[idx] = { ...next[idx], donGia: val };
                           } else {
                             next.push({
-                              id: "mayQuan",
+                              id: "may_quan",
                               tenCongDoan: "May Quần",
                               donGia: val,
                               nguoiMa: "",
@@ -2151,7 +2189,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       <button
                         type="button"
                         onClick={() => {
-                          const p = KHO_VAT_TU[0];
+                          const p = khoPhuLieuReals[0];
                           setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "ao", mauIdx: idx }]);
                         }}
                         className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-[#2B4C3E] text-white text-xs font-bold rounded hover:bg-[#2B4C3E]/80 transition"
@@ -2180,7 +2218,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 className="flex-1 font-medium text-slate-700 bg-transparent border-b border-slate-300 outline-none hover:border-[#2B4C3E] focus:border-[#2B4C3E] w-24 text-[11px]"
                                 value={p.maPL}
                                 onChange={e => {
-                                  const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
+                                  const v = khoPhuLieuReals.find(x => x.maVT === e.target.value);
                                   if(v) {
                                     setDsPhuLieu(prev => {
                                       const next = [...prev];
@@ -2190,7 +2228,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }
                                 }}
                               >
-                                {KHO_VAT_TU.map(v => <option key={v.maVT} value={v.maVT}>{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
+                                {khoPhuLieuReals.map(v => <option key={v.maVT} value={v.maVT} className="text-black bg-white">{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
                               </select>
                               <div className="flex items-center shrink-0">
                                 <input 
@@ -2270,7 +2308,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 >
                                   <option value="">-- Chọn vải --</option>
                                   {khoVaiReals.map((kv: any) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.mauSac || kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2321,7 +2359,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 >
                                   <option value="">-- Chọn vải --</option>
                                   {khoVaiReals.map((kv: any) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.mauSac || kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2494,7 +2532,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 >
                                   <option value="">-- Chọn vải --</option>
                                   {khoVaiReals.map((kv: any) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.mauSac || kv.tenChuan || kv.tenVT}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2542,7 +2580,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                             <button
                               type="button"
                               onClick={() => {
-                                const p = KHO_VAT_TU[0];
+                                const p = khoPhuLieuReals[0];
                                 setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "quan", mauIdx: idx }]);
                               }}
                               className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-teal-700 text-white text-xs font-bold rounded hover:bg-teal-800 transition md:col-start-2"
@@ -2600,7 +2638,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       {dsNhom.length === 0 && <div className="text-xs text-slate-400 italic px-1">Chưa có vật tư nào</div>}
                       {dsNhom.map((p) => {
                         const idx = dsPhuLieu.indexOf(p);
-                        const laNguyenLieuMoi = !KHO_VAT_TU.some(v => v.maVT === p.maPL);
+                        const laNguyenLieuMoi = !khoPhuLieuReals.some(v => v.maVT === p.maPL);
                         return (
                           <div key={idx} className="flex flex-col sm:grid sm:grid-cols-13 gap-2 sm:items-center bg-white p-2 rounded shadow-sm">
                             <select
@@ -2627,14 +2665,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                               />
                             ) : (
                               <select className="sm:col-span-3 text-sm p-1.5 border rounded" value={p.maPL} onChange={e => {
-                                const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
+                                const v = khoPhuLieuReals.find(x => x.maVT === e.target.value);
                                 if(v) {
                                   const next = [...dsPhuLieu];
                                   next[idx] = { ...next[idx], maPL: v.maVT, tenPL: v.tenVT, donGia: v.donGia || 0, dvt: v.dvt || "cái" };
                                   setDsPhuLieu(next);
                                 }
                               }}>
-                                {KHO_VAT_TU.map(v => <option key={v.maVT} value={v.maVT}>{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
+                                {khoPhuLieuReals.map(v => <option key={v.maVT} value={v.maVT} className="text-black bg-white">{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
                               </select>
                             )}
                             <div className="flex gap-2 sm:contents">

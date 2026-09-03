@@ -467,7 +467,8 @@ export function Sidebar() {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("mimin-sidebar-collapsed");
     if (saved === "true") setIsCollapsed(true);
-    if (saved === "false") setIsCollapsed(false);
+    else if (saved === "false") setIsCollapsed(false);
+    else if (window.innerWidth < 1280) setIsCollapsed(true);
   }, []);
 
   useEffect(() => {
@@ -482,8 +483,8 @@ export function Sidebar() {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!isCollapsed && target && !target.closest("aside")) {
-        // Chỉ auto-collapse trên desktop vì mobile menu có cách đóng riêng
-        if (window.innerWidth >= 768) {
+        // Tự động đóng sidebar khi click ra ngoài trên các màn hình vừa (iPad)
+        if (window.innerWidth >= 768 && window.innerWidth < 1280) {
           setIsCollapsed(true);
         }
       }

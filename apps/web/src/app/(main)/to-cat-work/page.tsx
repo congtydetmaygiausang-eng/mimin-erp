@@ -137,9 +137,12 @@ export default function CongViecCatPage() {
     if (!pc) return;
 
     if (newDsMau && typeof totalThucTe === 'number') {
-      suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any);
-      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: totalThucTe });
-      toast.success(`✅ Lưu thông số và hoàn thành: ${totalThucTe} SP`);
+      suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any)
+        .then(() => {
+          capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: totalThucTe });
+          toast.success(`✅ Lưu thông số và hoàn thành: ${totalThucTe} SP`);
+        })
+        .catch(err => toast.error("Lỗi khi lưu Lệnh cắt: " + err.message));
     } else {
       const sl = totalThucTe || lc.tongSLThucTe || lc.tongSL;
       capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });

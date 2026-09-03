@@ -61,7 +61,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   // Trước đây prop này chỉ khai 2 tham số và callback bên dưới cũng chỉ truyền 2,
   // nên dsMau bị rơi mất -> tongSLThucTeAo/Quan không bao giờ được cập nhật.
   onSaveGiaCong?: (slThucTe: number, dsPhanCong: any, newDsMau?: any[]) => void;
-  onSaveTyLe?: (mauIdx: number, newTyLe: any) => void;
+  onSaveTyLe?: (mauIdx: number, newTyLe: any, tongDuCat?: number, fixedPhanCong?: any) => void;
 }) {
   const s = TRANG_THAI_LC_STYLE[lc.trangThai] || { bg: "bg-slate-100", color: "text-slate-600" };
   const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && lc.trangThai !== "HoanThanh";
@@ -76,7 +76,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   // Kiểm tra khâu Cắt đã có số liệu chưa (dựa vào tyLeSizeChiTiet của tất cả màu)
   // Nếu cắt chưa nhập: khoá nút Gia Công và TyLeSize các khâu sau
   const catDaNhap = (lc.dsMau || []).some(mau => {
-    const catKey = Object.keys(mau.tyLeSizeChiTiet || {}).find(k => k.toLowerCase().includes("cat"));
+    const catKey = Object.keys(mau.tyLeSizeChiTiet || {}).find(k => k.toLowerCase().includes("cat") || (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt"));
     if (!catKey) return false;
     return (mau.tyLeSizeChiTiet![catKey] || []).reduce((s, sz) => s + (sz.sl || 0), 0) > 0;
   });
@@ -251,8 +251,8 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
           lc={lc}
           mauIdx={modalTyLeMauIdx}
           onClose={() => setModalTyLeMauIdx(null)}
-          onSave={(mauIdx, newTyLe) => {
-            if (onSaveTyLe) onSaveTyLe(mauIdx, newTyLe);
+          onSave={(mauIdx, newTyLe, tongDuCat, fixedPhanCong) => {
+            if (onSaveTyLe) onSaveTyLe(mauIdx, newTyLe, tongDuCat, fixedPhanCong);
           }}
         />
       )}

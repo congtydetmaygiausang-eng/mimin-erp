@@ -53,7 +53,7 @@ export function BottomNav({ onMenuClick }: { onMenuClick: () => void }) {
   }).slice(0, 4); // Chỉ lấy tối đa 4 nút để dành nút thứ 5 cho Menu
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-md border-t border-slate-700/50 pb-[env(safe-area-inset-bottom)]">
+    <div className="md:hidden shrink-0 w-full mt-auto z-40 bg-slate-900/90 backdrop-blur-md border-t border-slate-700/50 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-16 px-2">
         {visibleItems.map((item, index) => {
           const isActive = pathname?.startsWith(item.href);
