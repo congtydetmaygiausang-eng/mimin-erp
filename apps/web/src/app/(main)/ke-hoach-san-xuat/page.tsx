@@ -21,6 +21,35 @@ export default function KeHoachSXPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<KHSX | null>(null);
   const [filter, setFilter] = useState<TrangThaiKHSX | "Tất cả">("Tất cả");
+  const [activeEditors, setActiveEditors] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    import("@/lib/supabase/client").then(({ supabase }) => {
+      if (!supabase) return;
+      const channel = supabase.channel('global_lenh_cat_presence');
+      channel.on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const newMap: Record<string, string[]> = {};
+        for (const key in state) {
+          const presences = state[key] as any[];
+          for (const p of presences) {
+            if (p.editingId && p.name) {
+              if (!newMap[p.editingId]) newMap[p.editingId] = [];
+              if (!newMap[p.editingId].includes(p.name)) {
+                newMap[p.editingId].push(p.name);
+              }
+            }
+          }
+        }
+        setActiveEditors(newMap);
+      }).subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
+  }, []);
+
   const visible = filter === "Tất cả" ? khsx : khsx.filter((item) => item.trangThai === filter);
   const tongSL = khsx.reduce((sum, item) => sum + item.soLuong, 0);
   const tongXong = khsx.reduce((sum, item) => sum + item.daHoanThanh, 0);
@@ -209,7 +238,15 @@ export default function KeHoachSXPage() {
         <div className="my-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm"><div><p className="text-slate-400">Số lượng</p><b>{item.soLuong.toLocaleString("vi-VN")} SP</b></div><div><p className="text-slate-400">Thời gian</p><b>{item.tuNgay} → {item.denNgay}</b></div></div>
         {item.ghiChu && <div className="mb-4 text-xs text-slate-500 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/50">{item.ghiChu}</div>}
         {item.lenhCatId ? (
-          <button onClick={() => { localStorage.setItem("mimin_edit_lenh_cat_id", item.lenhCatId!); router.push("/lenh-cat"); }} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"><Scissors className="h-4 w-4" /> Xem Lệnh Cắt ({item.lenhCatId})</button>
+          <>
+            <button onClick={() => { localStorage.setItem("mimin_edit_lenh_cat_id", item.lenhCatId!); router.push("/lenh-cat"); }} className="mb-1 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"><Scissors className="h-4 w-4" /> Xem Lệnh Cắt ({item.lenhCatId})</button>
+            {activeEditors[item.lenhCatId] && activeEditors[item.lenhCatId].length > 0 && (
+              <p className="text-[11px] text-rose-600 font-bold mb-3 text-center bg-rose-50 py-1 rounded-md border border-rose-100">
+                ⚠️ {activeEditors[item.lenhCatId].join(", ")} đang chỉnh sửa...
+              </p>
+            )}
+            {(!activeEditors[item.lenhCatId] || activeEditors[item.lenhCatId].length === 0) && <div className="mb-3"></div>}
+          </>
         ) : (
           <button onClick={() => taoLenhCat(item)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white hover:bg-violet-700"><Scissors className="h-4 w-4" /> Tạo lệnh cắt</button>
         )}

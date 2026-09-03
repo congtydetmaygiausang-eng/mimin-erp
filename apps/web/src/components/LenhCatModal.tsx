@@ -296,6 +296,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       joinedAt: Date.now(),
     };
 
+    const globalChannel = supabase.channel('global_lenh_cat_presence', {
+      config: { presence: { key: myClientId } },
+    });
+
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
@@ -324,9 +328,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         }
       });
 
+    globalChannel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await globalChannel.track({ ...myState, editingId: editId });
+      }
+    });
+
     return () => {
       channel.untrack();
+      globalChannel.untrack();
       supabase?.removeChannel(channel);
+      supabase?.removeChannel(globalChannel);
     };
   }, [editId, user]);
 
