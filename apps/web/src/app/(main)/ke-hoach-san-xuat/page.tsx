@@ -47,8 +47,11 @@ export default function KeHoachSXPage() {
 
   const taoLenhCat = async (item: KHSX) => {
     try {
+      const newId = generateLenhCatId(dsLenhCat);
       const { supabase } = await import("@/lib/supabase/client");
+      
       if (supabase) {
+        // Fast-fail check
         const { data: checkData } = await supabase.from("khsx").select("lenh_cat_id, lenhCatId").eq("id", item.id).single();
         const existingLenhCatId = checkData ? (checkData.lenh_cat_id || checkData.lenhCatId) : null;
         if (existingLenhCatId) {
@@ -58,7 +61,7 @@ export default function KeHoachSXPage() {
         }
       }
 
-      const newId = generateLenhCatId(dsLenhCat);
+
       const now = new Date().toISOString().slice(0, 10);
       
       const newLenhCat = {
@@ -131,6 +134,32 @@ export default function KeHoachSXPage() {
       };
 
       await themLenhCat(newLenhCat, user as any);
+
+      if (supabase) {
+        // Atomic update to claim KHSX
+        const { data: updateData } = await supabase
+          .from("khsx")
+          .update({ lenh_cat_id: newId, lenhCatId: newId })
+          .eq("id", item.id)
+          .is("lenh_cat_id", null)
+          .select();
+
+        // If another user already claimed it exactly at the same time
+        if (!updateData || updateData.length === 0) {
+          // Rollback orphaned LenhCat
+          await supabase.from("lenh_cat").delete().eq("id", newId);
+          
+          const { data: checkData } = await supabase.from("khsx").select("lenh_cat_id, lenhCatId").eq("id", item.id).single();
+          const existingLenhCatId = checkData ? (checkData.lenh_cat_id || checkData.lenhCatId) : null;
+          
+          toast.error(`Trùng lặp: Kế hoạch này vừa được người khác tạo Lệnh Cắt (${existingLenhCatId || 'khác'}) cùng lúc!`);
+          if (existingLenhCatId) {
+            suaKHSX(item.id, { lenhCatId: existingLenhCatId }, null);
+          }
+          return;
+        }
+      }
+
       suaKHSX(item.id, { lenhCatId: newId }, user as any);
       toast.success(`Đã chuyển ${item.maSP || item.sanPham} thành Lệnh cắt ${newId}`);
       localStorage.setItem("mimin_edit_lenh_cat_id", newId);
