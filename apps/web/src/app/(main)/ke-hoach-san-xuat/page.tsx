@@ -24,9 +24,15 @@ export default function KeHoachSXPage() {
   const [activeEditors, setActiveEditors] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
+    let channel: any = null;
+    let sb: any = null;
+
     import("@/lib/supabase/client").then(({ supabase }) => {
       if (!supabase) return;
-      const channel = supabase.channel('global_lenh_cat_presence');
+      sb = supabase;
+      channel = supabase.channel('global_lenh_cat_presence', {
+        config: { presence: { key: 'watcher-' + Math.random() } }
+      });
       channel.on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         const newMap: Record<string, string[]> = {};
@@ -43,11 +49,13 @@ export default function KeHoachSXPage() {
         }
         setActiveEditors(newMap);
       }).subscribe();
-      
-      return () => {
-        supabase.removeChannel(channel);
-      };
     });
+
+    return () => {
+      if (sb && channel) {
+        sb.removeChannel(channel);
+      }
+    };
   }, []);
 
   const visible = filter === "Tất cả" ? khsx : khsx.filter((item) => item.trangThai === filter);
