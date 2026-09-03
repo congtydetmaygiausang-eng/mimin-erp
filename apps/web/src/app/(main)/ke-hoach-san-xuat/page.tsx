@@ -52,8 +52,8 @@ export default function KeHoachSXPage() {
       
       if (supabase) {
         // Fast-fail check
-        const { data: checkData } = await supabase.from("khsx").select("lenh_cat_id, lenhCatId").eq("id", item.id).single();
-        const existingLenhCatId = checkData ? (checkData.lenh_cat_id || checkData.lenhCatId) : null;
+        const { data: checkData } = await supabase.from("khsx").select("lenhCatId").eq("id", item.id).single();
+        const existingLenhCatId = checkData ? checkData.lenhCatId : null;
         if (existingLenhCatId) {
            toast.error(`Kế hoạch này đã được tạo Lệnh Cắt (${existingLenhCatId}) bởi người khác!`);
            suaKHSX(item.id, { lenhCatId: existingLenhCatId }, null);
@@ -139,9 +139,9 @@ export default function KeHoachSXPage() {
         // Atomic update to claim KHSX
         const { data: updateData } = await supabase
           .from("khsx")
-          .update({ lenh_cat_id: newId, lenhCatId: newId })
+          .update({ lenhCatId: newId })
           .eq("id", item.id)
-          .is("lenh_cat_id", null)
+          .is("lenhCatId", null)
           .select();
 
         // If another user already claimed it exactly at the same time
@@ -149,8 +149,8 @@ export default function KeHoachSXPage() {
           // Rollback orphaned LenhCat
           await supabase.from("lenh_cat").delete().eq("id", newId);
           
-          const { data: checkData } = await supabase.from("khsx").select("lenh_cat_id, lenhCatId").eq("id", item.id).single();
-          const existingLenhCatId = checkData ? (checkData.lenh_cat_id || checkData.lenhCatId) : null;
+          const { data: checkData } = await supabase.from("khsx").select("lenhCatId").eq("id", item.id).single();
+          const existingLenhCatId = checkData ? checkData.lenhCatId : null;
           
           toast.error(`Trùng lặp: Kế hoạch này vừa được người khác tạo Lệnh Cắt (${existingLenhCatId || 'khác'}) cùng lúc!`);
           if (existingLenhCatId) {
