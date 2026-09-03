@@ -27,28 +27,18 @@ export function Dashboard() {
         <Stat n={ltps.length} label="Lô vải TP" sub={`${ltps.reduce((s, l) => s + l.tongKg, 0).toFixed(0)}kg`} color="cream" icon={Boxes} />
       </div>
 
-      <div className="card border-2 border-[#6CA3A2] bg-[#6CA3A2]/18 p-3">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="flex items-center gap-2 text-base font-bold">
-            <CreditCard className="w-4 h-4 text-[#307082]" /> Tổng công nợ phải trả
-          </h3>
-          <span className="text-3xl font-black text-[#307082]">
-            {(tongCongNo / 1_000_000).toFixed(1)}tr
-          </span>
-        </div>
-        <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-          {congNos.slice(0, 3).map((c) => (
-            <div key={c.doiTuongId} className="rounded border border-[#6CA3A2]/25 bg-[#ECE7DC] p-2 dark:bg-slate-800">
-              <div className="opacity-60 truncate">{c.tenDoiTuong}</div>
-              <div className="text-base font-black text-[#A95E00]">{(c.tongConNo / 1_000_000).toFixed(1)}tr</div>
-            </div>
-          ))}
-        </div>
+      <div className="card bg-white border border-[#E5E0D8] rounded-xl shadow-sm p-4 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-[#307082]">
+          <CreditCard className="w-5 h-5" /> Tổng công nợ phải trả
+        </h3>
+        <span className="text-3xl font-black text-[#307082]">
+          {(tongCongNo / 1_000_000).toFixed(1)}tr
+        </span>
       </div>
 
-      <div className="card border border-[#6CA3A2]/35 bg-[#F7F3EA] p-3">
-        <h3 className="mb-2 flex items-center gap-2 text-base font-bold">
-          <GitBranch className="w-4 h-4 text-[#307082]" /> Luồng sản xuất
+      <div className="card bg-white border border-[#E5E0D8] rounded-xl shadow-sm p-4">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-[#307082]">
+          <GitBranch className="w-5 h-5" /> Luồng sản xuất
         </h3>
         <div className="grid grid-cols-7 gap-1 text-center text-xs">
           {[

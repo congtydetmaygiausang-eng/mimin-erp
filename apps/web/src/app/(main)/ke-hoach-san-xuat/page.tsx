@@ -53,9 +53,29 @@ export default function KeHoachSXPage() {
       const newLenhCat = {
         id: newId,
         loaiLenh: "HangNha" as const,
-        loaiSP: ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"].includes(item.loaiSP as string) 
-          ? (item.loaiSP as any) 
-          : "BoTru",
+        loaiSP: (function() {
+          let val = item.loaiSP;
+          if (!val && item.maSP) {
+            try {
+              const spRaw = localStorage.getItem("mimin_danh_muc_v2");
+              if (spRaw) {
+                const spList = JSON.parse(spRaw);
+                const sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
+                if (sp && sp.loaiSP) val = sp.loaiSP;
+              }
+            } catch (e) {}
+          }
+          if (!val) {
+             const checkStr = (item.sanPham || item.tenSP || "").toLowerCase();
+             if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) val = "AoPolo";
+             else if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) val = "AoTru";
+             else if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) val = "AoCoTron";
+             else if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) val = "BoCoTron";
+             else if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) val = "PhuKien";
+             else if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) val = "AoCoTron";
+          }
+          return ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"].includes(val as string) ? val : "BoTru";
+        })(),
         maSP: item.maSP || "",
         tenSP: item.tenSP || item.sanPham,
         tongSL: item.soLuong,

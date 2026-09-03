@@ -97,11 +97,16 @@ export default function DanhMucSanPhamPage() {
         img: mau.img,
       }));
       const current = map.get(item.maSP);
-      const loaiSP: SanPham["loaiSP"] = /áo|polo/i.test(item.phanLoai)
-        ? "AoPolo"
-        : /phụ kiện|quần/i.test(item.phanLoai)
-          ? "PhuKien"
-          : "BoTru";
+      let loaiSP: SanPham["loaiSP"] = "BoTru";
+      const checkStr = ((item.phanLoai || "") + " " + (item.tenSP || "")).toLowerCase();
+      if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) loaiSP = "AoPolo";
+      else if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) loaiSP = "AoTru";
+      else if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) loaiSP = "AoCoTron";
+      else if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) loaiSP = "BoCoTron";
+      else if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) loaiSP = "PhuKien";
+      else if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) {
+        loaiSP = "AoCoTron";
+      }
       map.set(item.maSP, {
         ...(current || {
           id: item.maSP,
