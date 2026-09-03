@@ -249,7 +249,7 @@ export default function KeHoachSXPage() {
           <>
             <button onClick={() => { localStorage.setItem("mimin_edit_lenh_cat_id", item.lenhCatId!); router.push("/lenh-cat"); }} className="mb-1 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"><Scissors className="h-4 w-4" /> Xem Lệnh Cắt ({item.lenhCatId})</button>
             {activeEditors[item.lenhCatId] && activeEditors[item.lenhCatId].length > 0 && (
-              <p className="text-[11px] text-rose-600 font-bold mb-3 text-center bg-rose-50 py-1 rounded-md border border-rose-100">
+              <p className="text-sm text-rose-600 font-bold mb-3 text-center bg-rose-50 py-2 rounded-md border border-rose-100 shadow-sm animate-pulse">
                 ⚠️ {activeEditors[item.lenhCatId].join(", ")} đang chỉnh sửa...
               </p>
             )}
