@@ -4,7 +4,7 @@ import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
-import { type SizeRatioPreset, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
+import { type SizeRatioPreset, SIZE_RATIO_PRESETS, loadCustomSizeRatioPresets, buildCustomSizeRatioPreset, saveCustomSizeRatioPreset } from "@/lib/size-ratio-presets";
 import { uploadProductFile } from "@/lib/product-upload";
 
 interface ProductFormModalProps {
@@ -21,47 +21,47 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
   const [customSizes, setCustomSizes] = useState("S:M:L:XL");
   const [customValues, setCustomValues] = useState("1:2:2:1");
 
+  const [presetId, setPresetId] = useState("1s-1-2-2-2-1");
+
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem('CUSTOM_SIZE_RATIOS');
-    if (saved) {
-      try { setCustomPresets(JSON.parse(saved)); } catch (e) {}
+    const loadedCustom = loadCustomSizeRatioPresets();
+    setCustomPresets(loadedCustom);
+    
+    if (initialData?.bangSize && initialData.bangSize.sizes.length > 0) {
+      const sStr = initialData.bangSize.sizes.join(":");
+      const rStr = initialData.bangSize.ratios.join(":");
+      const all = [...SIZE_RATIO_PRESETS, ...loadedCustom];
+      const found = all.find(p => p.sizes.join(":") === sStr && p.value === rStr);
+      if (found) {
+        setPresetId(found.id);
+      }
     }
-  }, []);
+  }, [initialData]);
 
   const allPresets = [...SIZE_RATIO_PRESETS, ...customPresets];
 
-  const handleSaveNewRatio = () => {
-    const sList = customSizes.split(':').filter(Boolean);
-    const vList = customValues.split(':').map(Number).filter(n => !isNaN(n));
-    if (sList.length === 0 || vList.length === 0 || sList.length !== vList.length) {
-      toast.error("Định dạng không hợp lệ. Số lượng size và tỉ lệ phải bằng nhau!");
+  const handleSaveCustomRatio = () => {
+    const sizes = customSizes.split(":").map(s => s.trim());
+    const ratios = customValues.split(":").map(Number);
+    
+    if (sizes.length !== ratios.length || ratios.some(isNaN)) {
+      toast.error("Định dạng không hợp lệ. Ví dụ: S:M:L:XL và 1:2:2:1");
       return;
     }
-    const val = customValues;
-    const riSo = vList.reduce((a, b) => a + b, 0);
-    const label = `${customSizes} = ${customValues} (Ri${riSo})`;
-    const newPreset: SizeRatioPreset = {
-      id: `custom-${Date.now()}`,
-      label,
-      value: val,
-      sizes: sList,
-      ratios: vList,
-      riSo,
-      ghiChu: "Tùy chỉnh"
-    };
-    const updated = [...customPresets, newPreset];
+    
+    const newPreset = buildCustomSizeRatioPreset(sizes, ratios);
+    const updated = saveCustomSizeRatioPreset(newPreset);
     setCustomPresets(updated);
-    localStorage.setItem('CUSTOM_SIZE_RATIOS', JSON.stringify(updated));
-    setTiLeSize(val);
+    setPresetId(newPreset.id);
     setIsCreatingRatio(false);
-    toast.success("Đã lưu tỉ lệ size mới!");
+    toast.success("Đã lưu bảng size mới!");
   };
 
   const [maSP, setMaSP] = useState(initialData?.id || "");
   const [tenSP, setTenSP] = useState(initialData?.tenSP || "");
   const [loaiSP, setLoaiSP] = useState<LoaiSP>(initialData?.loaiSP || "BoTru");
-  const [tiLeSize, setTiLeSize] = useState(initialData?.bangSize?.ratios.join(":") || "1:2:2:2:1");
+  const [presetIdStateUnused, setPresetIdStateUnused] = useState(""); // Dummy unused to keep lines consistent or just delete
   const [dsMau, setDsMau] = useState<{ ten: string; maSKU: string; dinhMuc: number; img: string; video: string; hinhAnhChiTiet?: string[] }[]>(
     initialData?.dsMau?.map(m => ({
       ten: m.ten,
@@ -100,20 +100,22 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
     }
 
     // Match with selected preset or fallback
-    const preset = allPresets.find(p => p.value === tiLeSize);
+    const preset = allPresets.find(p => p.id === presetId);
     let bangSize;
+    let tiLeSizeStr = "1:2:2:2:1";
     if (preset) {
       bangSize = {
         sizes: preset.sizes,
         ratios: preset.ratios,
         riSo: preset.riSo
       };
+      tiLeSizeStr = preset.value;
     } else {
-      const ratios = tiLeSize.split(":").map(Number);
+      const ratios = [1,2,2,2,1];
       bangSize = {
-        sizes: ["M", "L", "XL", "2XL", "3XL"].slice(0, ratios.length),
+        sizes: ["S", "M", "L", "XL", "2XL"],
         ratios: ratios,
-        riSo: ratios.reduce((a, b) => a + b, 0)
+        riSo: 8
       };
     }
 
@@ -122,7 +124,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       id: maSP.toUpperCase(),
       tenSP,
       loaiSP,
-      tiLeSize,
+      tiLeSize: tiLeSizeStr,
       dsMau: dsMau.map(m => ({
         ten: m.ten,
         maSKU: m.maSKU || `${maSP}-${m.ten.toUpperCase()}`,
@@ -196,20 +198,33 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-bold text-slate-700">Tỉ lệ Size *</label>
+                <label className="block text-sm font-bold italic text-fuchsia-700 bg-fuchsia-50 px-2 py-0.5 rounded border border-fuchsia-200 w-fit">✨ Tỉ lệ Size *</label>
                 <button onClick={() => setIsCreatingRatio(!isCreatingRatio)} className="text-xs text-cyan-700 font-bold hover:bg-cyan-100 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded transition-colors">
                   + Tạo mới
                 </button>
               </div>
               <select 
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 bg-white"
-                value={tiLeSize} onChange={e => setTiLeSize(e.target.value)}
+                value={presetId} onChange={e => setPresetId(e.target.value)}
               >
-                {allPresets.map((preset) => (
-                  <option key={preset.id} value={preset.value}>
-                    {preset.label}
-                  </option>
-                ))}
+                {SIZE_RATIO_PRESETS.length > 0 && (
+                  <optgroup label="Bảng chuẩn">
+                    {SIZE_RATIO_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {customPresets.length > 0 && (
+                  <optgroup label="Bảng tự tạo">
+                    {customPresets.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               
               {isCreatingRatio && (
@@ -224,7 +239,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                      <input className="w-full border p-1.5 rounded text-sm mt-1 focus:ring-1 focus:ring-cyan-500 outline-none font-mono" value={customValues} onChange={e => setCustomValues(e.target.value)} placeholder="VD: 1:2:2:1" />
                    </div>
                    <div className="flex gap-2 pt-1">
-                     <button className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded py-1.5 text-sm font-bold" onClick={handleSaveNewRatio}>Lưu tỉ lệ</button>
+                     <button className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded py-1.5 text-sm font-bold" onClick={handleSaveCustomRatio}>Lưu tỉ lệ</button>
                      <button className="px-3 bg-white border hover:bg-slate-50 rounded py-1.5 text-sm font-bold text-slate-600" onClick={() => setIsCreatingRatio(false)}>Hủy</button>
                    </div>
                 </div>

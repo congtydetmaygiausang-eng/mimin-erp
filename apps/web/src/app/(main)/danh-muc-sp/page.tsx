@@ -412,6 +412,9 @@ export default function DanhMucSanPhamPage() {
       if (existsInDb && suaSP) {
         await suaSP(productToEdit.id, sp);
         toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP}`);
+        if (selectedProduct && selectedProduct.id === productToEdit.id) {
+          setSelectedProduct({ ...selectedProduct, ...sp } as SanPham);
+        }
       } else if (themSP) {
         await themSP(sp as SanPham);
         toast.success(`Đã lưu sản phẩm từ Kho vào Danh mục: ${sp.tenSP}`);
