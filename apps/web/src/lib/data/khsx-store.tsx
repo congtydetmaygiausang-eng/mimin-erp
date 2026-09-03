@@ -255,7 +255,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     });
   }, []);
   const reset = useCallback(() => {
-    setKHSX([]);
+    setKHSX(prev => { prev.forEach(k => { if (isSupabaseEnabled) supabaseDelete("khsx", k.id); }); return []; });
     saveData([]);
   }, []);
 

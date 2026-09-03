@@ -794,7 +794,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, [upsertTuLenhCat, dsLenhCat]);
 
   const reset = useCallback(() => {
-    setDsLenhCat([]); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    setDsLenhCat(prev => { prev.forEach(lc => { if (isSupabaseEnabled) supabaseDelete("lenh_cat", lc.id); }); return []; }); localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN); localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
   }, []);
 
