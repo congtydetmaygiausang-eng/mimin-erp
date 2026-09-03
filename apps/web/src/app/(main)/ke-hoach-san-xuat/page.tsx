@@ -55,7 +55,8 @@ export default function KeHoachSXPage() {
         loaiLenh: "HangNha" as const,
         loaiSP: (function() {
           let val = item.loaiSP;
-          if (!val && item.maSP) {
+          // Luôn thử lấy từ danh mục gốc trước để sửa lỗi data KHSX cũ bị lưu sai
+          if (item.maSP) {
             try {
               const spRaw = localStorage.getItem("mimin_danh_muc_v2");
               if (spRaw) {
@@ -65,7 +66,8 @@ export default function KeHoachSXPage() {
               }
             } catch (e) {}
           }
-          if (!val) {
+          // Nếu vẫn bị "BoTru" do data cũ hoặc thiếu, parse lại từ tên SP
+          if (!val || val === "BoTru") {
              const checkStr = (item.sanPham || item.tenSP || "").toLowerCase();
              if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) val = "AoPolo";
              else if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) val = "AoTru";
