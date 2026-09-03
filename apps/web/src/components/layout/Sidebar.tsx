@@ -13,6 +13,8 @@ import {
   Calendar,
   Package,
   ShoppingCart,
+  ShoppingBag,
+  CreditCard,
   ShieldCheck,
   Shirt,
   Heart,
@@ -54,6 +56,7 @@ import {
   Search,
   Wind,
   Tag,
+  History,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -121,6 +124,10 @@ const NAV: NavItem[] = [
     ]
   },
   {
+    href: "/san-xuat-erp", label: "Sản xuất sợi-dệt-nhuộm", icon: Factory,
+    color: "border-teal-400", iconColor: "text-teal-300", permModule: "bang-dieu-hanh-sx",
+  },
+  {
     label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
     color: "border-teal-400", iconColor: "text-teal-300",
     ...cardStyle("from-teal-500", "to-emerald-600", "from-teal-50", "to-emerald-50", "text-teal-900"),
@@ -144,7 +151,7 @@ const NAV: NavItem[] = [
     color: "border-emerald-400", iconColor: "text-emerald-300",
     ...cardStyle("from-emerald-500", "to-green-600", "from-emerald-50", "to-green-50", "text-emerald-900"),
     subItems: [
-      { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, iconColor: "text-emerald-400", permModule: "kho-vai" },
+      { href: "/kho-vai-tinhmann", label: "Vải thành phẩm", icon: Package, iconColor: "text-emerald-400", permModule: "kho-vai" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, iconColor: "text-orange-400", permModule: "kho-phu-lieu" },
       { href: "/kho-thanh-pham", label: "Kho thành phẩm", icon: Boxes, iconColor: "text-violet-400", permModule: "kho-thanh-pham" },
       { href: "/giao-hang", label: "Giao hàng", icon: Truck, iconColor: "text-sky-400", permModule: "giao-hang" },
@@ -184,6 +191,11 @@ const NAV: NavItem[] = [
       { href: "/nhan-su", label: "Nhân sự", icon: Users, iconColor: "text-blue-400", permModule: "nhan-su" },
       { href: "/khach-hang", label: "Khách hàng", icon: Users, iconColor: "text-emerald-400", permModule: "khach-hang" },
       { href: "/nha-cung-cap", label: "Nhà cung cấp", icon: Building2, iconColor: "text-amber-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/hop-dong", label: "Hợp đồng", icon: FileText, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/giao-dich-mua", label: "Giao dịch mua NCC", icon: ShoppingBag, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/cong-no-tong", label: "Công nợ tổng", icon: Wallet, iconColor: "text-amber-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/thanh-toan", label: "Thanh toán", icon: CreditCard, iconColor: "text-teal-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/lich-su", label: "Lịch sử hoạt động", icon: History, iconColor: "text-slate-300", permModule: "nha-cung-cap" },
       { href: "/doi-tac-gia-cong", label: "Đối tác gia công", icon: Users, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
       { href: "/cong-nhan-gia-cong", label: "Công nhân gia công dự phòng", icon: Hammer, iconColor: "text-orange-400", permModule: "nha-cung-cap" },
       { href: "/master-data", label: "Master Data", icon: Database, iconColor: "text-slate-400", permModule: "nha-cung-cap" },

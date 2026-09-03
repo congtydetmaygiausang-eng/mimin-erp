@@ -595,6 +595,7 @@ function NCCForm({ mode, ncc, onClose, onSave }: { mode: "add" | "edit"; ncc?: N
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Vai trò / Chuyên môn *</label>
               <select required className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-amber-500" value={form.vaiTro} onChange={(e) => setForm({ ...form, vaiTro: e.target.value })}>
+                <option>Bán sợi</option>
                 <option>Dệt</option>
                 <option>Nhuộm</option>
                 <option>Bo cổ</option>
