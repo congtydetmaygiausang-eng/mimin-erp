@@ -32,6 +32,17 @@ export type KHSX = {
   lenhCatId?: string;
 };
 
+function getCorrectLoaiSP(val: string, tenSP: string): any {
+  if (val && val !== "BoTru") return val;
+  const checkStr = (tenSP || "").toLowerCase();
+  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
+  if (checkStr.includes("áo tr?") || checkStr.includes("ao tru") || checkStr.includes("c? tr?") || checkStr.includes("co tru")) return "AoTru";
+  if (checkStr.includes("áo tròn") || checkStr.includes("áo c? tròn") || checkStr.includes("c? tròn") || checkStr.includes("co tron")) return "AoCoTron";
+  if (checkStr.includes("b? tròn") || checkStr.includes("b? c? tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) return "BoCoTron";
+  if (checkStr.includes("ph? ki?n") || checkStr.includes("qu?n") || checkStr.includes("quan")) return "PhuKien";
+  if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) return "AoCoTron";
+  return "BoTru";
+}
 const STORAGE_KEY = "mimin_khsx_v2";
 const Ctx = createContext<StoreContext | null>(null);
 type RemoteKHSX = KHSX & { maKhsx?: string; maSp?: string; tenSp?: string; loaiSp?: LoaiSP };
@@ -92,7 +103,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
           maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || "",
           maSP: item.ma_sp || item.maSp || item.maSP,
           tenSP: item.ten_sp || item.tenSp || item.tenSP,
-          loaiSP: item.loai_sp || item.loaiSp || item.loaiSP,
+          loaiSP: getCorrectLoaiSP(item.loai_sp || item.loaiSp || item.loaiSP, item.ten_sp || item.tenSp || item.tenSP),
           tiLeSize: item.ti_le_size || item.tiLeSize,
           dsMau: item.ds_mau || item.dsMau || [],
           tuan: item.tuan || "",
@@ -143,7 +154,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
                   maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || "",
                   maSP: item.ma_sp || item.maSp || item.maSP,
                   tenSP: item.ten_sp || item.tenSp || item.tenSP,
-                  loaiSP: item.loai_sp || item.loaiSp || item.loaiSP,
+                  loaiSP: getCorrectLoaiSP(item.loai_sp || item.loaiSp || item.loaiSP, item.ten_sp || item.tenSp || item.tenSP),
                   tiLeSize: item.ti_le_size || item.tiLeSize,
                   dsMau: item.ds_mau || item.dsMau || [],
                   tuan: item.tuan || "",
