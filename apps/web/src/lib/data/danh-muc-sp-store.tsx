@@ -47,16 +47,28 @@ function buildDBPayload(sp: SanPham) {
 }
 
 function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
-  // sync-helper.ts (snakeToCamel) đã convert các key từ snake_case sang camelCase
+  // sync-helper.ts (snakeToCamel) da convert các key từ snake_case sang camelCase
   // Nên ta cần đọc cả 2 trường hợp để đảm bảo an toàn.
   const maSp = item.maSp || item.ma_sp;
   const local = localData.find((x) => x.id === maSp);
+  const tenSP = item.tenSp || item.ten_sp || "Sản phẩm mới";
+  
+  let loaiSP = (item.loaiSp || item.loai_sp) as any || "AoCoTron";
+  if (loaiSP === "BoTru") {
+      const checkStr = (tenSP + " " + (item.phanLoai || item.phan_loai || "")).toLowerCase();
+      if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) loaiSP = "AoPolo";
+      else if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) loaiSP = "AoTru";
+      else if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) loaiSP = "AoCoTron";
+      else if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) loaiSP = "BoCoTron";
+      else if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) loaiSP = "PhuKien";
+      else if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) loaiSP = "AoCoTron";
+  }
 
   return {
     id: maSp || item.id, // Application ID (ma_sp string)
     dbId: item.id, // UUID in database
-    tenSP: item.tenSp || item.ten_sp || "Sản phẩm mới",
-    loaiSP: (item.loaiSp || item.loai_sp) as any || "AoCoTron",
+    tenSP: tenSP,
+    loaiSP: loaiSP,
     giaBanDuKien: item.giaBanDuKien ?? item.gia_ban_du_kien ?? 0,
     giaVonDuKien: item.giaVonDuKien ?? item.gia_von_du_kien ?? 0,
     tiLeSize: item.tiLeSize || item.ti_le_size || "1:2:2:2:1",

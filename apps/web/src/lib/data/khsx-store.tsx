@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AppUser } from "@/components/session-provider";
@@ -7,7 +7,7 @@ import { logWorkflow } from "../audit-log";
 import { isSupabaseEnabled, supabaseDelete, supabaseFetchAllRaw, supabaseUpsertRaw } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
-export type TrangThaiKHSX = "Lên kế hoạch" | "Đang SX" | "Hoàn thành" | "Trễ hạn";
+export type TrangThaiKHSX = "LÃªn káº¿ hoáº¡ch" | "Äang SX" | "HoÃ n thÃ nh" | "Trá»… háº¡n";
 
 export type KHSX = {
   id: string;
@@ -21,7 +21,7 @@ export type KHSX = {
   tuNgay: string;
   denNgay: string;
   sanPham: string;
-  loai: "Áo" | "Bộ" | "Quần" | "Phụ kiện";
+  loai: "Ão" | "Bá»™" | "Quáº§n" | "Phá»¥ kiá»‡n";
   soLuong: number;
   daHoanThanh: number;
   xuongPhuTrach: string;
@@ -32,6 +32,17 @@ export type KHSX = {
   lenhCatId?: string;
 };
 
+function getCorrectLoaiSP(val: string, tenSP: string): any {
+  if (val && val !== "BoTru") return val;
+  const checkStr = (tenSP || "").toLowerCase();
+  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
+  if (checkStr.includes("áo tr?") || checkStr.includes("ao tru") || checkStr.includes("c? tr?") || checkStr.includes("co tru")) return "AoTru";
+  if (checkStr.includes("áo tròn") || checkStr.includes("áo c? tròn") || checkStr.includes("c? tròn") || checkStr.includes("co tron")) return "AoCoTron";
+  if (checkStr.includes("b? tròn") || checkStr.includes("b? c? tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) return "BoCoTron";
+  if (checkStr.includes("ph? ki?n") || checkStr.includes("qu?n") || checkStr.includes("quan")) return "PhuKien";
+  if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) return "AoCoTron";
+  return "BoTru";
+}
 const STORAGE_KEY = "mimin_khsx_v2";
 const Ctx = createContext<StoreContext | null>(null);
 type RemoteKHSX = KHSX & { maKhsx?: string; maSp?: string; tenSp?: string; loaiSp?: LoaiSP };
@@ -60,15 +71,15 @@ function saveData(items: KHSX[]) {
   try { 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); 
   } catch (e: any) { 
-    console.error("[KHSX] Lỗi lưu localStorage:", e);
-    toast.error("Lỗi hệ thống: Không thể lưu dữ liệu kế hoạch sản xuất vào máy tính (" + e.message + ")");
+    console.error("[KHSX] Lá»—i lÆ°u localStorage:", e);
+    toast.error("Lá»—i há»‡ thá»‘ng: KhÃ´ng thá»ƒ lÆ°u dá»¯ liá»‡u káº¿ hoáº¡ch sáº£n xuáº¥t vÃ o mÃ¡y tÃ­nh (" + e.message + ")");
   }
 }
 
 function persist(item: KHSX) {
   if (!isSupabaseEnabled) return;
   
-  // Bảng khsx trên Supabase thực tế đang dùng cột camelCase, nên ta dùng supabaseUpsertRaw
+  // Báº£ng khsx trÃªn Supabase thá»±c táº¿ Ä‘ang dÃ¹ng cá»™t camelCase, nÃªn ta dÃ¹ng supabaseUpsertRaw
   supabaseUpsertRaw("khsx", item, "id").catch((error) => console.error("[KHSX] Supabase upsert error:", error));
 }
 
@@ -92,7 +103,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
           maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || "",
           maSP: item.ma_sp || item.maSp || item.maSP,
           tenSP: item.ten_sp || item.tenSp || item.tenSP,
-          loaiSP: item.loai_sp || item.loaiSp || item.loaiSP,
+          loaiSP: getCorrectLoaiSP(item.loai_sp || item.loaiSp || item.loaiSP, item.ten_sp || item.tenSp || item.tenSP),
           tiLeSize: item.ti_le_size || item.tiLeSize,
           dsMau: item.ds_mau || item.dsMau || [],
           tuan: item.tuan || "",
@@ -102,23 +113,23 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
           loai: item.loai,
           soLuong: item.so_luong ?? item.soLuong ?? 0,
           daHoanThanh: item.da_hoan_thanh ?? item.daHoanThanh ?? 0,
-          xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || "Tổ cắt",
-          trangThai: item.trang_thai || item.trangThai || "Lên kế hoạch",
+          xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || "Tá»• cáº¯t",
+          trangThai: item.trang_thai || item.trangThai || "LÃªn káº¿ hoáº¡ch",
           ghiChu: item.ghi_chu || item.ghiChu,
           ngayTao: item.ngay_tao || item.ngayTao,
           nguoiTao: item.nguoi_tao || item.nguoiTao,
           lenhCatId: item.lenh_cat_id || item.lenhCatId,
         }));
         
-        // Remote là nguồn chân lý tuyệt đối khi fetch thành công.
+        // Remote lÃ  nguá»“n chÃ¢n lÃ½ tuyá»‡t Ä‘á»‘i khi fetch thÃ nh cÃ´ng.
         const merged = normalized;
         
         saveData(merged as KHSX[]);
         setKHSX(merged as KHSX[]);
       })
-      .catch((err) => console.error("Lỗi fetch khsx:", err));
+      .catch((err) => console.error("Lá»—i fetch khsx:", err));
       
-    // Đăng ký realtime lắng nghe thay đổi
+    // ÄÄƒng kÃ½ realtime láº¯ng nghe thay Ä‘á»•i
     import("@/lib/supabase/client").then(({ supabase }) => {
       if (!supabase) return;
       const channelName = `khsx-changes-${Math.random().toString(36).slice(2)}`;
@@ -143,7 +154,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
                   maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || "",
                   maSP: item.ma_sp || item.maSp || item.maSP,
                   tenSP: item.ten_sp || item.tenSp || item.tenSP,
-                  loaiSP: item.loai_sp || item.loaiSp || item.loaiSP,
+                  loaiSP: getCorrectLoaiSP(item.loai_sp || item.loaiSp || item.loaiSP, item.ten_sp || item.tenSp || item.tenSP),
                   tiLeSize: item.ti_le_size || item.tiLeSize,
                   dsMau: item.ds_mau || item.dsMau || [],
                   tuan: item.tuan || "",
@@ -153,8 +164,8 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
                   loai: item.loai,
                   soLuong: item.so_luong ?? item.soLuong ?? 0,
                   daHoanThanh: item.da_hoan_thanh ?? item.daHoanThanh ?? 0,
-                  xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || "Tổ cắt",
-                  trangThai: item.trang_thai || item.trangThai || "Lên kế hoạch",
+                  xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || "Tá»• cáº¯t",
+                  trangThai: item.trang_thai || item.trangThai || "LÃªn káº¿ hoáº¡ch",
                   ghiChu: item.ghi_chu || item.ghiChu,
                   ngayTao: item.ngay_tao || item.ngayTao,
                   nguoiTao: item.nguoi_tao || item.nguoiTao,
@@ -230,7 +241,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
       const next = prev.map((item) => {
         if (item.id !== id) return item;
         const daHoanThanh = Math.min(Math.max(value, 0), item.soLuong);
-        const trangThai: TrangThaiKHSX = daHoanThanh >= item.soLuong ? "Hoàn thành" : daHoanThanh > 0 ? "Đang SX" : item.trangThai;
+        const trangThai: TrangThaiKHSX = daHoanThanh >= item.soLuong ? "HoÃ n thÃ nh" : daHoanThanh > 0 ? "Äang SX" : item.trangThai;
         const updated = { ...item, daHoanThanh, trangThai };
         persist(updated);
         return updated;
@@ -238,15 +249,15 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
       saveData(next);
       return next;
     });
-    logWorkflow(user, "update", `Tiến độ KHSX ${id}`, id, { newValue: { value } });
+    logWorkflow(user, "update", `Tiáº¿n Ä‘á»™ KHSX ${id}`, id, { newValue: { value } });
   }, []);
 
-  const batDauSX = useCallback((id: string, user: AppUser | null) => suaKHSX(id, { trangThai: "Đang SX" }, user), [suaKHSX]);
+  const batDauSX = useCallback((id: string, user: AppUser | null) => suaKHSX(id, { trangThai: "Äang SX" }, user), [suaKHSX]);
   const hoanThanh = useCallback((id: string, user: AppUser | null) => {
     setKHSX((prev) => {
       const next = prev.map((item) => {
         if (item.id !== id) return item;
-        const updated: KHSX = { ...item, trangThai: "Hoàn thành", daHoanThanh: item.soLuong };
+        const updated: KHSX = { ...item, trangThai: "HoÃ n thÃ nh", daHoanThanh: item.soLuong };
         persist(updated);
         return updated;
       });
