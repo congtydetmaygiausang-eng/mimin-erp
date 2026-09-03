@@ -198,7 +198,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-bold text-slate-700">Tỉ lệ Size *</label>
+                <label className="block text-sm font-bold italic text-fuchsia-700 bg-fuchsia-50 px-2 py-0.5 rounded border border-fuchsia-200 w-fit">✨ Tỉ lệ Size *</label>
                 <button onClick={() => setIsCreatingRatio(!isCreatingRatio)} className="text-xs text-cyan-700 font-bold hover:bg-cyan-100 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded transition-colors">
                   + Tạo mới
                 </button>

@@ -1684,7 +1684,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
 
           {/* SƠ ĐỒ CẮT (MARKER) */}
-          <div className={`${loaiSoDoPhoi ? "" : "hidden"} order-2 bg-[#DCEAF2] p-5 rounded-lg border border-blue-300/80 shadow-sm mt-6`}>
+          <div className={`${loaiSoDoPhoi ? "" : "hidden"} order-3 bg-[#DCEAF2] p-5 rounded-lg border border-blue-300/80 shadow-sm mt-6`}>
              <div className="flex justify-between items-center mb-4">
                <h2 className="text-xl font-bold text-[#1E3A8A] uppercase tracking-wide">SƠ ĐỒ CẮT (MARKER)</h2>
                <div className="flex items-center gap-2 bg-blue-100/50 px-3 py-1.5 rounded-full">

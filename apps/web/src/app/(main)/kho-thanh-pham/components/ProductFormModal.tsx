@@ -224,7 +224,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-700 block">Tỉ lệ Size *</label>
+                <label className="text-sm font-bold italic text-fuchsia-700 bg-fuchsia-50 px-2 py-0.5 rounded border border-fuchsia-200 block w-fit">✨ Tỉ lệ Size *</label>
                 <button
                   type="button"
                   onClick={() => setOpenSizeBuilder(true)}
