@@ -266,7 +266,7 @@ export default function UiDongGoiPage() {
                               id: `SP-${Date.now()}-${idx}`,
                               maSP: lc.maSP || lc.id,
                               tenSP: lc.tenSP,
-                              phanLoai: "Áo",
+                              phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
                               mau: m.ten,
                               size: "Nhiều size",
                               lsx: lc.id,

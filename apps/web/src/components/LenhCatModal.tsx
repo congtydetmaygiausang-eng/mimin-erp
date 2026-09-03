@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
-import { useSupabaseSync } from "@/lib/supabase/client";
+import { supabase, useSupabaseSync } from "@/lib/supabase/client";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
@@ -271,6 +271,64 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
+
+  const [activeEditor, setActiveEditor] = useState<{ id: string; name: string; joinedAt: number } | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+
+  useEffect(() => {
+    if (!editId || !supabase) {
+      setIsLocked(false);
+      setActiveEditor(null);
+      return;
+    }
+
+    const channelName = `lenh_cat_presence_${editId}`;
+    const myClientId = `${user?.id || "anon"}-${Math.random().toString(36).slice(2, 9)}`;
+    const myName = user?.name || "Người dùng ẩn danh";
+    
+    const channel = supabase.channel(channelName, {
+      config: { presence: { key: myClientId } },
+    });
+
+    const myState = {
+      id: myClientId,
+      name: myName,
+      joinedAt: Date.now(),
+    };
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        let firstEditor: any = null;
+        
+        for (const key in state) {
+          const presences = state[key] as any[];
+          for (const p of presences) {
+            if (!firstEditor || p.joinedAt < firstEditor.joinedAt) {
+              firstEditor = p;
+            }
+          }
+        }
+        
+        if (firstEditor) {
+          setActiveEditor(firstEditor);
+          setIsLocked(firstEditor.id !== myClientId);
+        } else {
+          setActiveEditor(null);
+          setIsLocked(false);
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track(myState);
+        }
+      });
+
+    return () => {
+      channel.untrack();
+      supabase?.removeChannel(channel);
+    };
+  }, [editId, user]);
 
   // Sync editing data into states when editing changes
   useEffect(() => {
@@ -1200,7 +1258,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
         </div>
 
-        <div className="flex-1 bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4 text-slate-900">
+        {isLocked && activeEditor && (
+          <div className="bg-red-500 text-white px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 shrink-0 border-b border-red-600">
+            <AlertTriangle className="w-5 h-5" />
+            Lệnh cắt này đang được chỉnh sửa bởi {activeEditor.name}. Bạn chỉ có thể xem và không thể lưu đè.
+          </div>
+        )}
+
+        <div className="flex-1 bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4 text-slate-900 overflow-y-auto">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -1619,7 +1684,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
 
           {/* SƠ ĐỒ CẮT (MARKER) */}
-          <div className={`${loaiSoDoPhoi ? "" : "hidden"} order-5 bg-[#DCEAF2] p-5 rounded-lg border border-blue-300/80 shadow-sm mt-6`}>
+          <div className={`${loaiSoDoPhoi ? "" : "hidden"} order-2 bg-[#DCEAF2] p-5 rounded-lg border border-blue-300/80 shadow-sm mt-6`}>
              <div className="flex justify-between items-center mb-4">
                <h2 className="text-xl font-bold text-[#1E3A8A] uppercase tracking-wide">SƠ ĐỒ CẮT (MARKER)</h2>
                <div className="flex items-center gap-2 bg-blue-100/50 px-3 py-1.5 rounded-full">
@@ -2893,16 +2958,18 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 order-1 md:order-2 w-full md:w-auto">
             {/* Tam cap 2: xac nhan lenh da du dieu kien */}
             <button
-              className="flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all text-center justify-center"
+              className={`flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 transition-all text-center justify-center ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-100 hover:border-blue-300"}`}
               onClick={() => handleSave("DaTao")}
+              disabled={isLocked}
             >
               Hoàn tất lệnh
             </button>
 
             {/* Tam cap 1 (CTA chinh): chuyen sang khau san xuat tiep theo */}
             <button
-              className="flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] hover:bg-[#d9930f] transition-all shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+              className={`flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] transition-all flex items-center justify-center gap-2 ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-[#d9930f] shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5"}`}
               onClick={() => handleSave("ChuyenTiep")}
+              disabled={isLocked}
             >
               <Send className="w-4 h-4" />
               Chuyển khâu
@@ -2920,10 +2987,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             
             <span className="hidden md:block w-px h-6 bg-slate-200 mx-1" />
             
-            {/* Tam cap 3: hanh dong nhe nhat - luu tam, chua can du dieu kien */}
             <button
-              className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
+              className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 transition-all ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-50 hover:border-slate-400"}`}
               onClick={() => handleSave("Nhap")}
+              disabled={isLocked}
             >
               Lưu nháp
             </button>

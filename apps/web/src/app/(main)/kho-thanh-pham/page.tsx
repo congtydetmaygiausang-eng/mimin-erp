@@ -4,7 +4,7 @@ import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
-import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase } from "@/lib/supabase/sync-helper";
+import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
@@ -81,6 +81,11 @@ export default function KhoThanhPhamPage() {
     })();
     return () => { mounted = false; };
   }, []);
+
+  useSupabaseRealtime("kho_thanh_pham", setDsSanPhamState, {
+    primaryKey: "id",
+    mapIn: (row: any) => fromSupabaseRow(row),
+  });
 
   // Đơn hàng chuyển sang "Đã giao" sẽ trừ tồn kho ở nơi khác (don-hang-store) rồi
   // phát sự kiện này - nạp lại từ localStorage để số tồn trên màn hình đúng ngay.
@@ -404,7 +409,7 @@ export default function KhoThanhPhamPage() {
         id: old?.id || `SP-${Date.now()}-${idx}`,
         maSP: lc.maSP || group.maSP,
         tenSP: group.tenSP,
-        phanLoai: old?.phanLoai || "Áo",
+        phanLoai: old?.phanLoai || (lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo"),
         mau: m.ten,
         size: "Nhiều size",
         lsx,
@@ -547,7 +552,7 @@ export default function KhoThanhPhamPage() {
         id: `TP-${Date.now().toString(36)}-${idx}`,
         maSP: lc.maSP || lc.id,
         tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
-        phanLoai: "Áo",
+        phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
         mau: m.ten,
         size: "Nhiều size",
         lsx: lc.id,
