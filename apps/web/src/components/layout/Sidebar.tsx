@@ -124,8 +124,9 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    href: "/san-xuat-erp", label: "Sản xuất sợi-dệt-nhuộm", icon: Factory,
-    color: "border-teal-400", iconColor: "text-teal-300", permModule: "bang-dieu-hanh-sx",
+    href: "/san-xuat-erp", label: "Sản Xuất Sợi - Dệt - Nhuộm", icon: Factory,
+    color: "border-orange-400", iconColor: "text-orange-300", permModule: "bang-dieu-hanh-sx",
+    ...cardStyle("from-orange-500", "to-amber-600", "from-orange-50", "to-amber-50", "text-orange-900"),
   },
   {
     label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
@@ -438,24 +439,36 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
             }
             
             // Render item đơn lẻ
-            const active = pathname?.startsWith(item.href || "");
+            const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const singleIdleClasses = item.idleBg
+              ? `${groupBorderColor} ${item.idleBg} ${item.idleText || "text-slate-800"}`
+              : "border-transparent hover:bg-white/5 text-slate-200 hover:text-white";
+              
             return (
-              <Link
-                key={item.href || item.label}
-                href={item.href || "#"}
-                onClick={onItemClick}
-                className={clsx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all border-l-2",
-                  active
-                    ? `${groupBorderColor} bg-white/10 text-white`
-                    : "border-transparent hover:bg-white/8 text-slate-200 hover:text-white",
-                  isCollapsed && "justify-center px-0"
-                )}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <Icon className={clsx("w-[18px] h-[18px] shrink-0", active ? groupIconColor : "text-slate-300")} />
-                {!isCollapsed && <span className="flex-1">{item.label}</span>}
-              </Link>
+              <div key={item.label} className="mb-1">
+                <Link
+                  href={item.href || "#"}
+                  onClick={onItemClick}
+                  className={clsx(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150",
+                    !item.noAccentBar && "border-l-2",
+                    active
+                      ? `${groupBorderColor} ${activeBg} ${activeText}`
+                      : singleIdleClasses,
+                    isCollapsed && "justify-center px-2"
+                  )}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  {item.iconChip ? (
+                    <span className={clsx("shrink-0 flex items-center justify-center rounded-lg transition-transform duration-150", item.iconChip)}>
+                      <Icon className="w-[15px] h-[15px]" />
+                    </span>
+                  ) : (
+                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", active ? groupIconColor : (item.idleIcon || "text-slate-400"))} />
+                  )}
+                  {!isCollapsed && <span className="flex-1 tracking-wide">{item.label}</span>}
+                </Link>
+              </div>
             );
           })
         )}
