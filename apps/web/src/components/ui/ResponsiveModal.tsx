@@ -13,6 +13,7 @@ interface ResponsiveModalProps {
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "full";
   className?: string; // Custom modal background/text classes
   overlayClassName?: string;
+  fullScreenMobile?: boolean; // If true, render as full screen fixed div instead of bottom sheet on mobile
 }
 
 export function ResponsiveModal({
@@ -23,6 +24,7 @@ export function ResponsiveModal({
   maxWidth = "lg",
   className = "bg-white dark:bg-[#1C2128]",
   overlayClassName = "bg-black/40 backdrop-blur-sm",
+  fullScreenMobile = false,
 }: ResponsiveModalProps) {
   const [isDesktop, setIsDesktop] = useState(true); // Default to desktop to prevent SSR hydration mismatch
 
@@ -68,6 +70,29 @@ export function ResponsiveModal({
       </div>
     );
 
+    if (typeof document !== "undefined") {
+      return createPortal(modalContent, document.body);
+    }
+    return modalContent;
+  }
+
+  if (fullScreenMobile) {
+    if (!open) return null;
+    const modalContent = (
+      <div className={`print-modal-root fixed inset-0 z-[100] flex flex-col ${className} animate-fade-in print:block print:p-0 print:static`}>
+        {title && (
+          <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-white/10 shrink-0 print:hidden">
+            <h2 className="text-lg font-semibold text-inherit">{title}</h2>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-inherit opacity-70 hover:opacity-100" aria-label="Đóng">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+        <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)] print:overflow-visible print:h-auto">
+          {children}
+        </div>
+      </div>
+    );
     if (typeof document !== "undefined") {
       return createPortal(modalContent, document.body);
     }

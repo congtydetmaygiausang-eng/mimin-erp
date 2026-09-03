@@ -66,9 +66,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
             {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           
-          <div className="hidden sm:block">
-            <NotificationToggle />
-          </div>
+          <NotificationToggle />
           
           <NotificationBell />
           

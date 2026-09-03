@@ -180,24 +180,53 @@ export default function LenhCatPage() {
                   });
                 }
               }}
-              onSaveTyLe={(mauIdx, newTyLe) => {
+              onSaveTyLe={(mauIdx, newTyLe, _tongDuCat, fixedPhanCong) => {
                 const newDsMau = [...(lc.dsMau || [])];
                 if (newDsMau[mauIdx]) {
                   newDsMau[mauIdx].tyLeSizeChiTiet = newTyLe;
+
+                  // ===== ĐồNG BỘ phanBoSize với data Cắt thực tế =====
+                  // Khi lưu tỷ lệ size, cập nhật luôn phanBoSize của màu này
+                  // = data khâu Cắt. Đây là nguồn fallback tin cậy sau F5.
+                  const catKeySync = Object.keys(newTyLe).find(k =>
+                    k.toLowerCase().includes("cat") ||
+                    (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                    (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                  );
+                  if (catKeySync && newTyLe[catKeySync]) {
+                    newDsMau[mauIdx].phanBoSize = newTyLe[catKeySync].map((sz: any) => ({
+                      size: sz.size,
+                      sl: sz.sl || 0,
+                    }));
+                  }
                   
                   // Tự động tính lại tổng SL thực tế của khâu Cắt
                   let totalThucTe = 0;
                   newDsMau.forEach(mau => {
                     if (mau.tyLeSizeChiTiet) {
-                      const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k => k.toLowerCase().includes("cat"));
+                      const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k =>
+                        k.toLowerCase().includes("cat") ||
+                        (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                        (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                      );
                       if (catKey && mau.tyLeSizeChiTiet[catKey]) {
                         totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
                       }
                     }
                   });
 
-                  suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!);
-                  toast.success("Đã cập nhật tỷ lệ size thành công!");
+                  // ===== TÁCH 2 LẦN LƯU ĐỘC LẬP =====
+                  // Lần 1: Lưu dsMau + tongSLThucTe (quan trọng nhất - PHẢI thành công)
+                  suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!)
+                    .then(() => toast.success("Đã cập nhật tỷ lệ size thành công!"))
+                    .catch((err: any) => toast.error("Lỗi khi lưu tỷ lệ size: " + (err?.message || err)));
+
+                  // Lần 2: Repair phanCong nếu đang rỗng (KHÔNG ảnh hưởng lần lưu trên)
+                  // Gọi bất đồng bộ riêng, lỗi chỉ log console, không block UI.
+                  if (fixedPhanCong && fixedPhanCong.length > 0) {
+                    suaLenhCat(lc.id, { phanCong: fixedPhanCong }, user!)
+                      .catch((err: any) => console.warn("[phanCong repair]", err?.message || err));
+                  }
                 }
               }}
               onSaveGiaCong={(slThucTe, dsPhanCong, newDsMau) => {

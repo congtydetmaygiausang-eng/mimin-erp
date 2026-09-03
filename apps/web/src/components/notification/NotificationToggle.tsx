@@ -88,7 +88,7 @@ export function NotificationToggle() {
         const session = localStorage.getItem('session');
         if (session) {
           const s = JSON.parse(session);
-          userName = s.user?.email || s.user?.phone || s.user?.name || s.name || "user";
+          userName = s.name || s.user?.name || s.user?.email || s.user?.phone || "user";
         }
       } catch (e) {}
 

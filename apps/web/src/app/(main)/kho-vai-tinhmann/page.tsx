@@ -249,11 +249,14 @@ export default function KhoVaiPage() {
         </div>
       </div>
 
-      {/* Tab: Tồn kho */}
+            {/* Tab: Tồn kho */}
       {tab === "tonkho" && (
         <>
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
           <div className="card p-4 flex flex-wrap gap-2">
+            <button onClick={() => setTab("danhmuc")} className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-1.5 shadow-sm">
+              <Plus className="w-4 h-4" /> Thêm vải mới
+            </button>
             <button onClick={handleTruAllCAT} className="btn-primary text-sm flex items-center gap-1.5">
               <Scissors className="w-4 h-4" /> Trừ vải xuất cho Lệnh cắt
             </button>

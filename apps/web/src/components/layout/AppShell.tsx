@@ -30,7 +30,7 @@ export function AppShell({ children, moduleClass = "bg-module-default" }: { chil
   if (!user) return null;
 
   return (
-    <div className={`min-h-screen flex ${moduleClass}`}>
+    <div className={`h-[100dvh] w-full overflow-hidden flex ${moduleClass}`}>
       {/* Sidebar for Desktop */}
       <Sidebar />
       
@@ -41,12 +41,13 @@ export function AppShell({ children, moduleClass = "bg-module-default" }: { chil
       <div className="flex-1 flex flex-col min-w-0 w-full overflow-hidden">
         <TopBar user={user} onSignOut={signOut} onMenuClick={() => setMobileOpen(true)} />
         
-        <main className="flex-1 p-4 sm:p-5 md:p-6 lg:p-8 pb-24 md:pb-10 overflow-x-hidden overflow-y-auto animate-page-entry bg-transparent w-full">
+        <main className="flex-1 p-4 sm:p-5 md:p-6 lg:p-8 pb-10 overflow-x-hidden overflow-y-auto animate-page-entry bg-transparent w-full">
           {children}
         </main>
+
+        <BottomNav onMenuClick={() => setMobileOpen(true)} />
       </div>
 
-      <BottomNav onMenuClick={() => setMobileOpen(true)} />
       <FloatingAI />
     </div>
   );
