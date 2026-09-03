@@ -165,6 +165,18 @@ export default function KeHoachSXPage() {
       localStorage.setItem("mimin_edit_lenh_cat_id", newId);
       router.push("/lenh-cat");
     } catch (err: any) {
+      if (err.message && err.message.includes("đã tồn tại")) {
+        // Có thể mã này trùng do người khác vừa tạo cùng lúc. Ta check lại KHSX thử xem đã bị lấy chưa.
+        const { supabase } = await import("@/lib/supabase/client");
+        if (supabase) {
+           const { data: checkData } = await supabase.from("khsx").select("lenhCatId").eq("id", item.id).single();
+           if (checkData && checkData.lenhCatId) {
+              toast.error(`Trùng lặp: Kế hoạch này vừa được tạo Lệnh Cắt (${checkData.lenhCatId}) bởi người khác!`);
+              suaKHSX(item.id, { lenhCatId: checkData.lenhCatId }, null);
+              return;
+           }
+        }
+      }
       toast.error(err.message || "Lỗi tạo lệnh cắt");
     }
   };
