@@ -12,15 +12,19 @@ export function Stat({ n, label, sub, color, icon: Icon }: { n: any; label: stri
     rose: "from-rose-500/10 to-pink-500/10 text-rose-700",
     emerald: "from-emerald-500/10 to-green-500/10 text-emerald-700",
     amber: "from-amber-500/10 to-yellow-500/10 text-amber-700",
+    petrol: "from-[#307082]/18 to-[#307082]/8 text-[#245969] border border-[#307082]/20",
+    sage: "from-[#6CA3A2]/25 to-[#6CA3A2]/12 text-[#396F70] border border-[#6CA3A2]/30",
+    cream: "from-[#ECE7DC] to-[#F7F3EA] text-[#307082] border border-[#D6CFC0]",
+    orange: "from-[#EA990C]/22 to-[#EA990C]/10 text-[#A95E00] border border-[#EA990C]/30",
   };
   return (
     <div className={`card p-2 bg-gradient-to-br ${colors[color]}`}>
       <div className="flex items-center justify-between">
         <Icon className="w-4 h-4 opacity-60" />
-        <span className="text-[10px] opacity-60">{label}</span>
+        <span className="text-xs font-medium opacity-70">{label}</span>
       </div>
-      <div className="text-2xl font-bold mt-1">{n}</div>
-      <div className="text-[10px] opacity-60">{sub}</div>
+      <div className="mt-1 text-3xl font-black leading-none">{n}</div>
+      <div className="mt-1 text-xs font-medium opacity-70">{sub}</div>
     </div>
   );
 }

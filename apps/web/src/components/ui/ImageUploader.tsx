@@ -121,20 +121,25 @@ export function ImageUploader({
       {filesOfCategory.length > 0 && (
         <div className="space-y-1.5">
           {filesOfCategory.map((f, i) => (
-            <div key={f.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/40 dark:bg-white/5 group">
+            <div key={f.id} className="flex items-start gap-3 rounded-lg bg-white/40 p-2 dark:bg-white/5 group">
               {isImage(f.type) ? (
-                <div
-                  className="w-12 h-12 rounded overflow-hidden cursor-pointer shrink-0 bg-slate-100"
+                <button
+                  type="button"
+                  className="group/preview relative h-28 w-40 shrink-0 cursor-zoom-in overflow-hidden rounded-lg border bg-slate-100 shadow-sm"
                   onClick={() => setPreviewIdx(files.indexOf(f))}
+                  title="Bấm để phóng to ảnh chứng từ"
                 >
                   <img src={f.dataUrl} alt={f.name} className="w-full h-full object-cover" />
-                </div>
+                  <span className="absolute inset-x-0 bottom-0 bg-black/65 px-2 py-1 text-center text-[10px] font-semibold text-white opacity-90 transition group-hover/preview:opacity-100">
+                    Bấm để phóng to
+                  </span>
+                </button>
               ) : (
-                <div className="w-12 h-12 rounded bg-slate-100 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5 opacity-50" />
+                <div className="flex h-28 w-40 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+                  <FileText className="h-8 w-8 opacity-50" />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1 pt-1">
                 <div className="text-xs font-medium truncate">{f.name}</div>
                 <div className="text-[10px] opacity-60">
                   {(f.size / 1024).toFixed(1)} KB · {new Date(f.uploadedAt).toLocaleString("vi-VN")}
@@ -142,8 +147,8 @@ export function ImageUploader({
               </div>
               <button
                 onClick={() => isImage(f.type) && setPreviewIdx(files.indexOf(f))}
-                className="p-1.5 rounded hover:bg-white/40 dark:hover:bg-white/10 opacity-0 group-hover:opacity-100 transition"
-                title="Xem"
+                className="rounded p-1.5 transition hover:bg-white/40 dark:hover:bg-white/10"
+                title="Phóng to"
               >
                 <Eye className="w-3.5 h-3.5" />
               </button>
@@ -169,13 +174,15 @@ export function ImageUploader({
 
       {/* Image preview modal */}
       {previewIdx !== null && files[previewIdx] && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewIdx(null)}>
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="relative max-w-4xl max-h-[90vh]">
-            <img src={files[previewIdx].dataUrl} alt={files[previewIdx].name} className="max-w-full max-h-[90vh] rounded-lg" />
-            <div className="absolute top-3 right-3 px-3 py-1.5 rounded bg-black/60 text-white text-xs">
+        <div className="fixed inset-0 z-[80] flex cursor-zoom-out items-center justify-center bg-black/85 p-3 animate-fade-in md:p-6" onClick={() => setPreviewIdx(null)}>
+          <div className="relative flex h-full w-full items-center justify-center" onClick={(event) => event.stopPropagation()}>
+            <img src={files[previewIdx].dataUrl} alt={files[previewIdx].name} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
+            <div className="absolute left-3 top-3 max-w-[70%] truncate rounded bg-black/70 px-3 py-1.5 text-xs text-white">
               {files[previewIdx].name}
             </div>
+            <button type="button" onClick={() => setPreviewIdx(null)} className="absolute right-3 top-3 rounded-full bg-black/70 p-2 text-white transition hover:bg-black" aria-label="Đóng ảnh phóng to">
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
       )}

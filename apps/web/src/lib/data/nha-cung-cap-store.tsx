@@ -26,6 +26,19 @@ export type NhaCungCapModel = {
   danh_muc_chi_tiet?: string[]; // 2026-08-18 - Danh muc chi tiet chon nhieu
 };
 
+export type LoaiNccSanXuatVai = "soi" | "det" | "nhuom";
+
+export function thuocNhomSanXuatVai(ncc: NhaCungCapModel, nhom: LoaiNccSanXuatVai): boolean {
+  const source = [ncc.loai, ...(ncc.danh_muc_chi_tiet || [])]
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (nhom === "soi") return source.includes("soi");
+  if (nhom === "det") return source.includes("det");
+  return source.includes("nhuom");
+}
+
 // Convert UI model to DB model
 export function toDBNhaCungCap(ncc: NhaCungCapModel) {
   const stt = parseInt(ncc.ma_ncc.replace(/\D/g, "")) || 0;

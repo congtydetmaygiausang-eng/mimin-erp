@@ -1,224 +1,191 @@
-// ============ MASTER DATA (NCC + Xuong) ============
-// Tach tu page.tsx (2026-08-05 - toi uu B.4)
+"use client";
 
-import { useState } from "react";
-import { Plus, Edit, Trash2, Phone, MapPin, Mail } from "lucide-react";
-import { toast } from "sonner";
-import { getAllNCC, getAllXuong, deleteNCC, deleteXuong, upsertNCC, upsertXuong, type NhaCungCap, type XuongGiaCong } from "@/lib/master-data";
-import { F, Modal } from "./ui-blocks";
+import { Building2, Factory, Mail, MapPin, Phone, Plus, Shirt } from "lucide-react";
+import Link from "next/link";
+import {
+  thuocNhomSanXuatVai,
+  type LoaiNccSanXuatVai,
+  type NhaCungCapModel,
+  useNhaCungCap,
+} from "@/lib/data/nha-cung-cap-store";
 
-// ============ NCC LIST + FORM ============
-function NCCList({ nccs, onEdit, onRefresh }: { nccs: NhaCungCap[]; onEdit: (n: NhaCungCap) => void; onRefresh: () => void }) {
+type NhomDanhBa = {
+  key: LoaiNccSanXuatVai;
+  title: string;
+  desc: string;
+  icon: typeof Building2;
+  color: string;
+  empty: string;
+};
+
+const NHOM_DANH_BA: NhomDanhBa[] = [
+  {
+    key: "soi",
+    title: "NCC sợi",
+    desc: "Dùng cho bước nhập sợi khi tạo lệnh SX vải",
+    icon: Shirt,
+    color: "blue",
+    empty: "Chưa có nhà cung cấp sợi",
+  },
+  {
+    key: "det",
+    title: "NCC dệt",
+    desc: "Dùng cho bước giao dệt/gia công vải mộc",
+    icon: Factory,
+    color: "violet",
+    empty: "Chưa có nhà cung cấp dệt",
+  },
+  {
+    key: "nhuom",
+    title: "NCC nhuộm",
+    desc: "Dùng cho bước giao nhuộm và hoàn tất màu",
+    icon: Building2,
+    color: "rose",
+    empty: "Chưa có nhà cung cấp nhuộm",
+  },
+];
+
+const colorClass: Record<string, { wrap: string; icon: string; badge: string }> = {
+  blue: {
+    wrap: "border-blue-200 bg-blue-50",
+    icon: "bg-blue-500 text-white",
+    badge: "bg-blue-500/10 text-blue-700",
+  },
+  violet: {
+    wrap: "border-violet-200 bg-violet-50",
+    icon: "bg-violet-500 text-white",
+    badge: "bg-violet-500/10 text-violet-700",
+  },
+  rose: {
+    wrap: "border-rose-200 bg-rose-50",
+    icon: "bg-rose-500 text-white",
+    badge: "bg-rose-500/10 text-rose-700",
+  },
+};
+
+function NccCard({ ncc, badgeClass }: { ncc: NhaCungCapModel; badgeClass: string }) {
   return (
-    <div className="space-y-2">
-      <button
-        onClick={() => onEdit({ id: `NCC-${Date.now().toString().slice(-3)}`, maNCC: "", tenNCC: "", loai: "sợi",
-          diaChi: "", sdt: "", email: "", maSoThue: "", nguoiLienHe: "", ghiChu: "",
-          ngayTao: new Date().toISOString().slice(0, 10), trangThai: "Đang hợp tác" } as NhaCungCap)}
-        className="btn-primary w-full bg-blue-500"
-      >
-        <Plus className="w-4 h-4 inline" /> Thêm NCC mới
-      </button>
-      {nccs.map((n: NhaCungCap) => (
-        <div key={n.id} className="card p-3 bg-blue-50 dark:bg-blue-900/20">
-          <div className="flex items-center justify-between mb-1">
-            <div>
-              <div className="font-bold text-sm">{n.tenNCC}</div>
-              <div className="text-[10px] font-mono opacity-60">{n.maNCC}</div>
-            </div>
-            <div className="flex gap-1">
-              <button onClick={() => onEdit(n)} className="text-xs p-1.5 rounded bg-blue-500 text-white">
-                <Edit className="w-3 h-3" />
-              </button>
-              <button onClick={() => {
-                if (confirm(`Xóa ${n.tenNCC}?`)) { deleteNCC(n.id); onRefresh(); toast.success("Đã xóa"); }
-              }} className="text-xs p-1.5 rounded bg-rose-500 text-white">
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-          <div className="text-[10px] opacity-70 space-y-0.5">
-            <div className="flex items-center gap-1"><Phone className="w-2.5 h-2.5" /> {n.sdt}</div>
-            <div className="flex items-center gap-1"><MapPin className="w-2.5 h-2.5" /> {n.diaChi}</div>
-            <div className="flex items-center gap-1"><Mail className="w-2.5 h-2.5" /> {n.email}</div>
-          </div>
-          <div className="mt-1 flex items-center justify-between">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500 text-white">{n.trangThai}</span>
-            <span className="text-[10px] opacity-60">{n.loai}</span>
-          </div>
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-bold text-slate-900">{ncc.ten_ncc}</div>
+          <div className="mt-0.5 text-[11px] font-mono text-slate-500">{ncc.ma_ncc}</div>
         </div>
-      ))}
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${badgeClass}`}>
+          {ncc.loai}
+        </span>
+      </div>
+
+      <div className="mt-2 space-y-1 text-[11px] text-slate-600">
+        {ncc.sdt && (
+          <div className="flex items-center gap-1">
+            <Phone className="h-3 w-3 shrink-0" />
+            <span className="truncate">{ncc.sdt}</span>
+          </div>
+        )}
+        {ncc.email && (
+          <div className="flex items-center gap-1">
+            <Mail className="h-3 w-3 shrink-0" />
+            <span className="truncate">{ncc.email}</span>
+          </div>
+        )}
+        {ncc.dia_chi && (
+          <div className="flex items-center gap-1">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{ncc.dia_chi}</span>
+          </div>
+        )}
+      </div>
+
+      {ncc.danh_muc_chi_tiet && ncc.danh_muc_chi_tiet.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {ncc.danh_muc_chi_tiet.map((item) => (
+            <span key={item} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+              {item}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function NCCForm({ ncc, onClose, onSave }: { ncc: NhaCungCap; onClose: () => void; onSave: () => void }) {
-  const [data, setData] = useState(ncc);
-  return (
-    <div className="space-y-2">
-      <h3 className="font-bold">{ncc.tenNCC ? "Sửa" : "Thêm"} NCC</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <F label="Mã NCC" v={data.maNCC} on={(v: any) => setData({ ...data, maNCC: v })} />
-        <F label="Tên NCC" v={data.tenNCC} on={(v: any) => setData({ ...data, tenNCC: v })} />
-        <F label="SĐT" v={data.sdt} on={(v: any) => setData({ ...data, sdt: v })} />
-        <F label="Email" v={data.email} on={(v: any) => setData({ ...data, email: v })} />
-        <F label="MST" v={data.maSoThue} on={(v: any) => setData({ ...data, maSoThue: v })} />
-        <F label="Người LH" v={data.nguoiLienHe} on={(v: any) => setData({ ...data, nguoiLienHe: v })} />
-        <F label="Địa chỉ" v={data.diaChi} on={(v: any) => setData({ ...data, diaChi: v })} />
-        <div>
-          <label className="text-xs font-semibold opacity-70">Loại</label>
-          <select value={data.loai} onChange={(e) => setData({ ...data, loai: e.target.value as any })} className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm">
-            <option value="sợi">Sợi</option>
-            <option value="phụ liệu">Phụ liệu</option>
-            <option value="hóa chất">Hóa chất</option>
-          </select>
-        </div>
-        <F label="Ghi chú" v={data.ghiChu} on={(v: any) => setData({ ...data, ghiChu: v })} />
-        <div>
-          <label className="text-xs font-semibold opacity-70">Trạng thái</label>
-          <select value={data.trangThai} onChange={(e) => setData({ ...data, trangThai: e.target.value as any })} className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm">
-            <option>Đang hợp tác</option>
-            <option>Tạm dừng</option>
-            <option>Ngừng hợp tác</option>
-          </select>
-        </div>
-      </div>
-      <div className="flex gap-2 pt-2">
-        <button onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-        <button onClick={() => { upsertNCC(data); onSave(); toast.success("Đã lưu"); }} className="btn-primary flex-1 bg-blue-500">💾 Lưu</button>
-      </div>
-    </div>
-  );
-}
-
-// ============ XUONG LIST + FORM ============
-function XuongList({ xuongs, onEdit, onRefresh }: { xuongs: XuongGiaCong[]; onEdit: (x: XuongGiaCong) => void; onRefresh: () => void }) {
-  return (
-    <div className="space-y-2">
-      <button
-        onClick={() => onEdit({ id: `XGC-${Date.now().toString().slice(-3)}`, maXuong: "", tenXuong: "",
-          loai: "dệt", diaChi: "", sdt: "", email: "", maSoThue: "", nguoiLienHe: "",
-          nangLuc: "", chatLuongTB: "Tốt", ghiChu: "",
-          ngayTao: new Date().toISOString().slice(0, 10), trangThai: "Đang hợp tác" } as XuongGiaCong)}
-        className="btn-primary w-full bg-violet-500"
-      >
-        <Plus className="w-4 h-4 inline" /> Thêm xưởng mới
-      </button>
-      {xuongs.map((x: XuongGiaCong) => (
-        <div key={x.id} className="card p-3 bg-violet-50 dark:bg-violet-900/20">
-          <div className="flex items-center justify-between mb-1">
-            <div>
-              <div className="font-bold text-sm">{x.tenXuong}</div>
-              <div className="text-[10px] font-mono opacity-60">{x.maXuong}</div>
-            </div>
-            <div className="flex gap-1">
-              <button onClick={() => onEdit(x)} className="text-xs p-1.5 rounded bg-violet-500 text-white">
-                <Edit className="w-3 h-3" />
-              </button>
-              <button onClick={() => {
-                if (confirm(`Xóa ${x.tenXuong}?`)) { deleteXuong(x.id); onRefresh(); toast.success("Đã xóa"); }
-              }} className="text-xs p-1.5 rounded bg-rose-500 text-white">
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-          <div className="text-[10px] opacity-70 space-y-0.5">
-            <div className="flex items-center gap-1"><Phone className="w-2.5 h-2.5" /> {x.sdt}</div>
-            <div>📍 {x.diaChi}</div>
-            <div>🏭 Năng lực: {x.nangLuc} · Chất lượng: {x.chatLuongTB}</div>
-          </div>
-          <div className="mt-1 flex items-center justify-between">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500 text-white">{x.trangThai}</span>
-            <span className="text-[10px] opacity-60 capitalize">{x.loai}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function XuongForm({ xuong, onClose, onSave }: { xuong: XuongGiaCong; onClose: () => void; onSave: () => void }) {
-  const [data, setData] = useState(xuong);
-  return (
-    <div className="space-y-2">
-      <h3 className="font-bold">{xuong.tenXuong ? "Sửa" : "Thêm"} xưởng</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <F label="Mã xưởng" v={data.maXuong} on={(v: any) => setData({ ...data, maXuong: v })} />
-        <F label="Tên xưởng" v={data.tenXuong} on={(v: any) => setData({ ...data, tenXuong: v })} />
-        <F label="SĐT" v={data.sdt} on={(v: any) => setData({ ...data, sdt: v })} />
-        <F label="Email" v={data.email} on={(v: any) => setData({ ...data, email: v })} />
-        <F label="MST" v={data.maSoThue} on={(v: any) => setData({ ...data, maSoThue: v })} />
-        <F label="Người LH" v={data.nguoiLienHe} on={(v: any) => setData({ ...data, nguoiLienHe: v })} />
-        <F label="Địa chỉ" v={data.diaChi} on={(v: any) => setData({ ...data, diaChi: v })} />
-        <F label="Năng lực" v={data.nangLuc} on={(v: any) => setData({ ...data, nangLuc: v })} />
-        <div>
-          <label className="text-xs font-semibold opacity-70">Loại</label>
-          <select value={data.loai} onChange={(e) => setData({ ...data, loai: e.target.value as any })} className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm">
-            <option value="dệt">Dệt</option>
-            <option value="nhuộm">Nhuộm</option>
-            <option value="hoàn thiện">Hoàn thiện</option>
-            <option value="may">May</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold opacity-70">CL TB</label>
-          <select value={data.chatLuongTB} onChange={(e) => setData({ ...data, chatLuongTB: e.target.value as any })} className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm">
-            <option>Tốt</option>
-            <option>Khá</option>
-            <option>Trung bình</option>
-          </select>
-        </div>
-        <F label="Ghi chú" v={data.ghiChu} on={(v: any) => setData({ ...data, ghiChu: v })} />
-      </div>
-      <div className="flex gap-2 pt-2">
-        <button onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-        <button onClick={() => { upsertXuong(data); onSave(); toast.success("Đã lưu"); }} className="btn-primary flex-1 bg-violet-500">💾 Lưu</button>
-      </div>
-    </div>
-  );
-}
-
-// ============ MAIN VIEW ============
 export function MasterData() {
-  const [subTab, setSubTab] = useState<"ncc" | "xuong">("ncc");
-  const [nccs, setNccs] = useState(getAllNCC());
-  const [xuongs, setXuongs] = useState(getAllXuong());
-  const [editing, setEditing] = useState<NhaCungCap | XuongGiaCong | null>(null);
+  const { list, loading } = useNhaCungCap();
+  const danhBaSxVai = NHOM_DANH_BA.map((nhom) => ({
+    ...nhom,
+    items: list.filter((ncc) => thuocNhomSanXuatVai(ncc, nhom.key)),
+  }));
 
-  const refresh = () => {
-    setNccs(getAllNCC());
-    setXuongs(getAllXuong());
-  };
+  const tong = danhBaSxVai.reduce((sum, nhom) => sum + nhom.items.length, 0);
 
   return (
     <div className="space-y-3 p-3">
-      <div className="flex gap-1">
-        <button onClick={() => setSubTab("ncc")} className={`flex-1 py-2 rounded text-sm font-semibold ${
-          subTab === "ncc" ? "bg-blue-500 text-white" : "bg-slate-100 dark:bg-slate-800"
-        }`}>
-          🏭 NCC ({nccs.length})
-        </button>
-        <button onClick={() => setSubTab("xuong")} className={`flex-1 py-2 rounded text-sm font-semibold ${
-          subTab === "xuong" ? "bg-violet-500 text-white" : "bg-slate-100 dark:bg-slate-800"
-        }`}>
-          🏗️ Xưởng ({xuongs.length})
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div>
+          <h2 className="text-base font-bold text-slate-900">Danh bạ NCC sản xuất vải</h2>
+          <p className="text-xs text-slate-500">
+            Tự cập nhật từ danh sách Nhà cung cấp, dùng cho form Lệnh SX vải.
+          </p>
+        </div>
+        <Link
+          href="/nha-cung-cap"
+          className="inline-flex items-center gap-1 rounded-lg bg-[#0B4D5D] px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#0a3f4d]"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Cập nhật NCC
+        </Link>
       </div>
 
-      {subTab === "ncc" ? (
-        <NCCList nccs={nccs} onEdit={setEditing} onRefresh={refresh} />
-      ) : (
-        <XuongList xuongs={xuongs} onEdit={setEditing} onRefresh={refresh} />
-      )}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        {danhBaSxVai.map((nhom) => (
+          <div key={nhom.key} className={`rounded-lg border p-2 ${colorClass[nhom.color].wrap}`}>
+            <div className="text-xl font-black text-slate-900">{nhom.items.length}</div>
+            <div className="text-[11px] font-bold text-slate-600">{nhom.title}</div>
+          </div>
+        ))}
+      </div>
 
-      {editing && (
-        <Modal onClose={() => setEditing(null)}>
-          {"tenNCC" in editing ? (
-            <NCCForm ncc={editing as NhaCungCap} onClose={() => setEditing(null)} onSave={() => { refresh(); setEditing(null); }} />
-          ) : (
-            <XuongForm xuong={editing as XuongGiaCong} onClose={() => setEditing(null)} onSave={() => { refresh(); setEditing(null); }} />
-          )}
-        </Modal>
+      {loading ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-500">
+          Đang tải danh bạ nhà cung cấp...
+        </div>
+      ) : tong === 0 ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+          Chưa có NCC thuộc loại sợi, dệt hoặc nhuộm. Anh vào “Cập nhật NCC” để chọn đúng vai trò/chuyên môn.
+        </div>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-3">
+          {danhBaSxVai.map((nhom) => {
+            const Icon = nhom.icon;
+            const colors = colorClass[nhom.color];
+            return (
+              <section key={nhom.key} className={`rounded-lg border p-3 ${colors.wrap}`}>
+                <div className="mb-3 flex items-start gap-2">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${colors.icon}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-900">
+                      {nhom.title} ({nhom.items.length})
+                    </h3>
+                    <p className="text-[11px] font-medium text-slate-600">{nhom.desc}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {nhom.items.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-white/70 p-3 text-center text-xs font-semibold text-slate-500">
+                      {nhom.empty}
+                    </div>
+                  ) : (
+                    nhom.items.map((ncc) => <NccCard key={ncc.id} ncc={ncc} badgeClass={colors.badge} />)
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );
