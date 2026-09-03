@@ -33,7 +33,8 @@ export type KHSX = {
 };
 
 function getCorrectLoaiSP(val: string, tenSP: string): any {
-  if (val && val !== "BoTru") return val;
+  const validKeys = ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"];
+  if (val && validKeys.includes(val) && val !== "BoTru") return val;
   const checkStr = (tenSP || "").toLowerCase();
   if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
   if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) return "AoTru";

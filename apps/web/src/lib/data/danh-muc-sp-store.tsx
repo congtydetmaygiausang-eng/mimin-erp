@@ -54,7 +54,8 @@ function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
   const tenSP = item.tenSp || item.ten_sp || "Sản phẩm mới";
   
   let loaiSP = (item.loaiSp || item.loai_sp) as any || "AoCoTron";
-  if (loaiSP === "BoTru") {
+  const validKeys = ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"];
+  if (!validKeys.includes(loaiSP) || loaiSP === "BoTru") {
       const checkStr = (tenSP + " " + (item.phanLoai || item.phan_loai || "")).toLowerCase();
       if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) loaiSP = "AoPolo";
       else if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) loaiSP = "AoTru";
@@ -62,6 +63,7 @@ function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
       else if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) loaiSP = "BoCoTron";
       else if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) loaiSP = "PhuKien";
       else if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) loaiSP = "AoCoTron";
+      else loaiSP = "BoTru";
   }
 
   return {
