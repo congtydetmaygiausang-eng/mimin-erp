@@ -23,6 +23,7 @@ import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import { Portal } from "@/components/ui/Portal";
 import { useKho } from "@/lib/data/kho-store";
 import { uploadProductFile } from "@/lib/product-upload";
+import { FabricDyeLotZones } from "./components/fabric-dye-lot-zones";
 
 const TINH_MAN_PHAN_LOAI = [
   "Áo thun cotton",
@@ -40,6 +41,19 @@ type NewVaiForm = {
   donGia: number;
   ghiChu: string;
   previewImg: string;
+};
+
+type LoVaiMoc = {
+  id: string;
+  maLoMoc?: string;
+  maLenhDet?: string;
+  loaiVai?: string;
+  soKg: number;
+  soCay: number;
+  soKgLoi: number;
+  ngayNhap: string;
+  kho?: string;
+  trangThai?: string;
 };
 
 function dataUrlToFile(dataUrl: string, name: string): File {
@@ -61,7 +75,7 @@ function getErrorMessage(error: unknown): string {
 export default function KhoVaiPage() {
   const { user } = useSession();
   const [inventory, setInventory] = useState<KhoVai[]>([]);
-  const [tab, setTab] = useState<"tonkho" | "tinhman" | "baocao" | "danhmuc" | "lichsu">("tonkho");
+  const [tab, setTab] = useState<"thanhpham" | "menhuom" | "moc" | "tinhman" | "baocao" | "danhmuc" | "lichsu">("thanhpham");
   const [searchVai, setSearchVai] = useState("");
   const [filterLoaiGD, setFilterLoaiGD] = useState<"TAT_CA" | "NHAP" | "XUAT">("TAT_CA");
   const [giaoDich, setGiaoDich] = useState<any[]>([]);
@@ -76,6 +90,7 @@ export default function KhoVaiPage() {
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
   const [vaiImages, setVaiImages] = useState<Record<string, string>>({});
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
+  const [vaiMoc, setVaiMoc] = useState<LoVaiMoc[]>([]);
   // Form tạo mã vải mới — bind thật
   const [newVaiForm, setNewVaiForm] = useState<NewVaiForm>({
     tenVT: LOAI_VAI_OPTIONS[0],
@@ -120,6 +135,10 @@ export default function KhoVaiPage() {
     const localImages = getVaiImages();
     setVaiImages(localImages); // Load ảnh persistent từ localStorage
     loadGiaoDich();
+    try {
+      const rawMoc = localStorage.getItem("mimin_lo_moc");
+      setVaiMoc(rawMoc ? JSON.parse(rawMoc) : []);
+    } catch { setVaiMoc([]); }
     syncInventoryWithSupabase().then(async () => {
       const syncedInventory = getAllInventory();
       // Tự chuyển các ảnh cũ chỉ có trên máy người nhập lên dữ liệu dùng chung.
@@ -147,6 +166,10 @@ export default function KhoVaiPage() {
   const refresh = () => {
     setInventory(getAllInventory());
     loadGiaoDich();
+    try {
+      const rawMoc = localStorage.getItem("mimin_lo_moc");
+      setVaiMoc(rawMoc ? JSON.parse(rawMoc) : []);
+    } catch { setVaiMoc([]); }
   };
 
   // Tính màn
@@ -200,8 +223,8 @@ export default function KhoVaiPage() {
           <div className="text-xs font-medium opacity-90 mb-1.5 flex items-center gap-1.5">
             <Package className="w-3.5 h-3.5" /> MIMIN ERP · Kho & Giao hàng
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5">
-            <Package className="w-7 h-7" /> Kho Vải & Định Mức Vải
+            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5">
+            <Package className="w-7 h-7" /> Kho Vải Thành Phẩm & Định Mức Vải
           </h1>
           <p className="text-sm opacity-95 mt-1.5">
             Quản lý tồn kho {inventory.length} loại vải · Tính định mức vải theo sản phẩm + size · Trừ kho tự động khi cắt
@@ -222,7 +245,9 @@ export default function KhoVaiPage() {
           {/* Tabs (inline trong header gradient) */}
           <div className="flex flex-wrap gap-2 bg-white/15 backdrop-blur-sm rounded-xl p-1.5 w-fit mt-5 border border-white/20">
             {[
-              { key: "tonkho", label: "Tồn kho", icon: <Package className="w-4 h-4" /> },
+              { key: "thanhpham", label: "Vải thành phẩm", icon: <Package className="w-4 h-4" /> },
+              { key: "menhuom", label: "Khu mẻ nhuộm", icon: <Package className="w-4 h-4" /> },
+              { key: "moc", label: "Vải mộc", icon: <Package className="w-4 h-4" /> },
               { key: "tinhman", label: "Định mức vải", icon: <Calculator className="w-4 h-4" /> },
               { key: "baocao", label: "Báo cáo vải", icon: <BarChart3 className="w-4 h-4" /> },
               { key: "lichsu", label: "Lịch sử GD", icon: <History className="w-4 h-4" /> },
@@ -250,10 +275,13 @@ export default function KhoVaiPage() {
       </div>
 
       {/* Tab: Tồn kho */}
-      {tab === "tonkho" && (
+      {tab === "thanhpham" && (
         <>
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
           <div className="card p-4 flex flex-wrap gap-2">
+            <button onClick={() => setTab("danhmuc")} className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-1.5 shadow-sm">
+              <Plus className="w-4 h-4" /> Thêm vải mới
+            </button>
             <button onClick={handleTruAllCAT} className="btn-primary text-sm flex items-center gap-1.5">
               <Scissors className="w-4 h-4" /> Trừ vải xuất cho Lệnh cắt
             </button>
@@ -464,6 +492,25 @@ export default function KhoVaiPage() {
             })}
           </div>
         </>
+      )}
+
+      {tab === "menhuom" && <FabricDyeLotZones inventory={inventory} />}
+
+      {tab === "moc" && (
+        <div className="space-y-4">
+          <div className="card p-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Kho vải mộc</h2>
+              <p className="text-sm text-slate-500">Nhận từ xưởng dệt · chờ nhuộm · theo dõi hao hụt và số cây</p>
+            </div>
+            <div className="text-right"><div className="text-2xl font-black text-teal-700">{vaiMoc.reduce((sum, item) => sum + item.soKg, 0).toLocaleString()} kg</div><div className="text-xs text-slate-500">{vaiMoc.length} lô mộc</div></div>
+          </div>
+          {vaiMoc.length === 0 ? (
+            <div className="card p-10 text-center text-sm text-slate-500">Chưa có vải mộc. Vải mộc sẽ xuất hiện sau khi nghiệm thu lệnh dệt.</div>
+          ) : (
+            <div className="card overflow-x-auto"><table className="w-full text-sm"><thead className="bg-slate-100 text-slate-600"><tr><th className="p-3 text-left">Mã lô mộc</th><th className="p-3 text-left">Lệnh dệt</th><th className="p-3 text-left">Loại vải</th><th className="p-3 text-right">Kg mộc</th><th className="p-3 text-right">Số cây</th><th className="p-3 text-right">Kg lỗi</th><th className="p-3 text-left">Trạng thái</th></tr></thead><tbody className="divide-y divide-slate-100">{vaiMoc.map(item => <tr key={item.id}><td className="p-3 font-mono font-bold text-teal-700">{item.maLoMoc || item.id}</td><td className="p-3">{item.maLenhDet || "-"}</td><td className="p-3">{item.loaiVai || "Vải mộc"}</td><td className="p-3 text-right font-bold">{item.soKg.toLocaleString()} kg</td><td className="p-3 text-right">{item.soCay}</td><td className="p-3 text-right text-rose-600">{item.soKgLoi}</td><td className="p-3"><span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">{item.trangThai || "Chờ nhuộm"}</span></td></tr>)}</tbody></table></div>
+          )}
+        </div>
       )}
 
       {/* Tab: Tính màn */}

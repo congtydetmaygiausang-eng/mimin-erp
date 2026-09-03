@@ -311,7 +311,7 @@ export default function DanhMucSanPhamPage() {
       daHoanThanh: 0,
       xuongPhuTrach: "Tổ cắt",
       trangThai: "Lên kế hoạch",
-      ghiChu: "Tạo từ Danh mục sản phẩm – vui lòng cập nhật số lượng kế hoạch",
+      ghiChu: `Tạo từ Danh mục sản phẩm bởi ${user?.name || "Người dùng"} lúc ${today.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${today.toLocaleDateString("vi-VN")} – vui lòng cập nhật số lượng kế hoạch`,
     }, user);
     toast.success(`Đã chuyển ${sp.id} vào ${created.maKHSX}`);
     router.push("/ke-hoach-san-xuat");

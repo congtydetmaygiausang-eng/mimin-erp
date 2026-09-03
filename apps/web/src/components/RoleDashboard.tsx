@@ -134,7 +134,7 @@ export function RoleDashboard() {
 // Stats cho từng role
 function AdminStats() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <KPI label="Doanh thu 7T" value="887 tr" trend="+18.5%" up icon={DollarSign} color="emerald" />
       <KPI label="Lợi nhuận" value="288 tr" trend="Margin 32.4%" up icon={TrendingUp} color="emerald" />
       <KPI label="Công nợ" value="25 tr" trend="0 trễ hạn" icon={Wallet} color="amber" />
@@ -145,7 +145,7 @@ function AdminStats() {
 
 function PlannerStats() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <KPI label="KHSX tuần này" value="5" trend="3 chờ duyệt" icon={Calendar} color="violet" />
       <KPI label="Lệnh cắt" value="12" trend="+3 hôm nay" up icon={Scissors} color="sky" />
       <KPI label="Đơn hàng" value="8" trend="5 chờ duyệt" icon={ShoppingCart} color="amber" />
@@ -156,7 +156,7 @@ function PlannerStats() {
 
 function WarehouseStats() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <KPI label="Tồn kho vải" value="24,500 m" trend="-2% tuần" down icon={Package} color="amber" />
       <KPI label="Phụ liệu" value="58 mã" trend="5 dưới định mức" icon={Boxes} color="orange" />
       <KPI label="Nhập hôm nay" value="2,400 m" trend="Đúng hẹn" up icon={Truck} color="emerald" />
@@ -168,7 +168,7 @@ function WarehouseStats() {
 function SewingStats() {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI label="Tiến độ hôm nay" value="62.5%" trend="M758 Bộ trơn" up icon={Scissors} color="emerald" />
         <KPI label="Công nhân" value="11" trend="9 đi làm" icon={Users} color="sky" />
         <KPI label="SP hoàn thành" value="750" trend="/1200 target" up icon={CheckCircle2} color="emerald" />
@@ -192,7 +192,7 @@ function SewingStats() {
 function QCStats() {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI label="SP đã kiểm" value="4,200" trend="Tuần 30" up icon={ShieldCheck} color="emerald" />
         <KPI label="Tỷ lệ lỗi" value="1.2%" trend="-0.3% vs tuần trước" up icon={TrendingDown} color="emerald" />
         <KPI label="Cần kiểm hôm nay" value="800" trend="Lệnh M758" icon={Clock} color="amber" />
@@ -213,7 +213,7 @@ function QCStats() {
 function FinishingStats() {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI label="SP đã ủi" value="580" trend="/800 (72.5%)" up icon={Shirt} color="emerald" />
         <KPI label="Giao hôm nay" value="1,500" trend="Shop TT SG" icon={Truck} color="amber" />
         <KPI label="Kho thành phẩm" value="3,200" trend="Sẵn sàng" icon={Boxes} color="sky" />
@@ -233,7 +233,7 @@ function FinishingStats() {
 
 function AccountantStats() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <KPI label="Công nợ phải thu" value="287 tr" trend="5 đến hạn" icon={Wallet} color="amber" />
       <KPI label="Công nợ phải trả" value="189 tr" trend="89 tr đến hạn" icon={Wallet} color="red" />
       <KPI label="Quỹ lương T7" value="135 tr" trend="Chờ duyệt" icon={Users} color="sky" />

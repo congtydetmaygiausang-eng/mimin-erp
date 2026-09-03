@@ -94,6 +94,7 @@ export function GiaCongModal({ lc, type, onClose, onSave }: Props) {
       open={true}
       onClose={onClose}
       maxWidth="4xl"
+      fullScreenMobile={true}
       title={
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${isAo ? "bg-violet-500" : "bg-emerald-500"}`} />

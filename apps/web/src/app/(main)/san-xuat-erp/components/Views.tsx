@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CreditCard, FileText, TrendingDown, DollarSign, Boxes, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { baoCaoCongNoByDoiTuong, thanhToanCongNo, type BaoCaoCongNo } from "@/lib/master-data";
-import { getAllPhieuNhapSoi, getAllLenhDet, getAllMeNhuom, getAllLoVaiTP } from "@/lib/yarn-production-chain";
+import { getAllPhieuNhapSoi, getAllLenhDet, getAllMeNhuom, getAllLoVaiTP, baoCaoHaoHut } from "@/lib/yarn-production-chain";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { Card, KPICard, Row } from "./ui-blocks";
 
@@ -105,6 +105,7 @@ export function BaoCaoView() {
   const [lds, setLds] = useState(getAllLenhDet());
   const [mns, setMns] = useState(getAllMeNhuom());
   const [ltps, setLtps] = useState(getAllLoVaiTP());
+  const [haoHut] = useState(baoCaoHaoHut());
 
   const tongSoi = pnss.reduce((s, p) => s + p.thanhTien, 0);
   const tongKgTP = ltps.reduce((s, l) => s + l.tongKg, 0);
@@ -134,6 +135,23 @@ export function BaoCaoView() {
           <Row label="Mẻ nhuộm" value={`${mns.length} mẻ`} sub={`${mns.reduce((s, m) => s + m.danhSachMau.length, 0)} màu`} />
           <Row label="Lô vải TP" value={`${ltps.length} lô`} sub={`${(tongGiaTriTP / 1_000_000).toFixed(1)}tr`} />
         </div>
+      </div>
+
+      <div className="card p-3">
+        <h3 className="mb-2 text-sm font-semibold">Hao hụt theo từng khâu</h3>
+        {haoHut.length === 0 ? (
+          <p className="py-3 text-center text-xs opacity-60">Chưa có khâu nào xác nhận sản lượng thực tế.</p>
+        ) : (
+          <div className="space-y-2">
+            {haoHut.map((item) => (
+              <div key={`${item.loai}-${item.maPhieu}`} className="grid grid-cols-[1fr_auto] gap-2 rounded border bg-white p-2 text-xs">
+                <div><b>{item.loai}</b> · {item.maPhieu}<div className="opacity-70">Đầu vào {item.dauVao.toFixed(1)}kg → đầu ra {item.dauRa.toFixed(1)}kg</div></div>
+                <div className={`text-right font-bold ${item.canhBao === "Đỏ" ? "text-rose-600" : item.canhBao === "Vàng" ? "text-amber-600" : "text-emerald-600"}`}>{item.haoHutKg.toFixed(1)}kg<br />{item.haoHutPt.toFixed(1)}%</div>
+              </div>
+            ))}
+            <div className="rounded bg-amber-50 p-2 text-right font-bold text-amber-800">Tổng hao hụt ghi nhận: {haoHut.reduce((sum, item) => sum + item.haoHutKg, 0).toFixed(1)}kg</div>
+          </div>
+        )}
       </div>
     </div>
   );

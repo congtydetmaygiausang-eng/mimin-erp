@@ -555,15 +555,15 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe,
       han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
       mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
-      chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
-      phu_trach_sx: lenh.phuTrachSX, phu_trach_so_do: lenh.phuTrachSoDo, ghi_chu: lenh.ghiChu, 
-      ghi_chu_ky_thuat: lenh.ghiChuKyThuat, trang_thai: lenh.trangThai,
+      chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, /* phu_trach_cat: lenh.phuTrachCat, */
+      /* phu_trach_sx: lenh.phuTrachSX, phu_trach_so_do: lenh.phuTrachSoDo, */ ghi_chu: lenh.ghiChu, 
+      /* ghi_chu_ky_thuat: lenh.ghiChuKyThuat, */ trang_thai: lenh.trangThai,
       phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao,
-      dai_so_do_ao: lenh.daiSoDoAo, so_do_ao: lenh.soDoAo, dai_so_do_quan: lenh.daiSoDoQuan, so_do_quan: lenh.soDoQuan,
-      so_do_chinh: lenh.soDoChinh, pdf_so_do_chinh: lenh.pdfSoDoChinh, kho_so_do_chinh: lenh.khoSoDoChinh, dai_so_do_chinh: lenh.daiSoDoChinh,
-      so_do_phoi: lenh.soDoPhoi, pdf_so_do_phoi: lenh.pdfSoDoPhoi, kho_so_do_phoi: lenh.khoSoDoPhoi, dai_so_do_phoi: lenh.daiSoDoPhoi,
-      ghi_chu_so_do_chinh: lenh.ghiChuSoDoChinh, ghi_chu_so_do_phoi: lenh.ghiChuSoDoPhoi, da_co_so_do: lenh.daCoSoDo,
-      hinh_mau_in_theu: lenh.hinhMauInTheu, file_goc_in_theu: lenh.fileGocInTheu, ghi_chu_in_theu: lenh.ghiChuInTheu
+      // dai_so_do_ao: lenh.daiSoDoAo, so_do_ao: lenh.soDoAo, dai_so_do_quan: lenh.daiSoDoQuan, so_do_quan: lenh.soDoQuan,
+      // so_do_chinh: lenh.soDoChinh, pdf_so_do_chinh: lenh.pdfSoDoChinh, kho_so_do_chinh: lenh.khoSoDoChinh, dai_so_do_chinh: lenh.daiSoDoChinh,
+      // so_do_phoi: lenh.soDoPhoi, pdf_so_do_phoi: lenh.pdfSoDoPhoi, kho_so_do_phoi: lenh.khoSoDoPhoi, dai_so_do_phoi: lenh.daiSoDoPhoi,
+      // ghi_chu_so_do_chinh: lenh.ghiChuSoDoChinh, ghi_chu_so_do_phoi: lenh.ghiChuSoDoPhoi, da_co_so_do: lenh.daCoSoDo,
+      // hinh_mau_in_theu: lenh.hinhMauInTheu, file_goc_in_theu: lenh.fileGocInTheu, ghi_chu_in_theu: lenh.ghiChuInTheu
     });
     if (error) throw error;
   }, []);
@@ -589,34 +589,34 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.phanCong !== undefined)          updateData.phan_cong = lenh.phanCong;
       if (lenh.chiPhiCoDinh !== undefined)      updateData.chi_phi_co_dinh = lenh.chiPhiCoDinh;
       if (lenh.bangCOGS !== undefined)          updateData.bang_cogs = lenh.bangCOGS;
-      if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
-      if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
-      if (lenh.phuTrachSoDo !== undefined)      updateData.phu_trach_so_do = lenh.phuTrachSoDo;
+      // if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
+      // if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
+      // if (lenh.phuTrachSoDo !== undefined)      updateData.phu_trach_so_do = lenh.phuTrachSoDo;
       if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
       if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;
       if (lenh.phienBanDinhMuc !== undefined)   updateData.phien_ban_dinh_muc = lenh.phienBanDinhMuc;
       if (lenh.ngayTao !== undefined)           updateData.ngay_tao = lenh.ngayTao;
 
       // New BOM fields
-      if (lenh.daiSoDoAo !== undefined)         updateData.dai_so_do_ao = lenh.daiSoDoAo;
-      if (lenh.soDoAo !== undefined)            updateData.so_do_ao = lenh.soDoAo;
-      if (lenh.daiSoDoQuan !== undefined)       updateData.dai_so_do_quan = lenh.daiSoDoQuan;
-      if (lenh.soDoQuan !== undefined)          updateData.so_do_quan = lenh.soDoQuan;
-      if (lenh.soDoChinh !== undefined)         updateData.so_do_chinh = lenh.soDoChinh;
-      if (lenh.pdfSoDoChinh !== undefined)      updateData.pdf_so_do_chinh = lenh.pdfSoDoChinh;
-      if (lenh.khoSoDoChinh !== undefined)      updateData.kho_so_do_chinh = lenh.khoSoDoChinh;
-      if (lenh.daiSoDoChinh !== undefined)      updateData.dai_so_do_chinh = lenh.daiSoDoChinh;
-      if (lenh.soDoPhoi !== undefined)          updateData.so_do_phoi = lenh.soDoPhoi;
-      if (lenh.pdfSoDoPhoi !== undefined)       updateData.pdf_so_do_phoi = lenh.pdfSoDoPhoi;
-      if (lenh.khoSoDoPhoi !== undefined)       updateData.kho_so_do_phoi = lenh.khoSoDoPhoi;
-      if (lenh.daiSoDoPhoi !== undefined)       updateData.dai_so_do_phoi = lenh.daiSoDoPhoi;
-      if (lenh.ghiChuSoDoChinh !== undefined)   updateData.ghi_chu_so_do_chinh = lenh.ghiChuSoDoChinh;
-      if (lenh.ghiChuSoDoPhoi !== undefined)    updateData.ghi_chu_so_do_phoi = lenh.ghiChuSoDoPhoi;
-      if (lenh.daCoSoDo !== undefined)          updateData.da_co_so_do = lenh.daCoSoDo;
-      if (lenh.hinhMauInTheu !== undefined)     updateData.hinh_mau_in_theu = lenh.hinhMauInTheu;
-      if (lenh.fileGocInTheu !== undefined)     updateData.file_goc_in_theu = lenh.fileGocInTheu;
-      if (lenh.ghiChuInTheu !== undefined)      updateData.ghi_chu_in_theu = lenh.ghiChuInTheu;
-      if (lenh.ghiChuKyThuat !== undefined)     updateData.ghi_chu_ky_thuat = lenh.ghiChuKyThuat;
+      // if (lenh.daiSoDoAo !== undefined)         updateData.dai_so_do_ao = lenh.daiSoDoAo;
+      // if (lenh.soDoAo !== undefined)            updateData.so_do_ao = lenh.soDoAo;
+      // if (lenh.daiSoDoQuan !== undefined)       updateData.dai_so_do_quan = lenh.daiSoDoQuan;
+      // if (lenh.soDoQuan !== undefined)          updateData.so_do_quan = lenh.soDoQuan;
+      // if (lenh.soDoChinh !== undefined)         updateData.so_do_chinh = lenh.soDoChinh;
+      // if (lenh.pdfSoDoChinh !== undefined)      updateData.pdf_so_do_chinh = lenh.pdfSoDoChinh;
+      // if (lenh.khoSoDoChinh !== undefined)      updateData.kho_so_do_chinh = lenh.khoSoDoChinh;
+      // if (lenh.daiSoDoChinh !== undefined)      updateData.dai_so_do_chinh = lenh.daiSoDoChinh;
+      // if (lenh.soDoPhoi !== undefined)          updateData.so_do_phoi = lenh.soDoPhoi;
+      // if (lenh.pdfSoDoPhoi !== undefined)       updateData.pdf_so_do_phoi = lenh.pdfSoDoPhoi;
+      // if (lenh.khoSoDoPhoi !== undefined)       updateData.kho_so_do_phoi = lenh.khoSoDoPhoi;
+      // if (lenh.daiSoDoPhoi !== undefined)       updateData.dai_so_do_phoi = lenh.daiSoDoPhoi;
+      // if (lenh.ghiChuSoDoChinh !== undefined)   updateData.ghi_chu_so_do_chinh = lenh.ghiChuSoDoChinh;
+      // if (lenh.ghiChuSoDoPhoi !== undefined)    updateData.ghi_chu_so_do_phoi = lenh.ghiChuSoDoPhoi;
+      // if (lenh.daCoSoDo !== undefined)          updateData.da_co_so_do = lenh.daCoSoDo;
+      // if (lenh.hinhMauInTheu !== undefined)     updateData.hinh_mau_in_theu = lenh.hinhMauInTheu;
+      // if (lenh.fileGocInTheu !== undefined)     updateData.file_goc_in_theu = lenh.fileGocInTheu;
+      // if (lenh.ghiChuInTheu !== undefined)      updateData.ghi_chu_in_theu = lenh.ghiChuInTheu;
+      // if (lenh.ghiChuKyThuat !== undefined)     updateData.ghi_chu_ky_thuat = lenh.ghiChuKyThuat;
 
       if (Object.keys(updateData).length > 0) {
         const { error } = await supabase!.from("lenh_cat").update(updateData).eq("id", id);
