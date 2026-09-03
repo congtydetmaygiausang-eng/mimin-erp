@@ -4,27 +4,28 @@
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
-// ============ STAT - icon + number KPI ============
 export function Stat({ n, label, sub, color, icon: Icon }: { n: any; label: string; sub?: string; color: string; icon: any }) {
   const colors: Record<string, string> = {
-    blue: "from-blue-500/10 to-cyan-500/10 text-blue-700",
-    violet: "from-violet-500/10 to-purple-500/10 text-violet-700",
-    rose: "from-rose-500/10 to-pink-500/10 text-rose-700",
-    emerald: "from-emerald-500/10 to-green-500/10 text-emerald-700",
-    amber: "from-amber-500/10 to-yellow-500/10 text-amber-700",
-    petrol: "from-[#307082]/18 to-[#307082]/8 text-[#245969] border border-[#307082]/20",
-    sage: "from-[#6CA3A2]/25 to-[#6CA3A2]/12 text-[#396F70] border border-[#6CA3A2]/30",
-    cream: "from-[#ECE7DC] to-[#F7F3EA] text-[#307082] border border-[#D6CFC0]",
-    orange: "from-[#EA990C]/22 to-[#EA990C]/10 text-[#A95E00] border border-[#EA990C]/30",
+    blue: "text-[#307082]",
+    violet: "text-violet-700",
+    rose: "text-rose-700",
+    emerald: "text-emerald-700",
+    amber: "text-amber-700",
+    petrol: "text-[#307082]",
+    sage: "text-[#6CA3A2]",
+    cream: "text-[#307082]",
+    orange: "text-[#EA990C]",
   };
   return (
-    <div className={`card p-2 bg-gradient-to-br ${colors[color]}`}>
-      <div className="flex items-center justify-between">
-        <Icon className="w-4 h-4 opacity-60" />
-        <span className="text-xs font-medium opacity-70">{label}</span>
+    <div className="card p-3 bg-white border border-[#E5E0D8] rounded-xl shadow-sm flex flex-col justify-between min-h-[90px]">
+      <div className="flex items-center justify-between text-gray-500">
+        <Icon className="w-4 h-4" />
+        <span className="text-[10px] font-medium">{label}</span>
       </div>
-      <div className="mt-1 text-3xl font-black leading-none">{n}</div>
-      <div className="mt-1 text-xs font-medium opacity-70">{sub}</div>
+      <div className={`mt-2 ${colors[color]}`}>
+        <div className="text-3xl font-black leading-none">{n}</div>
+        <div className="mt-1 text-[10px] font-medium opacity-80">{sub}</div>
+      </div>
     </div>
   );
 }
