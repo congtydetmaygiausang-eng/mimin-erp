@@ -41,7 +41,7 @@ import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
 import { getAllInventory } from "@/lib/inventory-engine";
 
-type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
+type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string; sdt?: string };
 
 const getAllOutsourceOptions = (suffix = "Gia công ngoài", excludePrefix?: string) => DOI_TAC_GIA_CONG
   .filter(dt => !excludePrefix || !dt.ma.startsWith(excludePrefix))
@@ -239,6 +239,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     ten: nv.hoTen,
     boPhan: nv.boPhan,
     ghiChu: nv.ghiChu,
+    sdt: nv.sdt,
   }));
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
@@ -1501,8 +1502,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       const val = e.target.value;
                       setPhuTrachSX(val);
                       if (val) {
-                        const numericPart = val.replace(/\D/g, "");
-                        setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                        const nv = nhanVienOptions.find(n => n.ma === val);
+                        if (nv?.sdt) {
+                          setSdtLienHe(nv.sdt);
+                        } else {
+                          const numericPart = val.replace(/\D/g, "");
+                          setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                        }
                       } else {
                         setSdtLienHe("");
                       }
@@ -3221,3 +3227,4 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   );
 
 }
+
