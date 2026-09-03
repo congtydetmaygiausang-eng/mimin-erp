@@ -47,6 +47,17 @@ export default function KeHoachSXPage() {
 
   const taoLenhCat = async (item: KHSX) => {
     try {
+      const { supabase } = await import("@/lib/supabase/client");
+      if (supabase) {
+        const { data: checkData } = await supabase.from("khsx").select("lenh_cat_id, lenhCatId").eq("id", item.id).single();
+        const existingLenhCatId = checkData ? (checkData.lenh_cat_id || checkData.lenhCatId) : null;
+        if (existingLenhCatId) {
+           toast.error(`Kế hoạch này đã được tạo Lệnh Cắt (${existingLenhCatId}) bởi người khác!`);
+           suaKHSX(item.id, { lenhCatId: existingLenhCatId }, null);
+           return;
+        }
+      }
+
       const newId = generateLenhCatId(dsLenhCat);
       const now = new Date().toISOString().slice(0, 10);
       
@@ -120,6 +131,7 @@ export default function KeHoachSXPage() {
       };
 
       await themLenhCat(newLenhCat, user as any);
+      suaKHSX(item.id, { lenhCatId: newId }, user as any);
       toast.success(`Đã chuyển ${item.maSP || item.sanPham} thành Lệnh cắt ${newId}`);
       localStorage.setItem("mimin_edit_lenh_cat_id", newId);
       router.push("/lenh-cat");
@@ -155,7 +167,11 @@ export default function KeHoachSXPage() {
         <div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black text-teal-700">Mã kế hoạch: {item.maKHSX}</p><p className="mt-1 text-sm font-bold text-slate-700">Mã sản phẩm: {item.maSP || "Chưa có mã SP"}</p><h2 className="text-sm font-medium text-slate-900">Tên sản phẩm: {item.sanPham}</h2></div><span className="rounded-full bg-teal-50 px-2 py-1 text-xs font-bold text-teal-700">{item.trangThai}</span></div>
         <div className="my-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm"><div><p className="text-slate-400">Số lượng</p><b>{item.soLuong.toLocaleString("vi-VN")} SP</b></div><div><p className="text-slate-400">Thời gian</p><b>{item.tuNgay} → {item.denNgay}</b></div></div>
         {item.ghiChu && <div className="mb-4 text-xs text-slate-500 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/50">{item.ghiChu}</div>}
-        <button onClick={() => taoLenhCat(item)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white hover:bg-violet-700"><Scissors className="h-4 w-4" /> Tạo lệnh cắt</button>
+        {item.lenhCatId ? (
+          <button onClick={() => { localStorage.setItem("mimin_edit_lenh_cat_id", item.lenhCatId!); router.push("/lenh-cat"); }} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"><Scissors className="h-4 w-4" /> Xem Lệnh Cắt ({item.lenhCatId})</button>
+        ) : (
+          <button onClick={() => taoLenhCat(item)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white hover:bg-violet-700"><Scissors className="h-4 w-4" /> Tạo lệnh cắt</button>
+        )}
         <div className="flex gap-2"><button onClick={() => { setEditing(item); setShowForm(true); }} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-50 py-2 text-xs font-bold text-amber-700"><Edit2 className="h-3 w-3" /> Sửa</button><button onClick={() => { if (confirm(`Xóa kế hoạch ${item.maKHSX}?`)) xoaKHSX(item.id, user); }} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-red-50 py-2 text-xs font-bold text-red-700"><Trash2 className="h-3 w-3" /> Xóa</button></div>
       </article>)}</section>}
 
