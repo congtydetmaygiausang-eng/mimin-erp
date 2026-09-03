@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Factory } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { TABS, type Tab } from "./data";
@@ -9,10 +9,33 @@ import { MasterData } from "./components/MasterData";
 import { LenhTongForm } from "./components/LenhTongForm";
 import { FlowQuick } from "./components/FlowQuick";
 import { CongNoView, BaoCaoView } from "./components/Views";
+import { subscribeYarnProductionChanges, syncYarnProductionFromSupabase } from "@/lib/yarn-production-chain";
 
 export default function SanXuatERPPage() {
   const { user } = useSession();
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [syncVersion, setSyncVersion] = useState(0);
+  const [syncError, setSyncError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: () => void = () => undefined;
+    void syncYarnProductionFromSupabase()
+      .then(() => {
+        if (!active) return;
+        setSyncVersion((version) => version + 1);
+        unsubscribe = subscribeYarnProductionChanges(() => {
+          if (active) setSyncVersion((version) => version + 1);
+        });
+      })
+      .catch((error: unknown) => {
+        if (active) setSyncError(error instanceof Error ? error.message : "Không kết nối được Supabase");
+      });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#ECE7DC] pb-20 animate-fade-in">
@@ -57,7 +80,13 @@ export default function SanXuatERPPage() {
         </div>
 
         {/* Active screen */}
-        <div className="pt-2 text-[#173F49]">
+        {syncError && (
+          <div className="mx-2 mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+            {syncError}. Hệ thống đang tạm dùng dữ liệu lưu trên máy.
+          </div>
+        )}
+
+        <div key={syncVersion} className="pt-2 text-[#173F49]">
           {tab === "dashboard" && <Dashboard />}
           {tab === "master" && <MasterData />}
           {tab === "lenhtong" && <LenhTongForm user={user} onChuyenTiep={() => setTab("flow")} />}

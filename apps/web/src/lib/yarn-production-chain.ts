@@ -7,6 +7,89 @@
 // 5. Truy ngược: Vải TP → Mẻ nhuộm → Vải mộc → Lệnh dệt → Lô sợi → NCC
 
 import { logAudit } from "./audit-log";
+import { isSupabaseEnabled, supabase } from "./supabase/client";
+
+type YarnCollectionType =
+  | "KHO_LOG"
+  | "PHIEU_NHAP_SOI"
+  | "LO_SOI"
+  | "LENH_DET"
+  | "LO_MOC"
+  | "ME_NHUOM"
+  | "NGHIEM_THU_MAU"
+  | "LO_VAI_TP";
+
+type YarnRecord = {
+  entity_type: YarnCollectionType;
+  entity_id: string;
+  payload: Record<string, unknown>;
+};
+
+const YARN_TABLE = "yarn_production_records";
+export const YARN_PRODUCTION_SYNCED_EVENT = "mimin:yarn-production-synced";
+
+const YARN_COLLECTIONS: Array<{ key: string; type: YarnCollectionType }> = [
+  { key: "mimin_kho_log", type: "KHO_LOG" },
+  { key: "mimin_phieu_nhap_soi", type: "PHIEU_NHAP_SOI" },
+  { key: "mimin_lo_soi", type: "LO_SOI" },
+  { key: "mimin_lenh_det", type: "LENH_DET" },
+  { key: "mimin_lo_moc", type: "LO_MOC" },
+  { key: "mimin_me_nhuom", type: "ME_NHUOM" },
+  { key: "mimin_phieu_nghiem_thu_mau", type: "NGHIEM_THU_MAU" },
+  { key: "mimin_lo_vai_tp", type: "LO_VAI_TP" },
+];
+
+function persistCollection(type: YarnCollectionType, rows: Array<{ id: string }>): void {
+  if (!isSupabaseEnabled || !supabase || rows.length === 0) return;
+  const payload: YarnRecord[] = rows.map((row) => ({
+    entity_type: type,
+    entity_id: row.id,
+    payload: row as unknown as Record<string, unknown>,
+  }));
+  void supabase.from(YARN_TABLE).upsert(payload, { onConflict: "entity_type,entity_id" }).then(({ error }) => {
+    if (error) console.error(`[Supabase] ${YARN_TABLE}/${type}:`, error.message);
+  });
+}
+
+function saveCollection<T extends { id: string }>(key: string, type: YarnCollectionType, rows: T[]): void {
+  localStorage.setItem(key, JSON.stringify(rows));
+  persistCollection(type, rows);
+}
+
+export async function syncYarnProductionFromSupabase(): Promise<void> {
+  if (typeof window === "undefined" || !isSupabaseEnabled || !supabase) return;
+  const { data, error } = await supabase.from(YARN_TABLE).select("entity_type,entity_id,payload,updated_at");
+  if (error) throw new Error(`Không đồng bộ được Sợi - Dệt - Nhuộm: ${error.message}`);
+
+  const remote = (data || []) as Array<YarnRecord & { updated_at: string }>;
+  for (const collection of YARN_COLLECTIONS) {
+    const remoteRows = remote
+      .filter((row) => row.entity_type === collection.type)
+      .map((row) => row.payload);
+    if (remoteRows.length > 0) {
+      localStorage.setItem(collection.key, JSON.stringify(remoteRows));
+      continue;
+    }
+    try {
+      const localRows = JSON.parse(localStorage.getItem(collection.key) || "[]") as Array<{ id: string }>;
+      persistCollection(collection.type, localRows);
+    } catch {
+      // Cache local lỗi thì bỏ qua, Supabase vẫn là nguồn dữ liệu chính.
+    }
+  }
+  window.dispatchEvent(new CustomEvent(YARN_PRODUCTION_SYNCED_EVENT));
+}
+
+export function subscribeYarnProductionChanges(onChange: () => void): () => void {
+  if (!isSupabaseEnabled || !supabase) return () => undefined;
+  const channel = supabase
+    .channel(`yarn-production-${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: YARN_TABLE }, () => {
+      void syncYarnProductionFromSupabase().then(onChange).catch(console.error);
+    })
+    .subscribe();
+  return () => { void supabase?.removeChannel(channel); };
+}
 
 export interface ChungTuSanXuat {
   id: string;
@@ -43,7 +126,7 @@ function getLogs(): KhoLog[] {
   try { return JSON.parse(localStorage.getItem(LOG_KEY) || "[]"); } catch { return []; }
 }
 function saveLogs(logs: KhoLog[]) {
-  localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+  saveCollection(LOG_KEY, "KHO_LOG", logs);
 }
 function ghiLog(log: Omit<KhoLog, "id" | "thoiGian">) {
   const logs = getLogs();
@@ -85,7 +168,7 @@ function getPNS(): PhieuNhapSoi[] {
   } catch {}
   return [];
 }
-function savePNS(data: PhieuNhapSoi[]) { localStorage.setItem(PNS_KEY, JSON.stringify(data)); }
+function savePNS(data: PhieuNhapSoi[]) { saveCollection(PNS_KEY, "PHIEU_NHAP_SOI", data); }
 
 
 /**
@@ -128,7 +211,7 @@ export function nhapKhoSoi_V2(data: Omit<PhieuNhapSoi, "id" | "thanhTien" | "con
       qrCode: `QR-${phieu.id}`,
     });
   }
-  localStorage.setItem("mimin_lo_soi", JSON.stringify(loSois));
+  saveCollection("mimin_lo_soi", "LO_SOI", loSois);
 
   // Ghi log + audit
   ghiLog({
@@ -190,7 +273,7 @@ function getLD(): LenhDet[] {
   try { const r = localStorage.getItem(LD_KEY); if (r) return JSON.parse(r); } catch {}
   return [];
 }
-function saveLD(data: LenhDet[]) { localStorage.setItem(LD_KEY, JSON.stringify(data)); }
+function saveLD(data: LenhDet[]) { saveCollection(LD_KEY, "LENH_DET", data); }
 
 export function taoLenhDet(data: Omit<LenhDet, "id" | "trangThai">, user: any): { ok: boolean; lenh?: LenhDet; message: string } {
   const list = getLD();
@@ -211,7 +294,7 @@ export function taoLenhDet(data: Omit<LenhDet, "id" | "trangThai">, user: any): 
     loSoi.soKgConLai -= data.soKgGiao;
     if (loSoi.soKgConLai <= 0) loSoi.trangThai = "Đã xuất hết";
   }
-  localStorage.setItem("mimin_lo_soi", JSON.stringify(loSois));
+  saveCollection("mimin_lo_soi", "LO_SOI", loSois);
 
   ghiLog({
     loaiPhieu: "XUAT_DET", maPhieu: lenh.id, loaiKho: "SOI", loaiAction: "XUAT",
@@ -328,7 +411,7 @@ export function nghiemThuDet_V2(
     kho: data.khoMocNhap,
     trangThai: "Chờ nhuộm",
   });
-  localStorage.setItem("mimin_lo_moc", JSON.stringify(loMocs));
+  saveCollection("mimin_lo_moc", "LO_MOC", loMocs);
 
   const meNhuoms = getMN();
   saveMN(meNhuoms.map((me) => me.maLoMoc === `LM-${lenhId}` ? {
@@ -397,7 +480,7 @@ function getMN(): MeNhuom[] {
   try { const r = localStorage.getItem(MN_KEY); if (r) return JSON.parse(r); } catch {}
   return [];
 }
-function saveMN(data: MeNhuom[]) { localStorage.setItem(MN_KEY, JSON.stringify(data)); }
+function saveMN(data: MeNhuom[]) { saveCollection(MN_KEY, "ME_NHUOM", data); }
 
 export function taoMeNhuom(data: Omit<MeNhuom, "id" | "tongKgXuat" | "trangThai">, user: any): { ok: boolean; me?: MeNhuom; message: string } {
   const tongKg = data.danhSachMau.reduce((s, m) => s + m.soKg, 0);
@@ -413,7 +496,7 @@ export function taoMeNhuom(data: Omit<MeNhuom, "id" | "tongKgXuat" | "trangThai"
   const loMocs = getLoMoc();
   const loMoc = loMocs.find((l: any) => l.maLoMoc === data.maLoMoc);
   if (loMoc) loMoc.trangThai = "Đang nhuộm";
-  localStorage.setItem("mimin_lo_moc", JSON.stringify(loMocs));
+  saveCollection("mimin_lo_moc", "LO_MOC", loMocs);
 
   ghiLog({
     loaiPhieu: "XUAT_NHUOM", maPhieu: me.id, loaiKho: "MOC", loaiAction: "XUAT",
@@ -505,7 +588,7 @@ function getNTM(): PhieuNghiemThuMau[] {
   try { const r = localStorage.getItem(NTM_KEY); if (r) return JSON.parse(r); } catch {}
   return [];
 }
-function saveNTM(data: PhieuNghiemThuMau[]) { localStorage.setItem(NTM_KEY, JSON.stringify(data)); }
+function saveNTM(data: PhieuNghiemThuMau[]) { saveCollection(NTM_KEY, "NGHIEM_THU_MAU", data); }
 
 export function nghiemThuMau_V2(
   meNhuomId: string,
@@ -639,7 +722,7 @@ function getLTP(): LoVaiTP[] {
   try { const r = localStorage.getItem(LTP_KEY); if (r) return JSON.parse(r); } catch {}
   return [];
 }
-function saveLTP(data: LoVaiTP[]) { localStorage.setItem(LTP_KEY, JSON.stringify(data)); }
+function saveLTP(data: LoVaiTP[]) { saveCollection(LTP_KEY, "LO_VAI_TP", data); }
 
 export function nhapKhoVaiTP(
   data: Omit<LoVaiTP, "id" | "tongKg" | "tongGiaTri" | "khoa">,
