@@ -35,14 +35,15 @@ export type KHSX = {
 function getCorrectLoaiSP(val: string, tenSP: string): any {
   if (val && val !== "BoTru") return val;
   const checkStr = (tenSP || "").toLowerCase();
-  if (checkStr.includes("�o polo") || checkStr.includes("ao polo")) return "AoPolo";
-  if (checkStr.includes("�o tr?") || checkStr.includes("ao tru") || checkStr.includes("c? tr?") || checkStr.includes("co tru")) return "AoTru";
-  if (checkStr.includes("�o tr�n") || checkStr.includes("�o c? tr�n") || checkStr.includes("c? tr�n") || checkStr.includes("co tron")) return "AoCoTron";
-  if (checkStr.includes("b? tr�n") || checkStr.includes("b? c? tr�n") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) return "BoCoTron";
-  if (checkStr.includes("ph? ki?n") || checkStr.includes("qu?n") || checkStr.includes("quan")) return "PhuKien";
-  if (checkStr.includes("�o thun") || checkStr.includes("�o") || checkStr.includes("ao")) return "AoCoTron";
+  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
+  if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) return "AoTru";
+  if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) return "AoCoTron";
+  if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) return "BoCoTron";
+  if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) return "PhuKien";
+  if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) return "AoCoTron";
   return "BoTru";
 }
+
 const STORAGE_KEY = "mimin_khsx_v2";
 const Ctx = createContext<StoreContext | null>(null);
 type RemoteKHSX = KHSX & { maKhsx?: string; maSp?: string; tenSp?: string; loaiSp?: LoaiSP };
