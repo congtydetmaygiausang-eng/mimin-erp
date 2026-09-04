@@ -170,6 +170,15 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
     });
   };
 
+  const handleAutoFillCat = () => {
+    if (!catKhau || !phanBoGoc || phanBoGoc.length === 0) return;
+    setTyLeChiTiet(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next[catKhau.id] = phanBoGoc.map((s: any) => ({ size: s.size, sl: s.sl || 0 }));
+      return next;
+    });
+  };
+
   const handleSave = () => {
     // Tính số dư (thất thoát vải) so với khâu Cắt
     let maxTotal = 0;
@@ -351,6 +360,20 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
           <div className="text-sm font-normal text-slate-500 mt-1">
             Màu: <span className="text-sky-600 font-bold">{mau.ten}</span> {mau.maVai ? `(${mau.maVai})` : ""}
           </div>
+          {(mau.slDuKien || 0) > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500">
+                SL Dự kiến cắt: <strong className="text-blue-600">{mau.slDuKien}</strong>
+              </span>
+              <button
+                onClick={handleAutoFillCat}
+                className="px-2 py-1 flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 font-bold rounded border border-blue-200 hover:bg-blue-100 transition-colors shadow-sm"
+                title="Tự động điền số lượng dự kiến vào khâu Cắt"
+              >
+                <span>⚡</span> Điền tự động
+              </button>
+            </div>
+          )}
         </div>
       }
     >

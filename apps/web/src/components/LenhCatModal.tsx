@@ -41,7 +41,7 @@ import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
 import { getAllInventory } from "@/lib/inventory-engine";
 
-type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string; sdt?: string };
+type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
 
 const getAllOutsourceOptions = (suffix = "Gia công ngoài", excludePrefix?: string) => DOI_TAC_GIA_CONG
   .filter(dt => !excludePrefix || !dt.ma.startsWith(excludePrefix))
@@ -82,11 +82,17 @@ const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions
   
   // 4. Đóng Gói
   if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
-    return [
-      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
-        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` })),
-      ...getAllOutsourceOptions("Gia công ngoài - Đóng gói"),
-    ];
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` }));
+  }
+
+  // QC (Kiểm hàng)
+  if (cd.includes("qc") || cd.includes("kiểm") || cd.includes("kiem")) {
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (QC)` }));
+  }
+
+  // Nhập kho
+  if (cd.includes("nhập kho") || cd.includes("nhap kho")) {
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Kho)` }));
   }
 
   // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
@@ -189,7 +195,7 @@ const isQuanStage = (tenCongDoan: string) => {
 };
 
 const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP) => {
-  const isBo = (loaiSP || "").toLowerCase().includes("bo");
+  const isBo = loaiSP.toLowerCase().includes("bo");
   return stages.filter(stage => isBo || !isQuanStage(stage.tenCongDoan));
 };
 
@@ -273,7 +279,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
-  const [activeEditor, setActiveEditor] = useState<{ id: string; name: string; joinedAt: number } | null>(null);
+  const [activeEditor, setActiveEditor] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
@@ -290,16 +296,16 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     const channel = supabase.channel(channelName, {
       config: { presence: { key: myClientId } },
     });
+    
+    const globalChannel = supabase.channel('global_lenh_cat_presence', {
+      config: { presence: { key: myClientId } },
+    });
 
     const myState = {
       id: myClientId,
       name: myName,
       joinedAt: Date.now(),
     };
-
-    const globalChannel = supabase.channel('global_lenh_cat_presence', {
-      config: { presence: { key: myClientId } },
-    });
 
     channel
       .on("presence", { event: "sync" }, () => {
@@ -315,12 +321,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           }
         }
         
-        if (firstEditor) {
-          setActiveEditor(firstEditor);
-          setIsLocked(firstEditor.id !== myClientId);
+        if (firstEditor && firstEditor.id !== myClientId) {
+          setIsLocked(true);
+          setActiveEditor(firstEditor.name);
         } else {
-          setActiveEditor(null);
           setIsLocked(false);
+          setActiveEditor(null);
         }
       })
       .subscribe(async (status) => {
@@ -329,17 +335,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         }
       });
 
-    globalChannel.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") {
-        await globalChannel.track({ ...myState, editingId: editId });
-      }
-    });
-
     return () => {
       channel.untrack();
-      globalChannel.untrack();
       supabase?.removeChannel(channel);
-      supabase?.removeChannel(globalChannel);
     };
   }, [editId, user]);
 
@@ -735,17 +733,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   }, [dinhMucQuanTuDong]);
 
   // Adjust soMau length
-  useEffect(() => {
-    setDsMau(prev => {
-      if (prev.length === soMau) return prev;
-      if (prev.length < soMau) {
-        return [...prev, ...Array.from({ length: soMau - prev.length }).map(() => ({ 
-          ten: "", maSKU: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
-        }))];
-      }
-      return prev.slice(0, soMau);
-    });
-  }, [soMau]);
+  // Removed redundant useEffect for soMau to prevent stale closure bugs on mount
 
   // Section 3 - Phụ liệu
   const [dsPhuLieu, setDsPhuLieu] = useState<LenhCatPhuLieu[]>([]);
@@ -1463,20 +1451,19 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 <>
                   <div className="lg:col-span-2">
                     <label className="text-sm font-bold text-slate-700 block mb-1">Khách Hàng *</label>
-                    <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" style={{ color: 'black' }} value={khachHang} onChange={e => setKhachHang(e.target.value)}>
-                      <option value="" style={{ color: 'black' }}>-- Chọn Khách Hàng --</option>
-                      {khachHangs?.map((k: any) => <option key={k.ma_kh} value={k.ma_kh} style={{ color: 'black' }}>{k.ten_kh}</option>)}
+                    <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={khachHang} onChange={e => setKhachHang(e.target.value)}>
+                      <option value="">-- Chọn Khách Hàng --</option>
+                      {khachHangs?.map((k: any) => <option key={k.ma_kh} value={k.ma_kh}>{k.ten_kh}</option>)}
                     </select>
                   </div>
                   <div className="lg:col-span-2">
                     <label className="text-sm font-bold text-slate-700 block mb-2">Ghi chú (chung)</label>
-                    <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" style={{ color: 'black' }} value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
+                    <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
                   </div>
                   <div className="sm:col-span-2 lg:col-span-4">
                     <label className="text-sm font-bold text-slate-700 block mb-2">Ghi chú kỹ thuật cắt may</label>
                     <textarea 
                       className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" 
-                      style={{ color: 'black' }}
                       rows={3}
                       value={ghiChuKyThuat} 
                       onChange={e => setGhiChuKyThuat(e.target.value)} 
@@ -3228,4 +3215,3 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   );
 
 }
-
