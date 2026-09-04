@@ -1463,19 +1463,20 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 <>
                   <div className="lg:col-span-2">
                     <label className="text-sm font-bold text-slate-700 block mb-1">Khách Hàng *</label>
-                    <select className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={khachHang} onChange={e => setKhachHang(e.target.value)}>
-                      <option value="">-- Chọn Khách Hàng --</option>
-                      {khachHangs?.map((k: any) => <option key={k.ma_kh} value={k.ma_kh}>{k.ten_kh}</option>)}
+                    <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" style={{ color: 'black' }} value={khachHang} onChange={e => setKhachHang(e.target.value)}>
+                      <option value="" style={{ color: 'black' }}>-- Chọn Khách Hàng --</option>
+                      {khachHangs?.map((k: any) => <option key={k.ma_kh} value={k.ma_kh} style={{ color: 'black' }}>{k.ten_kh}</option>)}
                     </select>
                   </div>
                   <div className="lg:col-span-2">
                     <label className="text-sm font-bold text-slate-700 block mb-2">Ghi chú (chung)</label>
-                    <input className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
+                    <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" style={{ color: 'black' }} value={ghiChu} onChange={e => setGhiChu(e.target.value)} placeholder="Ghi chú thêm..." />
                   </div>
                   <div className="sm:col-span-2 lg:col-span-4">
                     <label className="text-sm font-bold text-slate-700 block mb-2">Ghi chú kỹ thuật cắt may</label>
                     <textarea 
-                      className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" 
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" 
+                      style={{ color: 'black' }}
                       rows={3}
                       value={ghiChuKyThuat} 
                       onChange={e => setGhiChuKyThuat(e.target.value)} 
