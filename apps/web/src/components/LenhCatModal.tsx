@@ -238,7 +238,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     ma: nv.maNV,
     ten: nv.hoTen,
     boPhan: nv.boPhan,
-    ghiChu: nv.ghiChu,
+    sdt: nv.sdt,
   }));
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
