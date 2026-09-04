@@ -195,7 +195,7 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
   };
 
   const getKhauIcon = (tenKhau: string) => {
-    const t = tenKhau.toLowerCase();
+    const t = tenKhau?.toLowerCase() || "";
     if (t.includes("cắt")) return <Scissors className="w-4 h-4 text-sky-500 shrink-0" />;
     if (t.includes("đóng gói") || t.includes("bao bì")) return <Package className="w-4 h-4 text-amber-500 shrink-0" />;
     return <Shirt className="w-4 h-4 text-emerald-500 shrink-0" />;
