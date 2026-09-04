@@ -101,22 +101,24 @@ export default function KeHoachSXPage() {
 
       const now = new Date().toISOString().slice(0, 10);
       
+      let sp: any = null;
+      if (item.maSP) {
+        try {
+          const spRaw = localStorage.getItem("mimin_danh_muc_v2") || localStorage.getItem("mimin_danh_muc_sp");
+          if (spRaw) {
+            const spList = JSON.parse(spRaw);
+            sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
+          }
+        } catch (e) {}
+      }
+
       const newLenhCat = {
         id: newId,
         loaiLenh: "HangNha" as const,
         loaiSP: (function() {
           let val = item.loaiSP;
-          // Luôn thử lấy từ danh mục gốc trước để sửa lỗi data KHSX cũ bị lưu sai
-          if (item.maSP) {
-            try {
-              const spRaw = localStorage.getItem("mimin_danh_muc_v2");
-              if (spRaw) {
-                const spList = JSON.parse(spRaw);
-                const sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
-                if (sp && sp.loaiSP) val = sp.loaiSP;
-              }
-            } catch (e) {}
-          }
+          if (sp && sp.loaiSP) val = sp.loaiSP;
+          
           // Nếu vẫn bị "BoTru" do data cũ hoặc thiếu, parse lại từ tên SP
           if (!val || val === "BoTru") {
              const checkStr = (item.sanPham || item.tenSP || "").toLowerCase();
@@ -133,26 +135,16 @@ export default function KeHoachSXPage() {
         tenSP: item.tenSP || item.sanPham,
         tongSL: item.soLuong,
         hanHoanThanh: item.denNgay,
-        tiLeSize: item.tiLeSize || "1:2:2:1",
+        tiLeSize: item.tiLeSize || sp?.tiLeSize || "1:2:2:1",
         dsMau: (item.dsMau || []).map((mau) => {
           let mergedImg = mau.img;
           let mergedImgQuan = (mau as any).imgQuan;
-          if (!mergedImg && item.maSP) {
-            try {
-              // Dùng đúng key của danh mục sản phẩm (không phải v2)
-              const spRaw = localStorage.getItem("mimin_danh_muc_sp");
-              if (spRaw) {
-                const spList = JSON.parse(spRaw);
-                const sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
-                if (sp && sp.dsMau) {
-                  const spMau = sp.dsMau.find((sm: any) => sm.ten === mau.ten || sm.maSKU === mau.maSKU);
-                  if (spMau) {
-                    mergedImg = spMau.img || "";
-                    mergedImgQuan = spMau.imgQuan || "";
-                  }
-                }
-              }
-            } catch (e) {}
+          if (!mergedImg && sp && sp.dsMau) {
+             const spMau = sp.dsMau.find((sm: any) => sm.ten === mau.ten || sm.maSKU === mau.maSKU);
+             if (spMau) {
+               mergedImg = spMau.img || "";
+               mergedImgQuan = spMau.imgQuan || "";
+             }
           }
           return {
             ...mau,
@@ -160,9 +152,9 @@ export default function KeHoachSXPage() {
             imgQuan: mergedImgQuan || "",
           };
         }),
-        dsPhuLieu: [],
-        phanCong: [],
-        chiPhiCoDinh: {},
+        dsPhuLieu: sp?.dsPhuLieu || [],
+        phanCong: sp?.phanCong || [],
+        chiPhiCoDinh: sp?.chiPhiCoDinh || {},
         phuTrachCat: "NV006",
         ghiChu: `Tạo từ kế hoạch ${item.maKHSX} bởi ${user?.name || "Người dùng"} lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${new Date().toLocaleDateString("vi-VN")}`,
         trangThai: "Nhap" as const,
