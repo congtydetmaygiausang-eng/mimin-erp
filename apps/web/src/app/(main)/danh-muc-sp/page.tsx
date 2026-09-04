@@ -312,7 +312,7 @@ export default function DanhMucSanPhamPage() {
       denNgay: deadline.toISOString().slice(0, 10),
       sanPham: sp.tenSP,
       loai: sp.loaiSP.startsWith("Ao") ? "Áo" : sp.loaiSP === "PhuKien" ? "Phụ kiện" : "Bộ",
-      soLuong: 1,
+      soLuong: sp.dsMau?.length || 1,
       daHoanThanh: 0,
       xuongPhuTrach: "Tổ cắt",
       trangThai: "Lên kế hoạch",

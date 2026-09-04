@@ -82,11 +82,17 @@ const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions
   
   // 4. Đóng Gói
   if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
-    return [
-      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
-        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` })),
-      ...getAllOutsourceOptions("Gia công ngoài - Đóng gói"),
-    ];
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` }));
+  }
+
+  // QC (Kiểm hàng)
+  if (cd.includes("qc") || cd.includes("kiểm") || cd.includes("kiem")) {
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (QC)` }));
+  }
+
+  // Nhập kho
+  if (cd.includes("nhập kho") || cd.includes("nhap kho")) {
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Kho)` }));
   }
 
   // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
@@ -726,17 +732,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   }, [dinhMucQuanTuDong]);
 
   // Adjust soMau length
-  useEffect(() => {
-    setDsMau(prev => {
-      if (prev.length === soMau) return prev;
-      if (prev.length < soMau) {
-        return [...prev, ...Array.from({ length: soMau - prev.length }).map(() => ({ 
-          ten: "", maSKU: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
-        }))];
-      }
-      return prev.slice(0, soMau);
-    });
-  }, [soMau]);
+  // Removed redundant useEffect for soMau to prevent stale closure bugs on mount
 
   // Section 3 - Phụ liệu
   const [dsPhuLieu, setDsPhuLieu] = useState<LenhCatPhuLieu[]>([]);
