@@ -272,7 +272,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
-  const [activeEditor, setActiveEditor] = useState<{ id: string; name: string; joinedAt: number } | null>(null);
+  const [activeEditor, setActiveEditor] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
@@ -287,6 +287,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     const myName = user?.name || "Người dùng ẩn danh";
     
     const channel = supabase.channel(channelName, {
+      config: { presence: { key: myClientId } },
+    });
+    
+    const globalChannel = supabase.channel('global_lenh_cat_presence', {
       config: { presence: { key: myClientId } },
     });
 
@@ -310,12 +314,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           }
         }
         
-        if (firstEditor) {
-          setActiveEditor(firstEditor);
-          setIsLocked(firstEditor.id !== myClientId);
+        if (firstEditor && firstEditor.id !== myClientId) {
+          setIsLocked(true);
+          setActiveEditor(firstEditor.name);
         } else {
-          setActiveEditor(null);
           setIsLocked(false);
+          setActiveEditor(null);
         }
       })
       .subscribe(async (status) => {
