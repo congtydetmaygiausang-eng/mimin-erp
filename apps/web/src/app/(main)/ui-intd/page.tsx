@@ -22,6 +22,12 @@ export default function UiInTheuPage() {
   function getIntdPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
       const isIntd = INTD_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("in") || pc.tenCongDoan?.toLowerCase().includes("thêu"));
+      
+      // Nếu là công đoạn In/Thêu mà không có người phụ trách (bỏ qua/không chọn) thì không hiển thị
+      if (isIntd && (!pc.nguoiMa || pc.nguoiMa.trim() === "" || pc.nguoiMa === "null")) {
+        return false;
+      }
+
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isIntd && isMyTask;

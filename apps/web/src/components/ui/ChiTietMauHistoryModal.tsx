@@ -16,8 +16,8 @@ const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may"
 
 function sortPCsByStage(phanCong: CongDoanItem[] | undefined) {
   return [...(phanCong || [])].sort((a, b) => {
-    const aRank = STAGE_ORDER.findIndex(k => a.id.toLowerCase().includes(k));
-    const bRank = STAGE_ORDER.findIndex(k => b.id.toLowerCase().includes(k));
+    const aRank = STAGE_ORDER.findIndex(k => a.id?.toLowerCase().includes(k));
+    const bRank = STAGE_ORDER.findIndex(k => b.id?.toLowerCase().includes(k));
     return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
   });
 }

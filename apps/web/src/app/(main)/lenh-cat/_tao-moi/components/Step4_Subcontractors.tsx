@@ -22,14 +22,14 @@ export function Step4Subcontractors() {
   
   // Initialize if empty
   const phanCong = state.phanCong.length > 0 ? state.phanCong : DEFAULT_GIA_CONG;
-  const isBo = state.loaiSP.toLowerCase().includes("bo");
+  const isBo = state.loaiSP?.toLowerCase().includes("bo") || false;
   const visiblePhanCong = phanCong
     .map((pc, idx) => ({ pc, idx }))
-    .filter(({ pc }) => isBo || !pc.tenCongDoan.toLowerCase().includes("quần"));
+    .filter(({ pc }) => isBo || !pc.tenCongDoan?.toLowerCase().includes("quần"));
 
   useEffect(() => {
     if (state.phanCong.length > 0 && !isBo) {
-      const filtered = state.phanCong.filter(pc => !pc.tenCongDoan.toLowerCase().includes("quần"));
+      const filtered = state.phanCong.filter(pc => !pc.tenCongDoan?.toLowerCase().includes("quần"));
       if (filtered.length !== state.phanCong.length) updateState({ phanCong: filtered });
     }
   }, [isBo, state.phanCong, updateState]);

@@ -121,12 +121,18 @@ export default function DanhMucSanPhamPage() {
           ngayTao: new Date().toISOString().slice(0, 10),
         }),
         tenSP: current?.tenSP || item.tenSP || item.maSP,
-        dsMau: colors.length 
-          ? colors.map(c => {
-              const existing = current?.dsMau?.find(x => x.ten === c.ten);
-              return existing ? { ...c, dinhMuc: existing.dinhMuc || 0, img: existing.img || c.img, video: existing.video, hinhAnhChiTiet: existing.hinhAnhChiTiet } : c;
-            })
-          : (current?.dsMau || []),
+        dsMau: (() => {
+          if (!colors.length) return current?.dsMau || [];
+          const merged = colors.map(c => {
+            const existing = current?.dsMau?.find(x => x.ten === c.ten);
+            return existing ? { ...c, dinhMuc: existing.dinhMuc || 0, img: existing.img || c.img, video: existing.video, hinhAnhChiTiet: existing.hinhAnhChiTiet } : c;
+          });
+          if (current?.dsMau) {
+            const fromCurrent = current.dsMau.filter(x => !colors.some(c => c.ten === x.ten));
+            merged.push(...fromCurrent);
+          }
+          return merged;
+        })(),
         bangSize: current?.bangSize?.sizes?.length
           ? current.bangSize
           : (sizes.length ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length } : { sizes: [], ratios: [], riSo: 1 }),

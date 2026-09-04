@@ -24,6 +24,12 @@ export default function UiMayPage() {
   function getMayPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
       const isMay = MAY_KEYS.some(k => pc.id === k || pc.id === "may_ao" || pc.id === "may_quan" || pc.tenCongDoan?.toLowerCase().includes("may"));
+      
+      // Nếu không có người phụ trách (bỏ qua/không chọn) thì không hiển thị
+      if (isMay && (!pc.nguoiMa || pc.nguoiMa === "")) {
+        return false;
+      }
+
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isMay && isMyTask;

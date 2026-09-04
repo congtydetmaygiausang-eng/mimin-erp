@@ -27,7 +27,7 @@ export function GiaCongModal({ lc, type, onClose, onSave }: Props) {
 
   // Lấy các khâu may áo hoặc quần từ phân công hiện tại
   const khauList = phanCong.filter(pc => {
-    const ten = pc.tenCongDoan.toLowerCase();
+    const ten = pc.tenCongDoan?.toLowerCase() || "";
     if (isAo) return ten.includes("may áo");
     return ten.includes("may quần");
   });

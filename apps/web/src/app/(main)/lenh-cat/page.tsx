@@ -235,7 +235,7 @@ export default function LenhCatPage() {
                 if (newDsMau) {
                   updatePayload.dsMau = newDsMau;
                   // Xác định xem đang lưu áo hay quần để cập nhật tổng SL thực tế
-                  const hasMayAo = dsPhanCong.some((pc: any) => pc.tenCongDoan.toLowerCase().includes("may áo"));
+                  const hasMayAo = dsPhanCong.some((pc: any) => pc.tenCongDoan?.toLowerCase().includes("may áo"));
                   if (hasMayAo) updatePayload.tongSLThucTeAo = slThucTe;
                   else updatePayload.tongSLThucTeQuan = slThucTe;
                 }
