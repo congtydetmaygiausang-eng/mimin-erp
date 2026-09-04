@@ -195,7 +195,7 @@ const isQuanStage = (tenCongDoan: string) => {
 };
 
 const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP) => {
-  const isBo = loaiSP.toLowerCase().includes("bo");
+  const isBo = loaiSP?.toLowerCase().includes("bo") || false;
   return stages.filter(stage => isBo || !isQuanStage(stage.tenCongDoan));
 };
 
@@ -368,7 +368,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         setPhanCong(editing.phanCong);
         const inTheuItem = getInTheuStage(editing.phanCong);
         if (inTheuItem) {
-          setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
+          setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan?.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
           if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
           else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
           else setLoaiInTheu("bo");
@@ -815,7 +815,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           if (parsed.phanCong) {
             const inTheuItem = getInTheuStage(parsed.phanCong);
             if (inTheuItem) {
-              setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
+              setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan?.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
               if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
               else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
               else setLoaiInTheu("bo");
@@ -987,7 +987,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       giaVonBinhQuan
     };
 
-    const catStage = phanCong.find(x => x.tenCongDoan.toLowerCase().includes("cắt") || x.tenCongDoan.toLowerCase().includes("cat"));
+    const catStage = phanCong.find(x => x.tenCongDoan?.toLowerCase().includes("cắt") || x.tenCongDoan?.toLowerCase().includes("cat"));
     const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "";
 
     if (editing) {
