@@ -1489,8 +1489,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       const val = e.target.value;
                       setPhuTrachSX(val);
                       if (val) {
-                        const numericPart = val.replace(/\D/g, "");
-                        setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                        const nv = nhanVienOptions.find(n => n.ma === val);
+                        if (nv?.sdt) {
+                          setSdtLienHe(nv.sdt);
+                        } else {
+                          const numericPart = val.replace(/\D/g, "");
+                          setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                        }
                       } else {
                         setSdtLienHe("");
                       }
