@@ -24,7 +24,7 @@ export default function UiInTheuPage() {
       const isIntd = INTD_KEYS.some(k => pc.id === k || pc.tenCongDoan?.toLowerCase().includes("in") || pc.tenCongDoan?.toLowerCase().includes("thêu"));
       
       // Nếu là công đoạn In/Thêu mà không có người phụ trách (bỏ qua/không chọn) thì không hiển thị
-      if (isIntd && (!pc.nguoiMa || pc.nguoiMa === "")) {
+      if (isIntd && (!pc.nguoiMa || pc.nguoiMa.trim() === "" || pc.nguoiMa === "null")) {
         return false;
       }
 

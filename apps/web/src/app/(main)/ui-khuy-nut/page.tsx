@@ -22,7 +22,7 @@ export default function UiKhuyNutPage() {
       const isHT = pc.id === "khuy_nut" || pc.tenCongDoan?.toLowerCase().includes("khuy nút");
       
       // Nếu là công đoạn Khuy nút mà không có người phụ trách (bỏ qua/không chọn) thì không hiển thị
-      if (isHT && (!pc.nguoiMa || pc.nguoiMa === "")) {
+      if (isHT && (!pc.nguoiMa || pc.nguoiMa.trim() === "" || pc.nguoiMa === "null")) {
         return false;
       }
       

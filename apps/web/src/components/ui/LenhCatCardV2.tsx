@@ -72,12 +72,16 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
           {lc.phanCong && lc.phanCong.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Quy trình:</span>
-              {[...lc.phanCong].sort((a, b) => {
+              {[...lc.phanCong].filter(pc => {
+                const isOptional = ["in", "theu", "khuy"].some(k => pc.id.toLowerCase().includes(k) || pc.tenCongDoan?.toLowerCase().includes(k));
+                if (isOptional && (!pc.nguoiMa || pc.nguoiMa.trim() === "" || pc.nguoiMa === "null")) return false;
+                return true;
+              }).sort((a, b) => {
                 const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
                 const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
                 const bRank = STAGE_ORDER.findIndex(k => (b.id || "").toLowerCase().includes(k));
                 return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
-              }).map((pc, i) => {
+              }).map((pc, i, arr) => {
                 const tt = (pc.trangThaiCD as any) || "cho_giao";
                 const ttStyles: any = {
                   cho_giao: "bg-slate-100 text-slate-500 border-slate-200",
@@ -92,7 +96,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                     <div className={`px-2 py-0.5 rounded border text-[11px] font-bold ${s} whitespace-nowrap`}>
                       {pc.tenCongDoan}
                     </div>
-                    {i < lc.phanCong!.length - 1 && <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />}
+                    {i < arr.length - 1 && <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />}
                   </React.Fragment>
                 );
               })}
