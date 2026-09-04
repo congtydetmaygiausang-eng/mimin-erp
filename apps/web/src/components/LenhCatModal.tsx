@@ -189,7 +189,7 @@ const isQuanStage = (tenCongDoan: string) => {
 };
 
 const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP) => {
-  const isBo = loaiSP.toLowerCase().includes("bo");
+  const isBo = (loaiSP || "").toLowerCase().includes("bo");
   return stages.filter(stage => isBo || !isQuanStage(stage.tenCongDoan));
 };
 
