@@ -414,6 +414,36 @@ const LenhCatContext = createContext<LenhCatStore | null>(null);
 
 const DUMMY_DATA: LenhCat[] = [];
 
+const mapLenhCatFromDB = (item: any): LenhCat => ({
+  id: item.id,
+  loaiLenh: item.loai_lenh,
+  khachHang: item.khach_hang,
+  loaiSP: item.loai_sp,
+  maSP: item.ma_sp,
+  tenSP: item.ten_sp,
+  tongSL: item.tong_sl,
+  tongSLThucTe: item.tong_sl_thuc_te,
+  tongSLThucTeAo: item.tong_sl_thuc_te_ao,
+  tongSLThucTeQuan: item.tong_sl_thuc_te_quan,
+  hanHoanThanh: item.han_hoan_thanh,
+  tiLeSize: item.ti_le_size,
+  dsMau: item.ds_mau || [],
+  dsPhuLieu: item.ds_phu_lieu || [],
+  mauCongDoan: item.mau_cong_doan,
+  phanCong: item.phan_cong || [],
+  mauChiPhi: item.mau_chi_phi,
+  chiPhiCoDinh: item.chi_phi_co_dinh || {},
+  bangCOGS: item.bang_cogs,
+  phuTrachCat: item.phu_trach_cat,
+  phuTrachSX: item.phu_trach_sx,
+  phuTrachSoDo: item.phu_trach_so_do,
+  ghiChu: item.ghi_chu,
+  trangThai: item.trang_thai,
+  phienBanDinhMuc: item.phien_ban_dinh_muc,
+  ngayTao: item.ngay_tao,
+  nguoiTao: item.nguoi_tao
+} as LenhCat);
+
 export function LenhCatProvider({ children }: { children: ReactNode }) {
   const { upsertTuLenhCat } = usePhanCong();
   const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>([]);
@@ -437,35 +467,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
           if (error) throw error;
           
           if (data && mounted) {
-            const mapped = data.map(item => ({
-              id: item.id,
-              loaiLenh: item.loai_lenh,
-              khachHang: item.khach_hang,
-              loaiSP: item.loai_sp,
-              maSP: item.ma_sp,
-              tenSP: item.ten_sp,
-              tongSL: item.tong_sl,
-              tongSLThucTe: item.tong_sl_thuc_te,
-              tongSLThucTeAo: item.tong_sl_thuc_te_ao,
-              tongSLThucTeQuan: item.tong_sl_thuc_te_quan,
-              hanHoanThanh: item.han_hoan_thanh,
-              tiLeSize: item.ti_le_size,
-              dsMau: item.ds_mau || [],
-              dsPhuLieu: item.ds_phu_lieu || [],
-              mauCongDoan: item.mau_cong_doan,
-              phanCong: item.phan_cong || [],
-              mauChiPhi: item.mau_chi_phi,
-              chiPhiCoDinh: item.chi_phi_co_dinh || {},
-              bangCOGS: item.bang_cogs,
-              phuTrachCat: item.phu_trach_cat,
-              phuTrachSX: item.phu_trach_sx,
-              phuTrachSoDo: item.phu_trach_so_do,
-              ghiChu: item.ghi_chu,
-              trangThai: item.trang_thai,
-              phienBanDinhMuc: item.phien_ban_dinh_muc,
-              ngayTao: item.ngay_tao,
-              nguoiTao: item.nguoi_tao
-            }));
+            const mapped = data.map(mapLenhCatFromDB);
             // Merge thay vì ghi đè: ưu tiên bản ghi Supabase (nguồn sự thật),
             // nhưng GIỮ lại lệnh cắt chỉ có ở local (tạo lúc mất mạng) - trước
             // đây setDsLenhCat(mapped) thay sạch state nên các lệnh này bị xoá.
@@ -488,6 +490,9 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     loadData();
     return () => { mounted = false; };
   }, []);
+
+  // Sync realtime lenh_cat updates
+  useSupabaseRealtime("lenh_cat", setDsLenhCat, { mapIn: mapLenhCatFromDB, primaryKey: "id" });
 
   // Load Mẫu từ localStorage
   useEffect(() => {

@@ -76,7 +76,6 @@ export function SortBar({ sortBy, setSortBy, sortDir, setSortDir, filterSize, se
       {[
         { k: "ngay", l: "Ngày nhập" },
         { k: "sl", l: "Số lượng" },
-        { k: "gt", l: "Giá trị" },
       ].map((s) => (
         <button
           key={s.k}

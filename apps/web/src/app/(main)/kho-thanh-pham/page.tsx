@@ -510,8 +510,8 @@ export default function KhoThanhPhamPage() {
   };
 
   const exportCSV = () => {
-    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "LSX", "SL", "Đơn giá", "Giá trị", "Vị trí", "Trạng thái"]];
-    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, s.lsx, String(s.soLuong), String(s.donGia), String(s.giaTri), s.viTri, s.trangThai]));
+    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "LSX", "SL", "Vị trí", "Trạng thái"]];
+    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, s.lsx, String(s.soLuong), s.viTri, s.trangThai]));
     const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);

@@ -161,12 +161,17 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
           <div className="p-6 flex-1 space-y-6 overflow-y-auto min-h-0">
             
             {/* Price & Stats Row */}
-            <div className="flex flex-wrap gap-6 items-end">
-              <div>
-                <div className="text-sm font-bold text-slate-400 uppercase mb-1">Giá bán dự kiến</div>
-                <div className="text-4xl font-extrabold text-cyan-600">
-                  {formatVNDShort(sp.giaBanDuKien)}<span className="text-xl text-cyan-700 font-bold ml-1">VNĐ</span>
-                </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-2">
+                <DetailPriceChip label="Bán lẻ" price={sp.giaBanLe} bgClass="bg-amber-50 border-amber-200" textLabelClass="text-amber-600" textPriceClass="text-amber-800" />
+                <DetailPriceChip label="Bán sỉ" price={sp.giaBanSi} bgClass="bg-blue-50 border-blue-200" textLabelClass="text-blue-600" textPriceClass="text-blue-800" />
+                <DetailPriceChip label="Bán lô" price={sp.giaBanLo} bgClass="bg-purple-50 border-purple-200" textLabelClass="text-purple-600" textPriceClass="text-purple-800" />
+                <DetailPriceChip label="TikTok" price={sp.giaTikTok} bgClass="bg-rose-50 border-rose-200" textLabelClass="text-rose-600" textPriceClass="text-rose-800" />
+                <DetailPriceChip label="Shopee" price={sp.giaShopee} bgClass="bg-orange-50 border-orange-200" textLabelClass="text-orange-600" textPriceClass="text-orange-800" />
+
+                {!sp.giaBanLe && !sp.giaBanSi && !sp.giaBanLo && !sp.giaTikTok && !sp.giaShopee && sp.giaBanDuKien ? (
+                  <DetailPriceChip label="Giá bán dự kiến" price={sp.giaBanDuKien} bgClass="bg-slate-50 border-slate-200" textLabelClass="text-slate-500" textPriceClass="text-slate-700" />
+                ) : null}
               </div>
               <div className="flex gap-4 pb-1">
                  <div className="flex items-center gap-1 text-sm font-semibold text-slate-600">
@@ -344,5 +349,28 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
       </div>
     )}
     </>
+  );
+}
+
+function DetailPriceChip({ label, price, bgClass, textLabelClass, textPriceClass }: { label: string; price?: number; bgClass: string; textLabelClass: string; textPriceClass: string }) {
+  const [show, setShow] = useState(false);
+  
+  if (!price) return null;
+  
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        setShow(!show);
+      }}
+      className={`px-3 py-1.5 rounded-lg min-w-[85px] text-left transition-all border cursor-pointer ${
+        show ? bgClass : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-500'
+      }`}
+    >
+      <div className={`text-[10px] font-bold uppercase mb-0.5 ${show ? textLabelClass : 'text-slate-500'}`}>{label}</div>
+      <div className={`text-lg font-extrabold leading-none ${show ? textPriceClass : 'text-slate-400'}`}>
+        {show ? `${formatVNDShort(price)}đ` : '*** đ'}
+      </div>
+    </button>
   );
 }

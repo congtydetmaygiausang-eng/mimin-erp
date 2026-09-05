@@ -22,6 +22,9 @@ import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, gener
 import { generateVariants } from "@/lib/data/product-variants";
 import type { Order, OrderItem } from "@/components/order-detail/types";
 import type { GioHangItem } from "@/lib/data/gio-hang-store";
+import { useCustomerCart } from "@/lib/data/customer-cart-store";
+import CustomerCheckoutModal from "@/components/danh-muc-sp/CustomerCheckoutModal";
+import CustomerAddToCartModal from "@/components/danh-muc-sp/CustomerAddToCartModal";
 import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 import { useKHSX } from "@/lib/data/khsx-store";
 import { useSession } from "@/components/session-provider";
@@ -58,6 +61,11 @@ export default function DanhMucSanPhamPage() {
   const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
   const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  // B2C Customer Cart States
+  const { getTotalItems: getCustomerCartItems } = useCustomerCart();
+  const [showCustomerAddToCart, setShowCustomerAddToCart] = useState<SanPham | null>(null);
+  const [showCustomerCheckout, setShowCustomerCheckout] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -160,14 +168,36 @@ export default function DanhMucSanPhamPage() {
           (sp.tenSP || "").toLowerCase().includes(q)
       );
     }
-    if (activeFilter !== "all") result = result.filter((sp) => sp.kenhBan?.includes(activeFilter as KenhBanKho));
+    if (activeFilter !== "all") {
+      result = result.filter((sp) => {
+        // Return true if explicitly in kenhBan array
+        if (sp.kenhBan?.includes(activeFilter as KenhBanKho)) return true;
+        
+        // OR return true if it has a price configured for this channel
+        switch (activeFilter) {
+          case "ban-le": return (sp.giaBanLe && sp.giaBanLe > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "ban-si": return (sp.giaBanSi && sp.giaBanSi > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "ban-lo": return (sp.giaBanLo && sp.giaBanLo > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "tiktok": return (sp.giaTikTok && sp.giaTikTok > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "shopee": return (sp.giaShopee && sp.giaShopee > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          default: return true;
+        }
+      });
+    }
+    // Sort by recently edited first
+    result.sort((a, b) => {
+      const dateA = a.ngayCapNhat || a.ngayTao || "";
+      const dateB = b.ngayCapNhat || b.ngayTao || "";
+      return dateB.localeCompare(dateA);
+    });
     return result;
   }, [dsDongBo, search, activeFilter]);
 
   // === HANDLERS (3 CTA buttons) ===
   const handleAddToCart = (sp: SanPham) => {
-    themVaoGio(sp);
-    toast.success(`Đã thêm "${sp.tenSP}" vào giỏ`);
+    // For Internal Admin, it was: themVaoGio(sp); toast...
+    // Now we open Customer AddToCart Modal
+    setShowCustomerAddToCart(sp);
   };
 
   const handleConfirmAddToCart = (data: { 
@@ -470,14 +500,18 @@ export default function DanhMucSanPhamPage() {
                 className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-white/30 bg-white/95 backdrop-blur-md text-sm focus:ring-2 focus:ring-white focus:border-white outline-none shadow-xl"
               />
             </div>
+            
+
+
+            {/* B2C Cart Header Button */}
             <button
-              onClick={() => setShowGioHang(true)}
+              onClick={() => setShowCustomerCheckout(true)}
               className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-white/30 transition-colors whitespace-nowrap"
             >
               <ShoppingCart className="w-5 h-5" /> Giỏ hàng
-              {soLuongTrongGio > 0 && (
+              {getCustomerCartItems() > 0 && (
                 <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center shadow-md">
-                  {soLuongTrongGio}
+                  {getCustomerCartItems()}
                 </span>
               )}
             </button>
@@ -607,6 +641,36 @@ export default function DanhMucSanPhamPage() {
         }}
         onSave={handleSaveOrderForm}
       />
+
+      {/* CUSTOMER (B2C) MODALS */}
+      {showCustomerAddToCart && (
+        <CustomerAddToCartModal 
+          sp={showCustomerAddToCart} 
+          onClose={() => setShowCustomerAddToCart(null)} 
+        />
+      )}
+
+      {showCustomerCheckout && (
+        <CustomerCheckoutModal 
+          onClose={() => setShowCustomerCheckout(false)} 
+        />
+      )}
+
+      {/* Floating Customer Cart Button */}
+      {getCustomerCartItems() > 0 && !showCustomerCheckout && (
+        <button
+          onClick={() => setShowCustomerCheckout(true)}
+          className="fixed bottom-10 right-10 z-[90] flex items-center justify-center gap-3 bg-rose-600 hover:bg-rose-700 text-white p-5 rounded-full shadow-[0_0_40px_rgba(225,29,72,0.6)] hover:shadow-[0_0_50px_rgba(225,29,72,0.8)] transition-all hover:scale-110 active:scale-95 animate-bounce"
+        >
+          <div className="relative">
+            <ShoppingCart className="w-8 h-8" />
+            <span className="absolute -top-3 -right-3 bg-white text-rose-600 text-[12px] font-extrabold w-6 h-6 flex items-center justify-center rounded-full border-2 border-rose-600 shadow-md">
+              {getCustomerCartItems()}
+            </span>
+          </div>
+          <span className="font-extrabold pr-2 text-lg hidden sm:inline">Tiến hành thanh toán</span>
+        </button>
+      )}
     </div>
   );
 }
