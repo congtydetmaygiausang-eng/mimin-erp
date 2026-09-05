@@ -347,10 +347,7 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                     <span className="font-extrabold text-slate-600">MISA VietQR</span>
                   </div>
                   <div className="flex items-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all duration-300">
-                    <svg viewBox="0 0 100 32" className="h-5 w-auto shrink-0" xmlns="http://www.w3.org/2000/svg">
-                      <path fill="#1A1F71" d="M37.3 1.8l-5.8 21.6h-6.2L31 1.8h6.3zM63.6 2.1c-1.3-.4-3.5-1-6.4-1-6.8 0-11.6 3.4-11.7 8.2-.1 3.5 3.1 5.4 5.5 6.5 2.5 1.2 3.3 2 3.3 3.1-.1 1.6-2 2.4-3.9 2.4-2.6 0-4-.5-6.1-1.4l-.9-.4-1 6c1.6.7 4.5 1.4 7.6 1.4 7.2 0 11.9-3.4 12-8.5.1-3.9-3.4-5.6-5.4-6.6-2.3-1.1-3.7-1.8-3.7-2.9 0-1 .9-2.1 3.6-2.1 2.2-.1 3.8.5 5 1l.7.3 1.4-6zM82 1.8c-1.2 0-2.3.7-2.8 1.8L66.7 23.4h6.5s1.1-2.9 1.3-3.6h7.9c.2.8.7 3.6.7 3.6h5.8L82 1.8zm-5.7 13.9c.4-1.2 2-5.4 2-5.4.1-.3.2-.6.3-1l.3 1.2s1 4.7 1.2 5.2h-3.8zM24 1.8L17.2 16c-.2.5-.3 1-.8 1.3-2.6 1.3-5.3 2.1-8.5 2.6l-.1-.4c1.8-1 3.9-2.3 5.3-3.9 0 0 4.5-13.8 4.6-13.8h6.3z"/>
-                      <path fill="#F7B600" d="M10.8 1.8h-6C3.6 1.8 2.6 2.4 2.1 3.4L.1 23.4h6.2s3.8-18.4 4.5-21.6z"/>
-                    </svg>
+                    <img src="/visa-logo.png" alt="Visa" className="h-5 w-auto object-contain rounded shrink-0" />
                     <svg viewBox="0 0 24 16" className="h-5 w-auto shrink-0" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="7.5" cy="8" r="7.5" fill="#EB001B"/>
                       <circle cx="16.5" cy="8" r="7.5" fill="#F79E1B"/>
