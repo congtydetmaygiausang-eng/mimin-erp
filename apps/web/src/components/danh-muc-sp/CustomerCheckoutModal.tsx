@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, ShoppingCart, Trash2, CreditCard, MapPin, Phone, User, Loader2, ArrowLeft } from "lucide-react";
+import { X, ShoppingCart, Trash2, CreditCard, MapPin, Phone, User, Loader2, ArrowLeft, ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
 import { useCustomerCart } from "@/lib/data/customer-cart-store";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { createMisaPaymentUrl } from "@/lib/misa/misa-helper";
@@ -322,18 +322,35 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                 )}
               </button>
               
-              <div className="mt-4 flex items-center justify-center gap-4 text-[10px] md:text-xs font-semibold text-slate-400">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <svg className="w-2.5 h-2.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              <div className="mt-5 flex flex-col items-center gap-3 w-full">
+                {/* Security Badges */}
+                <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50/80 text-emerald-700 rounded-lg text-[10px] md:text-xs font-bold border border-emerald-100">
+                    <ShieldCheck className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    Bảo mật SSL 256-bit
                   </div>
-                  Bảo mật SSL
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50/80 text-blue-700 rounded-lg text-[10px] md:text-xs font-bold border border-blue-100">
+                    <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    Mã hoá End-to-End
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 text-slate-700 rounded-lg text-[10px] md:text-xs font-bold border border-slate-200">
+                    <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-600" />
+                    PCI DSS Compliant
+                  </div>
                 </div>
-                <div className="w-1 h-1 rounded-full bg-slate-300" />
-                <div className="flex items-center gap-1.5">
-                  Được bảo chứng bởi 
-                  <img src="/misa-logo.svg" alt="MISA" className="h-3 grayscale opacity-60" onError={(e) => e.currentTarget.style.display = 'none'} />
-                  <span className="font-bold text-slate-500">MISA</span>
+                
+                {/* Payment Partners & MISA */}
+                <div className="flex flex-col items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 text-[10px] md:text-xs font-medium text-slate-400">
+                    Được bảo chứng xử lý giao dịch bởi 
+                    <img src="/misa-logo.svg" alt="MISA" className="h-3.5 object-contain opacity-70 grayscale" onError={(e) => e.currentTarget.style.display = 'none'} />
+                    <span className="font-extrabold text-slate-600">MISA VietQR</span>
+                  </div>
+                  <div className="flex items-center gap-3 opacity-40 grayscale hover:grayscale-0 transition-all duration-300">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" className="h-3" alt="Visa" />
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Mastercard_2019_logo.svg/800px-Mastercard_2019_logo.svg.png" className="h-4" alt="Mastercard" />
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/JCB_logo.svg/1200px-JCB_logo.svg.png" className="h-4" alt="JCB" />
+                  </div>
                 </div>
               </div>
             </div>
