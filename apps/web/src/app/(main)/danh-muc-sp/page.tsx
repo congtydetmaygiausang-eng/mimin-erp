@@ -29,6 +29,7 @@ import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham,
 import { useKHSX } from "@/lib/data/khsx-store";
 import { useSession } from "@/components/session-provider";
 import { supabase } from "@/lib/supabase/client";
+import { LenhCatModal } from "@/components/LenhCatModal";
 
 const FILTER_TABS = [
   { id: "all", label: "Tất cả", icon: Sparkles },
@@ -61,6 +62,7 @@ export default function DanhMucSanPhamPage() {
   const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
   const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [lenhCatSP, setLenhCatSP] = useState<SanPham | null>(null); // SP bấm Sản Xuất
 
   // B2C Customer Cart States
   const { getTotalItems: getCustomerCartItems } = useCustomerCart();
@@ -323,39 +325,10 @@ export default function DanhMucSanPhamPage() {
     setProductForCart(sp);
   };
   const handleProduceOrder = (sp: SanPham) => {
-    const today = new Date();
-    const deadline = new Date(today);
-    deadline.setDate(deadline.getDate() + 14);
-    const created = themKHSX({
-      maKHSX: `KHSX-${today.getFullYear()}-${String(Date.now()).slice(-6)}`,
-      maSP: sp.id,
-      tenSP: sp.tenSP,
-      loaiSP: sp.loaiSP,
-      tiLeSize: sp.tiLeSize,
-      dsMau: (sp.dsMau || []).map((mau) => ({
-        ten: mau.ten,
-        maSKU: mau.maSKU,
-        maVai: "",
-        dinhMuc: mau.dinhMuc || 0,
-        slDuKien: 0,
-        ghiChu: "",
-        img: mau.img || "",
-        imgQuan: (mau as any).imgQuan || "",
-        phanBoSize: (sp.bangSize?.sizes || []).map((size) => ({ size, sl: 0 })),
-      })),
-      tuan: "",
-      tuNgay: today.toISOString().slice(0, 10),
-      denNgay: deadline.toISOString().slice(0, 10),
-      sanPham: sp.tenSP,
-      loai: sp.loaiSP.startsWith("Ao") ? "Áo" : sp.loaiSP === "PhuKien" ? "Phụ kiện" : "Bộ",
-      soLuong: sp.dsMau?.length || 1,
-      daHoanThanh: 0,
-      xuongPhuTrach: "Tổ cắt",
-      trangThai: "Lên kế hoạch",
-      ghiChu: `Tạo từ Danh mục sản phẩm bởi ${user?.name || "Người dùng"} lúc ${today.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${today.toLocaleDateString("vi-VN")} – vui lòng cập nhật số lượng kế hoạch`,
-    }, user);
-    toast.success(`Đã chuyển ${sp.id} vào ${created.maKHSX}`);
-    router.push("/ke-hoach-san-xuat");
+    // Mở LenhCatModal với sản phẩm được chọn sẵn
+    setLenhCatSP(sp);
+    // Đóng detail modal nếu đang mở
+    setSelectedProduct(null);
   };
 
   const handleFavorite = async (sp: SanPham) => {
@@ -670,6 +643,14 @@ export default function DanhMucSanPhamPage() {
           </div>
           <span className="font-extrabold pr-2 text-lg hidden sm:inline">Tiến hành thanh toán</span>
         </button>
+      )}
+      {/* LENH CAT MODAL - mở từ nút Sản Xuất ở Danh Mục SP */}
+      {!!lenhCatSP && (
+        <LenhCatModal
+          isOpen={true}
+          onClose={() => setLenhCatSP(null)}
+          initialSP={lenhCatSP}
+        />
       )}
     </div>
   );
