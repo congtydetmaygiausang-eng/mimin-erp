@@ -316,6 +316,15 @@ export default function ProductLibraryCard({
           </div>
         )}
 
+        {/* === Interactive Price Chips === */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          <PriceChip label="Bán lẻ" price={sp.giaBanLe} />
+          <PriceChip label="Bán sỉ" price={sp.giaBanSi} />
+          <PriceChip label="Bán lô" price={sp.giaBanLo} />
+          <PriceChip label="TikTok" price={sp.giaTikTok} />
+          <PriceChip label="Shopee" price={sp.giaShopee} />
+        </div>
+
         {/* === Gia ban + Gia von === */}
         <div className="mt-auto mb-3 pt-2 border-t border-slate-100">
           {hasPrice ? (
@@ -387,5 +396,27 @@ export default function ProductLibraryCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function PriceChip({ label, price }: { label: string; price?: number }) {
+  const [show, setShow] = useState(false);
+  
+  if (price == null || price === 0) return null; // Only show channels that have a price configured
+  
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        setShow(!show);
+      }} 
+      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-all duration-200 shadow-sm ${
+        show 
+          ? 'bg-amber-100 border-amber-300 text-amber-800' 
+          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
+      }`}
+    >
+      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
+    </button>
   );
 }
