@@ -341,9 +341,12 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     };
   }, [editId, user]);
 
+  const loadedEditId = useRef<string | null>(null);
+
   // Sync editing data into states when editing changes
   useEffect(() => {
-    if (editing) {
+    if (editing && loadedEditId.current !== editing.id) {
+      loadedEditId.current = editing.id;
       setLoaiLenh(editing.loaiLenh);
       setKhachHang(editing.khachHang || "");
       setLoaiSP(editing.loaiSP);
@@ -404,6 +407,13 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
       setGhiChuInTheu(editing.ghiChuInTheu || "");
     }
   }, [editing]);
+
+  // Reset loadedEditId when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      loadedEditId.current = null;
+    }
+  }, [isOpen]);
 
   // Pre-fill product info khi mở từ nút "Sản Xuất" ở Danh Mục SP
   useEffect(() => {
