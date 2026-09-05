@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ShoppingCart, Trash2, CreditCard, MapPin, Phone, User, Loader2 } from "lucide-react";
 import { useCustomerCart } from "@/lib/data/customer-cart-store";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { createMisaPaymentUrl } from "@/lib/misa/misa-helper";
 import { toast } from "sonner";
 
-const VN_LOCATIONS: Record<string, string[]> = {
-  "Hà Nội": ["Quận Ba Đình", "Quận Hoàn Kiếm", "Quận Tây Hồ", "Quận Long Biên", "Quận Cầu Giấy", "Quận Đống Đa", "Quận Hai Bà Trưng", "Quận Hoàng Mai", "Quận Thanh Xuân"],
-  "Hồ Chí Minh": ["Quận 1", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 10", "Quận Tân Bình", "Quận Bình Thạnh", "Quận Phú Nhuận", "Quận Gò Vấp", "Thành phố Thủ Đức"],
-  "Đà Nẵng": ["Quận Hải Châu", "Quận Thanh Khê", "Quận Sơn Trà", "Quận Ngũ Hành Sơn", "Quận Liên Chiểu", "Quận Cẩm Lệ"],
-  "Hải Phòng": ["Quận Hồng Bàng", "Quận Ngô Quyền", "Quận Lê Chân", "Quận Hải An", "Quận Kiến An"],
-  "Cần Thơ": ["Quận Ninh Kiều", "Quận Bình Thủy", "Quận Cái Răng", "Quận Ô Môn"]
-};
+interface Province {
+  name: string;
+  code: number;
+  districts: District[];
+}
+
+interface District {
+  name: string;
+  code: number;
+}
 
 interface CustomerCheckoutModalProps {
   onClose: () => void;
@@ -31,9 +34,27 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
     note: "",
   });
 
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+
+  useEffect(() => {
+    fetch("https://provinces.open-api.vn/api/?depth=2")
+      .then((res) => res.json())
+      .then((data) => setProvinces(data))
+      .catch((err) => console.error("Failed to load provinces", err));
+  }, []);
+
   // When province changes, reset district
   const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData({ ...formData, province: e.target.value, district: "" });
+    const provinceName = e.target.value;
+    setFormData({ ...formData, province: provinceName, district: "" });
+    
+    const selectedProvince = provinces.find((p) => p.name === provinceName);
+    if (selectedProvince) {
+      setDistricts(selectedProvince.districts);
+    } else {
+      setDistricts([]);
+    }
   };
 
   const total = getTotalPrice();
@@ -118,7 +139,7 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <div className="text-sm font-extrabold text-cyan-700">
-                        {formatVNDShort(item.donGia)}đ
+                        {formatVNDShort(item.donGia)}
                       </div>
                       <div className="flex items-center gap-2 md:gap-3">
                         <div className="flex items-center bg-slate-50 rounded-lg border border-slate-200">
@@ -201,8 +222,8 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all appearance-none cursor-pointer"
                     >
                       <option value="">Chọn Tỉnh/Thành</option>
-                      {Object.keys(VN_LOCATIONS).map((p) => (
-                        <option key={p} value={p}>{p}</option>
+                      {provinces.map((p) => (
+                        <option key={p.code} value={p.name}>{p.name}</option>
                       ))}
                     </select>
                   </div>
@@ -216,8 +237,8 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <option value="">Chọn Quận/Huyện</option>
-                      {formData.province && VN_LOCATIONS[formData.province]?.map((d) => (
-                        <option key={d} value={d}>{d}</option>
+                      {districts.map((d) => (
+                        <option key={d.code} value={d.name}>{d.name}</option>
                       ))}
                     </select>
                   </div>
@@ -251,7 +272,7 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
             <div className="p-5 md:p-8 bg-slate-50 border-t border-slate-200 shrink-0">
               <div className="flex justify-between items-center mb-5 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                 <span className="text-sm font-bold text-slate-500 uppercase">Tổng thanh toán</span>
-                <span className="text-2xl font-black text-rose-600">{formatVNDShort(total)}đ</span>
+                <span className="text-2xl font-black text-rose-600">{formatVNDShort(total)}</span>
               </div>
               
               <button 

@@ -80,7 +80,7 @@ export default function CustomerAddToCartModal({
 
           <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-6">
             <div>
-              <div className="text-3xl font-extrabold text-cyan-600 mb-1">{formatVNDShort(price)}đ</div>
+              <div className="text-3xl font-extrabold text-cyan-600 mb-1">{formatVNDShort(price)}</div>
               <div className="text-sm font-semibold text-emerald-600 bg-emerald-50 inline-block px-2 py-1 rounded-md">
                 Tình trạng: {sp.trangThai === "con-hang" ? "Còn hàng" : "Hết hàng"}
               </div>
