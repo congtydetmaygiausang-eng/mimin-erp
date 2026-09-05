@@ -7,6 +7,14 @@ import { formatVNDShort } from "@/lib/data/real-data";
 import { createMisaPaymentUrl } from "@/lib/misa/misa-helper";
 import { toast } from "sonner";
 
+const VN_LOCATIONS: Record<string, string[]> = {
+  "Hà Nội": ["Quận Ba Đình", "Quận Hoàn Kiếm", "Quận Tây Hồ", "Quận Long Biên", "Quận Cầu Giấy", "Quận Đống Đa", "Quận Hai Bà Trưng", "Quận Hoàng Mai", "Quận Thanh Xuân"],
+  "Hồ Chí Minh": ["Quận 1", "Quận 3", "Quận 4", "Quận 5", "Quận 6", "Quận 7", "Quận 10", "Quận Tân Bình", "Quận Bình Thạnh", "Quận Phú Nhuận", "Quận Gò Vấp", "Thành phố Thủ Đức"],
+  "Đà Nẵng": ["Quận Hải Châu", "Quận Thanh Khê", "Quận Sơn Trà", "Quận Ngũ Hành Sơn", "Quận Liên Chiểu", "Quận Cẩm Lệ"],
+  "Hải Phòng": ["Quận Hồng Bàng", "Quận Ngô Quyền", "Quận Lê Chân", "Quận Hải An", "Quận Kiến An"],
+  "Cần Thơ": ["Quận Ninh Kiều", "Quận Bình Thủy", "Quận Cái Răng", "Quận Ô Môn"]
+};
+
 interface CustomerCheckoutModalProps {
   onClose: () => void;
 }
@@ -17,9 +25,16 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
+    province: "",
+    district: "",
     address: "",
     note: "",
   });
+
+  // When province changes, reset district
+  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData({ ...formData, province: e.target.value, district: "" });
+  };
 
   const total = getTotalPrice();
 
@@ -29,7 +44,7 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
       toast.error("Giỏ hàng đang trống!");
       return;
     }
-    if (!formData.name || !formData.phone || !formData.address) {
+    if (!formData.name || !formData.phone || !formData.province || !formData.district || !formData.address) {
       toast.error("Vui lòng điền đầy đủ thông tin giao hàng");
       return;
     }
@@ -58,25 +73,24 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm">
       <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in duration-300"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-[90vh] md:h-[85vh] flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        
         {/* Left Side: Cart Items */}
         <div className="flex-1 flex flex-col bg-slate-50 border-r border-slate-100 overflow-hidden relative">
-          <div className="p-6 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between">
+          <div className="p-5 md:p-6 border-b border-slate-200 bg-white shrink-0 flex items-center justify-between">
             <h2 className="text-xl font-extrabold flex items-center gap-2 text-slate-800">
               <ShoppingCart className="w-6 h-6 text-cyan-600" />
               Giỏ Hàng Của Bạn
             </h2>
-            <span className="text-sm font-bold text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full">
+            <span className="text-sm font-bold text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full border border-cyan-100">
               {items.length} sản phẩm
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
             {items.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400">
                 <ShoppingCart className="w-16 h-16 mb-4 opacity-50" />
@@ -85,8 +99,8 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
               </div>
             ) : (
               items.map((item) => (
-                <div key={item.id} className="flex gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                  <div className="w-20 h-24 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-100">
+                <div key={item.id} className="flex gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="w-20 h-24 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-50">
                     {item.hinhAnh ? (
                       <img src={item.hinhAnh} alt={item.spTen} className="w-full h-full object-cover" />
                     ) : (
@@ -98,7 +112,7 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                   <div className="flex-1 flex flex-col justify-between">
                     <div>
                       <h3 className="font-bold text-slate-800 line-clamp-2 leading-tight mb-1">{item.spTen}</h3>
-                      <div className="text-xs font-semibold text-slate-500">
+                      <div className="text-xs font-semibold text-slate-500 bg-slate-50 inline-block px-2 py-0.5 rounded-md border border-slate-100">
                         {item.mauTen} • Size {item.size}
                       </div>
                     </div>
@@ -106,21 +120,22 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                       <div className="text-sm font-extrabold text-cyan-700">
                         {formatVNDShort(item.donGia)}đ
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center bg-slate-100 rounded-lg border border-slate-200">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="flex items-center bg-slate-50 rounded-lg border border-slate-200">
                           <button 
-                            className="px-2 py-1 text-slate-600 hover:bg-slate-200 rounded-l-lg font-bold"
+                            className="px-2.5 py-1 text-slate-600 hover:bg-slate-200 rounded-l-lg font-bold transition-colors"
                             onClick={() => updateQuantity(item.id, item.soLuong - 1)}
                           >-</button>
                           <span className="w-8 text-center text-sm font-bold text-slate-800">{item.soLuong}</span>
                           <button 
-                            className="px-2 py-1 text-slate-600 hover:bg-slate-200 rounded-r-lg font-bold"
+                            className="px-2.5 py-1 text-slate-600 hover:bg-slate-200 rounded-r-lg font-bold transition-colors"
                             onClick={() => updateQuantity(item.id, item.soLuong + 1)}
                           >+</button>
                         </div>
                         <button 
                           onClick={() => removeItem(item.id)}
                           className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Xóa sản phẩm"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -134,101 +149,139 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
         </div>
 
         {/* Right Side: Checkout Form */}
-        <div className="w-full md:w-[400px] flex flex-col bg-white overflow-hidden relative">
+        <div className="w-full md:w-[480px] flex flex-col bg-white overflow-hidden relative shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10">
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-colors"
+            className="absolute top-4 right-4 z-10 p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
 
           <form onSubmit={handleCheckout} className="flex-1 flex flex-col h-full">
-            <div className="p-6 md:p-8 flex-1 overflow-y-auto">
-              <h3 className="text-lg font-bold text-slate-800 mb-6">Thông tin nhận hàng</h3>
+            <div className="p-5 md:p-8 flex-1 overflow-y-auto">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">Thông tin nhận hàng</h3>
+              </div>
               
-              <div className="space-y-4">
+              <div className="space-y-4 md:space-y-5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Họ và tên</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="text" 
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all"
-                      placeholder="Nhập tên người nhận"
-                    />
-                  </div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Họ và tên <span className="text-rose-500">*</span></label>
+                  <input 
+                    type="text" 
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder-slate-400"
+                    placeholder="Nguyễn Văn A"
+                  />
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Số điện thoại</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="tel" 
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Số điện thoại <span className="text-rose-500">*</span></label>
+                  <input 
+                    type="tel" 
+                    required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder-slate-400"
+                    placeholder="0901234567"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Tỉnh / Thành phố <span className="text-rose-500">*</span></label>
+                    <select 
                       required
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all"
-                      placeholder="Nhập số điện thoại"
-                    />
+                      value={formData.province}
+                      onChange={handleProvinceChange}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Chọn Tỉnh/Thành</option>
+                      {Object.keys(VN_LOCATIONS).map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Quận / Huyện <span className="text-rose-500">*</span></label>
+                    <select 
+                      required
+                      value={formData.district}
+                      onChange={(e) => setFormData({...formData, district: e.target.value})}
+                      disabled={!formData.province}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Chọn Quận/Huyện</option>
+                      {formData.province && VN_LOCATIONS[formData.province]?.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Địa chỉ giao hàng</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                    <textarea 
-                      required
-                      rows={3}
-                      value={formData.address}
-                      onChange={(e) => setFormData({...formData, address: e.target.value})}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all resize-none"
-                      placeholder="Nhập địa chỉ chi tiết"
-                    />
-                  </div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Địa chỉ cụ thể <span className="text-rose-500">*</span></label>
+                  <textarea 
+                    required
+                    rows={2}
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all resize-none placeholder-slate-400"
+                    placeholder="Số nhà, Tên đường, Phường/Xã..."
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Ghi chú (Tùy chọn)</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Ghi chú giao hàng (Tùy chọn)</label>
                   <textarea 
                     rows={2}
                     value={formData.note}
                     onChange={(e) => setFormData({...formData, note: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all resize-none"
-                    placeholder="Ghi chú thêm cho đơn vị vận chuyển..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all resize-none placeholder-slate-400"
+                    placeholder="Giao trong giờ hành chính..."
                   />
                 </div>
               </div>
             </div>
 
-            <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-200 shrink-0">
-              <div className="flex justify-between items-center mb-4">
+            <div className="p-5 md:p-8 bg-slate-50 border-t border-slate-200 shrink-0">
+              <div className="flex justify-between items-center mb-5 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                 <span className="text-sm font-bold text-slate-500 uppercase">Tổng thanh toán</span>
-                <span className="text-2xl font-extrabold text-cyan-600">{formatVNDShort(total)}đ</span>
+                <span className="text-2xl font-black text-rose-600">{formatVNDShort(total)}đ</span>
               </div>
               
               <button 
                 type="submit"
                 disabled={loading || items.length === 0}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-4 bg-[#00558f] hover:bg-[#00416b] text-white rounded-xl font-bold shadow-[0_4px_20px_rgba(0,85,143,0.3)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-lg"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    <CreditCard className="w-5 h-5" />
+                    <CreditCard className="w-6 h-6" />
                     THANH TOÁN MISA PAY
                   </>
                 )}
               </button>
-              <div className="mt-3 text-center flex items-center justify-center gap-1.5 text-[10px] font-semibold text-slate-400">
-                <span>Bảo mật 100% qua cổng</span>
-                <img src="/misa-logo.svg" alt="MISA" className="h-3 grayscale opacity-60" onError={(e) => e.currentTarget.style.display = 'none'} />
-                <span>MISA</span>
+              
+              <div className="mt-4 flex items-center justify-center gap-4 text-[10px] md:text-xs font-semibold text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  Bảo mật SSL
+                </div>
+                <div className="w-1 h-1 rounded-full bg-slate-300" />
+                <div className="flex items-center gap-1.5">
+                  Được bảo chứng bởi 
+                  <img src="/misa-logo.svg" alt="MISA" className="h-3 grayscale opacity-60" onError={(e) => e.currentTarget.style.display = 'none'} />
+                  <span className="font-bold text-slate-500">MISA</span>
+                </div>
               </div>
             </div>
           </form>
