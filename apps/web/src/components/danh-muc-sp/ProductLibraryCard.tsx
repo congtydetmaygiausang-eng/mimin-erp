@@ -63,14 +63,25 @@ export default function ProductLibraryCard({
 
   const displayPrice = useMemo(() => {
     switch (activeFilter) {
-      case "ban-le": return sp.giaBanLe || sp.giaBanDuKien;
-      case "ban-si": return sp.giaBanSi || sp.giaBanDuKien;
-      case "ban-lo": return sp.giaBanLo || sp.giaBanDuKien;
-      case "tiktok": return sp.giaTikTok || sp.giaBanDuKien;
-      case "shopee": return sp.giaShopee || sp.giaBanDuKien;
-      default: return sp.giaBanDuKien;
+      case "ban-le": return sp.giaBanLe || sp.giaBanDuKien || 0;
+      case "ban-si": return sp.giaBanSi || sp.giaBanDuKien || 0;
+      case "ban-lo": return sp.giaBanLo || sp.giaBanDuKien || 0;
+      case "tiktok": return sp.giaTikTok || sp.giaBanDuKien || 0;
+      case "shopee": return sp.giaShopee || sp.giaBanDuKien || 0;
+      default: return sp.giaBanLe || sp.giaBanSi || sp.giaBanLo || sp.giaTikTok || sp.giaShopee || sp.giaBanDuKien || 0;
     }
   }, [activeFilter, sp]);
+
+  const priceLabel = useMemo(() => {
+    switch (activeFilter) {
+      case "ban-le": return "Giá bán lẻ";
+      case "ban-si": return "Giá bán sỉ";
+      case "ban-lo": return "Giá bán lô";
+      case "tiktok": return "Giá TikTok";
+      case "shopee": return "Giá Shopee";
+      default: return "Giá bán";
+    }
+  }, [activeFilter]);
 
   const hasPrice = displayPrice > 0;
 
@@ -105,6 +116,8 @@ export default function ProductLibraryCard({
           <img
             src={sp.hinhAnh}
             alt={sp.tenSP}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         )}
@@ -198,9 +211,9 @@ export default function ProductLibraryCard({
                   >
                     {mau.img ? (
                       <>
-                        <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                        <img src={mau.img} alt={mau.ten} loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover border border-slate-200" />
                         <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
-                          <img src={mau.img} alt={`Xem trước màu ${mau.ten}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
+                          <img src={mau.img} alt={`Xem trước màu ${mau.ten}`} loading="lazy" decoding="async" className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
                         </div>
                       </>
                     ) : (
@@ -316,15 +329,27 @@ export default function ProductLibraryCard({
           </div>
         )}
 
+        {/* === Interactive Price Chips === */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          <PriceChip label="Bán lẻ" price={sp.giaBanLe} />
+          <PriceChip label="Bán sỉ" price={sp.giaBanSi} />
+          <PriceChip label="Bán lô" price={sp.giaBanLo} />
+          <PriceChip label="TikTok" price={sp.giaTikTok} />
+          <PriceChip label="Shopee" price={sp.giaShopee} />
+        </div>
+
         {/* === Gia ban + Gia von === */}
         <div className="mt-auto mb-3 pt-2 border-t border-slate-100">
           {hasPrice ? (
             <>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
-                  {formatVNDShort(displayPrice)}
-                </span>
-                <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{priceLabel}</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
+                    {formatVNDShort(displayPrice)}
+                  </span>
+                  <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
+                </div>
               </div>
               {sp.giaVonDuKien > 0 && (
                 <div className="text-[10px] md:text-xs text-slate-400 line-through opacity-70 mt-0.5">
@@ -387,5 +412,27 @@ export default function ProductLibraryCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function PriceChip({ label, price }: { label: string; price?: number }) {
+  const [show, setShow] = useState(false);
+  
+  if (price == null || price === 0) return null; // Only show channels that have a price configured
+  
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        setShow(!show);
+      }} 
+      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-all duration-200 shadow-sm ${
+        show 
+          ? 'bg-amber-100 border-amber-300 text-amber-800' 
+          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
+      }`}
+    >
+      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
+    </button>
   );
 }

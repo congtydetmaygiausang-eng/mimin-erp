@@ -2,7 +2,7 @@
 // Giao diện mới: card biến thể là ảnh phủ full, thông tin overlay ở đáy -
 // giống lưới sản phẩm e-commerce. Tông màu trắng/slate/emerald khớp phần còn lại của app.
 
-import type { RefObject } from "react";
+import React, { type RefObject, useState } from "react";
 import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Package, Tag, Hash, DollarSign, MapPin, RefreshCw } from "lucide-react";
 import { DS_KENH_BAN, type SanPhamTP } from "../data";
 
@@ -58,19 +58,19 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
               <div>
                 <span className="font-black text-teal-700 font-mono text-base">{group.maSP || "CHƯA CÓ MÃ"}</span>
                 <h2 className="text-xl font-black text-slate-800">{group.tenSP || "Sản phẩm mới"}</h2>
+                {/* Interactive Price Chips */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <PriceChip label="Bán lẻ" price={group.items[0]?.giaBanLe} />
+                  <PriceChip label="Bán sỉ" price={group.items[0]?.giaBanSi} />
+                  <PriceChip label="Bán lô" price={group.items[0]?.giaBanLo} />
+                  <PriceChip label="TikTok" price={group.items[0]?.giaTikTok} />
+                  <PriceChip label="Shopee" price={group.items[0]?.giaShopee} />
+                </div>
               </div>
               <div className="flex items-center gap-5 text-sm text-right shrink-0">
                 <div className="flex flex-col items-end">
                   <span className="text-slate-400 flex items-center gap-1 text-[11px] uppercase font-bold"><Hash className="w-3 h-3" /> Tổng SL</span>
                   <span className="font-black text-base text-slate-800">{totalQty.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-slate-400 flex items-center gap-1 text-[11px] uppercase font-bold"><DollarSign className="w-3 h-3" /> Giá bán</span>
-                  <span className="font-black text-base text-emerald-600">{priceDisplay ? `${priceDisplay}đ` : "Chưa có"}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-slate-400 text-[11px] uppercase font-bold">Giá trị</span>
-                  <span className="font-black text-base text-sky-600">{(totalValue / 1000).toFixed(0)}K</span>
                 </div>
               </div>
             </div>
@@ -202,11 +202,6 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
           <span className="text-slate-600 text-xs font-bold flex items-center gap-1">
             <Box className="w-3.5 h-3.5" /> {sp.soLuong.toLocaleString()} sp
           </span>
-          {sp.giaBanLe ? (
-            <span className="text-emerald-600 text-sm font-black">{sp.giaBanLe.toLocaleString()}đ</span>
-          ) : (
-            <span className="text-slate-300 text-xs font-bold">Chưa có giá</span>
-          )}
         </div>
         {sp.viTri && (
           <div className="text-slate-400 text-[11px] font-semibold flex items-center gap-1 mt-1.5">
@@ -215,5 +210,24 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
         )}
       </div>
     </div>
+  );
+}
+
+function PriceChip({ label, price }: { label: string; price?: number }) {
+  const [show, setShow] = useState(false);
+  
+  if (price == null || price === 0) return null; // Only show channels that have a price configured
+  
+  return (
+    <button 
+      onClick={() => setShow(!show)} 
+      className={`text-[10px] font-bold px-2 py-1 rounded border transition-all duration-200 shadow-sm ${
+        show 
+          ? 'bg-amber-100 border-amber-300 text-amber-800' 
+          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
+      }`}
+    >
+      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
+    </button>
   );
 }
