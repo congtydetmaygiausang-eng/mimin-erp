@@ -94,18 +94,18 @@ type NavItem = {
   noAccentBar?: boolean; // bỏ thanh viền trái - dùng cho group kiểu thẻ card
 };
 
-// Kiểu chuẩn Enterprise Clean SaaS cho Sidebar
-function cardStyle(activeAccent: string = "text-teal-400"): Partial<NavItem> {
+// Kiểu chuẩn Enterprise Operational cho Sidebar (High Contrast & Identity)
+function cardStyle(accentColor: string = "#14b8a6"): Partial<NavItem> {
   return {
     noAccentBar: true,
-    iconChip: "w-7 h-7 bg-white/10 text-white rounded-lg flex items-center justify-center border border-white/10 shadow-sm",
-    idleBg: "hover:bg-white/10 transition-colors",
+    iconChip: "w-7 h-7 bg-white/10 text-white rounded-lg flex items-center justify-center border border-white/15 shadow-sm",
+    idleBg: "hover:bg-white/10 text-slate-200 hover:text-white transition-all",
     idleText: "text-slate-200 hover:text-white",
-    activeBg: "bg-white/15 text-white shadow-sm border border-white/15",
-    activeText: "text-white font-bold",
-    subBg: "bg-black/20 rounded-xl border border-white/5",
+    activeBg: "bg-teal-950/70 border border-teal-500/40 text-white shadow-sm",
+    activeText: "text-white font-bold tracking-wide",
+    subBg: "bg-[#06242c]/70 rounded-xl border border-teal-900/40 p-1 mt-1 space-y-0.5",
     subIdleText: "text-slate-300 hover:bg-white/10 hover:text-white",
-    activeSubBg: "bg-[#0d9488] text-white font-bold shadow-sm shadow-[#0d9488]/30",
+    activeSubBg: "bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold shadow-sm shadow-teal-950 ring-1 ring-teal-400/40",
   };
 }
 

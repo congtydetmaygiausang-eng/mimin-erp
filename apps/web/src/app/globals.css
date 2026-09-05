@@ -4,18 +4,27 @@
 
 @layer base {
   :root {
-    --bg-primary: #f8fafc;
+    /* Level 0: App Background có chiều sâu (MIMIN Teal Tint nhẹ nhàng, không trắng phẳng) */
+    --bg-primary: #f1f5f9;
+    --bg-app-tint: linear-gradient(180deg, #edf4f7 0%, #f1f5f9 100%);
+    
+    /* Level 1: Main Content Surface */
     --bg-surface: #ffffff;
     --bg-card: #ffffff;
     --bg-card-hover: #f8fafc;
+    
+    /* Typography & Hierarchy */
     --text-primary: #0f172a;
     --text-secondary: #334155;
     --text-muted: #64748b;
+    
+    /* Borders & Level 2 Accents */
     --border: #e2e8f0;
-    --border-subtle: #f1f5f9;
-    --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    --border-subtle: #edf2f7;
+    --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+    --shadow-elevated: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
 
-    /* POLOMIMIN Brand Tokens - Deep Corporate Teal */
+    /* POLOMIMIN Brand Tokens - Deep Corporate Teal & Cyan */
     --brand-teal-50: #f0fdfa;
     --brand-teal-100: #ccfbf1;
     --brand-teal-500: #14b8a6;
@@ -31,7 +40,8 @@
   }
 
   .dark {
-    --bg-primary: #090d16;
+    --bg-primary: #080d14;
+    --bg-app-tint: linear-gradient(180deg, #080d14 0%, #0b111c 100%);
     --bg-surface: #0f172a;
     --bg-card: #111827;
     --bg-card-hover: #1e293b;
@@ -39,8 +49,9 @@
     --text-secondary: #cbd5e1;
     --text-muted: #64748b;
     --border: #1e293b;
-    --border-subtle: #1e293b;
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --border-subtle: #172033;
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --shadow-elevated: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
   }
 
   * {
@@ -71,28 +82,28 @@
 }
 
 @layer components {
-  /* Standardized Clean Enterprise SaaS Backgrounds - Không chói mắt, đồng nhất 100% */
-  .bg-module-login { background: #f8fafc; }
-  .bg-module-dashboard { background: #f8fafc; }
-  .bg-module-lenh-cat { background: #f8fafc; }
-  .bg-module-khach-hang { background: #f8fafc; }
-  .bg-module-ke-hoach { background: #f8fafc; }
-  .bg-module-nhan-su { background: #f8fafc; }
-  .bg-module-kho { background: #f8fafc; }
-  .bg-module-gia-cong { background: #f8fafc; }
-  .bg-module-cong-no { background: #f8fafc; }
-  .bg-module-tong-hop { background: #f8fafc; }
-  .bg-module-hoan-thien { background: #f8fafc; }
-  .bg-module-qc { background: #f8fafc; }
-  .bg-module-cai-dat { background: #f8fafc; }
-  .bg-module-soi-det-nhuom { background: #f8fafc; }
-  .bg-module-phu-lieu { background: #f8fafc; }
-  .bg-module-thanh-pham { background: #f8fafc; }
-  .bg-module-nha-cung-cap { background: #f8fafc; }
-  .bg-module-bang-luong { background: #f8fafc; }
-  .bg-module-doi-tac-gia-cong { background: #f8fafc; }
-  .bg-module-slate { background: #f8fafc; }
-  .bg-module-default { background: #f8fafc; }
+  /* Professional Enterprise SaaS Backgrounds with Subtle Teal Tint (Level 0) */
+  .bg-module-login { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-dashboard { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-lenh-cat { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-khach-hang { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-ke-hoach { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-nhan-su { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-kho { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-gia-cong { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-cong-no { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-tong-hop { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-hoan-thien { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-qc { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-cai-dat { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-soi-det-nhuom { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-phu-lieu { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-thanh-pham { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-nha-cung-cap { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-bang-luong { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-doi-tac-gia-cong { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-slate { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
+  .bg-module-default { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
 
   .dark .bg-module-login,
   .dark .bg-module-dashboard,
@@ -115,7 +126,7 @@
   .dark .bg-module-doi-tac-gia-cong,
   .dark .bg-module-slate,
   .dark .bg-module-default {
-    background: #090d16;
+    background: linear-gradient(180deg, #080d14 0%, #0b111c 100%);
   }
 
   /* PageHeader gradient - dam hon de noi bat */
