@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Loader2, CheckCircle2, ShieldCheck, QrCode } from "lucide-react";
 import { useCustomerCart } from "@/lib/data/customer-cart-store";
 import { formatVNDShort } from "@/lib/data/real-data";
 
@@ -43,8 +43,8 @@ export default function MisaPaymentMockPage() {
         {/* Header MISA */}
         <div className="bg-[#00558f] p-4 flex items-center justify-center border-b-[4px] border-[#0091ff]">
           <div className="text-white font-extrabold text-2xl flex items-center gap-2 tracking-wider">
-            <ShieldCheck className="w-8 h-8" />
-            MISA PAY
+            <QrCode className="w-8 h-8" />
+            MISA VietQR
           </div>
         </div>
 
@@ -70,8 +70,18 @@ export default function MisaPaymentMockPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-semibold text-slate-500">Số tiền:</span>
-                  <span className="text-lg font-extrabold text-rose-600">{formatVNDShort(Number(amount || 0))}đ</span>
+                  <span className="text-lg font-extrabold text-rose-600">{formatVNDShort(Number(amount || 0))}</span>
                 </div>
+              </div>
+
+              {/* VietQR Code */}
+              <div className="w-full flex flex-col items-center justify-center mb-6">
+                <p className="text-sm font-semibold text-slate-500 mb-2">Quét mã QR bằng ứng dụng ngân hàng</p>
+                <img 
+                  src={`https://img.vietqr.io/image/970422-123456789-compact2.png?amount=${amount}&addInfo=${orderId}&accountName=POLOMIMIN`} 
+                  alt="VietQR" 
+                  className="max-w-[250px] w-full h-auto border-2 border-[#00558f] rounded-lg p-2 bg-white" 
+                />
               </div>
 
               <div className="w-full space-y-3">

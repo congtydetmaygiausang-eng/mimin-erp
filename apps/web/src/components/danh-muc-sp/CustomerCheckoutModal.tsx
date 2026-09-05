@@ -51,7 +51,14 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
     
     const selectedProvince = provinces.find((p) => p.name === provinceName);
     if (selectedProvince) {
-      setDistricts(selectedProvince.districts);
+      let d = [...selectedProvince.districts];
+      // Inject missing districts if HCM
+      if (provinceName === "Thành phố Hồ Chí Minh" || provinceName === "Hồ Chí Minh") {
+        d.push({ name: "Quận 2", code: 9992 });
+        d.push({ name: "Quận 9", code: 9999 });
+        d.push({ name: "Quận Thủ Đức", code: 9990 });
+      }
+      setDistricts(d);
     } else {
       setDistricts([]);
     }
@@ -285,7 +292,7 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                 ) : (
                   <>
                     <CreditCard className="w-6 h-6" />
-                    THANH TOÁN MISA PAY
+                    THANH TOÁN MISA VietQR
                   </>
                 )}
               </button>

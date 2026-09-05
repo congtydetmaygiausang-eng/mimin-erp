@@ -501,28 +501,23 @@ export default function DanhMucSanPhamPage() {
               />
             </div>
             
-            {/* Customer Cart Header Button */}
+            {/* Checkout Header Button */}
             <button
               onClick={() => setShowCustomerCheckout(true)}
               className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-rose-600/90 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-rose-600 transition-colors whitespace-nowrap animate-pulse border border-rose-400"
             >
-              <ShoppingCart className="w-5 h-5" /> Thanh toán B2C
-              {getCustomerCartItems() > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-white text-rose-600 text-[11px] font-black flex items-center justify-center shadow-md border-2 border-rose-600">
-                  {getCustomerCartItems()}
-                </span>
-              )}
+              <ShoppingCart className="w-5 h-5" /> Thanh toán
             </button>
 
-            {/* Admin Cart Header Button */}
+            {/* B2C Cart Header Button */}
             <button
-              onClick={() => setShowGioHang(true)}
+              onClick={() => setShowCustomerCheckout(true)}
               className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-white/30 transition-colors whitespace-nowrap"
             >
               <ShoppingCart className="w-5 h-5" /> Giỏ hàng
-              {soLuongTrongGio > 0 && (
+              {getCustomerCartItems() > 0 && (
                 <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center shadow-md">
-                  {soLuongTrongGio}
+                  {getCustomerCartItems()}
                 </span>
               )}
             </button>
