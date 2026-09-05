@@ -161,12 +161,45 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
           <div className="p-6 flex-1 space-y-6 overflow-y-auto min-h-0">
             
             {/* Price & Stats Row */}
-            <div className="flex flex-wrap gap-6 items-end">
-              <div>
-                <div className="text-sm font-bold text-slate-400 uppercase mb-1">Giá bán dự kiến</div>
-                <div className="text-4xl font-extrabold text-cyan-600">
-                  {formatVNDShort(sp.giaBanDuKien)}<span className="text-xl text-cyan-700 font-bold ml-1">VNĐ</span>
-                </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-2">
+                {sp.giaBanLe ? (
+                  <div className="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg min-w-[80px]">
+                    <div className="text-[10px] font-bold text-amber-600 uppercase mb-0.5">Bán lẻ</div>
+                    <div className="text-lg font-extrabold text-amber-800 leading-none">{formatVNDShort(sp.giaBanLe)}đ</div>
+                  </div>
+                ) : null}
+                {sp.giaBanSi ? (
+                  <div className="bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg min-w-[80px]">
+                    <div className="text-[10px] font-bold text-blue-600 uppercase mb-0.5">Bán sỉ</div>
+                    <div className="text-lg font-extrabold text-blue-800 leading-none">{formatVNDShort(sp.giaBanSi)}đ</div>
+                  </div>
+                ) : null}
+                {sp.giaBanLo ? (
+                  <div className="bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg min-w-[80px]">
+                    <div className="text-[10px] font-bold text-purple-600 uppercase mb-0.5">Bán lô</div>
+                    <div className="text-lg font-extrabold text-purple-800 leading-none">{formatVNDShort(sp.giaBanLo)}đ</div>
+                  </div>
+                ) : null}
+                {sp.giaTikTok ? (
+                  <div className="bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg min-w-[80px]">
+                    <div className="text-[10px] font-bold text-rose-600 uppercase mb-0.5">TikTok</div>
+                    <div className="text-lg font-extrabold text-rose-800 leading-none">{formatVNDShort(sp.giaTikTok)}đ</div>
+                  </div>
+                ) : null}
+                {sp.giaShopee ? (
+                  <div className="bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg min-w-[80px]">
+                    <div className="text-[10px] font-bold text-orange-600 uppercase mb-0.5">Shopee</div>
+                    <div className="text-lg font-extrabold text-orange-800 leading-none">{formatVNDShort(sp.giaShopee)}đ</div>
+                  </div>
+                ) : null}
+
+                {!sp.giaBanLe && !sp.giaBanSi && !sp.giaBanLo && !sp.giaTikTok && !sp.giaShopee && sp.giaBanDuKien ? (
+                  <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Giá bán dự kiến</div>
+                    <div className="text-lg font-extrabold text-slate-700 leading-none">{formatVNDShort(sp.giaBanDuKien)}đ</div>
+                  </div>
+                ) : null}
               </div>
               <div className="flex gap-4 pb-1">
                  <div className="flex items-center gap-1 text-sm font-semibold text-slate-600">
