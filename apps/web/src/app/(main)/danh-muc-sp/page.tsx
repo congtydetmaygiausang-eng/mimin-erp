@@ -500,6 +500,21 @@ export default function DanhMucSanPhamPage() {
                 className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-white/30 bg-white/95 backdrop-blur-md text-sm focus:ring-2 focus:ring-white focus:border-white outline-none shadow-xl"
               />
             </div>
+            
+            {/* Customer Cart Header Button */}
+            <button
+              onClick={() => setShowCustomerCheckout(true)}
+              className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-rose-600/90 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-rose-600 transition-colors whitespace-nowrap animate-pulse border border-rose-400"
+            >
+              <ShoppingCart className="w-5 h-5" /> Thanh toán B2C
+              {getCustomerCartItems() > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-white text-rose-600 text-[11px] font-black flex items-center justify-center shadow-md border-2 border-rose-600">
+                  {getCustomerCartItems()}
+                </span>
+              )}
+            </button>
+
+            {/* Admin Cart Header Button */}
             <button
               onClick={() => setShowGioHang(true)}
               className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-white/30 transition-colors whitespace-nowrap"
@@ -656,15 +671,15 @@ export default function DanhMucSanPhamPage() {
       {getCustomerCartItems() > 0 && !showCustomerCheckout && (
         <button
           onClick={() => setShowCustomerCheckout(true)}
-          className="fixed bottom-8 right-8 z-[90] flex items-center justify-center gap-3 bg-cyan-600 hover:bg-cyan-700 text-white p-4 rounded-full shadow-2xl hover:shadow-cyan-500/50 transition-all hover:scale-105 active:scale-95 animate-in fade-in slide-in-from-bottom-8 duration-500"
+          className="fixed bottom-10 right-10 z-[90] flex items-center justify-center gap-3 bg-rose-600 hover:bg-rose-700 text-white p-5 rounded-full shadow-[0_0_40px_rgba(225,29,72,0.6)] hover:shadow-[0_0_50px_rgba(225,29,72,0.8)] transition-all hover:scale-110 active:scale-95 animate-bounce"
         >
           <div className="relative">
-            <ShoppingCart className="w-6 h-6" />
-            <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-extrabold w-5 h-5 flex items-center justify-center rounded-full border-2 border-cyan-600">
+            <ShoppingCart className="w-8 h-8" />
+            <span className="absolute -top-3 -right-3 bg-white text-rose-600 text-[12px] font-extrabold w-6 h-6 flex items-center justify-center rounded-full border-2 border-rose-600 shadow-md">
               {getCustomerCartItems()}
             </span>
           </div>
-          <span className="font-extrabold pr-2 hidden sm:inline">Giỏ hàng của bạn</span>
+          <span className="font-extrabold pr-2 text-lg hidden sm:inline">Tiến hành thanh toán</span>
         </button>
       )}
     </div>
