@@ -116,6 +116,8 @@ export default function ProductLibraryCard({
           <img
             src={sp.hinhAnh}
             alt={sp.tenSP}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         )}
@@ -209,9 +211,9 @@ export default function ProductLibraryCard({
                   >
                     {mau.img ? (
                       <>
-                        <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                        <img src={mau.img} alt={mau.ten} loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover border border-slate-200" />
                         <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
-                          <img src={mau.img} alt={`Xem trước màu ${mau.ten}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
+                          <img src={mau.img} alt={`Xem trước màu ${mau.ten}`} loading="lazy" decoding="async" className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
                         </div>
                       </>
                     ) : (

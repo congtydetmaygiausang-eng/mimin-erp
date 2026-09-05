@@ -346,16 +346,16 @@ export default function CustomerCheckoutModal({ onClose }: CustomerCheckoutModal
                     <img src="/misa-logo.svg" alt="MISA" className="h-3.5 object-contain opacity-70 grayscale" onError={(e) => e.currentTarget.style.display = 'none'} />
                     <span className="font-extrabold text-slate-600">MISA VietQR</span>
                   </div>
-                  <div className="flex items-center gap-3 opacity-40 grayscale hover:grayscale-0 transition-all duration-300">
-                    <svg viewBox="0 0 38 12" className="h-3 w-auto shrink-0" style={{ width: '38px' }} xmlns="http://www.w3.org/2000/svg">
+                  <div className="flex items-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all duration-300">
+                    <svg viewBox="0 0 38 12" className="h-5 w-auto shrink-0" style={{ width: '63px' }} xmlns="http://www.w3.org/2000/svg">
                       <path d="M11.666 8.528l1.455-6.73h2.327l-1.455 6.73h-2.327zM20.25 8.35c.162-.647.74-2.88.74-2.88.106-.41.528-.488.825-.5l1.64.004-1.2 3.376h-2.005zm1.74-6.554h-2.38c-.378 0-.693.213-.836.56l-3.328 7.378h2.443s.4-1.12.49-1.378c.264 0 2.666.002 2.993.002.066.305.284 1.376.284 1.376h2.17l-1.836-7.938zm13.11 4.708c0-2.457-3.486-2.585-3.463-3.664.008-.334.333-.69 1.053-.787.362-.05.15-.058 1.25-.058v-1.85h-1.86c-.527 0-1.026.062-1.472.18-.94.246-1.636 1.134-1.664 2.12-.047 1.636 2.308 1.764 2.33 2.593.013.48-.42.825-1.037.89-.5.05-1.178.012-2.124-.316l-.316-.107v1.94c.54.26 1.428.455 2.385.455 1.35 0 2.228-.68 2.228-1.99L25.334 1.794h-2.327l-.022.09c-.45-1.058-1.782-2.274-3.364-2.842l2.13-7.568h-2.428l-3.774 7.568h2.247l.385-1.05z" fill="#1434CB"/>
                     </svg>
-                    <svg viewBox="0 0 24 16" className="h-3.5 w-auto shrink-0" style={{ width: '21px' }} xmlns="http://www.w3.org/2000/svg">
+                    <svg viewBox="0 0 24 16" className="h-5 w-auto shrink-0" style={{ width: '30px' }} xmlns="http://www.w3.org/2000/svg">
                       <circle cx="7.5" cy="8" r="7.5" fill="#EB001B"/>
                       <circle cx="16.5" cy="8" r="7.5" fill="#F79E1B"/>
                       <path d="M12 14C13.5 12.6 14.5 10.4 14.5 8C14.5 5.6 13.5 3.4 12 2C10.5 3.4 9.5 5.6 9.5 8C9.5 10.4 10.5 12.6 12 14Z" fill="#FF5F00"/>
                     </svg>
-                    <svg viewBox="0 0 40 30" className="h-3.5 w-auto shrink-0" style={{ width: '18px' }} xmlns="http://www.w3.org/2000/svg">
+                    <svg viewBox="0 0 40 30" className="h-5 w-auto shrink-0" style={{ width: '26px' }} xmlns="http://www.w3.org/2000/svg">
                       <rect width="13" height="30" rx="3" fill="#0035A6"/>
                       <rect x="13.5" width="13" height="30" rx="3" fill="#E80012"/>
                       <rect x="27" width="13" height="30" rx="3" fill="#009639"/>
