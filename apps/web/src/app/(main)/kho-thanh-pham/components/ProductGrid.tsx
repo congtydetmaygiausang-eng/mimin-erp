@@ -64,14 +64,6 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
                   <span className="text-slate-400 flex items-center gap-1 text-[11px] uppercase font-bold"><Hash className="w-3 h-3" /> Tổng SL</span>
                   <span className="font-black text-base text-slate-800">{totalQty.toLocaleString()}</span>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-slate-400 flex items-center gap-1 text-[11px] uppercase font-bold"><DollarSign className="w-3 h-3" /> Giá bán</span>
-                  <span className="font-black text-base text-emerald-600">{priceDisplay ? `${priceDisplay}đ` : "Chưa có"}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-slate-400 text-[11px] uppercase font-bold">Giá trị</span>
-                  <span className="font-black text-base text-sky-600">{(totalValue / 1000).toFixed(0)}K</span>
-                </div>
               </div>
             </div>
 
@@ -202,11 +194,6 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
           <span className="text-slate-600 text-xs font-bold flex items-center gap-1">
             <Box className="w-3.5 h-3.5" /> {sp.soLuong.toLocaleString()} sp
           </span>
-          {sp.giaBanLe ? (
-            <span className="text-emerald-600 text-sm font-black">{sp.giaBanLe.toLocaleString()}đ</span>
-          ) : (
-            <span className="text-slate-300 text-xs font-bold">Chưa có giá</span>
-          )}
         </div>
         {sp.viTri && (
           <div className="text-slate-400 text-[11px] font-semibold flex items-center gap-1 mt-1.5">

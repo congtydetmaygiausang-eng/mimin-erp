@@ -251,7 +251,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                 <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá vốn</label>
                 <input type="number" min={0} value={giaVon || ""} onChange={(e) => setGiaVon(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
               </div>
-              <div>
+              <div className="hidden">
                 <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá bán</label>
                 <input type="number" min={0} value={donGia || ""} onChange={(e) => setDonGia(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
               </div>
@@ -385,7 +385,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
           <div className="bg-amber-50 p-3 rounded-lg text-xs space-y-0.5">
             <div className="font-semibold text-amber-800">Tóm tắt lô nhập:</div>
             <div><b>{maSP || "—"}</b> - {tenSP || "—"} · {bienThe.length} biến thể · Tỉ lệ {preset.label}</div>
-            <div>Tổng SL: <b>{tongSLTatCa.toLocaleString()}</b> sản phẩm · Tổng giá trị vốn: <b className="text-emerald-600">{tongGiaTriVon.toLocaleString()}đ</b></div>
+            <div>Tổng SL: <b>{tongSLTatCa.toLocaleString()}</b> sản phẩm</div>
           </div>
         </div>
 
@@ -653,7 +653,7 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá vốn</label>
               <input type="number" min="0" value={form.giaVon} onChange={(e) => setForm({ ...form, giaVon: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
             </div>
-            <div>
+            <div className="hidden">
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán</label>
               <input type="number" min="0" value={form.donGia} onChange={(e) => setForm({ ...form, donGia: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
             </div>
@@ -708,7 +708,7 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
           <div className="bg-amber-50 p-3 rounded-lg text-xs">
             <div className="font-semibold text-amber-800">Tóm tắt:</div>
             <div><b>{form.maSP}</b> - {form.tenSP} | Màu {form.mau} | Size {form.size}</div>
-            <div>SL: <b>{form.soLuong.toLocaleString()}</b> × {form.donGia.toLocaleString()}đ = <b className="text-emerald-600">{(form.soLuong * form.donGia).toLocaleString()}đ</b></div>
+            <div>SL: <b>{form.soLuong.toLocaleString()}</b></div>
           </div>
         </div>
         <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-2xl">
