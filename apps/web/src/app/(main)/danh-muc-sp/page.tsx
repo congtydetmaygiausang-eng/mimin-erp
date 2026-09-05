@@ -176,6 +176,12 @@ export default function DanhMucSanPhamPage() {
         }
       });
     }
+    // Sort by recently edited first
+    result.sort((a, b) => {
+      const dateA = a.ngayCapNhat || a.ngayTao || "";
+      const dateB = b.ngayCapNhat || b.ngayTao || "";
+      return dateB.localeCompare(dateA);
+    });
     return result;
   }, [dsDongBo, search, activeFilter]);
 

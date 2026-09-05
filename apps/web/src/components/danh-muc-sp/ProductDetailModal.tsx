@@ -368,8 +368,8 @@ function DetailPriceChip({ label, price, bgClass, textLabelClass, textPriceClass
       }`}
     >
       <div className={`text-[10px] font-bold uppercase mb-0.5 ${show ? textLabelClass : 'text-slate-500'}`}>{label}</div>
-      <div className={`text-lg font-extrabold leading-none ${show ? textPriceClass : 'text-slate-400 blur-[5px] select-none'}`}>
-        {formatVNDShort(price)}đ
+      <div className={`text-lg font-extrabold leading-none ${show ? textPriceClass : 'text-slate-400'}`}>
+        {show ? `${formatVNDShort(price)}đ` : '*** đ'}
       </div>
     </button>
   );
