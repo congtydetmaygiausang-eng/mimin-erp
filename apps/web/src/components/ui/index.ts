@@ -17,5 +17,11 @@ export { LenhCatCardV2 } from "./LenhCatCardV2";
 export { ChiTietMauHistoryModal } from "./ChiTietMauHistoryModal";
 export { KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "./KhaiBaoSoLuongTheoMau";
 
+export { DataTable, type ColumnDef, type DataTableProps } from "./DataTable";
+export { DetailDrawer, type DetailDrawerProps } from "./DetailDrawer";
+export { StatusBadge, type StatusBadgeProps, type StatusType } from "./StatusBadge";
+export { PageHeader, type PageHeaderProps, type Crumb } from "./PageHeader";
+export { StickyFormActions, type StickyFormActionsProps } from "./StickyFormActions";
+
 // Re-export formatVND helpers từ real-data (dùng nhiều nơi)
 export { formatVND, formatVNDShort } from "@/lib/data/real-data";

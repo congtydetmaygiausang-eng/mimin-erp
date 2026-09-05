@@ -1,98 +1,94 @@
-// PageHeader - header gradient teal-cyan với title + subtitle + action buttons
-// Pattern lấy từ Bảng Lương Tự Động (ảnh tham chiếu sếp Sang)
-// Màu: primary teal #109090, gradient teal-600 → cyan-600
+"use client";
 
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
 import { ChevronRight, Home } from "lucide-react";
 
-interface Crumb {
+export interface Crumb {
   label: string;
   href?: string;
 }
 
-interface PageHeaderProps {
-  /** Tiêu đề chính - lớn, bold, trắng */
+export interface PageHeaderProps {
+  /** Tiêu đề chính của màn hình */
   title: ReactNode;
-  /** Phụ đề nhỏ phía dưới title */
+  /** Mô tả ngắn gọn chức năng của trang */
   subtitle?: ReactNode;
-  /** Nhóm action buttons bên phải (VD: Xuất CSV, Thêm mới) */
+  /** Primary Action & Secondary Actions phía bên phải */
   actions?: ReactNode;
-  /** Breadcrumb (optional) */
+  /** Đường dẫn Breadcrumb */
   breadcrumbs?: Crumb[];
-  /** Module label phía trên title (VD: "MIMIN ERP - Bảng lương") */
-  moduleLabel?: string;
-  /** Icon nhỏ trước title */
+  /** Huy hiệu hoặc tag danh mục đi kèm tiêu đề */
+  badge?: ReactNode;
+  /** Icon tiêu đề */
   icon?: ReactNode;
+  className?: string;
 }
 
-export default function PageHeader({
+export function PageHeader({
   title,
   subtitle,
   actions,
   breadcrumbs,
-  moduleLabel,
+  badge,
   icon,
+  className = "",
 }: PageHeaderProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl mb-6 shadow-lg">
-      {/* Background gradient teal → cyan */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)",
-        }}
-      />
-      {/* Subtle pattern overlay */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.1) 0%, transparent 50%)",
-        }}
-      />
-      {/* Content */}
-      <div className="relative z-10 p-6 md:p-8 text-white">
-        {/* Breadcrumb */}
-        {breadcrumbs && breadcrumbs.length > 0 && (
-          <nav className="flex items-center gap-1.5 text-xs text-white/80 mb-3">
-            <Home className="w-3.5 h-3.5" />
-            {breadcrumbs.map((c, i) => (
+    <div className={`mb-6 space-y-2 ${className}`}>
+      {/* 1. BREADCRUMBS */}
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <nav className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+          <Home className="w-3.5 h-3.5 text-slate-400" />
+          {breadcrumbs.map((c, i) => {
+            const isLast = i === breadcrumbs.length - 1;
+            return (
               <span key={i} className="flex items-center gap-1.5">
-                <ChevronRight className="w-3 h-3 opacity-60" />
-                <span className={i === breadcrumbs.length - 1 ? "font-semibold text-white" : ""}>
-                  {c.label}
-                </span>
+                <ChevronRight className="w-3 h-3 text-slate-400 opacity-60" />
+                {c.href && !isLast ? (
+                  <a href={c.href} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                    {c.label}
+                  </a>
+                ) : (
+                  <span className={isLast ? "font-semibold text-slate-800 dark:text-slate-200" : ""}>
+                    {c.label}
+                  </span>
+                )}
               </span>
-            ))}
-          </nav>
-        )}
+            );
+          })}
+        </nav>
+      )}
 
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {moduleLabel && (
-              <div className="text-xs font-medium text-white/80 mb-1.5 flex items-center gap-1.5">
+      {/* 2. TITLE & ACTION ROW */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {icon && (
+              <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300 shadow-xs shrink-0">
                 {icon}
-                {moduleLabel}
               </div>
             )}
-            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5 leading-tight">
-              {icon && !moduleLabel && (
-                <span className="w-9 h-9 rounded-lg bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
-                  {icon}
-                </span>
-              )}
-              <span className="break-words">{title}</span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+              {title}
             </h1>
-            {subtitle && (
-              <p className="mt-2 text-sm text-white/90 max-w-2xl">{subtitle}</p>
-            )}
+            {badge && <div className="shrink-0">{badge}</div>}
           </div>
-          {actions && (
-            <div className="flex items-center gap-2 flex-wrap shrink-0">{actions}</div>
+          {subtitle && (
+            <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed">
+              {subtitle}
+            </p>
           )}
         </div>
+
+        {/* 3. PRIMARY & SECONDARY ACTIONS */}
+        {actions && (
+          <div className="flex items-center gap-2 flex-wrap shrink-0 sm:self-start pt-1 sm:pt-0">
+            {actions}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+export default PageHeader;
