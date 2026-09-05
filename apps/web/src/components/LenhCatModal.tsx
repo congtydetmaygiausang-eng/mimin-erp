@@ -1376,22 +1376,30 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   key={sp.id} 
                                   className={`flex items-center gap-3 p-2.5 border-b border-slate-100 cursor-pointer transition-colors ${maSP === sp.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
                                   onClick={() => {
-                                    setMaSP(sp.id);
-                                    setTenSP(sp.tenSP);
-                                    setLoaiSP(sp.loaiSP);
+                                    setMaSP(sp.id || "");
+                                    setTenSP(sp.tenSP || "");
+                                    if (sp.loaiSP) setLoaiSP(sp.loaiSP);
                                     if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
-                                    if (sp.dsMau && sp.dsMau.length > 0) {
-                                      setSoMau(sp.dsMau.length);
-                                      setDsMau(sp.dsMau.map(m => ({
-                                        ten: m.ten,
-                                        maSKU: m.maSKU || "",
-                                        dinhMuc: m.dinhMuc || 0.25,
-                                        img: m.img || "",
-                                        maVai: "",
-                                        slDuKien: 0,
-                                        ghiChu: "",
-                                        phanBoSize: []
-                                      })));
+                                    try {
+                                      let dsMauToSet = sp.dsMau;
+                                      if (typeof dsMauToSet === 'string') {
+                                        dsMauToSet = JSON.parse(dsMauToSet);
+                                      }
+                                      if (Array.isArray(dsMauToSet) && dsMauToSet.length > 0) {
+                                        setSoMau(dsMauToSet.length);
+                                        setDsMau(dsMauToSet.map((m) => ({
+                                          ten: m.ten || "",
+                                          maSKU: m.maSKU || "",
+                                          dinhMuc: m.dinhMuc || 0.25,
+                                          img: m.img || "",
+                                          maVai: "",
+                                          slDuKien: 0,
+                                          ghiChu: "",
+                                          phanBoSize: []
+                                        })));
+                                      }
+                                    } catch (e) {
+                                      console.error("Lỗi parse dsMau khi chọn SP:", e);
                                     }
                                     toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
                                     setShowProductDropdown(false);

@@ -1,43 +1,32 @@
 const fs = require('fs');
-let code = fs.readFileSync('apps/web/src/lib/data/danh-muc-sp-store.tsx', 'utf8');
-
-code = code.replace(
-  'await client.from("san_pham").insert(buildDBPayload(sp));',
-  `const payload = buildDBPayload(sp);
-        const { error } = await client.from("san_pham").insert(payload);
-        if (error) {
-          console.warn("Loi them SP (Supabase):", error.message);
-          if (error.code === 'PGRST204' || error.message.includes("column")) {
-             delete (payload as any).hinh_anh;
-             delete (payload as any).trang_thai;
-             delete (payload as any).chat_lieu;
-             delete (payload as any).ncc;
-             delete (payload as any).da_ban;
-             delete (payload as any).rating;
-             delete (payload as any).luot_xem;
-             await client.from("san_pham").insert(payload);
-          }
-        }`
-);
-
-code = code.replace(
-  'await client.from("san_pham").update(snakeData).eq("ma_sp", id);',
-  `const { error } = await client.from("san_pham").update(snakeData).eq("ma_sp", id);
-           if (error) {
-             console.warn("Loi cap nhat SP (Supabase):", error.message);
-             if (error.code === 'PGRST204' || error.message.includes("column")) {
-               delete snakeData.hinh_anh;
-               delete snakeData.trang_thai;
-               delete snakeData.chat_lieu;
-               delete snakeData.ncc;
-               delete snakeData.da_ban;
-               delete snakeData.rating;
-               delete snakeData.luot_xem;
-               if (Object.keys(snakeData).length > 0) {
-                 await client.from("san_pham").update(snakeData).eq("ma_sp", id);
-               }
-             }
-           }`
-);
-
-fs.writeFileSync('apps/web/src/lib/data/danh-muc-sp-store.tsx', code);
+const content = fs.readFileSync('f:/Tool/mimin-erp/apps/web/src/components/LenhCatModal.tsx', 'utf8');
+const lines = content.split('\n');
+const startIdx = lines.findIndex(l => l.includes('if (sp.dsMau && sp.dsMau.length > 0) {'));
+if (startIdx !== -1) {
+    const replacement = `                                    try {
+                                      let dsMauToSet = sp.dsMau;
+                                      if (typeof dsMauToSet === 'string') {
+                                        dsMauToSet = JSON.parse(dsMauToSet);
+                                      }
+                                      if (Array.isArray(dsMauToSet) && dsMauToSet.length > 0) {
+                                        setSoMau(dsMauToSet.length);
+                                        setDsMau(dsMauToSet.map((m) => ({
+                                          ten: m.ten || "",
+                                          maSKU: m.maSKU || "",
+                                          dinhMuc: m.dinhMuc || 0.25,
+                                          img: m.img || "",
+                                          maVai: "",
+                                          slDuKien: 0,
+                                          ghiChu: "",
+                                          phanBoSize: []
+                                        })));
+                                      }
+                                    } catch (e) {
+                                      console.error("Lỗi parse dsMau khi chọn SP:", e);
+                                    }`;
+    lines.splice(startIdx, 12, replacement);
+    fs.writeFileSync('f:/Tool/mimin-erp/apps/web/src/components/LenhCatModal.tsx', lines.join('\n'));
+    console.log('Patched');
+} else {
+    console.log('Not found');
+}
