@@ -645,11 +645,13 @@ export default function DanhMucSanPhamPage() {
         </button>
       )}
       {/* LENH CAT MODAL - mở từ nút Sản Xuất ở Danh Mục SP */}
-      <LenhCatModal
-        isOpen={!!lenhCatSP}
-        onClose={() => setLenhCatSP(null)}
-        initialSP={lenhCatSP}
-      />
+      {!!lenhCatSP && (
+        <LenhCatModal
+          isOpen={true}
+          onClose={() => setLenhCatSP(null)}
+          initialSP={lenhCatSP}
+        />
+      )}
     </div>
   );
 }
