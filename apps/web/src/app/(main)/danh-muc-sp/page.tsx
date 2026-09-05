@@ -22,6 +22,9 @@ import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, gener
 import { generateVariants } from "@/lib/data/product-variants";
 import type { Order, OrderItem } from "@/components/order-detail/types";
 import type { GioHangItem } from "@/lib/data/gio-hang-store";
+import { useCustomerCart } from "@/lib/data/customer-cart-store";
+import CustomerCheckoutModal from "@/components/danh-muc-sp/CustomerCheckoutModal";
+import CustomerAddToCartModal from "@/components/danh-muc-sp/CustomerAddToCartModal";
 import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 import { useKHSX } from "@/lib/data/khsx-store";
 import { useSession } from "@/components/session-provider";
@@ -58,6 +61,11 @@ export default function DanhMucSanPhamPage() {
   const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
   const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  // B2C Customer Cart States
+  const { getTotalItems: getCustomerCartItems } = useCustomerCart();
+  const [showCustomerAddToCart, setShowCustomerAddToCart] = useState<SanPham | null>(null);
+  const [showCustomerCheckout, setShowCustomerCheckout] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -187,8 +195,9 @@ export default function DanhMucSanPhamPage() {
 
   // === HANDLERS (3 CTA buttons) ===
   const handleAddToCart = (sp: SanPham) => {
-    themVaoGio(sp);
-    toast.success(`Đã thêm "${sp.tenSP}" vào giỏ`);
+    // For Internal Admin, it was: themVaoGio(sp); toast...
+    // Now we open Customer AddToCart Modal
+    setShowCustomerAddToCart(sp);
   };
 
   const handleConfirmAddToCart = (data: { 
@@ -628,6 +637,36 @@ export default function DanhMucSanPhamPage() {
         }}
         onSave={handleSaveOrderForm}
       />
+
+      {/* CUSTOMER (B2C) MODALS */}
+      {showCustomerAddToCart && (
+        <CustomerAddToCartModal 
+          sp={showCustomerAddToCart} 
+          onClose={() => setShowCustomerAddToCart(null)} 
+        />
+      )}
+
+      {showCustomerCheckout && (
+        <CustomerCheckoutModal 
+          onClose={() => setShowCustomerCheckout(false)} 
+        />
+      )}
+
+      {/* Floating Customer Cart Button */}
+      {getCustomerCartItems() > 0 && !showCustomerCheckout && (
+        <button
+          onClick={() => setShowCustomerCheckout(true)}
+          className="fixed bottom-8 right-8 z-[90] flex items-center justify-center gap-3 bg-cyan-600 hover:bg-cyan-700 text-white p-4 rounded-full shadow-2xl hover:shadow-cyan-500/50 transition-all hover:scale-105 active:scale-95 animate-in fade-in slide-in-from-bottom-8 duration-500"
+        >
+          <div className="relative">
+            <ShoppingCart className="w-6 h-6" />
+            <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-extrabold w-5 h-5 flex items-center justify-center rounded-full border-2 border-cyan-600">
+              {getCustomerCartItems()}
+            </span>
+          </div>
+          <span className="font-extrabold pr-2 hidden sm:inline">Giỏ hàng của bạn</span>
+        </button>
+      )}
     </div>
   );
 }

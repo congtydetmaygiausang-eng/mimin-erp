@@ -94,18 +94,20 @@ type NavItem = {
   noAccentBar?: boolean; // bỏ thanh viền trái - dùng cho group kiểu thẻ card
 };
 
-// Kiểu chuẩn Enterprise Operational cho Sidebar (High Contrast & Identity)
-function cardStyle(accentColor: string = "#14b8a6"): Partial<NavItem> {
+// Kiểu "thẻ kính mờ" (glassmorphism) dùng chung cho mọi nhóm - trong suốt +
+// backdrop-blur để thấy mờ mờ nền tối phía sau, chỉ đổi màu chip icon + màu
+// mục con đang active theo từng nhóm.
+function cardStyle(chipFrom: string, chipTo: string, subFrom: string, subTo: string, subText: string): Partial<NavItem> {
   return {
     noAccentBar: true,
-    iconChip: "w-7 h-7 bg-white/10 text-white rounded-lg flex items-center justify-center border border-white/15 shadow-sm",
-    idleBg: "hover:bg-white/10 text-slate-200 hover:text-white transition-all",
-    idleText: "text-slate-200 hover:text-white",
-    activeBg: "bg-teal-950/70 border border-teal-500/40 text-white shadow-sm",
-    activeText: "text-white font-bold tracking-wide",
-    subBg: "bg-[#06242c]/70 rounded-xl border border-teal-900/40 p-1 mt-1 space-y-0.5",
-    subIdleText: "text-slate-300 hover:bg-white/10 hover:text-white",
-    activeSubBg: "bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold shadow-sm shadow-teal-950 ring-1 ring-teal-400/40",
+    iconChip: `w-7 h-7 bg-gradient-to-br ${chipFrom} ${chipTo} text-white shadow-sm`,
+    idleBg: "bg-white/15 backdrop-blur-md ring-1 ring-white/25 shadow-lg shadow-black/20 hover:bg-white/25",
+    idleText: "text-white",
+    activeBg: "bg-white/30 backdrop-blur-md ring-1 ring-white/40 shadow-xl shadow-black/25",
+    activeText: "text-white",
+    subBg: "bg-black/25 backdrop-blur-md ring-1 ring-white/15 shadow-lg shadow-black/30",
+    subIdleText: "text-slate-100 hover:bg-white/15 hover:text-white",
+    activeSubBg: `bg-gradient-to-r ${subFrom} ${subTo} ${subText} ring-1 ring-black/5`,
   };
 }
 

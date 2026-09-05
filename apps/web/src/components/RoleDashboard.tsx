@@ -34,96 +34,81 @@ export function RoleDashboard() {
   const firstName = user.name.split(" ").pop() || "bạn";
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5">
-      {/* Operations Executive Status Banner - Tinh gọn, đậm chất điều hành */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="relative shrink-0">
-            <Avatar name={user.name} size="lg" />
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900 shadow-xs"></div>
+    <div className="space-y-5">
+      {/* Welcome banner + role */}
+      <div className="card p-5 bg-gradient-to-r from-brand-500/10 via-violet-500/5 to-pink-500/10 border-brand-500/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-brand-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-700"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-violet-500/10 to-transparent rounded-full blur-2xl translate-y-1/3 -translate-x-1/4 group-hover:scale-110 transition-transform duration-700"></div>
+        
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="relative">
+            <Avatar name={user.name} size="xl" />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse shadow-sm"></div>
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                {firstName}
-              </h1>
-              <span className="px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 text-[11px]">
+          <div className="flex-1">
+            <div className="text-xs font-bold text-brand-600 flex items-center gap-1.5 uppercase tracking-wider mb-0.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              Chào {timeGreeting}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent flex items-center gap-2">
+              {firstName}! <span className="inline-block hover:animate-bounce cursor-default text-black dark:text-white">👋</span>
+            </h1>
+            <div className="flex items-center gap-2 mt-1.5 text-sm opacity-90 flex-wrap">
+              <span className="px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-700 font-bold border border-brand-500/20 shadow-sm text-xs">
                 {ROLE_LABELS[role]}
               </span>
+              <span className="text-slate-400 text-xs font-bold">·</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Bạn có <b className="text-red-600 px-0.5">{stats.urgent}</b> việc khẩn, <b className="text-amber-600 px-0.5">{stats.high}</b> việc quan trọng</span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
-              <span>Bàn điều hành sản xuất</span>
-              <span>·</span>
-              <span>Hôm nay có <b className="text-rose-600 dark:text-rose-400 font-bold">{stats.urgent} việc khẩn</b> và <b className="text-amber-600 dark:text-amber-400 font-bold">{stats.high} việc quan trọng</b></span>
-            </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:self-center ml-auto">
-          <Link
-            href="/canh-bao"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-          >
-            <Activity className="w-3.5 h-3.5 text-amber-500" />
-            <span>Xem cảnh báo</span>
-          </Link>
-          <Link
-            href="/bang-dieu-hanh-sx"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs shadow-teal-600/30 transition"
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            <span>Bảng điều hành SX</span>
-          </Link>
         </div>
       </div>
 
-      {/* 2 QUICK ACTION CARDS - Giảm 30% chiều cao, tập trung hành động nhanh */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Quick Action 1: Thêm Mẫu Mới */}
-        <Link 
-          href="/danh-muc-sp" 
-          className="group relative overflow-hidden rounded-xl p-4 bg-gradient-to-r from-teal-900 to-teal-800 text-white border border-teal-700/50 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-teal-700/60 border border-teal-500/40 flex items-center justify-center text-teal-200 shadow-inner shrink-0 group-hover:scale-105 transition-transform">
-              <Shirt className="w-6 h-6" />
+      {/* 2 PREMIUM CARDS (THÊM MẪU MỚI & TẠO LỆNH CẮT) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card 1: Thêm Mẫu Mới */}
+        <Link href="/danh-muc-sp" className="block relative w-full h-40 rounded-3xl overflow-hidden shadow-xl border border-white/20 group hover:shadow-2xl transition-all duration-300">
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat group-hover:scale-105 transition-transform duration-700" 
+            style={{ backgroundImage: "url('/bg/sky-soft.jpg')" }}
+          ></div>
+          <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-900/80 via-teal-800/40 to-transparent"></div>
+          
+          <div className="relative z-10 p-6 flex flex-col h-full justify-center">
+            <h2 className="text-2xl font-extrabold text-white flex items-center gap-3 drop-shadow-md">
+              <Shirt className="w-7 h-7 text-cyan-300" />
+              Thêm Mẫu Mới
+            </h2>
+            <p className="mt-2 text-cyan-50 opacity-90 text-sm max-w-[80%] line-clamp-2">
+              Quản lý sản phẩm gốc, cấu hình bảng size và định mức màu sắc.
+            </p>
+            <div className="absolute right-6 bottom-6 flex items-center justify-center w-12 h-12 rounded-full bg-white/20 border border-white/40 backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.3)] group-hover:shadow-[0_0_25px_rgba(34,211,238,0.6)] group-hover:bg-white/30 transition-all">
+               <ArrowRight className="w-5 h-5 text-white group-hover:-rotate-45 transition-transform" />
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-white group-hover:text-teal-200 transition-colors flex items-center gap-2">
-                <span>Thêm Mẫu Mới</span>
-                <ArrowRight className="w-4 h-4 text-teal-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-              </div>
-              <p className="text-xs text-teal-200/80 truncate mt-0.5">
-                Quản lý sản phẩm gốc, định mức và bảng size
-              </p>
-            </div>
-          </div>
-          <div className="text-[11px] font-semibold text-teal-200 shrink-0 bg-teal-800/80 px-2.5 py-1 rounded-md border border-teal-600/50">
-            + Danh mục
           </div>
         </Link>
 
-        {/* Quick Action 2: Tạo Lệnh Cắt */}
-        <Link 
-          href="/lenh-cat" 
-          className="group relative overflow-hidden rounded-xl p-4 bg-gradient-to-r from-slate-900 to-teal-950 text-white border border-slate-700/50 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-slate-800/80 border border-slate-600/50 flex items-center justify-center text-teal-300 shadow-inner shrink-0 group-hover:scale-105 transition-transform">
-              <Scissors className="w-6 h-6" />
+        {/* Card 2: Tạo Lệnh Cắt */}
+        <Link href="/lenh-cat" className="block relative w-full h-40 rounded-3xl overflow-hidden shadow-xl border border-white/20 group hover:shadow-2xl transition-all duration-300">
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat group-hover:scale-105 transition-transform duration-700" 
+            style={{ backgroundImage: "url('/bg/sky-soft.jpg')" }}
+          ></div>
+          <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-900/80 via-teal-800/40 to-transparent"></div>
+          
+          <div className="relative z-10 p-6 flex flex-col h-full justify-center">
+            <h2 className="text-2xl font-extrabold text-white flex items-center gap-3 drop-shadow-md">
+              <Scissors className="w-7 h-7 text-cyan-300" />
+              Tạo Lệnh Cắt
+            </h2>
+            <p className="mt-2 text-cyan-50 opacity-90 text-sm max-w-[80%] line-clamp-2">
+              Lên lệnh cắt mới, tự động tính toán định mức vải và giá vốn (COGS).
+            </p>
+            <div className="absolute right-6 bottom-6 flex items-center justify-center w-12 h-12 rounded-full bg-white/20 border border-white/40 backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.3)] group-hover:shadow-[0_0_25px_rgba(34,211,238,0.6)] group-hover:bg-white/30 transition-all">
+               <ArrowRight className="w-5 h-5 text-white group-hover:-rotate-45 transition-transform" />
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-white group-hover:text-teal-300 transition-colors flex items-center gap-2">
-                <span>Tạo Lệnh Cắt</span>
-                <ArrowRight className="w-4 h-4 text-teal-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-              </div>
-              <p className="text-xs text-slate-300/80 truncate mt-0.5">
-                Lên lệnh cắt mới, tự động tính định mức vải và COGS
-              </p>
-            </div>
-          </div>
-          <div className="text-[11px] font-semibold text-teal-300 shrink-0 bg-slate-800/90 px-2.5 py-1 rounded-md border border-slate-600/50">
-            + Lệnh cắt
           </div>
         </Link>
       </div>
@@ -260,120 +245,71 @@ function AccountantStats() {
 function KPI({ label, value, trend, up, down, icon: Icon, color }: {
   label: string; value: string; trend: string; up?: boolean; down?: boolean; icon: any; color: string;
 }) {
-  const accentBorder: Record<string, string> = {
-    emerald: "border-l-emerald-500",
-    red: "border-l-rose-500",
-    amber: "border-l-amber-500",
-    orange: "border-l-orange-500",
-    sky: "border-l-sky-500",
-    violet: "border-l-teal-500",
+  const colorMap: Record<string, string> = {
+    emerald: "from-emerald-500/20 to-emerald-500/5 text-emerald-700",
+    red: "from-red-500/20 to-red-500/5 text-red-700",
+    amber: "from-amber-500/20 to-amber-500/5 text-amber-700",
+    orange: "from-orange-500/20 to-orange-500/5 text-orange-700",
+    sky: "from-sky-500/20 to-sky-500/5 text-sky-700",
+    violet: "from-violet-500/20 to-violet-500/5 text-violet-700",
   };
-
-  const badgeBg: Record<string, string> = {
-    emerald: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
-    red: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300",
-    amber: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
-    orange: "bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
-    sky: "bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300",
-    violet: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300",
-  };
-
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200/80 dark:border-slate-800 border-l-4 ${accentBorder[color] || "border-l-teal-500"} shadow-xs hover:shadow-md transition-all flex flex-col justify-between`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
-          {label}
-        </span>
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${badgeBg[color] || "bg-teal-50 text-teal-700"}`}>
-          <Icon className="w-4 h-4" />
-        </div>
+    <div className={`card p-4 bg-gradient-to-br ${colorMap[color] || colorMap.sky}`}>
+      <div className="text-xs opacity-70 flex items-center gap-1">
+        <Icon className="w-3 h-3" /> {label}
       </div>
-      <div className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight font-mono">
-        {value}
-      </div>
-      <div className="mt-2 flex items-center gap-1.5 text-xs font-medium">
-        {up && <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-        {down && <TrendingDown className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />}
-        <span className={up ? "text-emerald-700 dark:text-emerald-400 font-semibold" : down ? "text-rose-700 dark:text-rose-400 font-semibold" : "text-slate-500 dark:text-slate-400"}>
-          {trend}
-        </span>
+      <div className="text-2xl md:text-3xl font-bold mt-1 text-current">{value}</div>
+      <div className="text-xs mt-1 flex items-center gap-1 opacity-80">
+        {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
+        {trend}
       </div>
     </div>
   );
 }
 
-// My Queue - Trung tâm cảnh báo điều hành thực tế
+// My Queue
 function MyQueue({ tasks }: { tasks: Task[] }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-          <h3 className="font-bold text-sm text-slate-900 dark:text-white tracking-tight">
-            Trung tâm cảnh báo & Công việc vận hành
+    <div className="card overflow-hidden">
+      <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+        <div>
+          <h3 className="font-semibold flex items-center gap-2">
+            🔔 Trung tâm cảnh báo báo cáo thực tế
           </h3>
-        </div>
-        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3">
-          <span>Tổng: <b className="text-slate-800 dark:text-slate-200">{tasks.length}</b></span>
-          <span>·</span>
-          <span className="text-rose-600 dark:text-rose-400 font-bold">{tasks.filter((t) => t.priority === "urgent").length} việc khẩn</span>
-          <span>·</span>
-          <span className="text-amber-600 dark:text-amber-400 font-bold">{tasks.filter((t) => t.priority === "high").length} quan trọng</span>
+          <p className="text-xs opacity-60 mt-0.5">
+            {tasks.length} công việc · {tasks.filter((t) => t.priority === "urgent").length} khẩn · {tasks.filter((t) => t.priority === "high").length} quan trọng
+          </p>
         </div>
       </div>
-      <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto">
+      <div className="divide-y max-h-[500px] overflow-y-auto" style={{ borderColor: "var(--border)" }}>
         {tasks.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">Không có công việc nào cần xử lý lúc này 🎉</div>
+          <div className="p-8 text-center opacity-60 text-sm">Không có công việc nào 🎉</div>
         ) : (
-          tasks.map((t) => {
-            const isUrgent = t.priority === "urgent";
-            const isHigh = t.priority === "high";
-
-            return (
-              <Link
-                key={t.id}
-                href={t.link}
-                className="p-3.5 sm:px-5 flex items-start gap-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group"
-              >
-                <div 
-                  className={`shrink-0 w-1.5 self-stretch rounded-full my-0.5 ${
-                    isUrgent ? "bg-rose-500" : isHigh ? "bg-amber-500" : "bg-teal-500"
-                  }`} 
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span 
-                      className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border ${
-                        isUrgent
-                          ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900"
-                          : isHigh
-                          ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900"
-                          : "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-900"
-                      }`}
-                    >
-                      {priorityLabel(t.priority)}
+          tasks.map((t) => (
+            <Link
+              key={t.id}
+              href={t.link}
+              className="p-3 flex items-start gap-3 hover:bg-white/30 dark:hover:bg-white/5 transition"
+            >
+              <div className={`shrink-0 w-1.5 h-12 rounded-full ${t.priority === "urgent" ? "bg-red-500" : t.priority === "high" ? "bg-amber-500" : t.priority === "medium" ? "bg-sky-500" : "bg-slate-400"}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColor(t.priority)}`}>
+                    {priorityLabel(t.priority)}
+                  </span>
+                  <span className="text-[10px] opacity-60">{t.kind}</span>
+                  {t.dueDate && (
+                    <span className="text-[10px] opacity-60 ml-auto">
+                      <Clock className="w-3 h-3 inline" /> {new Date(t.dueDate).toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" })}
                     </span>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.kind}</span>
-                    {t.dueDate && (
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500 ml-auto flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3 inline text-slate-400" /> 
-                        Hạn: {new Date(t.dueDate).toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" })}
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                    {t.title}
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-                    {t.description}
-                  </div>
+                  )}
                 </div>
-                <div className="shrink-0 self-center text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-all">
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              </Link>
-            );
-          })
+                <div className="font-medium text-sm">{t.title}</div>
+                <div className="text-xs opacity-70 mt-0.5">{t.description}</div>
+              </div>
+              <ArrowRight className="w-4 h-4 opacity-30 mt-3 shrink-0" />
+            </Link>
+          ))
         )}
       </div>
     </div>

@@ -4,54 +4,32 @@
 
 @layer base {
   :root {
-    /* Level 0: App Background có chiều sâu (MIMIN Teal Tint nhẹ nhàng, không trắng phẳng) */
-    --bg-primary: #f1f5f9;
-    --bg-app-tint: linear-gradient(180deg, #edf4f7 0%, #f1f5f9 100%);
-    
-    /* Level 1: Main Content Surface */
-    --bg-surface: #ffffff;
+    --bg-primary: #f8fafc;
     --bg-card: #ffffff;
-    --bg-card-hover: #f8fafc;
-    
-    /* Typography & Hierarchy */
+    --bg-card-hover: #ffffff;
     --text-primary: #0f172a;
     --text-secondary: #334155;
     --text-muted: #64748b;
-    
-    /* Borders & Level 2 Accents */
-    --border: #e2e8f0;
-    --border-subtle: #edf2f7;
-    --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
-    --shadow-elevated: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+    --border: rgba(226, 232, 240, 0.8);
+    --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 
-    /* POLOMIMIN Brand Tokens - Deep Corporate Teal & Cyan */
-    --brand-teal-50: #f0fdfa;
-    --brand-teal-100: #ccfbf1;
-    --brand-teal-500: #14b8a6;
-    --brand-teal-600: #0d9488;
-    --brand-teal-700: #0f766e;
-    --brand-teal-800: #115e59;
-    --brand-teal-900: #134e4a;
-    --brand-teal: #0f766e;
+    /* POLOMIMIN Brand - Mau teal/cyan dam theo anh sep Sang */
+    --brand-teal: #109090;
     --brand-teal-light: #14b8a6;
     --brand-cyan: #0891b2;
-    --brand-gradient: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #0891b2 100%);
-    --brand-gradient-soft: linear-gradient(135deg, #f0fdfa 0%, #f1f5f9 100%);
+    --brand-gradient: linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%);
+    --brand-gradient-soft: linear-gradient(135deg, #ccfbf1 0%, #cffafe 50%, #f0fdfa 100%);
   }
 
   .dark {
-    --bg-primary: #080d14;
-    --bg-app-tint: linear-gradient(180deg, #080d14 0%, #0b111c 100%);
-    --bg-surface: #0f172a;
-    --bg-card: #111827;
-    --bg-card-hover: #1e293b;
+    --bg-primary: #0b0f19;
+    --bg-card: rgba(17, 24, 39, 0.75);
+    --bg-card-hover: rgba(17, 24, 39, 0.9);
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --text-muted: #64748b;
-    --border: #1e293b;
-    --border-subtle: #172033;
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
-    --shadow-elevated: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    --border: rgba(255, 255, 255, 0.08);
+    --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
   }
 
   * {
@@ -82,52 +60,30 @@
 }
 
 @layer components {
-  /* Professional Enterprise SaaS Backgrounds with Subtle Teal Tint (Level 0) */
-  .bg-module-login { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-dashboard { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-lenh-cat { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-khach-hang { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-ke-hoach { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-nhan-su { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-kho { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-gia-cong { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-cong-no { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-tong-hop { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-hoan-thien { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-qc { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-cai-dat { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-soi-det-nhuom { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-phu-lieu { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-thanh-pham { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-nha-cung-cap { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-bang-luong { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-doi-tac-gia-cong { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-slate { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-  .bg-module-default { background: linear-gradient(180deg, #eaf2f5 0%, #f1f5f9 100%); }
-
-  .dark .bg-module-login,
-  .dark .bg-module-dashboard,
-  .dark .bg-module-lenh-cat,
-  .dark .bg-module-khach-hang,
-  .dark .bg-module-ke-hoach,
-  .dark .bg-module-nhan-su,
-  .dark .bg-module-kho,
-  .dark .bg-module-gia-cong,
-  .dark .bg-module-cong-no,
-  .dark .bg-module-tong-hop,
-  .dark .bg-module-hoan-thien,
-  .dark .bg-module-qc,
-  .dark .bg-module-cai-dat,
-  .dark .bg-module-soi-det-nhuom,
-  .dark .bg-module-phu-lieu,
-  .dark .bg-module-thanh-pham,
-  .dark .bg-module-nha-cung-cap,
-  .dark .bg-module-bang-luong,
-  .dark .bg-module-doi-tac-gia-cong,
-  .dark .bg-module-slate,
-  .dark .bg-module-default {
-    background: linear-gradient(180deg, #080d14 0%, #0b111c 100%);
-  }
+  /* GPU-Accelerated Smooth Background Gradients - POLOMIMIN teal/cyan brand */
+  .bg-module-login { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-dashboard { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-lenh-cat { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-khach-hang { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-ke-hoach { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-nhan-su { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-kho { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-gia-cong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-cong-no { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-tong-hop { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-hoan-thien { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-qc { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-cai-dat { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-soi-det-nhuom { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-phu-lieu { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-thanh-pham { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-nha-cung-cap { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-bang-luong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  .bg-module-doi-tac-gia-cong { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
+  /* Nen trang-xam nhe rieng cho trang AI Tinh Gia Von (theo yeu cau, khac nen teal chung).
+     Ton hoi lanh + dam hon mot chut de cac the card mau trang noi len ro. */
+  .bg-module-slate { background: linear-gradient(180deg, #e7eef3 0%, #f4f8fa 45%, #edf2f6 100%); }
+  .bg-module-default { background: linear-gradient(180deg, #2daabf 0%, #b4e7f3 100%); }
 
   /* PageHeader gradient - dam hon de noi bat */
   .page-header-gradient {

@@ -43,6 +43,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "@xyflow/react": "^12.11.3",
     "ai": "^7.0.45",
+    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.460.0",
@@ -61,6 +62,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.9.0",
     "@types/pg": "^8.20.2",
     "@types/react": "^19.0.0",
