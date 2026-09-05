@@ -238,7 +238,7 @@ const MAU_CARD_ACCENT = [
   { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-50/50", ring: "focus-within:ring-fuchsia-200" },
 ] as const;
 
-export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
+export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: boolean; onClose: () => void; editId?: string | null; initialSP?: import("@/lib/data/danh-muc-sp-store").SanPham | null }) {
   const { list: nhanSuList } = useNhanSu();
   const nhanVienOptions: NhanVienOption[] = nhanSuList.map(nv => ({
     ma: nv.maNV,
@@ -404,6 +404,36 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setGhiChuInTheu(editing.ghiChuInTheu || "");
     }
   }, [editing]);
+
+  // Pre-fill product info khi mở từ nút "Sản Xuất" ở Danh Mục SP
+  useEffect(() => {
+    if (!initialSP || editId) return; // chỉ áp dụng khi tạo mới (không phải edit)
+    setMaSP(initialSP.id || "");
+    setTenSP(initialSP.tenSP || "");
+    if (initialSP.loaiSP) setLoaiSP(initialSP.loaiSP as LoaiSP);
+    if (initialSP.tiLeSize) setTiLeSize(initialSP.tiLeSize);
+    try {
+      let dsMauToSet: unknown = initialSP.dsMau;
+      if (typeof dsMauToSet === "string") {
+        dsMauToSet = JSON.parse(dsMauToSet);
+      }
+      if (Array.isArray(dsMauToSet) && dsMauToSet.length > 0) {
+        setSoMau(dsMauToSet.length);
+        setDsMau(dsMauToSet.map((m: Record<string, unknown>) => ({
+          ten: (m.ten as string) || "",
+          maSKU: (m.maSKU as string) || "",
+          dinhMuc: (m.dinhMuc as number) || 0.25,
+          img: (m.img as string) || "",
+          maVai: "",
+          slDuKien: 0,
+          ghiChu: "",
+          phanBoSize: [],
+        })));
+      }
+    } catch (e) {
+      console.error("Lỗi parse dsMau từ initialSP:", e);
+    }
+  }, [initialSP, editId]);
 
   // ============ Form state ============
   const [loaiLenh, setLoaiLenh] = useState<LoaiLenh>("HangNha");
@@ -1179,7 +1209,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     const lines = [
       `📋 Phân công gia công - ${tenSP || maSP}`,
       `Công đoạn: ${item.tenCongDoan}`,
-      `Số lượng: ${item.soLuong} × ${item.donGia.toLocaleString("vi-VN")}đ = ${item.thanhTien.toLocaleString("vi-VN")}đ`,
+      `Số lượng: ${item.soLuong ?? 0} × ${(item.donGia ?? 0).toLocaleString("vi-VN")}đ = ${(item.thanhTien ?? 0).toLocaleString("vi-VN")}đ`,
       `Hạn giao: ${hanHoanThanh}`,
       ghiChuKyThuat ? `Yêu cầu kỹ thuật: ${ghiChuKyThuat}` : "",
     ].filter(Boolean).join("\n");
@@ -1375,23 +1405,33 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 <div 
                                   key={sp.id} 
                                   className={`flex items-center gap-3 p-2.5 border-b border-slate-100 cursor-pointer transition-colors ${maSP === sp.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
-                                  onClick={() => {
-                                    setMaSP(sp.id);
-                                    setTenSP(sp.tenSP);
-                                    setLoaiSP(sp.loaiSP);
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setShowProductDropdown(false);
+                                    setMaSP(sp.id || "");
+                                    setTenSP(sp.tenSP || "");
+                                    if (sp.loaiSP) setLoaiSP(sp.loaiSP);
                                     if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
-                                    if (sp.dsMau && sp.dsMau.length > 0) {
-                                      setSoMau(sp.dsMau.length);
-                                      setDsMau(sp.dsMau.map(m => ({
-                                        ten: m.ten,
-                                        maSKU: m.maSKU || "",
-                                        dinhMuc: m.dinhMuc || 0.25,
-                                        img: m.img || "",
-                                        maVai: "",
-                                        slDuKien: 0,
-                                        ghiChu: "",
-                                        phanBoSize: []
-                                      })));
+                                    try {
+                                      let dsMauToSet = sp.dsMau;
+                                      if (typeof dsMauToSet === 'string') {
+                                        dsMauToSet = JSON.parse(dsMauToSet);
+                                      }
+                                      if (Array.isArray(dsMauToSet) && dsMauToSet.length > 0) {
+                                        setSoMau(dsMauToSet.length);
+                                        setDsMau(dsMauToSet.map((m) => ({
+                                          ten: m.ten || "",
+                                          maSKU: m.maSKU || "",
+                                          dinhMuc: m.dinhMuc || 0.25,
+                                          img: m.img || "",
+                                          maVai: "",
+                                          slDuKien: 0,
+                                          ghiChu: "",
+                                          phanBoSize: []
+                                        })));
+                                      }
+                                    } catch (e) {
+                                      console.error("Lỗi parse dsMau khi chọn SP:", e);
                                     }
                                     toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
                                     setShowProductDropdown(false);
@@ -3030,7 +3070,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       className="w-full text-left px-3 py-2 text-sm hover:bg-sky-50 border-b border-slate-100 last:border-0 flex items-center justify-between"
                     >
                       <span className="font-medium text-slate-700">{item.tenCongDoan} · {item.nguoiTen}</span>
-                      <span className="text-xs text-slate-400">{item.soLuong}×{item.donGia.toLocaleString("vi-VN")}đ</span>
+                      <span className="text-xs text-slate-400">{item.soLuong ?? 0}×{(item.donGia ?? 0).toLocaleString("vi-VN")}đ</span>
                     </button>
                   ))}
                 </div>

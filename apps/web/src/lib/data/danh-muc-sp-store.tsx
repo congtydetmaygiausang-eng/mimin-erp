@@ -85,7 +85,7 @@ function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
     giaShopee: item.giaShopee ?? item.gia_shopee ?? 0,
     tiLeSize: item.tiLeSize || item.ti_le_size || "1:2:2:2:1",
     bangSize: item.bangSize || item.bang_size || { sizes: [], ratios: [], riSo: 1 },
-    dsMau: item.dsMau || item.ds_mau || [],
+    dsMau: (typeof (item.dsMau || item.ds_mau) === 'string' ? (function(){ try { return JSON.parse(item.dsMau || item.ds_mau); } catch(e){ return []; } })() : (item.dsMau || item.ds_mau)) || [],
     ghiChu: item.ghiChu || item.ghi_chu || "",
     ngayTao: item.createdAt || item.created_at ? (item.createdAt || item.created_at).split("T")[0] : new Date().toISOString().split("T")[0],
     hinhAnh: item.hinhAnh || item.hinh_anh || local?.hinhAnh || "",
