@@ -160,7 +160,22 @@ export default function DanhMucSanPhamPage() {
           (sp.tenSP || "").toLowerCase().includes(q)
       );
     }
-    if (activeFilter !== "all") result = result.filter((sp) => sp.kenhBan?.includes(activeFilter as KenhBanKho));
+    if (activeFilter !== "all") {
+      result = result.filter((sp) => {
+        // Return true if explicitly in kenhBan array
+        if (sp.kenhBan?.includes(activeFilter as KenhBanKho)) return true;
+        
+        // OR return true if it has a price configured for this channel
+        switch (activeFilter) {
+          case "ban-le": return (sp.giaBanLe && sp.giaBanLe > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "ban-si": return (sp.giaBanSi && sp.giaBanSi > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "ban-lo": return (sp.giaBanLo && sp.giaBanLo > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "tiktok": return (sp.giaTikTok && sp.giaTikTok > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "shopee": return (sp.giaShopee && sp.giaShopee > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          default: return true;
+        }
+      });
+    }
     return result;
   }, [dsDongBo, search, activeFilter]);
 

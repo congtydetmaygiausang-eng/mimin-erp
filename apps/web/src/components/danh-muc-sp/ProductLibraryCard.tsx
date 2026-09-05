@@ -63,14 +63,25 @@ export default function ProductLibraryCard({
 
   const displayPrice = useMemo(() => {
     switch (activeFilter) {
-      case "ban-le": return sp.giaBanLe || sp.giaBanDuKien;
-      case "ban-si": return sp.giaBanSi || sp.giaBanDuKien;
-      case "ban-lo": return sp.giaBanLo || sp.giaBanDuKien;
-      case "tiktok": return sp.giaTikTok || sp.giaBanDuKien;
-      case "shopee": return sp.giaShopee || sp.giaBanDuKien;
-      default: return sp.giaBanDuKien;
+      case "ban-le": return sp.giaBanLe || sp.giaBanDuKien || 0;
+      case "ban-si": return sp.giaBanSi || sp.giaBanDuKien || 0;
+      case "ban-lo": return sp.giaBanLo || sp.giaBanDuKien || 0;
+      case "tiktok": return sp.giaTikTok || sp.giaBanDuKien || 0;
+      case "shopee": return sp.giaShopee || sp.giaBanDuKien || 0;
+      default: return sp.giaBanLe || sp.giaBanSi || sp.giaBanLo || sp.giaTikTok || sp.giaShopee || sp.giaBanDuKien || 0;
     }
   }, [activeFilter, sp]);
+
+  const priceLabel = useMemo(() => {
+    switch (activeFilter) {
+      case "ban-le": return "Giá bán lẻ";
+      case "ban-si": return "Giá bán sỉ";
+      case "ban-lo": return "Giá bán lô";
+      case "tiktok": return "Giá TikTok";
+      case "shopee": return "Giá Shopee";
+      default: return "Giá bán";
+    }
+  }, [activeFilter]);
 
   const hasPrice = displayPrice > 0;
 
@@ -329,11 +340,14 @@ export default function ProductLibraryCard({
         <div className="mt-auto mb-3 pt-2 border-t border-slate-100">
           {hasPrice ? (
             <>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
-                  {formatVNDShort(displayPrice)}
-                </span>
-                <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{priceLabel}</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
+                    {formatVNDShort(displayPrice)}
+                  </span>
+                  <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
+                </div>
               </div>
               {sp.giaVonDuKien > 0 && (
                 <div className="text-[10px] md:text-xs text-slate-400 line-through opacity-70 mt-0.5">
