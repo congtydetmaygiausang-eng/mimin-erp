@@ -47,47 +47,57 @@ export default function CustomerAddToCartModal({
     onClose();
   };
 
+  // Determine the display image based on selected color
+  const displayImage = sp.dsMau?.find((m) => m.ten === selectedColor)?.img || sp.hinhAnh;
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
       <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col md:flex-row max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-800">Thêm vào giỏ hàng</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
-            <X className="w-5 h-5" />
-          </button>
+        {/* Left Side: Large Image with Hover Zoom */}
+        <div className="w-full md:w-1/2 bg-slate-100 relative group overflow-hidden shrink-0 border-r border-slate-100 min-h-[300px] md:min-h-full">
+          {displayImage ? (
+            <img 
+              src={displayImage} 
+              alt={sp.tenSP} 
+              className="w-full h-full object-contain md:object-cover transition-transform duration-500 ease-out group-hover:scale-150 cursor-zoom-in" 
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center"><ShoppingCart className="w-20 h-20 text-slate-300" /></div>
+          )}
         </div>
 
-        <div className="p-6">
-          <div className="flex gap-4 mb-6">
-            <div className="w-20 h-24 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-100">
-              {sp.hinhAnh ? (
-                <img src={sp.hinhAnh} alt={sp.tenSP} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center"><ShoppingCart className="w-8 h-8 text-slate-300" /></div>
-              )}
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800 line-clamp-2 leading-tight mb-2">{sp.tenSP}</h3>
-              <div className="text-xl font-extrabold text-cyan-600">{formatVNDShort(price)}đ</div>
-            </div>
+        {/* Right Side: Details & Actions */}
+        <div className="w-full md:w-1/2 flex flex-col bg-white overflow-hidden relative">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <h2 className="text-xl font-bold text-slate-800 line-clamp-1">{sp.tenSP}</h2>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 ml-2">
+              <X className="w-6 h-6" />
+            </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-6">
+            <div>
+              <div className="text-3xl font-extrabold text-cyan-600 mb-1">{formatVNDShort(price)}đ</div>
+              <div className="text-sm font-semibold text-emerald-600 bg-emerald-50 inline-block px-2 py-1 rounded-md">
+                Tình trạng: {sp.trangThai === "con-hang" ? "Còn hàng" : "Hết hàng"}
+              </div>
+            </div>
+
             {/* Colors */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Màu sắc</label>
-              <div className="flex flex-wrap gap-2">
+              <label className="block text-sm font-bold text-slate-600 uppercase mb-3">Màu sắc</label>
+              <div className="flex flex-wrap gap-2.5">
                 {sp.dsMau?.map((m) => (
                   <button
                     key={m.ten}
                     onClick={() => setSelectedColor(m.ten)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                    className={`px-5 py-2.5 rounded-xl text-sm font-bold border transition-all ${
                       selectedColor === m.ten 
-                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700 shadow-sm' 
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700 shadow-sm ring-2 ring-cyan-500/20' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     {m.ten}
@@ -98,16 +108,19 @@ export default function CustomerAddToCartModal({
 
             {/* Sizes */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Kích cỡ</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-bold text-slate-600 uppercase">Kích cỡ</label>
+                <span className="text-xs text-cyan-600 font-semibold cursor-pointer hover:underline">Bảng size</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
                 {sp.bangSize?.sizes.map((s) => (
                   <button
                     key={s}
                     onClick={() => setSelectedSize(s)}
-                    className={`w-12 h-12 rounded-xl text-sm font-bold border flex items-center justify-center transition-all ${
+                    className={`min-w-[3.5rem] h-12 px-3 rounded-xl text-base font-bold border flex items-center justify-center transition-all ${
                       selectedSize === s 
-                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700 shadow-sm' 
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700 shadow-sm ring-2 ring-cyan-500/20' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     {s}
@@ -118,30 +131,30 @@ export default function CustomerAddToCartModal({
 
             {/* Quantity */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Số lượng</label>
-              <div className="flex items-center w-max bg-slate-50 rounded-xl border border-slate-200 p-1">
+              <label className="block text-sm font-bold text-slate-600 uppercase mb-3">Số lượng</label>
+              <div className="flex items-center w-max bg-slate-50 rounded-xl border border-slate-200 p-1.5 shadow-inner">
                 <button 
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded-lg font-bold transition-colors"
+                  className="w-12 h-12 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow-sm rounded-lg font-bold transition-all text-xl"
                 >-</button>
-                <span className="w-12 text-center font-extrabold text-slate-800">{quantity}</span>
+                <span className="w-16 text-center font-extrabold text-slate-800 text-lg">{quantity}</span>
                 <button 
                   onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded-lg font-bold transition-colors"
+                  className="w-12 h-12 flex items-center justify-center text-slate-600 hover:bg-white hover:shadow-sm rounded-lg font-bold transition-all text-xl"
                 >+</button>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50">
-          <button 
-            onClick={handleAdd}
-            className="w-full flex items-center justify-center gap-2 py-3.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold shadow-lg shadow-cyan-500/30 transition-all active:scale-[0.98]"
-          >
-            <Check className="w-5 h-5" />
-            THÊM VÀO GIỎ HÀNG
-          </button>
+          <div className="p-6 border-t border-slate-100 bg-slate-50 shrink-0">
+            <button 
+              onClick={handleAdd}
+              className="w-full flex items-center justify-center gap-2 py-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold shadow-lg shadow-cyan-500/30 transition-all active:scale-[0.98] text-lg"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              THÊM VÀO GIỎ HÀNG
+            </button>
+          </div>
         </div>
       </div>
     </div>
