@@ -501,13 +501,7 @@ export default function DanhMucSanPhamPage() {
               />
             </div>
             
-            {/* Checkout Header Button */}
-            <button
-              onClick={() => setShowCustomerCheckout(true)}
-              className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-rose-600/90 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-rose-600 transition-colors whitespace-nowrap animate-pulse border border-rose-400"
-            >
-              <ShoppingCart className="w-5 h-5" /> Thanh toán
-            </button>
+
 
             {/* B2C Cart Header Button */}
             <button
