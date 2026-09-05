@@ -790,74 +790,76 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
 
   useEffect(() => {
     if (!editId && !draftLoaded) {
-      try {
-        const saved = localStorage.getItem("lenhCatDraft");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.loaiLenh) setLoaiLenh(parsed.loaiLenh);
-          if (parsed.khachHang) setKhachHang(parsed.khachHang);
-          if (parsed.loaiSP) setLoaiSP(parsed.loaiSP);
-          if (parsed.maSP) setMaSP(parsed.maSP);
-          if (parsed.tenSP) setTenSP(parsed.tenSP);
-          if (parsed.tongSL) setTongSL(parsed.tongSL);
-          if (parsed.tongSLThucTe) setTongSLThucTe(parsed.tongSLThucTe);
-          if (parsed.ngayBatDau) setNgayBatDau(parsed.ngayBatDau);
-          if (parsed.sdtLienHe) setSdtLienHe(parsed.sdtLienHe);
-          if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
-          if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
-          if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
-          if (parsed.phuTrachSoDo) setPhuTrachSoDo(parsed.phuTrachSoDo);
-          if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
-          if (parsed.ghiChuKyThuat) setGhiChuKyThuat(parsed.ghiChuKyThuat);
-          if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
-          if (parsed.soMau) setSoMau(parsed.soMau);
-          if (parsed.dsMau && parsed.dsMau.length > 0) setDsMau(parsed.dsMau);
-          if (parsed.dsPhuLieu && parsed.dsPhuLieu.length > 0) setDsPhuLieu(parsed.dsPhuLieu);
-          if (parsed.mauCongDoan) setMauCongDoan(parsed.mauCongDoan);
-          if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
-          if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
-          if (parsed.soDoChinh) setSoDoChinh(parsed.soDoChinh);
-          if (parsed.pdfSoDoChinh) setPdfSoDoChinh(parsed.pdfSoDoChinh);
-          if (parsed.khoSoDoChinh) setKhoSoDoChinh(parsed.khoSoDoChinh);
-          if (parsed.daiSoDoChinh) setDaiSoDoChinh(parsed.daiSoDoChinh);
-          if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
-          const phoiFiles = splitPhoiFiles(parsed.soDoPhoi);
-          setSoDoPhoiAo(phoiFiles.ao);
-          setSoDoPhoiQuan(phoiFiles.quan);
-          if (parsed.pdfSoDoPhoi) setPdfSoDoPhoi(parsed.pdfSoDoPhoi);
-          if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
-          if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
-          if (parsed.ghiChuSoDoChinh) setGhiChuSoDoChinh(parsed.ghiChuSoDoChinh);
-          if (parsed.ghiChuSoDoPhoi) setGhiChuSoDoPhoi(parsed.ghiChuSoDoPhoi);
-          if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
-          if (parsed.daiSoDoAo) setDaiSoDoAo(parsed.daiSoDoAo);
-          const diagramAo = splitDiagramFiles(parsed.soDoAo);
-          setSoDoAo(diagramAo.file);
-          setHinhAnhSoDoAo(diagramAo.image);
-          if (parsed.daiSoDoQuan) setDaiSoDoQuan(parsed.daiSoDoQuan);
-          const diagramQuan = splitDiagramFiles(parsed.soDoQuan);
-          setSoDoQuan(diagramQuan.file);
-          setHinhAnhSoDoQuan(diagramQuan.image);
-          if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
-          if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
-          if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
-          
-          if (parsed.phanCong) {
-            const inTheuItem = getInTheuStage(parsed.phanCong);
-            if (inTheuItem) {
-              setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan?.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
-              if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
-              else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
-              else setLoaiInTheu("bo");
+      if (!initialSP) {
+        try {
+          const saved = localStorage.getItem("lenhCatDraft");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.loaiLenh) setLoaiLenh(parsed.loaiLenh);
+            if (parsed.khachHang) setKhachHang(parsed.khachHang);
+            if (parsed.loaiSP) setLoaiSP(parsed.loaiSP);
+            if (parsed.maSP) setMaSP(parsed.maSP);
+            if (parsed.tenSP) setTenSP(parsed.tenSP);
+            if (parsed.tongSL) setTongSL(parsed.tongSL);
+            if (parsed.tongSLThucTe) setTongSLThucTe(parsed.tongSLThucTe);
+            if (parsed.ngayBatDau) setNgayBatDau(parsed.ngayBatDau);
+            if (parsed.sdtLienHe) setSdtLienHe(parsed.sdtLienHe);
+            if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
+            if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
+            if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
+            if (parsed.phuTrachSoDo) setPhuTrachSoDo(parsed.phuTrachSoDo);
+            if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
+            if (parsed.ghiChuKyThuat) setGhiChuKyThuat(parsed.ghiChuKyThuat);
+            if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
+            if (parsed.soMau) setSoMau(parsed.soMau);
+            if (parsed.dsMau && parsed.dsMau.length > 0) setDsMau(parsed.dsMau);
+            if (parsed.dsPhuLieu && parsed.dsPhuLieu.length > 0) setDsPhuLieu(parsed.dsPhuLieu);
+            if (parsed.mauCongDoan) setMauCongDoan(parsed.mauCongDoan);
+            if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
+            if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
+            if (parsed.soDoChinh) setSoDoChinh(parsed.soDoChinh);
+            if (parsed.pdfSoDoChinh) setPdfSoDoChinh(parsed.pdfSoDoChinh);
+            if (parsed.khoSoDoChinh) setKhoSoDoChinh(parsed.khoSoDoChinh);
+            if (parsed.daiSoDoChinh) setDaiSoDoChinh(parsed.daiSoDoChinh);
+            if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
+            const phoiFiles = splitPhoiFiles(parsed.soDoPhoi);
+            setSoDoPhoiAo(phoiFiles.ao);
+            setSoDoPhoiQuan(phoiFiles.quan);
+            if (parsed.pdfSoDoPhoi) setPdfSoDoPhoi(parsed.pdfSoDoPhoi);
+            if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
+            if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
+            if (parsed.ghiChuSoDoChinh) setGhiChuSoDoChinh(parsed.ghiChuSoDoChinh);
+            if (parsed.ghiChuSoDoPhoi) setGhiChuSoDoPhoi(parsed.ghiChuSoDoPhoi);
+            if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
+            if (parsed.daiSoDoAo) setDaiSoDoAo(parsed.daiSoDoAo);
+            const diagramAo = splitDiagramFiles(parsed.soDoAo);
+            setSoDoAo(diagramAo.file);
+            setHinhAnhSoDoAo(diagramAo.image);
+            if (parsed.daiSoDoQuan) setDaiSoDoQuan(parsed.daiSoDoQuan);
+            const diagramQuan = splitDiagramFiles(parsed.soDoQuan);
+            setSoDoQuan(diagramQuan.file);
+            setHinhAnhSoDoQuan(diagramQuan.image);
+            if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
+            if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
+            if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
+            
+            if (parsed.phanCong) {
+              const inTheuItem = getInTheuStage(parsed.phanCong);
+              if (inTheuItem) {
+                setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan?.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
+                if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
+                else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
+                else setLoaiInTheu("bo");
+              }
             }
           }
+        } catch (e) {
+          console.error("Lỗi tải nháp", e);
         }
-      } catch (e) {
-        console.error("Lỗi tải nháp", e);
       }
       setDraftLoaded(true);
     }
-  }, [editId, draftLoaded]);
+  }, [editId, draftLoaded, initialSP]);
 
   useEffect(() => {
     if (!editId && draftLoaded) {
