@@ -29,7 +29,20 @@
 
 ## 🧠 3. BUSINESS LOGIC & WORKFLOWS (Đã được training)
 
-### 3.1. Luồng Nhập Tỷ Lệ Size (Cốt lõi)
+### 3.1. QUY TRÌNH CHẠY LOGIC TUẦN TỰ (CỐT LÕI - KHÓA LUỒNG)
+**🚨 Mọi AI TUYỆT ĐỐI KHÔNG ĐƯỢC làm phá vỡ hoặc thay đổi thứ tự và logic của 10 bước sau:**
+1. **Kế hoạch SX**: Đầu vào quy trình. Xác định mã hàng, số lượng dự kiến, nguyên phụ liệu.
+2. **Lệnh cắt**: Kế thừa thông tin từ Kế hoạch SX, tạo lệnh chính thức, chỉ định sơ đồ cắt, loại vải và tỷ lệ size ban đầu.
+3. **Tổ Cắt (Việc của tôi)**: Nhập **số lượng cắt thực tế** vào `TyLeSizeModal` (Single Source of Truth). Tổng SL thực tế của đơn hàng sẽ được chốt ở bước này.
+4. **In/Thêu (Việc của tôi)**: Tự động sao chép (Auto-Cascade) số lượng từ khâu Cắt sang. Hệ thống tự động đối chiếu số lượng với Cắt để tính lỗi (Defect Tracking - hiển thị lỗi màu đỏ).
+5. **Tổ May (Việc của tôi)**: Cập nhật tiến độ may. Nếu gia công ngoài, nhập qua `GiaCongModal` và đồng bộ ngược về bảng size tổng.
+6. **QC (Kiểm tra chất lượng)**: Nhận hàng từ Tổ May, kiểm tra lỗi, cập nhật số lượng Đạt và Lỗi (phế phẩm/trả sửa).
+7. **Khuy nút (Việc của tôi)**: Xử lý đơm khuy, đóng nút cho sản phẩm pass QC hoặc trực tiếp từ khâu May.
+8. **Tổ Ủi (Việc của tôi)**: Kế thừa số liệu đầu vào, tiến hành ủi phẳng, đối chiếu hao hụt với các khâu trước.
+9. **Đóng gói nhập kho (Việc của tôi)**: Gấp xếp, đóng bao bì theo tỷ lệ size. Chốt số lượng thành phẩm cuối cùng nhập kho.
+10. **Hoàn Thiện (Tổng hợp)**: Theo dõi xuyên suốt tỷ lệ hao hụt từ Cắt đến Đóng gói, chốt công nợ gia công, tính lương khoán và xác nhận hoàn tất đơn hàng.
+
+### 3.2. Luồng Nhập Tỷ Lệ Size (Cơ chế chi tiết)
 - **Single Source of Truth**: Dùng `TyLeSizeModal` làm nơi duy nhất để nhập số lượng cho tất cả các khâu (Cắt, In/Thêu, Ủi, Đóng Gói).
 - **Auto-Cascade (Tự động sao chép)**: Số liệu từ khâu "Cắt" sẽ tự động copy sang khâu "In/Thêu" (nếu In/Thêu chưa có dữ liệu).
 - **Defect Tracking (Tính lỗi)**: Từ khâu In/Thêu trở đi, hệ thống tự động so sánh số lượng với khâu "Cắt". Nếu ít hơn, tự động hiển thị `Lỗi: x SP` (màu đỏ).
