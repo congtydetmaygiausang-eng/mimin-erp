@@ -1375,7 +1375,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 <div 
                                   key={sp.id} 
                                   className={`flex items-center gap-3 p-2.5 border-b border-slate-100 cursor-pointer transition-colors ${maSP === sp.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
-                                  onClick={() => {
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setShowProductDropdown(false);
                                     setMaSP(sp.id || "");
                                     setTenSP(sp.tenSP || "");
                                     if (sp.loaiSP) setLoaiSP(sp.loaiSP);
