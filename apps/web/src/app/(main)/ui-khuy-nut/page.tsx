@@ -8,8 +8,7 @@ import { CheckCircle2, Circle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2 } from "@/components/ui";
-import { ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/modals/ChiTietMauHistoryModal";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 

@@ -9,8 +9,7 @@ import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateC
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, type ChiTietMauInput } from "@/components/ui";
-import { ChiTietMauHistoryModal } from "@/components/modals/ChiTietMauHistoryModal";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 

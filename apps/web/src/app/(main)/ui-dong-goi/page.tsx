@@ -8,14 +8,12 @@ import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2 } from "@/components/ui";
-import { ChiTietMauHistoryModal } from "@/components/modals/ChiTietMauHistoryModal";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
 import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
-import { type ChiTietMauInput } from "@/components/ui";
 
 export default function UiDongGoiPage() {
   const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: string } | null>(null);
