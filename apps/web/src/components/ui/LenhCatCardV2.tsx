@@ -72,11 +72,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
           {lc.phanCong && lc.phanCong.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Quy trình:</span>
-              {[...lc.phanCong].filter(pc => {
-                const isOptional = ["in", "theu", "khuy"].some(k => pc.id.toLowerCase().includes(k) || pc.tenCongDoan?.toLowerCase().includes(k));
-                if (isOptional && (!pc.nguoiMa || pc.nguoiMa.trim() === "" || pc.nguoiMa === "null")) return false;
-                return true;
-              }).sort((a, b) => {
+              {[...lc.phanCong].sort((a, b) => {
                 const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
                 const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
                 const bRank = STAGE_ORDER.findIndex(k => (b.id || "").toLowerCase().includes(k));
