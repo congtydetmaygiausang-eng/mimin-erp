@@ -404,7 +404,13 @@ interface LenhCatStore {
     thanhTien?: number;
     conLai?: number;
     catChiTiet?: CatChiTiet;
+    catChiTietUpdate?: Partial<CatChiTiet>;
     chiTietMau?: any;
+    lichSuQC?: any[];
+    soLuongSuaXong?: number;
+    soLuongPhePham?: number;
+    soLuongDatCuoi?: number;
+    lichSuNhapSL?: any[];
   }) => void;
   reset: () => void;
   loading: boolean;
@@ -697,20 +703,23 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     thanhTien?: number;
     conLai?: number;
     catChiTiet?: CatChiTiet;
+    catChiTietUpdate?: Partial<CatChiTiet>;
     chiTietMau?: any;
-    // QC Defect Return Flow (P2)
     lichSuQC?: LichSuQCItem[];
     soLuongSuaXong?: number;
     soLuongPhePham?: number;
-    soLuongDatCuoi?: number;     // SL đạt cuối - dùng cho công nợ/lương
+    soLuongDatCuoi?: number;
     lichSuNhapSL?: LichSuNhapSLItem[];
   }) => {
-    let found = false;
-    const lcCurrent = dsLenhCat.find(x => x.id === lenhId);
-    let newPhanCong = lcCurrent
-      ? lcCurrent.phanCong.map((pc: any) => {
+    let finalPhanCong: any = null;
+    let congNoSyncInfo: any = null;
+
+    setDsLenhCat(prev => {
+      const lcCurrent = prev.find(x => x.id === lenhId);
+      if (!lcCurrent) return prev;
+
+      finalPhanCong = lcCurrent.phanCong.map((pc: any) => {
           if (pc.id === congDoanId) {
-            found = true;
             return {
                 ...pc,
                 trangThaiCD: data.trangThaiCD ?? pc.trangThaiCD,
@@ -719,7 +728,9 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 lyDoLoi: data.lyDoLoi ?? pc.lyDoLoi,
                 thanhTien: data.thanhTien ?? pc.thanhTien,
                 conLai: data.conLai ?? pc.conLai,
-                catChiTiet: data.catChiTiet ?? pc.catChiTiet,
+                catChiTiet: data.catChiTietUpdate 
+                  ? { ...(pc.catChiTiet || {}), ...data.catChiTietUpdate } 
+                  : (data.catChiTiet ?? pc.catChiTiet),
                 chiTietMau: data.chiTietMau ?? pc.chiTietMau,
                 // QC Defect Return Flow fields
                 lichSuQC: data.lichSuQC ?? pc.lichSuQC,
@@ -738,15 +749,13 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
               };
           }
           return pc;
-        })
-      : null;
-
+        });
     let congNoSyncInfo: {
       lenhCatId: string; congDoan: string; nguoiMa: string; nguoiTen: string;
       donGia: number; soLuongGiao: number; ngayGiao?: string; daThanhToan?: number;
     } | null = null;
-    if (data.trangThaiCD === 'hoan_thanh' && lcCurrent && newPhanCong) {
-      const pc = newPhanCong.find((x: any) => x.id === congDoanId);
+    if (data.trangThaiCD === 'hoan_thanh' && finalPhanCong) {
+      const pc = finalPhanCong.find((x: any) => x.id === congDoanId);
       if (pc && pc.nguoiMa) {
         // Ưu tiên dùng soLuongDatCuoi (tổng SL đạt sau tất cả vòng QC)
         // Nếu chưa có (khâu không qua QC nư Cắt/Ủi) dùng soLuongHoanThanh rồi tongSL
@@ -767,11 +776,12 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setDsLenhCat(prev => {
-      const next = prev.map(lc => lc.id === lenhId && newPhanCong ? { ...lc, phanCong: newPhanCong } : lc);
+      const next = prev.map(lc => lc.id === lenhId ? { ...lc, phanCong: finalPhanCong } : lc);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
+
+    const newPhanCong = finalPhanCong;
 
     // Đồng bộ công nợ công đoạn qua store thật (=> lên Supabase) - KHÔNG ghi thẳng
     // localStorage["mimin_phan_cong_v2"] nữa, vì làm vậy sẽ bị useSupabaseSync ghi
