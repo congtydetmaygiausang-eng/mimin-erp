@@ -168,45 +168,23 @@ export default function KeHoachSXPage() {
       await themLenhCat(newLenhCat, user as any);
 
       if (supabase) {
-        // We must try both lenh_cat_id and lenhCatId depending on DB schema
-        let dbColumn = "lenh_cat_id";
-        let { data: updateData, error: updateError } = await supabase
+        // Atomic update to claim KHSX (handles both null and empty string defaults)
+        const { data: updateData } = await supabase
           .from("khsx")
-          .update({ [dbColumn]: newId })
+          .update({ lenhCatId: newId })
           .eq("id", item.id)
-          .is(dbColumn, null)
+          .or('lenhCatId.is.null,lenhCatId.eq.""')
           .select();
 
-        // If the column doesn't exist, try camelCase
-        if (updateError && updateError.message && updateError.message.includes("column")) {
-          dbColumn = "lenhCatId";
-          const retry = await supabase
-            .from("khsx")
-            .update({ [dbColumn]: newId })
-            .eq("id", item.id)
-            .is(dbColumn, null)
-            .select();
-          updateData = retry.data;
-          updateError = retry.error;
-        }
-
-        // If another user already claimed it exactly at the same time, or an unknown error occurred
-        if (updateError || !updateData || updateData.length === 0) {
+        // If another user already claimed it exactly at the same time
+        if (!updateData || updateData.length === 0) {
           // Rollback orphaned LenhCat
           await supabase.from("lenh_cat").delete().eq("id", newId);
           
-          let existingLenhCatId = null;
-          const { data: checkData } = await supabase.from("khsx").select(dbColumn).eq("id", item.id).single();
-          if (checkData) {
-            existingLenhCatId = checkData[dbColumn];
-          }
+          const { data: checkData } = await supabase.from("khsx").select("lenhCatId").eq("id", item.id).single();
+          const existingLenhCatId = checkData && checkData.lenhCatId !== "" ? checkData.lenhCatId : null;
           
-          if (updateError) {
-             toast.error(`Lỗi cập nhật CSDL: ${updateError.message}`);
-          } else {
-             toast.error(`Trùng lặp: Kế hoạch này vừa được người khác tạo Lệnh Cắt (${existingLenhCatId || 'khác'}) cùng lúc!`);
-          }
-          
+          toast.error(`Trùng lặp: Kế hoạch này vừa được người khác tạo Lệnh Cắt (${existingLenhCatId || 'khác'}) cùng lúc!`);
           if (existingLenhCatId) {
             suaKHSX(item.id, { lenhCatId: existingLenhCatId }, null);
           }
