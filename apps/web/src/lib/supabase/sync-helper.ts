@@ -388,7 +388,21 @@ export function useSupabaseRealtime<T>(
               const rowId = (newRow as any)[pk];
               const idx = next.findIndex((r) => (r as any)[pk] === rowId);
               
-              if (idx >= 0) next[idx] = newRow;
+              if (idx >= 0) {
+                if (payload.eventType === "UPDATE") {
+                  // Chỉ cập nhật những field thực sự có trong payload.new để tránh ghi đè = default (null/[])
+                  const updatedKeys = Object.keys(payload.new).map(k => k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()));
+                  const merged: any = { ...next[idx] };
+                  for (const key of updatedKeys) {
+                     if (key in newRow) {
+                        (merged as any)[key] = (newRow as any)[key];
+                     }
+                  }
+                  next[idx] = merged;
+                } else {
+                  next[idx] = newRow;
+                }
+              }
               else next = [newRow, ...next];
             } else if (payload.eventType === "DELETE") {
               const oldPayload = payload.old as any;
