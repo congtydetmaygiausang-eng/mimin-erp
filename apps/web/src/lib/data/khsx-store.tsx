@@ -81,8 +81,28 @@ function saveData(items: KHSX[]) {
 function persist(item: KHSX) {
   if (!isSupabaseEnabled) return;
   
-  // Bảng khsx trên Supabase thực tế đang dùng cột camelCase, nên ta dùng supabaseUpsertRaw
-  supabaseUpsertRaw("khsx", item, "id").catch((error) => console.error("[KHSX] Supabase upsert error:", error));
+  // Clone item to add snake_case/lowercase fallbacks for top-level keys 
+  // We do this manually to avoid deep-converting nested objects like dsMau
+  const payload: any = { ...item };
+  if (item.maKHSX) { payload.ma_khsx = item.maKHSX; payload.makhsx = item.maKHSX; }
+  if (item.maSP) { payload.ma_sp = item.maSP; payload.masp = item.maSP; }
+  if (item.tenSP) { payload.ten_sp = item.tenSP; payload.tensp = item.tenSP; }
+  if (item.loaiSP) { payload.loai_sp = item.loaiSP; payload.loaisp = item.loaiSP; }
+  if (item.tiLeSize) { payload.ti_le_size = item.tiLeSize; payload.tilesize = item.tiLeSize; }
+  if (item.dsMau) { payload.ds_mau = item.dsMau; payload.dsmau = item.dsMau; }
+  if (item.tuNgay) { payload.tu_ngay = item.tuNgay; payload.tungay = item.tuNgay; }
+  if (item.denNgay) { payload.den_ngay = item.denNgay; payload.denngay = item.denNgay; }
+  if (item.sanPham) { payload.san_pham = item.sanPham; payload.sanpham = item.sanPham; }
+  if (item.soLuong !== undefined) { payload.so_luong = item.soLuong; payload.soluong = item.soLuong; }
+  if (item.daHoanThanh !== undefined) { payload.da_hoan_thanh = item.daHoanThanh; payload.dahoanthanh = item.daHoanThanh; }
+  if (item.xuongPhuTrach) { payload.xuong_phu_trach = item.xuongPhuTrach; payload.xuongphutrach = item.xuongPhuTrach; }
+  if (item.trangThai) { payload.trang_thai = item.trangThai; payload.trangthai = item.trangThai; }
+  if (item.ghiChu) { payload.ghi_chu = item.ghiChu; payload.ghichu = item.ghiChu; }
+  if (item.ngayTao) { payload.ngay_tao = item.ngayTao; payload.ngaytao = item.ngayTao; }
+  if (item.nguoiTao) { payload.nguoi_tao = item.nguoiTao; payload.nguoitao = item.nguoiTao; }
+  if (item.lenhCatId) { payload.lenh_cat_id = item.lenhCatId; payload.lenhcatid = item.lenhCatId; }
+
+  supabaseUpsertRaw("khsx", payload, "id").catch((error) => console.error("[KHSX] Supabase upsert error:", error));
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
