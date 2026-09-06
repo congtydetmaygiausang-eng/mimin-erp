@@ -102,12 +102,15 @@ export default function KeHoachSXPage() {
       const now = new Date().toISOString().slice(0, 10);
       
       let sp: any = null;
-      if (item.maSP) {
+      if (item.maSP || item.sanPham || item.tenSP) {
         try {
           const spRaw = localStorage.getItem("mimin_danh_muc_v2") || localStorage.getItem("mimin_danh_muc_sp");
           if (spRaw) {
             const spList = JSON.parse(spRaw);
-            sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
+            sp = spList.find((s: any) => 
+              (item.maSP && (s.id === item.maSP || s.ma_sp === item.maSP)) ||
+              ((item.tenSP || item.sanPham) && s.tenSP === (item.tenSP || item.sanPham))
+            );
           }
         } catch (e) {}
       }
@@ -131,8 +134,8 @@ export default function KeHoachSXPage() {
           }
           return ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"].includes(val as string) ? val : "BoTru";
         })(),
-        maSP: item.maSP || "",
-        tenSP: item.tenSP || item.sanPham,
+        maSP: item.maSP || sp?.id || "",
+        tenSP: item.tenSP || item.sanPham || sp?.tenSP || "",
         tongSL: item.soLuong,
         hanHoanThanh: item.denNgay,
         tiLeSize: item.tiLeSize || sp?.tiLeSize || "1:2:2:1",
