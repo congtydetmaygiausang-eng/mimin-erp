@@ -165,7 +165,7 @@ export default function CongViecCatPage() {
     else if (current === "khong_can") next = "cho_lam";
 
     capNhatCongDoan(lenhId, congDoanId, {
-      catChiTiet: { ...currentChiTiet, [key]: next }
+      catChiTietUpdate: { [key]: next }
     });
   }
 
