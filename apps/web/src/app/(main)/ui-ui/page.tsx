@@ -66,16 +66,18 @@ export default function UiUiPage() {
         newChiTiet.push(data);
       }
 
-      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
+      const newPhanCong = lc.phanCong?.map((p: any) => p.id === pcId ? { ...p, chiTietMau: newChiTiet } : p);
+      let newDsMau = lc.dsMau;
 
       if (data.sizes && data.sizes.length > 0) {
         const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
         if (mauIdx >= 0) {
-          const newDsMau = [...(lc.dsMau || [])];
+          newDsMau = [...(lc.dsMau || [])];
           newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
         }
       }
+      
+      suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
 
       toast.success(`Đã lưu thông tin màu ${data.mau}`);
     } catch (e: any) {
