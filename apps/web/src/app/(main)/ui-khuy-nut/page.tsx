@@ -8,11 +8,14 @@ import { CheckCircle2, Circle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2 } from "@/components/ui";
+import { ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/modals/ChiTietMauHistoryModal";
+import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 
 export default function UiKhuyNutPage() {
   const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
 
   const { user } = useSession();
@@ -86,7 +89,7 @@ export default function UiKhuyNutPage() {
     toast.success(`🔘 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleXong(lc: any, pc: any) {
+  function handleXong(lc: any, pc: any, bangChungURLs?: string[]) {
     // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
@@ -101,6 +104,7 @@ export default function UiKhuyNutPage() {
       trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
+      bangChungURLs: bangChungURLs,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -113,8 +117,9 @@ export default function UiKhuyNutPage() {
     if (allDone) {
       toast.success(`🎉 ${lc.id} hoàn thành toàn bộ – Đang chờ Nhập kho thành phẩm!`);
     } else {
-      toast.success(`✅ Hoàn thành: ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
+      toast.success(`✅ Xong: ${slDat} Đạt (Lỗi: ${slLoi})`);
     }
+    setUploadModal(null);
   }
 
   return (
@@ -194,7 +199,7 @@ export default function UiKhuyNutPage() {
                             </button>
                           )}
                           {tt === "dang_lam" && (
-                              <button onClick={() => handleXong(lc, pc)}
+                              <button onClick={() => setUploadModal({ lc, pc })}
                                 className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm">
                                 <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển Ủi
                               </button>
@@ -233,6 +238,16 @@ export default function UiKhuyNutPage() {
           onSave={handleSaveColorModal}
         />
       )}
+
+      {/* Modal Upload Bằng chứng */}
+      <UploadBangChungModal 
+        open={!!uploadModal}
+        onClose={() => setUploadModal(null)}
+        onConfirm={(urls) => {
+          if (uploadModal) handleXong(uploadModal.lc, uploadModal.pc, urls);
+        }}
+        existingUrls={uploadModal?.pc?.bangChungURLs}
+      />
     </div>
   );
 }

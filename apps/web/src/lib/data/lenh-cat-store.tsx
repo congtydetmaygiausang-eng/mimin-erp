@@ -194,6 +194,8 @@ type CongDoanBase = {
   soLuongDatCuoi?: number;
   // Lịch sử nhập SL toàn bộ sự kiện (dùng cho nhập kho, công nợ, lương)
   lichSuNhapSL?: LichSuNhapSLItem[];
+  // Danh sách link ảnh bằng chứng hoàn thành (Proof of Work)
+  bangChungURLs?: string[];
 };
 
 

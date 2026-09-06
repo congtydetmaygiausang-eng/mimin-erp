@@ -9,13 +9,16 @@ import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-rea
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, type ChiTietMauInput } from "@/components/ui";
+import { ChiTietMauHistoryModal } from "@/components/modals/ChiTietMauHistoryModal";
+import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 
 const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo", "in_theu", "in_theu_ao", "in_theu_quan"];
 
 export default function UiInTheuPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: string } | null>(null);
+  const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { user } = useSession();
 
@@ -95,7 +98,7 @@ export default function UiInTheuPage() {
     toast.success(`🎨 Nhận hàng In/Thêu: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleHoanThanh(lc: any, pc: any) {
+  function handleHoanThanh(lc: any, pc: any, bangChungURLs?: string[]) {
     // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
@@ -108,9 +111,11 @@ export default function UiInTheuPage() {
     capNhatCongDoan(lc.id, pc.id, {
       trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: tongDat,
-      soLuongLoi: tongLoi
+      soLuongLoi: tongLoi,
+      bangChungURLs: bangChungURLs
     });
     toast.success(`✅ Chuyển tiếp thành công: ${tongDat} SP (Lỗi: ${tongLoi})`);
+    setUploadModal(null);
   }
 
   return (
@@ -195,7 +200,7 @@ export default function UiInTheuPage() {
                           {tt === "dang_lam" && (
                             <>
                               <button
-                                onClick={() => handleHoanThanh(lc, pc)}
+                                onClick={() => setUploadModal({ lc, pc })}
                                 className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm"
                               >
                                 <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển tiếp
@@ -241,6 +246,16 @@ export default function UiInTheuPage() {
           onSave={handleSaveColorModal}
         />
       )}
+
+      {/* Modal Upload Bằng chứng */}
+      <UploadBangChungModal 
+        open={!!uploadModal}
+        onClose={() => setUploadModal(null)}
+        onConfirm={(urls) => {
+          if (uploadModal) handleHoanThanh(uploadModal.lc, uploadModal.pc, urls);
+        }}
+        existingUrls={uploadModal?.pc?.bangChungURLs}
+      />
     </div>
   );
 }
