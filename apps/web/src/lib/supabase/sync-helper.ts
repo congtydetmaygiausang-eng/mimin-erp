@@ -310,7 +310,7 @@ export function useSupabaseSync<T extends { id: string }>(
           setDataState((prev) => {
             let next = [...prev];
             if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const newRow = options?.mapIn ? options.mapIn(snakeToCamel(payload.new)) : (payload.new as T);
+              const newRow = options?.mapIn ? options.mapIn(payload.new) : (payload.new as T);
               const idx = next.findIndex((r) => r.id === newRow.id);
               if (idx >= 0) next[idx] = newRow;
               else next = [newRow, ...next];
@@ -382,7 +382,7 @@ export function useSupabaseRealtime<T>(
           setDataState((prev) => {
             let next = [...prev];
             if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const newRow = options?.mapIn ? options.mapIn(snakeToCamel(payload.new)) : (payload.new as T);
+              const newRow = options?.mapIn ? options.mapIn(payload.new) : (payload.new as T);
               const pk = options?.primaryKey || "id";
               // Tìm bằng khóa chính của object đã map
               const rowId = (newRow as any)[pk];
