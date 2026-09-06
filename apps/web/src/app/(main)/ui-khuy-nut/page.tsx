@@ -21,10 +21,8 @@ export default function UiKhuyNutPage() {
     return lc.phanCong?.filter((pc: any) => {
       const isHT = pc.id === "khuy_nut" || pc.tenCongDoan?.toLowerCase().includes("khuy nút");
       
-      // Nếu là công đoạn Khuy nút mà không có người phụ trách (bỏ qua/không chọn) thì không hiển thị
-      if (isHT && (!pc.nguoiMa || pc.nguoiMa.trim() === "" || pc.nguoiMa === "null")) {
-        return false;
-      }
+      // Nếu là công nhân thì chỉ thấy việc của mình
+      // Quản lý/tổ trưởng thấy tất cả
       
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);

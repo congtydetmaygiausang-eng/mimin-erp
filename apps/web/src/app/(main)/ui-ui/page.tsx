@@ -21,10 +21,8 @@ export default function UiUiPage() {
     return lc.phanCong?.filter((pc: any) => {
       const isHT = pc.id === "ui" || pc.tenCongDoan?.toLowerCase().includes("ủi");
       
-      // Nếu không có người phụ trách (bỏ qua/không chọn) thì không hiển thị
-      if (isHT && (!pc.nguoiMa || pc.nguoiMa === "")) {
-        return false;
-      }
+      // Nếu là công nhân thì chỉ thấy việc của mình
+      // Quản lý/tổ trưởng thấy tất cả
 
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
