@@ -17,6 +17,7 @@ import { useGiaCong } from "@/lib/data/gia-cong-store";
 import type { PhieuWorkflow } from "@/lib/workflow-data";
 import { DateDisplay, formatDateVN } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui";
+import { ImageUploader } from "@/components/ui/ImageUploader";
 import { formatVNDShort } from "@/lib/data/real-data";
 
 type Tab = "info" | "tech" | "media" | "progress" | "errors" | "handover" | "payment";
@@ -249,7 +250,7 @@ export function CongViecDetailModal({
           user={user}
           maxRemain={totalDat}
           onClose={() => setShowHandoverModal(false)}
-          onSave={(data: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string }) => {
+          onSave={(data: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string; bangChungURLs?: string[] }) => {
             banGiao(task.id, data, user);
             setShowHandoverModal(false);
             toast.success(`Đã bàn giao ${data.soLuongBanGiao} sp cho ${data.nguoiNhan || "công đoạn sau"}`);
@@ -524,6 +525,22 @@ function TabHandover({ task, records }: any) {
               </div>
               {r.nguoiNhan && <div className="text-xs opacity-70">→ Người nhận: <span className="font-mono">{r.nguoiNhan}</span></div>}
               {r.ghiChu && <div className="text-xs opacity-70 mt-1">{r.ghiChu}</div>}
+              {r.bangChungURLs && r.bangChungURLs.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {r.bangChungURLs.map((url: string, idx: number) => (
+                    <img 
+                      key={idx} 
+                      src={url} 
+                      alt="Bằng chứng"
+                      className="w-12 h-12 object-cover rounded-md border border-slate-200 cursor-pointer hover:opacity-80" 
+                      onClick={() => {
+                        const w = window.open();
+                        if (w) w.document.write(`<img src="${url}" style="max-width:100%; max-height:100vh; object-fit:contain;"/>`);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               <div className="text-[10px] opacity-60 mt-1">
                 <DateDisplay value={r.ngayBanGiao} showRelative /> · {r.nguoiBanGiao}
               </div>
@@ -633,12 +650,14 @@ function HandoverModal({ task, user, maxRemain, onClose, onSave }: any) {
   const [soBanGiao, setSoBanGiao] = useState(maxRemain);
   const [nguoiNhan, setNguoiNhan] = useState("");
   const [ghiChu, setGhiChu] = useState("");
+  const [bangChungURLs, setBangChungURLs] = useState<string[]>([]);
+  
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative card max-w-md w-full p-5 animate-slide-up">
+      <div className="relative card max-w-md w-full p-5 animate-slide-up max-h-[90vh] overflow-y-auto">
         <h3 className="text-base font-bold mb-2">Bàn giao {task.id}</h3>
-        <p className="text-xs opacity-70 mb-3">Bàn giao SP cho công đoạn sau hoặc kho.</p>
+        <p className="text-xs opacity-70 mb-3">Bàn giao SP cho công đoạn sau hoặc kho. Vui lòng tải lên ảnh bằng chứng (bắt buộc).</p>
         <div className="space-y-3 mb-4">
           <div>
             <label className="text-xs font-medium block mb-1">SL bàn giao *</label>
@@ -650,15 +669,25 @@ function HandoverModal({ task, user, maxRemain, onClose, onSave }: any) {
             <input value={nguoiNhan} onChange={(e) => setNguoiNhan(e.target.value.toUpperCase())} className="input w-full" placeholder="VD: NV011" />
           </div>
           <div>
+            <label className="text-xs font-medium block mb-1">Ảnh bằng chứng *</label>
+            <ImageUploader 
+              bucket="bang-chung"
+              folder={task.id}
+              maxFiles={3}
+              value={bangChungURLs}
+              onChange={setBangChungURLs}
+            />
+          </div>
+          <div>
             <label className="text-xs font-medium block mb-1">Ghi chú</label>
             <textarea value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} className="input w-full min-h-[50px]" />
           </div>
         </div>
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-end mt-4">
           <button onClick={onClose} className="btn-secondary text-sm">Huỷ</button>
           <button
-            onClick={() => onSave({ soLuongBanGiao: soBanGiao, nguoiNhan, ghiChu })}
-            disabled={soBanGiao <= 0}
+            onClick={() => onSave({ soLuongBanGiao: soBanGiao, nguoiNhan, ghiChu, bangChungURLs })}
+            disabled={soBanGiao <= 0 || bangChungURLs.length === 0}
             className="btn-primary text-sm disabled:opacity-50"
           >
             Xác nhận bàn giao
