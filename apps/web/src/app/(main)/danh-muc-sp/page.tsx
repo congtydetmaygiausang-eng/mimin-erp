@@ -133,7 +133,7 @@ export default function DanhMucSanPhamPage() {
           if (!colors.length) return current?.dsMau || [];
           const merged = colors.map(c => {
             const existing = current?.dsMau?.find(x => x.ten === c.ten);
-            return existing ? { ...c, dinhMuc: existing.dinhMuc || 0, img: existing.img || c.img, video: existing.video, hinhAnhChiTiet: existing.hinhAnhChiTiet } : c;
+            return existing ? { ...c, dinhMuc: existing.dinhMuc || 0, img: c.img || existing.img, video: existing.video, hinhAnhChiTiet: existing.hinhAnhChiTiet } : c;
           });
           if (current?.dsMau) {
             const fromCurrent = current.dsMau.filter(x => !colors.some(c => c.ten === x.ten));
@@ -152,7 +152,7 @@ export default function DanhMucSanPhamPage() {
         giaTikTok: item.giaTikTok || current?.giaTikTok || 0,
         giaShopee: item.giaShopee || current?.giaShopee || 0,
         kenhBan: item.kenhBan?.length ? item.kenhBan : (current?.kenhBan || []),
-        hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
+        hinhAnh: colors.find(c => c.img)?.img || current?.hinhAnh || "",
       });
     }
     return Array.from(map.values());

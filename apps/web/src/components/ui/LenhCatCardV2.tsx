@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, Package, Shirt, Hash, Users, MapPin, ArrowRight } from "lucide-react";
+import { Calendar, Package, Shirt, Hash, Users, MapPin, ArrowRight, Image as ImageIcon } from "lucide-react";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "./DateDisplay";
@@ -89,8 +89,22 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                 const s = ttStyles[tt] || ttStyles.cho_giao;
                 return (
                   <React.Fragment key={pc.id}>
-                    <div className={`px-2 py-0.5 rounded border text-[11px] font-bold ${s} whitespace-nowrap`}>
+                    <div className={`px-2 py-0.5 rounded border text-[11px] font-bold ${s} whitespace-nowrap flex items-center gap-1`}>
                       {pc.tenCongDoan}
+                      {(pc as any).bangChungURLs && (pc as any).bangChungURLs.length > 0 && (
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const w = window.open();
+                            if (w) w.document.write(`<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">${(pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('')}</div>`);
+                          }}
+                          className="hover:text-blue-600 transition-colors"
+                          title="Xem ảnh bằng chứng"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                        </button>
+                      )}
                     </div>
                     {i < arr.length - 1 && <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />}
                   </React.Fragment>

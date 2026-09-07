@@ -10,12 +10,14 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 
 const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 
 export default function UiMayPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: string} | null>(null);
+  const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
   const [lyDoLoi, setLyDoLoi] = useState<Record<string, string>>({});
@@ -103,25 +105,29 @@ export default function UiMayPage() {
     toast.success(`👕 Nhận hàng may: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleHoanThanh(lc: any, pc: any) {
+  function handleHoanThanh(lc: any, pc: any, bangChungURLs?: string[]) {
+    // 2026-08-22: Bắt buộc khai báo số lượng đạt/lỗi theo từng size
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
       toast.error(kiemTra.loi!, { duration: 6000 });
       return;
     }
-    const { slDat, slLoi } = kiemTra;
-    const thanhTienDat = slDat * (pc.donGia || 0);
+    const tongDat = kiemTra.slDat;
+    const tongLoi = kiemTra.slLoi;
+    const thanhTienDat = tongDat * (pc.donGia || 0);
     const today = new Date().toISOString().slice(0, 10);
 
     capNhatCongDoan(lc.id, pc.id, {
       trangThaiCD: "cho_qc",
-      soLuongHoanThanh: slDat,
-      soLuongLoi: slLoi,
+      soLuongHoanThanh: tongDat,
+      soLuongLoi: tongLoi,
+      bangChungURLs: bangChungURLs,
       thanhTien: thanhTienDat,
       conLai: thanhTienDat - (pc.daThanhToan || 0),
-      lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "hoan_thanh" as const, ghiChu: "May xong → Chuyển QC" }],
+      lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: tongDat, loai: "hoan_thanh" as const, ghiChu: "May xong → Chuyển QC" }],
     } as any);
-    toast.success(`✅ Đã giao QC: ${pc.tenCongDoan} – ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
+    toast.success(`✅ Đã giao QC: ${pc.tenCongDoan} – ${tongDat} SP đạt${tongLoi > 0 ? `, ${tongLoi} SP lỗi` : ""}`);
+    setUploadModal(null);
   }
 
   // Tổ May sửa xong hàng QC trả về → trả lại QC lần 2
@@ -224,7 +230,7 @@ export default function UiMayPage() {
                           )}
                           
                           {tt === "dang_lam" && (
-                            <button onClick={() => handleHoanThanh(lc, pc)}
+                            <button onClick={() => setUploadModal({ lc, pc })}
                                     className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600">
                               <CheckCircle2 className="w-4 h-4 inline mr-1" /> Báo hoàn thành công đoạn
                             </button>
@@ -278,6 +284,16 @@ export default function UiMayPage() {
           onSave={handleSaveColorModal}
         />
       )}
+
+      {/* Modal Upload Bằng chứng */}
+      <UploadBangChungModal 
+        open={!!uploadModal}
+        onClose={() => setUploadModal(null)}
+        onConfirm={(urls) => {
+          if (uploadModal) handleHoanThanh(uploadModal.lc, uploadModal.pc, urls);
+        }}
+        existingUrls={uploadModal?.pc?.bangChungURLs}
+      />
     </div>
   );
 }
