@@ -80,12 +80,10 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                       href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center w-8 h-8 bg-[#0068ff] hover:bg-[#0055d4] text-white rounded-full shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5"
+                      className="flex items-center justify-center px-2.5 h-8 bg-[#0068ff] hover:bg-[#0055d4] text-white rounded-full text-[11px] font-black tracking-wide shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5 select-none"
                       title="Chat Zalo"
                     >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.03 2 11c0 2.87 1.5 5.43 3.82 7.07l-.92 3.42c-.08.28.16.55.43.46l3.65-1.22A10.74 10.74 0 0 0 12 21c5.52 0 10-4.03 10-9s-4.48-9-10-9zm-1.8 12.19c-.39 0-1.12-.12-1.42-.23-.28-.11-.47-.13-.58.17-.11.31.06.63.26.79.49.38 1.43.6 2.06.6s1.61-.17 2.11-.64c.38-.36.43-.87.11-1.14-.3-.25-1.04-.42-1.38-.52-.35-.11-.44-.26-.17-.55.22-.24.59-.44.75-.85.16-.42.06-.82-.2-.93-.26-.12-.86-.29-1.26-.06-.41.24-.54.67-.32 1.05.21.37.58.59.88.75.29.17.43.34.25.68-.17.32-.61.64-.81.76-.18.11-.53.12-.28.12z" />
-                      </svg>
+                      Zalo
                     </a>
                   )}
                 </div>
