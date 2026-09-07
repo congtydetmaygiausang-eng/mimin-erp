@@ -232,10 +232,10 @@ export default function UiMayPage() {
                           
                           {tt === "dang_lam" && (
                             <button onClick={() => setUploadModal({ lc, pc })}
-                                    className="flex-1 py-4 rounded-2xl text-lg font-black bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-400 hover:to-emerald-500 shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group">
+                                    className="flex-1 py-3 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-400 hover:to-emerald-500 shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group">
                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
-                              <CheckCircle2 className="w-6 h-6 relative z-10" /> 
-                              <span className="relative z-10 tracking-wide">BÁO HOÀN THÀNH CÔNG ĐOẠN</span>
+                              <CheckCircle2 className="w-5 h-5 relative z-10" /> 
+                              <span className="relative z-10 tracking-wide uppercase text-sm">Báo hoàn thành</span>
                             </button>
                           )}
                           {tt === "hoan_thanh" && (

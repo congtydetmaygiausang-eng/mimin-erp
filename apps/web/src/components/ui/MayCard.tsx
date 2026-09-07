@@ -26,20 +26,37 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
     <div className="bg-white rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col md:flex-row mb-8 overflow-hidden transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
       {/* LEFT COLUMN: Large Premium Product Summary */}
       <div className="w-full md:w-80 shrink-0 bg-gradient-to-b from-slate-50 to-white border-r border-slate-100 p-6 flex flex-col relative z-10">
-        <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden border border-slate-200/60 bg-white relative mb-5 shadow-sm group">
-          {mainImg ? (
-            <img 
-              src={mainImg} 
-              alt={lc.tenSP} 
-              className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110" 
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-              <span className="font-bold tracking-widest text-[10px] uppercase">NO IMAGE</span>
+        <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden border border-slate-200/60 bg-white relative mb-5 shadow-sm group flex">
+          <div className={`relative h-full overflow-hidden ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200/50" : "w-full"}`}>
+            {mainImg ? (
+              <img 
+                src={mainImg} 
+                alt={lc.tenSP} 
+                className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110 origin-left" 
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                <span className="font-bold tracking-widest text-[10px] uppercase">NO IMAGE</span>
+              </div>
+            )}
+          </div>
+          {lc.loaiSP?.includes("Bo") && (
+            <div className="relative h-full w-1/2 overflow-hidden">
+              {(lc.dsMau?.[0] as any)?.imgQuan ? (
+                <img 
+                  src={(lc.dsMau?.[0] as any)?.imgQuan} 
+                  alt={`${lc.tenSP} quần`} 
+                  className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110 origin-right" 
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
+                  <span className="font-bold tracking-widest text-[10px] uppercase">NO PANTS</span>
+                </div>
+              )}
             </div>
           )}
           {/* Subtle overlay gradient on image */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
         
         <div className="flex flex-col gap-2 flex-1">
@@ -133,30 +150,43 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
 
         {/* Middle: Premium Colors */}
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/40 relative z-10">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Danh sách màu ({lc.dsMau?.length || 0})</div>
             <div className="text-[10px] text-slate-400">Bấm vào để xem / nhập size</div>
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-4">
             {lc.dsMau?.map((mau, idx) => (
               <button 
                 key={idx} 
                 onClick={() => onColorClick?.(mau)}
-                className="flex items-center gap-2.5 bg-white border border-slate-200/80 hover:border-teal-400 hover:shadow-md hover:-translate-y-0.5 rounded-xl pr-4 p-1.5 transition-all duration-200 group"
+                className="flex items-center gap-3 bg-white border border-slate-200/80 hover:border-teal-400 hover:shadow-lg hover:-translate-y-1 rounded-2xl pr-5 p-2 transition-all duration-300 group cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-lg shrink-0 bg-slate-100 overflow-hidden relative shadow-sm">
-                  {mau.img ? (
-                    <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                      <span className="text-[8px] font-bold">NO IMG</span>
+                <div className="w-14 h-14 rounded-xl shrink-0 bg-slate-100 overflow-hidden relative shadow-sm flex">
+                  <div className={`relative h-full overflow-hidden ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200/50" : "w-full"}`}>
+                    {mau.img ? (
+                      <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-left" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                        <span className="text-[8px] font-bold">NO IMG</span>
+                      </div>
+                    )}
+                  </div>
+                  {lc.loaiSP?.includes("Bo") && (
+                    <div className="relative h-full w-1/2 overflow-hidden">
+                      {(mau as any).imgQuan ? (
+                        <img src={(mau as any).imgQuan} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-right" />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
+                          <span className="text-[8px] font-bold text-center leading-none">NO<br/>IMG</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
                 <div className="text-left flex flex-col justify-center">
-                  <div className="font-bold text-slate-700 text-sm group-hover:text-teal-700 transition-colors">{mau.ten}</div>
-                  <div className="text-[10px] text-slate-400 font-medium">Click xem chi tiết</div>
+                  <div className="font-black text-slate-800 text-base group-hover:text-teal-700 transition-colors">{mau.ten}</div>
+                  <div className="text-[11px] text-slate-400 font-medium tracking-wide">Nhập chi tiết →</div>
                 </div>
               </button>
             ))}
