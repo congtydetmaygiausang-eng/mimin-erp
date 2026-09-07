@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, CheckCircle2, AlertTriangle, Save, Clock } from "lucide-react";
+import { X, CheckCircle2, AlertTriangle, Save, Clock, ArrowRight } from "lucide-react";
 import type { LenhCat, MauVai, CongDoanItem } from "@/lib/data/lenh-cat-store";
 import type { ChiTietMauInput } from "./KhaiBaoSoLuongTheoMau";
 
