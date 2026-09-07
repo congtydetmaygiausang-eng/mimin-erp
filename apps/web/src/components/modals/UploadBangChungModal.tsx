@@ -55,7 +55,7 @@ export function UploadBangChungModal({
         const ext = file.type.split('/')[1] || 'png';
         const path = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
         
-        const { data, error } = await supabase.storage.from("bang-chung").upload(path, blob, {
+        const { data, error } = await supabase.storage.from("san-pham-media").upload(`bang-chung/${path}`, blob, {
           contentType: file.type,
           upsert: false
         });
@@ -64,7 +64,7 @@ export function UploadBangChungModal({
           throw new Error(error.message);
         }
 
-        const { data: publicData } = supabase.storage.from("bang-chung").getPublicUrl(path);
+        const { data: publicData } = supabase.storage.from("san-pham-media").getPublicUrl(`bang-chung/${path}`);
         newUrls.push(publicData.publicUrl);
       }
 
