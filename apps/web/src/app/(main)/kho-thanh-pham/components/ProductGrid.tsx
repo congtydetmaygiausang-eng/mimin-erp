@@ -29,10 +29,11 @@ interface ProductGridProps {
   onDangBan: (group: ProductGroup) => void;
   onOpenVariant: (sp: SanPhamTP) => void;
   onRebuildFromLC: (group: ProductGroup) => void;
+  onSuaTong?: (group: ProductGroup) => void;
   dsLenhCat: any[];
 }
 
-export function ProductGrid({ groups, productImages, setUploadingSP, setUploadType, fileInputRef, setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, onOpenVariant, onRebuildFromLC, dsLenhCat }: ProductGridProps) {
+export function ProductGrid({ groups, productImages, setUploadingSP, setUploadType, fileInputRef, setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, onOpenVariant, onRebuildFromLC, onSuaTong, dsLenhCat }: ProductGridProps) {
   return (
     <div className="flex flex-col gap-6">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={() => {}} />
@@ -116,7 +117,7 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
               <button onClick={() => onDangBan(group)} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Đăng bán vào Danh mục sản phẩm">
                 <Tag className="w-4 h-4" /> Đăng bán
               </button>
-              <button onClick={() => alert('Chức năng sửa tổng')} className="px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Sửa tổng">
+              <button onClick={() => { if (onSuaTong) onSuaTong(group); }} className="px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Sửa tổng">
                 <Edit className="w-4 h-4" /> Sửa tổng
               </button>
               <button onClick={() => { if (confirm('Xóa toàn bộ sản phẩm này?')) update(dsSanPham.filter(s => s.maSP !== group.maSP)); }} className="p-2.5 bg-rose-50 hover:bg-rose-100 rounded-xl text-rose-600 transition-all border border-rose-200 ml-auto" title="Xóa toàn bộ sản phẩm">

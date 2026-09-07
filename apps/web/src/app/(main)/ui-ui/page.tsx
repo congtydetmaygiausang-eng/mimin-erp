@@ -47,6 +47,15 @@ export default function UiUiPage() {
     }
 
     const mayPCs = lc.phanCong?.filter((pc: any) => pc.tenCongDoan?.toLowerCase().includes("may")) || [];
+    
+    const qcPC = lc.phanCong?.find((pc: any) => pc.id === "qc");
+    const isBo = lc.loaiLenh?.toLowerCase().includes("bo") || mayPCs.length > 1;
+
+    // Chốt chặn ở bước QC cho hàng Bộ: Phải hoàn thành cả Áo và Quần (QC ghép bộ xong)
+    if (isBo && qcPC) {
+      return qcPC.trangThaiCD === "hoan_thanh";
+    }
+
     return mayPCs.length > 0 && mayPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
   });
 

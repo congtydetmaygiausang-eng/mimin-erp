@@ -12,9 +12,10 @@ interface ProductTableProps {
   setEditing: (s: SanPhamTP | null) => void;
   handleXuatKho: (id: string) => void;
   handleDelete: (id: string) => void;
+  onSuaTong?: (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => void;
 }
 
-export function ProductTable({ filtered, productImages, productVariantImages = {}, setEditing, handleXuatKho, handleDelete }: ProductTableProps) {
+export function ProductTable({ filtered, productImages, productVariantImages = {}, setEditing, handleXuatKho, handleDelete, onSuaTong }: ProductTableProps) {
   // Nhóm sản phẩm theo Mã SP
   const groupedProducts = useMemo(() => {
     const groups: Record<string, SanPhamTP[]> = {};
@@ -83,7 +84,14 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                     )}
                     {isFirst && (
                       <td rowSpan={group.length} className="p-3 align-top bg-white border-r border-slate-100 shadow-[inset_-1px_0_0_rgba(0,0,0,0.02)]">
-                        <div className="font-bold text-slate-800">{s.tenSP}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-bold text-slate-800">{s.tenSP}</div>
+                          {onSuaTong && (
+                            <button onClick={() => onSuaTong({ maSP: group[0].maSP, tenSP: group[0].tenSP, items: group })} className="p-1 text-amber-600 hover:bg-amber-100 rounded transition-colors" title="Sửa tổng thể sản phẩm">
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                         <div className="text-[10px] uppercase font-semibold text-slate-500 mt-0.5 tracking-wider bg-slate-100 inline-block px-1.5 py-0.5 rounded">{s.phanLoai}</div>
                         
                         {/* Interactive Price Chips */}
