@@ -185,13 +185,11 @@ export default function LenhCatPage() {
                 if (newDsMau[mauIdx]) {
                   newDsMau[mauIdx].tyLeSizeChiTiet = newTyLe;
 
-                  // ===== ĐồNG BỘ phanBoSize với data Cắt thực tế =====
-                  // Khi lưu tỷ lệ size, cập nhật luôn phanBoSize của màu này
-                  // = data khâu Cắt. Đây là nguồn fallback tin cậy sau F5.
+                  // ===== ĐỒNG BỘ phanBoSize với data Cắt thực tế =====
                   const catKeySync = Object.keys(newTyLe).find(k =>
                     k.toLowerCase().includes("cat") ||
-                    (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
-                    (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                    ((fixedPhanCong as any[])?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                    (lc.phanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
                   );
                   if (catKeySync && newTyLe[catKeySync]) {
                     newDsMau[mauIdx].phanBoSize = newTyLe[catKeySync].map((sz: any) => ({
@@ -199,15 +197,15 @@ export default function LenhCatPage() {
                       sl: sz.sl || 0,
                     }));
                   }
-                  
+
                   // Tự động tính lại tổng SL thực tế của khâu Cắt
                   let totalThucTe = 0;
                   newDsMau.forEach(mau => {
                     if (mau.tyLeSizeChiTiet) {
                       const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k =>
                         k.toLowerCase().includes("cat") ||
-                        (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
-                        (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                        (lc.phanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                        ((fixedPhanCong as any[])?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
                       );
                       if (catKey && mau.tyLeSizeChiTiet[catKey]) {
                         totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
@@ -215,31 +213,65 @@ export default function LenhCatPage() {
                     }
                   });
 
-                  // ===== TÁCH 2 LẦN LƯU ĐỘC LẬP =====
-                  // Lần 1: Lưu dsMau + tongSLThucTe (quan trọng nhất - PHẢI thành công)
-                  suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!)
-                    .then(() => toast.success("Đã cập nhật tỷ lệ size thành công!"))
-                    .catch((err: any) => toast.error("Lỗi khi lưu tỷ lệ size: " + (err?.message || err)));
+                  // Lần 1: Lưu dsMau + tongSLThucTe
+                  suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!);
+                  toast.success("Đã cập nhật tỷ lệ size thành công!");
 
-                  // Lần 2: Repair phanCong nếu đang rỗng (KHÔNG ảnh hưởng lần lưu trên)
-                  // Gọi bất đồng bộ riêng, lỗi chỉ log console, không block UI.
-                  if (fixedPhanCong && fixedPhanCong.length > 0) {
-                    suaLenhCat(lc.id, { phanCong: fixedPhanCong }, user!)
-                      .catch((err: any) => console.warn("[phanCong repair]", err?.message || err));
+                  // Lần 2: Repair phanCong nếu đang rỗng
+                  if (fixedPhanCong && (fixedPhanCong as any[]).length > 0) {
+                    suaLenhCat(lc.id, { phanCong: fixedPhanCong }, user!);
                   }
+                }
+              }}
+              onSaveTyleBatch={(items) => {
+                const newDsMau = [...(lc.dsMau || [])];
+                let batchFixedPC: any = undefined;
+
+                items.forEach(({ mauIdx: itemMauIdx, tyLeChiTiet: newTyLe, fixedPhanCong: fp }) => {
+                  if (!newDsMau[itemMauIdx]) return;
+                  newDsMau[itemMauIdx] = { ...newDsMau[itemMauIdx], tyLeSizeChiTiet: newTyLe };
+
+                  const catKeySync = Object.keys(newTyLe).find(k =>
+                    k.toLowerCase().includes("cat") ||
+                    ((fp as any[])?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                    (lc.phanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                  );
+                  if (catKeySync && newTyLe[catKeySync]) {
+                    newDsMau[itemMauIdx].phanBoSize = newTyLe[catKeySync].map((sz: any) => ({
+                      size: sz.size, sl: sz.sl || 0,
+                    }));
+                  }
+                  if (fp && (fp as any[]).length > 0 && !batchFixedPC) batchFixedPC = fp;
+                });
+
+                let totalThucTe = 0;
+                newDsMau.forEach(mau => {
+                  if (mau.tyLeSizeChiTiet) {
+                    const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k =>
+                      k.toLowerCase().includes("cat") ||
+                      (lc.phanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                    );
+                    if (catKey && mau.tyLeSizeChiTiet[catKey]) {
+                      totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
+                    }
+                  }
+                });
+
+                suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!);
+                toast.success(`Đã áp dụng thông số cho ${items.length} màu!`);
+
+                if (batchFixedPC && (batchFixedPC as any[]).length > 0) {
+                  suaLenhCat(lc.id, { phanCong: batchFixedPC }, user!);
                 }
               }}
               onSaveGiaCong={(slThucTe, dsPhanCong, newDsMau) => {
                 const updatePayload: any = { phanCong: dsPhanCong };
-                
                 if (newDsMau) {
                   updatePayload.dsMau = newDsMau;
-                  // Xác định xem đang lưu áo hay quần để cập nhật tổng SL thực tế
                   const hasMayAo = dsPhanCong.some((pc: any) => pc.tenCongDoan?.toLowerCase().includes("may áo"));
                   if (hasMayAo) updatePayload.tongSLThucTeAo = slThucTe;
                   else updatePayload.tongSLThucTeQuan = slThucTe;
                 }
-                
                 suaLenhCat(lc.id, updatePayload, user!);
                 toast.success("Đã cập nhật giao việc và chi tiết size gia công thành công!");
               }}

@@ -1,17 +1,26 @@
 import React, { useState } from "react";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
-import { X, Save, Scissors, Shirt, Package } from "lucide-react";
+import { X, Save, Scissors, Shirt, Package, Copy, CheckSquare, Square } from "lucide-react";
 import type { LenhCat, MauVai, PhanCongGiaCong } from "@/lib/data/lenh-cat-store";
 import { Portal } from "@/components/ui/Portal";
+
+interface BatchSaveItem {
+  mauIdx: number;
+  tyLeChiTiet: Record<string, { size: string; sl: number }[]>;
+  tongDuCat?: number;
+  fixedPhanCong?: PhanCongGiaCong;
+}
 
 interface Props {
   lc: LenhCat;
   mauIdx: number;
   onClose: () => void;
   onSave: (mauIdx: number, newTyLeChiTiet: Record<string, { size: string; sl: number }[]>, tongDuCat?: number, fixedPhanCong?: PhanCongGiaCong) => void;
+  /** Optional: gọi khi user muốn lưu nhiều màu cùng lúc (atomic) */
+  onSaveBatch?: (items: BatchSaveItem[]) => void;
 }
 
-export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
+export function TyLeSizeModal({ lc, mauIdx, onClose, onSave, onSaveBatch }: Props) {
   const mau = lc.dsMau?.[mauIdx];
   if (!mau) return null;
 
@@ -191,6 +200,41 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
     // Nếu phanCong của lệnh cắt đang rỗng (do race condition khi tạo Bản nháp),
     // truyền thêm phanCongSource để caller lưu luôn lên Supabase repair.
     onSave(mauIdx, JSON.parse(JSON.stringify(tyLeChiTiet)), tongDuCat, needsRepair ? phanCongSource : undefined);
+    onClose();
+  };
+
+  // ===== APPLY TO OTHER COLORS =====
+  const otherMauList = (lc.dsMau || []).filter((_, idx) => idx !== mauIdx);
+  const [showApplyOther, setShowApplyOther] = useState(false);
+  const [checkedIdxs, setCheckedIdxs] = useState<number[]>([]);
+
+  const toggleCheck = (idx: number) =>
+    setCheckedIdxs(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
+
+  const handleApplyToOthers = () => {
+    if (checkedIdxs.length === 0) return;
+    const cloned = JSON.parse(JSON.stringify(tyLeChiTiet));
+    let maxTotal = 0;
+    Object.values(tyLeChiTiet).forEach(sizes => {
+      const t = sizes.reduce((sum, sz) => sum + (sz.sl || 0), 0);
+      if (t > maxTotal) maxTotal = t;
+    });
+    const tongDuCat = Math.max(0, maxTotal - tongSLCat);
+
+    if (onSaveBatch) {
+      // Batch: lưu màu hiện tại + tất cả màu được chọn trong 1 lần
+      const items: BatchSaveItem[] = [
+        { mauIdx, tyLeChiTiet: cloned, tongDuCat, fixedPhanCong: needsRepair ? phanCongSource : undefined },
+        ...checkedIdxs.map(idx => ({ mauIdx: idx, tyLeChiTiet: JSON.parse(JSON.stringify(cloned)), tongDuCat })),
+      ];
+      onSaveBatch(items);
+    } else {
+      // Fallback: gọi onSave tuần tự
+      onSave(mauIdx, cloned, tongDuCat, needsRepair ? phanCongSource : undefined);
+      checkedIdxs.forEach(idx => onSave(idx, JSON.parse(JSON.stringify(cloned)), tongDuCat));
+    }
+    setShowApplyOther(false);
+    setCheckedIdxs([]);
     onClose();
   };
 
@@ -402,19 +446,92 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 rounded-b-xl">
-        <button
-          onClick={onClose}
-          className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
-        >
-          Hủy
-        </button>
-        <button
-          onClick={handleSave}
-          className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center justify-center gap-2 transition-colors shadow-sm"
-        >
-          <Save className="w-4 h-4" /> Lưu thông số
-        </button>
+      <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl space-y-3">
+
+        {/* Picker áp dụng cho màu khác */}
+        {showApplyOther && otherMauList.length > 0 && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-2">
+            <div className="text-xs font-black text-indigo-700 uppercase tracking-wide mb-2 flex items-center gap-2">
+              <Copy className="w-3.5 h-3.5" /> Chọn màu muốn áp dụng thông số:
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {otherMauList.map((m, relIdx) => {
+                const absIdx = (lc.dsMau || []).findIndex((dm, i) => i !== mauIdx && dm === m);
+                const isChecked = checkedIdxs.includes(absIdx);
+                const thumb = m.hinhAnh?.[0] || m.hinhAnhUrl || null;
+                return (
+                  <button
+                    key={absIdx}
+                    onClick={() => toggleCheck(absIdx)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 font-bold text-xs transition-all ${
+                      isChecked
+                        ? "border-indigo-500 bg-indigo-100 text-indigo-800 shadow-md"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:bg-indigo-50"
+                    }`}
+                  >
+                    {isChecked ? <CheckSquare className="w-4 h-4 text-indigo-600 shrink-0" /> : <Square className="w-4 h-4 text-slate-400 shrink-0" />}
+                    {thumb ? (
+                      <img src={thumb} alt={m.ten} className="w-10 h-10 object-cover rounded-lg border border-slate-200 shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+                        <Shirt className="w-5 h-5 text-slate-400" />
+                      </div>
+                    )}
+                    <div className="text-left">
+                      <div className="font-black text-slate-800 leading-tight">{m.ten || `Màu ${relIdx + 1}`}</div>
+                      {m.maVai && <div className="text-[10px] text-slate-400 font-medium">{m.maVai}</div>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <button onClick={() => { setShowApplyOther(false); setCheckedIdxs([]); }}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
+                Hủy
+              </button>
+              <button
+                onClick={handleApplyToOthers}
+                disabled={checkedIdxs.length === 0}
+                className="px-4 py-1.5 text-xs font-black rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+              >
+                <Copy className="w-3.5 h-3.5" /> Áp dụng cho {checkedIdxs.length} màu
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center gap-3">
+          {/* Nút Áp dụng màu khác - chỉ hiện khi có màu khác */}
+          {otherMauList.length > 0 ? (
+            <button
+              onClick={() => { setShowApplyOther(v => !v); setCheckedIdxs([]); }}
+              className={`px-4 py-2.5 min-h-[44px] rounded-xl font-bold text-sm flex items-center gap-2 transition-all border ${
+                showApplyOther
+                  ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+                  : "bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+              }`}
+            >
+              <Copy className="w-4 h-4" />
+              Áp dụng cho màu khác
+            </button>
+          ) : <div />}
+
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center justify-center gap-2 transition-colors shadow-sm"
+            >
+              <Save className="w-4 h-4" /> Lưu thông số
+            </button>
+          </div>
+        </div>
       </div>
     </ResponsiveModal>
   );

@@ -53,7 +53,7 @@ export function StatCard({ icon, label, value, sub, color }: {
   );
 }
 
-export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCong, onSaveTyLe }: {
+export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCong, onSaveTyLe, onSaveTyleBatch }: {
   lc: LenhCat;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -63,6 +63,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   // nên dsMau bị rơi mất -> tongSLThucTeAo/Quan không bao giờ được cập nhật.
   onSaveGiaCong?: (slThucTe: number, dsPhanCong: any, newDsMau?: any[]) => void;
   onSaveTyLe?: (mauIdx: number, newTyLe: any, tongDuCat?: number, fixedPhanCong?: any) => void;
+  onSaveTyleBatch?: (items: { mauIdx: number; tyLeChiTiet: any; tongDuCat?: number; fixedPhanCong?: any }[]) => void;
 }) {
   const { list: dsNhanSu } = useNhanSu();
   const s = TRANG_THAI_LC_STYLE[lc.trangThai] || { bg: "bg-slate-100", color: "text-slate-600" };
@@ -335,6 +336,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
           onSave={(mauIdx, newTyLe, tongDuCat, fixedPhanCong) => {
             if (onSaveTyLe) onSaveTyLe(mauIdx, newTyLe, tongDuCat, fixedPhanCong);
           }}
+          onSaveBatch={onSaveTyleBatch}
         />
       )}
     </div>
