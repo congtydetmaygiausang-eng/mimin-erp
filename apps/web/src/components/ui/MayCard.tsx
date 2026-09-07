@@ -19,8 +19,9 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
   const mainImg = lc.dsMau?.[0]?.img || "";
 
   // Find Nguoi Phu Trach SX
-  const ptName = lc.phuTrachSX || "";
-  const ptInfo = dsNhanSu.find(nv => nv.hoTen === ptName || nv.maNV === ptName);
+  const ptCode = lc.phuTrachSX || "";
+  const ptInfo = dsNhanSu.find(nv => nv.maNV === ptCode || nv.hoTen === ptCode);
+  const ptDisplayName = ptInfo?.hoTen || ptCode || "Chưa phân công";
   const ptPhone = ptInfo?.sdt;
 
   // Sắp xếp các khâu
@@ -81,15 +82,18 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
             </div>
           </div>
 
-          {ptName && (
-            <div className="mt-4 p-3 bg-indigo-50/40 border border-indigo-100/60 rounded-xl">
-              <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Người phụ trách sản xuất</div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-800 text-sm">{ptName}</div>
-                  {ptPhone && <div className="text-xs font-medium text-slate-500 mt-0.5">{ptPhone}</div>}
-                </div>
-                {ptPhone && (
+          <div className="mt-4 p-3 bg-indigo-50/40 border border-indigo-100/60 rounded-xl">
+            <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Người phụ trách sản xuất</div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-bold text-slate-800 text-sm">{ptDisplayName}</div>
+                {ptPhone ? (
+                  <div className="text-xs font-medium text-slate-500 mt-0.5">{ptPhone}</div>
+                ) : (
+                  <div className="text-xs italic text-slate-400 mt-0.5">Chưa có SĐT</div>
+                )}
+              </div>
+              {ptPhone && (
                   <a 
                     href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`} 
                     target="_blank" 
@@ -104,7 +108,6 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                 )}
               </div>
             </div>
-          )}
           
           <div className="mt-auto pt-5 border-t border-slate-100 flex flex-col gap-3">
             <div className="flex justify-between items-center text-sm">
