@@ -699,7 +699,7 @@ export default function KhoThanhPhamPage() {
       {/* Modals */}
       {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={mergedProductImages} onClose={() => setShowMasterDetails(null)} />}
       {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
-      {editing && <ProductFormModal sp={editing} initialImage={mergedProductImages[editing.id] || mergedProductImages[editing.maSP]} onClose={() => setEditing(null)} onSave={handleEdit} />}
+      {editing && <ProductFormModal sp={editing} initialImage={editing.hinhAnh?.[0] || mergedVariantImages[`${editing.maSP}_${editing.mau}`] || mergedProductImages[editing.id] || mergedProductImages[editing.maSP]} onClose={() => setEditing(null)} onSave={handleEdit} />}
       {suaTongGroup && <SuaTongModal group={suaTongGroup} onClose={() => setSuaTongGroup(null)} onSave={handleSaveSuaTong} />}
       {dangBanGroup && (() => {
         const soMauCoAnh = dangBanGroup.items.filter((i) => i.hinhAnh?.[0]).length;
