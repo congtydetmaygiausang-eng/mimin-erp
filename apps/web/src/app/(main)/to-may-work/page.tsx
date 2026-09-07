@@ -206,10 +206,10 @@ export default function UiMayPage() {
                   {mayPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
-                    const bgStyle = tt === "dang_lam" ? "bg-[#fffdf0]" : style.bg;
+                    const bgStyle = tt === "dang_lam" ? "bg-gradient-to-br from-[#fffef5] to-[#fffcd4] border-amber-200/60 shadow-sm" : style.bg;
 
                     return (
-                      <div key={pc.id} className={`rounded-xl border p-4 ${bgStyle} border-current/20`}>
+                      <div key={pc.id} className={`rounded-2xl border p-5 ${bgStyle} border-current/20 transition-all duration-300 hover:shadow-md`}>
                         <div className="flex items-start justify-between mb-3">
                           <div>
                             <div className="font-black text-slate-800">{pc.tenCongDoan}</div>
@@ -232,8 +232,10 @@ export default function UiMayPage() {
                           
                           {tt === "dang_lam" && (
                             <button onClick={() => setUploadModal({ lc, pc })}
-                                    className="flex-1 py-4 rounded-xl text-base font-black bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm flex items-center justify-center gap-2">
-                              <CheckCircle2 className="w-5 h-5" /> Báo hoàn thành công đoạn
+                                    className="flex-1 py-4 rounded-2xl text-lg font-black bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-400 hover:to-emerald-500 shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group">
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                              <CheckCircle2 className="w-6 h-6 relative z-10" /> 
+                              <span className="relative z-10 tracking-wide">BÁO HOÀN THÀNH CÔNG ĐOẠN</span>
                             </button>
                           )}
                           {tt === "hoan_thanh" && (
