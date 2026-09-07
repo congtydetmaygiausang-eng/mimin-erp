@@ -230,11 +230,31 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                   const soLuongLoi = Math.max(0, soLuongNhan - tongDat);
 
                   return (
-                    <div key={pc.id} className="bg-sky-50/50 border border-sky-100 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-3 border-b border-sky-100 pb-2">
-                        <div className="font-bold text-sky-900">{pc.tenCongDoan} - {pc.nguoiTen || "Chưa giao"}</div>
-                        <div className="text-sm font-bold text-slate-500 bg-white px-2.5 py-1 rounded-md border border-slate-100">
-                          Tổng đạt: <span className="text-emerald-600">{tongDat.toLocaleString()}</span>
+                    <div key={pc.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-md transition-all duration-300">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-5 border-b border-slate-100 pb-4">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-200 shadow-sm relative">
+                          {pc.id.includes("quan") && lc.loaiSP?.includes("Bo") ? (
+                            (mau as any).imgQuan ? (
+                              <img src={(mau as any).imgQuan} alt="quần" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-400">NO IMG</div>
+                            )
+                          ) : (
+                            mau.img ? (
+                              <img src={mau.img} alt="áo" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-400">NO IMG</div>
+                            )
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-lg font-black text-slate-800">{pc.tenCongDoan}</div>
+                          <div className="text-sm text-slate-500 font-medium">{pc.nguoiTen || "Chưa giao"}</div>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm">
+                            Tổng đạt: <span className="text-emerald-600 text-base ml-1">{tongDat.toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -249,7 +269,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                                 value={sz.sl || ""}
                                 onChange={e => handleSizeChange(pc.id, sIdx, parseInt(e.target.value) || 0)}
                                 onFocus={e => e.target.select()}
-                                className="w-full px-2 py-1.5 text-center border border-emerald-300 bg-emerald-50/30 rounded focus:ring-2 focus:ring-emerald-400/50 outline-none text-sm font-bold text-emerald-700"
+                                className="w-full px-2 py-2 text-center border border-emerald-300 bg-emerald-50/30 rounded-lg focus:ring-2 focus:ring-emerald-400/50 outline-none text-base font-bold text-emerald-700 transition-shadow"
                                 min="0"
                               />
                             </div>
@@ -261,19 +281,19 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-slate-500 mb-1">SL Nhận</label>
+                          <label className="block text-xs font-bold text-slate-500 mb-1.5">SL Nhận</label>
                           <input
                             type="number"
-                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-700 font-bold focus:ring-2 focus:ring-sky-500 outline-none"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 font-bold focus:ring-2 focus:ring-sky-500 outline-none transition-shadow shadow-sm"
                             value={soLuongNhan || ""}
                             onChange={e => setNhanInputs(prev => ({ ...prev, [pc.id]: parseInt(e.target.value) || 0 }))}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-rose-600 mb-1 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> SL Lỗi (tự tính)
+                          <label className="block text-xs font-bold text-rose-600 mb-1.5 flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5" /> SL Lỗi (tự tính)
                           </label>
-                          <div className="w-full bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 text-rose-700 font-bold">
+                          <div className="w-full bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 text-rose-700 font-bold shadow-sm">
                             {soLuongLoi.toLocaleString()}
                           </div>
                         </div>
