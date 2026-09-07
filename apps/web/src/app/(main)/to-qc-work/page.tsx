@@ -744,6 +744,7 @@ export default function UiQCPage() {
           mau={selectedMau.mau}
           currentPCs={getMayPC(selectedMau.lc)}
           onSave={handleSaveColorModal}
+          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
         />
       )}
     </div>
