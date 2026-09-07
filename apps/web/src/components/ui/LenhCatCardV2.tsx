@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Calendar, Package, Shirt, Hash, Users, MapPin, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { Calendar, Package, Shirt, Hash, Users, MapPin, Image as ImageIcon } from "lucide-react";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
@@ -108,52 +108,67 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
           </div>
         </div>
 
-        {/* Stages & Logo (Hình in thêu & Công đoạn) */}
-        <div className="px-6 py-4 bg-white border-b border-slate-100 flex flex-col gap-3">
-          {/* Workflow Stages */}
-          {lc.phanCong && lc.phanCong.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Quy trình:</span>
-              {[...lc.phanCong].sort((a, b) => {
-                const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
-                const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
-                const bRank = STAGE_ORDER.findIndex(k => (b.id || "").toLowerCase().includes(k));
-                return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
-              }).map((pc, i, arr) => {
-                const tt = (pc.trangThaiCD as any) || "cho_giao";
-                const ttStyles: any = {
-                  cho_giao: "bg-slate-100 text-slate-500 border-slate-200",
-                  dang_lam: "bg-sky-100 text-sky-700 border-sky-300",
-                  cho_qc: "bg-amber-100 text-amber-700 border-amber-300",
-                  hoan_thanh: "bg-emerald-100 text-emerald-700 border-emerald-300",
-                  co_loi: "bg-rose-100 text-rose-700 border-rose-300"
-                };
-                const s = ttStyles[tt] || ttStyles.cho_giao;
-                return (
-                  <React.Fragment key={pc.id}>
-                    <div className={`px-2 py-0.5 rounded border text-[11px] font-bold ${s} whitespace-nowrap flex items-center gap-1`}>
-                      {pc.tenCongDoan}
-                      {(pc as any).bangChungURLs && (pc as any).bangChungURLs.length > 0 && (
-                        <button 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const w = window.open();
-                            if (w) w.document.write(`<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">${(pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('')}</div>`);
-                          }}
-                          className="hover:text-blue-600 transition-colors"
-                          title="Xem ảnh bằng chứng"
-                        >
-                          <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
-                        </button>
-                      )}
-                    </div>
-                    {i < arr.length - 1 && <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />}
-                  </React.Fragment>
-                );
-              })}
+        {/* Stages – Tiến trình đơn hàng (dot style, matching MayCard) */}
+        {lc.phanCong && lc.phanCong.length > 0 && (() => {
+          const STAGE_ORDER = ["cat", "in_theu", "in", "theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
+          const sorted = [...lc.phanCong].sort((a, b) => {
+            const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
+            const bRank = STAGE_ORDER.findIndex(k => (b.id || "").toLowerCase().includes(k));
+            return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
+          });
+          return (
+            <div className="px-6 py-5 border-b border-slate-100 bg-white">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Tiến trình đơn hàng</div>
+              <div className="flex items-center w-full relative">
+                {/* Track line */}
+                <div className="absolute top-[7px] left-0 right-0 h-[2px] bg-slate-100 z-0" />
+                <div className="flex items-start justify-between w-full relative z-10">
+                  {sorted.map((pc) => {
+                    const tt = (pc.trangThaiCD as any) || "cho_giao";
+                    const isCompleted = tt === "hoan_thanh";
+                    const isWorking = tt === "dang_lam";
+                    const isQCWaiting = tt === "cho_qc";
+                    const isError = tt === "co_loi";
+
+                    let dotColor = "bg-slate-200 border-slate-300";
+                    let textColor = "text-slate-400";
+                    if (isCompleted) { dotColor = "bg-emerald-500 border-emerald-600"; textColor = "text-emerald-700 font-bold"; }
+                    else if (isWorking) { dotColor = "bg-teal-500 border-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.6)]"; textColor = "text-teal-700 font-black"; }
+                    else if (isQCWaiting) { dotColor = "bg-amber-400 border-amber-500"; textColor = "text-amber-600 font-bold"; }
+                    else if (isError) { dotColor = "bg-rose-500 border-rose-600"; textColor = "text-rose-600 font-bold"; }
+
+                    return (
+                      <div key={pc.id} className="flex flex-col items-center relative group" style={{ width: `${100 / sorted.length}%` }}>
+                        <div className="relative flex items-center justify-center">
+                          {isWorking && (
+                            <div className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-30" style={{ transform: 'scale(2.5)' }} />
+                          )}
+                          <div className={`w-3.5 h-3.5 rounded-full border-2 z-10 transition-colors duration-300 ${dotColor}`} />
+                        </div>
+                        <div className={`mt-2 whitespace-nowrap text-[10px] transition-all duration-300 text-center ${textColor} ${isWorking ? 'scale-110' : ''}`}>
+                          {pc.tenCongDoan}
+                          {(pc as any).bangChungURLs && (pc as any).bangChungURLs.length > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault(); e.stopPropagation();
+                                const w = window.open();
+                                if (w) w.document.write(`<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">${(pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px;max-height:400px;object-fit:contain;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('')}</div>`);
+                              }}
+                              className="ml-1 hover:text-blue-600 transition-colors"
+                              title="Xem ảnh bằng chứng"
+                            >
+                              <ImageIcon className="inline w-3 h-3 text-blue-400" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          )}
+          );
+        })()}
 
           {/* Logo In/Thêu */}
           {lc.hinhMauInTheu && (
@@ -178,7 +193,6 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
               )}
             </div>
           )}
-        </div>
 
         {/* Colors Section */}
         <div className="p-6 bg-slate-50 flex-1">
