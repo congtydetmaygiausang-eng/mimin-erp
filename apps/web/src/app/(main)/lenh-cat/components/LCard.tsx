@@ -6,6 +6,7 @@ import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, Check
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE, LOAI_SP_LABELS, type LenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
+import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
 import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
@@ -63,12 +64,19 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   onSaveGiaCong?: (slThucTe: number, dsPhanCong: any, newDsMau?: any[]) => void;
   onSaveTyLe?: (mauIdx: number, newTyLe: any, tongDuCat?: number, fixedPhanCong?: any) => void;
 }) {
+  const { list: dsNhanSu } = useNhanSu();
   const s = TRANG_THAI_LC_STYLE[lc.trangThai] || { bg: "bg-slate-100", color: "text-slate-600" };
   const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && lc.trangThai !== "HoanThanh";
   const isBo = lc.loaiSP?.toLowerCase().includes("bo");
   const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
   // isQuan chỉ đúng khi là hàng Bộ (BoTru, BoCoTron) - Áo đơn KHÔNG có quần
   const isQuan = !!isBo;
+
+  // Người phụ trách sản xuất
+  const ptCode = lc.phuTrachSX || "";
+  const ptInfo = dsNhanSu.find(nv => nv.maNV === ptCode || nv.hoTen === ptCode);
+  const ptDisplayName = ptInfo?.hoTen || ptCode || "Chưa phân công";
+  const ptPhone = ptInfo?.sdt;
 
   const [modalGiaCong, setModalGiaCong] = useState<"ao" | "quan" | null>(null);
   const [modalTyLeMauIdx, setModalTyLeMauIdx] = useState<number | null>(null);
@@ -167,6 +175,34 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
             <div className={`font-bold ${isLate ? 'text-rose-600' : 'text-slate-800'}`}>
               <DateDisplay value={lc.hanHoanThanh} format="dd/MM/yyyy" showRelative />
             </div>
+          </div>
+        </div>
+
+        {/* Người phụ trách sản xuất */}
+        <div className="mt-3 p-3 bg-indigo-50/40 border border-indigo-100/60 rounded-xl">
+          <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Người phụ trách sản xuất</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-bold text-slate-800 text-sm">{ptDisplayName}</div>
+              {ptPhone ? (
+                <div className="text-xs font-medium text-slate-500 mt-0.5">{ptPhone}</div>
+              ) : (
+                <div className="text-xs italic text-slate-400 mt-0.5">Chưa có SĐT</div>
+              )}
+            </div>
+            {ptPhone && (
+              <a
+                href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-8 h-8 bg-[#0068ff] hover:bg-[#0055d4] text-white rounded-full shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5"
+                title="Chat Zalo"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.03 2 11c0 2.87 1.5 5.43 3.82 7.07l-.92 3.42c-.08.28.16.55.43.46l3.65-1.22A10.74 10.74 0 0 0 12 21c5.52 0 10-4.03 10-9s-4.48-9-10-9zm-1.8 12.19c-.39 0-1.12-.12-1.42-.23-.28-.11-.47-.13-.58.17-.11.31.06.63.26.79.49.38 1.43.6 2.06.6s1.61-.17 2.11-.64c.38-.36.43-.87.11-1.14-.3-.25-1.04-.42-1.38-.52-.35-.11-.44-.26-.17-.55.22-.24.59-.44.75-.85.16-.42.06-.82-.2-.93-.26-.12-.86-.29-1.26-.06-.41.24-.54.67-.32 1.05.21.37.58.59.88.75.29.17.43.34.25.68-.17.32-.61.64-.81.76-.18.11-.53.12-.28.12z" />
+                </svg>
+              </a>
+            )}
           </div>
         </div>
 
