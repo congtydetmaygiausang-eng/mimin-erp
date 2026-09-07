@@ -96,73 +96,85 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   return (
     <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 ${isLate ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-200 hover:shadow-lg"}`}>
       
-      {/* Header */}
-      <div className={`px-4 py-3 flex items-center justify-between ${s.bg} border-b border-current/10`}>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-black text-teal-700 font-mono">{lc.id}</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${s.bg} ${s.color} border border-current/20`}>
-            {TRANG_THAI_LC_LABELS[lc.trangThai]}
-          </span>
-          {isLate && <AlertCircle className="w-4 h-4 text-rose-500" />}
+      {/* Header – style LenhCatCardV2 */}
+      <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-4">
+        <div className="flex-1">
+          {/* Mã lệnh cắt + trạng thái */}
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Mã lệnh cắt:</span>
+            <span className="font-black text-teal-700 font-mono text-lg bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200 shadow-sm">
+              {lc.id}
+            </span>
+            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${s.bg} ${s.color} border border-current/20`}>
+              {TRANG_THAI_LC_LABELS[lc.trangThai]}
+            </span>
+            {isLate && <AlertCircle className="w-4 h-4 text-rose-500" />}
+          </div>
+
+          {/* Tên sản phẩm */}
+          <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2 mb-3">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider shrink-0">Tên sản phẩm:</span>
+            <h3 className="text-xl font-black text-slate-800 leading-tight cursor-pointer hover:text-teal-600 transition-colors" onClick={onEdit}>
+              {lc.tenSP}
+            </h3>
+          </div>
+
+          {/* Mã SP + Loại sản phẩm */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md font-bold border border-indigo-200 shadow-sm flex items-center gap-1.5 text-sm">
+              <span className="text-indigo-400 font-medium text-xs uppercase tracking-wider">Mã SP:</span> {lc.maSP || "---"}
+            </span>
+            <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md font-bold border border-blue-200 shadow-sm flex items-center gap-1.5 text-sm">
+              <span className="text-blue-400 font-medium text-xs uppercase tracking-wider">Loại sản phẩm:</span> {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
+            </span>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          {isAo && (
-            <button
-              onClick={() => catDaNhap && setModalGiaCong("ao")}
-              disabled={!catDaNhap}
-              title={!catDaNhap ? "Khâu Cắt chưa nhập số liệu - hãy nhập tỷ lệ size khâu Cắt trước" : undefined}
-              className={`px-3 py-1 border rounded-lg text-xs font-bold transition-colors shadow-sm ${
-                catDaNhap
-                  ? "bg-white border-violet-200 text-violet-700 hover:bg-violet-50"
-                  : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-              }`}
-            >
-              {!catDaNhap && "🔒 "}Gia công áo
-            </button>
-          )}
-          {isQuan && (
-            <button
-              onClick={() => catDaNhap && setModalGiaCong("quan")}
-              disabled={!catDaNhap}
-              title={!catDaNhap ? "Khâu Cắt chưa nhập số liệu - hãy nhập tỷ lệ size khâu Cắt trước" : undefined}
-              className={`px-3 py-1 border rounded-lg text-xs font-bold transition-colors shadow-sm ${
-                catDaNhap
-                  ? "bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                  : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-              }`}
-            >
-              {!catDaNhap && "🔒 "}Gia công quần
-            </button>
-          )}
+
+        {/* Right: Tổng SL + Nút Gia công */}
+        <div className="flex flex-col items-end gap-3 shrink-0">
+          <div className="text-right">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng SL</div>
+            <div className="text-2xl font-black text-slate-800 tabular-nums leading-none mt-0.5">
+              {(lc.tongSL || 0).toLocaleString()} <span className="text-xs text-slate-400 font-normal">SP</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isAo && (
+              <button
+                onClick={() => catDaNhap && setModalGiaCong("ao")}
+                disabled={!catDaNhap}
+                title={!catDaNhap ? "Khâu Cắt chưa nhập số liệu - hãy nhập tỷ lệ size khâu Cắt trước" : undefined}
+                className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors shadow-sm ${
+                  catDaNhap
+                    ? "bg-white border-violet-200 text-violet-700 hover:bg-violet-50"
+                    : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                }`}
+              >
+                {!catDaNhap && "🔒 "}Gia công áo
+              </button>
+            )}
+            {isQuan && (
+              <button
+                onClick={() => catDaNhap && setModalGiaCong("quan")}
+                disabled={!catDaNhap}
+                title={!catDaNhap ? "Khâu Cắt chưa nhập số liệu - hãy nhập tỷ lệ size khâu Cắt trước" : undefined}
+                className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors shadow-sm ${
+                  catDaNhap
+                    ? "bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                }`}
+              >
+                {!catDaNhap && "🔒 "}Gia công quần
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="p-4 space-y-4">
-        {/* Row: SP Name & Loại */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="font-black text-xl text-slate-900 leading-tight mb-1 cursor-pointer hover:text-sky-600 transition-colors" onClick={onEdit}>
-              {lc.tenSP}
-            </h3>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
-                {LOAI_SP_LABELS[lc.loaiSP] || "Sản phẩm"}
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-medium border border-slate-200">
-                Mã: <span className="font-bold text-slate-800 ml-1">{lc.maSP || "---"}</span>
-              </span>
-            </div>
-          </div>
-          
-          <div className="text-right">
-            <div className="text-[10px] font-bold text-slate-500 uppercase">Tổng SL</div>
-            <div className="text-xl font-black text-slate-900 tabular-nums leading-none mt-0.5">
-              {(lc.tongSL || 0).toLocaleString()} <span className="text-xs text-slate-400 font-medium">SP</span>
-            </div>
-          </div>
-        </div>
+        {/* placeholder để giữ nguyên structure – phần dưới tiếp tục như cũ */}
+        <div className="hidden" />
 
         {/* Row: Thông tin chi tiết */}
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 grid grid-cols-2 gap-3 text-sm">
