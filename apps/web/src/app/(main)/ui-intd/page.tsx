@@ -16,7 +16,7 @@ import { useSession } from "@/components/session-provider";
 const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo", "in_theu", "in_theu_ao", "in_theu_quan"];
 
 export default function UiInTheuPage() {
-  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: string } | null>(null);
+  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: any } | null>(null);
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { user } = useSession();
@@ -243,6 +243,7 @@ export default function UiInTheuPage() {
           mau={selectedMau.mau}
           currentPCs={getIntdPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
           onSave={handleSaveColorModal}
+          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
         />
       )}
 

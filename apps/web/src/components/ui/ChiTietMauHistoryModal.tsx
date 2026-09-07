@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, CheckCircle2, AlertTriangle, Save, Clock } from "lucide-react";
+import { X, CheckCircle2, AlertTriangle, Save, Clock, ArrowRight } from "lucide-react";
 import type { LenhCat, MauVai, CongDoanItem } from "@/lib/data/lenh-cat-store";
 import type { ChiTietMauInput } from "./KhaiBaoSoLuongTheoMau";
 
@@ -10,6 +10,7 @@ interface Props {
   mau: MauVai | null;
   currentPCs: CongDoanItem[]; // The PCs that the user is currently working on (can edit)
   onSave: (pcId: string, data: ChiTietMauInput) => void;
+  onNextColor?: (nextMau: MauVai) => void;
 }
 
 const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
@@ -26,7 +27,7 @@ function tongSizes(sizes: { size: string; sl: number }[] | undefined) {
   return (sizes || []).reduce((s, x) => s + (x.sl || 0), 0);
 }
 
-export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, onSave }: Props) {
+export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, onSave, onNextColor }: Props) {
   // Chi tiết theo size cho các khâu hiện tại (editable)
   const [sizeInputs, setSizeInputs] = useState<Record<string, { size: string; sl: number }[]>>({});
   // SL Nhận (tổng, editable) cho các khâu hiện tại
@@ -97,7 +98,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
     });
   };
 
-  const handleSave = () => {
+  const currentMauIndex = lc.dsMau?.findIndex(m => m.ten === mau.ten) ?? -1;
+  const isLastMau = currentMauIndex === (lc.dsMau?.length || 1) - 1;
+  const nextMau = (!isLastMau && currentMauIndex >= 0) ? lc.dsMau?.[currentMauIndex + 1] : null;
+
+  const handleSaveAll = () => {
     currentPCs.forEach(pc => {
       const sizes = sizeInputs[pc.id] || [];
       const tongDat = tongSizes(sizes);
@@ -111,7 +116,18 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
         sizes,
       });
     });
+  };
+
+  const handleSaveAndClose = () => {
+    handleSaveAll();
     onClose();
+  };
+
+  const handleSaveAndNext = () => {
+    if (nextMau && onNextColor) {
+      handleSaveAll();
+      onNextColor(nextMau);
+    }
   };
 
   return (
@@ -290,6 +306,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                         <div className="flex-1">
                           <div className="text-lg font-black text-slate-800">{pc.tenCongDoan}</div>
                           <div className="text-sm text-slate-500 font-medium">{pc.nguoiTen || "Chưa giao"}</div>
+                          <div className="mt-1.5 flex items-center">
+                            <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-[11px] font-bold border border-teal-100 shadow-sm uppercase tracking-wider">
+                              MÀU: {mau.ten}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center">
                           <div className="text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm">
@@ -349,16 +370,41 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
 
         {/* Footer */}
         {currentPCs.length > 0 && (
-          <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+          <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row justify-end gap-3">
             <button onClick={onClose} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition">
               Hủy
             </button>
-            <button
-              onClick={handleSave}
-              className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center gap-2 transition shadow-md shadow-teal-500/20"
-            >
-              <Save className="w-4 h-4" /> Lưu thông tin
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={handleSaveAndClose}
+                className="px-6 py-2.5 bg-white border border-teal-600 text-teal-600 hover:bg-teal-50 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+              >
+                <Save className="w-4 h-4" /> Lưu & Đóng
+              </button>
+              
+              {onNextColor && nextMau ? (
+                <button
+                  onClick={handleSaveAndNext}
+                  className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md shadow-teal-500/20"
+                >
+                  <ArrowRight className="w-4 h-4" /> Lưu & Tiếp ({nextMau.ten})
+                </button>
+              ) : onNextColor && isLastMau ? (
+                <button
+                  onClick={handleSaveAndClose}
+                  className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md shadow-teal-500/20"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Hoàn tất màu cuối
+                </button>
+              ) : (
+                <button
+                  onClick={handleSaveAndClose}
+                  className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md shadow-teal-500/20"
+                >
+                  <Save className="w-4 h-4" /> Lưu thông tin
+                </button>
+              )}
+            </div>
           </div>
         )}
 

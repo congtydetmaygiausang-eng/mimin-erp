@@ -243,6 +243,7 @@ export default function UiKhuyNutPage() {
           mau={selectedMau.mau}
           currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
           onSave={handleSaveColorModal}
+          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
         />
       )}
 

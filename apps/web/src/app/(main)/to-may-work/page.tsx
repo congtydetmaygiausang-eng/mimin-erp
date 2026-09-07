@@ -16,7 +16,7 @@ import { useSession } from "@/components/session-provider";
 const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 
 export default function UiMayPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: string} | null>(null);
+  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
@@ -285,6 +285,7 @@ export default function UiMayPage() {
           mau={selectedMau.mau}
           currentPCs={getMayPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
           onSave={handleSaveColorModal}
+          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
         />
       )}
 

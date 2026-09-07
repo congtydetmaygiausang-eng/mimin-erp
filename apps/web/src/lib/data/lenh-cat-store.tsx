@@ -568,8 +568,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe,
       han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
       mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
-      chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, /* phu_trach_cat: lenh.phuTrachCat, */
-      /* phu_trach_sx: lenh.phuTrachSX, phu_trach_so_do: lenh.phuTrachSoDo, */ ghi_chu: lenh.ghiChu, 
+      chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
+      phu_trach_sx: lenh.phuTrachSX, /* phu_trach_so_do: lenh.phuTrachSoDo, */ ghi_chu: lenh.ghiChu, 
       /* ghi_chu_ky_thuat: lenh.ghiChuKyThuat, */ trang_thai: lenh.trangThai,
       phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao,
       // dai_so_do_ao: lenh.daiSoDoAo, so_do_ao: lenh.soDoAo, dai_so_do_quan: lenh.daiSoDoQuan, so_do_quan: lenh.soDoQuan,
@@ -602,8 +602,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.phanCong !== undefined)          updateData.phan_cong = lenh.phanCong;
       if (lenh.chiPhiCoDinh !== undefined)      updateData.chi_phi_co_dinh = lenh.chiPhiCoDinh;
       if (lenh.bangCOGS !== undefined)          updateData.bang_cogs = lenh.bangCOGS;
-      // if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
-      // if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
+      if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
+      if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
       // if (lenh.phuTrachSoDo !== undefined)      updateData.phu_trach_so_do = lenh.phuTrachSoDo;
       if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
       if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;

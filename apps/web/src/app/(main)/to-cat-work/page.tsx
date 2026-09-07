@@ -507,6 +507,7 @@ export default function CongViecCatPage() {
             return pc && pc.trangThaiCD === "dang_lam" ? [pc] : [];
           })()}
           onSave={handleSaveColorModal}
+          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
         />
       )}
     </div>

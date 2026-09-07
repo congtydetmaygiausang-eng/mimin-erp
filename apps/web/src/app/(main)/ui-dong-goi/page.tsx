@@ -16,7 +16,7 @@ import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
 import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
 
 export default function UiDongGoiPage() {
-  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: string } | null>(null);
+  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: any } | null>(null);
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { dsSanPham: dsDanhMuc, suaSP } = useDanhMucSP();
@@ -368,6 +368,7 @@ export default function UiDongGoiPage() {
           mau={selectedMau.mau}
           currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
           onSave={handleSaveColorModal}
+          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
         />
       )}
 

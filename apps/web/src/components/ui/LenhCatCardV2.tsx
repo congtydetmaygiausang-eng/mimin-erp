@@ -19,8 +19,9 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
   const mainImg = lc.dsMau?.[0]?.img || "";
 
   // Find Nguoi Phu Trach SX
-  const ptName = lc.phuTrachSX || "";
-  const ptInfo = dsNhanSu.find(nv => nv.hoTen === ptName || nv.maNV === ptName);
+  const ptCode = lc.phuTrachSX || "";
+  const ptInfo = dsNhanSu.find(nv => nv.maNV === ptCode || nv.hoTen === ptCode);
+  const ptDisplayName = ptInfo?.hoTen || ptCode || "Chưa phân công";
   const ptPhone = ptInfo?.sdt;
 
   return (
@@ -58,15 +59,18 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
               </span>
             </div>
 
-            {ptName && (
-              <div className="mt-4 p-3 bg-indigo-50/40 border border-indigo-100/60 rounded-xl max-w-sm">
-                <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Người phụ trách sản xuất</div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-slate-800 text-sm">{ptName}</div>
-                    {ptPhone && <div className="text-xs font-medium text-slate-500 mt-0.5">{ptPhone}</div>}
-                  </div>
-                  {ptPhone && (
+            <div className="mt-4 p-3 bg-indigo-50/40 border border-indigo-100/60 rounded-xl max-w-sm">
+              <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Người phụ trách sản xuất</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-800 text-sm">{ptDisplayName}</div>
+                  {ptPhone ? (
+                    <div className="text-xs font-medium text-slate-500 mt-0.5">{ptPhone}</div>
+                  ) : (
+                    <div className="text-xs italic text-slate-400 mt-0.5">Chưa có SĐT</div>
+                  )}
+                </div>
+                {ptPhone && (
                     <a 
                       href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`} 
                       target="_blank" 
@@ -81,7 +85,6 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                   )}
                 </div>
               </div>
-            )}
           </div>
           
           <div className="flex flex-row sm:flex-col gap-6 sm:gap-2 text-sm text-right">
