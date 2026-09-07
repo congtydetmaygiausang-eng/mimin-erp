@@ -260,30 +260,48 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
         </div>
       </div>
 
-      {/* Footer Actions (Chỉ hiện khi ở trang chủ Lệnh Cắt, tuỳ biến) */}
+      {/* Footer Actions */}
       {(onEdit || onDelete || onChangeStatus) && (
-        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
-          {onEdit && (
-            <button onClick={onEdit} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all text-xs">
-              <Edit3 className="w-3.5 h-3.5" /> Xem/Sửa
-            </button>
-          )}
-          {onChangeStatus && (
-            <select
-              value={lc.trangThai}
-              onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold text-slate-700 text-xs focus:ring-2 focus:ring-sky-500/30"
-            >
-              {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
-                <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
-              ))}
-            </select>
-          )}
-          {onDelete && (
-            <button onClick={onDelete} className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold transition-all flex items-center gap-1.5 text-xs">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
+        <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+          {/* Left: Xem/Sửa */}
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className={`px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all text-sm shadow-sm hover:shadow-md active:scale-95 ${
+                  lc.trangThai === "HoanThanh"
+                    ? "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                    : "bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700"
+                }`}
+              >
+                <Edit3 className="w-4 h-4" />
+                {lc.trangThai === "HoanThanh" ? "Xem chi tiết" : "Xem / Sửa"}
+              </button>
+            )}
+          </div>
+
+          {/* Right: Trạng thái + Xoá */}
+          <div className="flex items-center gap-2">
+            {onChangeStatus && (
+              <select
+                value={lc.trangThai}
+                onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-semibold text-slate-700 text-sm focus:ring-2 focus:ring-sky-500/30 cursor-pointer hover:border-sky-400 transition-colors shadow-sm"
+              >
+                {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
+                  <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
+                ))}
+              </select>
+            )}
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold transition-all flex items-center gap-2 text-sm shadow-sm hover:shadow-md active:scale-95"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
