@@ -372,8 +372,14 @@ export default function UiQCPage() {
                     const isTraLai = tt === "co_loi";
                     const isHoanThanh = tt === "hoan_thanh";
                     const tongSLCongDoan = pc.soLuong || lc.tongSL || 0;
-                    const slConLaiCanKiem = (pc.soLuongLoi || tongSLCongDoan) - slDatTam;
+                    const slConLaiCanKiem = Math.max(0, (pc.soLuongLoi || tongSLCongDoan) - slDatTam);
                     const pctDat = tongSLCongDoan > 0 ? Math.min(100, Math.round((slDatTam / tongSLCongDoan) * 100)) : 0;
+
+                    // ===== AUTO-FILL SL Đạt lần này =====
+                    // Nếu chưa từng nhập SL Đạt cho key này → tự điền = slConLaiCanKiem
+                    if (!(key in slDatInput) && slConLaiCanKiem > 0 && !isHoanThanh) {
+                      setTimeout(() => setSlDatInput(p => ({ ...p, [key]: slConLaiCanKiem })), 0);
+                    }
 
                     return (
                       <div key={pc.id} className={`rounded-xl border ${isTraLai ? "border-rose-300 bg-rose-50/30" : isHoanThanh ? "border-emerald-300 bg-emerald-50/30 opacity-80" : "border-slate-200 bg-white"} overflow-hidden shadow-sm`}>
@@ -504,8 +510,12 @@ export default function UiQCPage() {
                                   <label className="text-xs font-bold text-rose-700 mb-1.5 block">❌ SL Lỗi lần này</label>
                                   <input
                                     type="number" min="0"
-                                    value={slLoiInput[key] || ""}
-                                    onChange={e => setSlLoiInput(p => ({ ...p, [key]: Number(e.target.value) }))}
+                                    value={slLoiInput[key] ?? ""}
+                                    onChange={e => {
+                                      const newLoi = Number(e.target.value);
+                                      setSlLoiInput(p => ({ ...p, [key]: newLoi }));
+                                      setSlDatInput(p => ({ ...p, [key]: Math.max(0, slConLaiCanKiem - newLoi) }));
+                                    }}
                                     onFocus={e => e.target.select()}
                                     className="w-full px-3 py-2.5 border-2 border-rose-300 rounded-lg text-center text-lg font-black text-rose-700 focus:outline-none focus:border-rose-500 bg-rose-50"
                                     placeholder="0"
