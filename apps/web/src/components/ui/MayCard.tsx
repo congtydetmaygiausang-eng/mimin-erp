@@ -83,8 +83,8 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
           </div>
           
           <div className="flex gap-2 items-center mt-1">
-            <div className="text-xs font-bold text-fuchsia-700 bg-fuchsia-50 px-2.5 py-1 rounded-md border border-fuchsia-200 shadow-sm flex items-center gap-1.5">
-              <span className="text-fuchsia-400 font-medium text-[10px] uppercase tracking-wider">Loại sản phẩm:</span>
+            <div className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 shadow-sm flex items-center gap-1.5">
+              <span className="text-blue-400 font-medium text-[10px] uppercase tracking-wider">Loại sản phẩm:</span>
               {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
             </div>
           </div>

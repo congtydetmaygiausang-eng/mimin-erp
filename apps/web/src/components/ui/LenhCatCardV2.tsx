@@ -59,8 +59,8 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
               <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md font-bold border border-indigo-200 shadow-sm flex items-center gap-1.5">
                 <span className="text-indigo-400 font-medium text-xs uppercase tracking-wider">Mã SP:</span> {lc.maSP}
               </span>
-              <span className="bg-fuchsia-50 text-fuchsia-700 px-2.5 py-1 rounded-md font-bold border border-fuchsia-200 shadow-sm flex items-center gap-1.5">
-                <span className="text-fuchsia-400 font-medium text-xs uppercase tracking-wider">Loại sản phẩm:</span> {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
+              <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md font-bold border border-blue-200 shadow-sm flex items-center gap-1.5">
+                <span className="text-blue-400 font-medium text-xs uppercase tracking-wider">Loại sản phẩm:</span> {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
               </span>
             </div>
 
