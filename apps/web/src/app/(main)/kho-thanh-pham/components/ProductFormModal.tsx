@@ -154,9 +154,9 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       toast.error("Vui lòng nhập Mã SP và Tên SP");
       return;
     }
-    const hopLe = bienThe.filter((bt) => bt.mau.trim() && tongSLBienThe(bt) > 0);
+    const hopLe = bienThe.filter((bt) => bt.mau.trim());
     if (hopLe.length === 0) {
-      toast.error("Cần ít nhất 1 biến thể có màu và số lượng > 0");
+      toast.error("Cần ít nhất 1 biến thể có tên màu");
       return;
     }
     if (hopLe.some((bt) => bt.kenhBan.length === 0)) {
