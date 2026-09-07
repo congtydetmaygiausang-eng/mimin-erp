@@ -70,14 +70,21 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
         </div>
         
         <div className="flex flex-col gap-2 flex-1">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-black text-teal-700 font-mono text-base tracking-tight">{lc.id}</span>
-            {renderStatus}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mã lệnh cắt:</span>
+              <span className="font-black text-teal-700 font-mono text-sm bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 shadow-sm tracking-tight">{lc.id}</span>
+              {renderStatus}
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Tên sản phẩm:</span>
+              <h2 className="text-xl font-black text-slate-800 leading-tight tracking-tight mt-0.5">{lc.tenSP}</h2>
+            </div>
           </div>
-          <h2 className="text-xl font-black text-slate-800 leading-tight tracking-tight">{lc.tenSP}</h2>
           
           <div className="flex gap-2 items-center mt-1">
-            <div className="text-xs font-bold text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-md border border-slate-200/60">
+            <div className="text-xs font-bold text-fuchsia-700 bg-fuchsia-50 px-2.5 py-1 rounded-md border border-fuchsia-200 shadow-sm flex items-center gap-1.5">
+              <span className="text-fuchsia-400 font-medium text-[10px] uppercase tracking-wider">Loại sản phẩm:</span>
               {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
             </div>
           </div>
