@@ -98,7 +98,7 @@ export default function LenhCatPage() {
   const filteredLC = dsLenhCat.filter((l) => filterTrangThai === "ALL" || l.trangThai === filterTrangThai);
 
   // Handlers
-  const handleEdit = (id: string) => { router.push(`/lenh-cat/${id}`); };
+  const handleEdit = (id: string) => { setEditId(id); setShowModal(true); };
   // Tạm dùng lại LenhCatModal: wizard /lenh-cat/tao-moi chưa chạy được
   // (thiếu framer-motion + @/components/ui/button), đã chuyển vào _tao-moi.
   const handleCreate = () => { setEditId(null); setShowModal(true); };
