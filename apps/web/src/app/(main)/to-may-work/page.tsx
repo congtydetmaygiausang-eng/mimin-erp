@@ -9,7 +9,7 @@ import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateC
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { MayCard, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 
@@ -189,7 +189,7 @@ export default function UiMayPage() {
             const catDone = catTT === "hoan_thanh";
 
             return (
-              <LenhCatCardV2 
+              <MayCard 
                 key={lc.id} 
                 lc={lc}
                 onColorClick={(mau) => setSelectedMau({ lc, mau })}
@@ -206,9 +206,10 @@ export default function UiMayPage() {
                   {mayPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
+                    const bgStyle = tt === "dang_lam" ? "bg-[#fffdf0]" : style.bg;
 
                     return (
-                      <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
+                      <div key={pc.id} className={`rounded-xl border p-4 ${bgStyle} border-current/20`}>
                         <div className="flex items-start justify-between mb-3">
                           <div>
                             <div className="font-black text-slate-800">{pc.tenCongDoan}</div>
@@ -231,8 +232,8 @@ export default function UiMayPage() {
                           
                           {tt === "dang_lam" && (
                             <button onClick={() => setUploadModal({ lc, pc })}
-                                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600">
-                              <CheckCircle2 className="w-4 h-4 inline mr-1" /> Báo hoàn thành công đoạn
+                                    className="flex-1 py-4 rounded-xl text-base font-black bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm flex items-center justify-center gap-2">
+                              <CheckCircle2 className="w-5 h-5" /> Báo hoàn thành công đoạn
                             </button>
                           )}
                           {tt === "hoan_thanh" && (
@@ -267,7 +268,7 @@ export default function UiMayPage() {
                     );
                   })}
                 </div>
-              </LenhCatCardV2>
+              </MayCard>
             );
           })}
         </div>
