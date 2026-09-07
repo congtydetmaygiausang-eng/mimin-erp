@@ -58,9 +58,24 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
     const size = r.size;
     const soLuong = r.so_luong || r.soLuong;
     
-    const chiTiet: TonKhoTheoSize = Array.isArray(ctSize) && ctSize.length > 0
+    let chiTiet: TonKhoTheoSize = Array.isArray(ctSize) && ctSize.length > 0
       ? ctSize.map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
       : (size ? [{ size: size, sl: Number(soLuong) || 0 }] : []);
+      
+    const tongChiTiet = chiTiet.reduce((sum, x) => sum + x.sl, 0);
+    const soLuongThat = Number(soLuong) || 0;
+    if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
+      let conLai = soLuongThat;
+      chiTiet = chiTiet.map((x, i) => {
+        if (i === chiTiet.length - 1) return { size: x.size, sl: conLai };
+        const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
+        conLai -= slMoi;
+        return { size: x.size, sl: Math.max(0, slMoi) };
+      });
+    } else if (tongChiTiet === 0 && soLuongThat > 0) {
+      chiTiet = size ? [{ size: size, sl: soLuongThat }] : [];
+    }
+    
     result[maSP][mau] = congDonSize(result[maSP][mau] || [], chiTiet);
   }
   return result;
@@ -80,9 +95,23 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
     const maSP = r.ma_sp || r.maSP;
     if (!maSP) continue;
     
-    const sizes: TonKhoTheoSize = Array.isArray(r.chi_tiet_size || r.chiTietSize) && (r.chi_tiet_size || r.chiTietSize).length > 0
+    const soLuongThat = Number(r.so_luong || r.soLuong) || 0;
+    let sizes: TonKhoTheoSize = Array.isArray(r.chi_tiet_size || r.chiTietSize) && (r.chi_tiet_size || r.chiTietSize).length > 0
       ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
-      : (r.size ? [{ size: r.size, sl: Number(r.so_luong || r.soLuong) || 0 }] : []);
+      : (r.size ? [{ size: r.size, sl: soLuongThat }] : []);
+      
+    const tongChiTiet = sizes.reduce((sum, x) => sum + x.sl, 0);
+    if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
+      let conLai = soLuongThat;
+      sizes = sizes.map((x, i) => {
+        if (i === sizes.length - 1) return { size: x.size, sl: conLai };
+        const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
+        conLai -= slMoi;
+        return { size: x.size, sl: Math.max(0, slMoi) };
+      });
+    } else if (tongChiTiet === 0 && soLuongThat > 0) {
+      sizes = r.size ? [{ size: r.size, sl: soLuongThat }] : [];
+    }
     const kenhBanRaw = r.kenh_ban || r.kenhBan;
     const channels = (Array.isArray(kenhBanRaw) && kenhBanRaw.length ? kenhBanRaw : ["ban-le"]) as KenhBanKho[];
 

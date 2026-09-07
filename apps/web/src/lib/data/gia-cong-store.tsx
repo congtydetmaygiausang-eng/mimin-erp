@@ -233,7 +233,7 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
   );
 
   const banGiao = useCallback(
-    (taskId: string, bg: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string }, user: AppUser | null) => {
+    (taskId: string, bg: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string; bangChungURLs?: string[] }, user: AppUser | null) => {
       const ts = Date.now();
       const id = `BG-${taskId}-${ts}`;
       const ngayBanGiao = new Date().toISOString().split("T")[0];
@@ -245,6 +245,7 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
           ngayHoanThanh: ngayBanGiao,
           nguoiXacNhan: bg.nguoiNhan || user?.name,
           soLuongNhan: bg.soLuongBanGiao,
+          bangChungURLs: bg.bangChungURLs,
         };
         return {
           ...d,
@@ -256,6 +257,7 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
               nguoiBanGiao: user?.id || "unknown",
               nguoiNhan: bg.nguoiNhan,
               ghiChu: bg.ghiChu,
+              bangChungURLs: bg.bangChungURLs,
               ts,
             },
           ],

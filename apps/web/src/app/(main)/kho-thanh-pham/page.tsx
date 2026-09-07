@@ -14,12 +14,14 @@ import { ProductFormModal } from "./components/ProductFormModal";
 import { MasterDetailsModal } from "./components/MasterDetailsModal";
 import { DangBanModal } from "./components/DangBanModal";
 import { VariantDetailModal } from "./components/VariantDetailModal";
+import { SuaTongModal } from "./components/SuaTongModal";
 
 export default function KhoThanhPhamPage() {
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
+  const [suaTongGroup, setSuaTongGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [openVariant, setOpenVariant] = useState<SanPhamTP | null>(null);
   const [search, setSearch] = useState("");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | SanPhamTP["trangThai"]>("all");
@@ -375,6 +377,28 @@ export default function KhoThanhPhamPage() {
     toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
   };
 
+  const handleSaveSuaTong = (updatedItems: SanPhamTP[]) => {
+    const maSP = updatedItems[0]?.maSP;
+    if (!maSP) return;
+    
+    // Merge into Kho Thành Phẩm
+    const otherItems = dsSanPham.filter(s => s.maSP !== maSP);
+    update([...updatedItems, ...otherItems]);
+    
+    // Update Danh Mục SP if exists
+    const dm = dsDanhMuc.find(d => d.id === maSP || d.maSP === maSP);
+    if (dm) {
+      suaSP(dm.id, { 
+        tenSP: updatedItems[0].tenSP, 
+        loaiSP: updatedItems[0].phanLoai as any,
+        giaBanDuKien: Math.max(...updatedItems.map(i => i.giaBanLe || 0), dm.giaBanDuKien || 0),
+        giaVonDuKien: Math.max(...updatedItems.map(i => i.giaVon || 0), dm.giaVonDuKien || 0),
+      });
+    }
+    setSuaTongGroup(null);
+    toast.success(`Đã cập nhật thông tin chung cho ${updatedItems.length} biến thể của ${maSP}`);
+  };
+
   // Tách/đồng bộ lại 1 nhóm sản phẩm thành card riêng cho MỖI MÀU, dựa trên
   // dsMau + số lượng thật của khâu Đóng gói ở lệnh cắt gốc. Dùng cho các bản ghi
   // cũ bị gộp "Nhiều màu" (nhập kho trước khi sửa lỗi gộp màu) - giữ lại ảnh/giá
@@ -652,6 +676,7 @@ export default function KhoThanhPhamPage() {
               onDangBan={setDangBanGroup}
               onOpenVariant={setOpenVariant}
               onRebuildFromLC={handleRebuildFromLC}
+              onSuaTong={setSuaTongGroup}
               dsLenhCat={dsLenhCat}
             />
           ) : (
@@ -662,6 +687,7 @@ export default function KhoThanhPhamPage() {
               setEditing={setEditing}
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}
+              onSuaTong={setSuaTongGroup}
             />
           )}
         </div>
@@ -673,7 +699,8 @@ export default function KhoThanhPhamPage() {
       {/* Modals */}
       {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={mergedProductImages} onClose={() => setShowMasterDetails(null)} />}
       {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
-      {editing && <ProductFormModal sp={editing} initialImage={mergedProductImages[editing.id] || mergedProductImages[editing.maSP]} onClose={() => setEditing(null)} onSave={handleEdit} />}
+      {editing && <ProductFormModal sp={editing} initialImage={editing.hinhAnh?.[0] || mergedVariantImages[`${editing.maSP}_${editing.mau}`] || mergedProductImages[editing.id] || mergedProductImages[editing.maSP]} onClose={() => setEditing(null)} onSave={handleEdit} />}
+      {suaTongGroup && <SuaTongModal group={suaTongGroup} onClose={() => setSuaTongGroup(null)} onSave={handleSaveSuaTong} />}
       {dangBanGroup && (() => {
         const soMauCoAnh = dangBanGroup.items.filter((i) => i.hinhAnh?.[0]).length;
         const tongSoMau = dangBanGroup.items.length;
