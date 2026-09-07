@@ -31,6 +31,8 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
   const [sizeInputs, setSizeInputs] = useState<Record<string, { size: string; sl: number }[]>>({});
   // SL Nhận (tổng, editable) cho các khâu hiện tại
   const [nhanInputs, setNhanInputs] = useState<Record<string, number>>({});
+  // Cinema mode image zoom
+  const [zoomedImg, setZoomedImg] = useState<{ src1: string; src2?: string } | null>(null);
 
   useEffect(() => {
     if (isOpen && mau) {
@@ -119,12 +121,23 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-white flex">
+            <div 
+              className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-white flex cursor-pointer group relative"
+              onClick={() => {
+                const src1 = mau.img || "";
+                const src2 = lc.loaiSP?.includes("Bo") && (mau as any).imgQuan ? (mau as any).imgQuan : undefined;
+                if (src1 || src2) setZoomedImg({ src1, src2 });
+              }}
+              title="Bấm để xem ảnh lớn"
+            >
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                <span className="text-white text-[10px] font-bold">ZOOM</span>
+              </div>
               <div className={`relative h-full ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200" : "w-full"}`}>
                 {mau.img ? (
                   <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-300 text-center">NO IMG{lc.loaiSP?.includes("Bo") ? <br/> : ""} {lc.loaiSP?.includes("Bo") ? "ÁO" : ""}</div>
+                  <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-300 text-center bg-slate-50">NO IMG{lc.loaiSP?.includes("Bo") ? <br/> : ""} {lc.loaiSP?.includes("Bo") ? "ÁO" : ""}</div>
                 )}
               </div>
               {lc.loaiSP?.includes("Bo") && (
@@ -132,7 +145,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                   {(mau as any).imgQuan ? (
                     <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-300 text-center">NO IMG<br/>QUẦN</div>
+                    <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-300 text-center bg-slate-50">NO IMG<br/>QUẦN</div>
                   )}
                 </div>
               )}
@@ -218,9 +231,26 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
           {/* Form Nhập Liệu cho Khâu Hiện Tại - theo từng size */}
           {currentPCs.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-sky-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                Khâu hiện tại ({currentPCs.map(c => c.tenCongDoan).join(", ")})
-              </h3>
+              <div className="flex items-center gap-3 mb-4 mt-2">
+                <h3 className="text-sm font-bold text-sky-600 uppercase tracking-widest flex items-center gap-2">
+                  Khâu hiện tại
+                </h3>
+                <div className="h-px flex-1 bg-gradient-to-r from-sky-200 to-transparent"></div>
+              </div>
+
+              {/* Hướng dẫn nhập liệu */}
+              <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50/50 border border-blue-100/60 rounded-2xl p-4 shadow-[0_2px_10px_rgb(59,130,246,0.05)] relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-400 to-indigo-500"></div>
+                <h4 className="text-sm font-black text-indigo-800 mb-2 flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 text-xs">💡</span> 
+                  Hướng dẫn nhập số liệu
+                </h4>
+                <ul className="text-[13px] text-indigo-900/80 space-y-1.5 pl-7 list-disc font-medium leading-relaxed">
+                  <li>Vui lòng kiểm đếm và nhập chính xác <strong className="text-indigo-700 bg-indigo-100/50 px-1 rounded">số lượng ĐẠT</strong> vào từng ô Size tương ứng.</li>
+                  <li><strong className="text-indigo-700 bg-indigo-100/50 px-1 rounded">SL Nhận</strong> là số hàng thực tế xưởng nhận được từ khâu trước.</li>
+                  <li>Nếu tổng số Đạt ít hơn SL Nhận, hệ thống sẽ <strong className="text-rose-600 bg-rose-50 px-1 rounded">tự động tính ra SL Lỗi</strong>.</li>
+                </ul>
+              </div>
 
               <div className="space-y-4">
                 {currentPCs.map(pc => {
@@ -230,11 +260,41 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                   const soLuongLoi = Math.max(0, soLuongNhan - tongDat);
 
                   return (
-                    <div key={pc.id} className="bg-sky-50/50 border border-sky-100 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-3 border-b border-sky-100 pb-2">
-                        <div className="font-bold text-sky-900">{pc.tenCongDoan} - {pc.nguoiTen || "Chưa giao"}</div>
-                        <div className="text-sm font-bold text-slate-500 bg-white px-2.5 py-1 rounded-md border border-slate-100">
-                          Tổng đạt: <span className="text-emerald-600">{tongDat.toLocaleString()}</span>
+                    <div key={pc.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-md transition-all duration-300">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-5 border-b border-slate-100 pb-4">
+                        <div 
+                          className="w-16 h-16 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-200 shadow-sm relative cursor-pointer group"
+                          onClick={() => {
+                            const imgSrc = pc.id.includes("quan") && lc.loaiSP?.includes("Bo") ? (mau as any).imgQuan : mau.img;
+                            if (imgSrc) setZoomedImg({ src1: imgSrc });
+                          }}
+                          title="Bấm để xem ảnh lớn"
+                        >
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                            <span className="text-white text-[10px] font-bold">ZOOM</span>
+                          </div>
+                          {pc.id.includes("quan") && lc.loaiSP?.includes("Bo") ? (
+                            (mau as any).imgQuan ? (
+                              <img src={(mau as any).imgQuan} alt="quần" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-400 bg-slate-50">NO IMG</div>
+                            )
+                          ) : (
+                            mau.img ? (
+                              <img src={mau.img} alt="áo" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-400 bg-slate-50">NO IMG</div>
+                            )
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-lg font-black text-slate-800">{pc.tenCongDoan}</div>
+                          <div className="text-sm text-slate-500 font-medium">{pc.nguoiTen || "Chưa giao"}</div>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm">
+                            Tổng đạt: <span className="text-emerald-600 text-base ml-1">{tongDat.toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -249,7 +309,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                                 value={sz.sl || ""}
                                 onChange={e => handleSizeChange(pc.id, sIdx, parseInt(e.target.value) || 0)}
                                 onFocus={e => e.target.select()}
-                                className="w-full px-2 py-1.5 text-center border border-emerald-300 bg-emerald-50/30 rounded focus:ring-2 focus:ring-emerald-400/50 outline-none text-sm font-bold text-emerald-700"
+                                className="w-full px-2 py-2 text-center border border-emerald-300 bg-emerald-50/30 rounded-lg focus:ring-2 focus:ring-emerald-400/50 outline-none text-base font-bold text-emerald-700 transition-shadow"
                                 min="0"
                               />
                             </div>
@@ -261,19 +321,19 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-slate-500 mb-1">SL Nhận</label>
+                          <label className="block text-xs font-bold text-slate-500 mb-1.5">SL Nhận</label>
                           <input
                             type="number"
-                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-700 font-bold focus:ring-2 focus:ring-sky-500 outline-none"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 font-bold focus:ring-2 focus:ring-sky-500 outline-none transition-shadow shadow-sm"
                             value={soLuongNhan || ""}
                             onChange={e => setNhanInputs(prev => ({ ...prev, [pc.id]: parseInt(e.target.value) || 0 }))}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-rose-600 mb-1 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> SL Lỗi (tự tính)
+                          <label className="block text-xs font-bold text-rose-600 mb-1.5 flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5" /> SL Lỗi (tự tính)
                           </label>
-                          <div className="w-full bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 text-rose-700 font-bold">
+                          <div className="w-full bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 text-rose-700 font-bold shadow-sm">
                             {soLuongLoi.toLocaleString()}
                           </div>
                         </div>
@@ -303,6 +363,30 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
         )}
 
       </div>
+
+      {/* Cinema Mode Image Zoom */}
+      {zoomedImg && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-fade-in backdrop-blur-sm" onClick={() => setZoomedImg(null)}>
+          <button 
+            className="absolute top-4 right-4 md:top-8 md:right-8 w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); setZoomedImg(null); }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
+          <div 
+            className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 max-w-full max-h-full"
+            onClick={e => e.stopPropagation()}
+          >
+            {zoomedImg.src1 && (
+              <img src={zoomedImg.src1} alt="Preview" className="max-w-full md:max-w-[45vw] max-h-[40vh] md:max-h-[85vh] object-contain rounded-2xl shadow-2xl" />
+            )}
+            {zoomedImg.src2 && (
+              <img src={zoomedImg.src2} alt="Preview 2" className="max-w-full md:max-w-[45vw] max-h-[40vh] md:max-h-[85vh] object-contain rounded-2xl shadow-2xl" />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
