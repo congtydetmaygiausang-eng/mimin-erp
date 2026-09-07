@@ -31,6 +31,8 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
   const [sizeInputs, setSizeInputs] = useState<Record<string, { size: string; sl: number }[]>>({});
   // SL Nhận (tổng, editable) cho các khâu hiện tại
   const [nhanInputs, setNhanInputs] = useState<Record<string, number>>({});
+  // Cinema mode image zoom
+  const [zoomedImg, setZoomedImg] = useState<{ src1: string; src2?: string } | null>(null);
 
   useEffect(() => {
     if (isOpen && mau) {
@@ -122,8 +124,9 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
             <div 
               className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-white flex cursor-pointer group relative"
               onClick={() => {
-                const w = window.open("", "_blank");
-                if (w) w.document.write(`<div style="display:flex;gap:20px;justify-content:center;align-items:center;height:100vh;background:#111827;margin:0;">${mau.img ? `<img src="${mau.img}" style="max-width:45%;max-height:90vh;object-fit:contain;border-radius:12px;"/>` : ''}${lc.loaiSP?.includes("Bo") && (mau as any).imgQuan ? `<img src="${(mau as any).imgQuan}" style="max-width:45%;max-height:90vh;object-fit:contain;border-radius:12px;"/>` : ''}</div>`);
+                const src1 = mau.img || "";
+                const src2 = lc.loaiSP?.includes("Bo") && (mau as any).imgQuan ? (mau as any).imgQuan : undefined;
+                if (src1 || src2) setZoomedImg({ src1, src2 });
               }}
               title="Bấm để xem ảnh lớn"
             >
@@ -263,10 +266,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                           className="w-16 h-16 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-200 shadow-sm relative cursor-pointer group"
                           onClick={() => {
                             const imgSrc = pc.id.includes("quan") && lc.loaiSP?.includes("Bo") ? (mau as any).imgQuan : mau.img;
-                            if (imgSrc) {
-                              const w = window.open("", "_blank");
-                              if (w) w.document.write(`<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#111827;margin:0;"><img src="${imgSrc}" style="max-width:90%;max-height:90vh;object-fit:contain;border-radius:12px;"/></div>`);
-                            }
+                            if (imgSrc) setZoomedImg({ src1: imgSrc });
                           }}
                           title="Bấm để xem ảnh lớn"
                         >
@@ -363,6 +363,30 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
         )}
 
       </div>
+
+      {/* Cinema Mode Image Zoom */}
+      {zoomedImg && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4 md:p-8 animate-fade-in backdrop-blur-sm" onClick={() => setZoomedImg(null)}>
+          <button 
+            className="absolute top-4 right-4 md:top-8 md:right-8 w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); setZoomedImg(null); }}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
+          <div 
+            className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 max-w-full max-h-full"
+            onClick={e => e.stopPropagation()}
+          >
+            {zoomedImg.src1 && (
+              <img src={zoomedImg.src1} alt="Preview" className="max-w-full md:max-w-[45vw] max-h-[40vh] md:max-h-[85vh] object-contain rounded-2xl shadow-2xl" />
+            )}
+            {zoomedImg.src2 && (
+              <img src={zoomedImg.src2} alt="Preview 2" className="max-w-full md:max-w-[45vw] max-h-[40vh] md:max-h-[85vh] object-contain rounded-2xl shadow-2xl" />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -160,15 +160,15 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
               <button 
                 key={idx} 
                 onClick={() => onColorClick?.(mau)}
-                className="flex items-center gap-3 bg-white border border-slate-200/80 hover:border-teal-400 hover:shadow-lg hover:-translate-y-1 rounded-2xl pr-5 p-2 transition-all duration-300 group cursor-pointer"
+                className="flex items-center gap-4 bg-white border border-slate-200/80 hover:border-teal-400 hover:shadow-xl hover:-translate-y-1 rounded-2xl pr-6 p-2.5 transition-all duration-300 group cursor-pointer"
               >
-                <div className="w-14 h-14 rounded-xl shrink-0 bg-slate-100 overflow-hidden relative shadow-sm flex">
+                <div className="w-20 h-20 rounded-xl shrink-0 bg-slate-100 overflow-hidden relative shadow-sm flex">
                   <div className={`relative h-full overflow-hidden ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200/50" : "w-full"}`}>
                     {mau.img ? (
                       <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-left" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                        <span className="text-[8px] font-bold">NO IMG</span>
+                        <span className="text-[9px] font-bold">NO IMG</span>
                       </div>
                     )}
                   </div>
@@ -178,15 +178,15 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                         <img src={(mau as any).imgQuan} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-right" />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
-                          <span className="text-[8px] font-bold text-center leading-none">NO<br/>IMG</span>
+                          <span className="text-[9px] font-bold text-center leading-none">NO<br/>IMG</span>
                         </div>
                       )}
                     </div>
                   )}
                 </div>
-                <div className="text-left flex flex-col justify-center">
-                  <div className="font-black text-slate-800 text-base group-hover:text-teal-700 transition-colors">{mau.ten}</div>
-                  <div className="text-[11px] text-slate-400 font-medium tracking-wide">Nhập chi tiết →</div>
+                <div className="text-left flex flex-col justify-center gap-1">
+                  <div className="font-black text-slate-800 text-lg group-hover:text-teal-700 transition-colors drop-shadow-sm">{mau.ten}</div>
+                  <div className="text-xs text-slate-400 font-medium tracking-wide flex items-center gap-1">Nhập chi tiết <span className="group-hover:translate-x-1 transition-transform">→</span></div>
                 </div>
               </button>
             ))}
