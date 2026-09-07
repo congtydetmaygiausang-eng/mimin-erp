@@ -43,19 +43,24 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
         {/* Header Section */}
         <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <span className="font-black text-teal-700 font-mono text-lg">{lc.id}</span>
-              {renderStatus}
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs md:text-sm text-slate-500 font-bold uppercase tracking-wider">Mã lệnh cắt:</span>
+                <span className="font-black text-teal-700 font-mono text-lg md:text-xl bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200 shadow-sm">{lc.id}</span>
+                {renderStatus}
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2 mt-1">
+                <span className="text-xs md:text-sm text-slate-500 font-bold uppercase tracking-wider shrink-0">Tên sản phẩm:</span>
+                <h2 className="text-xl md:text-2xl font-black text-slate-800 leading-tight">{lc.tenSP}</h2>
+              </div>
             </div>
-            <h2 className="text-2xl font-black text-slate-800">{lc.tenSP}</h2>
-            <div className="flex items-center gap-3 mt-2 text-sm">
-              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold border border-slate-200">
-                Mã SP: {lc.maSP}
+            
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-3 text-sm">
+              <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md font-bold border border-indigo-200 shadow-sm flex items-center gap-1.5">
+                <span className="text-indigo-400 font-medium text-xs uppercase tracking-wider">Mã SP:</span> {lc.maSP}
               </span>
-              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold border border-slate-200">
-                {/* loaiSP là "AoTru" | "BoTru" | "PhuKien"... - so sánh với "bo"/"ao"
-                    luôn sai nên trước đây mọi lệnh cắt đều hiện "Quần". */}
-                Loại: {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
+              <span className="bg-fuchsia-50 text-fuchsia-700 px-2.5 py-1 rounded-md font-bold border border-fuchsia-200 shadow-sm flex items-center gap-1.5">
+                <span className="text-fuchsia-400 font-medium text-xs uppercase tracking-wider">Loại sản phẩm:</span> {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
               </span>
             </div>
 
