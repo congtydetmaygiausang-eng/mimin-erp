@@ -862,6 +862,24 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
 
   // Section 3 - Phụ liệu
   const [dsPhuLieu, setDsPhuLieu] = useState<LenhCatPhuLieu[]>([]);
+
+  const themVatTuTheoMau = (mauIdx: number, apDungCho: "ao" | "quan") => {
+    const vatTuMacDinh = khoPhuLieuReals[0];
+    if (!vatTuMacDinh) {
+      toast.error("Kho phụ liệu chưa có vật tư để chọn");
+      return;
+    }
+    const soLuongMau = dsMau[mauIdx]?.slDuKien || 0;
+    setDsPhuLieu((prev) => [...prev, {
+      maPL: vatTuMacDinh.maVT,
+      tenPL: vatTuMacDinh.tenVT,
+      soLuong: soLuongMau,
+      donGia: vatTuMacDinh.donGia || 1000,
+      dvt: vatTuMacDinh.dvt || "cái",
+      apDungCho,
+      mauIdx,
+    }]);
+  };
   
   // Section 4 - Phân công
   const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
@@ -1110,6 +1128,14 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     return thieu;
   };
 
+  const getCongDoanChuaPhanCong = (): string[] => visiblePhanCong
+    .filter((congDoan) => !congDoan.nguoiMa?.trim())
+    .map((congDoan) => congDoan.tenCongDoan);
+
+  const getCongDoanChuaDonGia = (): string[] => visiblePhanCong
+    .filter((congDoan) => !Number.isFinite(Number(congDoan.donGia)) || Number(congDoan.donGia) <= 0)
+    .map((congDoan) => congDoan.tenCongDoan);
+
   const handleSave = async (status: TrangThaiLenhCat) => {
     if (editing?.trangThai === "ChuyenTiep") {
       toast.error("Lệnh cắt đã chuyển khâu, chỉ được phép xem");
@@ -1118,6 +1144,23 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     if (!maSP || !tenSP || !tongSL) {
       toast.error("Vui lòng điền đầy đủ Mã SP, Tên SP và Tổng SL!");
       return;
+    }
+
+    if (status !== "Nhap") {
+      const congDoanChuaPhanCong = getCongDoanChuaPhanCong();
+      const congDoanChuaDonGia = getCongDoanChuaDonGia();
+      if (congDoanChuaPhanCong.length > 0 || congDoanChuaDonGia.length > 0) {
+        const chiTietThieu = [
+          congDoanChuaPhanCong.length > 0
+            ? `Chưa gắn người phụ trách: ${congDoanChuaPhanCong.join(", ")}`
+            : "",
+          congDoanChuaDonGia.length > 0
+            ? `Chưa có bảng giá công đoạn: ${congDoanChuaDonGia.join(", ")}`
+            : "",
+        ].filter(Boolean);
+        toast.error(`Chưa thể hoàn tất hoặc chuyển khâu. Lệnh chỉ được lưu nháp:\n• ${chiTietThieu.join("\n• ")}`);
+        return;
+      }
     }
 
     if (status === "DaTao" || status === "ChuyenTiep") {
@@ -2419,10 +2462,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                     <div className="flex gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          const p = khoPhuLieuReals[0];
-                          setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "ao", mauIdx: idx }]);
-                        }}
+                        onClick={() => themVatTuTheoMau(idx, "ao")}
                         className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-[#2B4C3E] text-white text-xs font-bold rounded hover:bg-[#2B4C3E]/80 transition"
                       >
                         <Plus className="w-3.5 h-3.5" /> Vật tư áo
@@ -2805,10 +2845,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                           {isBo && (
                             <button
                               type="button"
-                              onClick={() => {
-                                const p = khoPhuLieuReals[0];
-                                setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "quan", mauIdx: idx }]);
-                              }}
+                              onClick={() => themVatTuTheoMau(idx, "quan")}
                               className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-teal-700 text-white text-xs font-bold rounded hover:bg-teal-800 transition md:col-start-2"
                             >
                               <Plus className="w-3.5 h-3.5" /> Vật tư quần
@@ -2873,7 +2910,12 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                               title="Vật tư này đi với màu nào - hiển thị ngay trong card màu tương ứng"
                               onChange={e => {
                                 const next = [...dsPhuLieu];
-                                next[idx] = { ...next[idx], mauIdx: e.target.value === "" ? undefined : Number(e.target.value) };
+                                const mauIdxMoi = e.target.value === "" ? undefined : Number(e.target.value);
+                                next[idx] = {
+                                  ...next[idx],
+                                  mauIdx: mauIdxMoi,
+                                  ...(mauIdxMoi === undefined ? {} : { soLuong: dsMau[mauIdxMoi]?.slDuKien || 0 }),
+                                };
                                 setDsPhuLieu(next);
                               }}
                             >
@@ -2995,7 +3037,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                             {kh.nguoiMa ? (nhanVienOptions.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
                           <select 
-                          className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
+                          className={`flex-1 min-w-0 px-2 py-1.5 border rounded text-sm focus:outline-none ${kh.nguoiMa ? "border-slate-200" : "border-rose-300 bg-rose-50/50"}`}
                           value={kh.nguoiMa}
                           onChange={(e) => {
                             const nv = nhanVienOptions.find(n => n.ma === e.target.value);
@@ -3017,7 +3059,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                         <div className="col-span-3 relative">
                           <input 
                             type="number" min={0}
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm text-right pr-6"
+                            className={`w-full px-2 py-1.5 border rounded text-sm text-right pr-6 ${Number(kh.donGia) > 0 ? "border-slate-200" : "border-rose-300 bg-rose-50/50"}`}
                             value={kh.donGia}
                             onChange={(e) => {
                               setPhanCong(p => {
