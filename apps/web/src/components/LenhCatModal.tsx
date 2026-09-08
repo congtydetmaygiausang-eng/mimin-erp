@@ -687,6 +687,34 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   const [dsMau, setDsMau] = useState<MauVai[]>(Array.from({ length: 4 }).map(() => ({ 
     ten: "", maSKU: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
   })));
+
+  const getCanhBaoTonKho = (mau: MauVai, maVai: string): string | null => {
+    if (!maVai || !mau.slDuKien) return null;
+    const vai = khoVaiReals.find((item) => item.maVT === maVai);
+    if (!vai) return null;
+
+    const dinhMucCungLoai =
+      (mau.maVai === maVai ? mau.dinhMuc || 0 : 0)
+      + (mau.maVaiQuan === maVai ? mau.dinhMucQuan || 0 : 0);
+    const kgCan = mau.slDuKien * dinhMucCungLoai;
+    const tonKho = vai.tonKho || 0;
+    if (kgCan <= tonKho) return null;
+
+    return `Tồn kho không đủ cho số lượng cắt màu ${mau.ten || "này"}. Vải ${vai.maMoi || vai.maVT} còn ${formatTonKhoVai(tonKho)} kg, cần ${formatTonKhoVai(kgCan)} kg, thiếu ${formatTonKhoVai(kgCan - tonKho)} kg.`;
+  };
+
+  const handleChonVai = (idx: number, maVai: string, phan: "ao" | "quan") => {
+    const mauMoi: MauVai = {
+      ...dsMau[idx],
+      ...(phan === "quan" ? { maVaiQuan: maVai } : { maVai }),
+    };
+    const canhBao = getCanhBaoTonKho(mauMoi, maVai);
+    if (canhBao) {
+      toast.error(canhBao);
+      return;
+    }
+    setDsMau((prev) => prev.map((mau, mauIdx) => mauIdx === idx ? mauMoi : mau));
+  };
   const [canhBaoTonKho, setCanhBaoTonKho] = useState<string[]>([]);
 
   // ============ AI Mockup state (MiniMax image-01) - tách riêng component ============
@@ -1030,6 +1058,15 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     if (!daiSoDoAo || (isBo && !daiSoDoQuan)) thieu.push(`Sơ đồ ${!daiSoDoAo ? "áo" : "quần"} (chưa nhập chiều dài sơ đồ)`);
     if (dsMau.some(m => !m.dinhMuc || m.dinhMuc <= 0) || (isBo && dsMau.some(m => !m.dinhMucQuan || m.dinhMucQuan <= 0))) thieu.push("Định mức (còn màu chưa có định mức áo/quần)");
     if (dsMau.some(m => !m.maVai) || (isBo && dsMau.some(m => !m.maVaiQuan))) thieu.push("Vải (còn màu chưa chọn mã vải áo/quần)");
+    dsMau.forEach((mau) => {
+      const cacMaVai = [...new Set(
+        [mau.maVai, isBo ? mau.maVaiQuan : ""].filter((maVai): maVai is string => Boolean(maVai)),
+      )];
+      cacMaVai.forEach((maVai) => {
+        const canhBao = getCanhBaoTonKho(mau, maVai);
+        if (canhBao) thieu.push(canhBao);
+      });
+    });
     if (!dsPhuLieu || dsPhuLieu.length === 0) thieu.push("Vật tư/phụ liệu (chưa thêm khoản mục nào)");
     const tongSLMau = dsMau.reduce((s, m) => s + (m.slDuKien || 0), 0);
     if (soSpTrongSoDo > 0 && Number(tongSL) < tongSLToiThieu) {
@@ -2469,9 +2506,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                 <select 
                                   className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
                                   value={mau.maVai}
-                                  onChange={(e) => {
-                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                                  }}
+                                  onChange={(e) => handleChonVai(idx, e.target.value, "ao")}
                                 >
                                   <option value="">-- Chọn vải --</option>
                                   {khoVaiReals.map((kv) => (
@@ -2520,9 +2555,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                 <select 
                                   className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
                                   value={mau.maVai}
-                                  onChange={(e) => {
-                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                                  }}
+                                  onChange={(e) => handleChonVai(idx, e.target.value, "ao")}
                                 >
                                   <option value="">-- Chọn vải --</option>
                                   {khoVaiReals.map((kv) => (
@@ -2694,9 +2727,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                 <select 
                                   className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
                                   value={mau.maVaiQuan || ""}
-                                  onChange={(e) => {
-                                    const next = [...dsMau]; next[idx].maVaiQuan = e.target.value; setDsMau(next);
-                                  }}
+                                  onChange={(e) => handleChonVai(idx, e.target.value, "quan")}
                                 >
                                   <option value="">-- Chọn vải --</option>
                                   {khoVaiReals.map((kv) => (
