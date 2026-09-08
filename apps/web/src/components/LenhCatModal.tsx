@@ -1124,10 +1124,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
       return;
     }
 
-    if (status === "ChuyenTiep") {
+    if (status !== "Nhap") {
       const congDoanChuaPhanCong = getCongDoanChuaPhanCong();
       if (congDoanChuaPhanCong.length > 0) {
-        toast.error(`Chưa thể lưu và chuyển khâu. Vui lòng chọn người phụ trách đầy đủ cho:\n• ${congDoanChuaPhanCong.join("\n• ")}`);
+        toast.error(`Chưa thể hoàn tất hoặc chuyển khâu. Khi chưa gắn đủ người phụ trách, lệnh chỉ được lưu nháp. Còn thiếu:\n• ${congDoanChuaPhanCong.join("\n• ")}`);
         return;
       }
     }
