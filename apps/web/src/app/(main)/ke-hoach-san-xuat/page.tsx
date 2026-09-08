@@ -249,7 +249,7 @@ export default function KeHoachSXPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             {imageToDisplay && (
-              <div className="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 shrink-0 overflow-hidden shadow-sm">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl border border-slate-200 bg-slate-50 shrink-0 overflow-hidden shadow-sm">
                 <img src={imageToDisplay} alt={item.sanPham} className="w-full h-full object-cover" />
               </div>
             )}
