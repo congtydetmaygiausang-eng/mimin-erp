@@ -8,6 +8,7 @@ import { CrudModal } from "@/components/ui/CrudModal";
 import { useSession } from "@/components/session-provider";
 import { useKHSX, type KHSX, type TrangThaiKHSX } from "@/lib/data/khsx-store";
 import { useLenhCat, generateLenhCatId } from "@/lib/data/lenh-cat-store";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 
 const TRANG_THAI: TrangThaiKHSX[] = ["Lên kế hoạch", "Đang SX", "Hoàn thành", "Trễ hạn"];
 const XUONG = ["Tổ cắt", "Xưởng May 1 – Polomimin", "Xưởng May 2 – Polomimin", "Gia công ngoài"];
@@ -17,6 +18,7 @@ export default function KeHoachSXPage() {
   const { user } = useSession();
   const { khsx, themKHSX, suaKHSX, xoaKHSX } = useKHSX();
   const { dsLenhCat, themLenhCat } = useLenhCat();
+  const { dsSanPham } = useDanhMucSP();
   
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<KHSX | null>(null);
@@ -236,8 +238,29 @@ export default function KeHoachSXPage() {
     <section className="card flex flex-wrap items-center gap-2 p-3"><Filter className="h-4 w-4 text-slate-400" />{(["Tất cả", ...TRANG_THAI] as const).map((item) => <button key={item} onClick={() => setFilter(item)} className={`rounded-lg px-3 py-2 text-xs font-bold ${filter === item ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-600"}`}>{item}{item !== "Tất cả" ? ` (${khsx.filter((x) => x.trangThai === item).length})` : ""}</button>)}</section>
 
     {visible.length === 0 ? <section className="card py-16 text-center text-slate-400"><Calendar className="mx-auto mb-3 h-12 w-12 opacity-25" /><p className="font-bold">Chưa có kế hoạch sản xuất nào</p><p className="mt-1 text-sm">Chọn “Đặt sản xuất” trong Danh mục sản phẩm hoặc bấm “Tạo KHSX”.</p></section> :
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((item) => <article key={item.id} className="card p-5">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black text-teal-700">Mã kế hoạch: {item.maKHSX}</p><p className="mt-1 text-sm font-bold text-slate-700">Mã sản phẩm: {item.maSP || "Chưa có mã SP"}</p><h2 className="text-sm font-medium text-slate-900">Tên sản phẩm: {item.sanPham}</h2></div><span className="rounded-full bg-teal-50 px-2 py-1 text-xs font-bold text-teal-700">{item.trangThai}</span></div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((item) => {
+        const sp = dsSanPham.find((s: any) => 
+          (item.maSP && (s.id === item.maSP || s.ma_sp === item.maSP)) ||
+          ((item.tenSP || item.sanPham) && s.tenSP === (item.tenSP || item.sanPham))
+        );
+        const imageToDisplay = item.dsMau?.[0]?.img || (item.dsMau?.[0] as any)?.imgQuan || sp?.dsMau?.[0]?.img || sp?.dsMau?.[0]?.imgQuan || null;
+        
+        return <article key={item.id} className="card p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            {imageToDisplay && (
+              <div className="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 shrink-0 overflow-hidden shadow-sm">
+                <img src={imageToDisplay} alt={item.sanPham} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div>
+              <p className="text-lg font-black text-teal-700">Mã kế hoạch: {item.maKHSX}</p>
+              <p className="mt-1 text-sm font-bold text-slate-700">Mã sản phẩm: {item.maSP || "Chưa có mã SP"}</p>
+              <h2 className="text-sm font-medium text-slate-900 leading-tight mt-0.5">Tên sản phẩm: {item.sanPham}</h2>
+            </div>
+          </div>
+          <span className="rounded-full bg-teal-50 px-2 py-1 text-xs font-bold text-teal-700 shrink-0">{item.trangThai}</span>
+        </div>
         <div className="my-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm"><div><p className="text-slate-400">Số lượng</p><b>{item.soLuong.toLocaleString("vi-VN")} SP</b></div><div><p className="text-slate-400">Thời gian</p><b>{item.tuNgay} → {item.denNgay}</b></div></div>
         {item.ghiChu && <div className="mb-4 text-xs text-slate-500 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/50">{item.ghiChu}</div>}
         {item.lenhCatId ? (
@@ -254,7 +277,7 @@ export default function KeHoachSXPage() {
           <button onClick={() => taoLenhCat(item)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white hover:bg-violet-700"><Scissors className="h-4 w-4" /> Tạo lệnh cắt</button>
         )}
         <div className="flex gap-2"><button onClick={() => { setEditing(item); setShowForm(true); }} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-50 py-2 text-xs font-bold text-amber-700"><Edit2 className="h-3 w-3" /> Sửa</button><button onClick={() => { if (confirm(`Xóa kế hoạch ${item.maKHSX}?`)) xoaKHSX(item.id, user); }} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-red-50 py-2 text-xs font-bold text-red-700"><Trash2 className="h-3 w-3" /> Xóa</button></div>
-      </article>)}</section>}
+      </article>})}</section>}
 
     <CrudModal open={showForm} onClose={() => setShowForm(false)} title={editing ? "Sửa kế hoạch sản xuất" : "Tạo kế hoạch sản xuất"} fields={[
       { name: "maKHSX", label: "Mã kế hoạch", type: "text", required: true }, { name: "maSP", label: "Mã sản phẩm", type: "text" }, { name: "sanPham", label: "Tên sản phẩm", type: "text", required: true }, { name: "soLuong", label: "Số lượng", type: "number", min: 1, required: true }, { name: "tuNgay", label: "Từ ngày", type: "date", required: true }, { name: "denNgay", label: "Đến ngày", type: "date", required: true }, { name: "xuongPhuTrach", label: "Xưởng phụ trách", type: "select", options: XUONG.map((x) => ({ value: x, label: x })) }, { name: "trangThai", label: "Trạng thái", type: "select", options: TRANG_THAI.map((x) => ({ value: x, label: x })) }, { name: "ghiChu", label: "Ghi chú", type: "textarea" },
