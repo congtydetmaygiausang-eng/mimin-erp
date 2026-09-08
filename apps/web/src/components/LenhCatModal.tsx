@@ -1146,7 +1146,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
       return;
     }
 
-    if (status !== "Nhap") {
+    if (status === "ChuyenTiep") {
       const congDoanChuaPhanCong = getCongDoanChuaPhanCong();
       const congDoanChuaDonGia = getCongDoanChuaDonGia();
       if (congDoanChuaPhanCong.length > 0 || congDoanChuaDonGia.length > 0) {
@@ -1158,7 +1158,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
             ? `Chưa có bảng giá công đoạn: ${congDoanChuaDonGia.join(", ")}`
             : "",
         ].filter(Boolean);
-        toast.error(`Chưa thể hoàn tất hoặc chuyển khâu. Lệnh chỉ được lưu nháp:\n• ${chiTietThieu.join("\n• ")}`);
+        toast.error(`Chưa thể chuyển khâu. Bạn có thể "Hoàn tất lệnh" hoặc "Lưu nháp" để bổ sung sau:\n• ${chiTietThieu.join("\n• ")}`);
         return;
       }
     }
@@ -2701,7 +2701,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                               value={mau.slDuKien || ""}
                               placeholder="VD: 125"
                               onChange={(e) => {
-                                const newVal = Math.max(soSPToiThieuMoiMau || 1, parseInt(e.target.value) || 0);
+                                const newVal = parseInt(e.target.value) || 0;
                                 const next = [...dsMau]; 
                                 next[idx].slDuKien = newVal; 
                                 setDsMau(next);
@@ -2712,6 +2712,19 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                 
                                 // Cập nhật số lượng vật tư của màu này
                                 setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
+                              }}
+                              onBlur={(e) => {
+                                const newVal = Math.max(soSPToiThieuMoiMau || 1, parseInt(e.target.value) || 0);
+                                if (newVal !== mau.slDuKien) {
+                                  const next = [...dsMau];
+                                  next[idx].slDuKien = newVal;
+                                  setDsMau(next);
+                                  
+                                  const newTongSL = next.reduce((sum, m) => sum + (m.slDuKien || 0), 0);
+                                  setTongSL(newTongSL);
+                                  
+                                  setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
+                                }
                               }}
                             />
                             {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
