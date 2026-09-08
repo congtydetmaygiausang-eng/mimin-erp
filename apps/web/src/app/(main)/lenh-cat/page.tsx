@@ -98,7 +98,15 @@ export default function LenhCatPage() {
   const filteredLC = dsLenhCat.filter((l) => filterTrangThai === "ALL" || l.trangThai === filterTrangThai);
 
   // Handlers
-  const handleEdit = (id: string) => { router.push(`/lenh-cat/${id}`); };
+  const handleEdit = (lc: (typeof dsLenhCat)[number]) => {
+    if (lc.trangThai === "ChuyenTiep") {
+      router.push(`/lenh-cat/${lc.id}`);
+      return;
+    }
+    setDraftData(null);
+    setEditId(lc.id);
+    setShowModal(true);
+  };
   // Tạm dùng lại LenhCatModal: wizard /lenh-cat/tao-moi chưa chạy được
   // (thiếu framer-motion + @/components/ui/button), đã chuyển vào _tao-moi.
   const handleCreate = () => { setEditId(null); setShowModal(true); };
@@ -165,7 +173,7 @@ export default function LenhCatPage() {
             <LenhCatCard
               key={lc.id}
               lc={lc}
-              onEdit={() => handleEdit(lc.id)}
+              onEdit={() => handleEdit(lc)}
               onDelete={() => handleDelete(lc.id)}
               onChangeStatus={async (tt) => {
                 await capNhatTrangThai(lc.id, tt, null);

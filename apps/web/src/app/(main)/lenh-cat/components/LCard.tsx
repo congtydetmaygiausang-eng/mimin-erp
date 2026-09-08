@@ -68,6 +68,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && lc.trangThai !== "HoanThanh";
   const isBo = lc.loaiSP?.toLowerCase().includes("bo");
   const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
+  const isTransferred = lc.trangThai === "ChuyenTiep";
   // isQuan chỉ đúng khi là hàng Bộ (BoTru, BoCoTron) - Áo đơn KHÔNG có quần
   const isQuan = !!isBo;
 
@@ -234,21 +235,21 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
           </button>
           {onEdit && (
             <button onClick={onEdit} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all text-xs">
-              <Edit3 className="w-3.5 h-3.5" /> Xem/Sửa
+              <Edit3 className="w-3.5 h-3.5" /> {isTransferred ? "Xem" : "Xem/Sửa"}
             </button>
           )}
-          {onChangeStatus && (
+          {onChangeStatus && !isTransferred && (
             <select
               value={lc.trangThai}
               onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
               className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold text-slate-700 text-xs focus:ring-2 focus:ring-sky-500/30"
             >
-              {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
+              {(["Nhap", "DaTao", "DangCat", "HoanThanh"] as TrangThaiLenhCat[]).map((tt) => (
                 <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
               ))}
             </select>
           )}
-          {onDelete && (
+          {onDelete && !isTransferred && (
             <button onClick={onDelete} className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold transition-all flex items-center gap-1.5 text-xs">
               <Trash2 className="w-3.5 h-3.5" />
             </button>

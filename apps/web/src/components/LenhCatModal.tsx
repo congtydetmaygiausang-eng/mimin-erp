@@ -19,7 +19,7 @@ import {
   Wand2, CheckCircle2, UploadCloud, Download, Eye, Printer, Share2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { KHO_VAT_TU, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
 import { supabase, useSupabaseSync } from "@/lib/supabase/client";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
@@ -41,7 +41,13 @@ import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
 import { getAllInventory, syncInventoryWithSupabase } from "@/lib/inventory-engine";
 
-type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
+type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string; sdt?: string };
+
+const formatTonKhoVai = (tonKho: number) =>
+  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(tonKho);
+
+const getVaiOptionLabel = (vai: KhoVai) =>
+  `${vai.maMoi || vai.maVT} - ${vai.mauSac || vai.tenChuan || vai.tenVT} — Tồn: ${formatTonKhoVai(vai.tonKho || 0)} kg`;
 
 const getAllOutsourceOptions = (suffix = "Gia công ngoài", excludePrefix?: string) => DOI_TAC_GIA_CONG
   .filter(dt => !excludePrefix || !dt.ma.startsWith(excludePrefix))
@@ -250,12 +256,14 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
-  const [khoVaiReals, setKhoVaiReals] = useState<any[]>([]);
-  useEffect(() => { 
+  const [khoVaiReals, setKhoVaiReals] = useState<KhoVai[]>([]);
+  useEffect(() => {
+    let isActive = true;
     setKhoVaiReals(getAllInventory());
-    syncInventoryWithSupabase().then(() => {
-      setKhoVaiReals(getAllInventory());
+    void syncInventoryWithSupabase().then(() => {
+      if (isActive) setKhoVaiReals(getAllInventory());
     });
+    return () => { isActive = false; };
   }, []);
 
   const { data: rawKho } = useSupabaseSync<any>("mimin_kho_all_real", "kho");
@@ -734,6 +742,23 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     const parts = tiLeSize.split(":").map(Number).filter((n) => Number.isFinite(n) && n >= 0);
     return parts.length > 0 ? parts.reduce((a, b) => a + b, 0) : 0;
   }, [tiLeSize]);
+  const soSizeThucTe = useMemo(
+    () => dsMau.reduce((max, mau) => Math.max(max, mau.phanBoSize?.length || 0), 0),
+    [dsMau],
+  );
+  const soSPToiThieuMoiMau = Math.max(soSpTrongSoDo, soSizeThucTe);
+  const tongSLToiThieu = Math.max(dsMau.length, soMau) * soSPToiThieuMoiMau;
+
+  // Dữ liệu cũ có thể lưu tổng SL nhỏ hơn số màu × số size. Khi mở form,
+  // chỉ hiệu chỉnh state để người dùng kiểm tra; chưa ghi DB cho tới khi bấm lưu.
+  useEffect(() => {
+    if (!soSPToiThieuMoiMau || typeof tongSL !== "number" || tongSL >= tongSLToiThieu) return;
+    setDsMau((prev) => prev.map((mau) => ({
+      ...mau,
+      slDuKien: Math.max(mau.slDuKien || 0, soSPToiThieuMoiMau),
+    })));
+    setTongSL(tongSLToiThieu);
+  }, [soSPToiThieuMoiMau, tongSL, tongSLToiThieu]);
 
   const dinhMucAoTuDong = useMemo(() => {
     const dai = parseFloat(daiSoDoAo);
@@ -1007,18 +1032,31 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     if (dsMau.some(m => !m.maVai) || (isBo && dsMau.some(m => !m.maVaiQuan))) thieu.push("Vải (còn màu chưa chọn mã vải áo/quần)");
     if (!dsPhuLieu || dsPhuLieu.length === 0) thieu.push("Vật tư/phụ liệu (chưa thêm khoản mục nào)");
     const tongSLMau = dsMau.reduce((s, m) => s + (m.slDuKien || 0), 0);
+    if (soSpTrongSoDo > 0 && Number(tongSL) < tongSLToiThieu) {
+      thieu.push(`Tổng SL dự kiến tối thiểu là ${tongSLToiThieu} SP (${dsMau.length} màu × ${soSpTrongSoDo} SP/màu theo tỷ lệ ${tiLeSize})`);
+    }
+    if (soSPToiThieuMoiMau > 0 && dsMau.some(m => (m.slDuKien || 0) < soSPToiThieuMoiMau)) {
+      thieu.push(`Mỗi màu phải có tối thiểu ${soSPToiThieuMoiMau} SP cho ${soSizeThucTe || tiLeSize.split(":").length} size`);
+    }
+    if (soSpTrongSoDo > 0 && dsMau.some(m => (m.slDuKien || 0) % soSpTrongSoDo !== 0)) {
+      thieu.push(`Số lượng từng màu phải là bội số của ${soSpTrongSoDo} để giữ đúng tỷ lệ ${tiLeSize}`);
+    }
     if (!tongSL || dsMau.some(m => !m.slDuKien || m.slDuKien <= 0) || tongSLMau !== Number(tongSL)) thieu.push(`Số lượng (tổng SL từng màu = ${tongSLMau}, chưa khớp Tổng SL dự kiến = ${tongSL || 0})`);
     if (!phuTrachSX && !phuTrachCat) thieu.push("Người phụ trách sản xuất");
     return thieu;
   };
 
   const handleSave = async (status: TrangThaiLenhCat) => {
+    if (editing?.trangThai === "ChuyenTiep") {
+      toast.error("Lệnh cắt đã chuyển khâu, chỉ được phép xem");
+      return;
+    }
     if (!maSP || !tenSP || !tongSL) {
       toast.error("Vui lòng điền đầy đủ Mã SP, Tên SP và Tổng SL!");
       return;
     }
 
-    if (status === "DaTao") {
+    if (status === "DaTao" || status === "ChuyenTiep") {
       const thieu = validateLenhCatDayDu();
       if (thieu.length > 0) {
         toast.error(`Chưa đủ điều kiện hoàn tất lệnh, còn thiếu:\n• ${thieu.join("\n• ")}`);
@@ -1309,7 +1347,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         {isLocked && activeEditor && (
           <div className="bg-red-500 text-white px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 shrink-0 border-b border-red-600">
             <AlertTriangle className="w-5 h-5" />
-            Lệnh cắt này đang được chỉnh sửa bởi {activeEditor.name}. Bạn chỉ có thể xem và không thể lưu đè.
+            Lệnh cắt này đang được chỉnh sửa bởi {activeEditor}. Bạn chỉ có thể xem và không thể lưu đè.
           </div>
         )}
 
@@ -1372,14 +1410,15 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
               </div>
               <div className="lg:col-span-2">
                 <label className="text-sm font-bold text-slate-700 block mb-1">Tổng SL cắt dự kiến *</label>
-                <input type="number" min={1} className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tongSL} onChange={(e) => {
-                  const val = e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value) || 0);
+                <input type="number" min={tongSLToiThieu || 1} className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tongSL} onChange={(e) => {
+                  const val = e.target.value === "" ? "" : Math.max(tongSLToiThieu || 1, parseInt(e.target.value) || 0);
                   setTongSL(val);
                   if (val && typeof val === "number") {
                     const perColor = Math.floor(val / soMau);
                     setDsMau(prev => prev.map(m => ({ ...m, slDuKien: perColor })));
                   }
                 }} placeholder="Nhập số lượng..." />
+                {tongSLToiThieu > 0 && <p className="mt-1 text-[11px] font-semibold text-slate-500">Tối thiểu {tongSLToiThieu} SP = {dsMau.length} màu × {soSPToiThieuMoiMau} SP/màu ({soSizeThucTe || tiLeSize.split(":").length} size).</p>}
               </div>
 
               {/* Row 2 */}
@@ -2435,8 +2474,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {khoVaiReals.map((kv: any) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.mauSac || kv.tenChuan || kv.tenVT}</option>
+                                  {khoVaiReals.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2486,8 +2525,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {khoVaiReals.map((kv: any) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.mauSac || kv.tenChuan || kv.tenVT}</option>
+                                  {khoVaiReals.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2557,11 +2596,12 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                             <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
                             <input
                               type="number"
+                              min={soSPToiThieuMoiMau || 1}
                               className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800"
                               value={mau.slDuKien || ""}
                               placeholder="VD: 125"
                               onChange={(e) => {
-                                const newVal = parseInt(e.target.value) || 0;
+                                const newVal = Math.max(soSPToiThieuMoiMau || 1, parseInt(e.target.value) || 0);
                                 const next = [...dsMau]; 
                                 next[idx].slDuKien = newVal; 
                                 setDsMau(next);
@@ -2575,7 +2615,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                               }}
                             />
                             {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
-                              const duoi = Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo;
+                              const duoi = Math.max(soSpTrongSoDo, Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo);
                               const tren = duoi + soSpTrongSoDo;
                               return (
                                 <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
@@ -2659,8 +2699,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                   }}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {khoVaiReals.map((kv: any) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.mauSac || kv.tenChuan || kv.tenVT}</option>
+                                  {khoVaiReals.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
                                   ))}
                                 </select>
                               </div>
@@ -3035,7 +3075,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
               disabled={isLocked}
             >
               <Send className="w-4 h-4" />
-              Chuyển khâu
+              Lưu & chuyển khâu
             </button>
           </div>
 
