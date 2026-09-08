@@ -306,6 +306,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                         <div className="flex-1">
                           <div className="text-lg font-black text-slate-800">{pc.tenCongDoan}</div>
                           <div className="text-sm text-slate-500 font-medium">{pc.nguoiTen || "Chưa giao"}</div>
+                          <div className="mt-1.5 flex items-center">
+                            <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-[11px] font-bold border border-teal-100 shadow-sm uppercase tracking-wider">
+                              MÀU: {mau.ten}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center">
                           <div className="text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm">
