@@ -137,8 +137,8 @@ export async function supabaseUpsertRaw<T extends { id: string }>(
        const fallback = { ...payload } as any;
        delete fallback.hinh_anh; delete fallback.trang_thai; delete fallback.chat_lieu;
        delete fallback.ncc; delete fallback.da_ban; delete fallback.rating; delete fallback.luot_xem;
-       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien; delete fallback.ti_le_size;
-       delete fallback.bang_size; delete fallback.ds_mau; delete fallback.ghi_chu; delete fallback.ngay_tao;
+       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien;
+       delete fallback.ghi_chu; delete fallback.ngay_tao;
        delete fallback.gia_ban_le; delete fallback.gia_ban_si; delete fallback.gia_von; delete fallback.gia_ban_lo;
        delete fallback.gia_tiktok; delete fallback.gia_shopee; delete fallback.kenh_ban; delete fallback.img_quan;
        delete fallback.video; delete fallback.chi_tiet_size; delete fallback.khach_hang;
@@ -338,12 +338,18 @@ export function useSupabaseSync<T extends { id: string }>(
       saveLocal(next);
       // Ghi Supabase async (không block UI)
       if (checkSupabase()) {
-        // Xoá rows không còn
         const oldIds = prev.map((r) => r.id);
         const newIds = next.map((r) => r.id);
         const deletedIds = oldIds.filter((id) => !newIds.includes(id));
+        
+        // Chỉ upsert những row mới hoặc bị thay đổi reference
+        const rowsToUpsert = next.filter((row) => {
+          const oldRow = prev.find((r) => r.id === row.id);
+          return !oldRow || oldRow !== row;
+        });
+
         Promise.all([
-          ...next.map((row) => upsertRow(row)),
+          ...rowsToUpsert.map((row) => upsertRow(row)),
           ...deletedIds.map((id) => supabaseDelete(table, id)),
         ]).catch((err) => console.error(`[Sync] ${table} setData error:`, err));
       }
