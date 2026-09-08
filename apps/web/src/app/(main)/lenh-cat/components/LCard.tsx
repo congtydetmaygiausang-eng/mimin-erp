@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
 import React, { ReactNode } from "react";
-import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight } from "lucide-react";
+import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight, UsersRound } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE, LOAI_SP_LABELS, type LenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
@@ -10,6 +10,7 @@ import { LenhCatColorCards } from "@/components/ui/LenhCatColorCards";
 import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useState } from "react";
+import { LenhCatSummaryModal, type LenhCatSummaryView } from "./LenhCatSummaryModal";
 
 // ============ STAT CARD ============
 export function StatCard({ icon, label, value, sub, color }: {
@@ -72,6 +73,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
 
   const [modalGiaCong, setModalGiaCong] = useState<"ao" | "quan" | null>(null);
   const [modalTyLeMauIdx, setModalTyLeMauIdx] = useState<number | null>(null);
+  const [summaryView, setSummaryView] = useState<LenhCatSummaryView | null>(null);
 
   // Kiểm tra khâu Cắt đã có số liệu chưa (dựa vào tyLeSizeChiTiet của tất cả màu)
   // Nếu cắt chưa nhập: khoá nút Gia Công và TyLeSize các khâu sau
@@ -84,6 +86,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   // Helper tìm người phụ trách cắt
   const pcCat = lc.phanCong?.find(p => p.tenCongDoan?.toLowerCase().includes("cắt"));
   const thoCat = pcCat?.nguoiTen || <span className="italic text-slate-400">Chưa giao</span>;
+  const tongNguoiPhuTrach = new Set((lc.phanCong || []).filter((pc) => pc.nguoiMa || pc.nguoiTen).map((pc) => pc.nguoiMa || pc.nguoiTen)).size;
 
   return (
     <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 ${isLate ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-200 hover:shadow-lg"}`}>
@@ -209,7 +212,13 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
 
       {/* Footer Actions (Chỉ hiện khi ở trang chủ Lệnh Cắt, tuỳ biến) */}
       {(onEdit || onDelete || onChangeStatus) && (
-        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2">
+          <button type="button" onClick={() => setSummaryView("cost")} className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 font-bold flex items-center gap-1.5 transition-all text-xs">
+            <Calculator className="w-3.5 h-3.5" /> Tổng giá vốn
+          </button>
+          <button type="button" onClick={() => setSummaryView("owners")} className="px-3 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100 font-bold flex items-center gap-1.5 transition-all text-xs">
+            <UsersRound className="w-3.5 h-3.5" /> Người phụ trách ({tongNguoiPhuTrach})
+          </button>
           {onEdit && (
             <button onClick={onEdit} className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center gap-1.5 transition-all text-xs">
               <Edit3 className="w-3.5 h-3.5" /> Xem/Sửa
@@ -256,6 +265,8 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
           }}
         />
       )}
+
+      {summaryView && <LenhCatSummaryModal lc={lc} view={summaryView} onClose={() => setSummaryView(null)} />}
     </div>
   );
 }
