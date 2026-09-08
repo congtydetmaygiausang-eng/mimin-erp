@@ -1110,6 +1110,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     return thieu;
   };
 
+  const getCongDoanChuaPhanCong = (): string[] => visiblePhanCong
+    .filter((congDoan) => !congDoan.nguoiMa?.trim())
+    .map((congDoan) => congDoan.tenCongDoan);
+
   const handleSave = async (status: TrangThaiLenhCat) => {
     if (editing?.trangThai === "ChuyenTiep") {
       toast.error("Lệnh cắt đã chuyển khâu, chỉ được phép xem");
@@ -1118,6 +1122,14 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     if (!maSP || !tenSP || !tongSL) {
       toast.error("Vui lòng điền đầy đủ Mã SP, Tên SP và Tổng SL!");
       return;
+    }
+
+    if (status === "ChuyenTiep") {
+      const congDoanChuaPhanCong = getCongDoanChuaPhanCong();
+      if (congDoanChuaPhanCong.length > 0) {
+        toast.error(`Chưa thể lưu và chuyển khâu. Vui lòng chọn người phụ trách đầy đủ cho:\n• ${congDoanChuaPhanCong.join("\n• ")}`);
+        return;
+      }
     }
 
     if (status === "DaTao" || status === "ChuyenTiep") {
@@ -2995,7 +3007,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                             {kh.nguoiMa ? (nhanVienOptions.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
                           <select 
-                          className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
+                          className={`flex-1 min-w-0 px-2 py-1.5 border rounded text-sm focus:outline-none ${kh.nguoiMa ? "border-slate-200" : "border-rose-300 bg-rose-50/50"}`}
                           value={kh.nguoiMa}
                           onChange={(e) => {
                             const nv = nhanVienOptions.find(n => n.ma === e.target.value);
