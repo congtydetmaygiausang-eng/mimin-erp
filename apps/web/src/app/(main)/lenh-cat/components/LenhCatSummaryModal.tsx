@@ -1,8 +1,10 @@
 "use client";
 
-import { Calculator, UserRound, UsersRound, X } from "lucide-react";
+import { Calculator, MessageCircle, Phone, Send, UserRound, UsersRound, X } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import type { LenhCat } from "@/lib/data/lenh-cat-store";
+import { useNhanSu } from "@/lib/data/nhan-su-store";
+import { useDoiTac } from "@/lib/data/doi-tac-store";
 
 export type LenhCatSummaryView = "cost" | "owners";
 
@@ -41,7 +43,25 @@ function CostSummary({ lc }: { lc: LenhCat }) {
   );
 }
 
+function normalizeCode(value: string): string {
+  const match = value.trim().toUpperCase().match(/^([^0-9]+)0*([0-9]+)$/);
+  return match ? `${match[1]}${Number(match[2])}` : value.trim().toUpperCase();
+}
+
+function normalizePhone(value?: string): string {
+  const digits = (value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("84")) return `0${digits.slice(2)}`;
+  return digits.startsWith("0") ? digits : `0${digits}`;
+}
+
+function initials(value: string): string {
+  return value.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase() || "?";
+}
+
 function OwnersSummary({ lc }: { lc: LenhCat }) {
+  const { list: nhanSu } = useNhanSu();
+  const { list: doiTac } = useDoiTac();
   const phanCong = lc.phanCong || [];
   const assignedCount = phanCong.filter((item) => item.nguoiMa || item.nguoiTen).length;
   const uniqueOwners = new Set(phanCong.filter((item) => item.nguoiMa || item.nguoiTen).map((item) => item.nguoiMa || item.nguoiTen)).size;
@@ -53,13 +73,38 @@ function OwnersSummary({ lc }: { lc: LenhCat }) {
         <div className="rounded-xl bg-violet-50 p-3 text-violet-800"><div className="text-[11px] font-bold">Tổng người phụ trách</div><div className="text-2xl font-black">{uniqueOwners}</div></div>
       </div>
       <div className="space-y-2">
-        {phanCong.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700"><UserRound className="h-4 w-4" /></div>
-            <div className="min-w-0 flex-1"><div className="font-bold text-slate-800">{item.tenCongDoan}</div><div className={`truncate text-xs ${item.nguoiTen ? "text-slate-500" : "italic text-amber-600"}`}>{item.nguoiTen || "Chưa giao người phụ trách"}</div></div>
-            {item.nguoiMa && <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[10px] font-bold text-slate-500">{item.nguoiMa}</span>}
-          </div>
-        ))}
+        {phanCong.map((item) => {
+          const code = normalizeCode(item.nguoiMa || "");
+          const employee = nhanSu.find((record) => normalizeCode(record.maNV) === code);
+          const partner = doiTac.find((record) => normalizeCode(record.ma) === code);
+          const displayName = item.nguoiTen || employee?.hoTen || partner?.tenDonVi || "Chưa giao người phụ trách";
+          const phone = normalizePhone(employee?.sdt || partner?.sdt);
+          const avatar = employee?.avatar;
+          return (
+            <div key={item.id} className="rounded-xl border border-slate-200 p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-sky-100 to-cyan-200 font-black text-sky-700 ring-2 ring-white shadow-sm">
+                  {avatar ? <img src={avatar} alt={`Avatar ${displayName}`} className="h-full w-full object-cover" /> : item.nguoiTen ? initials(displayName) : <UserRound className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-slate-800">{item.tenCongDoan}</div>
+                  <div className={`truncate text-xs ${item.nguoiTen ? "text-slate-500" : "italic text-amber-600"}`}>{displayName}</div>
+                  {phone && <div className="mt-0.5 text-xs font-semibold tabular-nums text-slate-600">{phone}</div>}
+                </div>
+                {item.nguoiMa && <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[10px] font-bold text-slate-500">{item.nguoiMa}</span>}
+              </div>
+              {phone ? (
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
+                  <a href={`tel:${phone}`} className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100"><Phone className="h-3.5 w-3.5" /> Gọi</a>
+                  <a href={`sms:${phone}`} className="flex items-center justify-center gap-1.5 rounded-lg bg-sky-50 px-2 py-2 text-xs font-bold text-sky-700 hover:bg-sky-100"><MessageCircle className="h-3.5 w-3.5" /> SMS</a>
+                  <a href={`https://zalo.me/${phone}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-2 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"><Send className="h-3.5 w-3.5" /> Zalo</a>
+                </div>
+              ) : item.nguoiTen ? (
+                <div className="mt-2 text-xs italic text-slate-400">Chưa có số điện thoại trong danh bạ.</div>
+              ) : null}
+            </div>
+          );
+        })}
         {phanCong.length === 0 && <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">Lệnh cắt chưa có công đoạn để phân công.</p>}
       </div>
     </div>
