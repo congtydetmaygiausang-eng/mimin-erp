@@ -39,7 +39,7 @@ import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
-import { getAllInventory } from "@/lib/inventory-engine";
+import { getAllInventory, syncInventoryWithSupabase } from "@/lib/inventory-engine";
 
 type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
 
@@ -251,7 +251,12 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
   const [khoVaiReals, setKhoVaiReals] = useState<any[]>([]);
-  useEffect(() => { setKhoVaiReals(getAllInventory()); }, []);
+  useEffect(() => { 
+    setKhoVaiReals(getAllInventory());
+    syncInventoryWithSupabase().then(() => {
+      setKhoVaiReals(getAllInventory());
+    });
+  }, []);
 
   const { data: rawKho } = useSupabaseSync<any>("mimin_kho_all_real", "kho");
   const khoPhuLieuReals = useMemo(() => {
