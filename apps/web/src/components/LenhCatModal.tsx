@@ -257,12 +257,17 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
   const [khoVaiReals, setKhoVaiReals] = useState<KhoVai[]>([]);
+  const [isKhoVaiLoading, setIsKhoVaiLoading] = useState(true);
   useEffect(() => {
     let isActive = true;
     setKhoVaiReals(getAllInventory());
-    void syncInventoryWithSupabase().then(() => {
-      if (isActive) setKhoVaiReals(getAllInventory());
-    });
+    void syncInventoryWithSupabase()
+      .then(() => {
+        if (isActive) setKhoVaiReals(getAllInventory());
+      })
+      .finally(() => {
+        if (isActive) setIsKhoVaiLoading(false);
+      });
     return () => { isActive = false; };
   }, []);
 
@@ -704,8 +709,30 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   };
 
   const handleChonVai = (idx: number, maVai: string, phan: "ao" | "quan") => {
+    if (!maVai) {
+      setDsMau((prev) => prev.map((mau, mauIdx) => mauIdx === idx
+        ? { ...mau, ...(phan === "quan" ? { maVaiQuan: "" } : { maVai: "" }) }
+        : mau));
+      return;
+    }
+    if (isKhoVaiLoading) {
+      toast.error("Kho vải đang đồng bộ số lượng tồn. Vui lòng chọn lại sau ít giây.");
+      return;
+    }
+
+    const mauHienTai = dsMau[idx];
+    const dinhMuc = phan === "quan" ? mauHienTai.dinhMucQuan || 0 : mauHienTai.dinhMuc || 0;
+    if (!mauHienTai.slDuKien || dinhMuc <= 0) {
+      toast.error(`Vui lòng nhập số lượng cắt màu và định mức kg/${phan === "quan" ? "quần" : "áo"} trước khi chọn vải.`);
+      return;
+    }
+    if (!khoVaiReals.some((vai) => vai.maVT === maVai)) {
+      toast.error("Không tìm thấy mã vải trong dữ liệu tồn kho mới nhất. Vui lòng tải lại trang.");
+      return;
+    }
+
     const mauMoi: MauVai = {
-      ...dsMau[idx],
+      ...mauHienTai,
       ...(phan === "quan" ? { maVaiQuan: maVai } : { maVai }),
     };
     const canhBao = getCanhBaoTonKho(mauMoi, maVai);
@@ -980,8 +1007,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
       if (m.maVai && m.slDuKien && m.dinhMuc) {
         const req = m.slDuKien * m.dinhMuc;
         // Lấy từ khoVaiReals
-        const v = khoVaiReals.find((x: any) => x.maVT === m.maVai);
-        const tonKhoThuc = v ? (v.tonKho || 50) : 50; 
+        const v = khoVaiReals.find((x) => x.maVT === m.maVai);
+        const tonKhoThuc = v?.tonKho ?? 0;
         if (req > tonKhoThuc) {
           alerts.push(`Thiếu vải Màu ${i+1} (${v?.tenVT || m.maVai}): Cần ${req}kg, chỉ còn ${tonKhoThuc}kg`);
         }
@@ -999,7 +1026,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     });
 
     setCanhBaoTonKho(alerts);
-  }, [dsMau, dsPhuLieu]);
+  }, [dsMau, dsPhuLieu, khoVaiReals, khoPhuLieuReals]);
 
   // Tải ảnh mẫu cho 1 màu. Hàng Bộ có 2 ảnh riêng: ÁO (img) và QUẦN (imgQuan).
   const handleColorImageUpload = (idx: number, phan: "ao" | "quan" = "ao") => {
