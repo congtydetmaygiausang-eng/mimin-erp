@@ -1114,6 +1114,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     .filter((congDoan) => !congDoan.nguoiMa?.trim())
     .map((congDoan) => congDoan.tenCongDoan);
 
+  const getCongDoanChuaDonGia = (): string[] => visiblePhanCong
+    .filter((congDoan) => !Number.isFinite(Number(congDoan.donGia)) || Number(congDoan.donGia) <= 0)
+    .map((congDoan) => congDoan.tenCongDoan);
+
   const handleSave = async (status: TrangThaiLenhCat) => {
     if (editing?.trangThai === "ChuyenTiep") {
       toast.error("Lệnh cắt đã chuyển khâu, chỉ được phép xem");
@@ -1126,8 +1130,17 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
 
     if (status !== "Nhap") {
       const congDoanChuaPhanCong = getCongDoanChuaPhanCong();
-      if (congDoanChuaPhanCong.length > 0) {
-        toast.error(`Chưa thể hoàn tất hoặc chuyển khâu. Khi chưa gắn đủ người phụ trách, lệnh chỉ được lưu nháp. Còn thiếu:\n• ${congDoanChuaPhanCong.join("\n• ")}`);
+      const congDoanChuaDonGia = getCongDoanChuaDonGia();
+      if (congDoanChuaPhanCong.length > 0 || congDoanChuaDonGia.length > 0) {
+        const chiTietThieu = [
+          congDoanChuaPhanCong.length > 0
+            ? `Chưa gắn người phụ trách: ${congDoanChuaPhanCong.join(", ")}`
+            : "",
+          congDoanChuaDonGia.length > 0
+            ? `Chưa có bảng giá công đoạn: ${congDoanChuaDonGia.join(", ")}`
+            : "",
+        ].filter(Boolean);
+        toast.error(`Chưa thể hoàn tất hoặc chuyển khâu. Lệnh chỉ được lưu nháp:\n• ${chiTietThieu.join("\n• ")}`);
         return;
       }
     }
@@ -3029,7 +3042,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                         <div className="col-span-3 relative">
                           <input 
                             type="number" min={0}
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm text-right pr-6"
+                            className={`w-full px-2 py-1.5 border rounded text-sm text-right pr-6 ${Number(kh.donGia) > 0 ? "border-slate-200" : "border-rose-300 bg-rose-50/50"}`}
                             value={kh.donGia}
                             onChange={(e) => {
                               setPhanCong(p => {
