@@ -28,7 +28,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col md:flex-row">
       
       {/* LEFT COLUMN: Main Image */}
-      <div className="w-full md:w-64 lg:w-80 shrink-0 bg-slate-100 border-r border-slate-200 relative min-h-[300px]">
+      <div className="w-full md:w-64 lg:w-80 shrink-0 bg-slate-100 border-b md:border-b-0 md:border-r border-slate-200 relative min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
         {mainImg ? (
           <img src={mainImg} alt={lc.tenSP} className="w-full h-full object-cover absolute inset-0" />
         ) : (
@@ -85,16 +85,16 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
               </div>
           </div>
           
-          <div className="flex flex-row sm:flex-col gap-6 sm:gap-2 text-sm text-right">
-            <div className="flex flex-col items-end">
+          <div className="flex flex-row flex-wrap sm:flex-col justify-between sm:justify-start gap-4 sm:gap-2 text-sm text-left sm:text-right mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-0 border-slate-100 w-full sm:w-auto">
+            <div className="flex flex-col items-start sm:items-end">
               <span className="text-slate-400 flex items-center gap-1 text-xs uppercase font-bold"><Hash className="w-3 h-3" /> Tổng SL</span>
               <span className="font-black text-lg text-slate-800">{lc.tongSL?.toLocaleString()}</span>
             </div>
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-start sm:items-end">
               <span className="text-slate-400 flex items-center gap-1 text-xs uppercase font-bold"><Shirt className="w-3 h-3" /> Tỷ lệ</span>
               <span className="font-black text-lg text-sky-600">{lc.tiLeSize || "-"}</span>
             </div>
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-start sm:items-end">
               <span className="text-slate-400 flex items-center gap-1 text-xs uppercase font-bold"><Calendar className="w-3 h-3" /> Hạn giao</span>
               <span className="font-black text-lg text-rose-600"><DateDisplay value={lc.hanHoanThanh} format="dd/MM" /></span>
             </div>

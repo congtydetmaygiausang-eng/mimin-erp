@@ -402,16 +402,16 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+      <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-xl">
         <button
           onClick={onClose}
-          className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+          className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors w-full sm:w-auto"
         >
           Hủy
         </button>
         <button
           onClick={handleSave}
-          className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center justify-center gap-2 transition-colors shadow-sm"
+          className="px-5 py-2.5 min-h-[44px] rounded-xl font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center justify-center gap-2 transition-colors shadow-sm w-full sm:w-auto"
         >
           <Save className="w-4 h-4" /> Lưu thông số
         </button>

@@ -162,7 +162,7 @@ export function CrudModal({
             )}
           </div>
         ))}
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/10 mt-2">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/10 mt-2">
           <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">Hủy</button>
           <button type="submit" disabled={loading} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
