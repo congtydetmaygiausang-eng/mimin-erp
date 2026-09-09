@@ -16,6 +16,7 @@ import { NVFormModal } from "./components/NVFormModal";
 import { ChiTietNhanSuModal } from "./components/DetailModal";
 import { BangLuongNV } from "./components/LuongModal";
 import { ImagePreviewModal } from "./components/ImagePreviewModal";
+import { NhanSuTabs } from "@/components/nhan-su-tabs";
 
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 
@@ -108,6 +109,7 @@ export default function NhanSuPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      <NhanSuTabs />
       <HeaderBanner tongNV={kpis.tongNV} tongLuongCung={kpis.tongLuongCung} onAdd={() => setShowForm({ mode: "add" })} />
       <KpiCards kpis={kpis} />
       <Filters list={list} dsBP={kpis.dsBP} filterBP={filterBP} setFilterBP={setFilterBP} search={search} setSearch={setSearch} viewMode={viewMode} setViewMode={setViewMode} />
