@@ -176,7 +176,7 @@ export default function LenhCatPage() {
               onEdit={() => handleEdit(lc)}
               onDelete={() => handleDelete(lc.id)}
               onChangeStatus={async (tt) => {
-                await capNhatTrangThai(lc.id, tt, null);
+                await capNhatTrangThai(lc.id, tt, user);
                 if (tt === "DangCat") {
                   // Đổi trạng thái ở đây KHÔNG trừ kho - kho vải/phụ liệu chỉ bị trừ
                   // khi tổ cắt bấm "Nhận việc" ở trang Cắt (to-cat-work). Toast trước
