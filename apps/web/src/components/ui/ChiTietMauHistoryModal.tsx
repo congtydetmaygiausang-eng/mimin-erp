@@ -34,6 +34,9 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
   const [nhanInputs, setNhanInputs] = useState<Record<string, number>>({});
   // Cinema mode image zoom
   const [zoomedImg, setZoomedImg] = useState<{ src1: string; src2?: string } | null>(null);
+  // Realtime can replace lc/mau/currentPCs while the user is typing. Only a
+  // different color or editable stage selection should initialize the draft.
+  const currentPCKey = currentPCs.map(pc => pc.id).join("|");
 
   useEffect(() => {
     if (isOpen && mau) {
@@ -78,7 +81,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
       setSizeInputs(newSizeInputs);
       setNhanInputs(newNhanInputs);
     }
-  }, [isOpen, mau, currentPCs, lc.phanCong]);
+  }, [isOpen, lc.id, mau?.ten, currentPCKey]);
 
   if (!isOpen || !mau) return null;
 
@@ -108,6 +111,15 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
         soLuongLoi: Math.max(0, soLuongNhan - soLuongDat), sizes,
       } };
     });
+    if (entries.some(({ data }) => data.soLuongNhan < 0 || data.sizes.some(size => size.sl < 0)
+      || data.soLuongDat > data.soLuongNhan)) {
+      window.alert("Số lượng phải không âm và tổng Đạt không được lớn hơn SL Nhận.");
+      return false;
+    }
+    if (entries.some(({ data }) => data.soLuongNhan > 0 && data.soLuongDat === 0)
+      && !window.confirm("Tổng Đạt đang bằng 0. Toàn bộ SL Nhận của khâu này sẽ được ghi là LỖI. Anh có chắc muốn lưu không?")) {
+      return false;
+    }
     if (onSaveBatch) return onSaveBatch(entries);
     entries.forEach(({ pcId, data }) => onSave(pcId, data));
     return true;

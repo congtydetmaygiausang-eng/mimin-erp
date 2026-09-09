@@ -50,3 +50,33 @@ test('downstream table reflects updated stage data and does not label unentered 
  const updated={...blank,tyLeSizeChiTiet:{...blank.tyLeSizeChiTiet,'assigned-34':[{size:'M',sl:14}]}};
  assert.ok(nodes(render(updated)).some(node=>node.type==='input'&&node.props.disabled&&node.props.value===14));
 });
+function modalHarness() {
+ const state=[],effects=[];let cursor=0,pending=[];
+ const hooks={...react,useState(initial){const i=cursor++;if(!(i in state))state[i]=typeof initial==='function'?initial():initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value;}];},useEffect(fn,deps){const i=cursor++;if(!effects[i]||deps.some((dep,n)=>!Object.is(dep,effects[i][n]))){effects[i]=deps;pending.push(fn);}}};
+ const {ChiTietMauHistoryModal}=load('../components/ui/ChiTietMauHistoryModal.tsx',{react:hooks,'@/lib/production-stage-order':stage});
+ return props=>{cursor=0;pending=[];const tree=ChiTietMauHistoryModal(props);pending.forEach(fn=>fn());return tree;};
+}
+test('quantity draft survives realtime object replacements and resets for the next color',async()=>{
+ const render=modalHarness();let saved;
+ const pc={id:'in_theu',tenCongDoan:'In/Thêu'};
+ const color={ten:'Đậm',phanBoSize:[{size:'M',sl:8}],tyLeSizeChiTiet:{cat:[{size:'M',sl:8}]}};
+ let props={isOpen:true,lc:{id:'LC-TEST',dsMau:[color],phanCong:[{id:'cat',tenCongDoan:'Cắt'},pc]},mau:color,currentPCs:[pc],onClose:()=>{},onSave:()=>{},onSaveBatch:async entries=>{saved=entries;return true;}};
+ render(props);let tree=render(props);
+ nodes(tree).find(n=>n.type==='input'&&n.props.min==='0').props.onChange({target:{value:'8'}});
+ props={...props,lc:structuredClone(props.lc),mau:structuredClone(color),currentPCs:[{...pc}]};
+ tree=render(props);tree=render(props);
+ assert.equal(nodes(tree).find(n=>n.type==='input'&&n.props.min==='0').props.value,8);
+ await nodes(tree).find(n=>n.type==='button'&&n.props.children.includes(' Lưu & Đóng')).props.onClick();
+ assert.equal(saved[0].data.soLuongDat,8);assert.equal(saved[0].data.soLuongLoi,0);
+ props={...props,mau:{...color,ten:'Nhạt'}};render(props);tree=render(props);
+ assert.equal(nodes(tree).find(n=>n.type==='input'&&n.props.min==='0').props.value,'');
+});
+test('saving untouched zero-passed input requires explicit all-defect confirmation',async()=>{
+ const render=modalHarness();let saves=0;global.window={confirm:()=>false};
+ const color={ten:'Đậm',phanBoSize:[{size:'M',sl:8}],tyLeSizeChiTiet:{cat:[{size:'M',sl:8}]}};
+ const pc={id:'in_theu',tenCongDoan:'In/Thêu'};
+ const props={isOpen:true,lc:{id:'LC-TEST',dsMau:[color],phanCong:[{id:'cat',tenCongDoan:'Cắt'},pc]},mau:color,currentPCs:[pc],onClose:()=>{},onSave:()=>{},onSaveBatch:async()=>{saves++;return true;}};
+ render(props);let tree=render(props);
+ await nodes(tree).find(n=>n.type==='button'&&n.props.children.includes(' Lưu & Đóng')).props.onClick();
+ assert.equal(saves,0);delete global.window;
+});

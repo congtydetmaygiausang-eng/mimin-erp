@@ -66,6 +66,9 @@ export default function UiInTheuPage() {
   }
 
   function handleHoanThanh(lc: any, pc: any, bangChungURLs?: string[]) {
+    // Evidence uploads may take time; finalize from the latest saved quantities.
+    lc = dsLenhCat.find(item => item.id === lc.id) || lc;
+    pc = lc.phanCong?.find((item: { id: string }) => item.id === pc.id) || pc;
     // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
@@ -181,7 +184,7 @@ export default function UiInTheuPage() {
                           {tt === "hoan_thanh" && (
                             <div className="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
                               <CheckCircle2 className="w-4 h-4" />
-                              Xong {pc.soLuongHoanThanh || pc.soLuong || lc.tongSL} SP
+                              Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
                               {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
                             </div>
                           )}
