@@ -3,12 +3,13 @@
 // ============ UI ĐÓNG GÓI (/ui-dong-goi) ============
 // Nhận hàng từ Ủi đạt, Đóng gói, giao Kho Thành Phẩm
 
+import { useStageColorInput } from "@/lib/use-stage-color-input";
 import { useState } from "react";
 import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
@@ -16,7 +17,7 @@ import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
 import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
 
 export default function UiDongGoiPage() {
-  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: any } | null>(null);
+  const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { dsSanPham: dsDanhMuc, suaSP } = useDanhMucSP();
@@ -54,40 +55,7 @@ export default function UiDongGoiPage() {
     return true; // Nếu không có ủi thì hiển thị (Dự phòng)
   });
 
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
 
-    try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
-
-      if (existingIdx >= 0) {
-        newChiTiet[existingIdx] = data;
-      } else {
-        newChiTiet.push(data);
-      }
-
-      const newPhanCong = lc.phanCong?.map((p: any) => p.id === pcId ? { ...p, chiTietMau: newChiTiet } : p);
-      let newDsMau = lc.dsMau;
-
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-        }
-      }
-      
-      suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
-
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
@@ -367,8 +335,10 @@ export default function UiDongGoiPage() {
           lc={selectedMau.lc}
           mau={selectedMau.mau}
           currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
-          onSave={handleSaveColorModal}
-          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          historyStage="dong_goi"
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? { lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau } : null)}
         />
       )}
 

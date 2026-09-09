@@ -4,6 +4,7 @@
 // Trang dành riêng cho tổ may áo + may quần
 // Nhận bán thành phẩm từ Cắt/In/Thêu, cập nhật tiến độ may
 
+import { useStageColorInput } from "@/lib/use-stage-color-input";
 import { useState } from "react";
 import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -16,7 +17,7 @@ import { useSession } from "@/components/session-provider";
 const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 
 export default function UiMayPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
@@ -38,40 +39,7 @@ export default function UiMayPage() {
     }) || [];
   }
 
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
 
-    try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
-      
-      if (existingIdx >= 0) {
-        newChiTiet[existingIdx] = data;
-      } else {
-        newChiTiet.push(data);
-      }
-
-      const newPhanCong = lc.phanCong?.map((p: any) => p.id === pcId ? { ...p, chiTietMau: newChiTiet } : p);
-      let newDsMau = lc.dsMau;
-
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-        }
-      }
-      
-      suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
-
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
   // Lọc LC có công đoạn may CỦA TÔI
   const lcCoMay = dsLenhCat.filter(lc =>
@@ -284,8 +252,10 @@ export default function UiMayPage() {
           lc={selectedMau.lc}
           mau={selectedMau.mau}
           currentPCs={getMayPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
-          onSave={handleSaveColorModal}
-          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          historyStage="may"
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? { lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau } : null)}
         />
       )}
 
