@@ -3,12 +3,13 @@
 // ============ UI HOÀN THIỆN (/ui-hoan-thien) ============
 // Nhận hàng từ QC đạt, Ủi + Gấp + Đóng gói, giao Kho Thành Phẩm
 
+import { useStageColorInput } from "@/lib/use-stage-color-input";
 import { useState } from "react";
 import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh, thongKeLoiLenhCat } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 import { DoiSoatModal } from "@/components/DoiSoatModal";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
@@ -16,7 +17,7 @@ import { toSupabaseRow, type SanPhamTP, KHO_TP_CHANGED_EVENT } from "../kho-than
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 
 export default function UiHoanThienPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [selectedDoiSoatLc, setSelectedDoiSoatLc] = useState<LenhCat | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { dsSanPham, themSP } = useDanhMucSP();
@@ -54,23 +55,7 @@ export default function UiHoanThienPage() {
     return true;
   });
 
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
 
-    try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      const newList = existingIdx >= 0 ? [...(pc.chiTietMau || [])] : [...(pc.chiTietMau || []), data];
-      if (existingIdx >= 0) newList[existingIdx] = data;
-
-      capNhatCongDoan(lc.id, pcId, { chiTietMau: newList });
-      toast.success(`Đã cập nhật số lượng màu ${data.mau}`);
-    } catch (error) {
-      toast.error("Lỗi cập nhật màu");
-    }
-  };
 
   const handleNhapKho = async (lc: LenhCat, tongDat: number) => {
     try {
@@ -389,8 +374,9 @@ export default function UiHoanThienPage() {
           lc={selectedMau.lc}
           mau={selectedMau.mau}
           currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
-          onSave={handleSaveColorModal}
-          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? { lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau } : null)}
         />
       )}
 

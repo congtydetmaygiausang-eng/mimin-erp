@@ -4,6 +4,7 @@
 // Trang dành riêng cho thợ cắt / tổ trưởng cắt
 // Xem lệnh cắt được giao, cập nhật trạng thái, xem sơ đồ cắt
 
+import { useStageColorInput } from "@/lib/use-stage-color-input";
 import { useState } from "react";
 import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriangle, Eye, Ruler } from "lucide-react";
 import { toast } from "sonner";
@@ -11,7 +12,7 @@ import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCo
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAI, KHO_VAT_TU } from "@/lib/data/real-data";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useSession } from "@/components/session-provider";
@@ -24,7 +25,7 @@ export default function CongViecCatPage() {
 
   const [modalGiaCong, setModalGiaCong] = useState<{ id: string, type: "ao" | "quan" } | null>(null);
   const [modalTyLeMau, setModalTyLeMau] = useState<{ id: string, mauIdx: number } | null>(null);
-  const [selectedMau, setSelectedMau] = useState<{ lc: LenhCat, mau: any } | null>(null);
+  const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
 
   function getPhanCongCat(lc: any) {
     let pcCat = lc.phanCong?.find((pc: any) => {
@@ -170,40 +171,7 @@ export default function CongViecCatPage() {
   }
 
   // Lưu thông tin nhận/đạt/lỗi theo màu cho khâu Cắt (dùng chung modal với Tổ May/Ủi/QC)
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
 
-    try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
-
-      if (existingIdx >= 0) {
-        newChiTiet[existingIdx] = data;
-      } else {
-        newChiTiet.push(data);
-      }
-
-      const newPhanCong = lc.phanCong?.map((p: any) => p.id === pcId ? { ...p, chiTietMau: newChiTiet } : p);
-      let newDsMau = lc.dsMau;
-
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-        }
-      }
-      
-      suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
-
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -450,7 +418,7 @@ export default function CongViecCatPage() {
                     onClose={() => setModalTyLeMau(null)}
                     onSave={(mauIdx, newTyLe, tongDuCat) => {
                       const newDsMau = [...(lc.dsMau || [])];
-                      newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: newTyLe };
+                      newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...newDsMau[mauIdx].tyLeSizeChiTiet, ...newTyLe } };
 
                       // Tự động tính lại tổng SL thực tế của khâu Cắt
                       let totalThucTe = 0;
@@ -506,8 +474,10 @@ export default function CongViecCatPage() {
             const pc = getPhanCongCat(selectedMau.lc) as any;
             return pc && pc.trangThaiCD === "dang_lam" ? [pc] : [];
           })()}
-          onSave={handleSaveColorModal}
-          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          historyStage="cat"
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? { lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau } : null)}
         />
       )}
     </div>

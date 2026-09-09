@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat, type LichSuQCItem, type MauVai } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { ghepAoQuanTheoSize } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { applyStageColorEntries, type StageColorEntry } from "@/lib/stage-color-input";
 import { useSession } from "@/components/session-provider";
 
 const LOAI_LOI_OPTIONS = [
@@ -20,10 +21,14 @@ const LOAI_LOI_OPTIONS = [
 const KHAU_GAY_LOI_OPTIONS = ["Tổ Cắt", "Xưởng In/Thêu", "Tổ May", "Khác"];
 
 export default function UiQCPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const [selection, setSelectedMau] = useState<{lc: LenhCat, mau: MauVai} | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { themPhanCong } = usePhanCong();
   const { user } = useSession();
+  const liveLC = selection && (dsLenhCat.find(lc => lc.id === selection.lc.id) || selection.lc);
+  const selectedMau = selection && liveLC ? {
+    lc: liveLC, mau: liveLC.dsMau?.find(mau => mau.ten === selection.mau.ten) || selection.mau,
+  } : null;
 
   // State nhập liệu QC - key = `${lcId}_${pcId}`
   const [slDatInput, setSlDatInput] = useState<Record<string, number>>({});
@@ -80,29 +85,29 @@ export default function UiQCPage() {
       return ss + tinhSlDatTam(pc.lichSuQC || []);
     }, 0), 0);
 
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
+  const handleSaveColorBatch = async (entries: StageColorEntry[]): Promise<boolean> => {
+    if (!selectedMau || !user) return false;
+    const currentLC = dsLenhCat.find(lc => lc.id === selectedMau.lc.id) || selectedMau.lc;
+    const { lc: updatedLC, totals } = applyStageColorEntries(currentLC, entries);
     try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
-      if (existingIdx >= 0) { newChiTiet[existingIdx] = data; } else { newChiTiet.push(data); }
-      const newPhanCong = lc.phanCong?.map((p: any) => p.id === pcId ? { ...p, chiTietMau: newChiTiet } : p);
-      let newDsMau = lc.dsMau;
-
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-        }
-      }
-      
-      suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) { toast.error(e.message); }
+      // Save áo/quần together, preserving the other colors and stages.
+      await suaLenhCat(currentLC.id, { dsMau: updatedLC.dsMau, phanCong: updatedLC.phanCong }, user);
+      setSlDatInput(prev => ({ ...prev, ...Object.fromEntries(
+        Object.entries(totals).map(([pcId, total]) => [currentLC.id + "_" + pcId, total.dat])
+      ) }));
+      setSlLoiInput(prev => ({ ...prev, ...Object.fromEntries(
+        Object.entries(totals).map(([pcId, total]) => [currentLC.id + "_" + pcId, total.loi])
+      ) }));
+      setSelectedMau(prev => prev ? {
+        lc: updatedLC,
+        mau: updatedLC.dsMau?.find(mau => mau.ten === prev.mau.ten) || prev.mau,
+      } : null);
+      toast.success("Đã lưu thông tin màu " + selectedMau.mau.ten);
+      return true;
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu số lượng QC");
+      return false;
+    }
   };
 
   // Với hàng Bộ: mỗi màu cần đã nhập SL đạt theo từng size cho CẢ May áo lẫn
@@ -743,8 +748,12 @@ export default function UiQCPage() {
           lc={selectedMau.lc}
           mau={selectedMau.mau}
           currentPCs={getMayPC(selectedMau.lc)}
-          onSave={handleSaveColorModal}
-          onNextColor={(nextMau) => setSelectedMau({ lc: selectedMau.lc, mau: nextMau })}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          historyStage="qc"
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? {
+            lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau,
+          } : null)}
         />
       )}
     </div>

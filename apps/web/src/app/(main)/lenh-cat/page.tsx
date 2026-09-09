@@ -191,7 +191,7 @@ export default function LenhCatPage() {
               onSaveTyLe={(mauIdx, newTyLe, _tongDuCat, fixedPhanCong) => {
                 const newDsMau = [...(lc.dsMau || [])];
                 if (newDsMau[mauIdx]) {
-                  newDsMau[mauIdx].tyLeSizeChiTiet = newTyLe;
+                  newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...newDsMau[mauIdx].tyLeSizeChiTiet, ...newTyLe } };
 
                   // ===== ĐồNG BỘ phanBoSize với data Cắt thực tế =====
                   // Khi lưu tỷ lệ size, cập nhật luôn phanBoSize của màu này
