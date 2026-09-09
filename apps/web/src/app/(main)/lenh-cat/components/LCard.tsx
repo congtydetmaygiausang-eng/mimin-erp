@@ -93,7 +93,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
     <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 ${isLate ? "border-rose-300 ring-2 ring-rose-200" : "border-slate-200 hover:shadow-lg"}`}>
       
       {/* Header */}
-      <div className={`px-4 py-3 flex items-center justify-between ${s.bg} border-b border-current/10`}>
+      <div className={`px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 ${s.bg} border-b border-current/10`}>
         <div className="flex items-center gap-2">
           <span className="text-sm font-black text-teal-700 font-mono">{lc.id}</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${s.bg} ${s.color} border border-current/20`}>
@@ -137,7 +137,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
       {/* Content */}
       <div className="p-4 space-y-4">
         {/* Row: SP Name & Loại */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0">
           <div>
             <h3 className="font-black text-xl text-slate-900 leading-tight mb-1 cursor-pointer hover:text-sky-600 transition-colors" onClick={onEdit}>
               {lc.tenSP}
@@ -152,7 +152,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
             </div>
           </div>
           
-          <div className="text-right">
+          <div className="text-left sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
             <div className="text-[10px] font-bold text-slate-500 uppercase">Tổng SL</div>
             <div className="text-xl font-black text-slate-900 tabular-nums leading-none mt-0.5">
               {(lc.tongSL || 0).toLocaleString()} <span className="text-xs text-slate-400 font-medium">SP</span>
@@ -161,7 +161,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
         </div>
 
         {/* Row: Thông tin chi tiết */}
-        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 grid grid-cols-2 gap-3 text-sm">
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
             <div className="text-slate-500 text-[11px] font-bold mb-0.5">Thợ cắt</div>
             <div className="font-bold text-slate-800">{thoCat}</div>

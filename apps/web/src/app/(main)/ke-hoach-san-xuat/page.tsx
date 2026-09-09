@@ -246,10 +246,10 @@ export default function KeHoachSXPage() {
         const imageToDisplay = item.dsMau?.[0]?.img || (item.dsMau?.[0] as any)?.imgQuan || sp?.dsMau?.[0]?.img || sp?.dsMau?.[0]?.imgQuan || null;
         
         return <article key={item.id} className="card p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4 relative">
+          <div className="flex flex-col sm:flex-row items-start gap-3 w-full sm:w-auto">
             {imageToDisplay && (
-              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl border border-slate-200 bg-slate-50 shrink-0 overflow-hidden shadow-sm">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl border border-slate-200 bg-slate-50 shrink-0 overflow-hidden shadow-sm self-center sm:self-start">
                 <img src={imageToDisplay} alt={item.sanPham} className="w-full h-full object-cover" />
               </div>
             )}
@@ -259,7 +259,7 @@ export default function KeHoachSXPage() {
               <h2 className="text-sm font-medium text-slate-900 leading-tight mt-0.5">Tên sản phẩm: {item.sanPham}</h2>
             </div>
           </div>
-          <span className="rounded-full bg-teal-50 px-2 py-1 text-xs font-bold text-teal-700 shrink-0">{item.trangThai}</span>
+          <span className="rounded-full bg-teal-50 px-2 py-1 text-xs font-bold text-teal-700 shrink-0 absolute top-0 right-0 sm:static">{item.trangThai}</span>
         </div>
         <div className="my-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm"><div><p className="text-slate-400">Số lượng</p><b>{item.soLuong.toLocaleString("vi-VN")} SP</b></div><div><p className="text-slate-400">Thời gian</p><b>{item.tuNgay} → {item.denNgay}</b></div></div>
         {item.ghiChu && <div className="mb-4 text-xs text-slate-500 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/50">{item.ghiChu}</div>}
