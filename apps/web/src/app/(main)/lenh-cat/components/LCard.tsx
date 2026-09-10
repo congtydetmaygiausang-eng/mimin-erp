@@ -238,13 +238,13 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
               <Edit3 className="w-3.5 h-3.5" /> {isTransferred ? "Xem" : "Xem/Sửa"}
             </button>
           )}
-          {onChangeStatus && !isTransferred && (
+          {onChangeStatus && (
             <select
               value={lc.trangThai}
               onChange={(e) => onChangeStatus(e.target.value as TrangThaiLenhCat)}
               className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-semibold text-slate-700 text-xs focus:ring-2 focus:ring-sky-500/30"
             >
-              {(["Nhap", "DaTao", "DangCat", "HoanThanh"] as TrangThaiLenhCat[]).map((tt) => (
+              {(["Nhap", "DaTao", "DangCat", "HoanThanh", "ChuyenTiep"] as TrangThaiLenhCat[]).map((tt) => (
                 <option key={tt} value={tt}>{TRANG_THAI_LC_LABELS[tt]}</option>
               ))}
             </select>
