@@ -444,16 +444,17 @@ export default function DanhMucSanPhamPage() {
 
   const handleSaveProduct = async (sp: Partial<SanPham>) => {
     if (productToEdit) {
-      const existsInDb = dsSanPham?.some(p => p.id === productToEdit.id);
-      if (existsInDb && suaSP) {
+      // Luôn dùng suaSP khi đang sửa — kể cả SP từ kho chưa có trong dsSanPham
+      if (suaSP) {
         await suaSP(productToEdit.id, sp);
         toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP}`);
         if (selectedProduct && selectedProduct.id === productToEdit.id) {
           setSelectedProduct({ ...selectedProduct, ...sp } as SanPham);
         }
       } else if (themSP) {
-        await themSP(sp as SanPham);
-        toast.success(`Đã lưu sản phẩm từ Kho vào Danh mục: ${sp.tenSP}`);
+        // Fallback: lưu mới nếu không có suaSP
+        await themSP({ ...productToEdit, ...sp } as SanPham);
+        toast.success(`Đã lưu sản phẩm: ${sp.tenSP}`);
       }
     } else if (themSP) {
       await themSP(sp as SanPham);

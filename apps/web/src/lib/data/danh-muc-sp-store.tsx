@@ -123,7 +123,17 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   }, [setDsSanPham]);
 
   const suaSP = useCallback((id: string, data: Partial<SanPham>) => {
-    setDsSanPham((prev) => prev.map((p) => p.id === id ? { ...p, ...data } : p));
+    setDsSanPham((prev) => {
+      const exists = prev.some((p) => p.id === id);
+      if (exists) {
+        // Update record đã có
+        return prev.map((p) => p.id === id ? { ...p, ...data, ngayCapNhat: new Date().toISOString().slice(0, 10) } : p);
+      } else {
+        // SP từ kho chưa có trong danh mục → thêm mới
+        const newSP: SanPham = { id, tenSP: "", loaiSP: "BoTru", ...data, ngayCapNhat: new Date().toISOString().slice(0, 10) } as SanPham;
+        return [...prev, newSP];
+      }
+    });
   }, [setDsSanPham]);
 
   const xoaSP = useCallback(async (id: string) => {
