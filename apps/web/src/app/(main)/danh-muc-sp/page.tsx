@@ -132,15 +132,31 @@ export default function DanhMucSanPhamPage() {
         dsMau: (() => {
           if (!colors.length) return current?.dsMau || [];
           const merged = colors.map(c => {
-            const existing = current?.dsMau?.find(x => x.ten === c.ten);
-            return existing ? { ...c, dinhMuc: existing.dinhMuc || 0, img: c.img || existing.img, video: existing.video, hinhAnhChiTiet: existing.hinhAnhChiTiet } : c;
+            // Khớp theo maSKU trước (bất biến khi đổi tên màu), fallback sang tên
+            const existing = current?.dsMau?.find(x =>
+              (x.maSKU && c.maSKU && x.maSKU === c.maSKU) || x.ten === c.ten
+            );
+            return existing ? {
+              ...c,
+              ten: existing.ten,               // Giữ tên màu user đã đổi
+              dinhMuc: existing.dinhMuc || 0,
+              img: existing.img || c.img,      // Ảnh user upload ưu tiên hơn ảnh kho
+              video: existing.video,
+              hinhAnhChiTiet: existing.hinhAnhChiTiet,
+            } : c;
           });
           if (current?.dsMau) {
-            const fromCurrent = current.dsMau.filter(x => !colors.some(c => c.ten === x.ten));
+            // Lọc bỏ màu đã merge (theo cả maSKU lẫn tên)
+            const fromCurrent = current.dsMau.filter(x =>
+              !colors.some(c =>
+                (x.maSKU && c.maSKU && x.maSKU === c.maSKU) || x.ten === c.ten
+              )
+            );
             merged.push(...fromCurrent);
           }
           return merged;
         })(),
+
         bangSize: current?.bangSize?.sizes?.length
           ? current.bangSize
           : (sizes.length ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length } : { sizes: [], ratios: [], riSo: 1 }),
@@ -152,7 +168,7 @@ export default function DanhMucSanPhamPage() {
         giaTikTok: item.giaTikTok || current?.giaTikTok || 0,
         giaShopee: item.giaShopee || current?.giaShopee || 0,
         kenhBan: item.kenhBan?.length ? item.kenhBan : (current?.kenhBan || []),
-        hinhAnh: colors.find(c => c.img)?.img || current?.hinhAnh || "",
+        hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
       });
     }
     return Array.from(map.values());
