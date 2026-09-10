@@ -21,14 +21,14 @@ function saveLocal(rows: ChamCongRecord[]) {
 }
 
 export function useChamCong() {
-  const [records, setRecords] = useState<ChamCongRecord[]>([]);
+  // Khởi tạo ngay từ localStorage → tránh mất data khi F5
+  const [records, setRecords] = useState<ChamCongRecord[]>(() => loadLocal());
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<"local" | "supabase">("local");
 
   useEffect(() => {
     let active = true;
-    const local = loadLocal();
-    setRecords(local);
+    // Không cần setRecords(local) ở đây nữa vì useState đã init từ localStorage
 
     const fetchRecords = async () => {
       if (!isSupabaseEnabled || !supabase) {

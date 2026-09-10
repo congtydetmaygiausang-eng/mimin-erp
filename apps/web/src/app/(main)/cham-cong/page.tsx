@@ -135,7 +135,10 @@ export default function ChamCongPage() {
         <Kpi icon={CalendarDays} label="Nghỉ không phép" value={totals.ngayKhongPhep} tone="text-red-600" />
       </section>
 
-      <SelfAttendanceCard employee={currentEmployee} userName={user?.name} record={todayRecord} onCheckIn={() => void checkIn()} onCheckOut={() => void checkOut()} />
+      {/* Card chấm công cá nhân: chỉ hiện khi user có profile nhân sự liên kết */}
+      {currentEmployee && (
+        <SelfAttendanceCard employee={currentEmployee} record={todayRecord} onCheckIn={() => void checkIn()} onCheckOut={() => void checkOut()} />
+      )}
 
       <section className="card p-3 md:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -223,9 +226,8 @@ export default function ChamCongPage() {
   );
 }
 
-function SelfAttendanceCard({ employee, userName, record, onCheckIn, onCheckOut }: {
-  employee?: { maNV: string; hoTen: string; boPhan: string };
-  userName?: string;
+function SelfAttendanceCard({ employee, record, onCheckIn, onCheckOut }: {
+  employee: { maNV: string; hoTen: string; boPhan: string };
   record?: ChamCongRecord;
   onCheckIn: () => void;
   onCheckOut: () => void;
@@ -235,8 +237,8 @@ function SelfAttendanceCard({ employee, userName, record, onCheckIn, onCheckOut 
     <section className="card overflow-hidden border border-teal-200/70 dark:border-teal-700/40">
       <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-4 py-3 text-white md:px-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-white/75">Chấm công của tôi · Hôm nay</p>
-        <h2 className="mt-0.5 text-lg font-bold">{employee?.hoTen || userName || "Tài khoản chưa liên kết nhân sự"}</h2>
-        <p className="text-xs text-white/80">{employee ? `${employee.maNV} · ${employee.boPhan}` : "Vui lòng liên kết mã nhân viên với tài khoản"}</p>
+        <h2 className="mt-0.5 text-lg font-bold">{employee.hoTen}</h2>
+        <p className="text-xs text-white/80">{employee.maNV} · {employee.boPhan}</p>
       </div>
       <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-center md:p-5">
         <div className="grid grid-cols-2 gap-3">
@@ -244,8 +246,8 @@ function SelfAttendanceCard({ employee, userName, record, onCheckIn, onCheckOut 
           <div className="rounded-xl bg-slate-100 p-3 text-center dark:bg-slate-800/70"><p className="text-xs opacity-60">Giờ kết thúc</p><p className="mt-1 text-2xl font-bold text-cyan-600">{record?.gioRa?.slice(0, 5) || "--:--"}</p></div>
         </div>
         <div className="grid grid-cols-2 gap-3 md:min-w-[340px]">
-          <button disabled={!employee || Boolean(record?.gioVao)} onClick={onCheckIn} className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"><LogIn className="h-5 w-5" /> Vào làm</button>
-          <button disabled={!employee || !record?.gioVao || Boolean(record?.gioRa)} onClick={onCheckOut} className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-3 font-bold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"><LogOut className="h-5 w-5" /> Kết thúc</button>
+          <button disabled={Boolean(record?.gioVao)} onClick={onCheckIn} className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"><LogIn className="h-5 w-5" /> Vào làm</button>
+          <button disabled={!record?.gioVao || Boolean(record?.gioRa)} onClick={onCheckOut} className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-3 font-bold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"><LogOut className="h-5 w-5" /> Kết thúc</button>
         </div>
       </div>
       {complete && <p className="border-t border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">Đã hoàn tất chấm công hôm nay</p>}
