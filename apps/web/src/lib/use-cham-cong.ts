@@ -2,8 +2,30 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
-import { camelToSnake, snakeToCamel } from "@/lib/supabase/sync-helper";
+import { camelToSnake } from "@/lib/supabase/sync-helper";
 import type { ChamCongRecord } from "@/lib/cham-cong";
+
+/**
+ * Normalize 1 row từ Supabase (snake_case) → ChamCongRecord (camelCase chính xác).
+ * KHÔNG dùng snakeToCamel chung vì nó convert "ma_nv" → "maNv" (sai)
+ * thay vì "maNV" (đúng theo type định nghĩa).
+ */
+function normalizeFromDB(row: Record<string, unknown>): ChamCongRecord {
+  return {
+    id:           String(row.id ?? ""),
+    maNV:         String(row.ma_nv ?? ""),          // ma_nv → maNV
+    authUserId:   row.auth_user_id as string | undefined,
+    boPhan:       row.bo_phan as string | undefined, // bo_phan → boPhan
+    ngay:         String(row.ngay ?? ""),
+    trangThai:    row.trang_thai as ChamCongRecord["trangThai"],
+    gioVao:       row.gio_vao as string | undefined,
+    gioRa:        row.gio_ra as string | undefined,
+    soGioTangCa:  Number(row.so_gio_tang_ca ?? 0),
+    ghiChu:       row.ghi_chu as string | undefined,
+    createdAt:    String(row.created_at ?? row.createdAt ?? ""),
+    updatedAt:    String(row.updated_at ?? row.updatedAt ?? ""),
+  };
+}
 
 const STORAGE_KEY = "mimin_cham_cong_v1";
 
@@ -47,7 +69,7 @@ export function useChamCong() {
       const { data, error } = await supabase.from("cham_cong").select("*").order("ngay", { ascending: false });
       if (!active) return;
       if (!error) {
-        const remote = (data || []).map((row) => snakeToCamel(row) as ChamCongRecord);
+        const remote = (data || []).map((row) => normalizeFromDB(row as Record<string, unknown>));
         // Merge: giữ records local chưa sync, nhưng ưu tiên remote
         const local = loadLocal();
         const merged = mergeRecords(remote, local);
