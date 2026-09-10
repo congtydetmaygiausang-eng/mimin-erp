@@ -7,6 +7,7 @@ import { getDaysInMonth, isLateArrival, toIsoDate, toLocalTime, tongHopChamCong,
 import { useChamCong } from "@/lib/use-cham-cong";
 import { NhanSuTabs } from "@/components/nhan-su-tabs";
 import { useSession } from "@/components/session-provider";
+import { USERS } from "@/lib/users";
 import { toast } from "sonner";
 
 type Tab = "hang-ngay" | "tong-hop";
@@ -38,11 +39,31 @@ export default function ChamCongPage() {
   const recordMap = useMemo(() => new Map(monthRecords.map((record) => [`${record.maNV}|${record.ngay}`, record])), [monthRecords]);
   const summary = useMemo(() => new Map(employees.map((employee) => [employee.maNV, tongHopChamCong(monthRecords.filter((record) => record.maNV === employee.maNV))])), [employees, monthRecords]);
   const totals = useMemo(() => tongHopChamCong(monthRecords), [monthRecords]);
-  const currentEmployee = useMemo(() => nhanSu.find((employee) =>
+  // Tìm trong bảng nhân sự Supabase trước
+  const currentEmployeeFromDB = useMemo(() => nhanSu.find((employee) =>
     (user?.maNV && employee.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase())
     || (user?.email && employee.email?.toLocaleLowerCase() === user.email.toLocaleLowerCase())
     || (user?.name && employee.hoTen.toLocaleLowerCase("vi") === user.name.toLocaleLowerCase("vi"))
   ), [nhanSu, user]);
+
+  // Fallback: tìm trong danh sách USERS tĩnh nếu chưa có trong Supabase
+  const currentEmployee = useMemo(() => {
+    if (currentEmployeeFromDB) return currentEmployeeFromDB;
+    if (!user) return undefined;
+    const staticUser = USERS.find((u) =>
+      (user.email && u.email.toLocaleLowerCase() === user.email.toLocaleLowerCase())
+      || (user.maNV && u.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase())
+    );
+    if (!staticUser) return undefined;
+    // Tạo profile tạm từ USERS để hiển thị card chấm công
+    return {
+      maNV: staticUser.maNV,
+      hoTen: staticUser.name,
+      boPhan: staticUser.phongBan,
+      email: staticUser.email,
+    } as { maNV: string; hoTen: string; boPhan: string; email?: string };
+  }, [currentEmployeeFromDB, user]);
+
   const today = toIsoDate(new Date());
   const todayRecord = currentEmployee ? recordMap.get(`${currentEmployee.maNV}|${today}`) : undefined;
 
