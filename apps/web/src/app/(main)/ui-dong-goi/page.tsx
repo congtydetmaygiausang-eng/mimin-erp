@@ -206,11 +206,15 @@ export default function UiDongGoiPage() {
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30"
                         >
                           <option value="">-- Chọn khu vực lưu trữ --</option>
-                          <option value="Khu A - Tầng 1">Khu A - Tầng 1</option>
-                          <option value="Khu A - Tầng 2">Khu A - Tầng 2</option>
-                          <option value="Khu B - Kệ 01">Khu B - Kệ 01</option>
-                          <option value="Khu B - Kệ 02">Khu B - Kệ 02</option>
-                          <option value="Khu C chờ xuất">Khu C chờ xuất</option>
+                          {(() => {
+                            const isBo = lc.loaiSP?.toLowerCase().startsWith("bo");
+                            const prefix = isBo ? "Bộ" : "Áo";
+                            return ["A","B","C","D","E","F"].map(khu => (
+                              <option key={khu} value={`${prefix} - Khu ${khu}`}>
+                                {prefix} - Khu {khu}
+                              </option>
+                            ));
+                          })()}
                         </select>
                       </div>
                       <button
