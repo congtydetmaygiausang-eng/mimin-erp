@@ -130,31 +130,19 @@ export default function DanhMucSanPhamPage() {
         }),
         tenSP: current?.tenSP || item.tenSP || item.maSP,
         dsMau: (() => {
-          if (!colors.length) return current?.dsMau || [];
-          const merged = colors.map(c => {
-            // Khớp theo maSKU trước (bất biến khi đổi tên màu), fallback sang tên
-            const existing = current?.dsMau?.find(x =>
-              (x.maSKU && c.maSKU && x.maSKU === c.maSKU) || x.ten === c.ten
-            );
-            return existing ? {
-              ...c,
-              ten: existing.ten,               // Giữ tên màu user đã đổi
-              dinhMuc: existing.dinhMuc || 0,
-              img: existing.img || c.img,      // Ảnh user upload ưu tiên hơn ảnh kho
-              video: existing.video,
-              hinhAnhChiTiet: existing.hinhAnhChiTiet,
-            } : c;
-          });
-          if (current?.dsMau) {
-            // Lọc bỏ màu đã merge (theo cả maSKU lẫn tên)
-            const fromCurrent = current.dsMau.filter(x =>
-              !colors.some(c =>
-                (x.maSKU && c.maSKU && x.maSKU === c.maSKU) || x.ten === c.ten
-              )
-            );
-            merged.push(...fromCurrent);
+          // Nếu user đã từng lưu sản phẩm này → dùng hoàn toàn data của user,
+          // không merge với kho (vì maSKU format khác nhau gây ra duplicate).
+          // Chỉ append màu thực sự mới từ kho (tên chưa có trong current).
+          if (current?.dsMau?.length) {
+            const base = [...current.dsMau];
+            colors.forEach(c => {
+              const alreadyIn = base.some(x => x.ten === c.ten);
+              if (!alreadyIn) base.push(c); // màu mới thêm vào kho, chưa có trong SP
+            });
+            return base;
           }
-          return merged;
+          // Chưa lưu lần nào → dùng màu từ kho
+          return colors;
         })(),
 
         bangSize: current?.bangSize?.sizes?.length
