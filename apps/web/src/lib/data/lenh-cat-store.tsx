@@ -25,6 +25,21 @@ export const LOAI_SP_LABELS: Record<LoaiSP, string> = {
   "PhuKien": "Phụ Kiện",
 };
 
+export function detectLoaiSP(text: string): LoaiSP {
+  const checkStr = (text || "").toLowerCase();
+  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
+  // "bộ polo" is a polo set, so it's a "bộ trụ" (BoTru)
+  if (checkStr.includes("bộ polo") || checkStr.includes("bo polo")) return "BoTru";
+  if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) return "AoTru";
+  if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) return "AoCoTron";
+  if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) return "BoCoTron";
+  if (checkStr.includes("bộ trụ") || checkStr.includes("bo tru")) return "BoTru";
+  if (checkStr.includes("bộ") || checkStr.includes("bo")) return "BoTru";
+  if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) return "PhuKien";
+  if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) return "AoCoTron";
+  return "BoTru";
+}
+
 export const BANG_CHI_PHI_CO_DINH: Record<LoaiSP, ChiPhiCoDinh> = {
   "BoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
   "AoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },

@@ -248,14 +248,14 @@ export default function CongViecCatPage() {
                   </span>
                 }
               >
-                <div className="space-y-4">
+                <div className="space-y-4 pt-1">
                   {/* Gia công áo/quần + thợ cắt + hạn */}
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {isAo && (
                         <button
                           onClick={() => setModalGiaCong({ id: lc.id, type: "ao" })}
-                          className="px-3 py-1.5 bg-white border border-violet-200 text-violet-700 rounded-lg text-xs font-bold hover:bg-violet-50 transition-colors shadow-sm"
+                          className="px-4 py-1.5 bg-violet-50 border border-violet-200 text-violet-700 rounded-full text-xs font-bold hover:bg-violet-100 hover:border-violet-300 transition-colors shadow-sm"
                         >
                           Gia công áo
                         </button>
@@ -263,7 +263,7 @@ export default function CongViecCatPage() {
                       {isQuan && (
                         <button
                           onClick={() => setModalGiaCong({ id: lc.id, type: "quan" })}
-                          className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-50 transition-colors shadow-sm"
+                          className="px-4 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-bold hover:bg-emerald-100 hover:border-emerald-300 transition-colors shadow-sm"
                         >
                           Gia công quần
                         </button>
@@ -272,15 +272,15 @@ export default function CongViecCatPage() {
                         <button
                           key={mIdx}
                           onClick={() => setModalTyLeMau({ id: lc.id, mauIdx: mIdx })}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-sky-200 text-sky-700 rounded-lg text-xs font-bold hover:bg-sky-50 transition-colors shadow-sm"
+                          className="flex items-center gap-1.5 px-4 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-full text-xs font-bold hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition-all shadow-sm"
                           title={`Xem/sửa chi tiết số lượng theo size - màu ${m.ten}`}
                         >
-                          <Ruler className="w-3.5 h-3.5" /> Size {m.ten}
+                          <Ruler className="w-3.5 h-3.5 opacity-70" /> Size {m.ten}
                         </button>
                       ))}
                     </div>
-                    <div className="text-sm text-right">
-                      <span className="text-slate-500 mr-1.5">Thợ cắt:</span>
+                    <div className="text-[11px] text-right bg-slate-50 px-3.5 py-1.5 rounded-full border border-slate-200/60">
+                      <span className="text-slate-500 mr-1.5 font-bold">Thợ cắt:</span>
                       <span className="font-bold text-slate-800">{pc?.nguoiTen || <span className="italic text-slate-400">Chưa giao</span>}</span>
                     </div>
                   </div>
@@ -315,7 +315,10 @@ export default function CongViecCatPage() {
                   {/* Chi tiết 5 bước cắt (kể cả Nhận liệu) */}
                   {tt === "dang_lam" && (
                     <div className="border-t border-slate-100 pt-3">
-                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Tiến độ chi tiết (Bấm để đổi)</div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết <span className="text-slate-400 font-bold lowercase tracking-normal">(bấm để đổi)</span></span>
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {steps.map(({ key, label }) => {
                           const val = catChiTiet[key as keyof typeof catChiTiet];
@@ -379,7 +382,7 @@ export default function CongViecCatPage() {
                       </>
                     )}
                     {tt === "hoan_thanh" && (
-                      <div className="flex-1 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200 flex items-center justify-center gap-1.5">
+                      <div className="w-full py-2.5 rounded-xl bg-emerald-50/80 text-emerald-700 font-bold text-sm border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm hover:bg-emerald-100 transition-colors">
                         <CheckCircle2 className="w-4 h-4" /> Đã cắt xong {pc?.soLuongHoanThanh || lc.tongSL} SP
                         {pc?.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
                       </div>

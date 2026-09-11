@@ -365,6 +365,10 @@ export default function UiQCPage() {
             return (
               <LenhCatCardV2 key={lc.id} lc={lc} onColorClick={(mau) => setSelectedMau({ lc, mau })}>
                 <div className="space-y-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {mayPCs.map((pc: any) => {
                     const key = `${lc.id}_${pc.id}`;
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
@@ -558,7 +562,7 @@ export default function UiQCPage() {
                               {/* Action buttons */}
                               <div className="flex gap-3">
                                 <button onClick={() => handleDatPC(lc, pc)}
-                                  className="flex-1 px-3 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-1.5 transition-colors shadow-sm">
+                                  className="flex-1 px-3 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200">
                                   <CheckCircle2 className="w-4 h-4" />
                                   QC Đạt – Hoàn tất
                                 </button>

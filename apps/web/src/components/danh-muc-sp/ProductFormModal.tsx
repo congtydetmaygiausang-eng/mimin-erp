@@ -150,6 +150,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       ghiChu: ghiChu || (initialData ? initialData.ghiChu : ""),
       trangThai: initialData?.trangThai || "con-hang",
       ngayTao: initialData?.ngayTao || new Date().toISOString().substring(0, 10),
+      hinhAnh: dsMau.find(m => m.img)?.img || initialData?.hinhAnh || "",
     };
 
     onSave(newProduct);

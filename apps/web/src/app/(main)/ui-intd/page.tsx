@@ -143,6 +143,10 @@ export default function UiInTheuPage() {
                 }
               >
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {intdPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
@@ -163,7 +167,7 @@ export default function UiInTheuPage() {
                         <div className="flex gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-purple-600 text-white font-bold text-sm hover:bg-purple-700 flex items-center justify-center gap-1.5">
+                              className="flex-1 py-2.5 rounded-xl bg-purple-500 text-white font-bold text-sm hover:bg-purple-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-purple-200">
                               <Package className="w-4 h-4" /> Nhận hàng In/Thêu
                             </button>
                           )}
@@ -171,18 +175,18 @@ export default function UiInTheuPage() {
                             <>
                               <button
                                 onClick={() => setUploadModal({ lc, pc })}
-                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm"
+                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
                               >
                                 <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển tiếp
                               </button>
                               <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}
-                                className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-bold text-sm">
+                                className="px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 font-bold text-sm transition-colors shadow-sm">
                                 <AlertTriangle className="w-4 h-4" />
                               </button>
                             </>
                           )}
                           {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
+                            <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
                               <CheckCircle2 className="w-4 h-4" />
                               Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
                               {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
@@ -190,7 +194,7 @@ export default function UiInTheuPage() {
                           )}
                           {tt === "co_loi" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 flex items-center justify-center gap-1.5">
+                              className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-amber-200">
                               <Clock className="w-4 h-4" /> Làm lại
                             </button>
                           )}

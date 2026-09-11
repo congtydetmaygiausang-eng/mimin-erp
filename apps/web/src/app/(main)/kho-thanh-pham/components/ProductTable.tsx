@@ -4,6 +4,13 @@
 import React, { useMemo } from "react";
 import { Edit, Truck, Trash2, Image as ImageIcon } from "lucide-react";
 import type { SanPhamTP } from "../data";
+import { LOAI_SP_LABELS, type LoaiSP, detectLoaiSP } from "@/lib/data/lenh-cat-store";
+
+const getPhanLoaiLabel = (phanLoai: string, tenSP: string) => {
+  const isValidKey = Object.keys(LOAI_SP_LABELS).includes(phanLoai);
+  const detectedKey = isValidKey ? (phanLoai as LoaiSP) : detectLoaiSP((tenSP || "") + " " + (phanLoai || ""));
+  return LOAI_SP_LABELS[detectedKey] || detectedKey;
+};
 
 interface ProductTableProps {
   filtered: SanPhamTP[];
@@ -92,7 +99,9 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                             </button>
                           )}
                         </div>
-                        <div className="text-[10px] uppercase font-semibold text-slate-500 mt-0.5 tracking-wider bg-slate-100 inline-block px-1.5 py-0.5 rounded">{s.phanLoai}</div>
+                        <div className="text-[10px] uppercase font-semibold text-slate-500 mt-0.5 tracking-wider bg-slate-100 inline-block px-1.5 py-0.5 rounded">
+                          {getPhanLoaiLabel(s.phanLoai, s.tenSP)}
+                        </div>
                         
                         {/* Interactive Price Chips */}
                         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -135,10 +144,16 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                       <span className="bg-slate-100 px-1.5 py-1 rounded-md border border-slate-200">{s.viTri}</span>
                     </td>
                     <td className="p-3 text-center align-middle">
-                      {s.trangThai === "con" && <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[10px] rounded-full font-bold shadow-sm">Còn</span>}
-                      {s.trangThai === "dat-hang" && <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] rounded-full font-bold shadow-sm">Đang SX</span>}
-                      {s.trangThai === "xuat-kho" && <span className="px-2.5 py-1 bg-slate-200 text-slate-700 text-[10px] rounded-full font-bold shadow-sm">Đã xuất</span>}
-                      {s.trangThai === "khong-dat" && <span className="px-2.5 py-1 bg-rose-100 text-rose-700 text-[10px] rounded-full font-bold shadow-sm">Không đặt</span>}
+                      {s.soLuong <= 0 ? (
+                        <span className="px-2.5 py-1 bg-rose-100 text-rose-700 text-[10px] rounded-full font-bold shadow-sm">Hết hàng</span>
+                      ) : (
+                        <>
+                          {s.trangThai === "con" && <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[10px] rounded-full font-bold shadow-sm">Còn</span>}
+                          {s.trangThai === "dat-hang" && <span className="px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] rounded-full font-bold shadow-sm">Đang SX</span>}
+                          {s.trangThai === "xuat-kho" && <span className="px-2.5 py-1 bg-slate-200 text-slate-700 text-[10px] rounded-full font-bold shadow-sm">Đã xuất</span>}
+                          {s.trangThai === "khong-dat" && <span className="px-2.5 py-1 bg-rose-100 text-rose-700 text-[10px] rounded-full font-bold shadow-sm">Không đạt</span>}
+                        </>
+                      )}
                     </td>
                     <td className="p-3 text-center align-middle">
                       <div className="flex items-center justify-center gap-1.5">
@@ -181,7 +196,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                 <div className="font-bold text-amber-900 truncate">{group[0].tenSP}</div>
                 <div className="text-xs font-mono text-amber-700 mt-0.5">{group[0].maSP}</div>
                 <div className="text-[10px] uppercase font-semibold text-slate-500 mt-1 bg-white inline-block px-1.5 py-0.5 rounded border border-slate-100">
-                  {group[0].phanLoai}
+                  {getPhanLoaiLabel(group[0].phanLoai, group[0].tenSP)}
                 </div>
               </div>
             </div>
@@ -214,9 +229,15 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1 py-0.5 rounded">{s.viTri}</span>
-                      {s.trangThai === "con" && <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] rounded font-bold">Còn</span>}
-                      {s.trangThai === "dat-hang" && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] rounded font-bold">Đang SX</span>}
-                      {s.trangThai === "xuat-kho" && <span className="px-1.5 py-0.5 bg-slate-200 text-slate-700 text-[9px] rounded font-bold">Đã xuất</span>}
+                      {s.soLuong <= 0 ? (
+                        <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[9px] rounded font-bold">Hết hàng</span>
+                      ) : (
+                        <>
+                          {s.trangThai === "con" && <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] rounded font-bold">Còn</span>}
+                          {s.trangThai === "dat-hang" && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] rounded font-bold">Đang SX</span>}
+                          {s.trangThai === "xuat-kho" && <span className="px-1.5 py-0.5 bg-slate-200 text-slate-700 text-[9px] rounded font-bold">Đã xuất</span>}
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <button onClick={() => setEditing(s)} className="p-1.5 bg-blue-50 text-blue-600 rounded-md">

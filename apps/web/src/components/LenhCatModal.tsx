@@ -199,10 +199,12 @@ const isQuanStage = (tenCongDoan: string) => {
   const cd = (tenCongDoan || "").toLowerCase();
   return cd.includes("quần") || cd.includes("quan");
 };
-
-const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP) => {
+const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP, congDoanInTheu: string = "") => {
   const isBo = loaiSP?.toLowerCase().includes("bo") || false;
-  return stages.filter(stage => isBo || !isQuanStage(stage.tenCongDoan));
+  return stages.filter(stage => {
+    if (!congDoanInTheu && isInTheuStage(stage.tenCongDoan)) return false;
+    return isBo || !isQuanStage(stage.tenCongDoan);
+  });
 };
 
 // Constants
@@ -884,7 +886,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   // Section 4 - Phân công
   const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
   const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || []);
-  const visiblePhanCong = useMemo(() => getVisibleStages(phanCong, loaiSP), [phanCong, loaiSP]);
+  const visiblePhanCong = useMemo(() => getVisibleStages(phanCong, loaiSP, congDoanInTheu), [phanCong, loaiSP, congDoanInTheu]);
   const hasInTheuStage = Boolean(congDoanInTheu) && visiblePhanCong.some(stage => isInTheuStage(stage.tenCongDoan));
   const activeSoDoPhoi = loaiSoDoPhoi === "quan" ? soDoPhoiQuan : soDoPhoiAo || soDoPhoiQuan;
   
@@ -3058,7 +3060,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                             const selectedName = nv?.ten || dt?.tenDonVi || e.target.value;
                             setPhanCong(p => {
                               const next = [...(p as any[])];
-                              next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: selectedName };
+                              const actualIdx = next.findIndex(x => x.tenCongDoan === kh.tenCongDoan);
+                              if (actualIdx !== -1) {
+                                next[actualIdx] = { ...next[actualIdx], nguoiMa: e.target.value, nguoiTen: selectedName };
+                              }
                               return next as any;
                             });
                           }}
@@ -3077,7 +3082,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                             onChange={(e) => {
                               setPhanCong(p => {
                                 const next = [...(p as any[])];
-                                next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                                const actualIdx = next.findIndex(x => x.tenCongDoan === kh.tenCongDoan);
+                                if (actualIdx !== -1) {
+                                  next[actualIdx] = { ...next[actualIdx], donGia: parseInt(e.target.value) || 0 };
+                                }
                                 return next as any;
                               });
                             }}

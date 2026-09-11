@@ -48,12 +48,12 @@ export function InventoryTable({ filteredVT, dsTrangThai, inventoryImages, editi
                 <td className="p-3 font-semibold">{editing ? <input className="input w-48" value={editForm.tenVT || ""} onChange={(event) => setEditForm({ ...editForm, tenVT: event.target.value })} /> : item.tenVT}</td>
                 <td className="p-3">{item.loai}</td>
                 <td className="p-3">{item.mauSac || "-"}</td>
-                <td className={`p-3 text-right font-black ${status.canhBao ? "text-red-600" : "text-emerald-600"}`}>{status.tonKho.toLocaleString("vi-VN")} {item.dvt}</td>
+                <td className={`p-3 text-right font-black ${status.canhBao ? "text-red-600" : "text-emerald-600"}`}>{editing ? <div className="flex items-center justify-end gap-1"><input type="number" min={0} className="input w-24 text-right" value={editForm.tonKho ?? 0} onChange={(event) => setEditForm({ ...editForm, tonKho: Number(event.target.value) })} /><span className="text-xs font-normal text-slate-500">{item.dvt}</span></div> : `${status.tonKho.toLocaleString("vi-VN")} ${item.dvt}`}</td>
                 <td className="p-3 text-right">{status.tonToiThieu.toLocaleString("vi-VN")}</td>
                 <td className="p-3 text-right">{editing ? <input type="number" min={0} className="input w-28 text-right" value={editForm.donGia || 0} onChange={(event) => setEditForm({ ...editForm, donGia: Number(event.target.value) })} /> : `${item.donGia.toLocaleString("vi-VN")} đ`}</td>
                 <td className="p-3 text-right font-semibold">{formatVND(status.giaTriTon)}</td>
                 <td className="p-3 text-center">{status.canhBao ? <span className="rounded bg-red-50 px-2 py-1 text-xs font-bold text-red-600">Tồn thấp</span> : <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">OK</span>}</td>
-                <td className="p-3"><div className="flex justify-end gap-1.5">{editing ? <><button type="button" onClick={() => onSaveEdit(item)} className="rounded bg-emerald-500 px-2.5 py-1.5 text-xs font-bold text-white">Lưu</button><button type="button" onClick={() => setEditingVT(null)} className="rounded bg-slate-200 px-2.5 py-1.5 text-xs font-bold">Hủy</button></> : <><button type="button" onClick={() => { setEditingVT(item.maVT); setEditForm({ tenVT: item.tenVT, donGia: item.donGia }); }} className="rounded bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-700">Sửa</button><button type="button" onClick={() => onShowXuat(item.maVT)} className="flex items-center gap-1 rounded bg-amber-100 px-2.5 py-1.5 text-xs font-bold text-amber-700"><Minus className="h-3 w-3" /> Xuất</button><button type="button" onClick={() => onShowNhap(item.maVT)} className="flex items-center gap-1 rounded bg-sky-500 px-2.5 py-1.5 text-xs font-bold text-white"><Plus className="h-3 w-3" /> Nhập</button></>}</div></td>
+                <td className="p-3"><div className="flex justify-end gap-1.5">{editing ? <><button type="button" onClick={() => onSaveEdit(item)} className="rounded bg-emerald-500 px-2.5 py-1.5 text-xs font-bold text-white">Lưu</button><button type="button" onClick={() => setEditingVT(null)} className="rounded bg-slate-200 px-2.5 py-1.5 text-xs font-bold">Hủy</button></> : <><button type="button" onClick={() => { setEditingVT(item.maVT); setEditForm({ tenVT: item.tenVT, donGia: item.donGia, tonKho: status.tonKho }); }} className="rounded bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-700">Sửa</button><button type="button" onClick={() => onShowXuat(item.maVT)} className="flex items-center gap-1 rounded bg-amber-100 px-2.5 py-1.5 text-xs font-bold text-amber-700"><Minus className="h-3 w-3" /> Xuất</button><button type="button" onClick={() => onShowNhap(item.maVT)} className="flex items-center gap-1 rounded bg-sky-500 px-2.5 py-1.5 text-xs font-bold text-white"><Plus className="h-3 w-3" /> Nhập</button></>}</div></td>
               </tr>;
             })}
           </tbody>
@@ -97,11 +97,18 @@ export function InventoryTable({ filteredVT, dsTrangThai, inventoryImages, editi
                 <div className="p-3 bg-white space-y-3">
                   <div className="flex justify-between items-center">
                     <div className="text-xs text-slate-500">Tồn kho / Tối thiểu</div>
-                    <div className="text-right">
-                      <span className={`font-black text-base ${status.canhBao ? "text-red-600" : "text-emerald-600"}`}>
-                        {status.tonKho.toLocaleString("vi-VN")} {item.dvt}
-                      </span>
-                      <span className="text-xs text-slate-400 font-medium ml-1">
+                    <div className="text-right flex flex-col items-end gap-1">
+                      {editing ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <input type="number" min={0} className="input w-24 text-right text-xs" value={editForm.tonKho ?? 0} onChange={(event) => setEditForm({ ...editForm, tonKho: Number(event.target.value) })} />
+                          <span className="text-[10px] font-normal text-slate-500">{item.dvt}</span>
+                        </div>
+                      ) : (
+                        <span className={`font-black text-base ${status.canhBao ? "text-red-600" : "text-emerald-600"}`}>
+                          {status.tonKho.toLocaleString("vi-VN")} {item.dvt}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400 font-medium">
                         / {status.tonToiThieu.toLocaleString("vi-VN")}
                       </span>
                     </div>
@@ -136,7 +143,7 @@ export function InventoryTable({ filteredVT, dsTrangThai, inventoryImages, editi
                       </>
                     ) : (
                       <>
-                        <button type="button" onClick={() => { setEditingVT(item.maVT); setEditForm({ tenVT: item.tenVT, donGia: item.donGia }); }} className="rounded bg-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-700">Sửa</button>
+                        <button type="button" onClick={() => { setEditingVT(item.maVT); setEditForm({ tenVT: item.tenVT, donGia: item.donGia, tonKho: status.tonKho }); }} className="rounded bg-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-700">Sửa</button>
                         <button type="button" onClick={() => onShowXuat(item.maVT)} className="flex items-center gap-1 rounded bg-amber-100 px-2.5 py-1.5 text-xs font-bold text-amber-700"><Minus className="h-3 w-3" /> Xuất</button>
                         <button type="button" onClick={() => onShowNhap(item.maVT)} className="flex items-center gap-1 rounded bg-sky-500 px-2.5 py-1.5 text-xs font-bold text-white"><Plus className="h-3 w-3" /> Nhập</button>
                       </>

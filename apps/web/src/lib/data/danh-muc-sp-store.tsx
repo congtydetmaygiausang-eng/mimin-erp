@@ -60,7 +60,7 @@ function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
   
   let loaiSP = (item.loaiSp || item.loai_sp) as any || "AoCoTron";
   const validKeys = ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"];
-  if (!validKeys.includes(loaiSP) || loaiSP === "BoTru") {
+  if (!validKeys.includes(loaiSP)) {
       const checkStr = (tenSP + " " + (item.phanLoai || item.phan_loai || "")).toLowerCase();
       if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) loaiSP = "AoPolo";
       else if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) loaiSP = "AoTru";
@@ -122,7 +122,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     setDsSanPham((prev) => [...prev, sp]);
   }, [setDsSanPham]);
 
-  const suaSP = useCallback((id: string, data: Partial<SanPham>) => {
+  const suaSP = useCallback(async (id: string, data: Partial<SanPham>) => {
     setDsSanPham((prev) => {
       const exists = prev.some((p) => p.id === id);
       if (exists) {
@@ -134,10 +134,117 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         return [...prev, newSP];
       }
     });
+
+    // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
+    if (data.loaiSP || data.tenSP || data.dsMau) {
+      try {
+        const KHO_KEY = "mimin_kho_thanh_pham_v2";
+        const raw = localStorage.getItem(KHO_KEY);
+        if (raw) {
+          let khoData = JSON.parse(raw);
+          let changed = false;
+          khoData = khoData.map((item: any) => {
+            if (item.maSP === id) {
+              changed = true;
+              let newHinhAnh = item.hinhAnh;
+              let newImgQuan = item.imgQuan;
+              let newVideo = item.video;
+
+              if (data.dsMau && Array.isArray(data.dsMau)) {
+                const matchedMau = data.dsMau.find(m => m.ten === item.mau);
+                if (matchedMau) {
+                  if (matchedMau.img) {
+                    newHinhAnh = [matchedMau.img, ...(matchedMau.hinhAnhChiTiet || [])];
+                  }
+                  if ((matchedMau as any).imgQuan) {
+                    newImgQuan = (matchedMau as any).imgQuan;
+                  }
+                  if (matchedMau.video !== undefined) {
+                    newVideo = matchedMau.video;
+                  }
+                }
+              }
+
+              return {
+                ...item,
+                ...(data.loaiSP ? { phanLoai: data.loaiSP } : {}),
+                ...(data.tenSP ? { tenSP: data.tenSP } : {}),
+                ...(newHinhAnh ? { hinhAnh: newHinhAnh } : {}),
+                ...(newImgQuan ? { imgQuan: newImgQuan } : {}),
+                ...(newVideo !== undefined ? { video: newVideo } : {})
+              };
+            }
+            return item;
+          });
+          if (changed) {
+            localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Lỗi đồng bộ local kho_thanh_pham:", e);
+      }
+    }
+
+    if (isSupabaseEnabled && (data.loaiSP || data.tenSP || data.dsMau)) {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        if (supabase) {
+          // 1. Bulk update common fields
+          const updates: any = {};
+          if (data.loaiSP) updates.phan_loai = data.loaiSP;
+          if (data.tenSP) updates.ten_sp = data.tenSP;
+          if (Object.keys(updates).length > 0) {
+            await supabase.from("kho_thanh_pham").update(updates).eq("ma_sp", id);
+          }
+
+          // 2. Specific update for variant images
+          if (data.dsMau && Array.isArray(data.dsMau)) {
+             for (const m of data.dsMau) {
+               if (m.img) {
+                 const variantUpdates: any = {
+                   hinh_anh: [m.img, ...(m.hinhAnhChiTiet || [])]
+                 };
+                 if ((m as any).imgQuan) {
+                   variantUpdates.img_quan = (m as any).imgQuan;
+                 }
+                 if (m.video !== undefined) {
+                   variantUpdates.video = m.video;
+                 }
+                 await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
+               }
+             }
+          }
+        }
+      } catch (e) {
+        console.error("Lỗi đồng bộ kho_thanh_pham khi suaSP:", e);
+      }
+    }
   }, [setDsSanPham]);
 
   const xoaSP = useCallback(async (id: string) => {
     setDsSanPham((prev) => prev.filter((p) => p.id !== id));
+
+    // Xóa khỏi localStorage của kho_thanh_pham
+    try {
+      const KHO_KEY = "mimin_kho_thanh_pham_v2";
+      const raw = localStorage.getItem(KHO_KEY);
+      if (raw) {
+        let khoData = JSON.parse(raw);
+        const filtered = khoData.filter((item: any) => item.maSP !== id);
+        if (filtered.length !== khoData.length) {
+          localStorage.setItem(KHO_KEY, JSON.stringify(filtered));
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Lỗi xóa local kho_thanh_pham:", e);
+    }
+
     if (isSupabaseEnabled) {
       // supabaseDelete mặc định dùng cột 'id', ta phải dùng query riêng cho ma_sp
       const { supabase } = await import("@/lib/supabase/client");

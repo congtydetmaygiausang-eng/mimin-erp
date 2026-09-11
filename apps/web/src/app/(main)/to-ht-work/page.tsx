@@ -317,6 +317,10 @@ export default function UiHoanThienPage() {
                 }
               >
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {htPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
@@ -335,7 +339,7 @@ export default function UiHoanThienPage() {
                         </div>
 
                         {tt === "hoan_thanh" && (
-                          <div className="mt-3 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
+                          <div className="mt-3 py-2.5 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
                             <div className="flex items-center gap-2 font-bold text-emerald-700">
                               <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
                             </div>

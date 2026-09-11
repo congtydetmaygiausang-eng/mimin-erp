@@ -36,7 +36,7 @@ export default function CustomerAddToCartModal({
     addItem({
       spId: sp.id,
       spTen: sp.tenSP,
-      hinhAnh: colorObj?.img || sp.hinhAnh || "",
+      hinhAnh: colorObj?.img || sp.dsMau?.[0]?.img || sp.hinhAnh || "",
       mauCode: colorObj?.maSKU || "DEFAULT",
       mauTen: selectedColor,
       size: selectedSize,
@@ -48,7 +48,7 @@ export default function CustomerAddToCartModal({
   };
 
   // Determine the display image based on selected color
-  const displayImage = sp.dsMau?.find((m) => m.ten === selectedColor)?.img || sp.hinhAnh;
+  const displayImage = sp.dsMau?.find((m) => m.ten === selectedColor)?.img || sp.dsMau?.[0]?.img || sp.hinhAnh;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

@@ -144,10 +144,10 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
       <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-white relative z-10">
+          <div className="flex items-center gap-5">
             <div 
-              className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 bg-white flex cursor-pointer group relative"
+              className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex cursor-pointer group relative shadow-sm"
               onClick={() => {
                 const src1 = mau.img || "";
                 const src2 = lc.loaiSP?.includes("Bo") && (mau as any).imgQuan ? (mau as any).imgQuan : undefined;
@@ -156,7 +156,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
               title="Bấm để xem ảnh lớn"
             >
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-                <span className="text-white text-[10px] font-bold">ZOOM</span>
+                <span className="text-white text-[10px] font-bold tracking-widest">ZOOM</span>
               </div>
               <div className={`relative h-full ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200" : "w-full"}`}>
                 {mau.img ? (
@@ -175,12 +175,18 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                 </div>
               )}
             </div>
-            <div>
-              <h2 className="text-xl font-black text-slate-800">Chi tiết màu: <span className="text-teal-600">{mau.ten}</span></h2>
-              <p className="text-sm font-bold text-slate-500">Mã vải: {mau.maVai} • Lệnh: {lc.id}</p>
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Chi tiết màu</span>
+              <h2 className="text-[22px] md:text-2xl font-black text-slate-800 leading-none mb-2">
+                <span className="bg-gradient-to-r from-teal-600 to-sky-600 bg-clip-text text-transparent drop-shadow-sm">{mau.ten}</span>
+              </h2>
+              <div className="flex items-center flex-wrap gap-2 text-[10px] font-bold tracking-wide">
+                <span className="bg-slate-50 text-slate-600 px-2.5 py-0.5 rounded border border-slate-200 shadow-sm">Mã vải: <span className="text-slate-800">{mau.maVai || "---"}</span></span>
+                <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded border border-sky-100 shadow-sm">Lệnh: {lc.id}</span>
+              </div>
             </div>
           </div>
-          <button disabled={saving} onClick={onClose} className="w-10 h-10 rounded-full bg-white hover:bg-slate-200 flex items-center justify-center text-slate-500 transition border border-slate-200">
+          <button disabled={saving} onClick={onClose} className="w-10 h-10 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors border border-slate-200/60 shadow-sm">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -191,10 +197,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
           {/* Lịch sử */}
           {historyPCs.length > 0 ? (
             <div>
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Lịch sử các khâu trước
-              </h3>
-              <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Lịch sử các khâu trước</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {historyPCs.map(pc => {
                   const sizes = mau.tyLeSizeChiTiet?.[pc.id];
                   const data = pc.chiTietMau?.find(c => c.mau === mau.ten);
@@ -202,17 +209,20 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                   if (sizes && sizes.length > 0) {
                     const tong = tongSizes(sizes);
                     return (
-                      <div key={pc.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                      <div key={pc.id} className="min-w-[240px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow transition-shadow">
+                        <div className="flex items-center justify-between gap-2 mb-3">
                           <div>
-                            <div className="font-bold text-slate-700">{pc.tenCongDoan}</div>
-                            <div className="text-xs text-slate-400">{pc.nguoiTen}</div>
+                            <div className="font-black text-sm text-slate-800 leading-tight">{pc.tenCongDoan}</div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{pc.nguoiTen}</div>
                           </div>
-                          <div className="text-sm font-black text-emerald-600">Tổng đạt: {tong.toLocaleString()}</div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Đạt</span>
+                            <span className="text-lg font-black text-emerald-600 leading-none">{tong.toLocaleString()}</span>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5 mt-2">
                           {sizes.map((s, i) => (
-                            <span key={i} className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-600">
+                            <span key={i} className="text-[10px] font-black bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5 text-slate-500">
                               {s.size}: <span className="text-slate-800">{s.sl}</span>
                             </span>
                           ))}
@@ -223,16 +233,29 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
 
                   if (!data) return null;
                   return (
-                    <div key={pc.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="font-bold text-slate-700">{pc.tenCongDoan}</div>
-                        <div className="text-xs text-slate-400">{pc.nguoiTen}</div>
+                    <div key={pc.id} className="min-w-[240px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow transition-shadow flex flex-col justify-between">
+                      <div className="mb-3">
+                        <div className="font-black text-sm text-slate-800 leading-tight">{pc.tenCongDoan}</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{pc.nguoiTen}</div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm font-bold">
-                        <div className="text-slate-600">Nhận: {data.soLuongNhan.toLocaleString()}</div>
-                        <div className="text-emerald-600">Đạt: {data.soLuongDat.toLocaleString()}</div>
+                      <div className="flex items-center gap-3 text-xs font-bold bg-slate-50 p-2 rounded-xl">
+                        <div className="flex flex-col flex-1 items-center justify-center">
+                          <span className="text-[9px] uppercase text-slate-400">Nhận</span>
+                          <span className="text-slate-700">{data.soLuongNhan.toLocaleString()}</span>
+                        </div>
+                        <div className="w-px h-6 bg-slate-200"></div>
+                        <div className="flex flex-col flex-1 items-center justify-center">
+                          <span className="text-[9px] uppercase text-emerald-500">Đạt</span>
+                          <span className="text-emerald-600">{data.soLuongDat.toLocaleString()}</span>
+                        </div>
                         {data.soLuongLoi > 0 && (
-                          <div className="text-rose-600">Lỗi: {data.soLuongLoi.toLocaleString()}</div>
+                          <>
+                            <div className="w-px h-6 bg-slate-200"></div>
+                            <div className="flex flex-col flex-1 items-center justify-center">
+                              <span className="text-[9px] uppercase text-rose-400">Lỗi</span>
+                              <span className="text-rose-600">{data.soLuongLoi.toLocaleString()}</span>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -242,10 +265,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
             </div>
           ) : (
             <div>
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Lịch sử các khâu trước
-              </h3>
-              <div className="text-sm text-slate-400 italic bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Lịch sử các khâu trước</span>
+              </div>
+              <div className="text-sm font-medium text-slate-400 bg-slate-50 p-4 rounded-2xl border border-slate-200 border-dashed text-center">
                 Chưa có khâu nào nhập liệu cho màu này.
               </div>
             </div>
@@ -256,11 +280,9 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
           {/* Form Nhập Liệu cho Khâu Hiện Tại - theo từng size */}
           {currentPCs.length > 0 && (
             <div>
-              <div className="flex items-center gap-3 mb-4 mt-2">
-                <h3 className="text-sm font-bold text-sky-600 uppercase tracking-widest flex items-center gap-2">
-                  Khâu hiện tại
-                </h3>
-                <div className="h-px flex-1 bg-gradient-to-r from-sky-200 to-transparent"></div>
+              <div className="flex items-center gap-2 mb-4 mt-2">
+                <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Khâu hiện tại</span>
               </div>
 
               {/* Hướng dẫn nhập liệu */}
@@ -277,7 +299,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                 </ul>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {currentPCs.map(pc => {
                   const sizes = sizeInputs[pc.id] || [];
                   const tongDat = tongSizes(sizes);
@@ -285,10 +307,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                   const soLuongLoi = Math.max(0, soLuongNhan - tongDat);
 
                   return (
-                    <div key={pc.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:shadow-md transition-all duration-300">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-5 border-b border-slate-100 pb-4">
+                    <div key={pc.id} className="bg-white border border-slate-200 rounded-3xl p-5 md:p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+                      {/* Top Bar */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 border-b border-slate-100 pb-5">
                         <div 
-                          className="w-16 h-16 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-200 shadow-sm relative cursor-pointer group"
+                          className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-50 shrink-0 border border-slate-200 shadow-sm relative cursor-pointer group"
                           onClick={() => {
                             const imgSrc = pc.id.includes("quan") && lc.loaiSP?.includes("Bo") ? (mau as any).imgQuan : mau.img;
                             if (imgSrc) setZoomedImg({ src1: imgSrc });
@@ -296,7 +319,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                           title="Bấm để xem ảnh lớn"
                         >
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-                            <span className="text-white text-[10px] font-bold">ZOOM</span>
+                            <span className="text-white text-[10px] font-bold tracking-widest">ZOOM</span>
                           </div>
                           {pc.id.includes("quan") && lc.loaiSP?.includes("Bo") ? (
                             (mau as any).imgQuan ? (
@@ -312,60 +335,62 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                             )
                           )}
                         </div>
+                        
                         <div className="flex-1">
-                          <div className="text-lg font-black text-slate-800">{pc.tenCongDoan}</div>
-                          <div className="text-sm text-slate-500 font-medium">{pc.nguoiTen || "Chưa giao"}</div>
-                          <div className="mt-1.5 flex items-center">
-                            <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-[11px] font-bold border border-teal-100 shadow-sm uppercase tracking-wider">
-                              MÀU: {mau.ten}
+                          <div className="text-xl font-black text-slate-800 leading-none mb-1.5">{pc.tenCongDoan}</div>
+                          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{pc.nguoiTen || "Chưa giao"}</div>
+                          <div className="mt-2 flex items-center">
+                            <span className="px-2.5 py-0.5 rounded border border-teal-200/60 bg-teal-50 text-teal-700 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                              Màu: {mau.ten}
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center">
-                          <div className="text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm">
-                            Tổng đạt: <span className="text-emerald-600 text-base ml-1">{tongDat.toLocaleString()}</span>
-                          </div>
+                        
+                        <div className="flex flex-col items-start sm:items-end bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Tổng đạt</span>
+                          <span className="text-emerald-600 text-3xl font-black leading-none">{tongDat.toLocaleString()}</span>
                         </div>
                       </div>
 
                       {/* Size grid */}
                       {sizes.length > 0 ? (
-                        <div className="flex flex-wrap gap-3 mb-3">
+                        <div className="flex flex-wrap gap-3 mb-6">
                           {sizes.map((sz, sIdx) => (
-                            <div key={sIdx} className="flex flex-col items-center bg-white border border-slate-200 rounded-lg p-2 w-20">
-                              <span className="text-xs font-black text-slate-600 mb-1">{sz.size}</span>
+                            <div key={sIdx} className="flex flex-col items-center flex-1 min-w-[70px] max-w-[90px]">
+                              <span className="text-[11px] font-black text-slate-500 mb-1.5 uppercase tracking-wide">{sz.size}</span>
                               <input
                                 disabled={saving}
                                 type="number"
                                 value={sz.sl || ""}
                                 onChange={e => handleSizeChange(pc.id, sIdx, parseInt(e.target.value) || 0)}
                                 onFocus={e => e.target.select()}
-                                className="w-full px-2 py-2 text-center border border-emerald-300 bg-emerald-50/30 rounded-lg focus:ring-2 focus:ring-emerald-400/50 outline-none text-base font-bold text-emerald-700 transition-shadow"
+                                className="w-full px-1 py-3 text-center border-[3px] border-emerald-100 bg-emerald-50/30 rounded-xl focus:ring-0 focus:border-emerald-400 outline-none text-xl font-black text-emerald-700 transition-colors shadow-sm"
                                 min="0"
                               />
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-xs text-slate-400 italic mb-3">Màu này chưa có phân bổ size ban đầu.</div>
+                        <div className="text-xs text-slate-400 italic mb-6">Màu này chưa có phân bổ size ban đầu.</div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-500 mb-1.5">SL Nhận</label>
+                      {/* KPI Blocks for Nhận & Lỗi */}
+                      <div className="flex gap-4 items-stretch flex-col sm:flex-row">
+                        <div className="flex-1 bg-sky-50/50 border border-sky-100 rounded-2xl p-4 flex flex-col justify-center">
+                          <label className="block text-[10px] uppercase font-black tracking-widest text-sky-600/70 mb-2">SL Nhận</label>
                           <input
                             disabled={saving}
-                                type="number"
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 font-bold focus:ring-2 focus:ring-sky-500 outline-none transition-shadow shadow-sm"
+                            type="number"
+                            className="w-full bg-white border border-sky-200 rounded-xl px-4 py-2 text-sky-900 font-black text-2xl focus:ring-2 focus:ring-sky-500/30 outline-none transition-shadow shadow-sm"
                             value={soLuongNhan || ""}
                             onChange={e => setNhanInputs(prev => ({ ...prev, [pc.id]: parseInt(e.target.value) || 0 }))}
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold text-rose-600 mb-1.5 flex items-center gap-1">
-                            <AlertTriangle className="w-3.5 h-3.5" /> SL Lỗi (tự tính)
+                        <div className="flex-1 bg-rose-50/50 border border-rose-100 rounded-2xl p-4 flex flex-col justify-center">
+                          <label className="block text-[10px] uppercase font-black tracking-widest text-rose-500/80 mb-2 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5" /> SL Lỗi (Tự tính)
                           </label>
-                          <div className="w-full bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 text-rose-700 font-bold shadow-sm">
+                          <div className="w-full bg-white border border-rose-200 rounded-xl px-4 py-2.5 text-rose-700 font-black text-2xl shadow-sm flex items-center">
                             {soLuongLoi.toLocaleString()}
                           </div>
                         </div>
@@ -381,14 +406,14 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
 
         {/* Footer */}
         {currentPCs.length > 0 && (
-          <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row justify-end gap-3">
-            <button disabled={saving} onClick={onClose} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition">
+          <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-3xl">
+            <button disabled={saving} onClick={onClose} className="px-6 py-3 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition">
               Hủy
             </button>
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 disabled={saving} onClick={handleSaveAndClose}
-                className="px-6 py-2.5 bg-white border border-teal-600 text-teal-600 hover:bg-teal-50 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                className="px-6 py-3 bg-white border-2 border-teal-600 text-teal-700 hover:bg-teal-50 rounded-2xl font-black flex items-center justify-center gap-2 transition shadow-sm"
               >
                 <Save className="w-4 h-4" /> Lưu & Đóng
               </button>
@@ -396,21 +421,21 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
               {onNextColor && nextMau ? (
                 <button
                   disabled={saving} onClick={handleSaveAndNext}
-                  className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md shadow-teal-500/20"
+                  className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-black flex items-center justify-center gap-2 transition shadow-lg shadow-teal-500/30"
                 >
                   <ArrowRight className="w-4 h-4" /> Lưu & Tiếp ({nextMau.ten})
                 </button>
               ) : onNextColor && isLastMau ? (
                 <button
                   disabled={saving} onClick={handleSaveAndClose}
-                  className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md shadow-teal-500/20"
+                  className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-black flex items-center justify-center gap-2 transition shadow-lg shadow-teal-500/30"
                 >
                   <CheckCircle2 className="w-4 h-4" /> Hoàn tất màu cuối
                 </button>
               ) : (
                 <button
                   disabled={saving} onClick={handleSaveAndClose}
-                  className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md shadow-teal-500/20"
+                  className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-black flex items-center justify-center gap-2 transition shadow-lg shadow-teal-500/30"
                 >
                   <Save className="w-4 h-4" /> Lưu thông tin
                 </button>

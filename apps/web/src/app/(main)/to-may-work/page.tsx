@@ -10,7 +10,7 @@ import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateC
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { MayCard, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 
@@ -157,7 +157,7 @@ export default function UiMayPage() {
             const catDone = catTT === "hoan_thanh";
 
             return (
-              <MayCard 
+              <LenhCatCardV2 
                 key={lc.id} 
                 lc={lc}
                 onColorClick={(mau) => setSelectedMau({ lc, mau })}
@@ -171,6 +171,10 @@ export default function UiMayPage() {
               >
                 {/* Các công đoạn May */}
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {mayPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
@@ -193,21 +197,20 @@ export default function UiMayPage() {
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
                                     disabled={!catDone}
-                                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    className="flex-1 py-2.5 rounded-xl bg-teal-500 text-white font-bold text-sm hover:bg-teal-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-teal-200 disabled:opacity-50 disabled:cursor-not-allowed">
                               Nhận máy & Bắt đầu làm
                             </button>
                           )}
                           
                           {tt === "dang_lam" && (
                             <button onClick={() => setUploadModal({ lc, pc })}
-                                    className="flex-1 py-3 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-400 hover:to-emerald-500 shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group">
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                                    className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200">
                               <CheckCircle2 className="w-5 h-5 relative z-10" /> 
                               <span className="relative z-10 tracking-wide uppercase text-sm">Báo hoàn thành</span>
                             </button>
                           )}
                           {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
+                            <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
                               <CheckCircle2 className="w-4 h-4" />
                               Xong {pc.soLuongHoanThanh || pc.soLuong || lc.tongSL} SP
                               {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
@@ -223,11 +226,11 @@ export default function UiMayPage() {
                               </div>
                               <div className="flex gap-2">
                                 <button onClick={() => handleNhanHang(lc, pc)}
-                                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-amber-100 border border-amber-300 text-amber-700 hover:bg-amber-200 transition-colors">
+                                  className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-amber-200">
                                   🔧 Bắt đầu sửa lỗi
                                 </button>
                                 <button onClick={() => handleSuaXong(lc, pc)}
-                                  className="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors">
+                                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200">
                                   ✅ Sửa xong → Trả QC
                                 </button>
                               </div>
@@ -238,7 +241,7 @@ export default function UiMayPage() {
                     );
                   })}
                 </div>
-              </MayCard>
+              </LenhCatCardV2>
             );
           })}
         </div>

@@ -217,15 +217,13 @@ export default function KhoPhuLieuPage() {
 
   const handleSaveEdit = async (v: KhoVai) => {
     const updated = { ...v, ...editForm };
-    // 1. Cập nhật state React
-    setInventory((prev) => prev.map((item) => (item.maVT === v.maVT ? updated : item)));
-
     // 2. Persist vào localStorage (survive F5)
     try {
-      const raw = localStorage.getItem(PL_INVENTORY_KEY);
-      const saved = raw ? JSON.parse(raw) : {};
-      saved[v.maVT] = { tenVT: updated.tenVT, donGia: updated.donGia };
-      localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(saved));
+      setInventory((prev) => {
+        const newInventory = prev.map((item) => (item.maVT === v.maVT ? updated : item));
+        localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(newInventory));
+        return newInventory;
+      });
     } catch {}
 
     // 3. Chỉ báo thành công sau khi Supabase xác nhận.

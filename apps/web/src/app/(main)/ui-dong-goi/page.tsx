@@ -149,6 +149,10 @@ export default function UiDongGoiPage() {
                 }
               >
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {htPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt];
@@ -168,18 +172,18 @@ export default function UiDongGoiPage() {
                         <div className="flex gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 flex items-center justify-center gap-1.5">
+                              className="flex-1 py-2.5 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-sky-200">
                               <Package className="w-4 h-4" /> Nhận hàng
                             </button>
                           )}
                           {tt === "dang_lam" && (
                             <button onClick={() => setUploadModal({ lc, pc })}
-                              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm">
+                              className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200">
                               <CheckCircle2 className="w-4 h-4" /> Đóng Gói Xong & Chuyển Kho
                             </button>
                           )}
                           {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
+                            <div className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
                               <div className="flex items-center gap-2 font-bold text-emerald-700">
                                 <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
                               </div>
@@ -206,19 +210,17 @@ export default function UiDongGoiPage() {
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30"
                         >
                           <option value="">-- Chọn khu vực lưu trữ --</option>
-                          <optgroup label="── Bộ ──">
-                            {["A","B","C","D","E","F"].map(khu => (
-                              <option key={`bo-${khu}`} value={`Bộ - Khu ${khu}`}>Bộ - Khu {khu}</option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="── Áo ──">
-                            {["A","B","C","D","E","F"].map(khu => (
-                              <option key={`ao-${khu}`} value={`Áo - Khu ${khu}`}>Áo - Khu {khu}</option>
-                            ))}
-                          </optgroup>
+                          {(() => {
+                            const isBo = lc.loaiSP?.toLowerCase().startsWith("bo");
+                            const prefix = isBo ? "Bộ" : "Áo";
+                            return ["A","B","C","D","E","F"].map(khu => (
+                              <option key={khu} value={`${prefix} - Khu ${khu}`}>
+                                {prefix} - Khu {khu}
+                              </option>
+                            ));
+                          })()}
                         </select>
                       </div>
-
                       <button
                         onClick={() => {
                           if (!khuVuc[lc.id]) {

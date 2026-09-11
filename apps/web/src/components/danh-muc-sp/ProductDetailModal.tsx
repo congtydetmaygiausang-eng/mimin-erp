@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { X, Shirt, Flame, Eye, ShoppingCart, Tag, Package, Star, ShieldCheck, MapPin, Maximize2, PlayCircle, Plus, Image as ImageIcon, FileText } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import type { TonKhoTheoSize } from "@/lib/data/ton-kho-theo-mau";
 
 interface ProductDetailModalProps {
   sp: SanPham | null;
+  tonKhoTheoMau?: Record<string, TonKhoTheoSize>;
   onClose: () => void;
   onAddToCart?: (sp: SanPham) => void;
   onCreateOrder?: (sp: SanPham) => void;
@@ -22,21 +24,33 @@ const TRANG_THAI_LABELS: Record<string, { label: string; className: string }> = 
   "ngung-kinh-doanh": { label: "Ngừng KD", className: "bg-slate-500 text-white" },
 };
 
-export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateOrder, onProduceOrder, onEdit, onDelete }: ProductDetailModalProps) {
+export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddToCart, onCreateOrder, onProduceOrder, onEdit, onDelete }: ProductDetailModalProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  const tongTonKho = useMemo(() => {
+    if (!tonKhoTheoMau) return 0;
+    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + tonMau.reduce((s, row) => s + (row.sl || 0), 0), 0);
+  }, [tonKhoTheoMau]);
+
+  const trangThai = useMemo(() => {
+    if (!sp) return "con-hang";
+    if (tonKhoTheoMau && tongTonKho <= 0) return "het-hang";
+    return sp.trangThai || "con-hang";
+  }, [tonKhoTheoMau, tongTonKho, sp]);
 
   if (!sp) return null;
 
   const soSize = (sp.bangSize?.sizes || []).length;
   const soMau = (sp.dsMau || []).length;
-  const trangThaiInfo = TRANG_THAI_LABELS[sp.trangThai || "con-hang"] || TRANG_THAI_LABELS["con-hang"];
+  const trangThaiInfo = TRANG_THAI_LABELS[trangThai] || TRANG_THAI_LABELS["con-hang"];
   const loaiInfoLabel = LOAI_SP_LABELS[sp.loaiSP] || sp.loaiSP;
   const laHot = sp.id.endsWith("3") || sp.id.endsWith("7") || (sp.daBan && sp.daBan > 1000);
 
-  const initialColorIdx = sp.dsMau?.findIndex(m => m.img === (sp.hinhAnh || sp.dsMau?.[0]?.img)) || 0;
-  const [selectedColorIndex, setSelectedColorIndex] = useState(initialColorIdx !== -1 ? initialColorIdx : 0);
-  const [selectedImage, setSelectedImage] = useState(sp.hinhAnh || sp.dsMau?.[0]?.img || "");
+  const initialColorIdx = 0;
+  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const mainImage = sp.dsMau?.[0]?.img || sp.hinhAnh || "";
+  const [selectedImage, setSelectedImage] = useState(mainImage);
   const [selectedVideo, setSelectedVideo] = useState(sp.dsMau?.find(m => m.img === selectedImage)?.video || sp.dsMau?.[0]?.video || "");
   const [viewingMode, setViewingMode] = useState<"video" | "image">(selectedVideo ? "video" : "image");
   const [showFullScreen, setShowFullScreen] = useState(false);
@@ -103,6 +117,15 @@ export default function ProductDetailModal({ sp, onClose, onAddToCart, onCreateO
                 {viewingMode === "video" ? <ImageIcon className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
                 {viewingMode === "video" ? "Xem Ảnh" : "Xem Video"}
              </button>
+          )}
+
+          {/* OVERLAY HẾT HÀNG */}
+          {trangThai === "het-hang" && (
+            <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center pointer-events-none">
+               <div className="bg-rose-500 text-white font-black text-2xl md:text-3xl tracking-widest px-8 py-2 border-y-2 border-rose-600 -rotate-12 uppercase drop-shadow-lg shadow-xl">
+                 Hết Hàng
+               </div>
+            </div>
           )}
 
           <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 px-4 z-10">
