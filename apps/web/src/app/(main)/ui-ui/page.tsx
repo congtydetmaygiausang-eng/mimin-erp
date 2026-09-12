@@ -10,12 +10,15 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
+import React from "react";
 
 export default function UiUiPage() {
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
 
   const { user } = useSession();
@@ -152,6 +155,48 @@ export default function UiUiPage() {
                     </span>
                   ) : null
                 }
+                bangChungSlot={
+                  (() => {
+                    const completedPCs = htPCs.filter((pc: any) => pc.bangChungURLs?.length > 0 || pc.chuKy);
+                    if (completedPCs.length === 0) return null;
+                    return (
+                      <div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
+                          <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Bằng chứng & Chữ ký ({completedPCs.length})</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+                          {completedPCs.map((pc: any, idx: number) => {
+                             return (
+                               <React.Fragment key={idx}>
+                                 {pc.bangChungURLs?.map((url: string, i: number) => (
+                                    <div key={`img-${idx}-${i}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(url)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative">
+                                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Ảnh {pc.tenCongDoan}
+                                        </div>
+                                      </div>
+                                    </div>
+                                 ))}
+                                 {pc.chuKy && (
+                                    <div key={`chuKy-${idx}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(pc.chuKy)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 border-dashed group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-slate-50 relative p-4 flex flex-col items-center justify-center">
+                                        <img src={pc.chuKy} className="w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Chữ ký ({pc.nguoiTen || pc.nguoiMa})
+                                        </div>
+                                      </div>
+                                    </div>
+                                 )}
+                               </React.Fragment>
+                             )
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
               >
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 mb-4">
@@ -235,6 +280,11 @@ export default function UiUiPage() {
         existingUrls={uploadModal?.pc?.bangChungURLs}
         existingChuKy={uploadModal?.pc?.chuKy}
       />
+
+      {/* Lightbox for Evidence Images */}
+      {zoomImage && (
+        <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
+      )}
     </div>
   );
 }
