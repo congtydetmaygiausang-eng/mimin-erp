@@ -74,7 +74,7 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
       <div className="w-full flex flex-col md:flex-row min-h-[70vh] md:h-[85vh]">
         
         {/* === TRÁI: KHU VỰC HÌNH ẢNH (CLEAN & SHARP) === */}
-        <div className="w-full h-[40vh] min-h-[300px] md:h-auto md:w-5/12 relative flex flex-col bg-slate-50 border-r border-slate-100 shrink-0 overflow-hidden">
+        <div className="w-full aspect-[4/5] max-h-[60vh] min-h-[350px] md:aspect-auto md:max-h-none md:h-auto md:w-5/12 relative flex flex-col bg-slate-50 border-r border-slate-100 shrink-0 overflow-hidden">
           
           {/* Main Viewer Area (Full Khung) */}
           <div className="relative w-full flex-1 flex items-center justify-center group overflow-hidden bg-slate-100/50">
