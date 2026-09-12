@@ -5,12 +5,13 @@
 // Nhận bán thành phẩm từ Cắt/In/Thêu, cập nhật tiến độ may
 
 import { useStageColorInput } from "@/lib/use-stage-color-input";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 
@@ -39,8 +40,8 @@ export default function UiMayPage() {
     }) || [];
   }
 
-
-
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  
   // Lọc LC có công đoạn may CỦA TÔI
   const lcCoMay = dsLenhCat.filter(lc =>
     ["DangCat", "HoanThanh", "ChuyenTiep"].includes(lc.trangThai)
@@ -73,7 +74,7 @@ export default function UiMayPage() {
     toast.success(`👕 Nhận hàng may: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleHoanThanh(lc: any, pc: any, bangChungURLs?: string[]) {
+  function handleHoanThanh(lc: any, pc: any, bangChungURLs?: string[], chuKyUrl?: string) {
     // 2026-08-22: Bắt buộc khai báo số lượng đạt/lỗi theo từng size
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
@@ -90,6 +91,7 @@ export default function UiMayPage() {
       soLuongHoanThanh: tongDat,
       soLuongLoi: tongLoi,
       bangChungURLs: bangChungURLs,
+      chuKy: chuKyUrl,
       thanhTien: thanhTienDat,
       conLai: thanhTienDat - (pc.daThanhToan || 0),
       lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: tongDat, loai: "hoan_thanh" as const, ghiChu: "May xong → Chuyển QC" }],
@@ -168,6 +170,48 @@ export default function UiMayPage() {
                     </div>
                   ) : null
                 }
+                bangChungSlot={
+                  (() => {
+                    const completedPCs = mayPCs.filter((pc: any) => pc.bangChungURLs?.length > 0 || pc.chuKy);
+                    if (completedPCs.length === 0) return null;
+                    return (
+                      <div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
+                          <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Bằng chứng & Chữ ký ({completedPCs.length})</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+                          {completedPCs.map((pc: any, idx: number) => {
+                             return (
+                               <React.Fragment key={idx}>
+                                 {pc.bangChungURLs?.map((url: string, i: number) => (
+                                    <div key={`img-${idx}-${i}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(url)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative">
+                                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Ảnh {pc.tenCongDoan}
+                                        </div>
+                                      </div>
+                                    </div>
+                                 ))}
+                                 {pc.chuKy && (
+                                    <div key={`chuKy-${idx}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(pc.chuKy)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 border-dashed group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-slate-50 relative p-4 flex flex-col items-center justify-center">
+                                        <img src={pc.chuKy} className="w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Chữ ký ({pc.nguoiTen || pc.nguoiMa})
+                                        </div>
+                                      </div>
+                                    </div>
+                                 )}
+                               </React.Fragment>
+                             )
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
               >
                 {/* Các công đoạn May */}
                 <div className="space-y-3">
@@ -176,9 +220,8 @@ export default function UiMayPage() {
                     <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
                   </div>
                   {mayPCs.map((pc: any) => {
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
                     const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
-                    const label = TRANG_THAI_CD_LABELS[tt] || "Chưa rõ";
                     const bgStyle = tt === "dang_lam" ? "bg-gradient-to-br from-[#fffef5] to-[#fffcd4] border-amber-200/60 shadow-sm" : style.bg;
 
                     return (
@@ -189,7 +232,7 @@ export default function UiMayPage() {
                             <div className="text-xs text-slate-500">{pc.nguoiTen || "Chưa giao"} · {(pc.soLuong || lc.tongSL)?.toLocaleString()} SP</div>
                           </div>
                           <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${style.text} bg-white/70 border`}>
-                            {label}
+                            {TRANG_THAI_CD_LABELS[tt]}
                           </span>
                         </div>
 
@@ -267,11 +310,17 @@ export default function UiMayPage() {
       <UploadBangChungModal 
         open={!!uploadModal}
         onClose={() => setUploadModal(null)}
-        onConfirm={(urls) => {
-          if (uploadModal) handleHoanThanh(uploadModal.lc, uploadModal.pc, urls);
+        onConfirm={(urls, chuKyUrl) => {
+          if (uploadModal) handleHoanThanh(uploadModal.lc, uploadModal.pc, urls, chuKyUrl);
         }}
         existingUrls={uploadModal?.pc?.bangChungURLs}
+        existingChuKy={uploadModal?.pc?.chuKy}
       />
+
+      {/* Lightbox for Evidence Images */}
+      {zoomImage && (
+        <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
+      )}
     </div>
   );
 }

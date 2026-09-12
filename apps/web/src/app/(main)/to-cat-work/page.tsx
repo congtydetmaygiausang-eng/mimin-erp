@@ -217,8 +217,8 @@ export default function CongViecCatPage() {
         <div className="space-y-4">
           {lcCoCat.map(lc => {
             const pc = getPhanCongCat(lc) as any;
-            const tt = (pc?.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-            const style = TRANG_THAI_CD_STYLE[tt];
+            const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+            const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
             const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && tt !== "hoan_thanh";
 
             const isBo = lc.loaiSP?.toLowerCase().includes("bo");

@@ -62,7 +62,7 @@ export default function UiDongGoiPage() {
     toast.success(`🧺 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleXong(lc: any, pc: any, bangChungURLs?: string[]) {
+  function handleXong(lc: any, pc: any, bangChungURLs?: string[], chuKyUrl?: string) {
     // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
@@ -78,6 +78,7 @@ export default function UiDongGoiPage() {
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
       bangChungURLs: bangChungURLs,
+      chuKy: chuKyUrl,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -154,8 +155,8 @@ export default function UiDongGoiPage() {
                     <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
                   </div>
                   {htPCs.map((pc: any) => {
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -354,10 +355,11 @@ export default function UiDongGoiPage() {
       <UploadBangChungModal 
         open={!!uploadModal}
         onClose={() => setUploadModal(null)}
-        onConfirm={(urls) => {
-          if (uploadModal) handleXong(uploadModal.lc, uploadModal.pc, urls);
+        onConfirm={(urls, chuKyUrl) => {
+          if (uploadModal) handleXong(uploadModal.lc, uploadModal.pc, urls, chuKyUrl);
         }}
         existingUrls={uploadModal?.pc?.bangChungURLs}
+        existingChuKy={uploadModal?.pc?.chuKy}
       />
     </div>
   );

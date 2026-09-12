@@ -11,10 +11,11 @@ interface Props {
   lc: LenhCat;
   onColorClick?: (mau: MauVai) => void;
   renderStatus?: React.ReactNode;
+  bangChungSlot?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Props) {
+export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangChungSlot }: Props) {
   const { list: dsNhanSu } = useNhanSu();
   const mainImg = lc.dsMau?.[0]?.img || "";
 
@@ -116,9 +117,8 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                     return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
                   }).map((pc, i, arr) => {
                     const tt = (pc.trangThaiCD as any) || "cho_giao";
-                    const isCompleted = tt === "hoan_thanh";
+                    const isCompleted = tt === "hoan_thanh" || tt === "cho_qc";
                     const isWorking = tt === "dang_lam";
-                    const isQCWaiting = tt === "cho_qc";
                     const isError = tt === "co_loi";
                     
                     let dotColor = "bg-slate-200 border-white";
@@ -127,7 +127,6 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                     
                     if (isCompleted) { dotColor = "bg-emerald-500 border-emerald-100 text-white"; textColor = "text-emerald-700 font-bold"; lineColor = "bg-emerald-500"; }
                     else if (isWorking) { dotColor = "bg-teal-500 border-teal-100 text-white shadow-[0_0_12px_rgba(20,184,166,0.4)]"; textColor = "text-teal-700 font-black"; lineColor = "bg-slate-200 bg-gradient-to-r from-teal-500 to-slate-200"; }
-                    else if (isQCWaiting) { dotColor = "bg-amber-400 border-amber-100 text-white"; textColor = "text-amber-600 font-bold"; }
                     else if (isError) { dotColor = "bg-rose-500 border-rose-100 text-white"; textColor = "text-rose-600 font-bold"; }
 
                     return (
@@ -146,11 +145,6 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                         
                         <div className={`text-center leading-tight text-[9px] sm:text-[10px] max-w-[60px] sm:max-w-none transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
                           <span>{pc.tenCongDoan}</span>
-                          {(pc as any).bangChungURLs && (pc as any).bangChungURLs.length > 0 && (
-                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); const w = window.open(); if (w) w.document.write(`<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">${(pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('')}</div>`); }} className="hover:text-blue-600 transition-colors mt-0.5" title="Xem ảnh bằng chứng">
-                              <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     );
@@ -185,73 +179,82 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
           )}
         </div>
 
-        {/* Colors Section */}
-        <div className="p-6 bg-slate-50 flex-1">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
-            <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Danh sách màu ({lc.dsMau?.length || 0})</span>
-          </div>
-          <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
-            {lc.dsMau?.map((mau, idx) => {
-              const hasAoQuan = lc.loaiSP?.includes("Bo");
-              return (
-              <div key={idx} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={(e) => {
-                // Prevent bubble up if clicking the button directly
-                if ((e.target as HTMLElement).closest('button')) return;
-                onColorClick?.(mau);
-              }}>
-                {/* Red box (Image) */}
-                <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative flex">
-                  {hasAoQuan ? (
-                    <>
-                      <div className="relative h-full w-[55%] skew-x-[-8deg] -ml-[5%] overflow-hidden border-r-[3px] border-white z-10 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
-                        <div className="w-[120%] h-full skew-x-[8deg] ml-[5%]">
-                          {mau.img ? (
-                            <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                          ) : (
-                            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300 font-bold text-[9px]">ÁO</div>
-                          )}
+        {/* Middle Section: Colors & Right Slot */}
+        <div className="p-6 bg-slate-50 flex-1 flex flex-col xl:flex-row gap-6">
+          {/* Colors Section */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+              <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Danh sách màu ({lc.dsMau?.length || 0})</span>
+            </div>
+            <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+              {lc.dsMau?.map((mau, idx) => {
+                const hasAoQuan = lc.loaiSP?.includes("Bo");
+                return (
+                <div key={idx} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={(e) => {
+                  // Prevent bubble up if clicking the button directly
+                  if ((e.target as HTMLElement).closest('button')) return;
+                  onColorClick?.(mau);
+                }}>
+                  {/* Red box (Image) */}
+                  <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative flex">
+                    {hasAoQuan ? (
+                      <>
+                        <div className="relative h-full w-[55%] skew-x-[-8deg] -ml-[5%] overflow-hidden border-r-[3px] border-white z-10 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
+                          <div className="w-[120%] h-full skew-x-[8deg] ml-[5%]">
+                            {mau.img ? (
+                              <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            ) : (
+                              <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300 font-bold text-[9px]">ÁO</div>
+                            )}
+                          </div>
                         </div>
+                        <div className="relative h-full w-[55%] skew-x-[-8deg] overflow-hidden -mr-[5%] bg-slate-100">
+                          <div className="w-[120%] h-full skew-x-[8deg] -ml-[15%]">
+                            {(mau as any).imgQuan ? (
+                              <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            ) : (
+                              <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-[9px]">QUẦN</div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="relative h-full w-full">
+                        {mau.img ? (
+                          <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
+                            <span className="text-[10px] font-bold tracking-wider">NO IMG</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="relative h-full w-[55%] skew-x-[-8deg] overflow-hidden -mr-[5%] bg-slate-100">
-                        <div className="w-[120%] h-full skew-x-[8deg] -ml-[15%]">
-                          {(mau as any).imgQuan ? (
-                            <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                          ) : (
-                            <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-[9px]">QUẦN</div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="relative h-full w-full">
-                      {mau.img ? (
-                        <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
-                          <span className="text-[10px] font-bold tracking-wider">NO IMG</span>
-                        </div>
-                      )}
+                    )}
+                    
+                    {/* Floating badge for Color Name */}
+                    <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-xs border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                      {mau.ten}
                     </div>
-                  )}
+                  </div>
                   
-                  {/* Floating badge for Color Name */}
-                  <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-xs border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
-                    {mau.ten}
+                  {/* Green box (Button) */}
+                  <div className="mt-3 w-full text-center">
+                    <button 
+                      onClick={() => onColorClick?.(mau)}
+                      className="inline-block text-[10px] text-sky-600 font-bold bg-white px-3 py-1.5 rounded-lg group-hover:bg-sky-500 group-hover:text-white transition-colors w-full border border-sky-200 group-hover:border-sky-500 shadow-sm"
+                    >
+                      Nhập số lượng
+                    </button>
                   </div>
                 </div>
-                
-                {/* Green box (Button) */}
-                <div className="mt-3 w-full text-center">
-                  <button 
-                    onClick={() => onColorClick?.(mau)}
-                    className="inline-block text-[10px] text-sky-600 font-bold bg-white px-3 py-1.5 rounded-lg group-hover:bg-sky-500 group-hover:text-white transition-colors w-full border border-sky-200 group-hover:border-sky-500 shadow-sm"
-                  >
-                    Nhập số lượng
-                  </button>
-                </div>
+              )})}
+            </div>
+            
+            {bangChungSlot && (
+              <div className="mt-8 border-t border-slate-200/60 pt-6">
+                {bangChungSlot}
               </div>
-            )})}
+            )}
           </div>
         </div>
 

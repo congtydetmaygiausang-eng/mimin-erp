@@ -211,6 +211,8 @@ type CongDoanBase = {
   lichSuNhapSL?: LichSuNhapSLItem[];
   // Danh sách link ảnh bằng chứng hoàn thành (Proof of Work)
   bangChungURLs?: string[];
+  // Chữ ký người hoàn thành
+  chuKy?: string;
 };
 
 
@@ -727,6 +729,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     soLuongPhePham?: number;
     soLuongDatCuoi?: number;
     lichSuNhapSL?: LichSuNhapSLItem[];
+    bangChungURLs?: string[];
+    chuKy?: string;
   }) => {
     let finalPhanCong: any = null;
     let congNoSyncInfo: any = null;
@@ -763,6 +767,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 ngayHoanThanh: data.trangThaiCD === 'hoan_thanh'
                   ? new Date().toISOString().slice(0, 10)
                   : pc.ngayHoanThanh,
+                bangChungURLs: data.bangChungURLs !== undefined ? data.bangChungURLs : pc.bangChungURLs,
+                chuKy: data.chuKy !== undefined ? data.chuKy : pc.chuKy,
               };
           }
           return pc;

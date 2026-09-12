@@ -38,6 +38,7 @@ export function SignaturePad({ onSave, onClear, className, value, readOnly = fal
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (readOnly) return;
+    if (e.cancelable) e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -54,6 +55,7 @@ export function SignaturePad({ onSave, onClear, className, value, readOnly = fal
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing || readOnly) return;
+    if (e.cancelable) e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -72,8 +74,9 @@ export function SignaturePad({ onSave, onClear, className, value, readOnly = fal
     setHasSignature(true);
   };
 
-  const stopDrawing = () => {
+  const stopDrawing = (e?: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (readOnly) return;
+    if (e && e.cancelable) e.preventDefault();
     setIsDrawing(false);
     const canvas = canvasRef.current;
     if (canvas && hasSignature && onSave) {
@@ -100,7 +103,7 @@ export function SignaturePad({ onSave, onClear, className, value, readOnly = fal
           ref={canvasRef}
           width={400}
           height={200}
-          className="w-full h-[200px] cursor-crosshair"
+          className="w-full h-[200px] cursor-crosshair touch-none"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}

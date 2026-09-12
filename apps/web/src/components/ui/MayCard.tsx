@@ -168,8 +168,22 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                         
                         <div className={`text-center leading-tight text-[9px] sm:text-[10px] max-w-[60px] sm:max-w-none transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
                           <span>{pc.tenCongDoan}</span>
-                          {(pc as any).bangChungURLs && (pc as any).bangChungURLs.length > 0 && (
-                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); const w = window.open(); if (w) w.document.write(`<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">${(pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('')}</div>`); }} className="hover:text-blue-600 transition-colors mt-0.5" title="Xem ảnh bằng chứng">
+                          {((pc as any).bangChungURLs?.length > 0 || (pc as any).chuKy) && (
+                            <button onClick={(e) => { 
+                              e.preventDefault(); e.stopPropagation(); 
+                              const w = window.open(); 
+                              if (w) {
+                                let html = `<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">`;
+                                if ((pc as any).bangChungURLs) {
+                                  html += (pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('');
+                                }
+                                if ((pc as any).chuKy) {
+                                  html += `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><img src="${(pc as any).chuKy}" style="max-width:300px; max-height:200px; object-fit:contain; border-radius:8px; border: 1px dashed #ccc; padding:10px;"/><span style="font-family:sans-serif;font-size:14px;color:#555;font-weight:bold;">Chữ ký người hoàn thành</span></div>`;
+                                }
+                                html += `</div>`;
+                                w.document.write(html);
+                              }
+                            }} className="hover:text-blue-600 transition-colors mt-0.5" title="Xem ảnh bằng chứng & chữ ký">
                               <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
                             </button>
                           )}

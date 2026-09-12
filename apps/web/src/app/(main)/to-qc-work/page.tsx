@@ -371,8 +371,8 @@ export default function UiQCPage() {
                   </div>
                   {mayPCs.map((pc: any) => {
                     const key = `${lc.id}_${pc.id}`;
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
                     const lichSuQC: LichSuQCItem[] = pc.lichSuQC || [];
                     const lanKiemTiepTheo = lichSuQC.length + 1;
 

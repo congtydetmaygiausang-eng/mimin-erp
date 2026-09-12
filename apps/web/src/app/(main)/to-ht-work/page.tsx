@@ -322,8 +322,8 @@ export default function UiHoanThienPage() {
                     <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
                   </div>
                   {htPCs.map((pc: any) => {
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
                     const key = `${lc.id}-${pc.id}`;
 
                     return (
