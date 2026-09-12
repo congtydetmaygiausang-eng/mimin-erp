@@ -5,6 +5,7 @@ import { Scissors, CheckCircle2, Warehouse, AlertTriangle, Printer, Copy, BellRi
 import { toast } from "sonner";
 import { formatVNDShort } from "@/components/ui/utils";
 import { supabase } from "@/lib/supabase/client";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 
 type DoiSoatModalProps = {
   isOpen: boolean;
@@ -16,6 +17,7 @@ type DoiSoatModalProps = {
 
 export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiSoatModalProps) {
   const [printStageId, setPrintStageId] = useState<string>("ALL");
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   const handlePrint = (stageId: string) => {
     setPrintStageId(stageId);
@@ -67,6 +69,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
   const phanCongList = lc.phanCong || [];
 
   return (
+    <>
     <ResponsiveModal open={isOpen} onClose={onClose} title={`Đối Soát Tổng Hợp: ${lc.id}`} maxWidth="4xl" fullScreenMobile={true}>
       <style>{`
         @media print {
@@ -105,6 +108,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                   <th className="px-4 py-3 text-right min-w-[80px]">SL Đạt</th>
                   <th className="px-4 py-3 text-right min-w-[80px]">SL Lỗi</th>
                   <th className="px-4 py-3 min-w-[120px]">Ghi chú Lỗi</th>
+                  <th className="px-4 py-3 text-center min-w-[100px]">Bằng chứng</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -122,6 +126,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                   <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">{catThucTe.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right font-mono text-slate-400">-</td>
                   <td className="px-4 py-3 text-slate-500 text-xs">-</td>
+                  <td className="px-4 py-3 text-center text-slate-400">-</td>
                 </tr>
                 {phanCongList.map((pc, idx) => {
                   const slGiao = pc.soLuong || catThucTe || lc.tongSL || 0;
@@ -166,6 +171,30 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                       <td className="px-4 py-3 text-xs text-rose-600 font-medium max-w-[150px] truncate" title={pc.lyDoLoi}>
                         {pc.lyDoLoi || "-"}
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {pc.bangChungURLs?.map((url: string, i: number) => (
+                            <img 
+                              key={i} 
+                              src={url} 
+                              alt="Bằng chứng" 
+                              className="w-7 h-7 object-cover rounded shadow-sm cursor-pointer border border-slate-200 hover:scale-110 transition-transform" 
+                              onClick={() => setZoomImage(url)} 
+                            />
+                          ))}
+                          {pc.chuKy && (
+                            <img 
+                              src={pc.chuKy} 
+                              alt="Chữ ký" 
+                              className="w-7 h-7 object-contain rounded shadow-sm cursor-pointer border border-slate-200 bg-white hover:scale-110 transition-transform" 
+                              onClick={() => setZoomImage(pc.chuKy)} 
+                            />
+                          )}
+                          {(!pc.bangChungURLs || pc.bangChungURLs.length === 0) && !pc.chuKy && (
+                            <span className="text-slate-300">-</span>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -176,7 +205,7 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
                   <td className="px-4 py-3 text-right font-mono font-black text-rose-600 text-lg" colSpan={2}>
                     {tongLoi.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-xs text-rose-700 font-medium">Báo Gia Công Lỗi</td>
+                  <td className="px-4 py-3 text-xs text-rose-700 font-medium" colSpan={2}>Báo Gia Công Lỗi</td>
                 </tr>
               </tfoot>
             </table>
@@ -408,5 +437,10 @@ export function DoiSoatModal({ isOpen, onClose, lc, onGiaCong, onNhapKho }: DoiS
         )}
       </div>
     </ResponsiveModal>
+      {/* Lightbox for Evidence Images */}
+      {zoomImage && (
+        <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
+      )}
+    </>
   );
 }
