@@ -19,6 +19,7 @@
 //   - Hien thi ten anh (alt)
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Props {
@@ -132,9 +133,11 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
     else zoomOut();
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center select-none"
+      className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center select-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -236,6 +239,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
         <div>Click overlay hoặc ESC để đóng · Scroll + Ctrl để zoom · Kéo ảnh khi phóng to</div>
         {gallery && gallery.length > 1 && <div>← → để chuyển ảnh</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
