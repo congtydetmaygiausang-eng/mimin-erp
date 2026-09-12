@@ -18,6 +18,7 @@ import type { PhieuWorkflow } from "@/lib/workflow-data";
 import { DateDisplay, formatDateVN } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui";
 import { ImageUploader } from "@/components/ui/ImageUploader";
+import { SignaturePad } from "@/components/ui/SignaturePad";
 import { formatVNDShort } from "@/lib/data/real-data";
 
 type Tab = "info" | "tech" | "media" | "progress" | "errors" | "handover" | "payment";
@@ -250,7 +251,7 @@ export function CongViecDetailModal({
           user={user}
           maxRemain={totalDat}
           onClose={() => setShowHandoverModal(false)}
-          onSave={(data: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string; bangChungURLs?: string[] }) => {
+          onSave={(data: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string; bangChungURLs?: string[]; chuKy?: string }) => {
             banGiao(task.id, data, user);
             setShowHandoverModal(false);
             toast.success(`Đã bàn giao ${data.soLuongBanGiao} sp cho ${data.nguoiNhan || "công đoạn sau"}`);
@@ -525,9 +526,9 @@ function TabHandover({ task, records }: any) {
               </div>
               {r.nguoiNhan && <div className="text-xs opacity-70">→ Người nhận: <span className="font-mono">{r.nguoiNhan}</span></div>}
               {r.ghiChu && <div className="text-xs opacity-70 mt-1">{r.ghiChu}</div>}
-              {r.bangChungURLs && r.bangChungURLs.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {r.bangChungURLs.map((url: string, idx: number) => (
+              {(r.bangChungURLs?.length > 0 || r.chuKy) && (
+                <div className="mt-2 flex flex-wrap gap-2 items-end">
+                  {r.bangChungURLs?.map((url: string, idx: number) => (
                     <img 
                       key={idx} 
                       src={url} 
@@ -539,6 +540,15 @@ function TabHandover({ task, records }: any) {
                       }}
                     />
                   ))}
+                  {r.chuKy && (
+                    <div className="relative border rounded-md overflow-hidden bg-white">
+                      <div className="absolute top-0 left-0 bg-black/60 text-white text-[8px] px-1 rounded-br-sm z-10 uppercase tracking-wider font-semibold">Chữ ký</div>
+                      <img src={r.chuKy} alt="Chữ ký" className="h-12 w-[100px] object-contain cursor-pointer hover:opacity-80 p-1" onClick={() => {
+                        const w = window.open();
+                        if (w) w.document.write(`<img src="${r.chuKy}" style="max-width:100%; max-height:100vh; object-fit:contain;"/>`);
+                      }} />
+                    </div>
+                  )}
                 </div>
               )}
               <div className="text-[10px] opacity-60 mt-1">
@@ -651,6 +661,7 @@ function HandoverModal({ task, user, maxRemain, onClose, onSave }: any) {
   const [nguoiNhan, setNguoiNhan] = useState("");
   const [ghiChu, setGhiChu] = useState("");
   const [bangChungURLs, setBangChungURLs] = useState<string[]>([]);
+  const [chuKy, setChuKy] = useState<string>("");
   
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in">
@@ -679,6 +690,10 @@ function HandoverModal({ task, user, maxRemain, onClose, onSave }: any) {
             />
           </div>
           <div>
+            <label className="text-xs font-medium block mb-1">Ký tên trực tiếp *</label>
+            <SignaturePad onSave={setChuKy} onClear={() => setChuKy("")} value={chuKy} />
+          </div>
+          <div>
             <label className="text-xs font-medium block mb-1">Ghi chú</label>
             <textarea value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} className="input w-full min-h-[50px]" />
           </div>
@@ -686,8 +701,8 @@ function HandoverModal({ task, user, maxRemain, onClose, onSave }: any) {
         <div className="flex gap-2 justify-end mt-4">
           <button onClick={onClose} className="btn-secondary text-sm">Huỷ</button>
           <button
-            onClick={() => onSave({ soLuongBanGiao: soBanGiao, nguoiNhan, ghiChu, bangChungURLs })}
-            disabled={soBanGiao <= 0 || bangChungURLs.length === 0}
+            onClick={() => onSave({ soLuongBanGiao: soBanGiao, nguoiNhan, ghiChu, bangChungURLs, chuKy })}
+            disabled={soBanGiao <= 0 || bangChungURLs.length === 0 || !chuKy}
             className="btn-primary text-sm disabled:opacity-50"
           >
             Xác nhận bàn giao

@@ -128,69 +128,86 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
         
         {/* Top: Modern Progress Bar */}
         <div className="px-6 py-5 border-b border-slate-100 bg-white z-10 relative">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Tiến trình đơn hàng</div>
-          
-          <div className="flex items-center w-full relative">
-            {/* Background track line */}
-            <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-slate-100 -translate-y-1/2 z-0" />
-            
-            <div className="flex items-center justify-between w-full relative z-10">
-              {sortedPhanCong.map((pc, i, arr) => {
-                const tt = (pc.trangThaiCD as any) || "cho_giao";
-                
-                const isCompleted = tt === "hoan_thanh";
-                const isWorking = tt === "dang_lam";
-                const isWaiting = tt === "cho_giao";
-                const isQCWaiting = tt === "cho_qc";
-                const isError = tt === "co_loi";
-
-                let dotColor = "bg-slate-200 border-slate-300";
-                let textColor = "text-slate-400";
-                
-                if (isCompleted) {
-                  dotColor = "bg-emerald-500 border-emerald-600";
-                  textColor = "text-emerald-700 font-bold";
-                } else if (isWorking) {
-                  dotColor = "bg-teal-500 border-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.6)]";
-                  textColor = "text-teal-700 font-black";
-                } else if (isQCWaiting) {
-                  dotColor = "bg-amber-400 border-amber-500";
-                  textColor = "text-amber-600 font-bold";
-                } else if (isError) {
-                  dotColor = "bg-rose-500 border-rose-600";
-                  textColor = "text-rose-600 font-bold";
-                }
-
-                return (
-                  <div key={pc.id} className="flex flex-col items-center relative group" style={{ width: `${100 / arr.length}%` }}>
-                    {/* The Dot */}
-                    <div className="relative flex items-center justify-center">
-                      {isWorking && (
-                        <div className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-30" style={{ transform: 'scale(2.5)' }} />
-                      )}
-                      <div className={`w-3.5 h-3.5 rounded-full border-2 z-10 transition-colors duration-300 ${dotColor}`}></div>
-                    </div>
+          {lc.phanCong && lc.phanCong.length > 0 && (
+            <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến trình đơn hàng</span>
+              </div>
+              <div className="flex items-start min-w-full relative px-2 sm:px-4">
+                <div className="flex items-start justify-between w-full relative z-10">
+                  {sortedPhanCong.map((pc, i, arr) => {
+                    const tt = (pc.trangThaiCD as any) || "cho_giao";
+                    const isCompleted = tt === "hoan_thanh";
+                    const isWorking = tt === "dang_lam";
+                    const isQCWaiting = tt === "cho_qc";
+                    const isError = tt === "co_loi";
                     
-                    {/* The Label */}
-                    <div className={`absolute top-6 whitespace-nowrap text-[10px] transition-all duration-300 ${textColor} ${isWorking ? 'scale-110' : ''}`}>
-                      {pc.tenCongDoan}
-                    </div>
-                  </div>
-                );
-              })}
+                    let dotColor = "bg-slate-200 border-white";
+                    let textColor = "text-slate-400";
+                    let lineColor = "bg-slate-100";
+                    
+                    if (isCompleted) { dotColor = "bg-emerald-500 border-emerald-100 text-white"; textColor = "text-emerald-700 font-bold"; lineColor = "bg-emerald-500"; }
+                    else if (isWorking) { dotColor = "bg-teal-500 border-teal-100 text-white shadow-[0_0_12px_rgba(20,184,166,0.4)]"; textColor = "text-teal-700 font-black"; lineColor = "bg-slate-200 bg-gradient-to-r from-teal-500 to-slate-200"; }
+                    else if (isQCWaiting) { dotColor = "bg-amber-400 border-amber-100 text-white"; textColor = "text-amber-600 font-bold"; }
+                    else if (isError) { dotColor = "bg-rose-500 border-rose-100 text-white"; textColor = "text-rose-600 font-bold"; }
+
+                    return (
+                      <div key={pc.id} className="flex-1 flex flex-col items-center relative group min-w-0 sm:min-w-[70px]">
+                        {/* Connecting Line */}
+                        {i < arr.length - 1 && (
+                          <div className={`absolute top-[11px] left-[50%] w-full h-[4px] rounded-full z-0 ${lineColor} transition-colors duration-500`} />
+                        )}
+                        
+                        <div className="relative flex items-center justify-center mb-2.5 h-[26px]">
+                          {isWorking && <div className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-30" style={{ transform: 'scale(2.2)' }} />}
+                          <div className={`w-[22px] h-[22px] rounded-full border-[3px] box-content z-10 transition-all duration-300 flex items-center justify-center ${dotColor}`}>
+                            {isCompleted && <svg className="w-3.5 h-3.5 stroke-current stroke-[3]" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>}
+                          </div>
+                        </div>
+                        
+                        <div className={`text-center leading-tight text-[9px] sm:text-[10px] max-w-[60px] sm:max-w-none transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
+                          <span>{pc.tenCongDoan}</span>
+                          {((pc as any).bangChungURLs?.length > 0 || (pc as any).chuKy) && (
+                            <button onClick={(e) => { 
+                              e.preventDefault(); e.stopPropagation(); 
+                              const w = window.open(); 
+                              if (w) {
+                                let html = `<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">`;
+                                if ((pc as any).bangChungURLs) {
+                                  html += (pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('');
+                                }
+                                if ((pc as any).chuKy) {
+                                  html += `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><img src="${(pc as any).chuKy}" style="max-width:300px; max-height:200px; object-fit:contain; border-radius:8px; border: 1px dashed #ccc; padding:10px;"/><span style="font-family:sans-serif;font-size:14px;color:#555;font-weight:bold;">Chữ ký người hoàn thành</span></div>`;
+                                }
+                                html += `</div>`;
+                                w.document.write(html);
+                              }
+                            }} className="hover:text-blue-600 transition-colors mt-0.5" title="Xem ảnh bằng chứng & chữ ký">
+                              <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="h-4" /> {/* spacing for labels */}
+          )}
         </div>
 
         {/* Middle: Premium Colors */}
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/40 relative z-10">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Danh sách màu ({lc.dsMau?.length || 0})</div>
-            <div className="text-[10px] text-slate-400">Bấm vào để xem / nhập size</div>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+              <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Danh sách màu ({lc.dsMau?.length || 0})</span>
+            </div>
+            <div className="text-[10px] text-slate-400 font-bold lowercase tracking-normal">(bấm để xem / nhập size)</div>
           </div>
           
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-4">
             {lc.dsMau?.map((mau, idx) => (
               <button 
                 key={idx} 

@@ -25,6 +25,21 @@ export const LOAI_SP_LABELS: Record<LoaiSP, string> = {
   "PhuKien": "Phụ Kiện",
 };
 
+export function detectLoaiSP(text: string): LoaiSP {
+  const checkStr = (text || "").toLowerCase();
+  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
+  // "bộ polo" is a polo set, so it's a "bộ trụ" (BoTru)
+  if (checkStr.includes("bộ polo") || checkStr.includes("bo polo")) return "BoTru";
+  if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) return "AoTru";
+  if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) return "AoCoTron";
+  if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) return "BoCoTron";
+  if (checkStr.includes("bộ trụ") || checkStr.includes("bo tru")) return "BoTru";
+  if (checkStr.includes("bộ") || checkStr.includes("bo")) return "BoTru";
+  if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) return "PhuKien";
+  if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) return "AoCoTron";
+  return "BoTru";
+}
+
 export const BANG_CHI_PHI_CO_DINH: Record<LoaiSP, ChiPhiCoDinh> = {
   "BoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
   "AoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
@@ -196,6 +211,8 @@ type CongDoanBase = {
   lichSuNhapSL?: LichSuNhapSLItem[];
   // Danh sách link ảnh bằng chứng hoàn thành (Proof of Work)
   bangChungURLs?: string[];
+  // Chữ ký người hoàn thành
+  chuKy?: string;
 };
 
 
@@ -712,6 +729,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     soLuongPhePham?: number;
     soLuongDatCuoi?: number;
     lichSuNhapSL?: LichSuNhapSLItem[];
+    bangChungURLs?: string[];
+    chuKy?: string;
   }) => {
     let finalPhanCong: any = null;
     let congNoSyncInfo: any = null;
@@ -748,6 +767,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
                 ngayHoanThanh: data.trangThaiCD === 'hoan_thanh'
                   ? new Date().toISOString().slice(0, 10)
                   : pc.ngayHoanThanh,
+                bangChungURLs: data.bangChungURLs !== undefined ? data.bangChungURLs : pc.bangChungURLs,
+                chuKy: data.chuKy !== undefined ? data.chuKy : pc.chuKy,
               };
           }
           return pc;

@@ -5,12 +5,13 @@
 // Nhận bán thành phẩm từ Cắt, hoàn thành chuyển cho May
 
 import { useStageColorInput } from "@/lib/use-stage-color-input";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
 
@@ -21,6 +22,7 @@ export default function UiInTheuPage() {
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { user } = useSession();
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   function getIntdPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
@@ -65,7 +67,7 @@ export default function UiInTheuPage() {
     toast.success(`🎨 Nhận hàng In/Thêu: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleHoanThanh(lc: any, pc: any, bangChungURLs?: string[]) {
+  function handleHoanThanh(lc: any, pc: any, bangChungURLs?: string[], chuKyUrl?: string) {
     // Evidence uploads may take time; finalize from the latest saved quantities.
     lc = dsLenhCat.find(item => item.id === lc.id) || lc;
     pc = lc.phanCong?.find((item: { id: string }) => item.id === pc.id) || pc;
@@ -82,7 +84,8 @@ export default function UiInTheuPage() {
       trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: tongDat,
       soLuongLoi: tongLoi,
-      bangChungURLs: bangChungURLs
+      bangChungURLs: bangChungURLs,
+      chuKy: chuKyUrl
     });
     toast.success(`✅ Chuyển tiếp thành công: ${tongDat} SP (Lỗi: ${tongLoi})`);
     setUploadModal(null);
@@ -141,11 +144,57 @@ export default function UiInTheuPage() {
                     </div>
                   ) : null
                 }
+                bangChungSlot={
+                  (() => {
+                    const completedPCs = intdPCs.filter((pc: any) => pc.bangChungURLs?.length > 0 || pc.chuKy);
+                    if (completedPCs.length === 0) return null;
+                    return (
+                      <div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
+                          <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Bằng chứng & Chữ ký ({completedPCs.length})</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+                          {completedPCs.map((pc: any, idx: number) => {
+                             return (
+                               <React.Fragment key={idx}>
+                                 {pc.bangChungURLs?.map((url: string, i: number) => (
+                                    <div key={`img-${idx}-${i}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(url)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative">
+                                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Ảnh {pc.tenCongDoan}
+                                        </div>
+                                      </div>
+                                    </div>
+                                 ))}
+                                 {pc.chuKy && (
+                                    <div key={`chuKy-${idx}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(pc.chuKy)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 border-dashed group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-slate-50 relative p-4 flex flex-col items-center justify-center">
+                                        <img src={pc.chuKy} className="w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Chữ ký ({pc.nguoiTen || pc.nguoiMa})
+                                        </div>
+                                      </div>
+                                    </div>
+                                 )}
+                               </React.Fragment>
+                             )
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
               >
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {intdPCs.map((pc: any) => {
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -160,10 +209,10 @@ export default function UiInTheuPage() {
                         </div>
 
                         {/* Buttons */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-purple-600 text-white font-bold text-sm hover:bg-purple-700 flex items-center justify-center gap-1.5">
+                              className="flex-1 py-2.5 rounded-xl bg-purple-500 text-white font-bold text-sm hover:bg-purple-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-purple-200">
                               <Package className="w-4 h-4" /> Nhận hàng In/Thêu
                             </button>
                           )}
@@ -171,18 +220,18 @@ export default function UiInTheuPage() {
                             <>
                               <button
                                 onClick={() => setUploadModal({ lc, pc })}
-                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm"
+                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
                               >
                                 <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển tiếp
                               </button>
                               <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}
-                                className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-bold text-sm">
+                                className="px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 font-bold text-sm transition-colors shadow-sm">
                                 <AlertTriangle className="w-4 h-4" />
                               </button>
                             </>
                           )}
                           {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
+                            <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
                               <CheckCircle2 className="w-4 h-4" />
                               Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
                               {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
@@ -190,7 +239,7 @@ export default function UiInTheuPage() {
                           )}
                           {tt === "co_loi" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 flex items-center justify-center gap-1.5">
+                              className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-amber-200">
                               <Clock className="w-4 h-4" /> Làm lại
                             </button>
                           )}
@@ -209,6 +258,7 @@ export default function UiInTheuPage() {
       {selectedMau && (
         <ChiTietMauHistoryModal
           isOpen={!!selectedMau}
+
           onClose={() => setSelectedMau(null)}
           lc={selectedMau.lc}
           mau={selectedMau.mau}
@@ -224,11 +274,17 @@ export default function UiInTheuPage() {
       <UploadBangChungModal 
         open={!!uploadModal}
         onClose={() => setUploadModal(null)}
-        onConfirm={(urls) => {
-          if (uploadModal) handleHoanThanh(uploadModal.lc, uploadModal.pc, urls);
+        onConfirm={(urls, chuKyUrl) => {
+          if (uploadModal) handleHoanThanh(uploadModal.lc, uploadModal.pc, urls, chuKyUrl);
         }}
         existingUrls={uploadModal?.pc?.bangChungURLs}
+        existingChuKy={uploadModal?.pc?.chuKy}
       />
+
+      {/* Lightbox for Evidence Images */}
+      {zoomImage && (
+        <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
+      )}
     </div>
   );
 }

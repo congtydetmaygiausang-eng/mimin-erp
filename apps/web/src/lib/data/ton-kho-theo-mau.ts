@@ -48,12 +48,17 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
 
   const result: TonKhoTheoSanPham = {};
   for (const r of uniqueRows) {
-    const isCon = r.trang_thai === "con" || r.trangThai === "con";
-    if (!isCon) continue;
     const maSP = r.ma_sp || r.maSP;
     const mau = r.mau || "";
     if (!maSP) continue;
+    
+    // Khởi tạo trước để dù hết hàng (trang_thai = "het") thì danh sách màu vẫn có (ít nhất là {} object trống)
+    // Từ đó bên Danh mục SP nhận diện được là có dữ liệu kho nhưng SL = 0 -> Hết hàng
     if (!result[maSP]) result[maSP] = {};
+
+    const isCon = r.trang_thai === "con" || r.trangThai === "con";
+    if (!isCon) continue;
+    
     const ctSize = r.chi_tiet_size || r.chiTietSize;
     const size = r.size;
     const soLuong = r.so_luong || r.soLuong;

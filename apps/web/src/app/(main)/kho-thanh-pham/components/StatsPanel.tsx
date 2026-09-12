@@ -19,7 +19,7 @@ export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number
         <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.soLoai}</div><div className="opacity-90">Loại SP</div></div>
         <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{(stats.tongGT/1_000_000).toFixed(1)}tr</div><div className="opacity-90">Giá trị</div></div>
         <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.conHang}</div><div className="opacity-90">Còn hàng</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.daDat}</div><div className="opacity-90">Đã đặt</div></div>
+        <div className="bg-white/15 backdrop-blur rounded-lg p-2 col-span-2 md:col-span-1"><div className="text-xl md:text-2xl font-bold">{stats.daDat}</div><div className="opacity-90">Đã đặt</div></div>
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import {
   saveSharedSizeRatioPreset,
 } from "@/lib/size-ratio-presets";
 import { uploadProductFile } from "@/lib/product-upload";
+import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 
 // Chỉ còn Màu + số lượng theo size là khác nhau giữa các biến thể - mọi thứ
 // khác (mã/tên SP, phân loại, tỉ lệ size, giá vốn/bán/sỉ/lẻ/lô) đều dùng
@@ -40,7 +41,7 @@ function bienTheMoi(sizes: string[]): BienTheDraft {
     img: "",
     sizes: sizes.map((s) => ({ size: s, sl: 0 })),
     slDuKien: 0,
-    viTri: "Kệ A1-A2",
+    viTri: "",
     trangThai: "con",
     ghiChu: "",
     kenhBan: ["ban-le"],
@@ -65,7 +66,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   // === Thông tin CHUNG cho cả lô (nhập 1 lần) ===
   const [maSP, setMaSP] = useState("");
   const [tenSP, setTenSP] = useState("");
-  const [phanLoai, setPhanLoai] = useState("");
+  const [phanLoai, setPhanLoai] = useState<string>("BoTru");
   const [lsx, setLsx] = useState("LSX-2026-007");
   const [ngayNhap, setNgayNhap] = useState(new Date().toISOString().slice(0, 10));
   const [presetId, setPresetId] = useState(SIZE_RATIO_PRESETS[0].id);
@@ -211,11 +212,21 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP mẹ *</label>
-                <input value={tenSP} onChange={(e) => setTenSP(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="VD: Bộ Trụ Phối Lé" />
+                <input value={tenSP} onChange={(e) => {
+                  const val = e.target.value;
+                  setTenSP(val);
+                  setPhanLoai(detectLoaiSP(val));
+                }} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="VD: Bộ Trụ Phối Lé" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 mb-1 block">Phân loại</label>
-                <input value={phanLoai} onChange={(e) => setPhanLoai(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="VD: Bộ Trụ" />
+                <select 
+                  value={phanLoai} 
+                  onChange={(e) => setPhanLoai(e.target.value)} 
+                  className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none bg-white"
+                >
+                  {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 mb-1 block">LSX / Lô nhập</label>
@@ -331,7 +342,10 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Vị trí (Khu kệ)</label>
-                      <input list="ds-khu-ke-hang" value={bt.viTri} onChange={(e) => capNhatBienThe(idx, { viTri: e.target.value })} className="w-full px-2.5 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+                      <select value={bt.viTri} onChange={(e) => capNhatBienThe(idx, { viTri: e.target.value })} className="w-full px-2.5 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none bg-white">
+                        <option value="">-- Chọn --</option>
+                        {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Trạng thái</label>
@@ -378,9 +392,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
             <Plus className="w-4 h-4" /> Thêm biến thể (màu khác)
           </button>
 
-          <datalist id="ds-khu-ke-hang">
-            {DS_KHU_KE_HANG.map((s) => <option key={s} value={s} />)}
-          </datalist>
+          {/* Removed datalist */}
 
           <div className="bg-amber-50 p-3 rounded-lg text-xs space-y-0.5">
             <div className="font-semibold text-amber-800">Tóm tắt lô nhập:</div>
@@ -512,24 +524,27 @@ function SizeRatioBuilderModal({ onClose, onSave }: { onClose: () => void; onSav
 
 // =================== SỬA 1 BIẾN THỂ (giữ nguyên hành vi cũ) ===================
 function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
+  const isValidKey = Object.keys(LOAI_SP_LABELS).includes(sp.phanLoai || "");
+  const detectedPhanLoai = isValidKey ? sp.phanLoai : detectLoaiSP((sp.tenSP || "") + " " + (sp.phanLoai || ""));
+
   const [form, setForm] = useState({
     maSP: sp.maSP || "",
     tenSP: sp.tenSP || "",
-    phanLoai: sp.phanLoai || "",
+    phanLoai: detectedPhanLoai || "BoTru",
     mau: sp.mau || "Trắng",
     size: sp.size || "M, L, XL",
     lsx: sp.lsx || "LSX-2026-007",
     ngayNhap: sp.ngayNhap || new Date().toISOString().slice(0, 10),
-    soLuong: sp.soLuong || 100,
-    donGia: sp.donGia || 50000,
-    giaVon: sp.giaVon || 0,
-    giaBanSi: sp.giaBanSi || 0,
-    giaBanLe: sp.giaBanLe || 0,
-    giaBanLo: sp.giaBanLo || 0,
-    giaTikTok: sp.giaTikTok || 0,
-    giaShopee: sp.giaShopee || 0,
+    soLuong: sp.soLuong ?? 0,
+    donGia: sp.donGia ?? 0,
+    giaVon: sp.giaVon ?? 0,
+    giaBanSi: sp.giaBanSi ?? 0,
+    giaBanLe: sp.giaBanLe ?? 0,
+    giaBanLo: sp.giaBanLo ?? 0,
+    giaTikTok: sp.giaTikTok ?? 0,
+    giaShopee: sp.giaShopee ?? 0,
     kenhBan: sp.kenhBan?.length ? sp.kenhBan : (["ban-le"] as KenhBan[]),
-    viTri: sp.viTri || "Kệ A1-A2",
+    viTri: sp.viTri || "",
     trangThai: sp.trangThai || "con",
     ghiChu: sp.ghiChu || "",
   });
@@ -582,8 +597,21 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP mẹ *</label>
-                    <input value={form.tenSP} onChange={(e) => setForm({ ...form, tenSP: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+                    <input value={form.tenSP} onChange={(e) => {
+                      const val = e.target.value;
+                      setForm({ ...form, tenSP: val, phanLoai: detectLoaiSP(val) });
+                    }} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 mb-1 block">Phân loại</label>
+                  <select 
+                    value={form.phanLoai} 
+                    onChange={(e) => setForm({ ...form, phanLoai: e.target.value })} 
+                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none bg-white"
+                  >
+                    {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
                 </div>
              </div>
           </div>
@@ -633,10 +661,10 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Vị trí (Khu kệ)</label>
-              <input list="ds-khu-ke-hang" value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-              <datalist id="ds-khu-ke-hang">
-                {DS_KHU_KE_HANG.map(s => <option key={s} value={s} />)}
-              </datalist>
+              <select value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none bg-white">
+                <option value="">-- Chọn --</option>
+                {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Trạng thái</label>

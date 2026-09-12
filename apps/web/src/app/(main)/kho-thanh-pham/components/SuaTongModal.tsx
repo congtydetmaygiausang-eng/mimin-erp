@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Edit, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { type SanPhamTP } from "../data";
+import { LOAI_SP_LABELS, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 
 interface ProductGroup {
   maSP: string;
@@ -18,9 +19,13 @@ export function SuaTongModal({
   onClose: () => void;
   onSave: (updatedItems: SanPhamTP[]) => void;
 }) {
+  const phanLoaiInit = group.items[0]?.phanLoai || "";
+  const isValidKey = Object.keys(LOAI_SP_LABELS).includes(phanLoaiInit);
+  const detectedPhanLoai = isValidKey ? phanLoaiInit : detectLoaiSP((group.tenSP || "") + " " + phanLoaiInit);
+
   const [form, setForm] = useState({
     tenSP: group.tenSP || "",
-    phanLoai: group.items[0]?.phanLoai || "",
+    phanLoai: detectedPhanLoai || "BoTru",
     lsx: group.items[0]?.lsx || "",
     giaVon: group.items[0]?.giaVon || 0,
     giaBanSi: group.items[0]?.giaBanSi || 0,
@@ -68,11 +73,20 @@ export function SuaTongModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP mẹ *</label>
-              <input value={form.tenSP} onChange={(e) => setForm({ ...form, tenSP: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+              <input value={form.tenSP} onChange={(e) => {
+                const val = e.target.value;
+                setForm({ ...form, tenSP: val, phanLoai: detectLoaiSP(val) });
+              }} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 mb-1 block">Phân loại</label>
-              <input value={form.phanLoai} onChange={(e) => setForm({ ...form, phanLoai: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
+              <select 
+                value={form.phanLoai} 
+                onChange={(e) => setForm({ ...form, phanLoai: e.target.value })} 
+                className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none bg-white"
+              >
+                {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 mb-1 block">LSX / Lô nhập</label>

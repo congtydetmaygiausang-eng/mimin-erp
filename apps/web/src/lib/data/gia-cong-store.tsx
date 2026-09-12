@@ -39,6 +39,8 @@ export type BanGiaoRecord = {
   nguoiBanGiao: string;  // user.id
   nguoiNhan?: string;    // Mã NV người nhận (optional)
   ghiChu?: string;
+  bangChungURLs?: string[];
+  chuKy?: string;
   ts: number;
 };
 
@@ -81,7 +83,7 @@ type StoreContext = {
   nhanViec: (taskId: string, user: AppUser | null) => void;
   batDauLam: (taskId: string, user: AppUser | null) => void;
   capNhatSanLuong: (taskId: string, data: { soLuongDat: number; soLuongLoi: number; soLuongThieu?: number; ghiChu?: string }, user: AppUser | null) => void;
-  banGiao: (taskId: string, data: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string }, user: AppUser | null) => void;
+  banGiao: (taskId: string, data: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string; bangChungURLs?: string[]; chuKy?: string }, user: AppUser | null) => void;
   baoLoi: (taskId: string, data: { loai: LoiReport["loai"]; soLuong: number; moTa: string }, user: AppUser | null) => void;
   yeuCauHoTro: (taskId: string, data: { loai: RequestSupport["loai"]; moTa: string }, user: AppUser | null) => void;
 
@@ -233,7 +235,7 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
   );
 
   const banGiao = useCallback(
-    (taskId: string, bg: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string; bangChungURLs?: string[] }, user: AppUser | null) => {
+    (taskId: string, bg: { soLuongBanGiao: number; nguoiNhan?: string; ghiChu?: string; bangChungURLs?: string[]; chuKy?: string }, user: AppUser | null) => {
       const ts = Date.now();
       const id = `BG-${taskId}-${ts}`;
       const ngayBanGiao = new Date().toISOString().split("T")[0];
@@ -246,6 +248,7 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
           nguoiXacNhan: bg.nguoiNhan || user?.name,
           soLuongNhan: bg.soLuongBanGiao,
           bangChungURLs: bg.bangChungURLs,
+          chuKy: bg.chuKy,
         };
         return {
           ...d,
@@ -258,6 +261,7 @@ export function GiaCongProvider({ children }: { children: ReactNode }) {
               nguoiNhan: bg.nguoiNhan,
               ghiChu: bg.ghiChu,
               bangChungURLs: bg.bangChungURLs,
+              chuKy: bg.chuKy,
               ts,
             },
           ],

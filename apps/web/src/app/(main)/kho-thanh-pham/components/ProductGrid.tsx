@@ -164,10 +164,25 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
           </div>
         )}
 
-        <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${trangThai.bg} ${trangThai.text}`}>
-          {trangThai.label}
-        </span>
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* OVERLAY HẾT HÀNG */}
+        {sp.soLuong <= 0 && (
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+             <div className="bg-rose-500 text-white font-black text-xs md:text-sm tracking-widest px-4 py-1 border-y-2 border-rose-600 -rotate-12 uppercase drop-shadow-lg shadow-xl">
+               Hết Hàng
+             </div>
+          </div>
+        )}
+
+        {sp.soLuong <= 0 ? (
+          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm bg-rose-500 text-white z-20">
+            Hết hàng
+          </span>
+        ) : (
+          <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${trangThai.bg} ${trangThai.text} z-20`}>
+            {trangThai.label}
+          </span>
+        )}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
           <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Sửa">
             <Edit className="w-3.5 h-3.5" />
           </button>

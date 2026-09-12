@@ -13,9 +13,14 @@ export const ALL_PHIEU: PhieuWorkflow[] = [...ALL_REAL_PHIEU, ...(MORE_LSX as an
 export const DS_TI_LE_SIZE = SIZE_RATIO_PRESETS.map((p) => p.label);
 
 export const DS_KHU_KE_HANG = [
-  "Khu A1", "Khu A2", "Khu A3", "Khu A4", "Khu A5", "Khu A6",
-  "Khu B1", "Khu B2", "Khu B3", "Khu B4", "Khu C1"
+  // Bộ
+  "Bộ - Khu A", "Bộ - Khu B", "Bộ - Khu C", "Bộ - Khu D", "Bộ - Khu E", "Bộ - Khu F",
+  // Áo
+  "Áo - Khu A", "Áo - Khu B", "Áo - Khu C", "Áo - Khu D", "Áo - Khu E", "Áo - Khu F",
+  // Áo Sale
+  "Áo Sale - Khu A", "Áo Sale - Khu B", "Áo Sale - Khu C", "Áo Sale - Khu D", "Áo Sale - Khu E", "Áo Sale - Khu F",
 ];
+
 
 export type KenhBan = "ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee";
 

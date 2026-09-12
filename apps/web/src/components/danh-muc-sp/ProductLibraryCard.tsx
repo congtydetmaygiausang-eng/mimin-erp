@@ -85,7 +85,12 @@ export default function ProductLibraryCard({
 
   const hasPrice = displayPrice > 0;
 
-  const trangThai = sp.trangThai || "con-hang";
+  const trangThai = useMemo(() => {
+    // Nếu có dữ liệu kho (tonKhoTheoMau !== undefined) và tổng = 0 -> Hết hàng
+    if (tonKhoTheoMau && tongTonKho <= 0) return "het-hang";
+    return sp.trangThai || "con-hang";
+  }, [tonKhoTheoMau, tongTonKho, sp.trangThai]);
+  
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
   const rating = sp.rating || 0;
@@ -112,14 +117,23 @@ export default function ProductLibraryCard({
           <Shirt className="w-20 h-20 md:w-24 md:h-24 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-500" />
         </div>
         {/* Hình ảnh thật */}
-        {sp.hinhAnh && (
+        {sp.dsMau?.[0]?.img || sp.hinhAnh ? (
           <img
-            src={sp.hinhAnh}
+            src={sp.dsMau?.[0]?.img || sp.hinhAnh}
             alt={sp.tenSP}
             loading="lazy"
             decoding="async"
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
+        ) : null}
+
+        {/* OVERLAY HẾT HÀNG */}
+        {trangThai === "het-hang" && (
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+             <div className="bg-rose-500 text-white font-black text-lg md:text-xl tracking-widest px-6 py-1.5 border-y-2 border-rose-600 -rotate-12 uppercase drop-shadow-lg shadow-xl">
+               Hết Hàng
+             </div>
+          </div>
         )}
 
         {/* === BADGES GOC TREN TRAI === */}

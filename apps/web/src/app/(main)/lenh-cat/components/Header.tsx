@@ -1,7 +1,7 @@
 // ============ PREMIUM HEADER + STATS ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
-import { Scissors, Plus, Clock, CheckCircle2, Wallet } from "lucide-react";
+import { Scissors, Plus, Clock, CheckCircle2, Wallet, Package } from "lucide-react";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { StatCard } from "./LCard";
 
@@ -13,42 +13,77 @@ interface HeaderProps {
 
 export function PremiumHeader({ stats, onReset, onCreate }: HeaderProps) {
   return (
-    <>
-      <div className="relative w-full rounded-2xl overflow-hidden shadow-xl mb-6" style={{ background: "linear-gradient(135deg, #115e59 0%, #0f766e 35%, #075985 75%, #0369a1 100%)" }}>
+    <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+      {/* Top: Title & Actions */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
+            <Scissors className="w-7 h-7 text-sky-600" /> Tổng Quan Sản Xuất
+          </h1>
+          <p className="text-sm font-bold text-slate-600 mt-1 max-w-xl">
+            Quản lý toàn bộ vòng đời lệnh cắt: phân bổ size, theo dõi tiến độ các khâu gia công và kiểm soát giá vốn tự động.
+          </p>
+        </div>
 
-        <div className="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="text-white drop-shadow-md">
-            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-3 tracking-tight">
-              <Scissors className="w-9 h-9 text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-              Lệnh Cắt Sản Xuất
-            </h1>
-            <p className="mt-3 text-cyan-50 opacity-90 max-w-lg text-sm md:text-base leading-relaxed font-medium">
-              Tạo lệnh cắt mới, phân bổ size, tự động tính toán định mức vải và giá vốn dự kiến (COGS).
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button onClick={onReset} className="px-5 py-3 rounded-xl bg-black/20 hover:bg-black/40 border border-white/20 backdrop-blur-md text-white font-semibold text-sm transition-all flex items-center gap-2">
-              Reset
-            </button>
-            <button
-              onClick={onCreate}
-              className="group relative px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/40 backdrop-blur-lg text-white font-bold text-base shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_35px_rgba(34,211,238,0.6)] transition-all overflow-hidden flex items-center gap-2"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-teal-400 opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
-              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300 drop-shadow-md relative z-10" />
-              <span className="relative z-10 drop-shadow-lg tracking-wide uppercase">Tạo lệnh cắt</span>
-            </button>
-          </div>
+        <div className="flex items-stretch sm:items-center gap-3 w-full md:w-auto mt-2 md:mt-0 flex-col sm:flex-row">
+          <button onClick={onReset} className="flex-1 md:flex-none justify-center px-5 py-2.5 rounded-xl bg-white/50 hover:bg-white/80 border border-white text-slate-700 font-bold text-sm transition-all shadow-sm flex items-center">
+            Làm mới
+          </button>
+          <button
+            onClick={onCreate}
+            className="flex-1 md:flex-none justify-center group px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+            <span className="uppercase tracking-wide">Tạo lệnh cắt</span>
+          </button>
         </div>
       </div>
 
+      {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={<Scissors className="w-4 h-4" />} label="Tổng lệnh" value={stats.tongLC.toString()} sub={`${stats.tongSL.toLocaleString()} sp`} color="violet" />
-        <StatCard icon={<Clock className="w-4 h-4" />} label="Nháp + Đang cắt" value={(stats.nhap + stats.dangCat).toString()} sub={`${stats.nhap} nháp · ${stats.dangCat} đang cắt`} color="amber" />
-        <StatCard icon={<CheckCircle2 className="w-4 h-4" />} label="Đã tạo + Hoàn thành" value={(stats.daTao + stats.hoanThanh).toString()} sub={`${stats.daTao} đã tạo · ${stats.hoanThanh} xong`} color="emerald" />
-        <StatCard icon={<Wallet className="w-4 h-4" />} label="Tổng giá vốn lô" value={formatVNDShort(stats.tongGiaVon)} sub={`BQ: ${formatVNDShort(stats.giaVonTBSP)}/sp`} color="sky" />
+        <DashboardStat
+          icon={<Package className="w-3.5 h-3.5" />}
+          label="Tổng Lệnh Đang Chạy"
+          value={stats.tongLC.toString()}
+          sub={`${stats.tongSL.toLocaleString()} sản phẩm`}
+          colorClass="text-sky-600"
+        />
+        <DashboardStat
+          icon={<Clock className="w-3.5 h-3.5" />}
+          label="Chờ Xử Lý & Đang Cắt"
+          value={(stats.nhap + stats.dangCat).toString()}
+          sub={`${stats.nhap} nháp · ${stats.dangCat} đang cắt`}
+          colorClass="text-amber-600"
+        />
+        <DashboardStat
+          icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+          label="Đã Tạo & Hoàn Thành"
+          value={(stats.daTao + stats.hoanThanh).toString()}
+          sub={`${stats.daTao} đã tạo · ${stats.hoanThanh} hoàn thành`}
+          colorClass="text-emerald-700"
+        />
+        <DashboardStat
+          icon={<Wallet className="w-3.5 h-3.5" />}
+          label="Tổng Giá Vốn Tạm Tính"
+          value={formatVNDShort(stats.tongGiaVon)}
+          sub={`Bình quân: ${formatVNDShort(stats.giaVonTBSP)}/sp`}
+          colorClass="text-purple-700"
+        />
       </div>
-    </>
+    </div>
+  );
+}
+
+function DashboardStat({ icon, label, value, sub, colorClass }: { icon: React.ReactNode; label: string; value: string; sub: string; colorClass: string }) {
+  return (
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white p-4 shadow-sm transition hover:scale-[1.02]">
+      <div className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+        {icon} {label}
+      </div>
+      <div className="mt-1 flex flex-col">
+        <span className={`text-2xl font-black ${colorClass}`}>{value}</span>
+        <span className="text-[11px] font-bold text-slate-400 mt-0.5">{sub}</span>
+      </div>
+    </div>
   );
 }

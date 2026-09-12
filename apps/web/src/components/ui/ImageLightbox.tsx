@@ -212,10 +212,9 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
         </>
       )}
 
-      {/* Image */}
       <div
         ref={containerRef}
-        className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+        className="max-w-[90vw] max-h-[80vh] flex items-center justify-center p-4"
         onMouseDown={onMouseDown}
         style={{ cursor: scale > 1 ? (dragging ? "grabbing" : "grab") : "zoom-in" }}
       >
@@ -224,7 +223,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
           src={src}
           alt={alt || "image"}
           draggable={false}
-          className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+          className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl bg-white"
           style={{
             transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
             transition: dragging ? "none" : "transform 0.2s ease",

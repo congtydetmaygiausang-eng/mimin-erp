@@ -40,24 +40,24 @@ export function LenhCatColorCards({ lc, onClickColor }: Props) {
           </div>
 
           {/* Info */}
-          <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
+          <div className="p-4 flex flex-col flex-1 justify-between gap-3">
             <div>
-              <div className="text-[11px] text-slate-400 uppercase font-black tracking-widest mb-0.5">
+              <div className="text-xs text-slate-400 uppercase font-black tracking-widest mb-1">
                 Mã vải: {mau.maVai} {mau.dinhMuc ? `• ĐM: ${mau.dinhMuc}kg` : ''}
               </div>
               {mau.maVaiQuan && (
-                <div className="text-[10px] text-slate-400 font-bold mb-1">
+                <div className="text-xs text-slate-400 font-bold mb-1.5">
                   Quần: {mau.maVaiQuan} {mau.dinhMucQuan ? `• ĐM: ${mau.dinhMucQuan}kg` : ''}
                 </div>
               )}
-              <div className="font-black text-slate-800 text-lg leading-tight mb-2">{mau.ten}</div>
+              <div className="font-black text-slate-800 text-xl leading-tight mb-2">{mau.ten}</div>
               
-              <div className="text-sm font-bold text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 inline-flex items-center gap-2">
-                Tỷ lệ size: <span className="font-black text-sky-600 text-base">{lc.tiLeSize || "-"}</span>
+              <div className="text-base font-bold text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5 inline-flex items-center gap-2">
+                Tỷ lệ size: <span className="font-black text-sky-600 text-lg">{lc.tiLeSize || "-"}</span>
               </div>
             </div>
             
-            <div className="text-xs flex flex-wrap gap-1.5">
+            <div className="text-sm flex flex-wrap gap-2">
               {(() => {
                 // Ưu tiên lấy số liệu cắt thực tế
                 let displaySizes = mau.phanBoSize;
@@ -72,7 +72,7 @@ export function LenhCatColorCards({ lc, onClickColor }: Props) {
                 }
 
                 return displaySizes?.map(s => (
-                  <span key={s.size} className={`px-2 py-0.5 rounded-md shadow-sm border ${isThucTe ? 'bg-sky-50 border-sky-200 text-sky-800' : 'bg-white border-slate-200 text-slate-500'}`}>
+                  <span key={s.size} className={`px-2.5 py-1 rounded-md shadow-sm border ${isThucTe ? 'bg-sky-50 border-sky-200 text-sky-800' : 'bg-white border-slate-200 text-slate-500'}`}>
                     <strong className={isThucTe ? 'text-sky-900' : 'text-slate-800'}>{s.size}:</strong> {s.sl.toLocaleString()}
                   </span>
                 ));
@@ -87,13 +87,13 @@ export function LenhCatColorCards({ lc, onClickColor }: Props) {
               if (!hasMauPhoi && !hasVatTu) return null;
               
               return (
-                <div className="pt-2 border-t border-slate-100 mt-2 space-y-2">
+                <div className="pt-3 border-t border-slate-100 mt-2 space-y-3">
                   {hasMauPhoi && (
                     <div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Chi tiết màu phối</div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="text-xs text-slate-400 font-bold uppercase mb-1.5">Chi tiết màu phối</div>
+                      <div className="flex flex-wrap gap-1.5">
                         {mau.mauPhoi!.map(mp => (
-                          <span key={mp} className="text-[11px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold border border-indigo-100">
+                          <span key={mp} className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-md font-bold border border-indigo-100">
                             {mp}
                           </span>
                         ))}
@@ -102,10 +102,10 @@ export function LenhCatColorCards({ lc, onClickColor }: Props) {
                   )}
                   {hasVatTu && (
                     <div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Vật tư đi kèm</div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="text-xs text-slate-400 font-bold uppercase mb-1.5">Vật tư đi kèm</div>
+                      <div className="flex flex-wrap gap-1.5">
                         {vt.map((p, pIdx) => (
-                          <span key={pIdx} className="text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold border border-emerald-100">
+                          <span key={pIdx} className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md font-bold border border-emerald-100">
                             {p.tenPL} {p.soLuong ? `(${p.soLuong.toLocaleString()})` : ''}
                           </span>
                         ))}
@@ -145,12 +145,12 @@ export function LenhCatColorCards({ lc, onClickColor }: Props) {
             </div>
             
             {/* Info */}
-            <div className="p-3.5 flex flex-col justify-between border-t border-slate-100 flex-1 bg-white">
+            <div className="p-4 flex flex-col justify-between border-t border-slate-100 flex-1 bg-white">
               <div>
-                <div className="text-[11px] text-slate-400 uppercase font-black tracking-widest mb-0.5">Logo</div>
-                <div className="font-black text-slate-800 text-lg leading-tight mb-2">Hình In/Thêu</div>
+                <div className="text-xs text-slate-400 uppercase font-black tracking-widest mb-1">Logo</div>
+                <div className="font-black text-slate-800 text-xl leading-tight mb-2">Hình In/Thêu</div>
                 {lc.ghiChuInTheu && (
-                  <div className="text-xs text-slate-600 font-medium">
+                  <div className="text-sm text-slate-600 font-medium">
                     <span className="font-bold text-slate-500">Ghi chú:</span> {lc.ghiChuInTheu}
                   </div>
                 )}

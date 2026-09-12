@@ -136,7 +136,18 @@ export default function KhoThanhPhamPage() {
       );
     }
     if (filterTrangThai !== "all") result = result.filter((s) => s.trangThai === filterTrangThai);
-    if (filterLoai !== "all") result = result.filter((s) => s.maSP === filterLoai);
+    if (filterLoai !== "all") {
+      result = result.filter((sp) => {
+        const checkStr = (sp.phanLoai || "").toLowerCase();
+        if (filterLoai === "AoPolo") return checkStr.includes("áo polo") || checkStr.includes("ao polo") || checkStr === "aopolo";
+        if (filterLoai === "AoTru") return checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru") || checkStr === "aotru";
+        if (filterLoai === "AoCoTron") return checkStr.includes("cổ tròn") || checkStr.includes("co tron") || checkStr.includes("áo thun") || checkStr === "áo" || checkStr === "ao" || checkStr === "aocotron";
+        if (filterLoai === "BoCoTron") return checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron") || checkStr === "bocotron";
+        if (filterLoai === "BoTru") return checkStr.includes("bộ polo") || checkStr.includes("bo polo") || checkStr.includes("bộ trụ") || checkStr.includes("bo tru") || checkStr === "botru";
+        if (filterLoai === "PhuKien") return checkStr.includes("phụ kiện") || checkStr.includes("phu kien") || checkStr.includes("quần") || checkStr === "phukien";
+        return true;
+      });
+    }
     if (filterSize !== "all") result = result.filter((s) => s.size.includes(filterSize));
     if (filterViTri !== "all") result = result.filter((s) => s.viTri.includes(filterViTri));
     result = [...result].sort((a, b) => {
@@ -358,11 +369,22 @@ export default function KhoThanhPhamPage() {
         const mauIndex = newDM.dsMau.findIndex(m => m.ten === updated.mau);
         if (mauIndex >= 0) {
           const oldMau = newDM.dsMau[mauIndex];
-          const newImg = updated.hinhAnh?.[0] || oldMau.img;
-          const newVid = updated.video || oldMau.video;
-          if (newImg !== oldMau.img || newVid !== oldMau.video) {
+          let dsMauChanged = false;
+          const newMau = { ...oldMau };
+
+          if (updated.hinhAnh?.[0] && newMau.img !== updated.hinhAnh[0]) {
+            newMau.img = updated.hinhAnh[0];
+            dsMauChanged = true;
+          }
+
+          if (updated.video !== undefined && newMau.video !== updated.video) {
+            newMau.video = updated.video;
+            dsMauChanged = true;
+          }
+
+          if (dsMauChanged) {
             const newDsMau = [...newDM.dsMau];
-            newDsMau[mauIndex] = { ...oldMau, img: newImg, video: newVid };
+            newDsMau[mauIndex] = newMau;
             newDM.dsMau = newDsMau;
             changed = true;
           }
@@ -433,7 +455,7 @@ export default function KhoThanhPhamPage() {
         id: old?.id || `SP-${Date.now()}-${idx}`,
         maSP: lc.maSP || group.maSP,
         tenSP: group.tenSP,
-        phanLoai: old?.phanLoai || (lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo"),
+        phanLoai: old?.phanLoai || lc.loaiSP || "BoTru",
         mau: m.ten,
         size: "Nhiều size",
         lsx,
@@ -576,7 +598,7 @@ export default function KhoThanhPhamPage() {
         id: `TP-${Date.now().toString(36)}-${idx}`,
         maSP: lc.maSP || lc.id,
         tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
-        phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
+        phanLoai: lc.loaiSP || "BoTru",
         mau: m.ten,
         size: "Nhiều size",
         lsx: lc.id,
