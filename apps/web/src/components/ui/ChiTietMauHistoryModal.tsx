@@ -141,7 +141,7 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
+      <div className="bg-white rounded-3xl w-full max-w-2xl md:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in">
 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-white relative z-10">
@@ -180,9 +180,9 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
               <h2 className="text-[22px] md:text-2xl font-black text-slate-800 leading-none mb-2">
                 <span className="bg-gradient-to-r from-teal-600 to-sky-600 bg-clip-text text-transparent drop-shadow-sm">{mau.ten}</span>
               </h2>
-              <div className="flex items-center flex-wrap gap-2 text-[10px] font-bold tracking-wide">
-                <span className="bg-slate-50 text-slate-600 px-2.5 py-0.5 rounded border border-slate-200 shadow-sm">Mã vải: <span className="text-slate-800">{mau.maVai || "---"}</span></span>
-                <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded border border-sky-100 shadow-sm">Lệnh: {lc.id}</span>
+              <div className="flex items-center flex-wrap gap-2 text-[10px] md:text-sm font-bold tracking-wide">
+                <span className="bg-slate-50 text-slate-600 px-2.5 py-0.5 md:px-3 md:py-1 rounded md:rounded-md border border-slate-200 shadow-sm">Mã vải: <span className="text-slate-800">{mau.maVai || "---"}</span></span>
+                <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 md:px-3 md:py-1 rounded md:rounded-md border border-sky-100 shadow-sm">Lệnh: {lc.id}</span>
               </div>
             </div>
           </div>
@@ -197,11 +197,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
           {/* Lịch sử */}
           {historyPCs.length > 0 ? (
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
-                <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Lịch sử các khâu trước</span>
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
+                <span className="w-1.5 h-4 md:h-5 bg-teal-500 rounded-full"></span>
+                <span className="text-[11px] md:text-sm font-black text-slate-700 uppercase tracking-widest">Lịch sử các khâu trước</span>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              <div className="flex flex-col gap-3 md:gap-4 pb-2">
                 {historyPCs.map(pc => {
                   const sizes = mau.tyLeSizeChiTiet?.[pc.id];
                   const data = pc.chiTietMau?.find(c => c.mau === mau.ten);
@@ -209,20 +209,20 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                   if (sizes && sizes.length > 0) {
                     const tong = tongSizes(sizes);
                     return (
-                      <div key={pc.id} className="min-w-[240px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow transition-shadow">
-                        <div className="flex items-center justify-between gap-2 mb-3">
+                      <div key={pc.id} className="w-full bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm hover:shadow transition-shadow">
+                        <div className="flex items-center justify-between gap-2 mb-3 md:mb-4">
                           <div>
-                            <div className="font-black text-sm text-slate-800 leading-tight">{pc.tenCongDoan}</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{pc.nguoiTen}</div>
+                            <div className="font-black text-sm md:text-lg text-slate-800 leading-tight">{pc.tenCongDoan}</div>
+                            <div className="text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-wide mt-0.5 md:mt-1.5">{pc.nguoiTen}</div>
                           </div>
                           <div className="flex flex-col items-end">
-                            <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Đạt</span>
-                            <span className="text-lg font-black text-emerald-600 leading-none">{tong.toLocaleString()}</span>
+                            <span className="text-[9px] md:text-xs uppercase font-bold text-slate-400 tracking-wider">Đạt</span>
+                            <span className="text-lg md:text-2xl font-black text-emerald-600 leading-none">{tong.toLocaleString()}</span>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
+                        <div className="flex flex-wrap gap-1.5 md:gap-3 mt-2 md:mt-4">
                           {sizes.map((s, i) => (
-                            <span key={i} className="text-[10px] font-black bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5 text-slate-500">
+                            <span key={i} className="text-[10px] md:text-sm font-black bg-slate-50 border border-slate-100 rounded-md px-1.5 py-0.5 md:px-3 md:py-1.5 text-slate-500">
                               {s.size}: <span className="text-slate-800">{s.sl}</span>
                             </span>
                           ))}
@@ -233,27 +233,27 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
 
                   if (!data) return null;
                   return (
-                    <div key={pc.id} className="min-w-[240px] bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow transition-shadow flex flex-col justify-between">
-                      <div className="mb-3">
-                        <div className="font-black text-sm text-slate-800 leading-tight">{pc.tenCongDoan}</div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{pc.nguoiTen}</div>
+                    <div key={pc.id} className="w-full bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm hover:shadow transition-shadow flex flex-col justify-between">
+                      <div className="mb-3 md:mb-4">
+                        <div className="font-black text-sm md:text-lg text-slate-800 leading-tight">{pc.tenCongDoan}</div>
+                        <div className="text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-wide mt-0.5 md:mt-1.5">{pc.nguoiTen}</div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs font-bold bg-slate-50 p-2 rounded-xl">
+                      <div className="flex items-center gap-3 text-xs md:text-base font-bold bg-slate-50 p-2 md:p-4 rounded-xl">
                         <div className="flex flex-col flex-1 items-center justify-center">
-                          <span className="text-[9px] uppercase text-slate-400">Nhận</span>
-                          <span className="text-slate-700">{data.soLuongNhan.toLocaleString()}</span>
+                          <span className="text-[9px] md:text-xs uppercase text-slate-400">Nhận</span>
+                          <span className="text-slate-700 md:text-2xl">{data.soLuongNhan.toLocaleString()}</span>
                         </div>
-                        <div className="w-px h-6 bg-slate-200"></div>
+                        <div className="w-px h-6 md:h-10 bg-slate-200"></div>
                         <div className="flex flex-col flex-1 items-center justify-center">
-                          <span className="text-[9px] uppercase text-emerald-500">Đạt</span>
-                          <span className="text-emerald-600">{data.soLuongDat.toLocaleString()}</span>
+                          <span className="text-[9px] md:text-xs uppercase text-emerald-500">Đạt</span>
+                          <span className="text-emerald-600 md:text-2xl">{data.soLuongDat.toLocaleString()}</span>
                         </div>
                         {data.soLuongLoi > 0 && (
                           <>
-                            <div className="w-px h-6 bg-slate-200"></div>
+                            <div className="w-px h-6 md:h-10 bg-slate-200"></div>
                             <div className="flex flex-col flex-1 items-center justify-center">
-                              <span className="text-[9px] uppercase text-rose-400">Lỗi</span>
-                              <span className="text-rose-600">{data.soLuongLoi.toLocaleString()}</span>
+                              <span className="text-[9px] md:text-xs uppercase text-rose-400">Lỗi</span>
+                              <span className="text-rose-600 md:text-2xl">{data.soLuongLoi.toLocaleString()}</span>
                             </div>
                           </>
                         )}
@@ -265,11 +265,11 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
             </div>
           ) : (
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
-                <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Lịch sử các khâu trước</span>
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
+                <span className="w-1.5 h-4 md:h-5 bg-teal-500 rounded-full"></span>
+                <span className="text-[11px] md:text-sm font-black text-slate-700 uppercase tracking-widest">Lịch sử các khâu trước</span>
               </div>
-              <div className="text-sm font-medium text-slate-400 bg-slate-50 p-4 rounded-2xl border border-slate-200 border-dashed text-center">
+              <div className="text-sm md:text-base font-medium text-slate-400 bg-slate-50 p-4 rounded-2xl border border-slate-200 border-dashed text-center">
                 Chưa có khâu nào nhập liệu cho màu này.
               </div>
             </div>

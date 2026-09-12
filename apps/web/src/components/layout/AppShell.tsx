@@ -41,7 +41,7 @@ export function AppShell({ children, moduleClass = "bg-module-default" }: { chil
       <div className="flex-1 flex flex-col min-w-0 w-full overflow-hidden">
         <TopBar user={user} onSignOut={signOut} onMenuClick={() => setMobileOpen(true)} />
         
-        <main className="flex-1 p-4 sm:p-5 md:p-6 lg:p-8 pb-10 overflow-x-hidden overflow-y-auto animate-page-entry bg-transparent w-full">
+        <main className="relative z-30 flex-1 p-4 sm:p-5 md:p-6 lg:p-8 pb-10 overflow-x-hidden overflow-y-auto animate-page-entry bg-transparent w-full">
           {children}
         </main>
 

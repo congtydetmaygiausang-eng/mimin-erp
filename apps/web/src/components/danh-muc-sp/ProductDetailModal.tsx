@@ -93,7 +93,7 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
             </div>
           ) : selectedImage ? (
             <div className="w-full h-full flex-1 group relative cursor-pointer overflow-hidden bg-slate-100" onClick={() => setShowFullScreen(true)}>
-              <img src={selectedImage} alt={sp.tenSP} className="w-full h-full object-cover object-top absolute inset-0" />
+              <img src={selectedImage} alt={sp.tenSP} className="w-full h-full object-contain object-center absolute inset-0 bg-white" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                   <Maximize2 className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 drop-shadow-lg transition-opacity" />
               </div>
@@ -128,7 +128,7 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
             </div>
           )}
 
-          <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 px-4 z-10">
+          <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 px-4 z-10 flex-wrap">
              {sp.dsMau?.map((m, i) => (
                 <div 
                   key={i} 
@@ -150,12 +150,12 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
 
           {/* Thumbnails of the selected color variant */}
           {selectedColor && selectedColor.hinhAnhChiTiet && selectedColor.hinhAnhChiTiet.length > 0 && (
-            <div className="absolute top-1/2 left-4 -translate-y-1/2 flex flex-col gap-2 z-10">
+            <div className="absolute top-4 left-4 flex flex-col md:flex-row gap-2 z-10 bg-white/40 p-2 rounded-xl backdrop-blur-sm">
               {[selectedColor.img, ...selectedColor.hinhAnhChiTiet].filter(Boolean).map((imgUrl, i) => (
                 <div 
                   key={i}
                   onClick={(e) => { e.stopPropagation(); setSelectedImage(imgUrl); setViewingMode("image"); }}
-                  className={`w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border-2 cursor-pointer shadow-sm ${selectedImage === imgUrl ? "border-cyan-500" : "border-white/70"} hover:border-cyan-400`}
+                  className={`w-10 h-10 md:w-14 md:h-14 rounded-lg overflow-hidden border-2 cursor-pointer shadow-sm ${selectedImage === imgUrl ? "border-cyan-500" : "border-white/70"} hover:border-cyan-400`}
                 >
                   <img src={imgUrl} alt={`Thumbnail ${i}`} className="w-full h-full object-cover" />
                 </div>
@@ -263,7 +263,13 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
                   >
                     <div className="w-32 h-32 shrink-0 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center">
                       {m.img ? (
-                        <img src={m.img} className="w-full h-full object-cover" />
+                        <img 
+                          src={m.img} 
+                          alt={m.ten}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-contain" 
+                        />
                       ) : (
                         <Shirt className="w-12 h-12 text-slate-300" />
                       )}

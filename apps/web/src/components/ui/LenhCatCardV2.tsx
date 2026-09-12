@@ -65,7 +65,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
           </div>
 
           {/* Title and Stats Row */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 sm:gap-6">
             <div className="flex-1 min-w-0 w-full">
               <h2 className="text-[26px] md:text-[30px] font-black text-slate-900 leading-[1.1] mb-3 group-hover:text-sky-600 transition-colors drop-shadow-sm">{lc.tenSP}</h2>
               <div className="flex items-center flex-wrap gap-3 text-xs font-bold">
@@ -81,18 +81,18 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
             </div>
 
             {/* Stats Blocks */}
-            <div className="flex items-center gap-2.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 scrollbar-hide">
-              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-sky-50/70 border border-sky-100 rounded-xl py-3 px-5 min-w-[110px] shadow-sm hover:shadow hover:bg-sky-50 transition-all">
-                <span className="text-sky-600/80 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Hash className="w-3.5 h-3.5" /> Tổng SL</span>
-                <span className="font-black text-3xl text-sky-900 leading-none">{lc.tongSL?.toLocaleString() || "0"}</span>
+            <div className="flex items-center gap-2 w-full lg:w-auto overflow-hidden pb-1 lg:pb-0">
+              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-sky-50/70 border border-sky-100 rounded-xl py-3 px-2 sm:px-5 min-w-0 sm:min-w-[110px] shadow-sm hover:shadow hover:bg-sky-50 transition-all">
+                <span className="text-sky-600/80 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Hash className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Tổng SL</span></span>
+                <span className="font-black text-2xl sm:text-3xl text-sky-900 leading-none truncate">{lc.tongSL?.toLocaleString() || "0"}</span>
               </div>
-              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-slate-50/70 border border-slate-200/60 rounded-xl py-3 px-5 min-w-[90px] shadow-sm hover:shadow hover:bg-slate-50 transition-all">
-                <span className="text-slate-500 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Shirt className="w-3.5 h-3.5" /> Tỷ lệ</span>
-                <span className="font-black text-xl text-slate-800 leading-none">{lc.tiLeSize || "-"}</span>
+              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-slate-50/70 border border-slate-200/60 rounded-xl py-3 px-2 sm:px-5 min-w-0 sm:min-w-[90px] shadow-sm hover:shadow hover:bg-slate-50 transition-all">
+                <span className="text-slate-500 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Shirt className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Tỷ lệ</span></span>
+                <span className="font-black text-lg sm:text-xl text-slate-800 leading-none truncate">{lc.tiLeSize || "-"}</span>
               </div>
-              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-rose-50/70 border border-rose-100 rounded-xl py-3 px-5 min-w-[110px] shadow-sm hover:shadow hover:bg-rose-50 transition-all">
-                <span className="text-rose-500 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Calendar className="w-3.5 h-3.5" /> Hạn giao</span>
-                <span className="font-black text-xl text-rose-700 leading-none"><DateDisplay value={lc.hanHoanThanh} format="dd/MM" /></span>
+              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-rose-50/70 border border-rose-100 rounded-xl py-3 px-2 sm:px-5 min-w-0 sm:min-w-[110px] shadow-sm hover:shadow hover:bg-rose-50 transition-all">
+                <span className="text-rose-500 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Calendar className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Hạn giao</span></span>
+                <span className="font-black text-lg sm:text-xl text-rose-700 leading-none truncate"><DateDisplay value={lc.hanHoanThanh} format="dd/MM" /></span>
               </div>
             </div>
           </div>
@@ -107,8 +107,8 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                 <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
                 <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến trình đơn hàng</span>
               </div>
-              <div className="flex items-start min-w-max relative px-4">
-                <div className="flex items-center justify-between w-full relative z-10 gap-2">
+              <div className="flex items-start min-w-full relative px-2 sm:px-4">
+                <div className="flex items-start justify-between w-full relative z-10">
                   {[...lc.phanCong].sort((a, b) => {
                     const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
                     const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
@@ -131,7 +131,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                     else if (isError) { dotColor = "bg-rose-500 border-rose-100 text-white"; textColor = "text-rose-600 font-bold"; }
 
                     return (
-                      <div key={pc.id} className="flex-1 flex flex-col items-center relative group min-w-[70px]">
+                      <div key={pc.id} className="flex-1 flex flex-col items-center relative group min-w-0 sm:min-w-[70px]">
                         {/* Connecting Line */}
                         {i < arr.length - 1 && (
                           <div className={`absolute top-[11px] left-[50%] w-full h-[4px] rounded-full z-0 ${lineColor} transition-colors duration-500`} />
@@ -144,7 +144,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                           </div>
                         </div>
                         
-                        <div className={`whitespace-nowrap text-[10px] transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
+                        <div className={`text-center leading-tight text-[9px] sm:text-[10px] max-w-[60px] sm:max-w-none transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
                           <span>{pc.tenCongDoan}</span>
                           {(pc as any).bangChungURLs && (pc as any).bangChungURLs.length > 0 && (
                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); const w = window.open(); if (w) w.document.write(`<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">${(pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('')}</div>`); }} className="hover:text-blue-600 transition-colors mt-0.5" title="Xem ảnh bằng chứng">
@@ -191,11 +191,11 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
             <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
             <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Danh sách màu ({lc.dsMau?.length || 0})</span>
           </div>
-          <div className="flex flex-wrap gap-5">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
             {lc.dsMau?.map((mau, idx) => {
               const hasAoQuan = lc.loaiSP?.includes("Bo");
               return (
-              <div key={idx} className="flex flex-col w-[120px] sm:w-[140px] group cursor-pointer" onClick={(e) => {
+              <div key={idx} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={(e) => {
                 // Prevent bubble up if clicking the button directly
                 if ((e.target as HTMLElement).closest('button')) return;
                 onColorClick?.(mau);

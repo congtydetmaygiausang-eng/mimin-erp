@@ -18,32 +18,40 @@ interface FilterBarProps {
 
 export function FilterBar({ filterTrangThai, setFilterTrangThai, totalCount, counts, onCreateCD, onCreateCP }: FilterBarProps) {
   return (
-    <div className="flex flex-wrap gap-1.5 overflow-x-auto">
-      {FILTER_STATUSES.map((tt) => {
-        const count = tt === "ALL" ? totalCount : counts[tt] || 0;
-        const active = filterTrangThai === tt;
-        return (
-          <button
-            key={tt}
-            onClick={() => setFilterTrangThai(tt)}
-            className={`px-4 py-1.5 rounded-full text-xs transition border ${
-              active 
-                ? "bg-teal-600 border-teal-600 text-white shadow-md font-bold" 
-                : "bg-white border-white/40 text-slate-700 hover:bg-slate-50 font-medium shadow-sm"
-            }`}
-          >
-            {tt === "ALL" ? "Tất cả" : TRANG_THAI_LC_LABELS[tt as TrangThaiLenhCat]} ({count})
-          </button>
-        );
-      })}
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200/60 shadow-sm mb-4">
+      {/* Segmented Control for Tabs */}
+      <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto hide-scrollbar">
+        {FILTER_STATUSES.map((tt) => {
+          const count = tt === "ALL" ? totalCount : counts[tt] || 0;
+          const active = filterTrangThai === tt;
+          return (
+            <button
+              key={tt}
+              onClick={() => setFilterTrangThai(tt)}
+              className={`relative px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
+                active 
+                  ? "bg-white text-teal-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)]" 
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              }`}
+            >
+              {tt === "ALL" ? "Tất cả" : TRANG_THAI_LC_LABELS[tt as TrangThaiLenhCat]}
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] ${active ? "bg-teal-50 text-teal-600" : "bg-slate-200 text-slate-500"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      <div className="w-px h-6 bg-white/20 mx-2 self-center"></div>
-      <button onClick={onCreateCD} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-violet-600 text-white hover:bg-violet-700 shadow-md">
-        + Tạo mẫu công đoạn
-      </button>
-      <button onClick={onCreateCP} className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition bg-emerald-600 text-white hover:bg-emerald-700 shadow-md">
-        + Tạo bảng chi phí
-      </button>
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+        <button onClick={onCreateCD} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all border border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100 hover:border-violet-300">
+          + Mẫu công đoạn
+        </button>
+        <button onClick={onCreateCP} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all border border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300">
+          + Bảng chi phí
+        </button>
+      </div>
     </div>
   );
 }

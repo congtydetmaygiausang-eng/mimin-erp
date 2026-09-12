@@ -177,7 +177,8 @@ export default function UiMayPage() {
                   </div>
                   {mayPCs.map((pc: any) => {
                     const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
+                    const label = TRANG_THAI_CD_LABELS[tt] || "Chưa rõ";
                     const bgStyle = tt === "dang_lam" ? "bg-gradient-to-br from-[#fffef5] to-[#fffcd4] border-amber-200/60 shadow-sm" : style.bg;
 
                     return (
@@ -188,12 +189,12 @@ export default function UiMayPage() {
                             <div className="text-xs text-slate-500">{pc.nguoiTen || "Chưa giao"} · {(pc.soLuong || lc.tongSL)?.toLocaleString()} SP</div>
                           </div>
                           <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${style.text} bg-white/70 border`}>
-                            {TRANG_THAI_CD_LABELS[tt]}
+                            {label}
                           </span>
                         </div>
 
                         {/* Buttons */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
                                     disabled={!catDone}
@@ -224,7 +225,7 @@ export default function UiMayPage() {
                                 </div>
                                 {pc.lyDoLoi && <div className="text-[10px] text-rose-600">{pc.lyDoLoi}</div>}
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex flex-col sm:flex-row gap-2">
                                 <button onClick={() => handleNhanHang(lc, pc)}
                                   className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-amber-200">
                                   🔧 Bắt đầu sửa lỗi

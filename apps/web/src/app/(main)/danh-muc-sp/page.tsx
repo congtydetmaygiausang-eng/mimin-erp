@@ -619,7 +619,7 @@ export default function DanhMucSanPhamPage() {
         </div>
       ) : (
         <div className="w-full px-2 md:px-6">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
             {filtered.map((sp) => (
               <ProductLibraryCard
                 key={sp.id}

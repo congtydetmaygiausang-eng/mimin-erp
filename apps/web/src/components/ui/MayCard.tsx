@@ -134,8 +134,8 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                 <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
                 <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến trình đơn hàng</span>
               </div>
-              <div className="flex items-start min-w-max relative px-4">
-                <div className="flex items-center justify-between w-full relative z-10 gap-2">
+              <div className="flex items-start min-w-full relative px-2 sm:px-4">
+                <div className="flex items-start justify-between w-full relative z-10">
                   {sortedPhanCong.map((pc, i, arr) => {
                     const tt = (pc.trangThaiCD as any) || "cho_giao";
                     const isCompleted = tt === "hoan_thanh";
@@ -153,7 +153,7 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                     else if (isError) { dotColor = "bg-rose-500 border-rose-100 text-white"; textColor = "text-rose-600 font-bold"; }
 
                     return (
-                      <div key={pc.id} className="flex-1 flex flex-col items-center relative group min-w-[70px]">
+                      <div key={pc.id} className="flex-1 flex flex-col items-center relative group min-w-0 sm:min-w-[70px]">
                         {/* Connecting Line */}
                         {i < arr.length - 1 && (
                           <div className={`absolute top-[11px] left-[50%] w-full h-[4px] rounded-full z-0 ${lineColor} transition-colors duration-500`} />
@@ -166,7 +166,7 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                           </div>
                         </div>
                         
-                        <div className={`whitespace-nowrap text-[10px] transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
+                        <div className={`text-center leading-tight text-[9px] sm:text-[10px] max-w-[60px] sm:max-w-none transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
                           <span>{pc.tenCongDoan}</span>
                           {(pc as any).bangChungURLs && (pc as any).bangChungURLs.length > 0 && (
                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); const w = window.open(); if (w) w.document.write(`<div style="display:flex;flex-wrap:wrap;gap:10px;padding:20px;">${(pc as any).bangChungURLs.map((url: string) => `<img src="${url}" style="max-width:400px; max-height:400px; object-fit:contain; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);"/>`).join('')}</div>`); }} className="hover:text-blue-600 transition-colors mt-0.5" title="Xem ảnh bằng chứng">
@@ -193,7 +193,7 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
             <div className="text-[10px] text-slate-400 font-bold lowercase tracking-normal">(bấm để xem / nhập size)</div>
           </div>
           
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-4">
             {lc.dsMau?.map((mau, idx) => (
               <button 
                 key={idx} 

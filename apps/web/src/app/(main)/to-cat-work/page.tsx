@@ -343,7 +343,7 @@ export default function CongViecCatPage() {
                   )}
 
                   {/* Action buttons */}
-                  <div className="flex gap-2 pt-3 border-t border-slate-100">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-slate-100">
                     {tt === "cho_giao" && (
                       <button
                         onClick={() => handleNhanViec(lc)}

@@ -1427,6 +1427,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
       maxWidth="full"
       className="bg-[#2B4C3E] text-white overflow-hidden"
       overlayClassName="bg-black/60 backdrop-blur-sm"
+      fullScreenMobile={true}
     >
       <div className="w-full flex flex-col">
         {/* Header */}
@@ -1460,7 +1461,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
           </div>
         )}
 
-        <div className="flex-1 bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4 text-slate-900 overflow-y-auto">
+        <div className="w-full bg-[#F4F1EA] p-3 md:p-6 pb-8 flex flex-col gap-4 text-slate-900">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -3176,7 +3177,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         </div>
 
         {/* Footer Buttons */}
-        <div className="sticky bottom-0 z-[100] shrink-0 bg-white p-3 md:px-6 md:py-4 flex flex-col md:flex-row items-stretch md:items-center justify-between border-t border-slate-200 rounded-b-xl gap-3 w-full">
+        <div className="shrink-0 bg-white p-3 md:px-6 md:py-4 flex flex-col md:flex-row items-stretch md:items-center justify-between border-t border-slate-200 rounded-b-xl gap-3 w-full">
           
           {/* Right Actions (Primary) - Đưa lên trên ở mobile */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 order-1 md:order-2 w-full md:w-auto">
