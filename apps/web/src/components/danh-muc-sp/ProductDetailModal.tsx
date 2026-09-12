@@ -74,10 +74,10 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
       <div className="w-full flex flex-col md:flex-row min-h-[70vh] md:h-[85vh]">
         
         {/* === TRÁI: KHU VỰC HÌNH ẢNH (CLEAN & SHARP) === */}
-        <div className="w-full md:w-5/12 relative flex flex-col bg-slate-50 border-r border-slate-100 shrink-0 overflow-hidden">
+        <div className="w-full h-[40vh] min-h-[300px] md:h-auto md:w-5/12 relative flex flex-col bg-slate-50 border-r border-slate-100 shrink-0 overflow-hidden">
           
           {/* Main Viewer Area (Full Khung) */}
-          <div className="relative w-full flex-1 flex items-center justify-center group overflow-hidden">
+          <div className="relative w-full flex-1 flex items-center justify-center group overflow-hidden bg-slate-100/50">
             {viewingMode === "video" && selectedVideo ? (
               <video ref={videoRef} src={selectedVideo} autoPlay loop muted playsInline controls className="absolute inset-0 w-full h-full object-cover" />
             ) : selectedImage ? (
@@ -130,8 +130,8 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
              </div>
           )}
 
-          {/* Color Variants Switcher (Floating Circular Thumbnails) */}
-          <div className="absolute bottom-6 left-0 right-0 z-20 pointer-events-none flex justify-center">
+          {/* Color Variants Switcher (Desktop: Floating Circular Thumbnails) */}
+          <div className="hidden md:flex absolute bottom-6 left-0 right-0 z-20 pointer-events-none justify-center">
              <div className="flex justify-center gap-3 overflow-x-auto px-4 pb-2 pointer-events-auto scrollbar-hide max-w-full">
                 {sp.dsMau?.map((m, i) => (
                    <div 
@@ -156,9 +156,33 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
              </div>
           </div>
           
+          {/* Color Variants Switcher (Mobile: Strip Below Image) */}
+          <div className="md:hidden flex gap-3 overflow-x-auto px-4 py-3 bg-white border-t border-slate-100 scrollbar-hide shrink-0 z-20 shadow-sm relative">
+                {sp.dsMau?.map((m, i) => (
+                   <div 
+                     key={i} 
+                     onClick={() => {
+                       setSelectedColorIndex(i);
+                       if (m.img) setSelectedImage(m.img);
+                       if (videoRef.current) videoRef.current.pause();
+                       setSelectedVideo(m.video || "");
+                       setViewingMode(m.video ? "video" : "image");
+                     }}
+                     className={`w-12 h-12 shrink-0 rounded-full cursor-pointer transition-all overflow-hidden relative flex items-center justify-center bg-white shadow-sm ${selectedColorIndex === i ? "border-2 border-cyan-500 ring-2 ring-cyan-500/20 scale-110" : "border border-slate-200"}`}
+                     title={m.ten}
+                   >
+                     {m.img ? (
+                       <img src={m.img} alt={m.ten} className="w-full h-full object-cover" />
+                     ) : (
+                       <div className="w-full h-full" style={{ background: m.ten === "Đen" ? "#1f2937" : m.ten === "Trắng" ? "#f9fafb" : m.ten?.toLowerCase().includes("xanh") ? "#0891b2" : m.ten?.toLowerCase().includes("đỏ") || m.ten?.toLowerCase().includes("hồng") ? "#ec4899" : m.ten?.toLowerCase().includes("vàng") || m.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }} />
+                     )}
+                   </div>
+                ))}
+          </div>
+
           {/* Close Button Mobile */}
-          <button onClick={() => { if (videoRef.current) videoRef.current.pause(); onClose(); }} className="md:hidden absolute top-6 right-6 z-40 w-10 h-10 bg-white/80 hover:bg-white text-slate-800 rounded-full flex items-center justify-center shadow-lg border border-slate-200 transition-colors pointer-events-auto">
-            <X className="w-5 h-5" />
+          <button onClick={() => { if (videoRef.current) videoRef.current.pause(); onClose(); }} className="md:hidden absolute top-4 right-4 z-40 w-9 h-9 bg-white/90 hover:bg-white text-slate-800 rounded-full flex items-center justify-center shadow border border-slate-200 transition-colors pointer-events-auto">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -200,7 +224,7 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
             {/* Price Chips (Glassmorphism inspired) */}
             <div>
               <div className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Bảng Giá</div>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex md:flex-wrap gap-3 overflow-x-auto pb-2 md:pb-0 scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0">
                 <DetailPriceChip label="Bán lẻ" price={sp.giaBanLe} bgClass="bg-gradient-to-br from-white to-amber-50 border-amber-200 text-amber-700 shadow-sm" icon="🛍️" />
                 <DetailPriceChip label="Bán sỉ" price={sp.giaBanSi} bgClass="bg-gradient-to-br from-white to-blue-50 border-blue-200 text-blue-700 shadow-sm" icon="📦" />
                 <DetailPriceChip label="Bán lô" price={sp.giaBanLo} bgClass="bg-gradient-to-br from-white to-purple-50 border-purple-200 text-purple-700 shadow-sm" icon="🏭" />
@@ -292,7 +316,7 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
                           : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-md'
                       }`}
                     >
-                      <div className="w-24 h-24 shrink-0 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center relative">
+                      <div className="w-20 h-20 md:w-24 md:h-24 shrink-0 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center relative">
                         {m.img ? (
                           <img src={m.img} alt={m.ten} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                         ) : (
@@ -332,42 +356,50 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
           </div>
 
           {/* Footer CTAs */}
-          <div className="p-5 border-t border-slate-200/60 bg-white/90 backdrop-blur-xl shrink-0 z-20 flex gap-3 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] relative">
-            {onDelete && (
-              <button 
-                onClick={() => onDelete(sp)}
-                className="px-5 py-4 rounded-[18px] font-bold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-500 transition-all flex items-center justify-center"
-                title="Xóa sản phẩm"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-            {onEdit && (
-              <button 
-                onClick={() => onEdit(sp)}
-                className="px-6 py-4 rounded-[18px] font-bold text-slate-600 hover:text-white bg-slate-100 hover:bg-slate-800 transition-all flex items-center justify-center"
-              >
-                Sửa SP
-              </button>
-            )}
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 md:p-5 border-t border-slate-200 bg-white shrink-0 z-20 flex flex-col md:flex-row gap-3 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] relative">
+            {/* Hàng 1 trên Mobile / Khối trái trên Desktop */}
+            <div className="flex gap-2 w-full md:w-auto">
+              {onDelete && (
+                <button 
+                  onClick={() => onDelete(sp)}
+                  className="flex-1 md:flex-none px-5 py-3 md:py-4 rounded-[14px] md:rounded-[18px] font-bold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-500 transition-all flex items-center justify-center"
+                  title="Xóa sản phẩm"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+              {onEdit && (
+                <button 
+                  onClick={() => onEdit(sp)}
+                  className="flex-1 md:flex-none px-6 py-3 md:py-4 rounded-[14px] md:rounded-[18px] font-bold text-slate-600 hover:text-white bg-slate-100 hover:bg-slate-800 transition-all flex items-center justify-center"
+                >
+                  Sửa SP
+                </button>
+              )}
+            </div>
+            
+            {/* Hàng 2 trên Mobile / Khối phải trên Desktop */}
+            <div className="flex-1 grid grid-cols-3 gap-2 md:gap-3 w-full">
               <button 
                 onClick={() => onAddToCart && onAddToCart(sp)}
-                className="group bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-[18px] font-extrabold text-sm md:text-base shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                className="group bg-slate-800 hover:bg-slate-900 text-white py-3 md:py-4 rounded-[14px] md:rounded-[18px] font-extrabold text-[12px] md:text-base shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-0.5 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2"
               >
-                <ShoppingCart className="w-5 h-5 group-hover:scale-110 transition-transform" /> Giỏ Hàng
+                <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
+                <span className="leading-tight">Giỏ Hàng</span>
               </button>
               <button 
                 onClick={() => onCreateOrder && onCreateOrder(sp)}
-                className="group bg-sky-500 hover:bg-sky-600 text-white py-4 rounded-[18px] font-extrabold text-sm md:text-base shadow-lg shadow-sky-500/25 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                className="group bg-sky-500 hover:bg-sky-600 text-white py-3 md:py-4 rounded-[14px] md:rounded-[18px] font-extrabold text-[12px] md:text-base shadow-lg shadow-sky-500/25 transition-all hover:-translate-y-0.5 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2"
               >
-                <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" /> Tạo Đơn
+                <FileText className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
+                <span className="leading-tight">Tạo Đơn</span>
               </button>
               <button 
                 onClick={() => onProduceOrder && onProduceOrder(sp)}
-                className="group bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-[18px] font-extrabold text-sm md:text-base shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                className="group bg-emerald-500 hover:bg-emerald-600 text-white py-3 md:py-4 rounded-[14px] md:rounded-[18px] font-extrabold text-[12px] md:text-base shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2"
               >
-                <Package className="w-5 h-5 group-hover:scale-110 transition-transform" /> Đặt SX
+                <Package className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
+                <span className="leading-tight">Đặt SX</span>
               </button>
             </div>
           </div>
