@@ -195,7 +195,8 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   return (
     <>
       <ResponsiveModal
-        isOpen={true}
+        open={true}
+        maxWidth="3xl"
         onClose={onClose}
         title={
           <div className="flex items-center gap-3">
@@ -652,190 +653,255 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 flex items-center justify-between">
-          <h2 className="font-bold text-lg">Sửa biến thể</h2>
-          <button onClick={onClose} className="px-2 py-1 hover:bg-white/20 rounded">✕</button>
+    <ResponsiveModal
+      open={true}
+      maxWidth="3xl"
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2 text-slate-800 font-black tracking-tight">
+          <div className="bg-[#2B4C3E] p-1.5 rounded-lg">
+            <Package className="w-5 h-5 text-white" />
+          </div>
+          <span>CẬP NHẬT BIẾN THỂ</span>
         </div>
-        <div className="p-4 space-y-3">
-          <div className="flex gap-4 items-start mb-4">
-             <div className="w-24 h-24 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-amber-400 transition-colors" onClick={() => fileInputRef.current?.click()}>
-               <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
-               {uploading ? (
-                 <div className="text-[9px] text-amber-600 font-bold text-center px-1">Đang tải...</div>
-               ) : image ? (
-                 <img src={image} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
-               ) : (
-                 <div className="text-center text-slate-400 group-hover:text-amber-500 transition-colors">
-                   <Camera className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                   <div className="text-[9px] font-bold uppercase">Tải ảnh</div>
-                 </div>
-               )}
-             </div>
-             <div className="flex-1 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 mb-1 block">Mã SP mẹ *</label>
-                    <input value={form.maSP} onChange={(e) => setForm({ ...form, maSP: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP mẹ *</label>
-                    <input value={form.tenSP} onChange={(e) => {
-                      const val = e.target.value;
-                      setForm({ ...form, tenSP: val, phanLoai: detectLoaiSP(val) });
-                    }} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 mb-1 block">Phân loại</label>
-                  <select 
-                    value={form.phanLoai} 
-                    onChange={(e) => setForm({ ...form, phanLoai: e.target.value })} 
-                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none bg-white"
-                  >
-                    {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                </div>
-             </div>
+      }
+    >
+      <div className="flex flex-col bg-slate-50/50 h-full">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-6">
+
+          {/* KHỐI 1: THÔNG TIN CHUNG */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">1</span>
+              Thông Tin Chung
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Mã SP mẹ *</label>
+                <input 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 uppercase font-mono font-bold text-slate-800 bg-slate-50 transition-all hover:bg-white" 
+                  value={form.maSP} onChange={(e) => setForm({ ...form, maSP: e.target.value.toUpperCase() })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Tên SP mẹ *</label>
+                <input 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 text-slate-800 bg-slate-50 transition-all hover:bg-white" 
+                  value={form.tenSP} onChange={(e) => {
+                    const val = e.target.value;
+                    setForm({ ...form, tenSP: val, phanLoai: detectLoaiSP(val) });
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Phân loại</label>
+                <select 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 bg-slate-50 font-medium text-slate-700 transition-all hover:bg-white cursor-pointer"
+                  value={form.phanLoai} onChange={(e) => setForm({ ...form, phanLoai: e.target.value })}
+                >
+                  {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">LSX (Tự động điền màu)</label>
+                <input 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 bg-slate-50 font-mono text-slate-700 transition-all hover:bg-white" 
+                  value={form.lsx} onChange={(e) => {
+                    const val = e.target.value;
+                    const newForm = { ...form, lsx: val };
+                    const matchedLC = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.id?.startsWith("LC_"));
+                    const matched = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.mau);
+
+                    if (matchedLC) {
+                      if (!form.maSP) newForm.maSP = matchedLC.maSP || "";
+                      if (!form.tenSP) newForm.tenSP = matchedLC.phanLoai || "";
+                      if (!form.mau) newForm.mau = matchedLC.mau || "Trắng";
+                      if (!form.size) newForm.size = matchedLC.size || "M";
+                    } else if (matched && matched.mau) {
+                      newForm.mau = matched.mau;
+                      if (!form.maSP) newForm.maSP = matched.maSP || "";
+                      if (!form.tenSP) newForm.tenSP = matched.phanLoai || "";
+                    }
+                    setForm(newForm);
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Màu</label>
-              <input value={form.mau} onChange={(e) => setForm({ ...form, mau: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Size / Tỉ lệ</label>
-              <input list="ds-ti-le-size" value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-              <datalist id="ds-ti-le-size">
-                {DS_TI_LE_SIZE.map(s => <option key={s} value={s} />)}
-              </datalist>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">LSX (Tự động điền màu)</label>
-              <input
-                value={form.lsx}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const newForm = { ...form, lsx: val };
-                  const matchedLC = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.id?.startsWith("LC_"));
-                  const matched = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.mau);
+          {/* KHỐI 2: ĐẶC TÍNH & TRẠNG THÁI */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">2</span>
+              Đặc Tính & Trạng Thái
+            </h3>
 
-                  if (matchedLC) {
-                    if (!form.maSP) newForm.maSP = matchedLC.maSP || "";
-                    if (!form.tenSP) newForm.tenSP = matchedLC.phanLoai || "";
-                    if (!form.mau) newForm.mau = matchedLC.mau || "Trắng";
-                    if (!form.size) newForm.size = matchedLC.size || "M";
-                  } else if (matched && matched.mau) {
-                    newForm.mau = matched.mau;
-                    if (!form.maSP) newForm.maSP = matched.maSP || "";
-                    if (!form.tenSP) newForm.tenSP = matched.phanLoai || "";
-                  }
-                  setForm(newForm);
-                }}
-                className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono"
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Màu</label>
+                <input 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white" 
+                  value={form.mau} onChange={(e) => setForm({ ...form, mau: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Size / Tỉ lệ</label>
+                <input 
+                  list="ds-ti-le-size"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white" 
+                  value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })}
+                />
+                <datalist id="ds-ti-le-size">
+                  {DS_TI_LE_SIZE.map(s => <option key={s} value={s} />)}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Vị trí (Khu kệ)</label>
+                <select 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white cursor-pointer" 
+                  value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })}
+                >
+                  <option value="">-- Chọn --</option>
+                  {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Trạng thái</label>
+                <select 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white cursor-pointer" 
+                  value={form.trangThai} onChange={(e) => setForm({ ...form, trangThai: e.target.value as any })}
+                >
+                  <option value="con">Còn hàng</option>
+                  <option value="dat-hang">Đã đặt hàng</option>
+                  <option value="xuat-kho">Đã xuất kho</option>
+                  <option value="khong-dat">Không đạt</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-center">
+              <div className="w-24 h-24 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-blue-400 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
+                {uploading ? (
+                  <div className="text-[9px] text-blue-600 font-bold text-center px-1">Đang tải...</div>
+                ) : image ? (
+                  <img src={image} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+                ) : (
+                  <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                    <Camera className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                    <div className="text-[9px] font-bold uppercase">Tải ảnh</div>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <label className="block text-xs font-bold text-blue-900 mb-1.5 uppercase tracking-wider">Số Lượng Thực Tế *</label>
+                <input 
+                  type="number" min="0" 
+                  className="w-32 border-2 border-blue-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-lg font-bold text-blue-700 bg-white" 
+                  value={form.soLuong} onChange={(e) => setForm({ ...form, soLuong: Math.max(0, parseInt(e.target.value) || 0) })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* KHỐI 3: THIẾT LẬP GIÁ BÁN */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs">3</span>
+              Thiết Lập Giá Bán
+            </h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {[
+                { label: "Giá Vốn", value: form.giaVon, set: (v: number) => setForm({ ...form, giaVon: v }) },
+                { label: "Giá Bán Lẻ", value: form.giaBanLe, set: (v: number) => setForm({ ...form, giaBanLe: v }) },
+                { label: "Giá Bán Sỉ", value: form.giaBanSi, set: (v: number) => setForm({ ...form, giaBanSi: v }) },
+                { label: "Giá Bán Lô", value: form.giaBanLo, set: (v: number) => setForm({ ...form, giaBanLo: v }) },
+                { label: "Giá TikTok", value: form.giaTikTok, set: (v: number) => setForm({ ...form, giaTikTok: v }) },
+                { label: "Giá Shopee", value: form.giaShopee, set: (v: number) => setForm({ ...form, giaShopee: v }) },
+              ].map((item, idx) => (
+                <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">{item.label}</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>
+                    <input 
+                      type="number" 
+                      className="w-full border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 font-mono font-bold text-slate-700" 
+                      placeholder="0" 
+                      value={item.value || ""} 
+                      onChange={e => item.set(Math.max(0, parseInt(e.target.value) || 0))} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* KHỐI 4: THÔNG TIN KHÁC */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-fuchsia-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-xs">4</span>
+              Kênh Bán & Ghi Chú
+            </h3>
+
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kênh được phép bán *</label>
+              <div className="flex flex-wrap gap-2">
+                {DS_KENH_BAN.map((kenh) => {
+                  const selected = form.kenhBan.includes(kenh.value);
+                  return (
+                    <button
+                      key={kenh.value}
+                      type="button"
+                      onClick={() => setForm({
+                        ...form,
+                        kenhBan: selected
+                          ? form.kenhBan.filter((value) => value !== kenh.value)
+                          : [...form.kenhBan, kenh.value],
+                      })}
+                      className={`rounded-lg border px-3 py-2 text-xs font-bold shadow-sm transition-colors ${selected ? "border-[#2B4C3E] bg-[#2B4C3E]/5 text-[#2B4C3E]" : "border-slate-200 text-slate-500 hover:border-slate-300 bg-white"}`}
+                    >
+                      {selected ? "✓ " : ""}{kenh.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ghi chú thêm</label>
+              <textarea 
+                value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} 
+                rows={2} 
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-fuchsia-500/50 focus:border-fuchsia-500 outline-none bg-slate-50" 
               />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Số lượng *</label>
-              <input type="number" min="0" value={form.soLuong} onChange={(e) => setForm({ ...form, soLuong: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-emerald-300 rounded-lg text-lg font-bold focus:border-emerald-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Vị trí (Khu kệ)</label>
-              <select value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none bg-white">
-                <option value="">-- Chọn --</option>
-                {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Trạng thái</label>
-              <select value={form.trangThai} onChange={(e) => setForm({ ...form, trangThai: e.target.value as any })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none">
-                <option value="con">Còn hàng</option>
-                <option value="dat-hang">Đã đặt hàng</option>
-                <option value="xuat-kho">Đã xuất kho</option>
-                <option value="khong-dat">Không đạt</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá vốn</label>
-              <input type="number" min="0" value={form.giaVon} onChange={(e) => setForm({ ...form, giaVon: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div className="hidden">
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán</label>
-              <input type="number" min="0" value={form.donGia} onChange={(e) => setForm({ ...form, donGia: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán sỉ</label>
-              <input type="number" min="0" value={form.giaBanSi} onChange={(e) => setForm({ ...form, giaBanSi: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán lẻ</label>
-              <input type="number" min="0" value={form.giaBanLe} onChange={(e) => setForm({ ...form, giaBanLe: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán lô</label>
-              <input type="number" min="0" value={form.giaBanLo} onChange={(e) => setForm({ ...form, giaBanLo: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá TikTok</label>
-              <input type="number" min="0" value={form.giaTikTok} onChange={(e) => setForm({ ...form, giaTikTok: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá Shopee</label>
-              <input type="number" min="0" value={form.giaShopee} onChange={(e) => setForm({ ...form, giaShopee: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-700 mb-1">Kênh được phép bán *</div>
-            <div className="flex flex-wrap gap-2">
-              {DS_KENH_BAN.map((kenh) => {
-                const selected = form.kenhBan.includes(kenh.value);
-                return (
-                  <button
-                    key={kenh.value}
-                    type="button"
-                    onClick={() => setForm({
-                      ...form,
-                      kenhBan: selected
-                        ? form.kenhBan.filter((value) => value !== kenh.value)
-                        : [...form.kenhBan, kenh.value],
-                    })}
-                    className={`rounded-lg border px-3 py-2 text-xs font-bold ${selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}
-                  >
-                    {selected ? "✓ " : ""}{kenh.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-700 mb-1 block">Ghi chú</label>
-            <textarea value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-          </div>
-          <div className="bg-amber-50 p-3 rounded-lg text-xs">
-            <div className="font-semibold text-amber-800">Tóm tắt:</div>
-            <div><b>{form.maSP}</b> - {form.tenSP} | Màu {form.mau} | Size {form.size}</div>
-            <div>SL: <b>{form.soLuong.toLocaleString()}</b></div>
-          </div>
+
         </div>
-        <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-2xl">
-          <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-semibold">Hủy</button>
+
+        {/* STICKY FOOTER */}
+        <div className="p-4 sm:px-6 sm:py-4 border-t border-slate-200 bg-white flex justify-end gap-3 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] rounded-b-2xl">
+          <button onClick={onClose} className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors border-2 border-slate-200">Đóng</button>
           <button onClick={() => {
             if (form.kenhBan.length === 0) {
               toast.error("Cần chọn ít nhất 1 kênh bán");
               return;
             }
             onSave({ ...sp, ...form, __tempImage: image });
-          }} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 flex items-center gap-2">
-            <Save className="w-4 h-4" /> Lưu biến thể
+          }} className="px-8 py-2.5 font-bold text-white bg-[#2B4C3E] hover:bg-[#1f382d] rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02]">
+            <Save className="w-5 h-5" /> LƯU THAY ĐỔI
           </button>
         </div>
       </div>
-    </div>
+    </ResponsiveModal>
   );
 }
