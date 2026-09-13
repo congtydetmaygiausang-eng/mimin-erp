@@ -73,8 +73,8 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                     )}
                     {isFirst && (
                       <td rowSpan={group.length} className="p-3 align-top bg-white border-r border-slate-100 shadow-[inset_-1px_0_0_rgba(0,0,0,0.02)]">
-                        <div className="group/img relative w-12 h-12 mx-auto">
-                          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400 shadow-sm">
+                        <div className="group/img relative w-12 aspect-[3/4] mx-auto">
+                          <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400 shadow-sm">
                             {mainImg ? (
                               <img src={mainImg} alt={s.tenSP} className="h-full w-full object-cover" />
                             ) : (
@@ -83,7 +83,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                           </div>
                           {mainImg && (
                             <div className="pointer-events-none absolute left-full ml-3 top-1/2 z-[9999] hidden -translate-y-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/img:block">
-                              <img src={mainImg} alt={`Xem trước ${s.tenSP}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
+                              <img src={mainImg} alt={`Xem trước ${s.tenSP}`} className="w-48 aspect-[3/4] max-w-none rounded-xl object-cover bg-slate-50" />
                             </div>
                           )}
                         </div>
@@ -119,15 +119,15 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                           const variantImg = s.hinhAnh?.[0] || productVariantImages[`${s.maSP}_${s.mau}`] || "";
                           return variantImg ? (
                             <>
-                              <div className="w-8 h-8 rounded-md overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
+                              <div className="w-8 aspect-[3/4] rounded-md overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
                                 <img src={variantImg} alt={s.mau} className="w-full h-full object-cover" />
                               </div>
                               <div className="pointer-events-none absolute left-full ml-3 top-1/2 z-[9999] hidden -translate-y-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
-                                <img src={variantImg} alt={`Xem trước màu ${s.mau}`} className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
+                                <img src={variantImg} alt={`Xem trước màu ${s.mau}`} className="w-48 aspect-[3/4] max-w-none rounded-xl object-cover bg-slate-50" />
                               </div>
                             </>
                           ) : (
-                            <div className="w-8 h-8 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-300">
+                            <div className="w-8 aspect-[3/4] rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center flex-shrink-0 text-slate-300">
                               <ImageIcon className="w-3.5 h-3.5" />
                             </div>
                           );
@@ -183,7 +183,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
           <div key={group[0].maSP} className="bg-white rounded-xl border border-amber-100 shadow-sm overflow-hidden">
             {/* Header / Main SP */}
             <div className="p-3 bg-amber-50/50 border-b border-amber-100 flex gap-3">
-              <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-white flex-shrink-0">
+              <div className="w-16 aspect-[3/4] rounded-lg overflow-hidden border border-slate-200 bg-white flex-shrink-0">
                 {productImages[group[0].maSP] || group[0].hinhAnh?.[0] ? (
                   <img src={productImages[group[0].maSP] || group[0].hinhAnh?.[0]} alt={group[0].tenSP} className="w-full h-full object-cover" />
                 ) : (
@@ -207,7 +207,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                 <div key={s.id} className="p-3 hover:bg-slate-50 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
+                      <div className="w-8 aspect-[3/4] rounded overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0">
                         {s.hinhAnh?.[0] ? (
                           <img src={s.hinhAnh[0]} alt={s.mau} className="w-full h-full object-cover" />
                         ) : (
