@@ -661,7 +661,6 @@ export default function KhoThanhPhamPage() {
             </div>
           </div>
         )}
-
         {/* Unified Toolbar */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
           <FilterBar

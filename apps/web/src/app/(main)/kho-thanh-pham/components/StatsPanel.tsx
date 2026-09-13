@@ -5,6 +5,14 @@ import { Box, FileSpreadsheet } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
 export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number; tongGT: number; conHang: number; daDat: number } }) {
+  const formatGiaTri = (val: number) => {
+    if (val >= 1_000_000_000) return { num: (val / 1_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 2 }), unit: "tỷ" };
+    if (val >= 1_000_000) return { num: (val / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 }), unit: "tr" };
+    return { num: val.toLocaleString("vi-VN"), unit: "đ" };
+  };
+  const gt = formatGiaTri(stats.tongGT);
+
+  return (
     <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white p-5 md:p-8 shadow-lg relative overflow-hidden mb-4">
       {/* Decorative background element */}
       <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white opacity-5 blur-3xl pointer-events-none"></div>
@@ -21,7 +29,7 @@ export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number
         
         <div className="grid grid-cols-3 md:flex gap-3 text-center text-xs w-full md:w-auto">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
-            <div className="text-xl md:text-3xl font-black mb-1">{stats.tongSP.toLocaleString()}</div>
+            <div className="text-xl md:text-3xl font-black mb-1">{stats.tongSP.toLocaleString("vi-VN")}</div>
             <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Tổng SP</div>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
@@ -29,12 +37,13 @@ export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number
             <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Loại SP</div>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-36 hover:bg-white/20 transition-colors cursor-default">
-            <div className="text-xl md:text-3xl font-black mb-1">{(stats.tongGT/1_000_000).toFixed(1)}<span className="text-[12px] md:text-sm ml-1 opacity-80">tr</span></div>
+            <div className="text-xl md:text-3xl font-black mb-1">{gt.num}<span className="text-[12px] md:text-sm ml-1 opacity-80">{gt.unit}</span></div>
             <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Giá trị</div>
           </div>
         </div>
       </div>
     </div>
+  );
 }
 
 export function StatsByType({ dsLoai, dsSanPham, onClose }: { dsLoai: string[]; dsSanPham: SanPhamTP[]; onClose: () => void }) {
