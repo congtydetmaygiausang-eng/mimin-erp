@@ -6,20 +6,32 @@ import type { SanPhamTP } from "../data";
 
 export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number; tongGT: number; conHang: number; daDat: number } }) {
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white p-5 md:p-7 shadow-xl">
-      <div className="text-xs font-medium opacity-90 mb-1 flex items-center gap-2">
-        <Box className="w-3.5 h-3.5" /> MIMIN OS · Kho thành phẩm
-      </div>
-      <h1 className="text-2xl md:text-3xl font-bold">📦 Kho Thành Phẩm</h1>
-      <p className="text-sm opacity-95 mt-1 max-w-3xl">
-        Quản lý sản phẩm hoàn thành từ khâu Đóng gói. Tự động đồng bộ từ workflow data, hỗ trợ nhập/xuất kho, thống kê doanh thu tiềm năng.
-      </p>
-      <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.tongSP.toLocaleString()}</div><div className="opacity-90">Tổng SP</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.soLoai}</div><div className="opacity-90">Loại SP</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{(stats.tongGT/1_000_000).toFixed(1)}tr</div><div className="opacity-90">Giá trị</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.conHang}</div><div className="opacity-90">Còn hàng</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2 col-span-2 md:col-span-1"><div className="text-xl md:text-2xl font-bold">{stats.daDat}</div><div className="opacity-90">Đã đặt</div></div>
+    <div className="rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white p-4 md:p-7 shadow-lg relative overflow-hidden">
+      {/* Decorative background element */}
+      <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-10 blur-2xl pointer-events-none"></div>
+      
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider opacity-80 mb-1 flex items-center gap-1.5">
+            <Box className="w-3.5 h-3.5" /> MIMIN OS
+          </div>
+          <h1 className="text-xl md:text-3xl font-black tracking-tight flex items-center gap-2">Kho Thành Phẩm</h1>
+        </div>
+        
+        <div className="grid grid-cols-3 md:flex gap-2 text-center text-xs w-full md:w-auto">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 shadow-sm flex-1">
+            <div className="text-lg md:text-2xl font-black">{stats.tongSP.toLocaleString()}</div>
+            <div className="opacity-80 text-[10px] uppercase font-bold mt-0.5">Tổng SP</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 shadow-sm flex-1">
+            <div className="text-lg md:text-2xl font-black">{stats.soLoai}</div>
+            <div className="opacity-80 text-[10px] uppercase font-bold mt-0.5">Loại SP</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 shadow-sm flex-1">
+            <div className="text-lg md:text-2xl font-black">{(stats.tongGT/1_000_000).toFixed(1)}<span className="text-[10px] ml-0.5">tr</span></div>
+            <div className="opacity-80 text-[10px] uppercase font-bold mt-0.5">Giá trị</div>
+          </div>
+        </div>
       </div>
     </div>
   );
