@@ -175,7 +175,23 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       tiLeSize: preset.value,
       lsx,
       ngayNhap,
-      soLuong: tongSLBie  return (
+      soLuong: tongSLBienThe(bt),
+      donGia: 0,
+      giaVon,
+      giaBanSi,
+      giaBanLe,
+      giaBanLo,
+      giaTikTok,
+      giaShopee,
+      kenhBan: bt.kenhBan,
+      viTri: viTri.trim(),
+      ghiChu: ghiChu.trim(),
+      __tempImage: bt.img,
+    }));
+    onSave(rows);
+  };
+
+  return (
     <div className="fixed inset-0 z-50 flex justify-center bg-black/50 backdrop-blur-sm sm:p-4 md:p-6 lg:p-8 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-50 sm:rounded-2xl shadow-2xl max-w-6xl w-full flex flex-col relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* HEADER */}
