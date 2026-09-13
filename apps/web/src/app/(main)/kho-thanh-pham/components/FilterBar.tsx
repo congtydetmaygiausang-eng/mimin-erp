@@ -19,37 +19,45 @@ interface FilterBarProps {
 
 export function FilterBar({ search, setSearch, filterTrangThai, setFilterTrangThai, filterLoai, setFilterLoai, dsLoai, exportCSV, handleAutoGenerate, setShowAdd }: FilterBarProps) {
   return (
-    <div className="card p-3 flex flex-col md:flex-row gap-2">
-      <div className="flex-1 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Tìm mã SP, tên, LSX, màu, size, vị trí..."
-          className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:border-amber-500 outline-none"
-        />
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 md:p-4 flex flex-col gap-3">
+      <div className="flex gap-2">
+        <div className="flex-1 relative group">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-amber-500 transition-colors" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm mã SP, tên, màu..."
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-amber-400 focus:ring-4 focus:ring-amber-50 outline-none transition-all"
+          />
+        </div>
+        <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white rounded-xl text-sm font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-amber-500/20 whitespace-nowrap">
+          <Plus className="w-4 h-4" /> <span className="hidden md:inline">Thêm mới</span>
+        </button>
       </div>
-      <select value={filterTrangThai} onChange={(e) => setFilterTrangThai(e.target.value as any)} className="px-3 py-2 border rounded-lg text-sm">
-        <option value="all">Tất cả trạng thái</option>
-        <option value="con">Còn hàng</option>
-        <option value="dat-hang">Đang sản xuất</option>
-        <option value="xuat-kho">Đã xuất kho</option>
-        <option value="khong-dat">Không đặt</option>
-      </select>
-      <select value={filterLoai} onChange={(e) => setFilterLoai(e.target.value)} className="px-3 py-2 border rounded-lg text-sm">
-        <option value="all">Tất cả loại</option>
-        {dsLoai.map((l) => <option key={l} value={l}>{l}</option>)}
-      </select>
-      <button onClick={exportCSV} className="px-3 py-2 bg-emerald-500 text-white rounded-lg text-sm font-semibold flex items-center gap-1">
-        <Download className="w-4 h-4" /> CSV
-      </button>
-      <button onClick={handleAutoGenerate} className="px-3 py-2 bg-sky-500 text-white rounded-lg text-sm font-semibold flex items-center gap-1">
-        <Sparkles className="w-4 h-4" /> Auto
-      </button>
-      <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold flex items-center gap-1">
-        <Plus className="w-4 h-4" /> Thêm
-      </button>
+      
+      <div className="flex overflow-x-auto pb-1 -mx-1 px-1 gap-2 scrollbar-hide hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <select value={filterTrangThai} onChange={(e) => setFilterTrangThai(e.target.value as any)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:border-amber-400 flex-shrink-0">
+          <option value="all">Trạng thái (Tất cả)</option>
+          <option value="con">Còn hàng</option>
+          <option value="dat-hang">Đang sản xuất</option>
+          <option value="xuat-kho">Đã xuất kho</option>
+          <option value="khong-dat">Không đạt</option>
+        </select>
+        <select value={filterLoai} onChange={(e) => setFilterLoai(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:border-amber-400 flex-shrink-0">
+          <option value="all">Loại SP (Tất cả)</option>
+          {dsLoai.map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
+        
+        <div className="w-px bg-slate-200 flex-shrink-0 mx-1"></div>
+        
+        <button onClick={exportCSV} className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-medium flex items-center gap-1.5 flex-shrink-0 transition-colors">
+          <Download className="w-4 h-4" /> CSV
+        </button>
+        <button onClick={handleAutoGenerate} className="px-3 py-2 bg-sky-50 text-sky-700 border border-sky-100 hover:bg-sky-100 rounded-lg text-sm font-medium flex items-center gap-1.5 flex-shrink-0 transition-colors">
+          <Sparkles className="w-4 h-4" /> Auto
+        </button>
+      </div>
     </div>
   );
 }
