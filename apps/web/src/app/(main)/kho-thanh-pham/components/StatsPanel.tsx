@@ -22,15 +22,15 @@ export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number
         
         <div className="grid grid-cols-3 md:flex gap-3 text-center text-xs w-full md:w-auto">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
-            <div className="text-xl md:text-3xl font-black mb-1">{stats.tongSP.toLocaleString()}</div>
+            <div className="text-xl md:text-3xl font-black mb-1">{stats.tongSP.toLocaleString("vi-VN")}</div>
             <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Tổng SP</div>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
             <div className="text-xl md:text-3xl font-black mb-1">{stats.soLoai}</div>
             <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Loại SP</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-36 hover:bg-white/20 transition-colors cursor-default">
-            <div className="text-xl md:text-3xl font-black mb-1">{(stats.tongGT/1_000_000).toFixed(1)}<span className="text-[12px] md:text-sm ml-1 opacity-80">tr</span></div>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-auto min-w-[120px] hover:bg-white/20 transition-colors cursor-default">
+            <div className="text-xl md:text-2xl font-black mb-1">{stats.tongGT.toLocaleString("vi-VN")}<span className="text-[12px] md:text-sm ml-1 opacity-80">đ</span></div>
             <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Giá trị</div>
           </div>
         </div>
