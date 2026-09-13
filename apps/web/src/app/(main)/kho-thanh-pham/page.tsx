@@ -170,8 +170,16 @@ export default function KhoThanhPhamPage() {
   const mergedProductImages = useMemo(() => {
     const map: Record<string, string> = { ...productImages };
     dsDanhMuc.forEach(dm => {
-      if (dm.hinhAnh && !map[dm.id]) {
-        map[dm.id] = dm.hinhAnh;
+      let mainImg = dm.hinhAnh;
+      // Dùng ảnh của màu đầu tiên nếu chưa có ảnh đại diện
+      if (!mainImg && dm.dsMau?.length > 0) {
+        mainImg = dm.dsMau.find((m) => m.img)?.img || "";
+      }
+      if (mainImg) {
+        if (!map[dm.id]) map[dm.id] = mainImg;
+        // dm có thể có maSP (tuỳ DB), map cả 2 cho an toàn
+        const maSP = (dm as any).maSP || (dm as any).ma_sp;
+        if (maSP && !map[maSP]) map[maSP] = mainImg;
       }
     });
     // Lấy thêm hình ảnh từ các dòng kho thành phẩm đã có (nếu dòng mới không có ảnh nhưng dòng cũ có)
