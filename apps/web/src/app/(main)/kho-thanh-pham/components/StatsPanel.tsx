@@ -5,6 +5,7 @@ import { Box, FileSpreadsheet } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
 export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number; tongGT: number; conHang: number; daDat: number } }) {
+  return (
     <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white p-5 md:p-8 shadow-lg relative overflow-hidden mb-4">
       {/* Decorative background element */}
       <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white opacity-5 blur-3xl pointer-events-none"></div>
@@ -35,6 +36,7 @@ export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number
         </div>
       </div>
     </div>
+  );
 }
 
 export function StatsByType({ dsLoai, dsSanPham, onClose }: { dsLoai: string[]; dsSanPham: SanPhamTP[]; onClose: () => void }) {

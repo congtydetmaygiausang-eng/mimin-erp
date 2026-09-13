@@ -662,6 +662,9 @@ export default function KhoThanhPhamPage() {
           </div>
         )}
 
+        {/* Bảng thống kê tổng */}
+        {showStats && <StatsHeader stats={stats} />}
+
         {/* Unified Toolbar */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
           <FilterBar
