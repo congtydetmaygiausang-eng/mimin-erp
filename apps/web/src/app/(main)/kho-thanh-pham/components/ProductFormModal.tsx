@@ -484,7 +484,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
         <SizeRatioBuilderModal onClose={() => setOpenSizeBuilder(false)} onSave={handleLuuBangSizeMoi} />
       )}
     </div>
-
+  );
 }
 
 // =================== TẠO BẢNG TỈ LỆ SIZE MỚI + QUY ĐỔI TỈ LỆ ===================
