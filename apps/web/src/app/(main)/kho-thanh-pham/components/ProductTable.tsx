@@ -59,11 +59,11 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
               <div className="font-bold text-slate-800 text-[15px] md:text-lg leading-tight line-clamp-2 mb-1.5">{group[0].tenSP}</div>
               <div className="text-xs md:text-sm font-mono font-extrabold text-indigo-600 mb-3">{group[0].maSP}</div>
               <div className="flex flex-wrap items-center gap-2">
-                 <div className="text-[10px] md:text-xs uppercase font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 shadow-[inset_0_1px_0_white]">
+                 <div className="text-[10px] md:text-xs uppercase font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 shadow-sm">
                    {getPhanLoaiLabel(group[0].phanLoai, group[0].tenSP)}
                  </div>
-                 <div className="text-[10px] md:text-xs font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-                   Tổng: <span className="text-slate-800 font-black">{totalQty.toLocaleString()}</span> sp
+                 <div className="text-[10px] md:text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 shadow-sm">
+                   Tổng: <span className="text-emerald-900 font-black">{totalQty.toLocaleString()}</span> sp
                  </div>
                  <div className="hidden md:flex gap-1.5 ml-2">
                     <PriceChip label="Bán lẻ" price={group[0].giaBanLe} />
@@ -108,9 +108,9 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                         </>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{s.viTri || 'Chưa xếp'}</span>
-                      <span className="text-[10px] font-mono font-medium text-slate-400 bg-white px-1.5 py-0.5 rounded border border-dashed border-slate-200">{s.lsx}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs md:text-sm font-bold text-violet-700 bg-violet-100 px-2 py-0.5 rounded-md border border-violet-200 shadow-sm">{s.viTri || 'Chưa xếp'}</span>
+                      <span className="text-[10px] md:text-xs font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-dashed border-slate-300">{s.lsx}</span>
                     </div>
                   </div>
                   
