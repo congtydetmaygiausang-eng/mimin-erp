@@ -23,6 +23,8 @@ interface ProductTableProps {
 }
 
 export function ProductTable({ filtered, productImages, productVariantImages = {}, setEditing, handleXuatKho, handleDelete, onSuaTong }: ProductTableProps) {
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+
   // Nhóm sản phẩm theo Mã SP
   const groupedProducts = useMemo(() => {
     const groups: Record<string, SanPhamTP[]> = {};
@@ -35,6 +37,15 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
 
   return (
     <div className="flex flex-col gap-4">
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out transition-opacity"
+          onClick={() => setPreviewImage(null)}
+        >
+          <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl" />
+        </div>
+      )}
+      
       {groupedProducts.map((group) => {
         const totalQty = group.reduce((s, x) => s + x.soLuong, 0);
         return (
@@ -46,7 +57,13 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                   <Edit className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Sửa Nhóm</span>
                </button>
              )}
-            <div className="w-20 h-28 md:w-24 md:h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0 shadow-sm">
+            <div 
+              className="w-20 h-28 md:w-24 md:h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0 shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
+              onClick={() => {
+                const img = productImages[group[0].maSP] || group[0].hinhAnh?.[0];
+                if (img) setPreviewImage(img);
+              }}
+            >
               {productImages[group[0].maSP] || group[0].hinhAnh?.[0] ? (
                 <img src={productImages[group[0].maSP] || group[0].hinhAnh?.[0]} alt={group[0].tenSP} className="w-full h-full object-cover" />
               ) : (
@@ -78,7 +95,12 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
             {group.map(s => (
               <div key={s.id} className="p-4 md:px-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0 relative">
+                  <div 
+                    className="w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0 relative cursor-zoom-in hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      if (s.hinhAnh?.[0]) setPreviewImage(s.hinhAnh[0]);
+                    }}
+                  >
                     {s.hinhAnh?.[0] ? (
                       <img src={s.hinhAnh[0]} alt={s.mau} className="w-full h-full object-cover" />
                     ) : (
@@ -86,7 +108,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                         <ImageIcon className="w-5 h-5" />
                       </div>
                     )}
-                    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-lg"></div>
+                    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-lg pointer-events-none"></div>
                   </div>
                   <div>
                     <div className="font-bold text-slate-800 text-sm md:text-base mb-0.5">{s.mau}</div>
