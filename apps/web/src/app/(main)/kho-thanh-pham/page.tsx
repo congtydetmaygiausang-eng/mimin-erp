@@ -290,7 +290,9 @@ export default function KhoThanhPhamPage() {
          suaSP(existingDM.id, {
            giaBanDuKien: Math.max(existingDM.giaBanDuKien || 0, giaBanDuKien),
            dsMau: dsMauMoi,
-           hinhAnh: existingDM.hinhAnh || anhDaiDien
+           hinhAnh: existingDM.hinhAnh || anhDaiDien,
+           loaiSP: (newRows[0]?.phanLoai as any) || existingDM.loaiSP,
+           tenSP: newRows[0]?.tenSP || existingDM.tenSP,
          });
       } else {
          // Thêm mới Danh mục SP
@@ -332,6 +334,27 @@ export default function KhoThanhPhamPage() {
     if (__tempImage) {
       setProductImages((prev) => ({ ...prev, [sp.id]: __tempImage }));
     }
+
+    // Đồng bộ sang Danh mục sản phẩm nếu đã có
+    const existingDM = dsDanhMuc.find(d => d.id === sp.maSP || d.maSP === sp.maSP);
+    if (existingDM) {
+      let changed = false;
+      const newDM = { ...existingDM };
+      
+      if (sp.phanLoai && newDM.loaiSP !== sp.phanLoai) {
+        newDM.loaiSP = sp.phanLoai as any;
+        changed = true;
+      }
+      if (sp.tenSP && newDM.tenSP !== sp.tenSP) {
+        newDM.tenSP = sp.tenSP;
+        changed = true;
+      }
+      
+      if (changed) {
+        suaSP(newDM.id, newDM);
+      }
+    }
+
     toast.success("Đã cập nhật");
     setEditing(null);
   };
@@ -368,6 +391,15 @@ export default function KhoThanhPhamPage() {
     if (existingDM) {
       let changed = false;
       const newDM = { ...existingDM };
+      
+      if (updated.phanLoai && newDM.loaiSP !== updated.phanLoai) {
+        newDM.loaiSP = updated.phanLoai as any;
+        changed = true;
+      }
+      if (updated.tenSP && newDM.tenSP !== updated.tenSP) {
+        newDM.tenSP = updated.tenSP;
+        changed = true;
+      }
       
       if (updated.giaBanLe && (updated.giaBanLe > newDM.giaBanDuKien || newDM.giaBanDuKien === 0)) {
         newDM.giaBanDuKien = updated.giaBanLe;
