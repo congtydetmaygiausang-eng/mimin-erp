@@ -5,36 +5,36 @@ import { Box, FileSpreadsheet } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
 export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number; tongGT: number; conHang: number; daDat: number } }) {
-  return (
-    <div className="rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white p-4 md:p-7 shadow-lg relative overflow-hidden">
+    <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white p-5 md:p-8 shadow-lg relative overflow-hidden mb-4">
       {/* Decorative background element */}
-      <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-10 blur-2xl pointer-events-none"></div>
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white opacity-5 blur-3xl pointer-events-none"></div>
+      <div className="absolute top-10 right-20 w-32 h-32 rounded-full bg-indigo-400 opacity-20 blur-3xl pointer-events-none"></div>
       
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-wider opacity-80 mb-1 flex items-center gap-1.5">
-            <Box className="w-3.5 h-3.5" /> MIMIN OS
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-80 mb-2 flex items-center gap-2 text-indigo-100">
+            <Box className="w-4 h-4" /> BẢNG ĐIỀU KHIỂN
           </div>
-          <h1 className="text-xl md:text-3xl font-black tracking-tight flex items-center gap-2">Kho Thành Phẩm</h1>
+          <h1 className="text-2xl md:text-4xl font-black tracking-tight flex items-center gap-2">Kho Thành Phẩm</h1>
+          <div className="mt-2 text-indigo-100 text-sm font-medium opacity-90 hidden md:block">Quản lý không gian lưu trữ và sản phẩm xuất/nhập kho</div>
         </div>
         
-        <div className="grid grid-cols-3 md:flex gap-2 text-center text-xs w-full md:w-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 shadow-sm flex-1">
-            <div className="text-lg md:text-2xl font-black">{stats.tongSP.toLocaleString()}</div>
-            <div className="opacity-80 text-[10px] uppercase font-bold mt-0.5">Tổng SP</div>
+        <div className="grid grid-cols-3 md:flex gap-3 text-center text-xs w-full md:w-auto">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
+            <div className="text-xl md:text-3xl font-black mb-1">{stats.tongSP.toLocaleString()}</div>
+            <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Tổng SP</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 shadow-sm flex-1">
-            <div className="text-lg md:text-2xl font-black">{stats.soLoai}</div>
-            <div className="opacity-80 text-[10px] uppercase font-bold mt-0.5">Loại SP</div>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
+            <div className="text-xl md:text-3xl font-black mb-1">{stats.soLoai}</div>
+            <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Loại SP</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 shadow-sm flex-1">
-            <div className="text-lg md:text-2xl font-black">{(stats.tongGT/1_000_000).toFixed(1)}<span className="text-[10px] ml-0.5">tr</span></div>
-            <div className="opacity-80 text-[10px] uppercase font-bold mt-0.5">Giá trị</div>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-36 hover:bg-white/20 transition-colors cursor-default">
+            <div className="text-xl md:text-3xl font-black mb-1">{(stats.tongGT/1_000_000).toFixed(1)}<span className="text-[12px] md:text-sm ml-1 opacity-80">tr</span></div>
+            <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Giá trị</div>
           </div>
         </div>
       </div>
     </div>
-  );
 }
 
 export function StatsByType({ dsLoai, dsSanPham, onClose }: { dsLoai: string[]; dsSanPham: SanPhamTP[]; onClose: () => void }) {

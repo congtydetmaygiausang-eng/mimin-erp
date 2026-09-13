@@ -633,7 +633,7 @@ export default function KhoThanhPhamPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50/30 to-rose-50/30 p-3 md:p-5">
+    <div className="min-h-screen bg-slate-50/50 p-3 md:p-5">
       <div className="max-w-7xl mx-auto space-y-4">
         <StatsHeader stats={stats} />
 
@@ -662,24 +662,26 @@ export default function KhoThanhPhamPage() {
           </div>
         )}
 
-        <FilterBar
-          search={search} setSearch={setSearch}
-          filterTrangThai={filterTrangThai} setFilterTrangThai={setFilterTrangThai}
-          filterLoai={filterLoai} setFilterLoai={setFilterLoai}
-          dsLoai={dsLoai}
-          exportCSV={exportCSV}
-          handleAutoGenerate={handleAutoGenerate}
-          setShowAdd={setShowAdd}
-        />
-
-        <SortBar
-          sortBy={sortBy} setSortBy={setSortBy}
-          sortDir={sortDir} setSortDir={setSortDir}
-          filterSize={filterSize} setFilterSize={setFilterSize}
-          filterViTri={filterViTri} setFilterViTri={setFilterViTri}
-          filteredCount={filtered.length} totalCount={dsSanPham.length}
-          viewMode={viewMode} setViewMode={setViewMode}
-        />
+        {/* Unified Toolbar */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
+          <FilterBar
+            search={search} setSearch={setSearch}
+            filterTrangThai={filterTrangThai} setFilterTrangThai={setFilterTrangThai}
+            filterLoai={filterLoai} setFilterLoai={setFilterLoai}
+            dsLoai={dsLoai}
+            exportCSV={exportCSV}
+            handleAutoGenerate={handleAutoGenerate}
+            setShowAdd={setShowAdd}
+          />
+          <SortBar
+            sortBy={sortBy} setSortBy={setSortBy}
+            sortDir={sortDir} setSortDir={setSortDir}
+            filterSize={filterSize} setFilterSize={setFilterSize}
+            filterViTri={filterViTri} setFilterViTri={setFilterViTri}
+            filteredCount={filtered.length} totalCount={dsSanPham.length}
+            viewMode={viewMode} setViewMode={setViewMode}
+          />
+        </div>
 
         {/* Content */}
         <div className="overflow-hidden">
