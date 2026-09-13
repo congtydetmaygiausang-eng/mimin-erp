@@ -170,11 +170,12 @@ export default function KhoThanhPhamPage() {
   const mergedProductImages = useMemo(() => {
     const map: Record<string, string> = { ...productImages };
     dsDanhMuc.forEach(dm => {
-      let mainImg = dm.hinhAnh;
-      // Dùng ảnh của màu đầu tiên nếu chưa có ảnh đại diện
+      let mainImg = dm.dsMau?.[0]?.img || dm.hinhAnh;
+      
       if (!mainImg && dm.dsMau?.length > 0) {
         mainImg = dm.dsMau.find((m) => m.img)?.img || "";
       }
+      
       if (mainImg) {
         if (!map[dm.id]) map[dm.id] = mainImg;
         // dm có thể có maSP (tuỳ DB), map cả 2 cho an toàn
