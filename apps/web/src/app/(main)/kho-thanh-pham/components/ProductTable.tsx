@@ -34,23 +34,23 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
   }, [filtered]);
 
   return (
-    <div className="card shadow-sm">
+    <div className="card shadow-sm border border-slate-200 overflow-hidden bg-white">
       <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-sm border-collapse">
-          <thead className="bg-amber-50 text-amber-900 border-b-2 border-amber-200">
+          <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs uppercase tracking-wider">
           <tr>
-            <th className="p-3 text-left font-semibold">Mã SP</th>
-            <th className="p-3 text-center font-semibold w-16">Hình ảnh</th>
-            <th className="p-3 text-left font-semibold">Tên SP</th>
-            <th className="p-3 text-left font-semibold">Màu/Size</th>
-            <th className="p-3 text-left font-semibold">LSX</th>
-            <th className="p-3 text-right font-semibold">SL</th>
-            <th className="p-3 text-left font-semibold">Vị trí</th>
-            <th className="p-3 text-center font-semibold">Trạng thái</th>
-            <th className="p-3 text-center font-semibold">Hành động</th>
+            <th className="p-4 text-left font-semibold">Mã SP</th>
+            <th className="p-4 text-center font-semibold w-20">Hình ảnh</th>
+            <th className="p-4 text-left font-semibold">Tên SP</th>
+            <th className="p-4 text-left font-semibold">Màu/Size</th>
+            <th className="p-4 text-left font-semibold">LSX</th>
+            <th className="p-4 text-right font-semibold">SL</th>
+            <th className="p-4 text-left font-semibold">Vị trí</th>
+            <th className="p-4 text-center font-semibold">Trạng thái</th>
+            <th className="p-4 text-center font-semibold">Hành động</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-slate-100">
           {groupedProducts.map((group) => (
             <React.Fragment key={group[0].maSP}>
               {group.map((s, index) => {
@@ -62,8 +62,8 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                 return (
                   <tr 
                     key={s.id} 
-                    className={`hover:bg-amber-50/50 transition-colors
-                      ${!isLast ? "border-b border-dashed border-slate-200" : "border-b-2 border-solid border-amber-100"}
+                    className={`hover:bg-slate-50/80 transition-colors
+                      ${!isLast ? "" : "border-b-4 border-slate-50"}
                     `}
                   >
                     {isFirst && (
