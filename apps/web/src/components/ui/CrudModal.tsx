@@ -13,8 +13,10 @@ export type FieldDef =
   | { name: string; label: string; type: "date"; required?: boolean }
   | { name: string; label: string; type: "textarea"; required?: boolean; placeholder?: string; rows?: number }
   | { name: string; label: string; type: "image"; required?: boolean }
-  | { name: string; label: string; type: "select"; required?: boolean; options: { value: string; label: string }[] }
+  | { name: string; label: string; type: "select"; required?: boolean; options: SelectOption[] | ((values: Record<string, string>) => SelectOption[]); disabled?: boolean | ((values: Record<string, string>) => boolean); emptyLabel?: string; clearOnChange?: string[] }
   | { name: string; label: string; type: "checkbox-group"; required?: boolean; options: { value: string; label: string }[] };
+
+export type SelectOption = { value: string; label: string };
 
 export function CrudModal({
   open,
@@ -116,10 +118,15 @@ export function CrudModal({
               <select
                 className="input"
                 value={values[f.name] || ""}
-                onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+                disabled={typeof f.disabled === "function" ? f.disabled(values) : f.disabled}
+                onChange={(e) => setValues((current) => {
+                  const next = { ...current, [f.name]: e.target.value };
+                  f.clearOnChange?.forEach((fieldName) => { next[fieldName] = ""; });
+                  return next;
+                })}
               >
-                <option value="">-- Chọn --</option>
-                {f.options.map((o) => (
+                <option value="">{f.emptyLabel || "-- Chọn --"}</option>
+                {(typeof f.options === "function" ? f.options(values) : f.options).map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
