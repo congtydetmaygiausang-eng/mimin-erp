@@ -167,8 +167,11 @@ export function useBangGia() {
 
   const themBangGia = useCallback(async (input: Omit<BangGia, "id">) => {
     const item: BangGia = { ...input, id: `BG-${Date.now()}` };
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("bang_gia").insert(listRow(item));
+      if (error) throw new Error(`Không thể lưu bảng giá: ${error.message}`);
+    }
     setBangGia((current) => { const next = [item, ...current]; save(LIST_KEY, next); return next; });
-    if (isSupabaseEnabled && supabase) await supabase.from("bang_gia").insert(listRow(item));
     return item;
   }, []);
 
@@ -176,24 +179,33 @@ export function useBangGia() {
     const currentItem = bangGia.find((item) => item.id === id);
     if (!currentItem) return;
     const updated: BangGia = { ...currentItem, ...patch, updatedAt: new Date().toISOString() };
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("bang_gia").update(listRow(updated)).eq("id", id);
+      if (error) throw new Error(`Không thể cập nhật bảng giá: ${error.message}`);
+    }
     setBangGia((current) => {
       const next = current.map((item) => item.id === id ? updated : item);
       save(LIST_KEY, next);
       return next;
     });
-    if (isSupabaseEnabled && supabase) await supabase.from("bang_gia").update(listRow(updated)).eq("id", id);
   }, [bangGia]);
 
   const xoaBangGia = useCallback(async (id: string) => {
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("bang_gia").delete().eq("id", id);
+      if (error) { console.warn("[BangGiaStore] Delete price list failed:", error); return; }
+    }
     setBangGia((current) => { const next = current.filter((item) => item.id !== id); save(LIST_KEY, next); return next; });
     setChiTiet((current) => { const next = current.filter((item) => item.bangGiaId !== id); save(DETAIL_KEY, next); return next; });
-    if (isSupabaseEnabled && supabase) await supabase.from("bang_gia").delete().eq("id", id);
   }, []);
 
   const themChiTiet = useCallback(async (input: Omit<BangGiaChiTiet, "id">) => {
     const item: BangGiaChiTiet = { ...input, id: `BGCT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("bang_gia_chi_tiet").insert(detailRow(item));
+      if (error) throw new Error(`Không thể lưu dòng giá: ${error.message}`);
+    }
     setChiTiet((current) => { const next = [...current, item]; save(DETAIL_KEY, next); return next; });
-    if (isSupabaseEnabled && supabase) await supabase.from("bang_gia_chi_tiet").insert(detailRow(item));
     return item;
   }, []);
 
@@ -201,17 +213,23 @@ export function useBangGia() {
     const currentItem = chiTiet.find((item) => item.id === id);
     if (!currentItem) return;
     const updated: BangGiaChiTiet = { ...currentItem, ...patch, updatedAt: new Date().toISOString() };
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("bang_gia_chi_tiet").update(detailRow(updated)).eq("id", id);
+      if (error) throw new Error(`Không thể cập nhật dòng giá: ${error.message}`);
+    }
     setChiTiet((current) => {
       const next = current.map((item) => item.id === id ? updated : item);
       save(DETAIL_KEY, next);
       return next;
     });
-    if (isSupabaseEnabled && supabase) await supabase.from("bang_gia_chi_tiet").update(detailRow(updated)).eq("id", id);
   }, [chiTiet]);
 
   const xoaChiTiet = useCallback(async (id: string) => {
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("bang_gia_chi_tiet").delete().eq("id", id);
+      if (error) { console.warn("[BangGiaStore] Delete price detail failed:", error); return; }
+    }
     setChiTiet((current) => { const next = current.filter((item) => item.id !== id); save(DETAIL_KEY, next); return next; });
-    if (isSupabaseEnabled && supabase) await supabase.from("bang_gia_chi_tiet").delete().eq("id", id);
   }, []);
 
   const layGia = useCallback((kenhBan: KenhBan, maSP: string, maSKUBienThe?: string, soLuong = 1) => {
