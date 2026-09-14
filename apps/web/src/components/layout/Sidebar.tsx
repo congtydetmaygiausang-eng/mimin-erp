@@ -168,6 +168,8 @@ const NAV: NavItem[] = [
       { href: "/doi-soat-tien-cong", label: "Đối soát tiền công", icon: Wallet2, iconColor: "text-orange-400", permModule: "doi-soat-tien-cong" },
       { href: "/cong-no", label: "Công nợ công đoạn", icon: Wallet2, iconColor: "text-red-400", permModule: "cong-no-cong-doan" },
       { href: "/don-hang", label: "Đơn hàng", icon: ShoppingCart, iconColor: "text-pink-400", permModule: "don-hang" },
+      { href: "/phieu-dat-ncc-phu-lieu", label: "Đặt NCC phụ liệu", icon: ShoppingBag, iconColor: "text-emerald-400", permModule: "dat-ncc-phu-lieu" },
+      { href: "/danh-muc-vat-tu-san-xuat", label: "Mẫu vật tư sản xuất", icon: Package, iconColor: "text-teal-400", permModule: "dat-ncc-phu-lieu" },
       { href: "/bang-gia", label: "Bảng giá bán", icon: Tag, iconColor: "text-amber-400", permModule: "don-hang" },
     ]
   },

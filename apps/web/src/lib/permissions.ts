@@ -3,7 +3,7 @@
 // 2026-08-05: thêm 2 role content + partner (cho 44 user @mimin.vn)
 // 2026-08-05: thêm 4 module gia-cong-mobile (trang-chu-gia-cong, cong-viec, san-luong, tien-cong)
 
-export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging";
+export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "supplier" | "workshop_customer" | "buyer_customer" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging";
 export type Action = "view" | "create" | "edit" | "delete";
 
 export type Module =
@@ -37,6 +37,7 @@ export type Module =
   | "audit-log"
   | "phan-quyen-tuy-chinh"
   | "danh-muc-sp"
+  | "dat-ncc-phu-lieu"
   // Modules gia cong mobile (cho NCC + cong nhan)
   | "cong-viec-gia-cong"
   | "ban-giao-gia-cong"
@@ -59,6 +60,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   accountant: "Kế toán",
   content: "Content / Media",
   partner: "Đối tác gia công",
+  supplier: "Nhà cung cấp",
+  workshop_customer: "Khách hàng xưởng",
+  buyer_customer: "Khách mua hàng",
   cutting: "Tổ trưởng cắt",
   printing: "Tổ trưởng in thêu",
   buttoning: "Tổ trưởng khuy nút",
@@ -76,6 +80,9 @@ export const ROLE_COLORS: Record<Role, string> = {
   accountant: "from-blue-500 to-indigo-500",
   content: "from-pink-500 to-rose-500",
   partner: "from-purple-500 to-fuchsia-500",
+  supplier: "from-emerald-500 to-teal-500",
+  workshop_customer: "from-blue-500 to-cyan-500",
+  buyer_customer: "from-orange-500 to-amber-500",
   cutting: "from-red-500 to-orange-500",
   printing: "from-indigo-500 to-blue-500",
   buttoning: "from-teal-500 to-emerald-500",
@@ -114,6 +121,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   "audit-log": "Audit log (lịch sử thao tác)",
   "phan-quyen-tuy-chinh": "Phân quyền tùy chỉnh",
   "danh-muc-sp": "Danh mục sản phẩm",
+  "dat-ncc-phu-lieu": "Đơn đặt nhà cung cấp",
   "cong-viec-gia-cong": "Công việc gia công",
   "ban-giao-gia-cong": "Bàn giao gia công",
   "san-luong-gia-cong": "Sản lượng gia công",
@@ -161,6 +169,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "audit-log": "rcud",
     "phan-quyen-tuy-chinh": "rcud",
     "danh-muc-sp": "rcud",
+    "dat-ncc-phu-lieu": "rcud",
     "cong-viec-gia-cong": "rcud",
     "ban-giao-gia-cong": "rcud",
     "san-luong-gia-cong": "rcud",
@@ -203,6 +212,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "rcu",
+    "dat-ncc-phu-lieu": "rcu",
     "cong-viec-gia-cong": "r",
     "ban-giao-gia-cong": "r",
     "san-luong-gia-cong": "r",
@@ -440,7 +450,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
   // Partner (đối tác gia công may): CHỈ thấy phiếu giao cho mình - dùng cho 20 NCC
   partner: {
     "dashboard": "",
-    "lenh-cat": "",
+    "lenh-cat": "rcu",
     "khach-hang": "",
     "ke-hoach-sx": "",
     "nhan-su": "",
@@ -470,6 +480,27 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "rcu",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
+  },
+  // Nhà cung cấp: xem đơn được giao, xác nhận và cập nhật tiến độ sản xuất.
+  supplier: {
+    "dashboard": "r",
+    "nha-cung-cap": "r",
+    "dat-ncc-phu-lieu": "ru",
+  },
+  // Khách hàng xưởng: tạo và chỉnh sửa đơn của chính xưởng mình.
+  workshop_customer: {
+    "dashboard": "r",
+    "don-hang": "rcu",
+    "danh-muc-sp": "r",
+    "dat-ncc-phu-lieu": "r",
+    "giao-hang": "r",
+  },
+  // Khách mua hàng: đặt mua, sửa đơn chưa xác nhận và theo dõi giao hàng.
+  buyer_customer: {
+    "dashboard": "r",
+    "don-hang": "rcu",
+    "danh-muc-sp": "r",
+    "giao-hang": "r",
   },
 };
 
@@ -548,7 +579,7 @@ export function getFullMatrix(): Record<Role, Partial<Record<Module, string>>> {
 }
 
 export const ALL_ROLES: Role[] = [
-  "admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner",
+  "admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner", "supplier", "workshop_customer", "buyer_customer",
   "cutting", "printing", "buttoning", "ironing", "packaging"
 ];
 
@@ -560,7 +591,7 @@ export const ALL_MODULES: Module[] = [
   "gia-cong-ngoai", "bao-cao", "ai-tinh-gia", "khach-hang-tiem-nang",
   "so-do-chien-luoc", "realtime", "cai-dat",
   "trang-chu-gia-cong", "bang-dieu-hanh-sx", "doi-soat-tien-cong",
-  "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp",
+  "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp", "dat-ncc-phu-lieu",
   "cong-viec-gia-cong", "ban-giao-gia-cong", "san-luong-gia-cong", "tien-cong-gia-cong",
   "to-cat", "to-in-theu", "to-khuy-nut", "to-ui", "to-dong-goi"
 ];

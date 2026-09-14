@@ -19,6 +19,11 @@ export type AppUser = {
   phongBan?: string;
   donGia?: number;
   laCongNhan?: boolean;
+  organizationId?: string;
+  organizationCode?: string;
+  organizationName?: string;
+  workspaceRole?: string;
+  dataScope?: string;
 };
 
 type SessionContextValue = {
@@ -71,12 +76,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     migrateLarkConfig();
     // Xoá session nếu còn dùng email mock cũ (force re-login)
     clearMockSession();
-    let currentUserSource = "none";
+    let currentUserSource: "supabase" | "demo" | "none" = "none";
 
     const ttlUser = getSessionWithTTL();
     if (ttlUser) {
       setUser(ttlUser);
-      currentUserSource = ttlUser.source || "demo";
+      currentUserSource = ttlUser.source === "supabase" ? "supabase" : "demo";
       setAuthSource(currentUserSource);
       setLoading(false);
       // Bỏ 'return;' ở đây để code chạy tiếp xuống dưới, 
@@ -89,7 +94,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           setUser(parsed);
           // Những session cũ (trước khi thêm field 'source') nếu không có TTL (rơi xuống else block này)
           // thì CHẮC CHẮN là Supabase session. Mặc định phải là "supabase", không phải "demo".
-          currentUserSource = parsed.source || "supabase";
+          currentUserSource = parsed.source === "demo" ? "demo" : "supabase";
           setAuthSource(currentUserSource);
         } catch {
           // ignore
@@ -134,6 +139,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             phongBan: userMeta.phongBan as string | undefined,
             donGia: userMeta.donGia as number | undefined,
             laCongNhan: userMeta.laCongNhan as boolean | undefined,
+            organizationId: userMeta.organization_id as string | undefined,
+            organizationCode: userMeta.organization_code as string | undefined,
+            organizationName: userMeta.organization_name as string | undefined,
+            workspaceRole: userMeta.workspace_role as string | undefined,
+            dataScope: userMeta.data_scope as string | undefined,
           };
           
           setUser(u);

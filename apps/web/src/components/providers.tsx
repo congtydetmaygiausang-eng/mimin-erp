@@ -26,6 +26,9 @@ import { CongNhanGiaCongProvider } from "@/lib/data/cong-nhan-gia-cong";
 import { DonHangProvider } from "@/lib/data/don-hang-store";
 import { GioHangProvider } from "@/lib/data/gio-hang-store";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { VatTuDatSanXuatProvider } from "@/lib/data/vat-tu-dat-san-xuat-store";
+import { PhieuDatNccProvider } from "@/lib/data/phieu-dat-ncc-store";
+import { WorkspaceProvider } from "@/lib/workspace-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -61,6 +64,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                       <DanhMucSPProvider>
                                         <CongNhanGiaCongProvider>
                                           <DonHangProvider>
+                                            <VatTuDatSanXuatProvider>
+                                            <WorkspaceProvider>
+                                            <PhieuDatNccProvider>
                                             <GioHangProvider>
                                               <NotificationProvider>
                                                 <ErrorBoundary>
@@ -77,6 +83,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                                 </ErrorBoundary>
                                               </NotificationProvider>
                                             </GioHangProvider>
+                                            </PhieuDatNccProvider>
+                                            </WorkspaceProvider>
+                                            </VatTuDatSanXuatProvider>
                                           </DonHangProvider>
                                         </CongNhanGiaCongProvider>
                                       </DanhMucSPProvider>

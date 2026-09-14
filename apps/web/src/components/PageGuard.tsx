@@ -37,6 +37,8 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/role-workspaces", module: "nhan-su" },
   // Bán hàng
   { match: "/don-hang",        module: "don-hang" },
+  { match: "/phieu-dat-ncc-phu-lieu", module: "dat-ncc-phu-lieu" },
+  { match: "/danh-muc-vat-tu-san-xuat", module: "dat-ncc-phu-lieu" },
   { match: "/khach-hang",      module: "khach-hang" },
   // Kho + giao
   { match: "/giao-hang",       module: "giao-hang" },
