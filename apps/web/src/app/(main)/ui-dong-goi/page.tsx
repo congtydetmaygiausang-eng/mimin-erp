@@ -16,13 +16,18 @@ import { useSession } from "@/components/session-provider";
 import React from "react";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
-import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
+import { taoMaLoTonKhoTheoDong, toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
+import { usePhanCong } from "@/lib/data/cong-no-store";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 
 export default function UiDongGoiPage() {
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { upsertTuLenhCat } = usePhanCong();
+  const { giaoDich } = useKho();
 
   const { dsSanPham: dsDanhMuc, suaSP } = useDanhMucSP();
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
@@ -269,13 +274,11 @@ export default function UiDongGoiPage() {
                         </select>
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (!khuVuc[lc.id]) {
                             toast.error("Vui lòng chọn khu vực nhập kho!");
                             return;
                           }
-                          capNhatTrangThai(lc.id, "HoanThanh", null);
-
                           // Thêm vào kho thành phẩm: 1 dòng riêng cho MỖI MÀU (không gộp
                           // "Nhiều màu") - lấy ảnh từ dsMau gốc, số lượng thật từ chiTietMau
                           // của khâu Đóng gói (nếu có), fallback chia đều theo tổng SL.
@@ -320,23 +323,29 @@ export default function UiDongGoiPage() {
                           // Giá vốn 1 SP đã được tính sẵn lúc tạo lệnh cắt (vải + phụ liệu
                           // + gia công + chi phí cố định). Trước đây bị gán cứng donGia: 0
                           // nên cột "Giá trị" của Kho thành phẩm luôn hiện 0đ.
-                          const giaVon1SP = Math.round(
-                            lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0
-                          );
+                          const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+                          const giaVon1SP = ketQuaGiaVon.giaVon1SP;
+                          if (giaVon1SP <= 0) {
+                            const chiTiet = ketQuaGiaVon.maVatTuThieuGia.length > 0 ? ` Thiếu đơn giá nhập của: ${ketQuaGiaVon.maVatTuThieuGia.join(", ")}.` : "";
+                            toast.error(`Lệnh cắt chưa tính được giá vốn.${chiTiet}`, { duration: 7000 });
+                            return;
+                          }
 
                           const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
                             const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
                             const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
-                            const chiTietSz = ct?.sizes || m.phanBoSize || [];
+                            const chiTietSz = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
                             const strTiLeSize = chiTietSz.filter((x: any) => x.sl > 0).map((x: any) => `${x.size}:${x.sl}`).join(", ");
+                            const variantKey = String(m.maSKU || m.ten || idx).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-").toUpperCase();
                             return {
-                              id: `SP-${Date.now()}-${idx}`,
+                              id: `TP-${lc.id}-${variantKey}`,
                               maSP: lc.maSP || lc.id,
                               tenSP: lc.tenSP,
                               phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
                               mau: m.ten,
-                              size: "Nhiều size",
-                              lsx: lc.id,
+                              size: chiTietSz.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
+                              lsx: taoMaLoTonKhoTheoDong(`TP-${lc.id}-${variantKey}`, new Date().toISOString().split("T")[0]),
+                              maLenhCat: lc.id,
                               ngayNhap: new Date().toISOString().split("T")[0],
                               soLuong: sl,
                               donGia: giaVon1SP,
@@ -351,18 +360,37 @@ export default function UiDongGoiPage() {
                           });
 
                           try {
+                            await Promise.all(newSPs.map((sp) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(sp))));
                             const khoKey = "mimin_kho_thanh_pham_v2";
-                            const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
-                            currentKho.push(...newSPs);
-                            localStorage.setItem(khoKey, JSON.stringify(currentKho));
+                            const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]") as SanPhamTP[];
+                            const incomingIds = new Set(newSPs.map((sp) => sp.id));
+                            localStorage.setItem(khoKey, JSON.stringify([...newSPs, ...currentKho.filter((sp) => !incomingIds.has(sp.id))]));
                           } catch (e) {
-                            console.error("Lỗi khi thêm vào kho thành phẩm (local)", e);
+                            console.error("Lỗi khi thêm vào kho thành phẩm", e);
+                            toast.error("Chưa thể đồng bộ Kho thành phẩm. Lệnh chưa được chốt để anh có thể thử lại.", { duration: 7000 });
+                            return;
                           }
-                          newSPs.forEach((sp) => {
-                            supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(sp)).catch((e) =>
-                              console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
-                            );
+
+                          // Chốt công nợ tại thời điểm nhập kho. Hàm upsert dùng khóa
+                          // lệnh + công đoạn + người phụ trách nên chạy lại vẫn không
+                          // cộng trùng, đồng thời cập nhật đúng SL đạt và đơn giá mới nhất.
+                          const congNoCongDoan = (lc.phanCong || []).filter((pc: any) =>
+                            pc.trangThaiCD === "hoan_thanh" && pc.nguoiMa && (pc.donGia || 0) > 0
+                          );
+                          congNoCongDoan.forEach((pc: any) => {
+                            const soLuongDat = pc.soLuongDatCuoi ?? pc.soLuongHoanThanh ?? pc.soLuong ?? 0;
+                            upsertTuLenhCat({
+                              lenhCatId: lc.id,
+                              congDoan: pc.tenCongDoan || "Gia công",
+                              nguoiMa: pc.nguoiMa,
+                              nguoiTen: pc.nguoiTen || "Chưa rõ",
+                              donGia: pc.donGia,
+                              soLuongGiao: soLuongDat,
+                              ngayGiao: pc.ngayNhanViec,
+                              daThanhToan: pc.daThanhToan || 0,
+                            });
                           });
+                          capNhatTrangThai(lc.id, "HoanThanh", null);
 
                           // Cập nhật lại màu và size chuẩn vào Danh mục sản phẩm
                           const existingDM = dsDanhMuc.find(d => d.id === lc.maSP || d.maSP === lc.maSP);
@@ -401,7 +429,7 @@ export default function UiDongGoiPage() {
                             }
                           }
 
-                          toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) tại ${khuVuc[lc.id]}`);
+                          toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) và chốt ${congNoCongDoan.length} khoản công đoạn`);
                         }}
                         className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02]"
                       >

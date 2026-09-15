@@ -8,7 +8,7 @@ import { useSession } from "@/components/session-provider";
 import { logCRUD } from "@/lib/audit-log";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
-import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
+import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, taoMaLoTonKhoTheoDong, layMaLoTonKho, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -18,10 +18,13 @@ import { MasterDetailsModal } from "./components/MasterDetailsModal";
 import { DangBanModal } from "./components/DangBanModal";
 import { VariantDetailModal } from "./components/VariantDetailModal";
 import { SuaTongModal } from "./components/SuaTongModal";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 
 export default function KhoThanhPhamPage() {
   const { user } = useSession();
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
+  const { giaoDich } = useKho();
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
   const { chiTiet, themChiTiet, suaChiTiet } = useBangGia();
@@ -72,7 +75,7 @@ export default function KhoThanhPhamPage() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as SanPhamTP[];
-        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed.map(chuanHoaSanPhamKho));
       }
     } catch {}
 
@@ -102,7 +105,7 @@ export default function KhoThanhPhamPage() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw) as SanPhamTP[];
-        if (Array.isArray(parsed)) setDsSanPhamState(parsed);
+        if (Array.isArray(parsed)) setDsSanPhamState(parsed.map(chuanHoaSanPhamKho));
       } catch {}
     };
     window.addEventListener(KHO_TP_CHANGED_EVENT, onChanged);
@@ -540,7 +543,7 @@ export default function KhoThanhPhamPage() {
   // cũ bị gộp "Nhiều màu" (nhập kho trước khi sửa lỗi gộp màu) - giữ lại ảnh/giá
   // đã nhập riêng nếu tên màu trùng khớp với card cũ.
   const handleRebuildFromLC = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
-    const lsx = group.items[0]?.lsx || group.maSP;
+    const lsx = group.items[0]?.maLenhCat || group.maSP;
     const lc = dsLenhCat.find((l) => l.id === lsx);
     if (!lc || !lc.dsMau || lc.dsMau.length === 0) {
       toast.error("Không tìm thấy dữ liệu màu từ lệnh cắt gốc để tách");
@@ -558,7 +561,15 @@ export default function KhoThanhPhamPage() {
     const ngayNhap = group.items[0]?.ngayNhap || new Date().toISOString().slice(0, 10);
 
     // Giá vốn 1 SP từ lệnh cắt gốc - dùng khi bản ghi cũ chưa có (donGia = 0)
-    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+    const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+    const giaVon1SP = ketQuaGiaVon.giaVon1SP;
+    if (giaVon1SP <= 0) {
+      const vatTuThieu = ketQuaGiaVon.maVatTuThieuGia.length > 0
+        ? ` Thiếu đơn giá nhập của: ${ketQuaGiaVon.maVatTuThieuGia.join(", ")}.`
+        : "";
+      toast.error(`Lệnh ${lc.id} chưa tính được giá vốn, không thể nhập kho.${vatTuThieu}`, { duration: 7000 });
+      return;
+    }
 
     const newSPs: SanPhamTP[] = lc.dsMau.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
@@ -601,7 +612,7 @@ export default function KhoThanhPhamPage() {
     const group = dangBanGroup;
     if (!group) return;
 
-    const lsx = group.items[0]?.lsx;
+    const lsx = group.items[0]?.maLenhCat;
     const lc = dsLenhCat.find((l) => l.id === lsx);
     const mauTuLC = lc?.dsMau || [];
 
@@ -670,8 +681,8 @@ export default function KhoThanhPhamPage() {
   };
 
   const exportCSV = () => {
-    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "LSX", "SL", "Vị trí", "Trạng thái"]];
-    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, s.lsx, String(s.soLuong), s.viTri, s.trangThai]));
+    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "Mã lô tồn kho", "SL", "Vị trí", "Trạng thái"]];
+    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, layMaLoTonKho(s), String(s.soLuong), s.viTri, s.trangThai]));
     const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -708,14 +719,16 @@ export default function KhoThanhPhamPage() {
     const newSps: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
       const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+      const chiTietSize = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
       return {
         id: `TP-${Date.now().toString(36)}-${idx}`,
         maSP: lc.maSP || lc.id,
         tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
         phanLoai: lc.loaiSP || "BoTru",
         mau: m.ten,
-        size: "Nhiều size",
-        lsx: lc.id,
+        size: chiTietSize.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
+        lsx: taoMaLoTonKhoTheoDong(`TP-${lc.id}-${idx}`, ngayNhap),
+        maLenhCat: lc.id,
         ngayNhap,
         soLuong: sl,
         donGia: giaVon1SP,
@@ -724,7 +737,7 @@ export default function KhoThanhPhamPage() {
         trangThai: "con",
         hinhAnh: m.img ? [m.img] : [],
         imgQuan: m.imgQuan || undefined,
-        chiTietSize: ct?.sizes || m.phanBoSize || [],
+        chiTietSize,
       } as SanPhamTP;
     }).filter((sp: SanPhamTP) => sp.soLuong > 0);
 
@@ -749,20 +762,28 @@ export default function KhoThanhPhamPage() {
               <Package className="w-4 h-4" /> Có {dsChoNhapKho.length} lệnh cắt hoàn thành đóng gói, chờ nhập kho thành phẩm:
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {dsChoNhapKho.map(lc => (
-                <div key={lc.id} className="bg-white rounded-xl border border-amber-100 p-3 shadow-sm flex flex-col justify-between">
+              {dsChoNhapKho.map(lc => {
+                const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+                const coGiaVon = ketQuaGiaVon.giaVon1SP > 0;
+                return (
+                  <div key={lc.id} className={`bg-white rounded-xl border p-3 shadow-sm flex flex-col justify-between ${coGiaVon ? "border-amber-100" : "border-rose-300"}`}>
                   <div>
                     <div className="font-bold text-slate-800 text-sm">{lc.id} - {lc.tenSP}</div>
                     <div className="text-xs text-slate-500 mt-1">SL yêu cầu: <span className="font-semibold text-sky-600">{lc.tongSL?.toLocaleString('vi-VN')}</span></div>
+                    <div className={`mt-2 rounded-lg px-2.5 py-2 text-xs font-bold ${coGiaVon ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      Giá vốn: {coGiaVon ? `${ketQuaGiaVon.giaVon1SP.toLocaleString("vi-VN")}đ/SP` : "Chưa tính được — không thể nhập kho"}
+                    </div>
                   </div>
                   <button
                     onClick={() => handleNhapKhoFromLC(lc)}
-                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                    disabled={!coGiaVon}
+                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
                   >
                     Chi tiết nhập kho <ArrowRight className="w-3.5 h-3.5" />
                   </button>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -844,7 +865,7 @@ export default function KhoThanhPhamPage() {
         const existing = dsDanhMuc.find((sp) => sp.id === dangBanGroup.maSP);
         // Giá vốn thật: ưu tiên đơn giá đã ghi lúc nhập kho, sau đó tới bảng COGS
         // của lệnh cắt gốc.
-        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.lsx);
+        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.maLenhCat);
         const giaVonTuLenhCat = Math.round(
           dangBanGroup.items.find((i) => i.donGia > 0)?.donGia ||
           lcGoc?.bangCOGS?.giaVonBinhQuan ||
