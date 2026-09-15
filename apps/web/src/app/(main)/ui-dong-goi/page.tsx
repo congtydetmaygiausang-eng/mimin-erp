@@ -286,22 +286,26 @@ export default function UiDongGoiPage() {
                           const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
                           const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
 
-                          // BUG FIX: Tự động copy số lượng sang khâu Nhập Kho để hiển thị trong Bảng Tỷ Lệ Size
-                          const nhapKhoPC = lc.phanCong?.find((pc: any) => pc.id === "nhapKho" || pc.id === "nhap_kho" || pc.tenCongDoan?.toLowerCase().includes("nhập kho"));
-                          if (nhapKhoPC) {
+                          // BUG FIX: Tự động copy số lượng sang khâu Đóng Gói để hiển thị trong Bảng Tỷ Lệ Size
+                          const dongGoiPCToUpdate = dongGoiPCs[0];
+                          if (dongGoiPCToUpdate) {
                             const newDsMau = [...dsMauLC].map((mau) => {
                               let dongGoiSizes = mau.tyLeSizeChiTiet?.["dongGoi"] || mau.tyLeSizeChiTiet?.["dong_goi"] || [];
-                              if (dongGoiSizes.length === 0 && dongGoiPCs[0] && mau.tyLeSizeChiTiet?.[dongGoiPCs[0].id]) {
-                                dongGoiSizes = mau.tyLeSizeChiTiet[dongGoiPCs[0].id];
+                              if (dongGoiSizes.length === 0 && mau.tyLeSizeChiTiet?.[dongGoiPCToUpdate.id]) {
+                                dongGoiSizes = mau.tyLeSizeChiTiet[dongGoiPCToUpdate.id];
+                              }
+                              // Nếu vẫn trống thì lấy từ khâu Ủi hoặc Khuy nút (khâu trước đó)
+                              if (dongGoiSizes.length === 0) {
+                                dongGoiSizes = mau.tyLeSizeChiTiet?.["ui"] || mau.tyLeSizeChiTiet?.["khuy_nut"] || [];
                               }
                               return {
                                 ...mau,
-                                tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [nhapKhoPC.id]: dongGoiSizes }
+                                tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [dongGoiPCToUpdate.id]: dongGoiSizes }
                               };
                             });
                             
                             const newPhanCong = (lc.phanCong || []).map((pc: any) => {
-                              if (pc.id === nhapKhoPC.id) {
+                              if (pc.id === dongGoiPCToUpdate.id) {
                                 const tongNhap = chiTietMauAll.reduce((s, c) => s + (c.soLuongDat || 0), 0);
                                 return {
                                   ...pc,

@@ -420,6 +420,13 @@ export default function KhoThanhPhamPage() {
     toast.success("Đã xóa");
   };
 
+  const handleDeleteGroup = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ sản phẩm trong nhóm này không?\n\nTất cả ${group.items.length} phân loại sẽ bị đưa vào Thùng rác.`)) return;
+    const maSP = group.maSP;
+    update(dsSanPham.filter((s) => s.maSP !== maSP));
+    toast.success(`Đã xóa toàn bộ nhóm ${group.tenSP}`);
+  };
+
   const handleXuatKho = (id: string) => {
     const sp = dsSanPham.find((s) => s.id === id);
     if (!sp) return;
@@ -835,6 +842,7 @@ export default function KhoThanhPhamPage() {
               onOpenVariant={setOpenVariant}
               onRebuildFromLC={handleRebuildFromLC}
               onSuaTong={setSuaTongGroup}
+              onXoaTong={handleDeleteGroup}
               dsLenhCat={dsLenhCat}
             />
           ) : (
@@ -846,6 +854,7 @@ export default function KhoThanhPhamPage() {
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}
               onSuaTong={setSuaTongGroup}
+              onXoaTong={handleDeleteGroup}
             />
           )}
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Activity, Search, Filter, Download, Trash2, RefreshCw,
   CheckCircle2, XCircle, AlertTriangle, Edit2, Trash, Plus,
@@ -43,13 +43,100 @@ export default function AuditLogPage() {
   const { user } = useSession();
   const perm = usePermission();
   const [logs, setLogs] = useState<AuditLog[]>(getAuditLogs());
+  
+  // Lấy dữ liệu xóa từ Supabase để đồng bộ Thùng Rác trên mọi thiết bị (kết hợp realtime)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let channel: any;
+    
+    (async () => {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        if (!supabase) return;
+        
+        const fetchRemote = async () => {
+          const { data, error } = await supabase
+            .from("audit_logs")
+            .select("*")
+            .eq("action", "delete")
+            .not("old_value", "is", null)
+            .order("timestamp", { ascending: false })
+            .limit(100);
+            
+          if (!error && data) {
+            const { snakeToCamel } = await import("@/lib/supabase/sync-helper");
+            const remoteLogs = data.map(d => ({
+              id: d.id,
+              timestamp: d.timestamp,
+              userId: d.user_id,
+              userName: d.user_name,
+              userEmail: d.user_email,
+              userRole: d.user_role as Role,
+              action: d.action as AuditAction,
+              module: d.module as AuditModule,
+              resourceId: d.resource_id,
+              resourceName: d.resource_name,
+              description: d.description,
+              ipAddress: d.ip_address,
+              userAgent: d.user_agent,
+              success: d.success,
+              oldValue: snakeToCamel(d.old_value)
+            }));
+            
+            setLogs(prev => {
+              const prevMap = new Map(prev.map(l => [l.id, l]));
+              remoteLogs.forEach(rl => prevMap.set(rl.id, rl as AuditLog));
+              return Array.from(prevMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            });
+          }
+        };
+
+        await fetchRemote();
+
+        // Đăng ký realtime
+        channel = supabase
+          .channel("audit_logs_changes")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "audit_logs" },
+            (payload) => {
+              if (payload.new && (payload.new as any).action === "delete") {
+                 fetchRemote();
+              }
+            }
+          )
+          .subscribe();
+
+      } catch (err) {
+        console.error("Lỗi lấy dữ liệu Thùng Rác từ Supabase:", err);
+      }
+    })();
+
+    return () => {
+      if (channel) {
+        import("@/lib/supabase/client").then(({ supabase }) => {
+          supabase?.removeChannel(channel);
+        });
+      }
+    };
+  }, []);
+
   const [search, setSearch] = useState("");
   const [filterModule, setFilterModule] = useState<AuditModule | "all">("all");
   const [filterAction, setFilterAction] = useState<AuditAction | "all">("all");
   const [filterRole, setFilterRole] = useState<string>("all");
   const [onlyFailed, setOnlyFailed] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [activeTab, setActiveTab] = useState<"history" | "trash">("history");
+  const [activeTab, setActiveTab] = useState<"history" | "trash">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("mimin_audit_tab") as any) || "history";
+    }
+    return "history";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("mimin_audit_tab", activeTab);
+  }, [activeTab]);
 
   const stats = useMemo(() => getAuditStats(logs), [logs]);
 
@@ -64,7 +151,20 @@ export default function AuditLogPage() {
   }, [logs, search, filterModule, filterAction, filterRole, onlyFailed]);
 
   const trashLogs = useMemo(() => {
-    return logs.filter((l) => l.action === "delete" && l.oldValue != null).reverse();
+    // Để loại bỏ các mục đã khôi phục khỏi thùng rác, ta phải tìm hành động mới nhất của mỗi resourceId
+    const latestActionByResource = new Map<string, AuditLog>();
+    const sortedLogs = [...logs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    for (const l of sortedLogs) {
+      if (l.resourceId) {
+        const key = `${l.module}_${l.resourceId}`;
+        latestActionByResource.set(key, l);
+      }
+    }
+    
+    return Array.from(latestActionByResource.values())
+      .filter((l) => l.action === "delete" && l.oldValue != null)
+      .reverse();
   }, [logs]);
 
   if (!perm.canView("cai-dat")) {
@@ -120,7 +220,16 @@ export default function AuditLogPage() {
       
       if (log.module === "lenh-cat") {
         tableName = "lenh_cat";
-        payload = camelToSnake(log.oldValue);
+        const lenh: any = log.oldValue;
+        payload = {
+          id: lenh.id, loai_lenh: lenh.loaiLenh, khach_hang: lenh.khachHang, loai_sp: lenh.loaiSP, ma_sp: lenh.maSP,
+          ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe,
+          han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
+          mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
+          chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
+          phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
+          phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao
+        };
       } else if (log.module === "danh-muc-sp") {
         tableName = "san_pham";
         payload = camelToSnake(log.oldValue);
@@ -128,8 +237,7 @@ export default function AuditLogPage() {
         delete payload.id;
       } else if (log.module === "kho-thanh-pham") {
         tableName = "kho_thanh_pham";
-        const { toSupabaseRow } = await import("../kho-thanh-pham/data");
-        payload = toSupabaseRow(log.oldValue as any);
+        payload = camelToSnake(log.oldValue);
       } else {
         toast.error("Không hỗ trợ khôi phục module này");
         return;
@@ -138,11 +246,38 @@ export default function AuditLogPage() {
       await supabaseUpsertRaw(tableName, payload);
       toast.success("Khôi phục thành công! Đã đồng bộ lên hệ thống.");
       
-      logAudit({ user, action: "create", module: log.module, description: `[Khôi phục từ thùng rác] ${log.resourceName || log.resourceId || ""}` });
-      refresh();
-    } catch (e) {
+      const newLog: AuditLog = {
+        id: "log_" + Date.now(),
+        timestamp: new Date().toISOString(),
+        user: user?.name || "Unknown",
+        userRole: user?.role || "user",
+        action: "create",
+        module: log.module,
+        description: `[Khôi phục từ thùng rác] ${log.resourceName || log.resourceId || ""}`,
+        resourceId: log.resourceId,
+        resourceName: log.resourceName
+      };
+
+      // Cập nhật state nội bộ ngay lập tức để UI không bị giật (biến mất tất cả logs)
+      setLogs(prev => [newLog, ...prev]);
+      
+      // Đồng thời lưu log vào localStorage/DB
+      logAudit({ 
+        user, 
+        action: "create", 
+        module: log.module, 
+        description: `[Khôi phục từ thùng rác] ${log.resourceName || log.resourceId || ""}`,
+        resourceId: log.resourceId,
+        resourceName: log.resourceName
+      });
+      
+      // Buộc tải lại trang để các context toàn cục (như LenhCatProvider) fetch lại data mới từ DB
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (e: any) {
       console.error(e);
-      toast.error("Khôi phục thất bại");
+      toast.error(`Khôi phục thất bại: ${e.message || "Lỗi không xác định"}`);
     }
   };
 

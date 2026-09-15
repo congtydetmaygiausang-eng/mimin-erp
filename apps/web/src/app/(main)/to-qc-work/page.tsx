@@ -246,6 +246,36 @@ export default function UiQCPage() {
       lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat", ghiChu: `QC lần ${lanKiem} – Hoàn tất (tích lũy ${slDatTichLuy} SP → Cộng CN)` }],
     } as any);
 
+    const mayPCs = lc.phanCong?.filter((p: any) => p.tenCongDoan?.toLowerCase().includes("may")) || [];
+    const isBo = lc.loaiLenh?.toLowerCase().includes("bo") || mayPCs.length > 1;
+    const qcPC = lc.phanCong?.find((p: any) => p.id === "qc");
+    
+    // Nếu không phải hàng bộ, copy bảng size sang QC luôn khi duyệt Đạt
+    if (!isBo && qcPC) {
+      const newDsMau = (lc.dsMau || []).map((mau: any) => {
+        const maySizes = pc ? mau.tyLeSizeChiTiet?.[pc.id] || [] : [];
+        return {
+          ...mau,
+          tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [qcPC.id]: maySizes }
+        };
+      });
+      suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+      
+      const chiTietMauQC = (pc?.chiTietMau || []).map((c: any) => ({
+        mau: c.mau,
+        soLuongNhan: c.soLuongDat,
+        soLuongDat: c.soLuongDat,
+        soLuongLoi: 0,
+      }));
+      
+      capNhatCongDoan(lc.id, qcPC.id, {
+        trangThaiCD: "hoan_thanh",
+        soLuongHoanThanh: slDatTichLuy,
+        soLuongDatCuoi: slDatTichLuy,
+        chiTietMau: chiTietMauQC
+      } as any);
+    }
+
     toast.success(`✅ QC Hoàn Tất: ${pc.tenCongDoan} – ${slDatTichLuy} SP đạt → Cộng vào Công Nợ${slLoi > 0 ? ` · ${slLoi} SP phế phẩm` : ""}`);
 
     // Reset input
