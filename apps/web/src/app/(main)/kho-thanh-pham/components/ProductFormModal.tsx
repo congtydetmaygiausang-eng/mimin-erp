@@ -80,7 +80,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [giaBanLo, setGiaBanLo] = useState(0);
   const [giaTikTok, setGiaTikTok] = useState(0);
   const [giaShopee, setGiaShopee] = useState(0);
-  const { bangGia } = useBangGia();
+  const { bangGia, chiTiet } = useBangGia();
   const [bangGiaSelected, setBangGiaSelected] = useState<Record<string, string>>({});
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
@@ -641,7 +641,7 @@ function SizeRatioBuilderModal({ onClose, onSave }: { onClose: () => void; onSav
 function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
   const isValidKey = Object.keys(LOAI_SP_LABELS).includes(sp.phanLoai || "");
   const detectedPhanLoai = isValidKey ? sp.phanLoai : detectLoaiSP((sp.tenSP || "") + " " + (sp.phanLoai || ""));
-  const { bangGia } = useBangGia();
+  const { bangGia, chiTiet } = useBangGia();
   const [bangGiaSelected, setBangGiaSelected] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
@@ -877,7 +877,13 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
                   <SearchablePriceListSelect 
                     options={bangGia.filter(b => b.kenhBan === item.kenh)} 
                     value={bangGiaSelected[item.kenh] || ""} 
-                    onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id })} 
+                    onChange={(id) => {
+                      setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id });
+                      const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === maSP && !ct.maSKUBienThe);
+                      if (priceDetail) {
+                        item.set(priceDetail.giaBan);
+                      }
+                    }} 
                   />
                   <div className="relative mt-2">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>

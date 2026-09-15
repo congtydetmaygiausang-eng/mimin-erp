@@ -25,7 +25,7 @@ export function SuaTongModal({
   const phanLoaiInit = group.items[0]?.phanLoai || "";
   const isValidKey = Object.keys(LOAI_SP_LABELS).includes(phanLoaiInit);
   const detectedPhanLoai = isValidKey ? phanLoaiInit : detectLoaiSP((group.tenSP || "") + " " + phanLoaiInit);
-  const { bangGia } = useBangGia();
+  const { bangGia, chiTiet } = useBangGia();
   const [bangGiaSelected, setBangGiaSelected] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
@@ -178,7 +178,13 @@ export function SuaTongModal({
                   <SearchablePriceListSelect 
                     options={bangGia.filter(b => b.kenhBan === item.kenh)} 
                     value={bangGiaSelected[item.kenh] || ""} 
-                    onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id })} 
+                    onChange={(id) => {
+                      setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id });
+                      const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === group.maSP && !ct.maSKUBienThe);
+                      if (priceDetail) {
+                        item.set(priceDetail.giaBan);
+                      }
+                    }} 
                   />
                   <div className="relative mt-2">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>
