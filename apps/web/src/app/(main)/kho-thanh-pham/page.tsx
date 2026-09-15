@@ -635,13 +635,14 @@ export default function KhoThanhPhamPage() {
     const newSps: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
       const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+      const chiTietSize = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
       return {
         id: `TP-${Date.now().toString(36)}-${idx}`,
         maSP: lc.maSP || lc.id,
         tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
         phanLoai: lc.loaiSP || "BoTru",
         mau: m.ten,
-        size: "Nhiều size",
+        size: chiTietSize.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
         lsx: lc.id,
         ngayNhap,
         soLuong: sl,
@@ -651,7 +652,7 @@ export default function KhoThanhPhamPage() {
         trangThai: "con",
         hinhAnh: m.img ? [m.img] : [],
         imgQuan: m.imgQuan || undefined,
-        chiTietSize: ct?.sizes || m.phanBoSize || [],
+        chiTietSize,
       } as SanPhamTP;
     }).filter((sp: SanPhamTP) => sp.soLuong > 0);
 

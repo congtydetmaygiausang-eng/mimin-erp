@@ -300,7 +300,7 @@ export default function UiDongGoiPage() {
                           const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
                             const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
                             const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
-                            const chiTietSz = ct?.sizes || m.phanBoSize || [];
+                            const chiTietSz = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
                             const strTiLeSize = chiTietSz.filter((x: any) => x.sl > 0).map((x: any) => `${x.size}:${x.sl}`).join(", ");
                             const variantKey = String(m.maSKU || m.ten || idx).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-").toUpperCase();
                             return {
@@ -309,7 +309,7 @@ export default function UiDongGoiPage() {
                               tenSP: lc.tenSP,
                               phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
                               mau: m.ten,
-                              size: "Nhiều size",
+                              size: chiTietSz.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
                               lsx: lc.id,
                               ngayNhap: new Date().toISOString().split("T")[0],
                               soLuong: sl,
