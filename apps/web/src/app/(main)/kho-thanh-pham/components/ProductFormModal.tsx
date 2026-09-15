@@ -318,7 +318,11 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                       <SearchablePriceListSelect 
                         options={bangGia.filter(b => b.kenhBan === "ban-le")} 
                         value={bangGiaSelected["ban-le"] || ""} 
-                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "ban-le": id })} 
+                        onChange={(id) => {
+                          setBangGiaSelected({ ...bangGiaSelected, "ban-le": id });
+                          const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === maSP && !ct.maSKUBienThe) || chiTiet.find(ct => ct.bangGiaId === id);
+                          if (priceDetail) setGiaBanLe(priceDetail.giaBan);
+                        }} 
                       />
                       <input type="number" min={0} value={giaBanLe || ""} onChange={(e) => setGiaBanLe(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
@@ -327,7 +331,11 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                       <SearchablePriceListSelect 
                         options={bangGia.filter(b => b.kenhBan === "ban-si")} 
                         value={bangGiaSelected["ban-si"] || ""} 
-                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "ban-si": id })} 
+                        onChange={(id) => {
+                          setBangGiaSelected({ ...bangGiaSelected, "ban-si": id });
+                          const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === maSP && !ct.maSKUBienThe) || chiTiet.find(ct => ct.bangGiaId === id);
+                          if (priceDetail) setGiaBanSi(priceDetail.giaBan);
+                        }} 
                       />
                       <input type="number" min={0} value={giaBanSi || ""} onChange={(e) => setGiaBanSi(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
@@ -336,7 +344,11 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                       <SearchablePriceListSelect 
                         options={bangGia.filter(b => b.kenhBan === "ban-lo")} 
                         value={bangGiaSelected["ban-lo"] || ""} 
-                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "ban-lo": id })} 
+                        onChange={(id) => {
+                          setBangGiaSelected({ ...bangGiaSelected, "ban-lo": id });
+                          const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === maSP && !ct.maSKUBienThe) || chiTiet.find(ct => ct.bangGiaId === id);
+                          if (priceDetail) setGiaBanLo(priceDetail.giaBan);
+                        }} 
                       />
                       <input type="number" min={0} value={giaBanLo || ""} onChange={(e) => setGiaBanLo(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
@@ -345,7 +357,11 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                       <SearchablePriceListSelect 
                         options={bangGia.filter(b => b.kenhBan === "tiktok")} 
                         value={bangGiaSelected["tiktok"] || ""} 
-                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "tiktok": id })} 
+                        onChange={(id) => {
+                          setBangGiaSelected({ ...bangGiaSelected, "tiktok": id });
+                          const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === maSP && !ct.maSKUBienThe) || chiTiet.find(ct => ct.bangGiaId === id);
+                          if (priceDetail) setGiaTikTok(priceDetail.giaBan);
+                        }} 
                       />
                       <input type="number" min={0} value={giaTikTok || ""} onChange={(e) => setGiaTikTok(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
@@ -354,7 +370,11 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                       <SearchablePriceListSelect 
                         options={bangGia.filter(b => b.kenhBan === "shopee")} 
                         value={bangGiaSelected["shopee"] || ""} 
-                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "shopee": id })} 
+                        onChange={(id) => {
+                          setBangGiaSelected({ ...bangGiaSelected, "shopee": id });
+                          const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === maSP && !ct.maSKUBienThe) || chiTiet.find(ct => ct.bangGiaId === id);
+                          if (priceDetail) setGiaShopee(priceDetail.giaBan);
+                        }} 
                       />
                       <input type="number" min={0} value={giaShopee || ""} onChange={(e) => setGiaShopee(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
@@ -879,7 +899,7 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
                     value={bangGiaSelected[item.kenh] || ""} 
                     onChange={(id) => {
                       setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id });
-                      const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === maSP && !ct.maSKUBienThe);
+                      const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === form.maSP && !ct.maSKUBienThe) || chiTiet.find(ct => ct.bangGiaId === id);
                       if (priceDetail) {
                         item.set(priceDetail.giaBan);
                       }

@@ -180,7 +180,7 @@ export function SuaTongModal({
                     value={bangGiaSelected[item.kenh] || ""} 
                     onChange={(id) => {
                       setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id });
-                      const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === group.maSP && !ct.maSKUBienThe);
+                      const priceDetail = chiTiet.find(ct => ct.bangGiaId === id && ct.maSP === group.maSP && !ct.maSKUBienThe) || chiTiet.find(ct => ct.bangGiaId === id);
                       if (priceDetail) {
                         item.set(priceDetail.giaBan);
                       }
