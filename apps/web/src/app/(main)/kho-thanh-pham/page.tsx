@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
+import { useBangGia } from "@/lib/data/bang-gia-store";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
@@ -20,6 +21,7 @@ export default function KhoThanhPhamPage() {
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
+  const { chiTiet, themChiTiet, suaChiTiet } = useBangGia();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [suaTongGroup, setSuaTongGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [openVariant, setOpenVariant] = useState<SanPhamTP | null>(null);
@@ -243,7 +245,7 @@ export default function KhoThanhPhamPage() {
     const list = Array.isArray(data) ? data : [data];
     const newImages: Record<string, string> = {};
     const newRows: SanPhamTP[] = list.map((item, i) => {
-      const { __tempImage, ...sp } = item;
+      const { __tempImage, bangGiaSelected, ...sp } = item;
       const id = `TP${Date.now().toString().slice(-6)}${i}`;
       
       // Khắc phục lỗi không sync được ảnh sang Danh mục SP: phải đẩy link vào mảng hinhAnh
@@ -317,10 +319,31 @@ export default function KhoThanhPhamPage() {
          });
       }
     }
+    
+    // Đồng bộ Bảng Giá Chi Tiết
+    const bangGiaSelected = list[0]?.bangGiaSelected;
+    if (groupMaSP && bangGiaSelected) {
+       Object.entries(bangGiaSelected).forEach(([kenh, bgId]) => {
+         if (!bgId) return;
+         let giaBan = 0;
+         if (kenh === "ban-le") giaBan = list[0].giaBanLe;
+         if (kenh === "ban-si") giaBan = list[0].giaBanSi;
+         if (kenh === "ban-lo") giaBan = list[0].giaBanLo;
+         if (kenh === "tiktok") giaBan = list[0].giaTikTok;
+         if (kenh === "shopee") giaBan = list[0].giaShopee;
+         
+         const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === groupMaSP && !ct.maSKUBienThe);
+         if (existingChiTiet) {
+           suaChiTiet(existingChiTiet.id, { giaBan });
+         } else {
+           themChiTiet({ bangGiaId: bgId as string, maSP: groupMaSP, giaBan, soLuongTu: 1 });
+         }
+       });
+    }
   };
 
   const handleEdit = (data: any) => {
-    const { __tempImage, ...sp } = data;
+    const { __tempImage, bangGiaSelected, ...sp } = data;
     
     if (__tempImage) {
       if (!sp.hinhAnh || sp.hinhAnh.length === 0) {
@@ -353,6 +376,26 @@ export default function KhoThanhPhamPage() {
       if (changed) {
         suaSP(newDM.id, newDM);
       }
+    }
+
+    // Đồng bộ Bảng Giá Chi Tiết
+    if (sp.maSP && bangGiaSelected) {
+       Object.entries(bangGiaSelected).forEach(([kenh, bgId]) => {
+         if (!bgId) return;
+         let giaBan = 0;
+         if (kenh === "ban-le") giaBan = sp.giaBanLe;
+         if (kenh === "ban-si") giaBan = sp.giaBanSi;
+         if (kenh === "ban-lo") giaBan = sp.giaBanLo;
+         if (kenh === "tiktok") giaBan = sp.giaTikTok;
+         if (kenh === "shopee") giaBan = sp.giaShopee;
+         
+         const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === sp.maSP && !ct.maSKUBienThe);
+         if (existingChiTiet) {
+           suaChiTiet(existingChiTiet.id, { giaBan });
+         } else {
+           themChiTiet({ bangGiaId: bgId as string, maSP: sp.maSP, giaBan, soLuongTu: 1 });
+         }
+       });
     }
 
     toast.success("Đã cập nhật");

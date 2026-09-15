@@ -19,6 +19,8 @@ import {
 } from "@/lib/size-ratio-presets";
 import { uploadProductFile } from "@/lib/product-upload";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
+import { useBangGia } from "@/lib/data/bang-gia-store";
+import { SearchablePriceListSelect } from "./SearchableSelect";
 
 // Chỉ còn Màu + số lượng theo size là khác nhau giữa các biến thể - mọi thứ
 // khác (mã/tên SP, phân loại, tỉ lệ size, giá vốn/bán/sỉ/lẻ/lô) đều dùng
@@ -78,6 +80,8 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [giaBanLo, setGiaBanLo] = useState(0);
   const [giaTikTok, setGiaTikTok] = useState(0);
   const [giaShopee, setGiaShopee] = useState(0);
+  const { bangGia } = useBangGia();
+  const [bangGiaSelected, setBangGiaSelected] = useState<Record<string, string>>({});
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
   useEffect(() => {
@@ -185,9 +189,10 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       giaTikTok,
       giaShopee,
       kenhBan: bt.kenhBan,
-      viTri: viTri.trim(),
-      ghiChu: ghiChu.trim(),
+      viTri: bt.viTri.trim(),
+      ghiChu: bt.ghiChu.trim(),
       __tempImage: bt.img,
+      bangGiaSelected,
     }));
     onSave(rows);
   };
@@ -306,27 +311,52 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                 </div>
                 
                 <div className="pt-2 border-t border-slate-100">
-                  <label className="text-xs font-bold text-slate-800 mb-3 block">Giá bán các kênh</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
+                  <label className="text-xs font-bold text-slate-800 mb-3 block">Giá bán các kênh & Bảng giá tự động</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="p-2 border border-slate-200 rounded-xl bg-slate-50/50">
                       <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Bán lẻ</label>
-                      <input type="number" min={0} value={giaBanLe || ""} onChange={(e) => setGiaBanLe(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="0" />
+                      <SearchablePriceListSelect 
+                        options={bangGia.filter(b => b.kenhBan === "ban-le")} 
+                        value={bangGiaSelected["ban-le"] || ""} 
+                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "ban-le": id })} 
+                      />
+                      <input type="number" min={0} value={giaBanLe || ""} onChange={(e) => setGiaBanLe(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
-                    <div>
+                    <div className="p-2 border border-slate-200 rounded-xl bg-slate-50/50">
                       <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Bán sỉ</label>
-                      <input type="number" min={0} value={giaBanSi || ""} onChange={(e) => setGiaBanSi(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="0" />
+                      <SearchablePriceListSelect 
+                        options={bangGia.filter(b => b.kenhBan === "ban-si")} 
+                        value={bangGiaSelected["ban-si"] || ""} 
+                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "ban-si": id })} 
+                      />
+                      <input type="number" min={0} value={giaBanSi || ""} onChange={(e) => setGiaBanSi(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
-                    <div>
+                    <div className="p-2 border border-slate-200 rounded-xl bg-slate-50/50">
                       <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Bán lô</label>
-                      <input type="number" min={0} value={giaBanLo || ""} onChange={(e) => setGiaBanLo(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="0" />
+                      <SearchablePriceListSelect 
+                        options={bangGia.filter(b => b.kenhBan === "ban-lo")} 
+                        value={bangGiaSelected["ban-lo"] || ""} 
+                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "ban-lo": id })} 
+                      />
+                      <input type="number" min={0} value={giaBanLo || ""} onChange={(e) => setGiaBanLo(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
-                    <div>
+                    <div className="p-2 border border-slate-200 rounded-xl bg-slate-50/50">
                       <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">TikTok</label>
-                      <input type="number" min={0} value={giaTikTok || ""} onChange={(e) => setGiaTikTok(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="0" />
+                      <SearchablePriceListSelect 
+                        options={bangGia.filter(b => b.kenhBan === "tiktok")} 
+                        value={bangGiaSelected["tiktok"] || ""} 
+                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "tiktok": id })} 
+                      />
+                      <input type="number" min={0} value={giaTikTok || ""} onChange={(e) => setGiaTikTok(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
-                    <div>
+                    <div className="p-2 border border-slate-200 rounded-xl bg-slate-50/50">
                       <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Shopee</label>
-                      <input type="number" min={0} value={giaShopee || ""} onChange={(e) => setGiaShopee(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="0" />
+                      <SearchablePriceListSelect 
+                        options={bangGia.filter(b => b.kenhBan === "shopee")} 
+                        value={bangGiaSelected["shopee"] || ""} 
+                        onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, "shopee": id })} 
+                      />
+                      <input type="number" min={0} value={giaShopee || ""} onChange={(e) => setGiaShopee(Math.max(0, parseInt(e.target.value) || 0))} className="w-full mt-1.5 px-2.5 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold" placeholder="Giá..." />
                     </div>
                   </div>
                 </div>
@@ -611,6 +641,8 @@ function SizeRatioBuilderModal({ onClose, onSave }: { onClose: () => void; onSav
 function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
   const isValidKey = Object.keys(LOAI_SP_LABELS).includes(sp.phanLoai || "");
   const detectedPhanLoai = isValidKey ? sp.phanLoai : detectLoaiSP((sp.tenSP || "") + " " + (sp.phanLoai || ""));
+  const { bangGia } = useBangGia();
+  const [bangGiaSelected, setBangGiaSelected] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
     maSP: sp.maSP || "",
@@ -819,22 +851,40 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
             </h3>
             
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Giá Vốn</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>
+                  <input 
+                    type="number" 
+                    className="w-full border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 font-mono font-bold text-slate-700" 
+                    placeholder="0" 
+                    value={form.giaVon || ""} 
+                    onChange={e => setForm({ ...form, giaVon: Math.max(0, parseInt(e.target.value) || 0) })} 
+                  />
+                </div>
+              </div>
+              
               {[
-                { label: "Giá Vốn", value: form.giaVon, set: (v: number) => setForm({ ...form, giaVon: v }) },
-                { label: "Giá Bán Lẻ", value: form.giaBanLe, set: (v: number) => setForm({ ...form, giaBanLe: v }) },
-                { label: "Giá Bán Sỉ", value: form.giaBanSi, set: (v: number) => setForm({ ...form, giaBanSi: v }) },
-                { label: "Giá Bán Lô", value: form.giaBanLo, set: (v: number) => setForm({ ...form, giaBanLo: v }) },
-                { label: "Giá TikTok", value: form.giaTikTok, set: (v: number) => setForm({ ...form, giaTikTok: v }) },
-                { label: "Giá Shopee", value: form.giaShopee, set: (v: number) => setForm({ ...form, giaShopee: v }) },
+                { label: "Giá Bán Lẻ", kenh: "ban-le", value: form.giaBanLe, set: (v: number) => setForm({ ...form, giaBanLe: v }) },
+                { label: "Giá Bán Sỉ", kenh: "ban-si", value: form.giaBanSi, set: (v: number) => setForm({ ...form, giaBanSi: v }) },
+                { label: "Giá Bán Lô", kenh: "ban-lo", value: form.giaBanLo, set: (v: number) => setForm({ ...form, giaBanLo: v }) },
+                { label: "Giá TikTok", kenh: "tiktok", value: form.giaTikTok, set: (v: number) => setForm({ ...form, giaTikTok: v }) },
+                { label: "Giá Shopee", kenh: "shopee", value: form.giaShopee, set: (v: number) => setForm({ ...form, giaShopee: v }) },
               ].map((item, idx) => (
                 <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">{item.label}</label>
-                  <div className="relative">
+                  <SearchablePriceListSelect 
+                    options={bangGia.filter(b => b.kenhBan === item.kenh)} 
+                    value={bangGiaSelected[item.kenh] || ""} 
+                    onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id })} 
+                  />
+                  <div className="relative mt-2">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>
                     <input 
                       type="number" 
                       className="w-full border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 font-mono font-bold text-slate-700" 
-                      placeholder="0" 
+                      placeholder="Giá..." 
                       value={item.value || ""} 
                       onChange={e => item.set(Math.max(0, parseInt(e.target.value) || 0))} 
                     />
@@ -896,7 +946,7 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
               toast.error("Cần chọn ít nhất 1 kênh bán");
               return;
             }
-            onSave({ ...sp, ...form, __tempImage: image });
+            onSave({ ...sp, ...form, __tempImage: image, bangGiaSelected });
           }} className="px-8 py-2.5 font-bold text-white bg-[#2B4C3E] hover:bg-[#1f382d] rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02]">
             <Save className="w-5 h-5" /> LƯU THAY ĐỔI
           </button>
