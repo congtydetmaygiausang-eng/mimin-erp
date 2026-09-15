@@ -6,6 +6,7 @@ import { canView, type Module } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit-log";
 import { Lock, ShieldCheck, Loader2 } from "lucide-react";
 import { getModuleForPath } from "@/lib/route-permissions";
+import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 // Map tất cả 50+ routes -> module (mở rộng để fix lỗ hổng)
 const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
@@ -26,6 +27,14 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/hoan-thien",      module: "hoan-thien" },
   { match: "/qc",              module: "kiem-tra-chat-luong" },
   { match: "/workflow",        module: "lenh-cat" },
+  { match: "/ui-cat",         module: "to-cat" },
+  { match: "/to-cat-work",    module: "to-cat" },
+  { match: "/ui-intd",        module: "to-in-theu" },
+  { match: "/ui-khuy-nut",    module: "to-khuy-nut" },
+  { match: "/ui-ui",          module: "to-ui" },
+  { match: "/ui-dong-goi",    module: "to-dong-goi" },
+  { match: "/to-ht-work",     module: "hoan-thien" },
+  { match: "/to-may-work",    module: "to-may" },
   { match: "/tong-hop-cong-doan", module: "bao-cao" },
   { match: "/lenh-tong",       module: "ke-hoach-sx" },
   { match: "/san-xuat-erp",    module: "ke-hoach-sx" },
@@ -103,6 +112,7 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  usePermissionRevision();
 
   useEffect(() => { setMounted(true); }, []);
 

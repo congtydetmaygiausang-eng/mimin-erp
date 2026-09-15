@@ -3,9 +3,12 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
+import { useBangGia } from "@/lib/data/bang-gia-store";
+import { useSession } from "@/components/session-provider";
+import { logCRUD } from "@/lib/audit-log";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
-import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
+import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, taoMaLoTonKhoTheoDong, layMaLoTonKho, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -15,11 +18,22 @@ import { MasterDetailsModal } from "./components/MasterDetailsModal";
 import { DangBanModal } from "./components/DangBanModal";
 import { VariantDetailModal } from "./components/VariantDetailModal";
 import { SuaTongModal } from "./components/SuaTongModal";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
+import { useBangGia, type KenhBan as KenhBanBangGia } from "@/lib/data/bang-gia-store";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
+import { DS_KENH_BAN, type KenhBan } from "./data";
 
 export default function KhoThanhPhamPage() {
+  const { user } = useSession();
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
+  const { giaoDich } = useKho();
+  const { layGia, loading: loadingBangGia } = useBangGia();
+  const [lenhDangNhap, setLenhDangNhap] = useState<(typeof dsLenhCat)[number] | null>(null);
+  const [kenhNhapKho, setKenhNhapKho] = useState<KenhBan[]>(["ban-le"]);
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
+  const { chiTiet, themChiTiet, suaChiTiet } = useBangGia();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [suaTongGroup, setSuaTongGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [openVariant, setOpenVariant] = useState<SanPhamTP | null>(null);
@@ -67,7 +81,7 @@ export default function KhoThanhPhamPage() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as SanPhamTP[];
-        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed.map(chuanHoaSanPhamKho));
       }
     } catch {}
 
@@ -97,7 +111,7 @@ export default function KhoThanhPhamPage() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw) as SanPhamTP[];
-        if (Array.isArray(parsed)) setDsSanPhamState(parsed);
+        if (Array.isArray(parsed)) setDsSanPhamState(parsed.map(chuanHoaSanPhamKho));
       } catch {}
     };
     window.addEventListener(KHO_TP_CHANGED_EVENT, onChanged);
@@ -111,7 +125,13 @@ export default function KhoThanhPhamPage() {
       if (checkSupabase()) {
         const prevIds = new Set(prev.map((r) => r.id));
         const newIds = new Set(newDs.map((r) => r.id));
-        const deletedIds = prev.filter((r) => !newIds.has(r.id)).map((r) => r.id);
+        const deletedItems = prev.filter((r) => !newIds.has(r.id));
+        const deletedIds = deletedItems.map((r) => r.id);
+
+        deletedItems.forEach((item) => {
+          logCRUD(user, "kho-thanh-pham", "delete", item.tenSP || "Sản phẩm", item.id, { oldValue: item });
+        });
+
         Promise.all([
           ...newDs.map((row) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(row))),
           ...deletedIds.map((id) => supabaseDelete("kho_thanh_pham", id)),
@@ -243,7 +263,7 @@ export default function KhoThanhPhamPage() {
     const list = Array.isArray(data) ? data : [data];
     const newImages: Record<string, string> = {};
     const newRows: SanPhamTP[] = list.map((item, i) => {
-      const { __tempImage, ...sp } = item;
+      const { __tempImage, bangGiaSelected, ...sp } = item;
       const id = `TP${Date.now().toString().slice(-6)}${i}`;
       
       // Khắc phục lỗi không sync được ảnh sang Danh mục SP: phải đẩy link vào mảng hinhAnh
@@ -317,10 +337,31 @@ export default function KhoThanhPhamPage() {
          });
       }
     }
+    
+    // Đồng bộ Bảng Giá Chi Tiết
+    const bangGiaSelected = list[0]?.bangGiaSelected;
+    if (groupMaSP && bangGiaSelected) {
+       Object.entries(bangGiaSelected).forEach(([kenh, bgId]) => {
+         if (!bgId) return;
+         let giaBan = 0;
+         if (kenh === "ban-le") giaBan = list[0].giaBanLe;
+         if (kenh === "ban-si") giaBan = list[0].giaBanSi;
+         if (kenh === "ban-lo") giaBan = list[0].giaBanLo;
+         if (kenh === "tiktok") giaBan = list[0].giaTikTok;
+         if (kenh === "shopee") giaBan = list[0].giaShopee;
+         
+         const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === groupMaSP && !ct.maSKUBienThe);
+         if (existingChiTiet) {
+           suaChiTiet(existingChiTiet.id, { giaBan });
+         } else {
+           themChiTiet({ bangGiaId: bgId as string, maSP: groupMaSP, giaBan, soLuongTu: 1 });
+         }
+       });
+    }
   };
 
   const handleEdit = (data: any) => {
-    const { __tempImage, ...sp } = data;
+    const { __tempImage, bangGiaSelected, ...sp } = data;
     
     if (__tempImage) {
       if (!sp.hinhAnh || sp.hinhAnh.length === 0) {
@@ -355,6 +396,26 @@ export default function KhoThanhPhamPage() {
       }
     }
 
+    // Đồng bộ Bảng Giá Chi Tiết
+    if (sp.maSP && bangGiaSelected) {
+       Object.entries(bangGiaSelected).forEach(([kenh, bgId]) => {
+         if (!bgId) return;
+         let giaBan = 0;
+         if (kenh === "ban-le") giaBan = sp.giaBanLe;
+         if (kenh === "ban-si") giaBan = sp.giaBanSi;
+         if (kenh === "ban-lo") giaBan = sp.giaBanLo;
+         if (kenh === "tiktok") giaBan = sp.giaTikTok;
+         if (kenh === "shopee") giaBan = sp.giaShopee;
+         
+         const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === sp.maSP && !ct.maSKUBienThe);
+         if (existingChiTiet) {
+           suaChiTiet(existingChiTiet.id, { giaBan });
+         } else {
+           themChiTiet({ bangGiaId: bgId as string, maSP: sp.maSP, giaBan, soLuongTu: 1 });
+         }
+       });
+    }
+
     toast.success("Đã cập nhật");
     setEditing(null);
   };
@@ -363,6 +424,13 @@ export default function KhoThanhPhamPage() {
     if (!confirm("Xóa sản phẩm này?")) return;
     update(dsSanPham.filter((s) => s.id !== id));
     toast.success("Đã xóa");
+  };
+
+  const handleDeleteGroup = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ sản phẩm trong nhóm này không?\n\nTất cả ${group.items.length} phân loại sẽ bị đưa vào Thùng rác.`)) return;
+    const maSP = group.maSP;
+    update(dsSanPham.filter((s) => s.maSP !== maSP));
+    toast.success(`Đã xóa toàn bộ nhóm ${group.tenSP}`);
   };
 
   const handleXuatKho = (id: string) => {
@@ -440,7 +508,7 @@ export default function KhoThanhPhamPage() {
     toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
   };
 
-  const handleSaveSuaTong = (updatedItems: SanPhamTP[]) => {
+  const handleSaveSuaTong = (updatedItems: SanPhamTP[], bgSelected?: Record<string, string>) => {
     const maSP = updatedItems[0]?.maSP;
     if (!maSP) return;
     
@@ -458,6 +526,27 @@ export default function KhoThanhPhamPage() {
         giaVonDuKien: Math.max(...updatedItems.map(i => i.giaVon || 0), dm.giaVonDuKien || 0),
       });
     }
+
+    if (bgSelected) {
+      Object.entries(bgSelected).forEach(([kenh, bgId]) => {
+        if (!bgId) return;
+        let giaBan = 0;
+        if (kenh === "ban-le") giaBan = updatedItems[0].giaBanLe || 0;
+        if (kenh === "ban-si") giaBan = updatedItems[0].giaBanSi || 0;
+        if (kenh === "ban-lo") giaBan = updatedItems[0].giaBanLo || 0;
+        if (kenh === "tiktok") giaBan = updatedItems[0].giaTikTok || 0;
+        if (kenh === "shopee") giaBan = updatedItems[0].giaShopee || 0;
+        
+        // Cập nhật cho biến thể chung (không phân biệt size/màu)
+        const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === maSP && !ct.maSKUBienThe);
+        if (existingChiTiet) {
+          suaChiTiet(existingChiTiet.id, { giaBan });
+        } else {
+          themChiTiet({ bangGiaId: bgId, maSP: maSP, giaBan, soLuongTu: 1 });
+        }
+      });
+    }
+
     setSuaTongGroup(null);
     toast.success(`Đã cập nhật thông tin chung cho ${updatedItems.length} biến thể của ${maSP}`);
   };
@@ -467,7 +556,7 @@ export default function KhoThanhPhamPage() {
   // cũ bị gộp "Nhiều màu" (nhập kho trước khi sửa lỗi gộp màu) - giữ lại ảnh/giá
   // đã nhập riêng nếu tên màu trùng khớp với card cũ.
   const handleRebuildFromLC = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
-    const lsx = group.items[0]?.lsx || group.maSP;
+    const lsx = group.items[0]?.maLenhCat || group.maSP;
     const lc = dsLenhCat.find((l) => l.id === lsx);
     if (!lc || !lc.dsMau || lc.dsMau.length === 0) {
       toast.error("Không tìm thấy dữ liệu màu từ lệnh cắt gốc để tách");
@@ -485,7 +574,15 @@ export default function KhoThanhPhamPage() {
     const ngayNhap = group.items[0]?.ngayNhap || new Date().toISOString().slice(0, 10);
 
     // Giá vốn 1 SP từ lệnh cắt gốc - dùng khi bản ghi cũ chưa có (donGia = 0)
-    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+    const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+    const giaVon1SP = ketQuaGiaVon.giaVon1SP;
+    if (giaVon1SP <= 0) {
+      const vatTuThieu = ketQuaGiaVon.maVatTuThieuGia.length > 0
+        ? ` Thiếu đơn giá nhập của: ${ketQuaGiaVon.maVatTuThieuGia.join(", ")}.`
+        : "";
+      toast.error(`Lệnh ${lc.id} chưa tính được giá vốn, không thể nhập kho.${vatTuThieu}`, { duration: 7000 });
+      return;
+    }
 
     const newSPs: SanPhamTP[] = lc.dsMau.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
@@ -528,7 +625,7 @@ export default function KhoThanhPhamPage() {
     const group = dangBanGroup;
     if (!group) return;
 
-    const lsx = group.items[0]?.lsx;
+    const lsx = group.items[0]?.maLenhCat;
     const lc = dsLenhCat.find((l) => l.id === lsx);
     const mauTuLC = lc?.dsMau || [];
 
@@ -597,8 +694,8 @@ export default function KhoThanhPhamPage() {
   };
 
   const exportCSV = () => {
-    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "LSX", "SL", "Vị trí", "Trạng thái"]];
-    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, s.lsx, String(s.soLuong), s.viTri, s.trangThai]));
+    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "Mã lô tồn kho", "SL", "Vị trí", "Trạng thái"]];
+    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, layMaLoTonKho(s), String(s.soLuong), s.viTri, s.trangThai]));
     const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -625,33 +722,55 @@ export default function KhoThanhPhamPage() {
   // trong khi dữ liệu thật là MẢNG {mau, soLuongDat, soLuongLoi, sizes[]}, nên
   // Object.keys trả về "0","1"... và số lượng luôn = 0 -> luôn báo "Không tìm thấy".
   // Nay đọc đúng cấu trúc và tạo 1 dòng cho MỖI MÀU, khớp với luồng ui-dong-goi.
-  const handleNhapKhoFromLC = (lc: any) => {
+  const handleNhapKhoFromLC = (lc: any, kenhBan: KenhBan[] = kenhNhapKho) => {
     const dongGoiPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")) || [];
     const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
     const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
     const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
     const ngayNhap = new Date().toISOString().slice(0, 10);
+    if (kenhBan.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một loại giá bán");
+      return;
+    }
+    const thieuGia = dsMauLC.flatMap((m: any) => {
+      const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+      const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+      return kenhBan.filter((kenh) => layGia(kenh as KenhBanBangGia, lc.maSP, m.maSKU, Math.max(1, sl)) == null).map((kenh) => `${m.ten} · ${DS_KENH_BAN.find((item) => item.value === kenh)?.label || kenh}`);
+    });
+    if (thieuGia.length > 0) {
+      toast.error(`Chưa thiết lập bảng giá bán cho: ${thieuGia.join(", ")}`, { duration: 7000 });
+      return;
+    }
 
     const newSps: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
       const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+      const chiTietSize = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
       return {
         id: `TP-${Date.now().toString(36)}-${idx}`,
         maSP: lc.maSP || lc.id,
         tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
         phanLoai: lc.loaiSP || "BoTru",
         mau: m.ten,
-        size: "Nhiều size",
-        lsx: lc.id,
+        size: chiTietSize.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
+        lsx: taoMaLoTonKhoTheoDong(`TP-${lc.id}-${idx}`, ngayNhap),
+        maLenhCat: lc.id,
         ngayNhap,
         soLuong: sl,
         donGia: giaVon1SP,
         giaTri: sl * giaVon1SP,
+        giaVon: giaVon1SP,
+        giaBanSi: kenhBan.includes("ban-si") ? layGia("ban-si", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaBanLe: kenhBan.includes("ban-le") ? layGia("ban-le", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaBanLo: kenhBan.includes("ban-lo") ? layGia("ban-lo", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaTikTok: kenhBan.includes("tiktok") ? layGia("tiktok", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaShopee: kenhBan.includes("shopee") ? layGia("shopee", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        kenhBan,
         viTri: "Khu A1",
         trangThai: "con",
         hinhAnh: m.img ? [m.img] : [],
         imgQuan: m.imgQuan || undefined,
-        chiTietSize: ct?.sizes || m.phanBoSize || [],
+        chiTietSize,
       } as SanPhamTP;
     }).filter((sp: SanPhamTP) => sp.soLuong > 0);
 
@@ -659,6 +778,7 @@ export default function KhoThanhPhamPage() {
       update([...newSps, ...dsSanPham]);
       capNhatTrangThai(lc.id, "HoanThanh", null);
       toast.success(`Đã nhập kho ${newSps.length} màu từ ${lc.id}!`);
+      setLenhDangNhap(null);
     } else {
       toast.error("Không tìm thấy chi tiết màu/số lượng đóng gói đạt!");
     }
@@ -676,20 +796,31 @@ export default function KhoThanhPhamPage() {
               <Package className="w-4 h-4" /> Có {dsChoNhapKho.length} lệnh cắt hoàn thành đóng gói, chờ nhập kho thành phẩm:
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {dsChoNhapKho.map(lc => (
-                <div key={lc.id} className="bg-white rounded-xl border border-amber-100 p-3 shadow-sm flex flex-col justify-between">
+              {dsChoNhapKho.map(lc => {
+                const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+                const coGiaVon = ketQuaGiaVon.giaVon1SP > 0;
+                return (
+                  <div key={lc.id} className={`bg-white rounded-xl border p-3 shadow-sm flex flex-col justify-between ${coGiaVon ? "border-amber-100" : "border-rose-300"}`}>
                   <div>
                     <div className="font-bold text-slate-800 text-sm">{lc.id} - {lc.tenSP}</div>
                     <div className="text-xs text-slate-500 mt-1">SL yêu cầu: <span className="font-semibold text-sky-600">{lc.tongSL?.toLocaleString('vi-VN')}</span></div>
+                    <div className={`mt-2 rounded-lg px-2.5 py-2 text-xs font-bold ${coGiaVon ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      Giá vốn: {coGiaVon ? `${ketQuaGiaVon.giaVon1SP.toLocaleString("vi-VN")}đ/SP` : "Chưa tính được — không thể nhập kho"}
+                    </div>
                   </div>
                   <button
-                    onClick={() => handleNhapKhoFromLC(lc)}
-                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                    onClick={() => {
+                      setKenhNhapKho(["ban-le"]);
+                      setLenhDangNhap(lc);
+                    }}
+                    disabled={!coGiaVon}
+                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
                   >
                     Chi tiết nhập kho <ArrowRight className="w-3.5 h-3.5" />
                   </button>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -741,6 +872,7 @@ export default function KhoThanhPhamPage() {
               onOpenVariant={setOpenVariant}
               onRebuildFromLC={handleRebuildFromLC}
               onSuaTong={setSuaTongGroup}
+              onXoaTong={handleDeleteGroup}
               dsLenhCat={dsLenhCat}
             />
           ) : (
@@ -752,6 +884,7 @@ export default function KhoThanhPhamPage() {
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}
               onSuaTong={setSuaTongGroup}
+              onXoaTong={handleDeleteGroup}
             />
           )}
         </div>
@@ -771,7 +904,7 @@ export default function KhoThanhPhamPage() {
         const existing = dsDanhMuc.find((sp) => sp.id === dangBanGroup.maSP);
         // Giá vốn thật: ưu tiên đơn giá đã ghi lúc nhập kho, sau đó tới bảng COGS
         // của lệnh cắt gốc.
-        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.lsx);
+        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.maLenhCat);
         const giaVonTuLenhCat = Math.round(
           dangBanGroup.items.find((i) => i.donGia > 0)?.donGia ||
           lcGoc?.bangCOGS?.giaVonBinhQuan ||
@@ -799,6 +932,72 @@ export default function KhoThanhPhamPage() {
           onSave={handleSaveVariant}
         />
       )}
+
+      {lenhDangNhap && (() => {
+        const ketQuaGiaVon = tinhGiaVonLenhCat(lenhDangNhap, giaoDich);
+        const dsMau = lenhDangNhap.dsMau || [];
+        const tongSL = lenhDangNhap.tongSL || 0;
+        return (
+          <ResponsiveModal open={true} maxWidth="2xl" onClose={() => setLenhDangNhap(null)} title="CHI TIẾT NHẬP KHO TỪ SẢN XUẤT">
+            <div className="space-y-5 p-1">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+                  <div className="text-[11px] font-bold uppercase text-blue-600">Mã LC / LSX nguồn</div>
+                  <div className="mt-1 font-mono font-black text-blue-900">{lenhDangNhap.id}</div>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="text-[11px] font-bold uppercase text-emerald-600">Giá vốn bắt buộc</div>
+                  <div className="mt-1 font-black text-emerald-900">{ketQuaGiaVon.giaVon1SP.toLocaleString("vi-VN")}đ/SP</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[11px] font-bold uppercase text-slate-500">Số lượng nhập</div>
+                  <div className="mt-1 font-black text-slate-900">{tongSL.toLocaleString("vi-VN")} SP</div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-sm font-black text-slate-800">Chọn loại giá bán đã thiết lập</h3>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {DS_KENH_BAN.map((kenh) => {
+                    const giaCacMau = dsMau.map((m) => layGia(kenh.value as KenhBanBangGia, lenhDangNhap.maSP, m.maSKU, Math.max(1, m.slDuKien || m.slThucTe || 1))).filter((gia): gia is number => gia != null);
+                    const coDuGia = dsMau.length > 0 && giaCacMau.length === dsMau.length;
+                    const selected = kenhNhapKho.includes(kenh.value);
+                    const min = giaCacMau.length ? Math.min(...giaCacMau) : 0;
+                    const max = giaCacMau.length ? Math.max(...giaCacMau) : 0;
+                    return (
+                      <button
+                        key={kenh.value}
+                        type="button"
+                        disabled={!coDuGia}
+                        onClick={() => setKenhNhapKho((current) => selected ? current.filter((item) => item !== kenh.value) : [...current, kenh.value])}
+                        className={`rounded-xl border-2 p-3 text-left transition ${selected ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white"} disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        <div className="text-xs font-bold text-slate-700">{selected ? "✓ " : ""}{kenh.label}</div>
+                        <div className={`mt-1 text-sm font-black ${coDuGia ? "text-emerald-700" : "text-rose-600"}`}>
+                          {coDuGia ? `${min.toLocaleString("vi-VN")}${max !== min ? ` – ${max.toLocaleString("vi-VN")}` : ""}đ` : "Chưa có bảng giá"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Giá bán được lấy tự động từ tab Bảng giá bán theo đúng mã sản phẩm, SKU, số lượng và ngày hiệu lực.</p>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+                <button type="button" onClick={() => setLenhDangNhap(null)} className="rounded-xl border-2 border-slate-200 px-5 py-2.5 font-bold text-slate-600">Đóng</button>
+                <button
+                  type="button"
+                  disabled={loadingBangGia || ketQuaGiaVon.giaVon1SP <= 0 || kenhNhapKho.length === 0}
+                  onClick={() => handleNhapKhoFromLC(lenhDangNhap, kenhNhapKho)}
+                  className="rounded-xl bg-[#2B4C3E] px-6 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loadingBangGia ? "Đang tải bảng giá..." : "Nhập kho"}
+                </button>
+              </div>
+            </div>
+          </ResponsiveModal>
+        );
+      })()}
 
       {/* Hidden file input for upload (image + video) */}
       <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />

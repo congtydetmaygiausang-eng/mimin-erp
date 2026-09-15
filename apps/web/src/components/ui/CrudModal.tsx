@@ -40,11 +40,12 @@ export function CrudModal({
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
+  const initialStr = JSON.stringify(initial || {});
   useEffect(() => {
     if (open) {
       setValues(initial || {});
     }
-  }, [open, initial]);
+  }, [open, initialStr]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

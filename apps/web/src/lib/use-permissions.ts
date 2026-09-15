@@ -9,12 +9,14 @@ import {
 } from "./permission-resolver";
 import { type Module, type Action, type Role } from "./permissions";
 import { type PhongBan, getAccountById, getAccountByEmail } from "./user-accounts";
+import { usePermissionRevision } from "./use-permission-revision";
 
 /**
  * Hook chính - lấy context + helper functions
  */
 export function usePermissions() {
   const { user } = useSession();
+  usePermissionRevision();
 
   const ctx: PermissionContext = useMemo(() => {
     // Lookup full account info

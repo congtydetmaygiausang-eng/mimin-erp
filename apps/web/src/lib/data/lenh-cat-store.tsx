@@ -430,6 +430,8 @@ interface LenhCatStore {
     soLuongPhePham?: number;
     soLuongDatCuoi?: number;
     lichSuNhapSL?: any[];
+    bangChungURLs?: string[];
+    chuKy?: string;
   }) => void;
   reset: () => void;
   loading: boolean;
@@ -658,8 +660,15 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const xoaLenhCat = useCallback(async (id: string, u: AppUser) => {
-    setDsLenhCat((prev) => prev.filter((item) => item.id !== id));
-    logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat" });
+    setDsLenhCat((prev) => {
+      const deletedItem = prev.find((item) => item.id === id);
+      if (deletedItem) {
+        logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat", oldValue: deletedItem });
+      } else {
+        logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat" });
+      }
+      return prev.filter((item) => item.id !== id);
+    });
     try {
       const { supabase } = await import("@/lib/supabase/client");
       if (supabase) await supabase!.from("lenh_cat").delete().eq("id", id);
@@ -732,56 +741,50 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     bangChungURLs?: string[];
     chuKy?: string;
   }) => {
-    let finalPhanCong: any = null;
+    // 1. Lấy thông tin bản ghi hiện tại
+    const lcCurrent = dsLenhCat.find(x => x.id === lenhId);
+    if (!lcCurrent) return; // Không tìm thấy lệnh cắt
+
+    // 2. Tính toán finalPhanCong
+    const finalPhanCong = lcCurrent.phanCong.map((pc: any) => {
+      if (pc.id === congDoanId) {
+        return {
+          ...pc,
+          trangThaiCD: data.trangThaiCD ?? pc.trangThaiCD,
+          soLuongHoanThanh: data.soLuongHoanThanh ?? pc.soLuongHoanThanh,
+          soLuongLoi: data.soLuongLoi ?? pc.soLuongLoi,
+          lyDoLoi: data.lyDoLoi ?? pc.lyDoLoi,
+          thanhTien: data.thanhTien ?? pc.thanhTien,
+          conLai: data.conLai ?? pc.conLai,
+          catChiTiet: data.catChiTietUpdate 
+            ? { ...(pc.catChiTiet || {}), ...data.catChiTietUpdate } 
+            : (data.catChiTiet ?? pc.catChiTiet),
+          chiTietMau: data.chiTietMau ?? pc.chiTietMau,
+          lichSuQC: data.lichSuQC ?? pc.lichSuQC,
+          soLuongSuaXong: data.soLuongSuaXong ?? pc.soLuongSuaXong,
+          soLuongPhePham: data.soLuongPhePham ?? pc.soLuongPhePham,
+          soLuongDatCuoi: data.soLuongDatCuoi ?? pc.soLuongDatCuoi,
+          lichSuNhapSL: data.lichSuNhapSL
+            ? [...(pc.lichSuNhapSL || []), ...data.lichSuNhapSL]
+            : pc.lichSuNhapSL,
+          ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
+            ? new Date().toISOString().slice(0, 10)
+            : pc.ngayNhanViec,
+          ngayHoanThanh: data.trangThaiCD === 'hoan_thanh'
+            ? new Date().toISOString().slice(0, 10)
+            : pc.ngayHoanThanh,
+          bangChungURLs: data.bangChungURLs !== undefined ? data.bangChungURLs : pc.bangChungURLs,
+          chuKy: data.chuKy !== undefined ? data.chuKy : pc.chuKy,
+        };
+      }
+      return pc;
+    });
+
+    // 3. Tính toán thông tin công nợ nếu cần
     let congNoSyncInfo: any = null;
-
-    setDsLenhCat(prev => {
-      const lcCurrent = prev.find(x => x.id === lenhId);
-      if (!lcCurrent) return prev;
-
-      finalPhanCong = lcCurrent.phanCong.map((pc: any) => {
-          if (pc.id === congDoanId) {
-            return {
-                ...pc,
-                trangThaiCD: data.trangThaiCD ?? pc.trangThaiCD,
-                soLuongHoanThanh: data.soLuongHoanThanh ?? pc.soLuongHoanThanh,
-                soLuongLoi: data.soLuongLoi ?? pc.soLuongLoi,
-                lyDoLoi: data.lyDoLoi ?? pc.lyDoLoi,
-                thanhTien: data.thanhTien ?? pc.thanhTien,
-                conLai: data.conLai ?? pc.conLai,
-                catChiTiet: data.catChiTietUpdate 
-                  ? { ...(pc.catChiTiet || {}), ...data.catChiTietUpdate } 
-                  : (data.catChiTiet ?? pc.catChiTiet),
-                chiTietMau: data.chiTietMau ?? pc.chiTietMau,
-                // QC Defect Return Flow fields
-                lichSuQC: data.lichSuQC ?? pc.lichSuQC,
-                soLuongSuaXong: data.soLuongSuaXong ?? pc.soLuongSuaXong,
-                soLuongPhePham: data.soLuongPhePham ?? pc.soLuongPhePham,
-                soLuongDatCuoi: data.soLuongDatCuoi ?? pc.soLuongDatCuoi,
-                lichSuNhapSL: data.lichSuNhapSL
-                  ? [...(pc.lichSuNhapSL || []), ...data.lichSuNhapSL]
-                  : pc.lichSuNhapSL,
-                ngayNhanViec: data.trangThaiCD === 'dang_lam' && !pc.ngayNhanViec
-                  ? new Date().toISOString().slice(0, 10)
-                  : pc.ngayNhanViec,
-                ngayHoanThanh: data.trangThaiCD === 'hoan_thanh'
-                  ? new Date().toISOString().slice(0, 10)
-                  : pc.ngayHoanThanh,
-                bangChungURLs: data.bangChungURLs !== undefined ? data.bangChungURLs : pc.bangChungURLs,
-                chuKy: data.chuKy !== undefined ? data.chuKy : pc.chuKy,
-              };
-          }
-          return pc;
-        });
-    let congNoSyncInfo: {
-      lenhCatId: string; congDoan: string; nguoiMa: string; nguoiTen: string;
-      donGia: number; soLuongGiao: number; ngayGiao?: string; daThanhToan?: number;
-    } | null = null;
-    if (data.trangThaiCD === 'hoan_thanh' && finalPhanCong) {
+    if (data.trangThaiCD === 'hoan_thanh') {
       const pc = finalPhanCong.find((x: any) => x.id === congDoanId);
       if (pc && pc.nguoiMa) {
-        // Ưu tiên dùng soLuongDatCuoi (tổng SL đạt sau tất cả vòng QC)
-        // Nếu chưa có (khâu không qua QC nư Cắt/Ủi) dùng soLuongHoanThanh rồi tongSL
         const slDeTinhCongNo =
           data.soLuongDatCuoi ?? pc.soLuongDatCuoi ??
           data.soLuongHoanThanh ?? pc.soLuongHoanThanh ??
@@ -799,6 +802,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    setDsLenhCat(prev => {
       const next = prev.map(lc => lc.id === lenhId ? { ...lc, phanCong: finalPhanCong } : lc);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;

@@ -5,6 +5,7 @@ import type { SanPham, MauTieuChuan, BangSize } from "./san-pham";
 export type { SanPham, MauTieuChuan, BangSize };
 import { useSupabaseSync, camelToSnake } from "@/lib/supabase/sync-helper";
 import { isSupabaseEnabled, supabaseDelete } from "@/lib/supabase/client";
+import type { AppUser } from "@/components/session-provider";
 
 const STORAGE_KEY = "mimin_danh_muc_v2";
 
@@ -13,7 +14,7 @@ type StoreContext = {
   loading: boolean;
   themSP: (sp: SanPham) => void;
   suaSP: (id: string, data: Partial<SanPham>) => void;
-  xoaSP: (id: string) => void;
+  xoaSP: (id: string, u?: AppUser | null) => void;
   refresh: () => void;
 };
 
@@ -224,8 +225,17 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     }
   }, [setDsSanPham]);
 
-  const xoaSP = useCallback(async (id: string) => {
-    setDsSanPham((prev) => prev.filter((p) => p.id !== id));
+  const xoaSP = useCallback(async (id: string, u?: AppUser | null) => {
+    setDsSanPham((prev) => {
+      const deletedItem = prev.find((p) => p.id === id);
+      if (deletedItem) {
+        // Need to import logCRUD at top of file, or just use it if available
+        import("../audit-log").then(({ logCRUD }) => {
+          logCRUD(u || null, "danh-muc-sp" as any, "delete", deletedItem.ten, id, { oldValue: deletedItem });
+        }).catch(() => {});
+      }
+      return prev.filter((p) => p.id !== id);
+    });
 
     // Xóa khỏi localStorage của kho_thanh_pham
     try {

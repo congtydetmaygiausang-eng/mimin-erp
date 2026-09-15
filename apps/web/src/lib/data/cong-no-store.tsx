@@ -116,11 +116,22 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
     setPhanCong((prev) => {
       const idx = prev.findIndex(
         (c) => c.lenhCatId === params.lenhCatId &&
-          (c.congDoan === params.congDoan || c.nguoiPhuTrach?.ma === params.nguoiMa)
+          c.congDoan === params.congDoan &&
+          c.nguoiPhuTrach?.ma === params.nguoiMa
       );
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = { ...next[idx], trangThai: "Hoàn thành", soLuongGiao: params.soLuongGiao };
+        next[idx] = {
+          ...next[idx],
+          trangThai: next[idx].trangThai === "Đã thanh toán" ? "Đã thanh toán" : "Hoàn thành",
+          donGiaGiao: params.donGia,
+          soLuongGiao: params.soLuongGiao,
+          nguoiPhuTrach: {
+            ...next[idx].nguoiPhuTrach,
+            ma: params.nguoiMa,
+            ten: params.nguoiTen || next[idx].nguoiPhuTrach.ten,
+          },
+        };
         return next;
       }
       const nextNum = prev.length + 1;

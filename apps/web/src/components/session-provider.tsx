@@ -7,6 +7,7 @@ import { is2FAEnabled, generate2FACode, verify2FACode } from "@/lib/two-factor";
 import { migrateLegacyKeys } from "@/lib/migrate-legacy-keys";
 import { migrateLarkConfig } from "@/lib/lark-config";
 import { toast } from "sonner";
+import { loadSharedPermissionMatrix, subscribeSharedPermissionMatrix } from "@/lib/permissions";
 
 export type AppUser = {
   id: string;
@@ -69,6 +70,30 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authSource, setAuthSource] = useState<"supabase" | "demo" | "none">("none");
+
+  useEffect(() => {
+    void loadSharedPermissionMatrix();
+    return subscribeSharedPermissionMatrix(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseEnabled || !supabase || !user?.email) return;
+    const email = user.email.toLowerCase();
+    const channel = supabase.channel(`user-role-${email}`).on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "users", filter: `email=eq.${email}` },
+      (payload) => {
+        const next = payload.new as { role?: string; chucVu?: string; chuc_vu?: string; phongBan?: string; phong_ban?: string };
+        setUser((current) => current ? {
+          ...current,
+          role: next.role || current.role,
+          title: next.chucVu || next.chuc_vu || current.title,
+          phongBan: next.phongBan || next.phong_ban || current.phongBan,
+        } : current);
+      },
+    ).subscribe();
+    return () => { void supabase?.removeChannel(channel); };
+  }, [user?.email]);
 
   useEffect(() => {
     // Auto-migrate legacy keys

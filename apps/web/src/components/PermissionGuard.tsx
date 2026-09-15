@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/components/session-provider";
 import { can, type Module, type Action } from "@/lib/permissions";
 import { Shield, Lock } from "lucide-react";
+import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 export function PermissionGuard({
   module,
@@ -24,10 +25,11 @@ export function PermissionGuard({
   const { user } = useSession();
   const role = user?.role;
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const permissionRevision = usePermissionRevision();
 
   useEffect(() => {
     setAllowed(can(role, module, action));
-  }, [role, module, action]);
+  }, [role, module, action, permissionRevision]);
 
   if (allowed === null) return null; // Wait for hydration
 
@@ -66,6 +68,7 @@ export function PermissionGuard({
 // Hook: check permission imperatively
 export function usePermission() {
   const { user } = useSession();
+  usePermissionRevision();
   const role = user?.role;
   return {
     can: (mod: Module, act: Action) => can(role, mod, act),

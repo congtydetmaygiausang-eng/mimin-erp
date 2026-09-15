@@ -3,7 +3,7 @@
 
 import React, { useMemo } from "react";
 import { Edit, Truck, Trash2, Image as ImageIcon } from "lucide-react";
-import type { SanPhamTP } from "../data";
+import { layMaLoTonKho, type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, type LoaiSP, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 
 const getPhanLoaiLabel = (phanLoai: string, tenSP: string) => {
@@ -20,9 +20,10 @@ interface ProductTableProps {
   handleXuatKho: (id: string) => void;
   handleDelete: (id: string) => void;
   onSuaTong?: (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => void;
+  onXoaTong?: (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => void;
 }
 
-export function ProductTable({ filtered, productImages, productVariantImages = {}, setEditing, handleXuatKho, handleDelete, onSuaTong }: ProductTableProps) {
+export function ProductTable({ filtered, productImages, productVariantImages = {}, setEditing, handleXuatKho, handleDelete, onSuaTong, onXoaTong }: ProductTableProps) {
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
 
   // Nhóm sản phẩm theo Mã SP
@@ -52,11 +53,18 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
         <div key={group[0].maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
           {/* Header / Main SP */}
           <div className="p-4 md:px-6 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex gap-4 relative">
-             {onSuaTong && (
-               <button onClick={() => onSuaTong({ maSP: group[0].maSP, tenSP: group[0].tenSP, items: group })} className="absolute top-4 right-4 md:right-6 p-2 text-slate-400 hover:bg-slate-200 hover:text-indigo-600 rounded-lg transition-colors bg-white/80 border border-slate-200 shadow-sm z-10 flex items-center gap-1.5" title="Sửa tổng thể sản phẩm">
-                  <Edit className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Sửa Nhóm</span>
-               </button>
-             )}
+             <div className="absolute top-4 right-4 md:right-6 flex items-center gap-2 z-10">
+               {onSuaTong && (
+                 <button onClick={() => onSuaTong({ maSP: group[0].maSP, tenSP: group[0].tenSP, items: group })} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-indigo-600 rounded-lg transition-colors bg-white/80 border border-slate-200 shadow-sm flex items-center gap-1.5" title="Sửa tổng thể sản phẩm">
+                    <Edit className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Sửa Nhóm</span>
+                 </button>
+               )}
+               {onXoaTong && (
+                 <button onClick={() => onXoaTong({ maSP: group[0].maSP, tenSP: group[0].tenSP, items: group })} className="p-2 text-rose-400 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors bg-white/80 border border-rose-200 shadow-sm flex items-center gap-1.5" title="Xóa toàn bộ nhóm sản phẩm">
+                    <Trash2 className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Xóa Nhóm</span>
+                 </button>
+               )}
+             </div>
             <div 
               className="w-20 h-28 md:w-24 md:h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0 shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
               onClick={() => {
@@ -132,7 +140,17 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs md:text-sm font-bold text-violet-700 bg-violet-100 px-2 py-0.5 rounded-md border border-violet-200 shadow-sm">{s.viTri || 'Chưa xếp'}</span>
-                      <span className="text-[10px] md:text-xs font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-dashed border-slate-300">{s.lsx}</span>
+                      <span
+                        title={s.maLenhCat ? `Lô tồn kho · Nguồn: ${s.maLenhCat}` : "Lô tồn kho nhập trực tiếp"}
+                        className="text-[10px] md:text-xs font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-dashed border-slate-300"
+                      >
+                        Lô tồn · {layMaLoTonKho(s)}
+                      </span>
+                      {s.maLenhCat && (
+                        <span className="text-[10px] md:text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                          Nguồn · {s.maLenhCat}
+                        </span>
+                      )}
                     </div>
                   </div>
                   

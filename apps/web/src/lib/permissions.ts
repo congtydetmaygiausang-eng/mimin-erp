@@ -3,6 +3,8 @@
 // 2026-08-05: thêm 2 role content + partner (cho 44 user @mimin.vn)
 // 2026-08-05: thêm 4 module gia-cong-mobile (trang-chu-gia-cong, cong-viec, san-luong, tien-cong)
 
+import { isSupabaseEnabled, supabase } from "./supabase/client";
+
 export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "supplier" | "workshop_customer" | "buyer_customer" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging";
 export type Action = "view" | "create" | "edit" | "delete";
 
@@ -538,47 +540,96 @@ const ADDITIONAL_PERMISSIONS: Partial<Record<Role, Partial<Record<Module, string
 
 // ============================================
 // CUSTOM PERMISSION MATRIX (admin có thể tùy chỉnh)
-// Lưu localStorage - ưu tiên dùng khi có
+// Cache local-first + đồng bộ Supabase giữa các máy.
 // ============================================
-const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v2";
+const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v3_admin_only";
+export const PERMISSION_MATRIX_CHANGED_EVENT = "mimin:permission-matrix-changed";
+export type PermissionMatrix = Record<Role, Partial<Record<Module, string>>>;
+
+function getAdminOnlyMatrix(): PermissionMatrix {
+  const modules = Object.keys(MODULE_LABELS) as Module[];
+  return Object.fromEntries(
+    (Object.keys(PERMISSIONS) as Role[]).map((role) => [
+      role,
+      Object.fromEntries(modules.map((module) => [module, role === "admin" ? "rcud" : ""])),
+    ]),
+  ) as PermissionMatrix;
+}
+
+function normalizeMatrix(matrix?: PermissionMatrix): PermissionMatrix {
+  const base = getAdminOnlyMatrix();
+  if (!matrix) return base;
+  (Object.keys(base) as Role[]).forEach((role) => {
+    if (role === "admin") return;
+    (Object.keys(MODULE_LABELS) as Module[]).forEach((module) => {
+      base[role][module] = matrix[role]?.[module] || "";
+    });
+  });
+  return base;
+}
+
+function cacheMatrix(matrix: PermissionMatrix): PermissionMatrix {
+  const normalized = normalizeMatrix(matrix);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(CUSTOM_MATRIX_KEY, JSON.stringify(normalized));
+    window.dispatchEvent(new CustomEvent(PERMISSION_MATRIX_CHANGED_EVENT, { detail: normalized }));
+  }
+  return normalized;
+}
 
 /** Load matrix hiệu lực: ưu tiên localStorage (admin tùy chỉnh), fallback PERMISSIONS mặc định */
-export function getEffectivePermissions(): Record<Role, Partial<Record<Module, string>>> {
-  const defaults = Object.fromEntries(
-    (Object.keys(PERMISSIONS) as Role[]).map((role) => [role, { ...PERMISSIONS[role], ...ADDITIONAL_PERMISSIONS[role] }]),
-  ) as Record<Role, Partial<Record<Module, string>>>;
+export function getEffectivePermissions(): PermissionMatrix {
+  const defaults = getAdminOnlyMatrix();
   if (typeof window === "undefined") return defaults;
   try {
     const raw = localStorage.getItem(CUSTOM_MATRIX_KEY);
     if (raw) {
-      const custom = JSON.parse(raw) as Record<Role, Partial<Record<Module, string>>>;
-      // Merge: ưu tiên custom nhưng fallback PERMISSIONS nếu thiếu key
-      const merged: Record<Role, Partial<Record<Module, string>>> = { ...defaults };
-      (Object.keys(PERMISSIONS) as Role[]).forEach((role) => {
-        if (custom[role]) {
-          merged[role] = { ...defaults[role], ...custom[role] };
-        }
-      });
-      return merged;
+      return normalizeMatrix(JSON.parse(raw) as PermissionMatrix);
     }
   } catch {}
   return defaults;
 }
 
-/** Lưu matrix tùy chỉnh vào localStorage */
-export function saveCustomMatrix(matrix: Record<Role, Partial<Record<Module, string>>>): void {
+/** Lưu cache ngay để UI phản hồi nhanh, sau đó đồng bộ dùng chung lên Supabase. */
+export async function saveCustomMatrix(matrix: PermissionMatrix): Promise<void> {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(CUSTOM_MATRIX_KEY, JSON.stringify(matrix));
+    const normalized = cacheMatrix(matrix);
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("permission_settings").upsert({ id: "global", matrix: normalized, updated_at: new Date().toISOString() });
+      if (error) throw error;
+    }
   } catch (err) {
     console.error("[permissions] Không lưu được custom matrix:", err);
+    throw err;
   }
+}
+
+export async function loadSharedPermissionMatrix(): Promise<PermissionMatrix> {
+  if (!isSupabaseEnabled || !supabase) return getEffectivePermissions();
+  const { data, error } = await supabase.from("permission_settings").select("matrix").eq("id", "global").maybeSingle();
+  if (error || !data?.matrix) return getEffectivePermissions();
+  return cacheMatrix(data.matrix as PermissionMatrix);
+}
+
+export function subscribeSharedPermissionMatrix(onChange: (matrix: PermissionMatrix) => void): () => void {
+  if (!isSupabaseEnabled || !supabase) return () => {};
+  const channel = supabase.channel("permission-settings-global").on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "permission_settings", filter: "id=eq.global" },
+    (payload) => {
+      const matrix = (payload.new as { matrix?: PermissionMatrix })?.matrix;
+      if (matrix) onChange(cacheMatrix(matrix));
+    },
+  ).subscribe();
+  return () => { void supabase?.removeChannel(channel); };
 }
 
 /** Reset về mặc định */
 export function resetCustomMatrix(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(CUSTOM_MATRIX_KEY);
+  window.dispatchEvent(new Event(PERMISSION_MATRIX_CHANGED_EVENT));
 }
 
 export function can(role: Role | string | undefined, module: Module, action: Action): boolean {

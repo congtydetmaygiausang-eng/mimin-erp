@@ -14,32 +14,35 @@ import {
   Palette
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
-import { canView } from "@/lib/permissions";
+import { canView, type Module } from "@/lib/permissions";
+import type { LucideIcon } from "lucide-react";
 import clsx from "clsx";
 import { useMemo } from "react";
+import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 export function BottomNav({ onMenuClick }: { onMenuClick: () => void }) {
   const pathname = usePathname();
   const { user } = useSession();
   const role = user?.role;
+  const permissionRevision = usePermissionRevision();
 
   // Xử lý link "Công việc" cho công nhân
   const workLink = useMemo(() => {
     if (user?.laCongNhan) {
       const boPhan = user.phongBan?.toLowerCase() || "";
-      if (boPhan.includes("cắt")) return { href: "/to-cat-work", label: "Cắt", icon: Scissors };
-      if (boPhan.includes("may")) return { href: "/to-may-work", label: "May", icon: Shirt };
-      if (boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) 
+      if (boPhan.includes("cắt") && canView(role, "to-cat")) return { href: "/to-cat-work", label: "Cắt", icon: Scissors };
+      if (boPhan.includes("may") && canView(role, "to-may")) return { href: "/to-may-work", label: "May", icon: Shirt };
+      if ((boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) && canView(role, "hoan-thien"))
         return { href: "/to-ht-work", label: "Hoàn thiện", icon: ClipboardList };
-      if (boPhan.includes("khuy nút")) return { href: "/ui-khuy-nut", label: "Khuy nút", icon: CheckCircle2 };
-      if (boPhan.includes("in") || boPhan.includes("thêu")) return { href: "/ui-intd", label: "In/Thêu", icon: Palette };
+      if (boPhan.includes("khuy nút") && canView(role, "to-khuy-nut")) return { href: "/ui-khuy-nut", label: "Khuy nút", icon: CheckCircle2 };
+      if ((boPhan.includes("in") || boPhan.includes("thêu")) && canView(role, "to-in-theu")) return { href: "/ui-intd", label: "In/Thêu", icon: Palette };
     }
     // Mặc định cho vai trò khác
     if (canView(role, "lenh-cat")) return { href: "/lenh-cat", label: "Lệnh cắt", icon: Scissors };
     return null;
-  }, [user, role]);
+  }, [user, role, permissionRevision]);
 
-  const navItems = [
+  const navItems: Array<{ href: string; label: string; icon: LucideIcon; perm?: Module }> = [
     { href: "/dashboard", label: "Tổng quan", icon: LayoutDashboard, perm: "dashboard" },
     ...(workLink ? [workLink] : []),
     { href: "/kho-thanh-pham", label: "Kho", icon: Boxes, perm: "kho-thanh-pham" },

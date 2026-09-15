@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
-import { camelToSnake } from "@/lib/supabase/sync-helper";
+import { camelToSnake, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import type { ChamCongRecord } from "@/lib/cham-cong";
 
 /**
@@ -42,15 +42,7 @@ function saveLocal(rows: ChamCongRecord[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
 }
 
-/** Merge: Supabase là source of truth, nhưng giữ lại records local chưa sync lên */
-function mergeRecords(remote: ChamCongRecord[], local: ChamCongRecord[]): ChamCongRecord[] {
-  const map = new Map<string, ChamCongRecord>();
-  // Local trước (thấp hơn priority)
-  local.forEach((r) => map.set(r.id, r));
-  // Remote ghi đè lên (cao hơn priority)
-  remote.forEach((r) => map.set(r.id, r));
-  return Array.from(map.values());
-}
+/** Lấy remote làm chuẩn, chỉ dùng local để load nhanh ban đầu hoặc khi offline */
 
 export function useChamCong() {
   // Khởi tạo ngay từ localStorage → tránh mất data khi F5
@@ -70,13 +62,11 @@ export function useChamCong() {
       if (!active) return;
       if (!error) {
         const remote = (data || []).map((row) => normalizeFromDB(row as Record<string, unknown>));
-        // Merge: giữ records local chưa sync, nhưng ưu tiên remote
-        const local = loadLocal();
-        const merged = mergeRecords(remote, local);
-        setRecords(merged);
-        saveLocal(merged);
+        // Lấy remote làm chuẩn tuyệt đối khi có kết nối
+        setRecords(remote);
+        saveLocal(remote);
         setSource("supabase");
-        console.log(`[cham-cong] Đã sync: ${remote.length} remote + ${local.length} local → ${merged.length} merged`);
+        console.log(`[cham-cong] Đã sync: ${remote.length} remote`);
       } else {
         console.warn("[cham-cong] Lỗi Supabase, giữ local:", error.message);
         // Giữ nguyên localStorage, không ghi đè
@@ -86,6 +76,13 @@ export function useChamCong() {
     void fetchRecords();
     return () => { active = false; };
   }, []);
+
+  // Đăng ký realtime updates từ Supabase
+  useSupabaseRealtime<ChamCongRecord>("cham_cong", setRecords, {
+    mapIn: (row: any) => normalizeFromDB(row),
+    primaryKey: "id",
+    localStorageKey: STORAGE_KEY,
+  });
 
   const saveRecord = useCallback(async (record: ChamCongRecord) => {
     // 1. Cập nhật state + localStorage ngay lập tức
@@ -112,5 +109,36 @@ export function useChamCong() {
     }
   }, []);
 
-  return { records, saveRecord, loading, source };
+  const clearRecords = useCallback(async () => {
+    setRecords([]);
+    saveLocal([]);
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("cham_cong").delete().neq("id", "none");
+      if (error) {
+        console.warn("[cham-cong] Lỗi xóa dữ liệu:", error.message);
+      } else {
+        console.log("[cham-cong] Đã xóa toàn bộ dữ liệu Supabase");
+      }
+    }
+  }, []);
+
+  const deleteRecord = useCallback(async (record: ChamCongRecord, user: any) => {
+    setRecords((current) => {
+      const next = current.filter((item) => item.id !== record.id);
+      saveLocal(next);
+      return next;
+    });
+
+    if (isSupabaseEnabled && supabase) {
+      const { logCRUD } = await import("@/lib/audit-log");
+      const { supabaseDelete } = await import("@/lib/supabase/sync-helper");
+      
+      if (user) {
+        logCRUD(user, "cham-cong", "delete", `Chấm công NV ${record.maNV} ngày ${record.ngay}`, record.id, { oldValue: record });
+      }
+      await supabaseDelete("cham_cong", record.id);
+    }
+  }, []);
+
+  return { records, saveRecord, deleteRecord, clearRecords, loading, source };
 }
