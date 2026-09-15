@@ -32,26 +32,32 @@ export default function ChamCongPage() {
   const days = useMemo(() => getDaysInMonth(monthKey), [monthKey]);
   const monthRecords = useMemo(() => records.filter((record) => record.ngay.startsWith(monthKey)), [records, monthKey]);
   const departments = useMemo(() => Array.from(new Set(nhanSu.map((item) => item.boPhan).filter(Boolean))).sort(), [nhanSu]);
-  // Tìm trong bảng nhân sự Supabase trước
+  // Tìm trong bảng nhân sự Supabase trước, ưu tiên nhân sự đang làm việc
   const currentEmployeeFromDB = useMemo(() => {
-    return nhanSu.find((employee) => {
-      if (user?.maNV && employee.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase()) return true;
-      if (user?.email && employee.email?.toLocaleLowerCase() === user.email.toLocaleLowerCase()) return true;
-      if (user?.name && employee.hoTen.toLocaleLowerCase("vi") === user.name.toLocaleLowerCase("vi")) return true;
-      
-      // Fallback matching by email prefix for cases like khang@mimin.vn -> Nguyễn Triết Khang
-      if (user?.email) {
-        const emailPrefix = user.email.split('@')[0].toLocaleLowerCase();
-        if (employee.taiKhoan?.toLocaleLowerCase() === emailPrefix) return true;
-        if (employee.email?.toLocaleLowerCase().startsWith(emailPrefix + "@")) return true;
+    const activeNhanSu = nhanSu.filter((e) => e.trangThai !== "nghi_viec");
+    
+    // Hàm tìm kiếm trong 1 list
+    const findInList = (list: typeof nhanSu) => {
+      return list.find((employee) => {
+        if (user?.maNV && employee.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase()) return true;
+        if (user?.email && employee.email?.toLocaleLowerCase() === user.email.toLocaleLowerCase()) return true;
+        if (user?.name && employee.hoTen.toLocaleLowerCase("vi") === user.name.toLocaleLowerCase("vi")) return true;
         
-        // Fuzzy match name (e.g., "khang" in "Nguyễn Triết Khang")
-        if (emailPrefix.length >= 3 && employee.hoTen.toLocaleLowerCase("vi").includes(emailPrefix)) {
-          return true;
+        if (user?.email) {
+          const emailPrefix = user.email.split('@')[0].toLocaleLowerCase();
+          if (employee.taiKhoan?.toLocaleLowerCase() === emailPrefix) return true;
+          if (employee.email?.toLocaleLowerCase().startsWith(emailPrefix + "@")) return true;
+          
+          if (emailPrefix.length >= 3 && employee.hoTen.toLocaleLowerCase("vi").includes(emailPrefix)) {
+            return true;
+          }
         }
-      }
-      return false;
-    });
+        return false;
+      });
+    };
+
+    // Tìm trong danh sách active trước, nếu không có mới tìm trong tất cả
+    return findInList(activeNhanSu) || findInList(nhanSu);
   }, [nhanSu, user]);
 
   // Fallback: tìm trong danh sách USERS tĩnh nếu chưa có trong Supabase
