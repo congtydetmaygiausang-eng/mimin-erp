@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { Camera, Save, Plus, Trash2, Package, Calculator, X } from "lucide-react";
 import { toast } from "sonner";
-import { DS_KHU_KE_HANG, DS_KENH_BAN, chuanHoaMaNguonKho, hienThiDanhSachSize, type KenhBan, type SanPhamTP } from "../data";
+import { DS_KHU_KE_HANG, DS_KENH_BAN, layMaLoTonKho, hienThiDanhSachSize, type KenhBan, type SanPhamTP } from "../data";
 import {
   SIZE_RATIO_PRESETS,
   type SizeRatioPreset,
@@ -661,7 +661,7 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
     phanLoai: detectedPhanLoai || "BoTru",
     mau: sp.mau || "Trắng",
     size: hienThiDanhSachSize(sp.size || "", sp.chiTietSize),
-    lsx: chuanHoaMaNguonKho(sp.lsx || ""),
+    lsx: layMaLoTonKho(sp),
     ngayNhap: sp.ngayNhap || new Date().toISOString().slice(0, 10),
     soLuong: sp.soLuong ?? 0,
     donGia: sp.donGia ?? 0,
@@ -751,7 +751,7 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">{form.lsx.startsWith("LTK-") ? "Mã lô tồn kho" : "Mã lệnh cắt"}</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Mã lô tồn kho</label>
                 <input 
                   readOnly
                   className="w-full border border-slate-300 rounded-xl px-4 py-2.5 bg-slate-100 font-mono text-slate-700 cursor-not-allowed"

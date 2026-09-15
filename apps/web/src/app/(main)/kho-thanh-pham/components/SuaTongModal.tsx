@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Edit3, Save, AlertTriangle, Layers, DollarSign } from "lucide-react";
 import { toast } from "sonner";
-import { chuanHoaMaNguonKho, type SanPhamTP } from "../data";
+import { layMaLoTonKho, type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 
@@ -27,7 +27,7 @@ export function SuaTongModal({
   const [form, setForm] = useState({
     tenSP: group.tenSP || "",
     phanLoai: detectedPhanLoai || "BoTru",
-    lsx: chuanHoaMaNguonKho(group.items[0]?.lsx || ""),
+    lsx: group.items[0] ? layMaLoTonKho(group.items[0]) : "",
     giaVon: group.items[0]?.giaVon || 0,
     giaBanSi: group.items[0]?.giaBanSi || 0,
     giaBanLe: group.items[0]?.giaBanLe || 0,
@@ -133,7 +133,7 @@ export function SuaTongModal({
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700 mb-1.5 block">{form.lsx.startsWith("LTK-") ? "Mã lô tồn kho" : "Mã lệnh cắt"}</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Mã lô tồn kho</label>
                 <input 
                   readOnly
                   value={form.lsx} 

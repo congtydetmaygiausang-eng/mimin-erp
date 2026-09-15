@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
-import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, taoMaLoTonKhoTheoDong, type SanPhamTP } from "./data";
+import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, taoMaLoTonKhoTheoDong, layMaLoTonKho, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -597,8 +597,8 @@ export default function KhoThanhPhamPage() {
   };
 
   const exportCSV = () => {
-    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "LSX", "SL", "Vị trí", "Trạng thái"]];
-    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, s.lsx, String(s.soLuong), s.viTri, s.trangThai]));
+    const rows = [["Mã SP", "Tên SP", "Màu", "Size", "Mã lô tồn kho", "SL", "Vị trí", "Trạng thái"]];
+    filtered.forEach((s) => rows.push([s.maSP, s.tenSP, s.mau, s.size, layMaLoTonKho(s), String(s.soLuong), s.viTri, s.trangThai]));
     const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
