@@ -3,7 +3,7 @@
 
 import React, { useMemo } from "react";
 import { Edit, Truck, Trash2, Image as ImageIcon } from "lucide-react";
-import type { SanPhamTP } from "../data";
+import { layMaLoTonKho, type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, type LoaiSP, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 
 const getPhanLoaiLabel = (phanLoai: string, tenSP: string) => {
@@ -136,7 +136,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                         title={s.maLenhCat ? `Lô tồn kho · Nguồn: ${s.maLenhCat}` : "Lô tồn kho nhập trực tiếp"}
                         className="text-[10px] md:text-xs font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-dashed border-slate-300"
                       >
-                        Lô tồn · {s.lsx}
+                        Lô tồn · {layMaLoTonKho(s)}
                       </span>
                       {s.maLenhCat && (
                         <span className="text-[10px] md:text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">

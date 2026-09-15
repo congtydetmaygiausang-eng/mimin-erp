@@ -84,6 +84,13 @@ export function taoMaLoTonKhoTheoDong(id: string, ngayNhap: string): string {
   return `LTK-${ngay}-${suffix}`;
 }
 
+/** Chốt tại lớp hiển thị để dữ liệu/cache cũ tuyệt đối không lộ mã LC/LSX ở vị trí mã lô. */
+export function layMaLoTonKho(sp: Pick<SanPhamTP, "id" | "ngayNhap" | "lsx">): string {
+  return sp.lsx?.toUpperCase().startsWith("LTK-")
+    ? sp.lsx.toUpperCase()
+    : taoMaLoTonKhoTheoDong(sp.id, sp.ngayNhap);
+}
+
 export function hienThiDanhSachSize(
   size: string,
   chiTietSize?: Array<{ size: string; sl: number }>,
@@ -98,7 +105,7 @@ export function chuanHoaSanPhamKho(sp: SanPhamTP): SanPhamTP {
   const laMaSanXuat = maNguonCu.startsWith("LC-");
   return {
     ...sp,
-    lsx: laMaSanXuat ? taoMaLoTonKhoTheoDong(sp.id, sp.ngayNhap) : maNguonCu,
+    lsx: laMaSanXuat ? taoMaLoTonKhoTheoDong(sp.id, sp.ngayNhap) : layMaLoTonKho(sp),
     maLenhCat: sp.maLenhCat || (laMaSanXuat ? maNguonCu : undefined),
     size: hienThiDanhSachSize(sp.size || "", sp.chiTietSize),
   };
@@ -118,7 +125,9 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     phanLoai: r.phan_loai ?? "",
     mau: r.mau ?? "",
     size: hienThiDanhSachSize(r.size ?? "", chiTietSize),
-    lsx: laMaSanXuat ? taoMaLoTonKhoTheoDong(String(r.id), r.ngay_nhap ?? "") : maNguonCu,
+    lsx: maNguonCu.startsWith("LTK-")
+      ? maNguonCu
+      : taoMaLoTonKhoTheoDong(String(r.id), r.ngay_nhap ?? ""),
     maLenhCat: r.ma_lenh_cat ?? (laMaSanXuat ? maNguonCu : undefined),
     ngayNhap: r.ngay_nhap ?? "",
     soLuong: Number(r.so_luong) || 0,
