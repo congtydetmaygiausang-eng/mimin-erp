@@ -430,6 +430,8 @@ interface LenhCatStore {
     soLuongPhePham?: number;
     soLuongDatCuoi?: number;
     lichSuNhapSL?: any[];
+    bangChungURLs?: string[];
+    chuKy?: string;
   }) => void;
   reset: () => void;
   loading: boolean;
