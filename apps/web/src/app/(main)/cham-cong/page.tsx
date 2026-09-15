@@ -36,6 +36,11 @@ export default function ChamCongPage() {
   const currentEmployeeFromDB = useMemo(() => {
     const activeNhanSu = nhanSu.filter((e) => e.trangThai !== "nghi_viec");
     
+    // Hàm loại bỏ dấu tiếng Việt để tìm kiếm chính xác hơn
+    const removeAccents = (str: string) => {
+      return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+    };
+
     // Hàm tìm kiếm trong 1 list
     const findInList = (list: typeof nhanSu) => {
       return list.find((employee) => {
@@ -48,7 +53,10 @@ export default function ChamCongPage() {
           if (employee.taiKhoan?.toLocaleLowerCase() === emailPrefix) return true;
           if (employee.email?.toLocaleLowerCase().startsWith(emailPrefix + "@")) return true;
           
-          if (emailPrefix.length >= 3 && employee.hoTen.toLocaleLowerCase("vi").includes(emailPrefix)) {
+          const normalizedName = removeAccents(employee.hoTen.toLocaleLowerCase("vi"));
+          const normalizedPrefix = removeAccents(emailPrefix);
+          
+          if (normalizedPrefix.length >= 3 && normalizedName.includes(normalizedPrefix)) {
             return true;
           }
         }
