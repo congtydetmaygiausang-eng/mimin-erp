@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, Calculator, Check, Image as ImageIcon, ListChecks, Package, Plus, Printer, Save, Search, Send, ShoppingBag, Trash2, Truck, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
 import { useSession } from "@/components/session-provider";
-import { formatVND, KHO_VAT_TU } from "@/lib/data/real-data";
+import { formatVND, KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
+import { isSupabaseEnabled, supabase } from "@/lib/supabase/client";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { useKhachHang } from "@/lib/data/khach-hang-store";
 import { type PhieuDatNccLineItem, type PhieuDatNccPhuLieu, type TrangThaiPhieuDatNcc } from "@/lib/data/phieu-dat-ncc";
@@ -37,6 +38,36 @@ type SelectableMaterial = {
   maNccMacDinh: string; giaMuaThamKhao: number; giaBanDeXuat: number; soLuongToiThieu: number; hinhAnh: string; trangThai: "Đang dùng" | "Tạm ngưng";
 };
 
+type KhoPhuLieuRow = {
+  sku: string;
+  ten_vt: string | null;
+  loai_chi_tiet: string | null;
+  mau_sac: string | null;
+  dvt: string | null;
+  don_gia: number | null;
+  ton_kho: number | null;
+  ton_toi_thieu: number | null;
+  so_cay_nhap: number | null;
+  ton_cay: number | null;
+  ty_le_hao_hut: number | null;
+  kho: string | null;
+  ghi_chu: string | null;
+  hinh_anh?: string | null;
+};
+
+const PL_IMAGES_KEY = "mimin_kho_phuLieu_images";
+const PL_INVENTORY_KEY = "mimin_kho_phuLieu_custom";
+
+const readSharedImage = (ghiChu: string | null | undefined): string => {
+  if (!ghiChu) return "";
+  try {
+    const parsed = JSON.parse(ghiChu) as { imageUrl?: unknown };
+    return typeof parsed.imageUrl === "string" ? parsed.imageUrl : "";
+  } catch {
+    return "";
+  }
+};
+
 export default function PhieuDatNccPhuLieuPage() {
   const { user } = useSession();
   const { list: nccList } = useNhaCungCap();
@@ -51,13 +82,81 @@ export default function PhieuDatNccPhuLieuPage() {
   const [selectedId, setSelectedId] = useState("");
   const [orderItems, setOrderItems] = useState<PhieuDatNccLineItem[]>([]);
   const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [warehouseMaterials, setWarehouseMaterials] = useState<KhoVai[]>(KHO_VAT_TU);
   const [form, setForm] = useState({
     maPhieu: `PO-${today.replaceAll("-", "")}-${String(Date.now()).slice(-4)}`,
     ngayDat: today, ngayGiao: deliveryDate, maKhachHang: "", maNcc: "", soLuong: "1000",
     donGiaMua: "0", donGiaBan: "0",
     phiVanChuyen: "0", chiPhiKhac: "0", thueVat: "10", quyCach: "", diaChiGiao: "", ghiChu: "", giaoThangKhach: true,
   });
-  const materials = useMemo<SelectableMaterial[]>(() => orderPurpose === "customer" ? catalogMaterials : KHO_VAT_TU.map((item) => ({ id: `KHO-${item.maVT}`, maMau: item.maVT, tenMau: item.tenChuan || item.tenVT, loai: item.loai, mauSac: item.mauChuan || item.mauSac, quyCach: item.ghiChu || "", donVi: item.dvt, maNccMacDinh: "", giaMuaThamKhao: item.donGia, giaBanDeXuat: 0, soLuongToiThieu: 1, hinhAnh: item.hinhAnh || "", trangThai: "Đang dùng" })), [catalogMaterials, orderPurpose]);
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCachedMaterials = () => {
+      try {
+        const cachedRaw = localStorage.getItem(PL_INVENTORY_KEY);
+        const imageRaw = localStorage.getItem(PL_IMAGES_KEY);
+        const cached = cachedRaw ? JSON.parse(cachedRaw) as unknown : null;
+        const images = imageRaw ? JSON.parse(imageRaw) as unknown : null;
+        const imageMap = images && typeof images === "object" ? images as Record<string, unknown> : {};
+        if (Array.isArray(cached) && cached.length > 0) {
+          setWarehouseMaterials((cached as KhoVai[]).map((item) => ({
+            ...item,
+            hinhAnh: typeof imageMap[item.maVT] === "string" ? String(imageMap[item.maVT]) : item.hinhAnh,
+          })));
+        }
+      } catch {
+        // Cache lỗi không chặn việc tải dữ liệu thật từ Supabase.
+      }
+    };
+
+    const loadRemoteMaterials = async () => {
+      if (!isSupabaseEnabled || !supabase) return;
+      const baseFields = "sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu";
+      const imageResult = await supabase
+        .from("kho")
+        .select(`${baseFields}, hinh_anh`)
+        .eq("loai", "Phu lieu")
+        .order("sku");
+      let rows = imageResult.data as unknown as KhoPhuLieuRow[] | null;
+      let loadError = imageResult.error;
+
+      if (loadError?.code === "PGRST204" || loadError?.code === "42703") {
+        const fallbackResult = await supabase.from("kho").select(baseFields).eq("loai", "Phu lieu").order("sku");
+        rows = fallbackResult.data as unknown as KhoPhuLieuRow[] | null;
+        loadError = fallbackResult.error;
+      }
+      if (loadError || !mounted || !rows) return;
+
+      const remote = rows.map((row) => {
+        const fallback = KHO_VAT_TU.find((item) => item.maVT === row.sku);
+        return {
+          ...(fallback || {}),
+          maVT: row.sku,
+          tenVT: row.ten_vt || fallback?.tenVT || row.sku,
+          loai: row.loai_chi_tiet || fallback?.loai || "Phụ liệu",
+          mauSac: row.mau_sac || fallback?.mauSac || "",
+          dvt: row.dvt || fallback?.dvt || "cái",
+          donGia: Number(row.don_gia) || fallback?.donGia || 0,
+          tonKho: Number(row.ton_kho) || 0,
+          tonToiThieu: Number(row.ton_toi_thieu) || 0,
+          soCayNhap: Number(row.so_cay_nhap) || 0,
+          tonCay: Number(row.ton_cay) || 0,
+          tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
+          kho: row.kho || "Kho phụ liệu",
+          ghiChu: row.ghi_chu || "",
+          hinhAnh: row.hinh_anh || readSharedImage(row.ghi_chu) || fallback?.hinhAnh || "",
+        } satisfies KhoVai;
+      });
+      if (remote.length > 0) setWarehouseMaterials(remote);
+    };
+
+    loadCachedMaterials();
+    void loadRemoteMaterials();
+    return () => { mounted = false; };
+  }, []);
+
+  const materials = useMemo<SelectableMaterial[]>(() => orderPurpose === "customer" ? catalogMaterials : warehouseMaterials.map((item) => ({ id: `KHO-${item.maVT}`, maMau: item.maVT, tenMau: item.tenChuan || item.tenVT, loai: item.loai, mauSac: item.mauChuan || item.mauSac, quyCach: item.ghiChu || "", donVi: item.dvt, maNccMacDinh: "", giaMuaThamKhao: item.donGia, giaBanDeXuat: 0, soLuongToiThieu: 1, hinhAnh: item.hinhAnh || "", trangThai: "Đang dùng" })), [catalogMaterials, orderPurpose, warehouseMaterials]);
   const selected = materials.find((item) => item.id === selectedId) || null;
   const update = (name: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [name]: value }));
@@ -201,13 +300,13 @@ export default function PhieuDatNccPhuLieuPage() {
       </div>
       <section className="order-items-table border-b border-slate-200 p-4 dark:border-white/10 md:px-7 md:py-5">
         <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-bold">Danh sách vật tư trong đơn</h2><p className="text-xs text-slate-500">{orderPurpose === "customer" ? "Bấm mẫu bên dưới để thêm nhiều vật tư; mỗi dòng có giá mua và giá bán riêng." : "Bấm vật tư Kho phụ liệu bên dưới để thêm vào phiếu; mỗi dòng chỉ có giá mua NCC."}</p></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{orderItems.length} vật tư</span></div>
-        {orderItems.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-slate-500">Chưa chọn vật tư nào.</div> : <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10"><table className="w-full min-w-[880px] text-sm"><thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-white/5"><tr><th className="p-3">Vật tư/phụ liệu</th><th className="p-3">Số lượng</th><th className="p-3">Đơn giá mua NCC</th><th className="p-3">Đơn giá bán khách</th><th className="p-3 text-right">Lợi nhuận</th><th className="w-12 p-3" /></tr></thead><tbody>{orderItems.map((item) => <tr key={item.id} className="border-t border-slate-100 dark:border-white/10"><td className="p-3"><button type="button" onClick={() => { const material = materials.find((entry) => entry.maMau === item.maVatTu); if (material) selectMaterial(material); }} className="text-left"><b className="block text-emerald-700">{item.maVatTu}</b><span className="font-semibold">{item.tenVatTu}</span><small className="block text-slate-500">{item.mauSac} · {item.donVi}</small></button></td><td className="p-3"><input type="number" min="1" className="input w-28" value={item.soLuong} onChange={(e) => updateLine(item.id, "soLuong", e.target.value)} /></td><td className="p-3"><input type="number" min="0" className="input w-36 font-semibold" value={item.donGiaMua} onChange={(e) => updateLine(item.id, "donGiaMua", e.target.value)} /></td><td className="p-3"><input type="number" min="0" className="input w-36 border-emerald-300 bg-emerald-50 font-semibold dark:bg-emerald-950/20" value={item.donGiaBan} onChange={(e) => updateLine(item.id, "donGiaBan", e.target.value)} /></td><td className={`p-3 text-right font-bold ${item.soLuong * (item.donGiaBan - item.donGiaMua) >= 0 ? "text-emerald-700" : "text-rose-600"}`}>{formatVND(item.soLuong * (item.donGiaBan - item.donGiaMua))}</td><td className="p-3"><button type="button" onClick={() => removeLine(item.id)} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50" title="Xóa vật tư"><Trash2 className="h-4 w-4" /></button></td></tr>)}</tbody></table></div>}
+        {orderItems.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-slate-500">Chưa chọn vật tư nào.</div> : <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10"><table className="w-full min-w-[880px] text-sm"><thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-white/5"><tr><th className="p-3">Vật tư/phụ liệu</th><th className="p-3">Số lượng</th><th className="p-3">Đơn giá mua NCC</th><th className="p-3">Đơn giá bán khách</th><th className="p-3 text-right">Lợi nhuận</th><th className="w-12 p-3" /></tr></thead><tbody>{orderItems.map((item) => <tr key={item.id} className="border-t border-slate-100 dark:border-white/10"><td className="p-3"><button type="button" onClick={() => { const material = materials.find((entry) => entry.maMau === item.maVatTu); if (material) selectMaterial(material); }} className="flex items-center gap-2 text-left">{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenVatTu} className="h-11 w-11 shrink-0 rounded-lg border border-slate-200 object-cover dark:border-white/10" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800"><ImageIcon className="h-5 w-5 text-slate-400" /></span>}<span><b className="block text-emerald-700">{item.maVatTu}</b><span className="font-semibold">{item.tenVatTu}</span><small className="block text-slate-500">{item.mauSac} · {item.donVi}</small></span></button></td><td className="p-3"><input type="number" min="1" className="input w-28" value={item.soLuong} onChange={(e) => updateLine(item.id, "soLuong", e.target.value)} /></td><td className="p-3"><input type="number" min="0" className="input w-36 font-semibold" value={item.donGiaMua} onChange={(e) => updateLine(item.id, "donGiaMua", e.target.value)} /></td><td className="p-3"><input type="number" min="0" className="input w-36 border-emerald-300 bg-emerald-50 font-semibold dark:bg-emerald-950/20" value={item.donGiaBan} onChange={(e) => updateLine(item.id, "donGiaBan", e.target.value)} /></td><td className={`p-3 text-right font-bold ${item.soLuong * (item.donGiaBan - item.donGiaMua) >= 0 ? "text-emerald-700" : "text-rose-600"}`}>{formatVND(item.soLuong * (item.donGiaBan - item.donGiaMua))}</td><td className="p-3"><button type="button" onClick={() => removeLine(item.id)} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50" title="Xóa vật tư"><Trash2 className="h-4 w-4" /></button></td></tr>)}</tbody></table></div>}
       </section>
       <div className="grid xl:grid-cols-[1.2fr_1.35fr_0.9fr]">
         <section className="border-b p-4 dark:border-white/10 md:p-6 xl:border-b-0 xl:border-r">
           <Title icon={Package} text={orderPurpose === "customer" ? "1. Chọn mẫu sản xuất" : "1. Chọn vật tư Kho phụ liệu"} sub={orderPurpose === "customer" ? "Danh mục mẫu đặt theo đơn khách" : "Danh mục Kho phụ liệu hiện tại của MIMIN"} />
           <div className="relative mt-4"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="input pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm mã mẫu, tên hoặc màu..." /></div>
-          {filtered.length === 0 ? <div className="mt-3 rounded-2xl border border-dashed p-6 text-center"><Package className="mx-auto h-9 w-9 text-slate-300" /><p className="mt-2 text-sm font-semibold">Chưa có mẫu vật tư sản xuất</p><div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row"><button onClick={importWarehouseTemplates} className="btn-primary"><Package className="h-4 w-4" /> Sao chép mẫu từ Kho phụ liệu</button><button onClick={() => setShowCustom(true)} className="btn-secondary"><Plus className="h-4 w-4" /> Tạo mẫu mới</button></div><p className="mt-2 text-[11px] text-slate-500">Chỉ sao chép thông tin mẫu và giá tham khảo, không cộng tồn kho.</p></div> : <div className="mt-3 grid max-h-[560px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-1">{filtered.map((item) => <button key={item.id} onClick={() => selectMaterial(item)} className={`relative overflow-hidden rounded-2xl border bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 ${item.id === selected?.id ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-white/10"}`}><div className="mb-3 flex aspect-[16/9] items-center justify-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenMau} className="h-full w-full object-cover" /> : <ImageIcon className="h-12 w-12 text-slate-400" />}</div><div className="text-xs font-bold text-emerald-700">{item.maMau}</div><div className="line-clamp-2 min-h-10 text-sm font-semibold">{item.tenMau}</div><div className="mt-1 text-xs text-slate-500">{item.mauSac} · {item.donVi}</div>{item.id === selected?.id && <span className="absolute right-3 top-3 rounded-full bg-emerald-500 p-1.5 text-white shadow"><Check className="h-4 w-4" /></span>}</button>)}</div>}
+          {filtered.length === 0 ? <div className="mt-3 rounded-2xl border border-dashed p-6 text-center"><Package className="mx-auto h-9 w-9 text-slate-300" /><p className="mt-2 text-sm font-semibold">Chưa có mẫu vật tư sản xuất</p><div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row"><button onClick={importWarehouseTemplates} className="btn-primary"><Package className="h-4 w-4" /> Sao chép mẫu từ Kho phụ liệu</button><button onClick={() => setShowCustom(true)} className="btn-secondary"><Plus className="h-4 w-4" /> Tạo mẫu mới</button></div><p className="mt-2 text-[11px] text-slate-500">Chỉ sao chép thông tin mẫu và giá tham khảo, không cộng tồn kho.</p></div> : <div className={`mt-3 grid max-h-[560px] overflow-y-auto pr-1 ${orderPurpose === "internal" ? "grid-cols-1 gap-2" : "grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-1"}`}>{filtered.map((item) => <button key={item.id} onClick={() => selectMaterial(item)} className={`relative overflow-hidden border bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 ${orderPurpose === "internal" ? "flex items-center gap-3 rounded-xl p-2" : "rounded-2xl p-3"} ${item.id === selected?.id ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-white/10"}`}><div className={`flex shrink-0 items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800 ${orderPurpose === "internal" ? "h-16 w-16 rounded-lg" : "mb-3 aspect-[16/9] w-full rounded-xl"}`}>{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenMau} className="h-full w-full object-cover" /> : <ImageIcon className={orderPurpose === "internal" ? "h-7 w-7 text-slate-400" : "h-12 w-12 text-slate-400"} />}</div><div className="min-w-0 flex-1"><div className="text-xs font-bold text-emerald-700">{item.maMau}</div><div className={`line-clamp-2 text-sm font-semibold ${orderPurpose === "internal" ? "min-h-0" : "min-h-10"}`}>{item.tenMau}</div><div className="mt-1 text-xs text-slate-500">{item.mauSac} · {item.donVi}</div></div>{item.id === selected?.id && <span className="absolute right-2 top-2 rounded-full bg-emerald-500 p-1 text-white shadow"><Check className="h-3.5 w-3.5" /></span>}</button>)}</div>}
           <div className="mt-4 rounded-2xl bg-slate-950 p-4 text-white"><div className="text-xs text-emerald-300">ĐÃ CHỌN</div>{selected ? <><div className="font-bold">{selected.tenMau}</div><div className="mt-1 text-xs text-slate-300">{selected.maMau} · {selected.mauSac}</div></> : <div className="mt-1 text-sm text-slate-400">Chưa chọn mẫu</div>}</div>
         </section>
 

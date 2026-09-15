@@ -5,6 +5,7 @@ import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit-log";
 import { Lock, ShieldCheck, Loader2 } from "lucide-react";
+import { getModuleForPath } from "@/lib/route-permissions";
 import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 // Map tất cả 50+ routes -> module (mở rộng để fix lỗ hổng)
@@ -102,7 +103,8 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
 const PUBLIC_ROUTES = ["/login"];
 
 function findRouteModule(pathname: string) {
-  return ROUTE_TO_MODULE.find((r) => pathname === r.match || pathname.startsWith(r.match + "/"));
+  const module = getModuleForPath(pathname);
+  return module ? { match: pathname, module } : undefined;
 }
 
 export default function PageGuard({ children }: { children: React.ReactNode }) {
@@ -161,8 +163,16 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
 
   const route = findRouteModule(pathname);
   if (!route) {
-    // Không match → render (page chưa map)
-    return <>{children}</>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4">
+        <div className="card max-w-md p-6 text-center">
+          <ShieldCheck className="mx-auto mb-3 h-12 w-12 text-amber-500" />
+          <h2 className="mb-1 text-lg font-bold">Trang chưa được khai báo quyền</h2>
+          <p className="mb-3 text-sm text-slate-500">Quản trị viên cần gán module cho đường dẫn <b>{pathname}</b>.</p>
+          <button onClick={() => router.replace("/dashboard")} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white">Về Dashboard</button>
+        </div>
+      </div>
+    );
   }
 
   if (!canView(user.role, route.module)) {
