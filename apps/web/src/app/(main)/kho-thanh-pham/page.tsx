@@ -3,6 +3,9 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
+import { useBangGia } from "@/lib/data/bang-gia-store";
+import { useSession } from "@/components/session-provider";
+import { logCRUD } from "@/lib/audit-log";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, taoMaLoTonKhoTheoDong, layMaLoTonKho, type SanPhamTP } from "./data";
@@ -22,6 +25,7 @@ import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { DS_KENH_BAN, type KenhBan } from "./data";
 
 export default function KhoThanhPhamPage() {
+  const { user } = useSession();
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const { giaoDich } = useKho();
   const { layGia, loading: loadingBangGia } = useBangGia();
@@ -29,6 +33,7 @@ export default function KhoThanhPhamPage() {
   const [kenhNhapKho, setKenhNhapKho] = useState<KenhBan[]>(["ban-le"]);
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
+  const { chiTiet, themChiTiet, suaChiTiet } = useBangGia();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [suaTongGroup, setSuaTongGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [openVariant, setOpenVariant] = useState<SanPhamTP | null>(null);
@@ -120,7 +125,13 @@ export default function KhoThanhPhamPage() {
       if (checkSupabase()) {
         const prevIds = new Set(prev.map((r) => r.id));
         const newIds = new Set(newDs.map((r) => r.id));
-        const deletedIds = prev.filter((r) => !newIds.has(r.id)).map((r) => r.id);
+        const deletedItems = prev.filter((r) => !newIds.has(r.id));
+        const deletedIds = deletedItems.map((r) => r.id);
+
+        deletedItems.forEach((item) => {
+          logCRUD(user, "kho-thanh-pham", "delete", item.tenSP || "Sản phẩm", item.id, { oldValue: item });
+        });
+
         Promise.all([
           ...newDs.map((row) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(row))),
           ...deletedIds.map((id) => supabaseDelete("kho_thanh_pham", id)),
@@ -252,7 +263,7 @@ export default function KhoThanhPhamPage() {
     const list = Array.isArray(data) ? data : [data];
     const newImages: Record<string, string> = {};
     const newRows: SanPhamTP[] = list.map((item, i) => {
-      const { __tempImage, ...sp } = item;
+      const { __tempImage, bangGiaSelected, ...sp } = item;
       const id = `TP${Date.now().toString().slice(-6)}${i}`;
       
       // Khắc phục lỗi không sync được ảnh sang Danh mục SP: phải đẩy link vào mảng hinhAnh
@@ -326,10 +337,31 @@ export default function KhoThanhPhamPage() {
          });
       }
     }
+    
+    // Đồng bộ Bảng Giá Chi Tiết
+    const bangGiaSelected = list[0]?.bangGiaSelected;
+    if (groupMaSP && bangGiaSelected) {
+       Object.entries(bangGiaSelected).forEach(([kenh, bgId]) => {
+         if (!bgId) return;
+         let giaBan = 0;
+         if (kenh === "ban-le") giaBan = list[0].giaBanLe;
+         if (kenh === "ban-si") giaBan = list[0].giaBanSi;
+         if (kenh === "ban-lo") giaBan = list[0].giaBanLo;
+         if (kenh === "tiktok") giaBan = list[0].giaTikTok;
+         if (kenh === "shopee") giaBan = list[0].giaShopee;
+         
+         const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === groupMaSP && !ct.maSKUBienThe);
+         if (existingChiTiet) {
+           suaChiTiet(existingChiTiet.id, { giaBan });
+         } else {
+           themChiTiet({ bangGiaId: bgId as string, maSP: groupMaSP, giaBan, soLuongTu: 1 });
+         }
+       });
+    }
   };
 
   const handleEdit = (data: any) => {
-    const { __tempImage, ...sp } = data;
+    const { __tempImage, bangGiaSelected, ...sp } = data;
     
     if (__tempImage) {
       if (!sp.hinhAnh || sp.hinhAnh.length === 0) {
@@ -364,6 +396,26 @@ export default function KhoThanhPhamPage() {
       }
     }
 
+    // Đồng bộ Bảng Giá Chi Tiết
+    if (sp.maSP && bangGiaSelected) {
+       Object.entries(bangGiaSelected).forEach(([kenh, bgId]) => {
+         if (!bgId) return;
+         let giaBan = 0;
+         if (kenh === "ban-le") giaBan = sp.giaBanLe;
+         if (kenh === "ban-si") giaBan = sp.giaBanSi;
+         if (kenh === "ban-lo") giaBan = sp.giaBanLo;
+         if (kenh === "tiktok") giaBan = sp.giaTikTok;
+         if (kenh === "shopee") giaBan = sp.giaShopee;
+         
+         const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === sp.maSP && !ct.maSKUBienThe);
+         if (existingChiTiet) {
+           suaChiTiet(existingChiTiet.id, { giaBan });
+         } else {
+           themChiTiet({ bangGiaId: bgId as string, maSP: sp.maSP, giaBan, soLuongTu: 1 });
+         }
+       });
+    }
+
     toast.success("Đã cập nhật");
     setEditing(null);
   };
@@ -372,6 +424,13 @@ export default function KhoThanhPhamPage() {
     if (!confirm("Xóa sản phẩm này?")) return;
     update(dsSanPham.filter((s) => s.id !== id));
     toast.success("Đã xóa");
+  };
+
+  const handleDeleteGroup = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ sản phẩm trong nhóm này không?\n\nTất cả ${group.items.length} phân loại sẽ bị đưa vào Thùng rác.`)) return;
+    const maSP = group.maSP;
+    update(dsSanPham.filter((s) => s.maSP !== maSP));
+    toast.success(`Đã xóa toàn bộ nhóm ${group.tenSP}`);
   };
 
   const handleXuatKho = (id: string) => {
@@ -449,7 +508,7 @@ export default function KhoThanhPhamPage() {
     toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
   };
 
-  const handleSaveSuaTong = (updatedItems: SanPhamTP[]) => {
+  const handleSaveSuaTong = (updatedItems: SanPhamTP[], bgSelected?: Record<string, string>) => {
     const maSP = updatedItems[0]?.maSP;
     if (!maSP) return;
     
@@ -467,6 +526,27 @@ export default function KhoThanhPhamPage() {
         giaVonDuKien: Math.max(...updatedItems.map(i => i.giaVon || 0), dm.giaVonDuKien || 0),
       });
     }
+
+    if (bgSelected) {
+      Object.entries(bgSelected).forEach(([kenh, bgId]) => {
+        if (!bgId) return;
+        let giaBan = 0;
+        if (kenh === "ban-le") giaBan = updatedItems[0].giaBanLe || 0;
+        if (kenh === "ban-si") giaBan = updatedItems[0].giaBanSi || 0;
+        if (kenh === "ban-lo") giaBan = updatedItems[0].giaBanLo || 0;
+        if (kenh === "tiktok") giaBan = updatedItems[0].giaTikTok || 0;
+        if (kenh === "shopee") giaBan = updatedItems[0].giaShopee || 0;
+        
+        // Cập nhật cho biến thể chung (không phân biệt size/màu)
+        const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === maSP && !ct.maSKUBienThe);
+        if (existingChiTiet) {
+          suaChiTiet(existingChiTiet.id, { giaBan });
+        } else {
+          themChiTiet({ bangGiaId: bgId, maSP: maSP, giaBan, soLuongTu: 1 });
+        }
+      });
+    }
+
     setSuaTongGroup(null);
     toast.success(`Đã cập nhật thông tin chung cho ${updatedItems.length} biến thể của ${maSP}`);
   };
@@ -792,6 +872,7 @@ export default function KhoThanhPhamPage() {
               onOpenVariant={setOpenVariant}
               onRebuildFromLC={handleRebuildFromLC}
               onSuaTong={setSuaTongGroup}
+              onXoaTong={handleDeleteGroup}
               dsLenhCat={dsLenhCat}
             />
           ) : (
@@ -803,6 +884,7 @@ export default function KhoThanhPhamPage() {
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}
               onSuaTong={setSuaTongGroup}
+              onXoaTong={handleDeleteGroup}
             />
           )}
         </div>

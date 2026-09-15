@@ -137,12 +137,13 @@ export async function supabaseUpsertRaw<T extends { id: string }>(
        const fallback = { ...payload } as any;
        delete fallback.hinh_anh; delete fallback.trang_thai; delete fallback.chat_lieu;
        delete fallback.ncc; delete fallback.da_ban; delete fallback.rating; delete fallback.luot_xem;
-       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien;
-       delete fallback.ghi_chu; delete fallback.ngay_tao;
+       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien; delete fallback.gia_tri;
+       delete fallback.ghi_chu; delete fallback.ngay_tao; delete fallback.ngay_nhap;
        delete fallback.gia_ban_le; delete fallback.gia_ban_si; delete fallback.gia_von; delete fallback.gia_ban_lo;
        delete fallback.gia_tiktok; delete fallback.gia_shopee; delete fallback.kenh_ban; delete fallback.img_quan;
        delete fallback.video; delete fallback.chi_tiet_size; delete fallback.khach_hang;
-       
+       delete fallback.tong_s_l_thuc_te_ao; delete fallback.tong_s_l_thuc_te_quan; delete fallback.tong_sl_thuc_te_ao; delete fallback.tong_sl_thuc_te_quan;
+       delete fallback.ti_le_size; delete fallback.ma_lenh_cat;
        const { data: d2, error: e2 } = await supabase!
          .from(table)
          .upsert(fallback, { onConflict })
@@ -151,12 +152,12 @@ export async function supabaseUpsertRaw<T extends { id: string }>(
          
        if (e2) {
          console.warn(`[Supabase] upsertRaw(${table}) fallback error:`, e2.message);
-         return null;
+         throw e2;
        }
-       return (d2 as T) ?? null;
+       return d2 as T;
     }
-    console.warn(`[Supabase] upsertRaw(${table}) error:`, error.message, error.details);
-    return null;
+    console.warn(`[Supabase] upsertRaw(${table}) error:`, error.message);
+    throw error;
   }
   return (data as T) ?? null;
 }
@@ -371,6 +372,8 @@ export function useSupabaseRealtime<T>(
     mapIn?: (row: any) => T;
     // Khóa chính trong CSDL để dò tìm dòng bị xóa, mặc định là "id"
     primaryKey?: string; 
+    // Key để tự động lưu xuống localStorage khi có event Realtime
+    localStorageKey?: string;
   }
 ) {
   useEffect(() => {
@@ -428,6 +431,13 @@ export function useSupabaseRealtime<T>(
                     r.dbId !== dbPrimaryKey
                 );
               }
+            }
+            
+            // Persist realtime update to localStorage if requested
+            if (options?.localStorageKey) {
+              try {
+                localStorage.setItem(options.localStorageKey, JSON.stringify(next));
+              } catch (err) {}
             }
             return next;
           });

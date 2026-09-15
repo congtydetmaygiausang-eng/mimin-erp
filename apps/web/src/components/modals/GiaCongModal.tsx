@@ -4,6 +4,7 @@ import { X, Save, Factory, Users } from "lucide-react";
 import type { LenhCat, PhanCongGiaCong } from "@/lib/data/lenh-cat-store";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { Portal } from "@/components/ui/Portal";
+import { MisaInvoiceButton } from "@/lib/misa/MisaInvoiceButton";
 
 interface Props {
   lc: LenhCat;
@@ -190,6 +191,23 @@ export function GiaCongModal({ lc, type, onClose, onSave }: Props) {
         >
           Hủy
         </button>
+        <MisaInvoiceButton 
+          invoiceData={{
+            InvSeries: "1C24TML", // Ký hiệu ví dụ
+            InvDate: new Date().toISOString().slice(0, 10),
+            BuyerLegalName: khauList[0]?.nguoiTen || "Khách lẻ",
+            BuyerTaxCode: "",
+            PaymentMethodName: "Tiền mặt/Chuyển khoản",
+            OriginalInvoiceData: [{
+              ItemName: `Gia công ${title} - Lệnh ${lc.id}`,
+              UnitName: "SP",
+              Quantity: slThucTe,
+              UnitPrice: 0,
+              Amount: 0
+            }]
+          }}
+          className="w-full sm:w-auto"
+        />
         <button
           onClick={handleSave}
           className="px-5 py-2.5 rounded-xl min-h-[44px] font-bold text-white bg-sky-500 hover:bg-sky-600 flex items-center justify-center gap-2 transition-colors shadow-sm w-full sm:w-auto"
