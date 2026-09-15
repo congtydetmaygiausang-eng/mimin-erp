@@ -18,6 +18,8 @@ import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
 import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
 import { usePhanCong } from "@/lib/data/cong-no-store";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 
 export default function UiDongGoiPage() {
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
@@ -25,6 +27,7 @@ export default function UiDongGoiPage() {
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
   const { upsertTuLenhCat } = usePhanCong();
+  const { giaoDich } = useKho();
 
   const { dsSanPham: dsDanhMuc, suaSP } = useDanhMucSP();
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
@@ -286,11 +289,11 @@ export default function UiDongGoiPage() {
                           // Giá vốn 1 SP đã được tính sẵn lúc tạo lệnh cắt (vải + phụ liệu
                           // + gia công + chi phí cố định). Trước đây bị gán cứng donGia: 0
                           // nên cột "Giá trị" của Kho thành phẩm luôn hiện 0đ.
-                          const giaVon1SP = Math.round(
-                            lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0
-                          );
+                          const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+                          const giaVon1SP = ketQuaGiaVon.giaVon1SP;
                           if (giaVon1SP <= 0) {
-                            toast.error("Lệnh cắt chưa có giá vốn. Vui lòng hoàn thiện bảng giá vốn trước khi nhập kho.", { duration: 7000 });
+                            const chiTiet = ketQuaGiaVon.maVatTuThieuGia.length > 0 ? ` Thiếu đơn giá nhập của: ${ketQuaGiaVon.maVatTuThieuGia.join(", ")}.` : "";
+                            toast.error(`Lệnh cắt chưa tính được giá vốn.${chiTiet}`, { duration: 7000 });
                             return;
                           }
 

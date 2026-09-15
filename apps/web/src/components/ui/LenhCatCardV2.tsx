@@ -6,6 +6,8 @@ import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/dat
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { DateDisplay } from "./DateDisplay";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 
 interface Props {
   lc: LenhCat;
@@ -17,8 +19,10 @@ interface Props {
 
 export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangChungSlot }: Props) {
   const { list: dsNhanSu } = useNhanSu();
+  const { giaoDich } = useKho();
   const mainImg = lc.dsMau?.[0]?.img || "";
-  const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+  const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+  const giaVon1SP = ketQuaGiaVon.giaVon1SP;
 
   // Find Nguoi Phu Trach SX
   const ptCode = lc.phuTrachSX || "";
@@ -94,7 +98,8 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
               </div>
               <div className={`flex-1 lg:flex-none flex flex-col items-center justify-center rounded-xl border py-3 px-2 sm:px-5 min-w-0 sm:min-w-[120px] shadow-sm ${giaVon1SP > 0 ? "border-amber-200 bg-amber-50/80" : "border-rose-200 bg-rose-50/80"}`}>
                 <span className={`flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5 ${giaVon1SP > 0 ? "text-amber-700" : "text-rose-600"}`}><WalletCards className="w-3.5 h-3.5 shrink-0" /> Giá vốn/SP</span>
-                <span className={`font-black text-base sm:text-lg leading-none whitespace-nowrap ${giaVon1SP > 0 ? "text-amber-900" : "text-rose-700"}`}>{giaVon1SP > 0 ? `${giaVon1SP.toLocaleString("vi-VN")}đ` : "Chưa tính"}</span>
+                <span className={`font-black text-base sm:text-lg leading-none whitespace-nowrap ${giaVon1SP > 0 ? "text-amber-900" : "text-rose-700"}`}>{giaVon1SP > 0 ? `${giaVon1SP.toLocaleString("vi-VN")}đ` : "Thiếu dữ liệu"}</span>
+                {ketQuaGiaVon.nguon === "tinh-lai" && <span className="mt-1 text-[9px] font-semibold text-amber-700">Tính lại từ kho</span>}
               </div>
               <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-rose-50/70 border border-rose-100 rounded-xl py-3 px-2 sm:px-5 min-w-0 sm:min-w-[110px] shadow-sm hover:shadow hover:bg-rose-50 transition-all">
                 <span className="text-rose-500 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Calendar className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Hạn giao</span></span>
