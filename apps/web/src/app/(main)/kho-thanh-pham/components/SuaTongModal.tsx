@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Edit3, Save, AlertTriangle, Layers, DollarSign } from "lucide-react";
 import { toast } from "sonner";
-import { type SanPhamTP } from "../data";
+import { chuanHoaMaNguonKho, type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 
@@ -27,7 +27,7 @@ export function SuaTongModal({
   const [form, setForm] = useState({
     tenSP: group.tenSP || "",
     phanLoai: detectedPhanLoai || "BoTru",
-    lsx: group.items[0]?.lsx || "",
+    lsx: chuanHoaMaNguonKho(group.items[0]?.lsx || ""),
     giaVon: group.items[0]?.giaVon || 0,
     giaBanSi: group.items[0]?.giaBanSi || 0,
     giaBanLe: group.items[0]?.giaBanLe || 0,
@@ -133,12 +133,11 @@ export function SuaTongModal({
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700 mb-1.5 block">LSX / Lô nhập</label>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">{form.lsx.startsWith("LTK-") ? "Mã lô tồn kho" : "Mã lệnh cắt"}</label>
                 <input 
+                  readOnly
                   value={form.lsx} 
-                  onChange={(e) => setForm({ ...form, lsx: e.target.value })} 
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all bg-slate-50 hover:bg-white focus:bg-white text-slate-700 font-mono font-bold shadow-sm"
-                  placeholder="VD: LSX-2026-..." 
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm outline-none bg-slate-100 text-slate-700 font-mono font-bold shadow-sm cursor-not-allowed"
                 />
               </div>
             </div>

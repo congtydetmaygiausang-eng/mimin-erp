@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
-import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
+import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -67,7 +67,7 @@ export default function KhoThanhPhamPage() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as SanPhamTP[];
-        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) setDsSanPhamState(parsed.map(chuanHoaSanPhamKho));
       }
     } catch {}
 
@@ -97,7 +97,7 @@ export default function KhoThanhPhamPage() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw) as SanPhamTP[];
-        if (Array.isArray(parsed)) setDsSanPhamState(parsed);
+        if (Array.isArray(parsed)) setDsSanPhamState(parsed.map(chuanHoaSanPhamKho));
       } catch {}
     };
     window.addEventListener(KHO_TP_CHANGED_EVENT, onChanged);

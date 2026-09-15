@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { Camera, Save, Plus, Trash2, Package, Calculator, X } from "lucide-react";
 import { toast } from "sonner";
-import { DS_TI_LE_SIZE, DS_KHU_KE_HANG, DS_KENH_BAN, ALL_PHIEU, type KenhBan, type SanPhamTP } from "../data";
+import { DS_KHU_KE_HANG, DS_KENH_BAN, chuanHoaMaNguonKho, hienThiDanhSachSize, type KenhBan, type SanPhamTP } from "../data";
 import {
   SIZE_RATIO_PRESETS,
   type SizeRatioPreset,
@@ -660,8 +660,8 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
     tenSP: sp.tenSP || "",
     phanLoai: detectedPhanLoai || "BoTru",
     mau: sp.mau || "Trắng",
-    size: sp.size || "M, L, XL",
-    lsx: sp.lsx || "LSX-2026-007",
+    size: hienThiDanhSachSize(sp.size || "", sp.chiTietSize),
+    lsx: chuanHoaMaNguonKho(sp.lsx || ""),
     ngayNhap: sp.ngayNhap || new Date().toISOString().slice(0, 10),
     soLuong: sp.soLuong ?? 0,
     donGia: sp.donGia ?? 0,
@@ -751,27 +751,11 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">LSX (Tự động điền màu)</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">{form.lsx.startsWith("LTK-") ? "Mã lô tồn kho" : "Mã lệnh cắt"}</label>
                 <input 
-                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 bg-slate-50 font-mono text-slate-700 transition-all hover:bg-white" 
-                  value={form.lsx} onChange={(e) => {
-                    const val = e.target.value;
-                    const newForm = { ...form, lsx: val };
-                    const matchedLC = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.id?.startsWith("LC_"));
-                    const matched = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.mau);
-
-                    if (matchedLC) {
-                      if (!form.maSP) newForm.maSP = matchedLC.maSP || "";
-                      if (!form.tenSP) newForm.tenSP = matchedLC.phanLoai || "";
-                      if (!form.mau) newForm.mau = matchedLC.mau || "Trắng";
-                      if (!form.size) newForm.size = matchedLC.size || "M";
-                    } else if (matched && matched.mau) {
-                      newForm.mau = matched.mau;
-                      if (!form.maSP) newForm.maSP = matched.maSP || "";
-                      if (!form.tenSP) newForm.tenSP = matched.phanLoai || "";
-                    }
-                    setForm(newForm);
-                  }}
+                  readOnly
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 bg-slate-100 font-mono text-slate-700 cursor-not-allowed"
+                  value={form.lsx}
                 />
               </div>
             </div>
@@ -795,14 +779,7 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Size / Tỉ lệ</label>
-                <input 
-                  list="ds-ti-le-size"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white" 
-                  value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })}
-                />
-                <datalist id="ds-ti-le-size">
-                  {DS_TI_LE_SIZE.map(s => <option key={s} value={s} />)}
-                </datalist>
+                <input readOnly className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-slate-100 cursor-not-allowed" value={form.size} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Vị trí (Khu kệ)</label>

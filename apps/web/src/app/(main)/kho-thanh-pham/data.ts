@@ -68,18 +68,43 @@ export interface SanPhamTP {
 
 export const STORAGE_KEY = "mimin_kho_thanh_pham_v2";
 
+/** Chuẩn hóa mã nguồn kho cũ: lệnh sản xuất thành phẩm phải trỏ về mã lệnh cắt LC. */
+export function chuanHoaMaNguonKho(value: string): string {
+  const code = value.trim().toUpperCase();
+  const legacy = code.match(/^LSX-(\d{4})-(\d+)$/);
+  return legacy ? `LC-${legacy[1]}-${legacy[2].padStart(4, "0")}` : code;
+}
+
+export function hienThiDanhSachSize(
+  size: string,
+  chiTietSize?: Array<{ size: string; sl: number }>,
+): string {
+  const danhSach = (chiTietSize || []).filter((item) => item.sl > 0).map((item) => item.size).join(", ");
+  if (danhSach) return danhSach;
+  return size.trim().toLocaleLowerCase("vi") === "nhiều size" ? "Chưa có chi tiết size" : size;
+}
+
+export function chuanHoaSanPhamKho(sp: SanPhamTP): SanPhamTP {
+  return {
+    ...sp,
+    lsx: chuanHoaMaNguonKho(sp.lsx || ""),
+    size: hienThiDanhSachSize(sp.size || "", sp.chiTietSize),
+  };
+}
+
 // Map 1 row Supabase (snake_case) -> SanPhamTP (camelCase app model).
 // KHONG dung camelToSnake/snakeToCamel tu dong vi no bien ma_sp -> maSp
 // (mat hoa "SP"), giong van de da gap voi kho-store.tsx/giao_dich_kho.
 export function fromSupabaseRow(r: any): SanPhamTP {
+  const chiTietSize = Array.isArray(r.chi_tiet_size) ? r.chi_tiet_size : undefined;
   return {
     id: String(r.id),
     maSP: r.ma_sp ?? "",
     tenSP: r.ten_sp ?? "",
     phanLoai: r.phan_loai ?? "",
     mau: r.mau ?? "",
-    size: r.size ?? "",
-    lsx: r.lsx ?? "",
+    size: hienThiDanhSachSize(r.size ?? "", chiTietSize),
+    lsx: chuanHoaMaNguonKho(r.lsx ?? ""),
     ngayNhap: r.ngay_nhap ?? "",
     soLuong: Number(r.so_luong) || 0,
     donGia: Number(r.don_gia) || 0,
@@ -99,7 +124,7 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     hinhAnh: Array.isArray(r.hinh_anh) ? r.hinh_anh : undefined,
     imgQuan: r.img_quan ?? undefined,
     video: r.video ?? undefined,
-    chiTietSize: Array.isArray(r.chi_tiet_size) ? r.chi_tiet_size : undefined,
+    chiTietSize,
   };
 }
 
