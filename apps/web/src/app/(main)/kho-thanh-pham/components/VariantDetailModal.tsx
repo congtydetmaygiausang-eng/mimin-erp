@@ -66,7 +66,7 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
           <div>
             <h2 className="text-lg font-black text-slate-800">Chi tiết màu: <span className="text-emerald-600">{sp.mau}</span></h2>
             <div className="text-sm font-bold text-slate-500 mt-1">
-              {sp.maSP} · {sp.tenSP} · {sp.lsx.startsWith("LTK-") ? "Lô tồn kho" : "Lệnh sản xuất"}: {sp.lsx}
+              {sp.maSP} · {sp.tenSP} · Lô tồn kho: {sp.lsx}{sp.maLenhCat ? ` · Nguồn: ${sp.maLenhCat}` : " · Nhập trực tiếp"}
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-full transition-colors">

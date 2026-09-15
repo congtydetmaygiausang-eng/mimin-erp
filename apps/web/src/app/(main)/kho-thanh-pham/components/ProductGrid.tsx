@@ -45,7 +45,7 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
           : priceRange.length === 1 ? priceRange[0].toLocaleString()
           : `${Math.min(...priceRange).toLocaleString()} - ${Math.max(...priceRange).toLocaleString()}`;
 
-        const lsx = group.items[0]?.lsx || group.maSP;
+        const lsx = group.items[0]?.maLenhCat || group.maSP;
         const lc = dsLenhCat.find((l) => l.id === lsx);
         const soMauThat = lc?.dsMau?.length || 0;
         const maSPSai = !!lc?.maSP && lc.maSP !== group.maSP;

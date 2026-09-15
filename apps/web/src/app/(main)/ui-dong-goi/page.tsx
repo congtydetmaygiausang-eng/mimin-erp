@@ -16,7 +16,7 @@ import { useSession } from "@/components/session-provider";
 import React from "react";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
-import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
+import { taoMaLoTonKhoTheoDong, toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { useKho } from "@/lib/data/kho-store";
 import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
@@ -310,7 +310,8 @@ export default function UiDongGoiPage() {
                               phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
                               mau: m.ten,
                               size: chiTietSz.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
-                              lsx: lc.id,
+                              lsx: taoMaLoTonKhoTheoDong(`TP-${lc.id}-${variantKey}`, new Date().toISOString().split("T")[0]),
+                              maLenhCat: lc.id,
                               ngayNhap: new Date().toISOString().split("T")[0],
                               soLuong: sl,
                               donGia: giaVon1SP,

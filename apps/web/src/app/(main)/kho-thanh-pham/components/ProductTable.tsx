@@ -133,11 +133,16 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs md:text-sm font-bold text-violet-700 bg-violet-100 px-2 py-0.5 rounded-md border border-violet-200 shadow-sm">{s.viTri || 'Chưa xếp'}</span>
                       <span
-                        title={s.lsx.startsWith("LTK-") ? "Mã lô tồn kho nhập trực tiếp" : "Mã lệnh sản xuất"}
+                        title={s.maLenhCat ? `Lô tồn kho · Nguồn: ${s.maLenhCat}` : "Lô tồn kho nhập trực tiếp"}
                         className="text-[10px] md:text-xs font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-dashed border-slate-300"
                       >
-                        {s.lsx.startsWith("LTK-") ? "Lô tồn · " : ""}{s.lsx}
+                        Lô tồn · {s.lsx}
                       </span>
+                      {s.maLenhCat && (
+                        <span className="text-[10px] md:text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                          Nguồn · {s.maLenhCat}
+                        </span>
+                      )}
                     </div>
                   </div>
                   

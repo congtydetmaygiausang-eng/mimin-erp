@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
-import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, type SanPhamTP } from "./data";
+import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, chuanHoaSanPhamKho, taoMaLoTonKhoTheoDong, type SanPhamTP } from "./data";
 import { StatsHeader, StatsByType } from "./components/StatsPanel";
 import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
@@ -467,7 +467,7 @@ export default function KhoThanhPhamPage() {
   // cũ bị gộp "Nhiều màu" (nhập kho trước khi sửa lỗi gộp màu) - giữ lại ảnh/giá
   // đã nhập riêng nếu tên màu trùng khớp với card cũ.
   const handleRebuildFromLC = (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => {
-    const lsx = group.items[0]?.lsx || group.maSP;
+    const lsx = group.items[0]?.maLenhCat || group.maSP;
     const lc = dsLenhCat.find((l) => l.id === lsx);
     if (!lc || !lc.dsMau || lc.dsMau.length === 0) {
       toast.error("Không tìm thấy dữ liệu màu từ lệnh cắt gốc để tách");
@@ -528,7 +528,7 @@ export default function KhoThanhPhamPage() {
     const group = dangBanGroup;
     if (!group) return;
 
-    const lsx = group.items[0]?.lsx;
+    const lsx = group.items[0]?.maLenhCat;
     const lc = dsLenhCat.find((l) => l.id === lsx);
     const mauTuLC = lc?.dsMau || [];
 
@@ -643,7 +643,8 @@ export default function KhoThanhPhamPage() {
         phanLoai: lc.loaiSP || "BoTru",
         mau: m.ten,
         size: chiTietSize.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
-        lsx: lc.id,
+        lsx: taoMaLoTonKhoTheoDong(`TP-${lc.id}-${idx}`, ngayNhap),
+        maLenhCat: lc.id,
         ngayNhap,
         soLuong: sl,
         donGia: giaVon1SP,
@@ -772,7 +773,7 @@ export default function KhoThanhPhamPage() {
         const existing = dsDanhMuc.find((sp) => sp.id === dangBanGroup.maSP);
         // Giá vốn thật: ưu tiên đơn giá đã ghi lúc nhập kho, sau đó tới bảng COGS
         // của lệnh cắt gốc.
-        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.lsx);
+        const lcGoc = dsLenhCat.find((l) => l.id === dangBanGroup.items[0]?.maLenhCat);
         const giaVonTuLenhCat = Math.round(
           dangBanGroup.items.find((i) => i.donGia > 0)?.donGia ||
           lcGoc?.bangCOGS?.giaVonBinhQuan ||
