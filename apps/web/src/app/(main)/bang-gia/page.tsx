@@ -40,7 +40,7 @@ export default function BangGiaPage() {
   const detailFields: FieldDef[] = [
     { name: "maSP", label: "Sản phẩm trong danh mục", type: "select", required: true, options: productOptions, emptyLabel: loadingProducts ? "Đang tải danh mục..." : "-- Chọn sản phẩm --", clearOnChange: ["maSKUBienThe"] },
     { name: "maSKUBienThe", label: "Biến thể / SKU", type: "select", disabled: (values) => !values.maSP, emptyLabel: "Tất cả biến thể", options: (values) => productsById.get(values.maSP)?.dsMau.filter((variant) => variant.maSKU?.trim()).map((variant) => ({ value: variant.maSKU.trim(), label: `${variant.ten} — ${variant.maSKU.trim()}` })) || [] },
-    { name: "giaBan", label: "Giá bán (VNĐ)", type: "number", min: 1, step: 1000, required: true, placeholder: "VD: 150000" },
+    { name: "giaBan", label: "Giá bán (VNĐ)", type: "number", min: 1, step: 1, required: true, placeholder: "VD: 150000" },
     { name: "soLuongTu", label: "Số lượng từ", type: "number", min: 1, step: 1, required: true },
     { name: "soLuongDen", label: "Số lượng đến (để trống nếu không giới hạn)", type: "number", min: 1, step: 1 },
     { name: "ghiChu", label: "Ghi chú", type: "textarea" },
