@@ -9,6 +9,7 @@
     "vercel-build": "cd apps/web && npm install --legacy-peer-deps && npm run build"
   },
   "dependencies": {
+    "canvas-confetti": "^1.9.4",
     "next": "15.2.9",
     "pg": "^8.22.0",
     "pg-mem": "^3.0.14",
@@ -16,6 +17,7 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "typescript": "^5.6.3"
   }
 }
