@@ -483,7 +483,7 @@ export default function KhoThanhPhamPage() {
     toast.success(`Đã lưu chi tiết màu ${updated.mau}`);
   };
 
-  const handleSaveSuaTong = (updatedItems: SanPhamTP[]) => {
+  const handleSaveSuaTong = (updatedItems: SanPhamTP[], bgSelected?: Record<string, string>) => {
     const maSP = updatedItems[0]?.maSP;
     if (!maSP) return;
     
@@ -501,6 +501,27 @@ export default function KhoThanhPhamPage() {
         giaVonDuKien: Math.max(...updatedItems.map(i => i.giaVon || 0), dm.giaVonDuKien || 0),
       });
     }
+
+    if (bgSelected) {
+      Object.entries(bgSelected).forEach(([kenh, bgId]) => {
+        if (!bgId) return;
+        let giaBan = 0;
+        if (kenh === "ban-le") giaBan = updatedItems[0].giaBanLe || 0;
+        if (kenh === "ban-si") giaBan = updatedItems[0].giaBanSi || 0;
+        if (kenh === "ban-lo") giaBan = updatedItems[0].giaBanLo || 0;
+        if (kenh === "tiktok") giaBan = updatedItems[0].giaTikTok || 0;
+        if (kenh === "shopee") giaBan = updatedItems[0].giaShopee || 0;
+        
+        // Cập nhật cho biến thể chung (không phân biệt size/màu)
+        const existingChiTiet = chiTiet.find(ct => ct.bangGiaId === bgId && ct.maSP === maSP && !ct.maSKUBienThe);
+        if (existingChiTiet) {
+          suaChiTiet(existingChiTiet.id, { giaBan });
+        } else {
+          themChiTiet({ bangGiaId: bgId, maSP: maSP, giaBan, soLuongTu: 1 });
+        }
+      });
+    }
+
     setSuaTongGroup(null);
     toast.success(`Đã cập nhật thông tin chung cho ${updatedItems.length} biến thể của ${maSP}`);
   };

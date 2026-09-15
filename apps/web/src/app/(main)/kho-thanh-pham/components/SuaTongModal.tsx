@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
+import { useBangGia } from "@/lib/data/bang-gia-store";
+import { SearchablePriceListSelect } from "./SearchableSelect";
 
 interface ProductGroup {
   maSP: string;
@@ -18,11 +20,13 @@ export function SuaTongModal({
 }: {
   group: ProductGroup;
   onClose: () => void;
-  onSave: (updatedItems: SanPhamTP[]) => void;
+  onSave: (updatedItems: SanPhamTP[], bgSelected?: Record<string, string>) => void;
 }) {
   const phanLoaiInit = group.items[0]?.phanLoai || "";
   const isValidKey = Object.keys(LOAI_SP_LABELS).includes(phanLoaiInit);
   const detectedPhanLoai = isValidKey ? phanLoaiInit : detectLoaiSP((group.tenSP || "") + " " + phanLoaiInit);
+  const { bangGia } = useBangGia();
+  const [bangGiaSelected, setBangGiaSelected] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
     tenSP: group.tenSP || "",
@@ -61,7 +65,7 @@ export function SuaTongModal({
         giaShopee: form.giaShopee,
       }));
   
-      onSave(updatedItems);
+      onSave(updatedItems, bangGiaSelected);
       setSaving(false);
     }, 300);
   };
@@ -156,28 +160,32 @@ export function SuaTongModal({
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
               <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Giá vốn</label>
-                <input type="number" min="0" value={form.giaVon || ""} onChange={(e) => setForm({ ...form, giaVon: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
+                <div className="relative mt-7">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>
+                  <input type="number" min="0" value={form.giaVon || ""} onChange={(e) => setForm({ ...form, giaVon: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full pl-8 pr-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
+                </div>
               </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Giá bán sỉ</label>
-                <input type="number" min="0" value={form.giaBanSi || ""} onChange={(e) => setForm({ ...form, giaBanSi: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
-              </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Giá bán lẻ</label>
-                <input type="number" min="0" value={form.giaBanLe || ""} onChange={(e) => setForm({ ...form, giaBanLe: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
-              </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Giá bán lô</label>
-                <input type="number" min="0" value={form.giaBanLo || ""} onChange={(e) => setForm({ ...form, giaBanLo: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
-              </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Giá TikTok</label>
-                <input type="number" min="0" value={form.giaTikTok || ""} onChange={(e) => setForm({ ...form, giaTikTok: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
-              </div>
-              <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Giá Shopee</label>
-                <input type="number" min="0" value={form.giaShopee || ""} onChange={(e) => setForm({ ...form, giaShopee: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
-              </div>
+              
+              {[
+                { label: "Giá bán sỉ", kenh: "ban-si", value: form.giaBanSi, set: (v: number) => setForm({ ...form, giaBanSi: v }) },
+                { label: "Giá bán lẻ", kenh: "ban-le", value: form.giaBanLe, set: (v: number) => setForm({ ...form, giaBanLe: v }) },
+                { label: "Giá bán lô", kenh: "ban-lo", value: form.giaBanLo, set: (v: number) => setForm({ ...form, giaBanLo: v }) },
+                { label: "Giá TikTok", kenh: "tiktok", value: form.giaTikTok, set: (v: number) => setForm({ ...form, giaTikTok: v }) },
+                { label: "Giá Shopee", kenh: "shopee", value: form.giaShopee, set: (v: number) => setForm({ ...form, giaShopee: v }) },
+              ].map((item, idx) => (
+                <div key={idx} className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">{item.label}</label>
+                  <SearchablePriceListSelect 
+                    options={bangGia.filter(b => b.kenhBan === item.kenh)} 
+                    value={bangGiaSelected[item.kenh] || ""} 
+                    onChange={(id) => setBangGiaSelected({ ...bangGiaSelected, [item.kenh]: id })} 
+                  />
+                  <div className="relative mt-2">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>
+                    <input type="number" min="0" value={item.value || ""} onChange={(e) => item.set(Math.max(0, parseInt(e.target.value) || 0))} className="w-full pl-8 pr-3 py-2.5 border-2 border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none bg-white font-bold text-slate-800 transition-all" placeholder="0" />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
