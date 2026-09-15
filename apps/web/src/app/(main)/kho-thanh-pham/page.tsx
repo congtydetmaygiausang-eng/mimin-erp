@@ -15,9 +15,12 @@ import { MasterDetailsModal } from "./components/MasterDetailsModal";
 import { DangBanModal } from "./components/DangBanModal";
 import { VariantDetailModal } from "./components/VariantDetailModal";
 import { SuaTongModal } from "./components/SuaTongModal";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 
 export default function KhoThanhPhamPage() {
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
+  const { giaoDich } = useKho();
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
@@ -485,7 +488,15 @@ export default function KhoThanhPhamPage() {
     const ngayNhap = group.items[0]?.ngayNhap || new Date().toISOString().slice(0, 10);
 
     // Giá vốn 1 SP từ lệnh cắt gốc - dùng khi bản ghi cũ chưa có (donGia = 0)
-    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+    const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+    const giaVon1SP = ketQuaGiaVon.giaVon1SP;
+    if (giaVon1SP <= 0) {
+      const vatTuThieu = ketQuaGiaVon.maVatTuThieuGia.length > 0
+        ? ` Thiếu đơn giá nhập của: ${ketQuaGiaVon.maVatTuThieuGia.join(", ")}.`
+        : "";
+      toast.error(`Lệnh ${lc.id} chưa tính được giá vốn, không thể nhập kho.${vatTuThieu}`, { duration: 7000 });
+      return;
+    }
 
     const newSPs: SanPhamTP[] = lc.dsMau.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
@@ -678,20 +689,28 @@ export default function KhoThanhPhamPage() {
               <Package className="w-4 h-4" /> Có {dsChoNhapKho.length} lệnh cắt hoàn thành đóng gói, chờ nhập kho thành phẩm:
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {dsChoNhapKho.map(lc => (
-                <div key={lc.id} className="bg-white rounded-xl border border-amber-100 p-3 shadow-sm flex flex-col justify-between">
+              {dsChoNhapKho.map(lc => {
+                const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+                const coGiaVon = ketQuaGiaVon.giaVon1SP > 0;
+                return (
+                  <div key={lc.id} className={`bg-white rounded-xl border p-3 shadow-sm flex flex-col justify-between ${coGiaVon ? "border-amber-100" : "border-rose-300"}`}>
                   <div>
                     <div className="font-bold text-slate-800 text-sm">{lc.id} - {lc.tenSP}</div>
                     <div className="text-xs text-slate-500 mt-1">SL yêu cầu: <span className="font-semibold text-sky-600">{lc.tongSL?.toLocaleString('vi-VN')}</span></div>
+                    <div className={`mt-2 rounded-lg px-2.5 py-2 text-xs font-bold ${coGiaVon ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                      Giá vốn: {coGiaVon ? `${ketQuaGiaVon.giaVon1SP.toLocaleString("vi-VN")}đ/SP` : "Chưa tính được — không thể nhập kho"}
+                    </div>
                   </div>
                   <button
                     onClick={() => handleNhapKhoFromLC(lc)}
-                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                    disabled={!coGiaVon}
+                    className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
                   >
                     Chi tiết nhập kho <ArrowRight className="w-3.5 h-3.5" />
                   </button>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
