@@ -4,32 +4,33 @@ import { KHO_VAI, KHO_VAT_TU, NHAN_SU, DOI_TAC } from "./data/real-data";
 import { PHAN_CONG } from "./data/cong-no";
 import { AGENT_PERSONAS } from "./agent-personas";
 import { ALL_MODULES, ROLE_LABELS, getFullMatrix, canCreate, canEdit, canDelete, type Role, type Module } from "./permissions";
-import { supabaseAdmin } from "./supabase/admin";
+import { supabaseAdmin, supabaseRead } from "./supabase/admin";
 
 // KHO_VAI/KHO_VAT_TU/NHAN_SU/DOI_TAC/PHAN_CONG ở trên là snapshot Excel tĩnh
 // (2026-07-23), không đổi theo thời gian - agent trả lời sai lệch với dữ liệu
-// thật trên Supabase. 3 tool bên dưới ưu tiên đọc trực tiếp từ Supabase (nguồn
-// chính) qua supabaseAdmin, chỉ rơi về snapshot tĩnh khi thiếu env (dev local
-// chưa cấu hình SUPABASE_SERVICE_ROLE_KEY) - và luôn nói rõ trong câu trả lời
-// khi đang dùng dữ liệu mẫu để không đánh lừa người hỏi.
+// thật trên Supabase. Các tool báo cáo bên dưới ưu tiên đọc trực tiếp từ Supabase
+// qua client chỉ-đọc; snapshot tĩnh chỉ là fallback có gắn nhãn rõ ràng.
 const DU_LIEU_MAU = " (dữ liệu mẫu - chưa kết nối được Supabase)";
 
-// Tồn kho thật = baseline snapshot (hầu hết = 0) + cộng dồn NHAP/XUAT từ bảng
-// giao_dich_kho - đúng công thức tinhTonKho() trong kho-store.tsx để khớp số
-// với trang kho-vai-tinhmann/kho-phu-lieu người dùng đang thấy trên UI.
-async function tonKhoTuGiaoDich(loaiKho: "vai" | "phu-lieu", baseList: { maVT: string; tonKho: number }[]) {
-  const map = new Map<string, number>(baseList.map((v) => [v.maVT, v.tonKho || 0]));
-  if (!supabaseAdmin) return { map, stale: true };
-  const { data, error } = await supabaseAdmin
-    .from("giao_dich_kho")
-    .select("ma_vt, loai, so_luong")
-    .eq("loai_kho", loaiKho);
-  if (error || !data) return { map, stale: true };
-  for (const r of data as any[]) {
-    const delta = r.loai === "XUAT" ? -(Number(r.so_luong) || 0) : (Number(r.so_luong) || 0);
-    map.set(r.ma_vt, (map.get(r.ma_vt) ?? 0) + delta);
-  }
-  return { map, stale: false };
+type InventorySnapshot = { maVT: string; tenVT: string; dvt: string; tonKho: number };
+
+// Các tab Kho hiện đọc trực tiếp cột kho.ton_kho. Agent phải dùng cùng nguồn này
+// để số báo cáo khớp UI, không cộng lại giao_dich_kho vào snapshot Excel cũ.
+async function tonKhoHienTai(loaiKho: "vai" | "phu-lieu", baseList: InventorySnapshot[]) {
+  const fallback = baseList.map((item) => ({ ...item, tonKho: item.tonKho || 0 }));
+  const { data, error } = await supabaseRead
+    .from("kho")
+    .select("sku, ten_vt, dvt, ton_kho")
+    .eq("loai", loaiKho === "vai" ? "Vai" : "Phu lieu")
+    .order("sku");
+  if (error || !data) return { items: fallback, stale: true };
+  const items = (data as Array<Record<string, unknown>>).map((row) => ({
+    maVT: String(row.sku || ""),
+    tenVT: String(row.ten_vt || row.sku || ""),
+    dvt: String(row.dvt || (loaiKho === "vai" ? "kg" : "đơn vị")),
+    tonKho: Number(row.ton_kho) || 0,
+  }));
+  return { items, stale: false };
 }
 
 // Hàm helper định dạng tiền VND
@@ -59,14 +60,13 @@ export const getInventoryStatus = tool({
     const result: string[] = [];
 
     if (category === "vai" || category === "all") {
-      const { map: tonMap, stale } = await tonKhoTuGiaoDich("vai", KHO_VAI);
-      const totalVai = KHO_VAI.length;
-      const tongKhoiLuong = Array.from(tonMap.values()).reduce((sum, v) => sum + v, 0);
+      const { items, stale } = await tonKhoHienTai("vai", KHO_VAI);
+      const totalVai = items.length;
+      const tongKhoiLuong = items.reduce((sum, item) => sum + item.tonKho, 0);
       result.push(`Kho vải hiện có ${totalVai} mã, tổng khối lượng tồn là ${tongKhoiLuong.toLocaleString("vi-VN")} kg${stale ? DU_LIEU_MAU : ""}.`);
 
       // Top 3 tồn nhiều nhất (tính từ giao dịch kho thật)
-      const topVai = [...KHO_VAI]
-        .map((v) => ({ ...v, tonKho: tonMap.get(v.maVT) ?? 0 }))
+      const topVai = [...items]
         .sort((a, b) => b.tonKho - a.tonKho)
         .slice(0, 3);
       result.push("Top 3 mã vải tồn nhiều nhất:");
@@ -74,9 +74,9 @@ export const getInventoryStatus = tool({
     }
 
     if (category === "phu_lieu" || category === "all") {
-      const { map: tonMap, stale } = await tonKhoTuGiaoDich("phu-lieu", KHO_VAT_TU);
-      const totalPhuLieu = KHO_VAT_TU.length;
-      const tongTon = Array.from(tonMap.values()).reduce((sum, v) => sum + v, 0);
+      const { items, stale } = await tonKhoHienTai("phu-lieu", KHO_VAT_TU);
+      const totalPhuLieu = items.length;
+      const tongTon = items.reduce((sum, item) => sum + item.tonKho, 0);
       result.push(`Kho phụ liệu hiện có ${totalPhuLieu} mã, tổng tồn kho ${tongTon.toLocaleString("vi-VN")} đơn vị${stale ? DU_LIEU_MAU : ""}.`);
     }
 
@@ -98,10 +98,10 @@ export const getDebtStatus = tool({
     let doiTac: { trangThai: string; congNo: number }[] = DOI_TAC.map(d => ({ trangThai: d.trangThai, congNo: 0 }));
     let stale = true;
 
-    if (supabaseAdmin) {
+    if (supabaseRead) {
       const [pcRes, dtRes] = await Promise.all([
-        supabaseAdmin.from("phan_cong").select("trang_thai, da_thanh_toan, don_gia_giao, so_luong_giao"),
-        supabaseAdmin.from("nha_cung_cap").select("trang_thai, cong_no").eq("loai", "doi_tac_gia_cong"),
+        supabaseRead.from("phan_cong").select("trang_thai, da_thanh_toan, don_gia_giao, so_luong_giao"),
+        supabaseRead.from("nha_cung_cap").select("trang_thai, cong_no").eq("loai", "doi_tac_gia_cong"),
       ]);
       if (!pcRes.error && pcRes.data) {
         phanCong = (pcRes.data as any[]).map(r => ({
@@ -154,8 +154,8 @@ export const getStaffList = tool({
     let list: { hoTen: string; chucVu: string; boPhan: string }[] = NHAN_SU;
     let stale = true;
 
-    if (supabaseAdmin) {
-      const { data, error } = await supabaseAdmin.from("nhan_su").select("ho_ten, chuc_vu, bo_phan").order("stt");
+    if (supabaseRead) {
+      const { data, error } = await supabaseRead.from("nhan_su").select("ho_ten, chuc_vu, bo_phan").order("stt");
       if (!error && data) {
         list = (data as any[]).map(d => ({ hoTen: d.ho_ten || "", chucVu: d.chuc_vu || "", boPhan: d.bo_phan || "" }));
         stale = false;
@@ -168,6 +168,127 @@ export const getStaffList = tool({
 
     return `Tìm thấy ${list.length} nhân viên${department ? ` trong bộ phận ${department}` : ""}${stale ? DU_LIEU_MAU : ""}. Một số nhân viên: ` +
       list.slice(0, 5).map(nv => `${nv.hoTen} (${nv.chucVu})`).join(", ") + (list.length > 5 ? ", v.v." : "");
+  },
+});
+
+type RealtimeScope = "all" | "inventory" | "orders" | "production" | "finance" | "staff";
+
+const sumField = (rows: Array<Record<string, unknown>>, field: string) =>
+  rows.reduce((sum, row) => sum + (Number(row[field]) || 0), 0);
+
+const countByStatus = (rows: Array<Record<string, unknown>>) => rows.reduce<Record<string, number>>((counts, row) => {
+  const status = String(row.trang_thai || "Chưa xác định");
+  counts[status] = (counts[status] || 0) + 1;
+  return counts;
+}, {});
+
+/**
+ * Báo cáo đọc mới ở mỗi lần gọi, không dùng cache hội thoại hoặc snapshot seed.
+ * Chỉ trả số tổng hợp để cả 6 Agent có thể báo cáo mà không lộ dữ liệu cá nhân.
+ */
+export const getRealtimeStatus = tool({
+  description: "Đọc số liệu vận hành MIMIN mới nhất trực tiếp từ Supabase ở thời điểm hỏi. BẮT BUỘC dùng tool này khi người dùng hỏi số lượng hiện tại, tổng quan hôm nay, đơn hàng, sản xuất, kho, công nợ hoặc nhân sự; không dùng số trong lịch sử chat.",
+  inputSchema: z.object({
+    scope: z.enum(["all", "inventory", "orders", "production", "finance", "staff"]).optional()
+      .describe("Nhóm dữ liệu cần báo cáo; dùng all cho báo cáo toàn hệ thống"),
+  }),
+  execute: async ({ scope = "all" }: { scope?: RealtimeScope }) => {
+    const queriedAt = new Date().toISOString();
+    const include = (target: RealtimeScope) => scope === "all" || scope === target;
+    const report: Record<string, unknown> = { source: "Supabase", queriedAt, exact: true };
+
+    if (include("inventory")) {
+      const { data, error } = await supabaseRead.from("kho").select("sku, loai, dvt, ton_kho, ton_toi_thieu");
+      if (error) {
+        report.inventory = { error: error.message };
+        report.exact = false;
+      } else {
+        const rows = (data || []) as Array<Record<string, unknown>>;
+        const vai = rows.filter((row) => String(row.loai).toLocaleLowerCase("vi").includes("vai"));
+        const phuLieu = rows.filter((row) => String(row.loai).toLocaleLowerCase("vi").includes("phu lieu"));
+        report.inventory = {
+          fabricCodes: vai.length,
+          fabricStock: sumField(vai, "ton_kho"),
+          accessoryCodes: phuLieu.length,
+          accessoryStock: sumField(phuLieu, "ton_kho"),
+          lowStockCodes: rows.filter((row) => Number(row.ton_toi_thieu) > 0 && Number(row.ton_kho) < Number(row.ton_toi_thieu)).length,
+        };
+      }
+    }
+
+    if (include("orders") || include("finance")) {
+      const { data, error } = await supabaseRead.from("don_hang").select("trang_thai, so_luong, thanh_tien, tong_tien, tien_coc, payments");
+      if (error) {
+        report.orders = { error: error.message };
+        report.exact = false;
+      } else {
+        const rows = (data || []) as Array<Record<string, unknown>>;
+        const activeRows = rows.filter((row) => !["Hủy", "Đã giao"].includes(String(row.trang_thai || "")));
+        const revenue = rows.filter((row) => String(row.trang_thai) !== "Hủy")
+          .reduce((sum, row) => sum + (Number(row.tong_tien) || Number(row.thanh_tien) || 0), 0);
+        report.orders = {
+          totalOrders: rows.length,
+          activeOrders: activeRows.length,
+          activeQuantity: sumField(activeRows, "so_luong"),
+          revenue,
+          byStatus: countByStatus(rows),
+        };
+      }
+    }
+
+    if (include("production")) {
+      const [cutResult, assignmentResult, finishedResult, supplierResult] = await Promise.all([
+        supabaseRead.from("lenh_cat").select("trang_thai, tong_sl, tong_sl_thuc_te"),
+        supabaseRead.from("phan_cong").select("trang_thai, cong_doan, so_luong_giao, don_gia_giao, da_thanh_toan"),
+        supabaseRead.from("kho_thanh_pham").select("trang_thai, so_luong"),
+        supabaseRead.from("phieu_dat_ncc_san_xuat").select("trang_thai, noi_dung"),
+      ]);
+      const hasError = [cutResult, assignmentResult, finishedResult, supplierResult].some((result) => Boolean(result.error));
+      if (hasError) report.exact = false;
+      const cutRows = (cutResult.data || []) as Array<Record<string, unknown>>;
+      const assignmentRows = (assignmentResult.data || []) as Array<Record<string, unknown>>;
+      const finishedRows = (finishedResult.data || []) as Array<Record<string, unknown>>;
+      const supplierRows = (supplierResult.data || []) as Array<Record<string, unknown>>;
+      report.production = {
+        cuttingOrders: cutRows.length,
+        plannedQuantity: sumField(cutRows, "tong_sl"),
+        actualCutQuantity: sumField(cutRows, "tong_sl_thuc_te"),
+        cuttingByStatus: countByStatus(cutRows),
+        assignments: assignmentRows.length,
+        assignedQuantity: sumField(assignmentRows, "so_luong_giao"),
+        assignmentsByStatus: countByStatus(assignmentRows),
+        finishedGoodsQuantity: sumField(finishedRows, "so_luong"),
+        supplierOrders: supplierRows.length,
+        supplierOrdersByStatus: countByStatus(supplierRows),
+        supplierOrdersWarning: supplierResult.error?.message,
+      };
+    }
+
+    if (include("staff")) {
+      const { data, error } = await supabaseRead.from("nhan_su").select("trang_thai, bo_phan");
+      if (error) {
+        report.staff = { error: error.message };
+        report.exact = false;
+      } else {
+        const rows = (data || []) as Array<Record<string, unknown>>;
+        report.staff = { total: rows.length, byStatus: countByStatus(rows) };
+      }
+    }
+
+    if (include("finance")) {
+      const { data, error } = await supabaseRead.from("phan_cong").select("trang_thai, so_luong_giao, don_gia_giao, da_thanh_toan");
+      if (error) {
+        report.finance = { error: error.message };
+        report.exact = false;
+      } else {
+        const rows = (data || []) as Array<Record<string, unknown>>;
+        const laborValue = rows.reduce((sum, row) => sum + (Number(row.so_luong_giao) || 0) * (Number(row.don_gia_giao) || 0), 0);
+        const paid = sumField(rows, "da_thanh_toan");
+        report.finance = { laborValue, laborPaid: paid, laborPayable: Math.max(0, laborValue - paid) };
+      }
+    }
+
+    return JSON.stringify(report);
   },
 });
 
@@ -243,6 +364,7 @@ export const getSystemConfig = tool({
 
 export const getAllTools = () => {
   return {
+    getRealtimeStatus,
     getInventoryStatus,
     getDebtStatus,
     getStaffList,
@@ -272,6 +394,26 @@ export const getToolsForDomain = (domains: string[]) => {
   const hasAll = domains.includes("all");
   const hasProduction = hasAll || domains.some((d) => PRODUCTION_DOMAINS.includes(d));
   const hasAnalytical = hasAll || domains.some((d) => ANALYTICAL_DOMAINS.includes(d));
+
+  // Cả 6 Agent đều được đọc số tổng hợp vận hành hiện tại. Tool không trả PII
+  // và luôn query mới từ Supabase ở thời điểm người dùng hỏi.
+  tools.push({
+    type: "function",
+    function: {
+      name: "getRealtimeStatus",
+      description: "Đọc số lượng vận hành mới nhất trực tiếp từ Supabase. Bắt buộc gọi khi người dùng hỏi số liệu hiện tại hoặc báo cáo real-time; không dùng số trong lịch sử chat.",
+      parameters: {
+        type: "object",
+        properties: {
+          scope: {
+            type: "string",
+            enum: ["all", "inventory", "orders", "production", "finance", "staff"],
+            description: "Nhóm dữ liệu cần báo cáo",
+          },
+        },
+      },
+    },
+  });
 
   // Kho domains - Minh (sản xuất) và MIMIN Help (phân tích chéo module) cũng
   // cần tra tồn kho dù domain không ghi trực tiếp "ton-kho".
@@ -477,6 +619,8 @@ export const getAllToolsForDomain = (domains: string[]) => {
   const hasAll = domains.includes("all");
   const hasProduction = hasAll || domains.some((d) => PRODUCTION_DOMAINS.includes(d));
   const hasAnalytical = hasAll || domains.some((d) => ANALYTICAL_DOMAINS.includes(d));
+
+  tools.getRealtimeStatus = getRealtimeStatus;
 
   if (hasAll || domains.includes("ton-kho") || hasProduction || hasAnalytical) {
     tools.getInventoryStatus = getInventoryStatus;
