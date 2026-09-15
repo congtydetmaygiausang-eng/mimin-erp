@@ -286,6 +286,44 @@ export default function UiDongGoiPage() {
                           const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
                           const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
 
+                          // BUG FIX: Tự động copy số lượng sang khâu Đóng Gói để hiển thị trong Bảng Tỷ Lệ Size
+                          const dongGoiPCToUpdate = dongGoiPCs[0];
+                          if (dongGoiPCToUpdate) {
+                            const newDsMau = [...dsMauLC].map((mau) => {
+                              let dongGoiSizes = mau.tyLeSizeChiTiet?.["dongGoi"] || mau.tyLeSizeChiTiet?.["dong_goi"] || [];
+                              if (dongGoiSizes.length === 0 && mau.tyLeSizeChiTiet?.[dongGoiPCToUpdate.id]) {
+                                dongGoiSizes = mau.tyLeSizeChiTiet[dongGoiPCToUpdate.id];
+                              }
+                              // Nếu vẫn trống thì lấy từ khâu Ủi hoặc Khuy nút (khâu trước đó)
+                              if (dongGoiSizes.length === 0) {
+                                dongGoiSizes = mau.tyLeSizeChiTiet?.["ui"] || mau.tyLeSizeChiTiet?.["khuy_nut"] || [];
+                              }
+                              return {
+                                ...mau,
+                                tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [dongGoiPCToUpdate.id]: dongGoiSizes }
+                              };
+                            });
+                            
+                            const newPhanCong = (lc.phanCong || []).map((pc: any) => {
+                              if (pc.id === dongGoiPCToUpdate.id) {
+                                const tongNhap = chiTietMauAll.reduce((s, c) => s + (c.soLuongDat || 0), 0);
+                                return {
+                                  ...pc,
+                                  trangThaiCD: "hoan_thanh",
+                                  soLuongHoanThanh: tongNhap,
+                                  soLuongDatCuoi: tongNhap,
+                                  chiTietMau: chiTietMauAll.map((c: any) => ({
+                                    ...c,
+                                    soLuongNhan: c.soLuongDat,
+                                    soLuongLoi: 0
+                                  }))
+                                };
+                              }
+                              return pc;
+                            });
+                            suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
+                          }
+
                           // Giá vốn 1 SP đã được tính sẵn lúc tạo lệnh cắt (vải + phụ liệu
                           // + gia công + chi phí cố định). Trước đây bị gán cứng donGia: 0
                           // nên cột "Giá trị" của Kho thành phẩm luôn hiện 0đ.

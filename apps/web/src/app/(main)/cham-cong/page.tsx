@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, LogIn, LogOut, Search, TableProperties, Users, type LucideIcon } from "lucide-react";
+import { useState, useMemo, type ReactNode } from "react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, LogIn, LogOut, Search, TableProperties, Users, RefreshCw, type LucideIcon, Trash2 } from "lucide-react";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { getDaysInMonth, isLateArrival, toIsoDate, toLocalTime, tongHopChamCong, TRANG_THAI_CHAM_CONG, type ChamCongRecord, type TrangThaiChamCong } from "@/lib/cham-cong";
 import { useChamCong } from "@/lib/use-cham-cong";
@@ -9,6 +9,7 @@ import { NhanSuTabs } from "@/components/nhan-su-tabs";
 import { useSession } from "@/components/session-provider";
 import { USERS } from "@/lib/users";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Tab = "hang-ngay" | "tong-hop";
 
@@ -20,17 +21,73 @@ const currentMonth = () => {
 export default function ChamCongPage() {
   const { list: nhanSu, loading: loadingNhanSu } = useNhanSu();
   const { user } = useSession();
-  const { records, saveRecord, loading: loadingChamCong, source } = useChamCong();
+  const { records, saveRecord, deleteRecord, clearRecords, loading: loadingChamCong, source } = useChamCong();
   const [tab, setTab] = useState<Tab>("hang-ngay");
   const [monthKey, setMonthKey] = useState(currentMonth);
   const [search, setSearch] = useState("");
   const [boPhan, setBoPhan] = useState("all");
+  
+  const isAdmin = user?.role === "admin" || user?.role === "quan_tri";
 
   const days = useMemo(() => getDaysInMonth(monthKey), [monthKey]);
   const monthRecords = useMemo(() => records.filter((record) => record.ngay.startsWith(monthKey)), [records, monthKey]);
   const departments = useMemo(() => Array.from(new Set(nhanSu.map((item) => item.boPhan).filter(Boolean))).sort(), [nhanSu]);
+  // Tìm trong bảng nhân sự Supabase trước
+  const currentEmployeeFromDB = useMemo(() => {
+    return nhanSu.find((employee) => {
+      if (user?.maNV && employee.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase()) return true;
+      if (user?.email && employee.email?.toLocaleLowerCase() === user.email.toLocaleLowerCase()) return true;
+      if (user?.name && employee.hoTen.toLocaleLowerCase("vi") === user.name.toLocaleLowerCase("vi")) return true;
+      
+      // Fallback matching by email prefix for cases like khang@mimin.vn -> Nguyễn Triết Khang
+      if (user?.email) {
+        const emailPrefix = user.email.split('@')[0].toLocaleLowerCase();
+        if (employee.taiKhoan?.toLocaleLowerCase() === emailPrefix) return true;
+        if (employee.email?.toLocaleLowerCase().startsWith(emailPrefix + "@")) return true;
+        
+        // Fuzzy match name (e.g., "khang" in "Nguyễn Triết Khang")
+        if (emailPrefix.length >= 3 && employee.hoTen.toLocaleLowerCase("vi").includes(emailPrefix)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }, [nhanSu, user]);
+
+  // Fallback: tìm trong danh sách USERS tĩnh nếu chưa có trong Supabase
+  const currentEmployee = useMemo(() => {
+    if (currentEmployeeFromDB) return currentEmployeeFromDB;
+    if (!user) return undefined;
+    
+    const staticUser = USERS.find((u) =>
+      (user.email && u.email.toLocaleLowerCase() === user.email.toLocaleLowerCase())
+      || (user.maNV && u.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase())
+    );
+    
+    if (staticUser) {
+      // Tạo profile tạm từ USERS để hiển thị card chấm công
+      return {
+        maNV: staticUser.maNV,
+        hoTen: staticUser.name,
+        boPhan: staticUser.phongBan,
+        email: staticUser.email,
+      } as { maNV: string; hoTen: string; boPhan: string; email?: string };
+    }
+    
+    // Nếu vẫn không tìm thấy, tạo profile tạm từ thông tin user đăng nhập 
+    // để đảm bảo 100% user đều thấy nút chấm công
+    const prefix = user.email ? user.email.split('@')[0] : "user";
+    return {
+      maNV: user.maNV || prefix.toUpperCase(),
+      hoTen: user.name || prefix,
+      boPhan: "Hành chính",
+      email: user.email,
+    } as { maNV: string; hoTen: string; boPhan: string; email?: string };
+  }, [currentEmployeeFromDB, user]);
+
   const employees = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("vi");
+    
     return nhanSu.filter((item) => item.trangThai !== "nghi_viec")
       .filter((item) => boPhan === "all" || item.boPhan === boPhan)
       .filter((item) => !query || `${item.maNV} ${item.hoTen} ${item.boPhan}`.toLocaleLowerCase("vi").includes(query));
@@ -39,33 +96,15 @@ export default function ChamCongPage() {
   const recordMap = useMemo(() => new Map(monthRecords.map((record) => [`${record.maNV}|${record.ngay}`, record])), [monthRecords]);
   const summary = useMemo(() => new Map(employees.map((employee) => [employee.maNV, tongHopChamCong(monthRecords.filter((record) => record.maNV === employee.maNV))])), [employees, monthRecords]);
   const totals = useMemo(() => tongHopChamCong(monthRecords), [monthRecords]);
-  // Tìm trong bảng nhân sự Supabase trước
-  const currentEmployeeFromDB = useMemo(() => nhanSu.find((employee) =>
-    (user?.maNV && employee.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase())
-    || (user?.email && employee.email?.toLocaleLowerCase() === user.email.toLocaleLowerCase())
-    || (user?.name && employee.hoTen.toLocaleLowerCase("vi") === user.name.toLocaleLowerCase("vi"))
-  ), [nhanSu, user]);
-
-  // Fallback: tìm trong danh sách USERS tĩnh nếu chưa có trong Supabase
-  const currentEmployee = useMemo(() => {
-    if (currentEmployeeFromDB) return currentEmployeeFromDB;
-    if (!user) return undefined;
-    const staticUser = USERS.find((u) =>
-      (user.email && u.email.toLocaleLowerCase() === user.email.toLocaleLowerCase())
-      || (user.maNV && u.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase())
-    );
-    if (!staticUser) return undefined;
-    // Tạo profile tạm từ USERS để hiển thị card chấm công
-    return {
-      maNV: staticUser.maNV,
-      hoTen: staticUser.name,
-      boPhan: staticUser.phongBan,
-      email: staticUser.email,
-    } as { maNV: string; hoTen: string; boPhan: string; email?: string };
-  }, [currentEmployeeFromDB, user]);
 
   const today = toIsoDate(new Date());
   const todayRecord = currentEmployee ? recordMap.get(`${currentEmployee.maNV}|${today}`) : undefined;
+
+  const canEdit = (employeeMaNV: string, dateIso: string) => {
+    if (isAdmin) return true;
+    if (currentEmployee?.maNV === employeeMaNV && dateIso === today) return true;
+    return false;
+  };
 
   const moveMonth = (delta: number) => {
     const [year, month] = monthKey.split("-").map(Number);
@@ -73,8 +112,15 @@ export default function ChamCongPage() {
     setMonthKey(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
   };
 
-  const updateStatus = async (maNV: string, ngay: string, trangThai: TrangThaiChamCong) => {
+  const updateStatus = async (maNV: string, ngay: string, trangThai: TrangThaiChamCong | "") => {
     const existing = recordMap.get(`${maNV}|${ngay}`);
+    if (trangThai === "") {
+      if (existing) {
+        await deleteRecord(existing, user);
+      }
+      return;
+    }
+
     const now = new Date().toISOString();
     const record: ChamCongRecord = {
       id: existing?.id || `CC-${maNV}-${ngay}`,
@@ -132,6 +178,21 @@ export default function ChamCongPage() {
     toast.success(`Đã ghi nhận kết thúc lúc ${time.slice(0, 5)}`);
   };
 
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
+
+  const resetAllAttendance = async () => {
+    toast.loading("Đang xóa toàn bộ dữ liệu chấm công...", { id: "reset-cham-cong" });
+    try {
+      if (typeof clearRecords === "function") {
+        await clearRecords();
+      }
+      toast.success("Đã xóa toàn bộ dữ liệu chấm công", { id: "reset-cham-cong" });
+      setShowConfirmReset(false);
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xóa dữ liệu", { id: "reset-cham-cong" });
+    }
+  };
+
   const loading = loadingNhanSu || loadingChamCong;
   const monthLabel = new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(new Date(`${monthKey}-01T00:00:00`));
 
@@ -168,6 +229,25 @@ export default function ChamCongPage() {
             <TabButton active={tab === "tong-hop"} onClick={() => setTab("tong-hop")} icon={TableProperties}>Tổng hợp tháng</TabButton>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <>
+                <button 
+                  onClick={() => setShowConfirmReset(true)}
+                  className="flex h-10 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                >
+                  <Trash2 className="h-4 w-4" /> Reset toàn bộ
+                </button>
+                <ConfirmDialog 
+                  open={showConfirmReset}
+                  onClose={() => setShowConfirmReset(false)}
+                  onConfirm={resetAllAttendance}
+                  title="Reset toàn bộ dữ liệu chấm công?"
+                  description="Hành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu chấm công của tất cả nhân viên. Bạn có chắc chắn muốn tiếp tục không?"
+                  variant="danger"
+                  confirmLabel="Xóa dữ liệu"
+                />
+              </>
+            )}
             <button className="btn-secondary h-10 w-10 p-0" onClick={() => moveMonth(-1)} aria-label="Tháng trước"><ChevronLeft className="mx-auto h-4 w-4" /></button>
             <input className="input h-10 w-40" type="month" value={monthKey} onChange={(event) => setMonthKey(event.target.value)} />
             <button className="btn-secondary h-10 w-10 p-0" onClick={() => moveMonth(1)} aria-label="Tháng sau"><ChevronRight className="mx-auto h-4 w-4" /></button>
@@ -196,24 +276,40 @@ export default function ChamCongPage() {
               <thead className="bg-white/70 dark:bg-slate-900/80">
                 <tr className="border-b" style={{ borderColor: "var(--border)" }}>
                   <th className="sticky left-0 z-20 min-w-52 bg-inherit p-3 text-left">Nhân viên</th>
-                  {days.map((day) => <th key={day.getTime()} className={`w-12 p-2 text-center ${day.getDay() === 0 ? "text-red-500" : ""}`}><span className="block">{day.getDate()}</span><span className="font-normal opacity-60">{day.getDay() === 0 ? "CN" : `T${day.getDay() + 1}`}</span></th>)}
+                  {days.map((day) => {
+                    const ngay = toIsoDate(day);
+                    const isToday = ngay === today;
+                    return (
+                      <th key={day.getTime()} className={`w-12 p-2 text-center ${isToday ? "bg-emerald-100/50 text-emerald-700 ring-1 ring-emerald-500/30 dark:bg-emerald-900/30 dark:text-emerald-400" : day.getDay() === 0 ? "text-red-500" : ""}`}>
+                        <span className="block">{day.getDate()}</span>
+                        <span className="font-normal opacity-60">{isToday ? "Hôm nay" : day.getDay() === 0 ? "CN" : `T${day.getDay() + 1}`}</span>
+                      </th>
+                    );
+                  })}
                   <th className="w-16 p-2 text-center">Công</th>
                 </tr>
               </thead>
               <tbody>
                 {employees.map((employee) => (
-                  <tr key={employee.maNV} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
+                  <tr key={employee.maNV} className="border-b last:border-0 hover:bg-white/40 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
                     <td className="sticky left-0 z-10 bg-white p-3 shadow-[3px_0_6px_-5px_rgba(0,0,0,.5)] dark:bg-slate-900">
                       <span className="block font-semibold">{employee.hoTen}</span><span className="opacity-60">{employee.maNV} · {employee.boPhan}</span>
                     </td>
                     {days.map((day) => {
                       const ngay = toIsoDate(day);
+                      const isToday = ngay === today;
                       const record = recordMap.get(`${employee.maNV}|${ngay}`);
                       const status = TRANG_THAI_CHAM_CONG.find((item) => item.value === record?.trangThai);
                       return (
-                        <td key={ngay} className={`p-1 text-center ${day.getDay() === 0 ? "bg-red-50/40 dark:bg-red-950/10" : ""}`}>
-                          <select aria-label={`${employee.hoTen} ngày ${day.getDate()}`} className={`h-8 w-11 cursor-pointer appearance-none rounded-md border-0 text-center text-[11px] font-bold outline-none ring-teal-500 focus:ring-2 ${status?.className || "bg-slate-100 text-slate-400 dark:bg-slate-800"}`} value={record?.trangThai || ""} onChange={(event) => void updateStatus(employee.maNV, ngay, event.target.value as TrangThaiChamCong)}>
-                            <option value="" disabled>—</option>
+                        <td key={ngay} className={`p-1 text-center ${isToday ? "bg-emerald-50/50 dark:bg-emerald-900/10" : day.getDay() === 0 ? "bg-red-50/40 dark:bg-red-950/10" : ""}`}>
+                          <select 
+                            aria-label={`${employee.hoTen} ngày ${day.getDate()}`} 
+                            disabled={!canEdit(employee.maNV, ngay)}
+                            className={`h-8 w-11 cursor-pointer appearance-none rounded-md border-0 text-center text-[11px] font-bold outline-none ring-teal-500 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-40 ${status?.className || "bg-slate-100 text-slate-400 dark:bg-slate-800"}`} 
+                            value={record?.trangThai || ""} 
+                            onChange={(event) => void updateStatus(employee.maNV, ngay, event.target.value as TrangThaiChamCong | "")}
+                          >
+                            <option value="">—</option>
                             {TRANG_THAI_CHAM_CONG.map((item) => <option key={item.value} value={item.value}>{item.shortLabel}</option>)}
                           </select>
                         </td>
