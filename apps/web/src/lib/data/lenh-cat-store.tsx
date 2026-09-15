@@ -658,8 +658,15 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const xoaLenhCat = useCallback(async (id: string, u: AppUser) => {
-    setDsLenhCat((prev) => prev.filter((item) => item.id !== id));
-    logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat" });
+    setDsLenhCat((prev) => {
+      const deletedItem = prev.find((item) => item.id === id);
+      if (deletedItem) {
+        logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat", oldValue: deletedItem });
+      } else {
+        logWorkflow(u, "delete", `Xoá lệnh cắt ${id}`, id, { module: "lenh-cat" });
+      }
+      return prev.filter((item) => item.id !== id);
+    });
     try {
       const { supabase } = await import("@/lib/supabase/client");
       if (supabase) await supabase!.from("lenh_cat").delete().eq("id", id);

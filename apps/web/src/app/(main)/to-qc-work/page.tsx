@@ -57,8 +57,9 @@ export default function UiQCPage() {
     if (mayPCs.length === 0) return false;
 
     // Nếu khâu QC đã hoàn thành -> Không hiển thị nữa
+    // BUG FIX: Bỏ điều kiện này đi để QC sau khi hoàn thành vẫn hiển thị để theo dõi như các khâu khác
     const qcPC = lc.phanCong?.find((pc: any) => pc.id === "qc");
-    if (qcPC && qcPC.trangThaiCD === "hoan_thanh") return false;
+    // if (qcPC && qcPC.trangThaiCD === "hoan_thanh") return false;
 
     // Phải có ít nhất 1 khâu may đã đến QC (cho_qc, co_loi, hoan_thanh)
     const hasToQC = mayPCs.some((pc: any) => pc.trangThaiCD === "cho_qc" || pc.trangThaiCD === "co_loi" || pc.trangThaiCD === "hoan_thanh");
@@ -136,11 +137,31 @@ export default function UiQCPage() {
     const today = new Date().toISOString().slice(0, 10);
 
     if (!isBo) {
-      const slQC = mayPCs[0]?.soLuongHoanThanh || 0;
+      const mayPC = mayPCs[0];
+      const slQC = mayPC?.soLuongHoanThanh || 0;
+      
+      // Copy sizes and chiTietMau from May to QC for tracking
+      const newDsMau: MauVai[] = (lc.dsMau || []).map((mau) => {
+        const maySizes = mayPC ? mau.tyLeSizeChiTiet?.[mayPC.id] || [] : [];
+        return {
+          ...mau,
+          tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [qcPC.id]: maySizes }
+        };
+      });
+      suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+
+      const chiTietMauQC = (mayPC?.chiTietMau || []).map((c: any) => ({
+        mau: c.mau,
+        soLuongNhan: c.soLuongDat,
+        soLuongDat: c.soLuongDat,
+        soLuongLoi: 0,
+      }));
+
       capNhatCongDoan(lc.id, qcPC.id, {
         trangThaiCD: "hoan_thanh",
         soLuongHoanThanh: slQC,
         soLuongDatCuoi: slQC,
+        chiTietMau: chiTietMauQC,
         lichSuNhapSL: [{ ngay: today, loai: "qc_dat", soLuong: slQC, nguoiNhap: user?.name, ghiChu: "QC hoàn tất toàn bộ" }],
       } as any);
       toast.success(`🎉 Lệnh cắt ${lc.id} đã hoàn tất QC. Chuyển sang Hoàn Thiện!`);
@@ -160,7 +181,7 @@ export default function UiQCPage() {
       if (!found) return mau;
       return {
         ...mau,
-        tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), qc: found.ket.ghepSizes },
+        tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [qcPC.id]: found.ket.ghepSizes },
         aoDuTheoSize: found.ket.aoDuSizes,
         quanDuTheoSize: found.ket.quanDuSizes,
       };

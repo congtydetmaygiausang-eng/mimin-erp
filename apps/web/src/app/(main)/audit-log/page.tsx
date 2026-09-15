@@ -49,6 +49,7 @@ export default function AuditLogPage() {
   const [filterRole, setFilterRole] = useState<string>("all");
   const [onlyFailed, setOnlyFailed] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [activeTab, setActiveTab] = useState<"history" | "trash">("history");
 
   const stats = useMemo(() => getAuditStats(logs), [logs]);
 
@@ -61,6 +62,10 @@ export default function AuditLogPage() {
     }).filter((l) => filterRole === "all" || l.userRole === filterRole)
       .reverse(); // Mới nhất trước
   }, [logs, search, filterModule, filterAction, filterRole, onlyFailed]);
+
+  const trashLogs = useMemo(() => {
+    return logs.filter((l) => l.action === "delete" && l.oldValue != null).reverse();
+  }, [logs]);
 
   if (!perm.canView("cai-dat")) {
     return (
@@ -103,6 +108,44 @@ export default function AuditLogPage() {
     toast.success(`Đã xuất ${filtered.length} logs`);
   };
 
+  const handleRestore = async (log: AuditLog) => {
+    if (!log.oldValue) return;
+    if (!confirm("Bạn có chắc chắn muốn khôi phục dữ liệu này không?")) return;
+
+    try {
+      const { supabaseUpsertRaw, camelToSnake } = await import("@/lib/supabase/sync-helper");
+      
+      let tableName = "";
+      let payload: any = {};
+      
+      if (log.module === "lenh-cat") {
+        tableName = "lenh_cat";
+        payload = camelToSnake(log.oldValue);
+      } else if (log.module === "danh-muc-sp") {
+        tableName = "san_pham";
+        payload = camelToSnake(log.oldValue);
+        payload.ma_sp = (log.oldValue as any).id;
+        delete payload.id;
+      } else if (log.module === "kho-thanh-pham") {
+        tableName = "kho_thanh_pham";
+        const { toSupabaseRow } = await import("../kho-thanh-pham/data");
+        payload = toSupabaseRow(log.oldValue as any);
+      } else {
+        toast.error("Không hỗ trợ khôi phục module này");
+        return;
+      }
+
+      await supabaseUpsertRaw(tableName, payload);
+      toast.success("Khôi phục thành công! Đã đồng bộ lên hệ thống.");
+      
+      logAudit({ user, action: "create", module: log.module, description: `[Khôi phục từ thùng rác] ${log.resourceName || log.resourceId || ""}` });
+      refresh();
+    } catch (e) {
+      console.error(e);
+      toast.error("Khôi phục thất bại");
+    }
+  };
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
@@ -120,8 +163,25 @@ export default function AuditLogPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex gap-4 border-b border-white/10">
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "history" ? "border-violet-500 text-violet-500" : "border-transparent opacity-60 hover:opacity-100"}`}
+        >
+          Lịch sử hệ thống
+        </button>
+        <button
+          onClick={() => setActiveTab("trash")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === "trash" ? "border-violet-500 text-violet-500" : "border-transparent opacity-60 hover:opacity-100"}`}
+        >
+          Thùng rác ({trashLogs.length})
+        </button>
+      </div>
+
+      {activeTab === "history" ? (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-4">
           <div className="text-xs opacity-70 flex items-center gap-1"><Activity className="w-3 h-3" /> Tổng logs</div>
           <div className="text-2xl font-bold mt-1">{stats.total}</div>
@@ -218,6 +278,62 @@ export default function AuditLogPage() {
           )}
         </div>
       </div>
+        </>
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+            <div className="text-sm font-medium">Danh sách dữ liệu đã xoá</div>
+            <div className="text-xs opacity-70">{trashLogs.length} mục có thể khôi phục</div>
+          </div>
+          <div className="divide-y max-h-[700px] overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+            {trashLogs.length === 0 ? (
+              <div className="p-12 text-center opacity-60 text-sm">
+                <Trash2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                Thùng rác trống.
+              </div>
+            ) : (
+              trashLogs.map((log) => {
+                const Icon = Trash2;
+                const colorClass = "bg-rose-500/15 text-rose-500";
+                const isSupported = ["lenh-cat", "danh-muc-sp", "kho-thanh-pham"].includes(log.module);
+                return (
+                  <div key={log.id} className="p-3 flex items-center gap-3 hover:bg-white/30 dark:hover:bg-white/5 transition-colors">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold">{log.description}</div>
+                      <div className="text-xs opacity-60 mt-0.5 flex gap-2">
+                        <span>{new Date(log.timestamp).toLocaleString("vi-VN")}</span>
+                        <span>·</span>
+                        <span>User: {log.userName}</span>
+                        <span>·</span>
+                        <span>Module: {MODULE_LABELS[log.module as Module] || log.module}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <button 
+                        className="btn-secondary text-xs px-3 py-1"
+                        onClick={() => setSelectedLog(log)}
+                      >
+                        Chi tiết
+                      </button>
+                      {isSupported && (
+                        <button 
+                          className="btn-primary text-xs px-3 py-1 flex items-center gap-1"
+                          onClick={() => handleRestore(log)}
+                        >
+                          <RefreshCw className="w-3 h-3" /> Khôi phục
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Log detail modal */}
       {selectedLog && (

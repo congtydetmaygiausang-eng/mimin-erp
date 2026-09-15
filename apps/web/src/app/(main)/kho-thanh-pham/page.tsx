@@ -4,6 +4,8 @@ import { Box, Download, Sparkles, Plus, Package, ArrowRight } from "lucide-react
 import { toast } from "sonner";
 import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { useBangGia } from "@/lib/data/bang-gia-store";
+import { useSession } from "@/components/session-provider";
+import { logCRUD } from "@/lib/audit-log";
 import { useDanhMucSP, type MauTieuChuan } from "@/lib/data/danh-muc-sp-store";
 import { supabaseFetchAllRaw, supabaseUpsertRaw, supabaseDelete, checkSupabase, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { STORAGE_KEY, KHO_TP_CHANGED_EVENT, generateSanPhamFromWorkflow, fromSupabaseRow, toSupabaseRow, type SanPhamTP } from "./data";
@@ -18,6 +20,7 @@ import { VariantDetailModal } from "./components/VariantDetailModal";
 import { SuaTongModal } from "./components/SuaTongModal";
 
 export default function KhoThanhPhamPage() {
+  const { user } = useSession();
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
@@ -113,7 +116,13 @@ export default function KhoThanhPhamPage() {
       if (checkSupabase()) {
         const prevIds = new Set(prev.map((r) => r.id));
         const newIds = new Set(newDs.map((r) => r.id));
-        const deletedIds = prev.filter((r) => !newIds.has(r.id)).map((r) => r.id);
+        const deletedItems = prev.filter((r) => !newIds.has(r.id));
+        const deletedIds = deletedItems.map((r) => r.id);
+
+        deletedItems.forEach((item) => {
+          logCRUD(user, "kho-thanh-pham", "delete", item.tenSP || "Sản phẩm", item.id, { oldValue: item });
+        });
+
         Promise.all([
           ...newDs.map((row) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(row))),
           ...deletedIds.map((id) => supabaseDelete("kho_thanh_pham", id)),
