@@ -38,6 +38,10 @@ export type Module =
   | "phan-quyen-tuy-chinh"
   | "danh-muc-sp"
   | "dat-ncc-phu-lieu"
+  | "hoa-don"
+  | "van-chuyen"
+  | "tin-nhan"
+  | "workspace"
   // Modules gia cong mobile (cho NCC + cong nhan)
   | "cong-viec-gia-cong"
   | "ban-giao-gia-cong"
@@ -122,6 +126,10 @@ export const MODULE_LABELS: Record<Module, string> = {
   "phan-quyen-tuy-chinh": "Phân quyền tùy chỉnh",
   "danh-muc-sp": "Danh mục sản phẩm",
   "dat-ncc-phu-lieu": "Đơn đặt nhà cung cấp",
+  "hoa-don": "Hóa đơn điện tử",
+  "van-chuyen": "Vận chuyển",
+  "tin-nhan": "Tin nhắn & bảng tin",
+  "workspace": "Không gian làm việc",
   "cong-viec-gia-cong": "Công việc gia công",
   "ban-giao-gia-cong": "Bàn giao gia công",
   "san-luong-gia-cong": "Sản lượng gia công",
@@ -504,6 +512,30 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
   },
 };
 
+/** Quyền cho các phân hệ dùng chung và tài khoản ngoài hệ thống. */
+const ADDITIONAL_PERMISSIONS: Partial<Record<Role, Partial<Record<Module, string>>>> = {
+  admin: { "hoa-don": "rcud", "van-chuyen": "rcud", "tin-nhan": "rcud", "workspace": "rcud" },
+  planner: { "hoa-don": "r", "van-chuyen": "r", "tin-nhan": "rcu", "workspace": "r" },
+  warehouse: { "van-chuyen": "rcu", "tin-nhan": "r", "workspace": "r" },
+  sewing: { "tin-nhan": "r", "workspace": "r" },
+  qc: { "tin-nhan": "r", "workspace": "r" },
+  finishing: { "van-chuyen": "ru", "tin-nhan": "r", "workspace": "r" },
+  accountant: { "hoa-don": "rcud", "van-chuyen": "r", "tin-nhan": "r", "workspace": "r" },
+  content: { "tin-nhan": "rcud", "workspace": "r" },
+  partner: {
+    "dashboard": "r", "dat-ncc-phu-lieu": "ru", "cong-no-cong-doan": "r", "cham-cong": "rcu",
+    "bang-luong": "r", "hoa-don": "rcu", "tin-nhan": "rcu", "workspace": "r",
+  },
+  supplier: { "hoa-don": "rcu", "tin-nhan": "rcu", "workspace": "r" },
+  workshop_customer: { "hoa-don": "r", "tin-nhan": "r", "workspace": "r" },
+  buyer_customer: { "hoa-don": "r", "tin-nhan": "r", "workspace": "r" },
+  cutting: { "tin-nhan": "r", "workspace": "r" },
+  printing: { "tin-nhan": "r", "workspace": "r" },
+  buttoning: { "tin-nhan": "r", "workspace": "r" },
+  ironing: { "tin-nhan": "r", "workspace": "r" },
+  packaging: { "tin-nhan": "r", "workspace": "r" },
+};
+
 // ============================================
 // CUSTOM PERMISSION MATRIX (admin có thể tùy chỉnh)
 // Lưu localStorage - ưu tiên dùng khi có
@@ -512,22 +544,25 @@ const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v2";
 
 /** Load matrix hiệu lực: ưu tiên localStorage (admin tùy chỉnh), fallback PERMISSIONS mặc định */
 export function getEffectivePermissions(): Record<Role, Partial<Record<Module, string>>> {
-  if (typeof window === "undefined") return PERMISSIONS;
+  const defaults = Object.fromEntries(
+    (Object.keys(PERMISSIONS) as Role[]).map((role) => [role, { ...PERMISSIONS[role], ...ADDITIONAL_PERMISSIONS[role] }]),
+  ) as Record<Role, Partial<Record<Module, string>>>;
+  if (typeof window === "undefined") return defaults;
   try {
     const raw = localStorage.getItem(CUSTOM_MATRIX_KEY);
     if (raw) {
       const custom = JSON.parse(raw) as Record<Role, Partial<Record<Module, string>>>;
       // Merge: ưu tiên custom nhưng fallback PERMISSIONS nếu thiếu key
-      const merged: any = { ...PERMISSIONS };
+      const merged: Record<Role, Partial<Record<Module, string>>> = { ...defaults };
       (Object.keys(PERMISSIONS) as Role[]).forEach((role) => {
         if (custom[role]) {
-          merged[role] = { ...PERMISSIONS[role], ...custom[role] };
+          merged[role] = { ...defaults[role], ...custom[role] };
         }
       });
       return merged;
     }
   } catch {}
-  return PERMISSIONS;
+  return defaults;
 }
 
 /** Lưu matrix tùy chỉnh vào localStorage */
@@ -592,6 +627,7 @@ export const ALL_MODULES: Module[] = [
   "so-do-chien-luoc", "realtime", "cai-dat",
   "trang-chu-gia-cong", "bang-dieu-hanh-sx", "doi-soat-tien-cong",
   "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp", "dat-ncc-phu-lieu",
+  "hoa-don", "van-chuyen", "tin-nhan", "workspace",
   "cong-viec-gia-cong", "ban-giao-gia-cong", "san-luong-gia-cong", "tien-cong-gia-cong",
   "to-cat", "to-in-theu", "to-khuy-nut", "to-ui", "to-dong-goi"
 ];
