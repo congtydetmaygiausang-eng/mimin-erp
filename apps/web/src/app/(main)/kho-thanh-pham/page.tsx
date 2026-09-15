@@ -20,11 +20,17 @@ import { VariantDetailModal } from "./components/VariantDetailModal";
 import { SuaTongModal } from "./components/SuaTongModal";
 import { useKho } from "@/lib/data/kho-store";
 import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
+import { useBangGia, type KenhBan as KenhBanBangGia } from "@/lib/data/bang-gia-store";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
+import { DS_KENH_BAN, type KenhBan } from "./data";
 
 export default function KhoThanhPhamPage() {
   const { user } = useSession();
   const { dsLenhCat, capNhatTrangThai } = useLenhCat();
   const { giaoDich } = useKho();
+  const { layGia, loading: loadingBangGia } = useBangGia();
+  const [lenhDangNhap, setLenhDangNhap] = useState<(typeof dsLenhCat)[number] | null>(null);
+  const [kenhNhapKho, setKenhNhapKho] = useState<KenhBan[]>(["ban-le"]);
   const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
   const { chiTiet, themChiTiet, suaChiTiet } = useBangGia();
@@ -716,12 +722,25 @@ export default function KhoThanhPhamPage() {
   // trong khi dữ liệu thật là MẢNG {mau, soLuongDat, soLuongLoi, sizes[]}, nên
   // Object.keys trả về "0","1"... và số lượng luôn = 0 -> luôn báo "Không tìm thấy".
   // Nay đọc đúng cấu trúc và tạo 1 dòng cho MỖI MÀU, khớp với luồng ui-dong-goi.
-  const handleNhapKhoFromLC = (lc: any) => {
+  const handleNhapKhoFromLC = (lc: any, kenhBan: KenhBan[] = kenhNhapKho) => {
     const dongGoiPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")) || [];
     const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
     const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
     const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
     const ngayNhap = new Date().toISOString().slice(0, 10);
+    if (kenhBan.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một loại giá bán");
+      return;
+    }
+    const thieuGia = dsMauLC.flatMap((m: any) => {
+      const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+      const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+      return kenhBan.filter((kenh) => layGia(kenh as KenhBanBangGia, lc.maSP, m.maSKU, Math.max(1, sl)) == null).map((kenh) => `${m.ten} · ${DS_KENH_BAN.find((item) => item.value === kenh)?.label || kenh}`);
+    });
+    if (thieuGia.length > 0) {
+      toast.error(`Chưa thiết lập bảng giá bán cho: ${thieuGia.join(", ")}`, { duration: 7000 });
+      return;
+    }
 
     const newSps: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
       const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
@@ -740,6 +759,13 @@ export default function KhoThanhPhamPage() {
         soLuong: sl,
         donGia: giaVon1SP,
         giaTri: sl * giaVon1SP,
+        giaVon: giaVon1SP,
+        giaBanSi: kenhBan.includes("ban-si") ? layGia("ban-si", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaBanLe: kenhBan.includes("ban-le") ? layGia("ban-le", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaBanLo: kenhBan.includes("ban-lo") ? layGia("ban-lo", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaTikTok: kenhBan.includes("tiktok") ? layGia("tiktok", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        giaShopee: kenhBan.includes("shopee") ? layGia("shopee", lc.maSP, m.maSKU, Math.max(1, sl)) || 0 : 0,
+        kenhBan,
         viTri: "Khu A1",
         trangThai: "con",
         hinhAnh: m.img ? [m.img] : [],
@@ -752,6 +778,7 @@ export default function KhoThanhPhamPage() {
       update([...newSps, ...dsSanPham]);
       capNhatTrangThai(lc.id, "HoanThanh", null);
       toast.success(`Đã nhập kho ${newSps.length} màu từ ${lc.id}!`);
+      setLenhDangNhap(null);
     } else {
       toast.error("Không tìm thấy chi tiết màu/số lượng đóng gói đạt!");
     }
@@ -782,7 +809,10 @@ export default function KhoThanhPhamPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleNhapKhoFromLC(lc)}
+                    onClick={() => {
+                      setKenhNhapKho(["ban-le"]);
+                      setLenhDangNhap(lc);
+                    }}
                     disabled={!coGiaVon}
                     className="mt-3 flex items-center justify-center gap-1.5 w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
                   >
@@ -902,6 +932,72 @@ export default function KhoThanhPhamPage() {
           onSave={handleSaveVariant}
         />
       )}
+
+      {lenhDangNhap && (() => {
+        const ketQuaGiaVon = tinhGiaVonLenhCat(lenhDangNhap, giaoDich);
+        const dsMau = lenhDangNhap.dsMau || [];
+        const tongSL = lenhDangNhap.tongSL || 0;
+        return (
+          <ResponsiveModal open={true} maxWidth="2xl" onClose={() => setLenhDangNhap(null)} title="CHI TIẾT NHẬP KHO TỪ SẢN XUẤT">
+            <div className="space-y-5 p-1">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+                  <div className="text-[11px] font-bold uppercase text-blue-600">Mã LC / LSX nguồn</div>
+                  <div className="mt-1 font-mono font-black text-blue-900">{lenhDangNhap.id}</div>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="text-[11px] font-bold uppercase text-emerald-600">Giá vốn bắt buộc</div>
+                  <div className="mt-1 font-black text-emerald-900">{ketQuaGiaVon.giaVon1SP.toLocaleString("vi-VN")}đ/SP</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[11px] font-bold uppercase text-slate-500">Số lượng nhập</div>
+                  <div className="mt-1 font-black text-slate-900">{tongSL.toLocaleString("vi-VN")} SP</div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-sm font-black text-slate-800">Chọn loại giá bán đã thiết lập</h3>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {DS_KENH_BAN.map((kenh) => {
+                    const giaCacMau = dsMau.map((m) => layGia(kenh.value as KenhBanBangGia, lenhDangNhap.maSP, m.maSKU, Math.max(1, m.slDuKien || m.slThucTe || 1))).filter((gia): gia is number => gia != null);
+                    const coDuGia = dsMau.length > 0 && giaCacMau.length === dsMau.length;
+                    const selected = kenhNhapKho.includes(kenh.value);
+                    const min = giaCacMau.length ? Math.min(...giaCacMau) : 0;
+                    const max = giaCacMau.length ? Math.max(...giaCacMau) : 0;
+                    return (
+                      <button
+                        key={kenh.value}
+                        type="button"
+                        disabled={!coDuGia}
+                        onClick={() => setKenhNhapKho((current) => selected ? current.filter((item) => item !== kenh.value) : [...current, kenh.value])}
+                        className={`rounded-xl border-2 p-3 text-left transition ${selected ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white"} disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        <div className="text-xs font-bold text-slate-700">{selected ? "✓ " : ""}{kenh.label}</div>
+                        <div className={`mt-1 text-sm font-black ${coDuGia ? "text-emerald-700" : "text-rose-600"}`}>
+                          {coDuGia ? `${min.toLocaleString("vi-VN")}${max !== min ? ` – ${max.toLocaleString("vi-VN")}` : ""}đ` : "Chưa có bảng giá"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Giá bán được lấy tự động từ tab Bảng giá bán theo đúng mã sản phẩm, SKU, số lượng và ngày hiệu lực.</p>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+                <button type="button" onClick={() => setLenhDangNhap(null)} className="rounded-xl border-2 border-slate-200 px-5 py-2.5 font-bold text-slate-600">Đóng</button>
+                <button
+                  type="button"
+                  disabled={loadingBangGia || ketQuaGiaVon.giaVon1SP <= 0 || kenhNhapKho.length === 0}
+                  onClick={() => handleNhapKhoFromLC(lenhDangNhap, kenhNhapKho)}
+                  className="rounded-xl bg-[#2B4C3E] px-6 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loadingBangGia ? "Đang tải bảng giá..." : "Nhập kho"}
+                </button>
+              </div>
+            </div>
+          </ResponsiveModal>
+        );
+      })()}
 
       {/* Hidden file input for upload (image + video) */}
       <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />

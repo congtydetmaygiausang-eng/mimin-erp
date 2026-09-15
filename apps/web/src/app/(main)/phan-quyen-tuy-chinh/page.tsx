@@ -25,6 +25,8 @@ import {
   saveCustomMatrix,
   resetCustomMatrix,
   getEffectivePermissions,
+  loadSharedPermissionMatrix,
+  subscribeSharedPermissionMatrix,
   ROLE_LABELS,
   MODULE_LABELS,
   ROLE_COLORS,
@@ -344,6 +346,19 @@ export default function PhanQuyenTuyChinhPage() {
     };
     fetchUsers();
   }, []);
+  useEffect(() => {
+    let active = true;
+    void loadSharedPermissionMatrix().then((shared) => {
+      if (active) setMatrix(shared as Matrix);
+    });
+    const unsubscribe = subscribeSharedPermissionMatrix((shared) => {
+      if (active) {
+        setMatrix(shared as Matrix);
+        setDirty(false);
+      }
+    });
+    return () => { active = false; unsubscribe(); };
+  }, []);
   // Reload matrix khi user click refresh
   const reload = () => {
     setMatrix(getFullMatrix() as Matrix);
@@ -351,6 +366,7 @@ export default function PhanQuyenTuyChinhPage() {
   };
   // Toggle 1 action cho 1 role-module cell
   const toggle = (role: Role, mod: Module, action: "r" | "c" | "u" | "d") => {
+    if (role === "admin") return;
     setMatrix((prev) => {
       const current = prev[role]?.[mod] || "";
       const has = current.includes(action);
@@ -364,6 +380,7 @@ export default function PhanQuyenTuyChinhPage() {
   };
   // Toggle all 4 actions cho 1 cell
   const toggleAll = (role: Role, mod: Module) => {
+    if (role === "admin") return;
     setMatrix((prev) => {
       const current = prev[role]?.[mod] || "";
       const next = current === "rcud" ? "" : "rcud";
@@ -376,6 +393,7 @@ export default function PhanQuyenTuyChinhPage() {
   };
   // Toggle 1 action cho tất cả module của 1 role (cột)
   const toggleColumn = (role: Role, action: "r" | "c" | "u" | "d") => {
+    if (role === "admin") return;
     setMatrix((prev) => {
       const allHave = ALL_MODULES.every((m) => (prev[role]?.[m] || "").includes(action));
       return {
@@ -395,9 +413,10 @@ export default function PhanQuyenTuyChinhPage() {
     setDirty(true);
   };
   // Save matrix
-  const handleSave = () => {
-    saveCustomMatrix(matrix);
-    setDirty(false);
+  const handleSave = async () => {
+    try {
+      await saveCustomMatrix(matrix);
+      setDirty(false);
     logAudit({
       user,
       action: "update",
@@ -405,12 +424,23 @@ export default function PhanQuyenTuyChinhPage() {
       description: `Cập nhật permission matrix (7 role × ${ALL_MODULES.length} module)`,
       success: true,
     });
-    toast.success("✅ Đã lưu ma trận phân quyền");
+      toast.success("✅ Đã lưu và đồng bộ ma trận phân quyền");
+    } catch (error) {
+      toast.error(`Không đồng bộ được phân quyền: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
+    }
   };
   // Reset về mặc định
-  const handleReset = () => {
+  const handleReset = async () => {
     resetCustomMatrix();
-    reload();
+    const defaults = getFullMatrix() as Matrix;
+    setMatrix(defaults);
+    try {
+      await saveCustomMatrix(defaults);
+    } catch (error) {
+      toast.error(`Không đồng bộ được quyền mặc định: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
+      return;
+    }
+    setDirty(false);
     setShowConfirmReset(false);
     logAudit({
       user,
@@ -819,7 +849,8 @@ function UserRoleManager({
           .eq("email", email)
           .single();
         if (existing) {
-          await supabase.from("users").update({ role: newRole }).eq("email", email);
+          const { error } = await supabase.from("users").update({ role: newRole }).eq("email", email);
+          if (error) throw error;
         }
       }
       setUsers(users.map((u) => (u.email === email ? { ...u, role: newRole } : u)));

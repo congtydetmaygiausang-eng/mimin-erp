@@ -60,6 +60,7 @@ import {
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
+import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 type SubItem = {
   href: string;
@@ -244,6 +245,7 @@ const NAV: NavItem[] = [
 function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pathname: string; onItemClick?: () => void; isCollapsed?: boolean; toggleCollapse?: () => void }) {
   const { user } = useSession();
   const role = user?.role;
+  const permissionRevision = usePermissionRevision();
   
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -279,15 +281,15 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
   const visibleNav = useMemo(() => {
     if (user?.laCongNhan) {
       const boPhan = user.phongBan?.toLowerCase() || "";
-      if (boPhan.includes("cắt")) {
+      if (boPhan.includes("cắt") && canView(role, "to-cat")) {
         return [{ href: "/to-cat-work", label: "✂️ Việc của tôi (Cắt)", icon: Scissors }];
-      } else if (boPhan.includes("may")) {
+      } else if (boPhan.includes("may") && canView(role, "to-may")) {
         return [{ href: "/to-may-work", label: "👕 Việc của tôi (May)", icon: Shirt }];
-      } else if (boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) {
+      } else if ((boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) && canView(role, "hoan-thien")) {
         return [{ href: "/to-ht-work", label: "🦺 Việc của tôi (Hoàn thiện)", icon: ClipboardList }];
-      } else if (boPhan.includes("khuy nút")) {
+      } else if (boPhan.includes("khuy nút") && canView(role, "to-khuy-nut")) {
         return [{ href: "/ui-khuy-nut", label: "🔘 Việc của tôi (Khuy nút)", icon: CheckCircle2 }]; 
-      } else if (boPhan.includes("in") || boPhan.includes("thêu")) {
+      } else if ((boPhan.includes("in") || boPhan.includes("thêu")) && canView(role, "to-in-theu")) {
         return [{ href: "/ui-intd", label: "🎨 Việc của tôi (In/Thêu)", icon: Palette }];
       }
       return [];
@@ -305,7 +307,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
       }
     }
     return filtered;
-  }, [role, user]);
+  }, [role, user, permissionRevision]);
 
   return (
     <>
