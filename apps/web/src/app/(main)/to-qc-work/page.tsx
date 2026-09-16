@@ -758,32 +758,53 @@ export default function UiQCPage() {
                             </p>
                           )}
                           <div className="text-center">
-                            <button
-                              onClick={() => handleHoanTatQC(lc)}
-                              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
-                            >
-                              <Package className="w-5 h-5" />
-                              Xác nhận Ghép {tongGhep} Bộ → Chuyển Ủi
-                            </button>
+                            {lc.phanCong?.find((p: any) => p.id === "qc")?.trangThaiCD === "hoan_thanh" ? (
+                              <button
+                                disabled
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 text-emerald-700 border-2 border-emerald-500 font-black rounded-xl shadow-sm opacity-80 cursor-not-allowed"
+                              >
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                                Đã chuyển khâu ({tongGhep} Bộ)
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleHoanTatQC(lc)}
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
+                              >
+                                <Package className="w-5 h-5" />
+                                Xác nhận Ghép {tongGhep} Bộ → Chuyển Ủi
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
                     }
 
                     if (allMayDone) {
+                      const isQCDone = lc.phanCong?.find((p: any) => p.id === "qc")?.trangThaiCD === "hoan_thanh";
                       return (
                         <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-4">
                           <div className="text-emerald-700 font-black text-lg">✅ Đã kiểm tra hoàn tất!</div>
                           <p className="text-sm text-emerald-600 font-bold max-w-sm mx-auto leading-relaxed">
-                            QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện.
+                            {isQCDone ? "Lệnh cắt này đã được QC duyệt và đẩy sang khâu Hoàn Thiện." : "QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện."}
                           </p>
-                          <button
-                            onClick={() => handleHoanTatQC(lc)}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
-                          >
-                            <Package className="w-5 h-5" />
-                            Chốt QC → Chuyển Ủi
-                          </button>
+                          {isQCDone ? (
+                            <button
+                              disabled
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 text-emerald-700 border-2 border-emerald-500 font-black rounded-xl shadow-sm opacity-80 cursor-not-allowed"
+                            >
+                              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                              Đã chuyển khâu thành công
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleHoanTatQC(lc)}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
+                            >
+                              <Package className="w-5 h-5" />
+                              Chốt QC → Chuyển Ủi
+                            </button>
+                          )}
                         </div>
                       );
                     }

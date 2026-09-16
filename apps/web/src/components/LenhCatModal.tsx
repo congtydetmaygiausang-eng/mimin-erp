@@ -386,7 +386,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
       setSoMau(editing.dsMau?.length || 4);
       setDsMau(editing.dsMau || []);
       setDsPhuLieu(editing.dsPhuLieu || []);
-      setMauCongDoan(editing.mauCongDoan || "BoTheThao");
+      setMauCongDoan(editing.mauCongDoan || "MCD-AO-TRON");
       if (editing.phanCong) {
         setPhanCong(editing.phanCong);
         const inTheuItem = getInTheuStage(editing.phanCong);
@@ -884,8 +884,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   };
   
   // Section 4 - Phân công
-  const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
-  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || []);
+  const [mauCongDoan, setMauCongDoan] = useState<string>("MCD-AO-TRON");
+  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "MCD-AO-TRON")?.giaCong || []);
   const visiblePhanCong = useMemo(() => getVisibleStages(phanCong, loaiSP, congDoanInTheu), [phanCong, loaiSP, congDoanInTheu]);
   const hasInTheuStage = Boolean(congDoanInTheu) && visiblePhanCong.some(stage => isInTheuStage(stage.tenCongDoan));
   const activeSoDoPhoi = loaiSoDoPhoi === "quan" ? soDoPhoiQuan : soDoPhoiAo || soDoPhoiQuan;
@@ -993,7 +993,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
     if (dsMauCongDoan.length > 0 && (!phanCong || phanCong.length === 0)) {
-      const defaultCD = dsMauCongDoan.find(x => x.id === "BoTheThao") || dsMauCongDoan[0];
+      const defaultCD = dsMauCongDoan.find(x => x.id === "MCD-AO-TRON") || dsMauCongDoan[0];
       if (defaultCD) {
         setMauCongDoan(defaultCD.id);
         setPhanCong(defaultCD.giaCong);

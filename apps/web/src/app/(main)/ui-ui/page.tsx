@@ -226,24 +226,61 @@ export default function UiUiPage() {
                               <Package className="w-4 h-4" /> Nhận hàng
                             </button>
                           )}
-                          {tt === "dang_lam" && (
-                              <button onClick={() => setUploadModal({ lc, pc })}
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200">
-                                <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển Đóng Gói
-                              </button>
-                          )}
-                          {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
-                              <div className="flex items-center gap-2 font-bold text-emerald-700">
-                                <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
+                          {tt === "dang_lam" && (() => {
+                            const isEditing = pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            return (
+                              <div className="flex-1 flex flex-col gap-2">
+                                {isEditing && (
+                                  <div className="text-center text-rose-600 font-bold text-[11px] animate-pulse bg-rose-50 py-1.5 rounded-lg border border-rose-200 shadow-sm flex items-center justify-center gap-1">
+                                    👆 Bạn đang ở chế độ sửa SL - Hãy bấm vào Màu Áo ở trên để sửa
+                                  </div>
+                                )}
+                                <button 
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      handleXong(lc, pc, pc.bangChungURLs, pc.chuKy);
+                                    } else {
+                                      setUploadModal({ lc, pc });
+                                    }
+                                  }}
+                                  className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm ${isEditing ? "bg-rose-500 hover:bg-rose-600 shadow-rose-200" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"}`}
+                                >
+                                  <CheckCircle2 className="w-4 h-4" /> 
+                                  {isEditing ? "Lưu SL đã sửa & Đóng lại" : "Hoàn thành & Chuyển Đóng Gói"}
+                                </button>
                               </div>
-                              {(pc.soLuongLoi > 0) && (
-                                <div className="text-xs text-rose-600 font-semibold pl-6">
-                                  ⚠️ Lỗi: {pc.soLuongLoi} SP
+                            );
+                          })()}
+                          {tt === "hoan_thanh" && (() => {
+                            const dongGoiPC = lc.phanCong?.find((p: any) => p.id === "dong_goi" || p.tenCongDoan?.toLowerCase().includes("đóng gói"));
+                            const nextStageNotStarted = !dongGoiPC || !dongGoiPC.trangThaiCD || dongGoiPC.trangThaiCD === "cho_giao";
+
+                            return (
+                              <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex items-center justify-between gap-2">
+                                <div className="flex flex-col justify-center gap-1">
+                                  <div className="flex items-center gap-2 font-bold text-emerald-700">
+                                    <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
+                                  </div>
+                                  {(pc.soLuongLoi > 0) && (
+                                    <div className="text-xs text-rose-600 font-semibold pl-6">
+                                      ⚠️ Lỗi: {pc.soLuongLoi} SP
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          )}
+                                {nextStageNotStarted && (
+                                  <button 
+                                    onClick={() => {
+                                      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                      toast.info("Đã mở lại khâu Ủi. Vui lòng bấm vào từng màu ở trên để sửa số lượng, sau đó bấm Hoàn thành lại.");
+                                    }}
+                                    className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-lg shadow-sm hover:bg-emerald-100 active:scale-95 transition-all text-[11px] whitespace-nowrap flex items-center gap-1"
+                                  >
+                                    ✏️ Sửa SL
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
