@@ -614,7 +614,7 @@ export async function loadSharedPermissionMatrix(): Promise<PermissionMatrix> {
 
 export function subscribeSharedPermissionMatrix(onChange: (matrix: PermissionMatrix) => void): () => void {
   if (!isSupabaseEnabled || !supabase) return () => {};
-  const channel = supabase.channel("permission-settings-global").on(
+  const channel = supabase.channel(`permission-settings-global-${Math.random().toString(36).substring(7)}`).on(
     "postgres_changes",
     { event: "*", schema: "public", table: "permission_settings", filter: "id=eq.global" },
     (payload) => {

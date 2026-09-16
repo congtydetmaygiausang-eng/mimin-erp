@@ -115,8 +115,16 @@ export default function ChamCongPage() {
   const todayRecord = currentEmployee ? recordMap.get(`${currentEmployee.maNV}|${today}`) : undefined;
 
   const canEdit = (employeeMaNV: string, dateIso: string) => {
+    // Theo logic mới: Không được chấm công tương lai (trước) và không được sửa quá khứ (trước đó).
+    // => Chỉ cho phép thao tác trên ngày hôm nay.
+    if (dateIso !== today) return false;
+
+    // Trong ngày hôm nay, Admin được sửa cho tất cả
     if (isAdmin) return true;
-    if (currentEmployee?.maNV === employeeMaNV && dateIso === today) return true;
+    
+    // Nhân viên chỉ được sửa cho chính mình
+    if (currentEmployee?.maNV === employeeMaNV) return true;
+
     return false;
   };
 
@@ -237,17 +245,20 @@ export default function ChamCongPage() {
       )}
 
       <section className="card p-3 md:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="inline-flex w-fit rounded-xl bg-slate-100 p-1 dark:bg-slate-800/70">
+        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+          {/* Tabs */}
+          <div className="inline-flex h-11 w-fit items-center justify-center rounded-xl bg-slate-100 p-1 text-slate-500 dark:bg-slate-800/70">
             <TabButton active={tab === "hang-ngay"} onClick={() => setTab("hang-ngay")} icon={CalendarDays}>Chấm công hằng ngày</TabButton>
             <TabButton active={tab === "tong-hop"} onClick={() => setTab("tong-hop")} icon={TableProperties}>Tổng hợp tháng</TabButton>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+
+          {/* Controls */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             {isAdmin && (
               <>
                 <button 
                   onClick={() => setShowConfirmReset(true)}
-                  className="flex h-10 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/40"
+                  className="flex h-10 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/40"
                 >
                   <Trash2 className="h-4 w-4" /> Reset toàn bộ
                 </button>
@@ -262,94 +273,204 @@ export default function ChamCongPage() {
                 />
               </>
             )}
-            <button className="btn-secondary h-10 w-10 p-0" onClick={() => moveMonth(-1)} aria-label="Tháng trước"><ChevronLeft className="mx-auto h-4 w-4" /></button>
-            <input className="input h-10 w-40" type="month" value={monthKey} onChange={(event) => setMonthKey(event.target.value)} />
-            <button className="btn-secondary h-10 w-10 p-0" onClick={() => moveMonth(1)} aria-label="Tháng sau"><ChevronRight className="mx-auto h-4 w-4" /></button>
-            <select className="input h-10 min-w-36" value={boPhan} onChange={(event) => setBoPhan(event.target.value)}>
+
+            {/* Month Picker Group */}
+            <div className="flex h-10 items-center rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <button 
+                className="flex h-full w-10 items-center justify-center rounded-l-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200" 
+                onClick={() => moveMonth(-1)}
+                title="Tháng trước"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="relative flex h-full min-w-[140px] items-center justify-center border-l border-r border-slate-200 px-3 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50">
+                <input 
+                  type="month" 
+                  value={monthKey} 
+                  onChange={(event) => setMonthKey(event.target.value)} 
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  title="Chọn tháng"
+                />
+                <span className="pointer-events-none text-sm font-bold text-slate-700 dark:text-slate-200">
+                  {(() => {
+                    const [y, m] = monthKey.split("-");
+                    return `Tháng ${m}, ${y}`;
+                  })()}
+                </span>
+              </div>
+              <button 
+                className="flex h-full w-10 items-center justify-center rounded-r-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200" 
+                onClick={() => moveMonth(1)}
+                title="Tháng sau"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Department Select */}
+            <select 
+              className="h-10 min-w-[180px] cursor-pointer rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-colors focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" 
+              value={boPhan} 
+              onChange={(event) => setBoPhan(event.target.value)}
+            >
               <option value="all">Tất cả bộ phận</option>
               {departments.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
-            <label className="relative min-w-52 flex-1 xl:flex-none">
-              <Search className="absolute left-3 top-3 h-4 w-4 opacity-50" />
-              <input className="input h-10 pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm mã hoặc tên NV..." />
+
+            {/* Search */}
+            <label className="relative flex h-10 w-full items-center sm:w-64">
+              <Search className="absolute left-3 h-4 w-4 text-slate-400" />
+              <input 
+                className="h-full w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium shadow-sm outline-none transition-colors placeholder:font-normal placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:border-slate-700 dark:bg-slate-900 dark:placeholder:text-slate-500" 
+                value={search} 
+                onChange={(event) => setSearch(event.target.value)} 
+                placeholder="Tìm mã hoặc tên NV..." 
+              />
             </label>
           </div>
         </div>
       </section>
 
       {tab === "hang-ngay" ? (
-        <section className="card overflow-hidden">
-          <div className="border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
-            <h2 className="font-semibold capitalize">{monthLabel}</h2>
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-              {TRANG_THAI_CHAM_CONG.map((status) => <span key={status.value} className={`rounded-md px-2 py-1 font-semibold ${status.className}`}>{status.shortLabel} · {status.label}</span>)}
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+            <h2 className="text-lg font-bold capitalize text-slate-800 dark:text-slate-100">{monthLabel}</h2>
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              {TRANG_THAI_CHAM_CONG.map((status) => <span key={status.value} className={`rounded-md px-2 py-1 font-bold shadow-sm ring-1 ring-inset ring-black/5 dark:ring-white/10 ${status.className}`}>{status.shortLabel} · {status.label}</span>)}
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-max text-xs">
-              <thead className="bg-white/70 dark:bg-slate-900/80">
-                <tr className="border-b" style={{ borderColor: "var(--border)" }}>
-                  <th className="sticky left-0 z-20 min-w-52 bg-inherit p-3 text-left">Nhân viên</th>
+          
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <table className="w-full min-w-max text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
+                <tr>
+                  <th className="sticky left-0 z-20 w-56 bg-slate-50 px-4 py-3 text-left font-bold text-slate-700 shadow-[1px_0_0_0_#e2e8f0] dark:bg-slate-950 dark:text-slate-200 dark:shadow-[1px_0_0_0_#1e293b]">
+                    Nhân viên
+                  </th>
                   {days.map((day) => {
                     const ngay = toIsoDate(day);
                     const isToday = ngay === today;
+                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                     return (
-                      <th key={day.getTime()} className={`w-12 p-2 text-center ${isToday ? "bg-emerald-100/50 text-emerald-700 ring-1 ring-emerald-500/30 dark:bg-emerald-900/30 dark:text-emerald-400" : day.getDay() === 0 ? "text-red-500" : ""}`}>
-                        <span className="block">{day.getDate()}</span>
-                        <span className="font-normal opacity-60">{isToday ? "Hôm nay" : day.getDay() === 0 ? "CN" : `T${day.getDay() + 1}`}</span>
+                      <th key={day.getTime()} className={`w-12 border-l border-slate-200/60 p-2 text-center transition-colors dark:border-slate-800/60 ${isToday ? "bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400" : isWeekend ? "bg-slate-100/50 text-slate-500 dark:bg-slate-900/50" : "text-slate-600 dark:text-slate-400"}`}>
+                        <div className="flex flex-col items-center justify-center">
+                          <span className={`text-[13px] font-bold ${isToday ? "text-teal-600 dark:text-teal-400" : day.getDay() === 0 ? "text-rose-600 dark:text-rose-500" : ""}`}>
+                            {day.getDate()}
+                          </span>
+                          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isToday ? "text-teal-600/80 dark:text-teal-400/80" : ""}`}>
+                            {isToday ? "Hôm nay" : day.getDay() === 0 ? "CN" : `T${day.getDay() + 1}`}
+                          </span>
+                        </div>
                       </th>
                     );
                   })}
-                  <th className="w-16 p-2 text-center">Công</th>
+                  <th className="w-16 border-l border-slate-200 bg-slate-50 px-2 py-3 text-center font-bold text-slate-700 shadow-[-1px_0_0_0_#e2e8f0] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:shadow-[-1px_0_0_0_#1e293b]">
+                    Công
+                  </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {employees.map((employee) => (
-                  <tr key={employee.maNV} className="border-b last:border-0 hover:bg-white/40 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
-                    <td className="sticky left-0 z-10 bg-white p-3 shadow-[3px_0_6px_-5px_rgba(0,0,0,.5)] dark:bg-slate-900">
-                      <span className="block font-semibold">{employee.hoTen}</span><span className="opacity-60">{employee.maNV} · {employee.boPhan}</span>
+                  <tr key={employee.maNV} className="group/row bg-white transition-colors hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-800/50">
+                    <td className="sticky left-0 z-10 bg-white px-4 py-2.5 shadow-[1px_0_0_0_#e2e8f0] transition-colors group-hover/row:bg-slate-50/80 dark:bg-slate-900 dark:shadow-[1px_0_0_0_#1e293b] dark:group-hover/row:bg-slate-800/50">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-800 dark:text-slate-100">{employee.hoTen}</span>
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{employee.maNV} • {employee.boPhan}</span>
+                      </div>
                     </td>
                     {days.map((day) => {
                       const ngay = toIsoDate(day);
                       const isToday = ngay === today;
+                      const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                       const record = recordMap.get(`${employee.maNV}|${ngay}`);
                       const status = TRANG_THAI_CHAM_CONG.find((item) => item.value === record?.trangThai);
+                      
+                      const selectStyle = status?.className 
+                        ? `${status.className} shadow-sm ring-1 ring-inset ring-black/5 dark:ring-white/10` 
+                        : "bg-slate-50 text-slate-300 hover:bg-slate-200 hover:text-slate-500 dark:bg-slate-800/40 dark:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300";
+
                       return (
-                        <td key={ngay} className={`p-1 text-center ${isToday ? "bg-emerald-50/50 dark:bg-emerald-900/10" : day.getDay() === 0 ? "bg-red-50/40 dark:bg-red-950/10" : ""}`}>
-                          <select 
-                            aria-label={`${employee.hoTen} ngày ${day.getDate()}`} 
-                            disabled={!canEdit(employee.maNV, ngay)}
-                            className={`h-8 w-11 cursor-pointer appearance-none rounded-md border-0 text-center text-[11px] font-bold outline-none ring-teal-500 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-40 ${status?.className || "bg-slate-100 text-slate-400 dark:bg-slate-800"}`} 
-                            value={record?.trangThai || ""} 
-                            onChange={(event) => void updateStatus(employee.maNV, ngay, event.target.value as TrangThaiChamCong | "")}
-                          >
-                            <option value="">—</option>
-                            {TRANG_THAI_CHAM_CONG.map((item) => <option key={item.value} value={item.value}>{item.shortLabel}</option>)}
-                          </select>
+                        <td 
+                          key={ngay} 
+                          className={`group relative border-l border-slate-100 p-1 text-center transition-colors dark:border-slate-800/40 ${isToday ? "bg-teal-50/40 dark:bg-teal-500/5" : isWeekend ? "bg-slate-50/40 dark:bg-slate-900/40" : ""}`}
+                        >
+                          <div className={`relative h-8 w-[42px] mx-auto flex items-center justify-center rounded text-xs font-bold transition-all focus-within:ring-2 focus-within:ring-teal-500 ${!canEdit(employee.maNV, ngay) ? "opacity-30 cursor-not-allowed" : ""} ${selectStyle}`}>
+                            <span className="pointer-events-none">{status?.shortLabel || "—"}</span>
+                            <select 
+                              aria-label={`${employee.hoTen} ngày ${day.getDate()}`} 
+                              disabled={!canEdit(employee.maNV, ngay)}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                              value={record?.trangThai || ""} 
+                              onChange={(event) => void updateStatus(employee.maNV, ngay, event.target.value as TrangThaiChamCong | "")}
+                            >
+                              <option value="">—</option>
+                              {TRANG_THAI_CHAM_CONG.map((item) => <option key={item.value} value={item.value}>{item.shortLabel}: {item.label.toLowerCase()}</option>)}
+                            </select>
+                          </div>
+
+                          {/* Custom Tooltip Premium */}
+                          {record && (
+                            <div className="pointer-events-none absolute bottom-full left-1/2 z-[100] mb-2 hidden -translate-x-1/2 flex-col whitespace-nowrap rounded-lg bg-slate-900 px-3 py-2 text-xs shadow-xl ring-1 ring-white/10 transition-all group-hover:flex group-hover:opacity-100 dark:bg-slate-800">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vào</span>
+                                <span className="font-bold text-emerald-400">{record.gioVao?.slice(0, 5) || "--:--"}</span>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between gap-4 border-t border-slate-700 pt-1">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Ra</span>
+                                <span className="font-bold text-cyan-400">{record.gioRa?.slice(0, 5) || "--:--"}</span>
+                              </div>
+                              <div className="absolute top-full left-1/2 -mt-px -ml-1.5 border-[6px] border-transparent border-t-slate-900 dark:border-t-slate-800"></div>
+                            </div>
+                          )}
                         </td>
                       );
                     })}
-                    <td className="p-2 text-center font-bold text-emerald-600">{summary.get(employee.maNV)?.ngayCong || 0}</td>
+                    <td className="border-l border-slate-200 bg-white p-2 text-center text-sm font-black text-teal-600 shadow-[-1px_0_0_0_#e2e8f0] transition-colors group-hover/row:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900 dark:text-teal-400 dark:shadow-[-1px_0_0_0_#1e293b] dark:group-hover/row:bg-slate-800/50">
+                      {summary.get(employee.maNV)?.ngayCong || 0}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {!loading && employees.length === 0 && <div className="flex flex-col items-center justify-center p-12 text-slate-400"><Users className="mb-3 h-10 w-10 opacity-20" /><p className="text-sm font-medium">Không tìm thấy nhân viên phù hợp.</p></div>}
+            {loading && <div className="flex flex-col items-center justify-center p-12 text-teal-500"><RefreshCw className="mb-3 h-8 w-8 animate-spin" /><p className="text-sm font-medium text-slate-500">Đang tải dữ liệu chấm công...</p></div>}
           </div>
-          {!loading && employees.length === 0 && <p className="p-8 text-center text-sm opacity-60">Không tìm thấy nhân viên phù hợp.</p>}
-          {loading && <p className="p-8 text-center text-sm opacity-60">Đang tải dữ liệu chấm công...</p>}
         </section>
       ) : (
-        <section className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead><tr className="border-b text-left" style={{ borderColor: "var(--border)" }}><th className="p-3">Mã NV</th><th className="p-3">Họ tên</th><th className="p-3">Bộ phận</th><th className="p-3 text-center">Ngày công</th><th className="p-3 text-center">Nghỉ phép</th><th className="p-3 text-center">Không phép</th><th className="p-3 text-center">Đi trễ</th><th className="p-3 text-center">Tăng ca</th></tr></thead>
-              <tbody>
+        <section className="flex flex-col gap-4">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
+                <tr className="text-left font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  <th className="px-5 py-3.5">Mã NV</th>
+                  <th className="px-5 py-3.5">Họ tên</th>
+                  <th className="px-5 py-3.5">Bộ phận</th>
+                  <th className="px-5 py-3.5 text-center text-teal-600 dark:text-teal-500">Ngày công</th>
+                  <th className="px-5 py-3.5 text-center text-sky-600 dark:text-sky-500">Nghỉ phép</th>
+                  <th className="px-5 py-3.5 text-center text-rose-600 dark:text-rose-500">Không phép</th>
+                  <th className="px-5 py-3.5 text-center text-orange-600 dark:text-orange-500">Đi trễ</th>
+                  <th className="px-5 py-3.5 text-center text-indigo-600 dark:text-indigo-500">Tăng ca</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {employees.map((employee) => {
                   const total = summary.get(employee.maNV)!;
-                  return <tr key={employee.maNV} className="border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}><td className="p-3 font-mono text-xs opacity-70">{employee.maNV}</td><td className="p-3 font-medium">{employee.hoTen}</td><td className="p-3">{employee.boPhan}</td><td className="p-3 text-center font-bold text-emerald-600">{total.ngayCong}</td><td className="p-3 text-center text-sky-600">{total.ngayPhep}</td><td className="p-3 text-center text-red-600">{total.ngayKhongPhep}</td><td className="p-3 text-center text-orange-600">{total.soLanDiTre}</td><td className="p-3 text-center">{total.gioTangCa}h</td></tr>;
+                  return (
+                    <tr key={employee.maNV} className="bg-white transition-colors hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-800/50">
+                      <td className="px-5 py-3 font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">{employee.maNV}</td>
+                      <td className="px-5 py-3 font-bold text-slate-800 dark:text-slate-100">{employee.hoTen}</td>
+                      <td className="px-5 py-3 font-medium text-slate-600 dark:text-slate-300">{employee.boPhan}</td>
+                      <td className="px-5 py-3 text-center text-[15px] font-black text-teal-600 dark:text-teal-400">{total.ngayCong}</td>
+                      <td className="px-5 py-3 text-center font-bold text-sky-600 dark:text-sky-400">{total.ngayPhep}</td>
+                      <td className="px-5 py-3 text-center font-bold text-rose-600 dark:text-rose-400">{total.ngayKhongPhep}</td>
+                      <td className="px-5 py-3 text-center font-bold text-orange-600 dark:text-orange-400">{total.soLanDiTre}</td>
+                      <td className="px-5 py-3 text-center font-bold text-indigo-600 dark:text-indigo-400">{total.gioTangCa}h</td>
+                    </tr>
+                  );
                 })}
               </tbody>
             </table>
+            {!loading && employees.length === 0 && <div className="p-10 text-center text-sm font-medium text-slate-400">Không tìm thấy dữ liệu.</div>}
           </div>
         </section>
       )}

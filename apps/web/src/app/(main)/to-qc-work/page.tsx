@@ -8,8 +8,8 @@ import { ShieldCheck, CheckCircle2, XCircle, ClipboardCheck, History, RotateCcw,
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat, type LichSuQCItem, type MauVai } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
-import { ghepAoQuanTheoSize } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { ghepAoQuanTheoSize, kiemTraTruocHoanThanh, kiemTraChoPhepSua } from "@/lib/data/cong-doan-helper";
+import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
 import { applyStageColorEntries, type StageColorEntry } from "@/lib/stage-color-input";
 import { useSession } from "@/components/session-provider";
 
@@ -42,6 +42,10 @@ export default function UiQCPage() {
     return lc.phanCong?.filter((pc: any) =>
       (pc.id === "mayAo" || pc.id === "mayQuan" || pc.id === "may_ao" || pc.id === "may_quan" || pc.tenCongDoan?.toLowerCase().includes("may"))
     ) || [];
+  }
+
+  function getQCPC(lc: any) {
+    return getMayPC(lc);
   }
 
   // Tính SL đạt tạm từ lịch sử QC (các lần trả lỗi có slDat > 0)
@@ -315,7 +319,7 @@ export default function UiQCPage() {
       lyDoLoi: `[${khauGayLoi[key] || "?"}] ${loaiLoi[key] || ""} ${ghiChu[key] || ""}`.trim(),
       lichSuQC: newLichSuQC,
       lichSuNhapSL: [
-        ...(slDat > 0 ? [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat" as const, ghiChu: `QC lần ${lanKiem} – Đạt tạm (chờ sửa lỗi xong mới cộng CN)` }] : []),
+        ...(slDat > 0 ? [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat" as const, ghiChu: `QC lần ${lanKiem} – Đạt tạm (chờ hoàn tất xong mới cộng CN)` }] : []),
         { ngay: today, nguoiNhap: user?.name, soLuong: slLoi, loai: "tra_loi" as const, ghiChu: `QC lần ${lanKiem} – Trả lỗi về ${khauGayLoi[key] || "Tổ May"}` },
       ],
     } as any);
@@ -802,7 +806,7 @@ export default function UiQCPage() {
           onClose={() => setSelectedMau(null)}
           lc={selectedMau.lc}
           mau={selectedMau.mau}
-          currentPCs={getMayPC(selectedMau.lc)}
+          currentPCs={getQCPC(selectedMau.lc).filter((pc: any) => kiemTraChoPhepSua(selectedMau.lc, pc))}
           onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
           onSaveBatch={handleSaveColorBatch}
           historyStage="qc"

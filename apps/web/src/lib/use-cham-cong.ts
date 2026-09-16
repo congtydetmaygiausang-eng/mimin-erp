@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 import { camelToSnake, useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import type { ChamCongRecord } from "@/lib/cham-cong";
+import { toast } from "sonner";
 
 /**
  * Normalize 1 row từ Supabase (snake_case) → ChamCongRecord (camelCase chính xác).
@@ -98,11 +99,16 @@ export function useChamCong() {
       // Thử upsert theo (ma_nv, ngay) trước
       const { error } = await supabase.from("cham_cong").upsert(payload, { onConflict: "ma_nv,ngay" });
       if (error) {
-        console.warn("[cham-cong] upsert (ma_nv,ngay) fail:", error.message, error.details);
+        console.error("[cham-cong] upsert fail:", error.message, error.details);
+        toast.error("Lỗi đồng bộ DB (ma_nv,ngay): " + error.message);
         // Fallback: upsert theo id
         const { error: err2 } = await supabase.from("cham_cong").upsert(payload, { onConflict: "id" });
-        if (err2) console.warn("[cham-cong] upsert (id) fail:", err2.message, err2.details);
-        else console.log("[cham-cong] upsert (id) OK:", record.id);
+        if (err2) {
+          console.error("[cham-cong] upsert (id) fail:", err2.message, err2.details);
+          toast.error("Lỗi đồng bộ DB (id): " + err2.message);
+        } else {
+          console.log("[cham-cong] upsert (id) OK:", record.id);
+        }
       } else {
         console.log("[cham-cong] upsert OK:", record.id);
       }

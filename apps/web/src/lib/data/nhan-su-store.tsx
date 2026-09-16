@@ -86,13 +86,10 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
     const fetchSupabase = async () => {
       if (!isSupabaseEnabled) {
         setList(prev => {
-          if (prev.length === 0) return NHAN_SU_KHOI_DAU;
-          if (prev.length < NHAN_SU_KHOI_DAU.length) {
-            const missing = NHAN_SU_KHOI_DAU.filter(k => !prev.find(p => p.maNV === k.maNV));
-            if (missing.length > 0) {
-              const combined = [...prev, ...missing].sort((a, b) => a.stt - b.stt);
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
-              return combined;
+          if (prev.length === 0) {
+            const cached = localStorage.getItem(STORAGE_KEY);
+            if (cached) {
+              return JSON.parse(cached);
             }
           }
           return prev;
@@ -107,7 +104,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
         // avatar_url (không phải "avatar") - đúng tên cột gốc trong schema.sql;
         // toSupabaseEmployeeRecord() cũng ghi vào avatar_url, lệch tên ở đây
         // trước đó khiến ảnh đại diện không bao giờ đọc lại được sau khi lưu.
-        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar_url, cccd_front_url, cccd_back_url, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
+        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar_url, cccd_front_url, cccd_back_url, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
         if (error) {
           console.warn("[nhan-su] Supabase fetch error:", error.message);
           // Fallback to localStorage
@@ -141,20 +138,21 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
             setList(resolvedList);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(resolvedList));
           } else {
-            // Seed data if empty
-            setList(NHAN_SU_KHOI_DAU);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(NHAN_SU_KHOI_DAU));
-            
-            // Background seed
-            Promise.all(NHAN_SU_KHOI_DAU.map(nv => 
-              supabaseUpsert("nhan_su", toSupabaseEmployeeRecord(nv), "ma_nv")
-            )).catch(err => console.error("Seed error", err));
+            // If Supabase returns empty array, it means all records were deleted.
+            // Do NOT re-seed data here, otherwise the user can never delete all employees.
+            setList([]);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
           }
         }
       } catch (err) {
         console.error("Supabase fetch error:", err);
         if (mounted && list.length === 0) {
-          setList(NHAN_SU_KHOI_DAU);
+          const cached = localStorage.getItem(STORAGE_KEY);
+          if (cached) {
+            setList(JSON.parse(cached));
+          } else {
+            setList([]);
+          }
         }
       } finally {
         if (mounted) setLoading(false);

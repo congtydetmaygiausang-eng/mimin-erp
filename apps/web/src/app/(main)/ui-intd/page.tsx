@@ -9,7 +9,7 @@ import React, { useState } from "react";
 import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
-import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
+import { kiemTraTruocHoanThanh, kiemTraChoPhepSua } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
@@ -231,10 +231,25 @@ export default function UiInTheuPage() {
                             </>
                           )}
                           {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
-                              {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                            <div className="flex-1 flex gap-2">
+                              <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
+                                <CheckCircle2 className="w-4 h-4" />
+                                Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
+                                {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                                <span className="text-xs text-rose-500 font-normal">
+                                  [DB: sau={congDoanSau(lc, pc)?.tenCongDoan || "none"}, tt={congDoanSau(lc, pc)?.trangThaiCD || "none"}]
+                                </span>
+                              </div>
+                              {kiemTraChoPhepSua(lc, pc) && (
+                                <button
+                                  onClick={() => {
+                                    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                  }}
+                                  className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-600 font-bold text-sm hover:bg-slate-100 hover:text-slate-900 border border-slate-200 shadow-sm transition-colors whitespace-nowrap"
+                                >
+                                  Mở sửa lệnh
+                                </button>
+                              )}
                             </div>
                           )}
                           {tt === "co_loi" && (
@@ -262,7 +277,7 @@ export default function UiInTheuPage() {
           onClose={() => setSelectedMau(null)}
           lc={selectedMau.lc}
           mau={selectedMau.mau}
-          currentPCs={getIntdPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          currentPCs={getIntdPC(selectedMau.lc).filter((pc: any) => kiemTraChoPhepSua(selectedMau.lc, pc))}
           onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
           onSaveBatch={handleSaveColorBatch}
           historyStage="in_theu"

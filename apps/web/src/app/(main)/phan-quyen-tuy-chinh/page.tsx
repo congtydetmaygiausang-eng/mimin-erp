@@ -601,24 +601,7 @@ export default function PhanQuyenTuyChinhPage() {
           </button>
         </div>
       )}
-      {/* Stats per role */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-        {stats.map(({ role, total, max }) => {
-          const pct = Math.round((total / max) * 100);
-          return (
-            <div
-              key={role}
-              className={`card p-2 bg-gradient-to-br ${ROLE_COLORS[role] || "from-slate-500 to-slate-700"} text-white`}
-            >
-              <div className="text-[10px] opacity-80 uppercase font-semibold">{role}</div>
-              <div className="text-lg font-bold">
-                {total}/{max}
-              </div>
-              <div className="text-[10px] opacity-80">{pct}% quyền</div>
-            </div>
-          );
-        })}
-      </div>
+
       {/* Tabs: Matrix | Users */}
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 w-fit">
         {[

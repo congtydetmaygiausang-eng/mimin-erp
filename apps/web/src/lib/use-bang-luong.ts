@@ -137,10 +137,13 @@ function hoanThienToWorkflow(r: HoanThienRow): WorkflowRow | null {
 }
 
 // ============ MAIN HOOK ============
+import { useNhanSu } from "@/lib/data/nhan-su-store";
+
 export function useBangLuongData(thang: number, nam: number) {
   const [allPhieu, setAllPhieu] = useState<WorkflowRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<"supabase" | "localStorage" | "empty">("empty");
+  const { list: nhanSuList, loading: loadingNhanSu } = useNhanSu();
 
   useEffect(() => {
     let cancelled = false;
@@ -249,10 +252,10 @@ export function useBangLuongData(thang: number, nam: number) {
 
   // Tính bảng lương
   const bangLuong = useMemo(
-    () => tinhBangLuongThang(thang, nam, allPhieu),
-    [thang, nam, allPhieu]
+    () => tinhBangLuongThang(thang, nam, allPhieu, nhanSuList),
+    [thang, nam, allPhieu, nhanSuList]
   );
   const tongKet = useMemo(() => tongKetBangLuong(bangLuong), [bangLuong]);
 
-  return { bangLuong, tongKet, loading, allPhieuCount: allPhieu.length, source };
+  return { bangLuong, tongKet, loading: loading || loadingNhanSu, allPhieuCount: allPhieu.length, source };
 }

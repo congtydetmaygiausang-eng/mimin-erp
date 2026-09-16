@@ -39,15 +39,47 @@ export function tongKhaiBao(pc: any): KetQuaKhaiBao {
   return { slDat, slLoi, daKhaiBao: true };
 }
 
+import { productionStageRank } from "../production-stage-order";
+
 /**
  * Công đoạn liền trước trong quy trình. Thứ tự mảng phanCong chính là thứ tự
  * chạy chuyền (Cắt -> ... -> Đóng gói).
  */
 export function congDoanTruoc(lc: LenhCat, pc: any): CongDoanItem | undefined {
-  const ds = lc?.phanCong || [];
-  const idx = ds.findIndex((x: any) => x.id === pc?.id);
-  if (idx <= 0) return undefined;
-  return ds[idx - 1];
+  const ds = [...(lc?.phanCong || [])].sort((a, b) => productionStageRank(b) - productionStageRank(a)); // Sort descending
+  const currentRank = productionStageRank(pc);
+  // Tìm công đoạn đầu tiên có rank nhỏ hơn rank hiện tại
+  return ds.find(x => productionStageRank(x) < currentRank);
+}
+
+/**
+ * Công đoạn liền sau trong quy trình.
+ */
+export function congDoanSau(lc: LenhCat, pc: any): CongDoanItem | undefined {
+  const ds = [...(lc?.phanCong || [])].sort((a, b) => productionStageRank(a) - productionStageRank(b));
+  const currentRank = productionStageRank(pc);
+  // Tìm công đoạn đầu tiên có rank lớn hơn rank hiện tại
+  return ds.find(x => productionStageRank(x) > currentRank);
+}
+
+/**
+ * Kịch bản A: Kiểm tra xem khâu này có được phép mở modal nhập số lượng để sửa hay không.
+ * Cho phép nếu:
+ * 1. Đang làm / có lỗi.
+ * 2. Đã hoàn thành, NHƯNG khâu liền sau (nếu có) chưa bắt đầu (vẫn đang cho_giao/cho_nhan_viec).
+ */
+export function kiemTraChoPhepSua(lc: LenhCat, pc: any): boolean {
+  if (!pc) return false;
+  const tt = pc.trangThaiCD;
+  if (!tt) return true; // Nếu chưa có trạng thái (fallback), luôn cho phép
+  if (tt === "dang_lam" || tt === "co_loi") return true;
+  if (tt === "hoan_thanh" || tt === "cho_qc") {
+    const sau = congDoanSau(lc, pc);
+    if (!sau) return true; // Khâu cuối cùng
+    const ttSau = sau.trangThaiCD || "cho_giao";
+    if (ttSau === "cho_giao" || ttSau === "cho_nhan_viec") return true;
+  }
+  return false;
 }
 
 /**

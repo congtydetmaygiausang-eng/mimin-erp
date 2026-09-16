@@ -186,19 +186,7 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
 
             <div className="text-center sm:text-left space-y-1">
               <div className="text-sm font-semibold text-slate-900 dark:text-white">Ảnh đại diện nhân viên</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Tải ảnh chân dung công nhân hoặc chọn ảnh đại diện từ thiết bị</div>
-              <div className="flex flex-wrap gap-2 pt-1 justify-center sm:justify-start">
-                {["/avatars/female-1.png", "/avatars/male-1.png", "/avatars/female-2.png", "/avatars/male-2.png"].map((url, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setForm({ ...form, avatar: url })}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-teal-500 text-slate-700 dark:text-slate-200 transition"
-                  >
-                    Mẫu {idx + 1}
-                  </button>
-                ))}
-              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Bấm vào biểu tượng bên trái để tải ảnh avatar của nhân sự lên</div>
             </div>
           </div>
 

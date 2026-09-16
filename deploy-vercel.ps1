@@ -3,7 +3,7 @@
 # Chạy: powershell -ExecutionPolicy Bypass -File deploy-vercel.ps1
 # ============================================
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue" # Changed from Stop to prevent Vercel CLI stderr from crashing
 
 Write-Host ""
 Write-Host "🚀 MIMIN ERP - Deploy to Vercel" -ForegroundColor Cyan
