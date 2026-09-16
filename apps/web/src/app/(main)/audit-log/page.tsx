@@ -164,7 +164,7 @@ export default function AuditLogPage() {
     
     return Array.from(latestActionByResource.values())
       .filter((l) => l.action === "delete" && l.oldValue != null)
-      .reverse();
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [logs]);
 
   if (!perm.canView("cai-dat")) {
@@ -415,51 +415,74 @@ export default function AuditLogPage() {
       </div>
         </>
       ) : (
-        <div className="card overflow-hidden">
-          <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
-            <div className="text-sm font-medium">Danh sách dữ liệu đã xoá</div>
-            <div className="text-xs opacity-70">{trashLogs.length} mục có thể khôi phục</div>
+        <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent p-6 border border-rose-500/20">
+            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-500/20 blur-2xl"></div>
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-rose-500 flex items-center gap-2">
+                  <Trash2 className="w-6 h-6" /> Thùng Rác
+                </h2>
+                <p className="text-sm opacity-70 mt-1">
+                  Có {trashLogs.length} mục có thể khôi phục lại hệ thống.
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="divide-y max-h-[700px] overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+
+          <div className="grid gap-3">
             {trashLogs.length === 0 ? (
-              <div className="p-12 text-center opacity-60 text-sm">
-                <Trash2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                Thùng rác trống.
+              <div className="card p-16 text-center flex flex-col items-center justify-center opacity-70 border-dashed">
+                <div className="w-16 h-16 rounded-full bg-slate-500/10 flex items-center justify-center mb-4">
+                  <Trash2 className="w-8 h-8 opacity-50" />
+                </div>
+                <div className="text-lg font-medium">Thùng rác trống</div>
+                <div className="text-sm mt-1">Không có dữ liệu nào cần khôi phục.</div>
               </div>
             ) : (
-              trashLogs.map((log) => {
-                const Icon = Trash2;
-                const colorClass = "bg-rose-500/15 text-rose-500";
+              trashLogs.map((log, index) => {
                 const isSupported = ["lenh-cat", "danh-muc-sp", "kho-thanh-pham"].includes(log.module);
                 return (
-                  <div key={log.id} className="p-3 flex items-center gap-3 hover:bg-white/30 dark:hover:bg-white/5 transition-colors">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
-                      <Icon className="w-5 h-5" />
+                  <div 
+                    key={log.id} 
+                    className="group relative flex items-center gap-4 overflow-hidden rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-rose-500/30 hover:shadow-rose-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-rose-500/30 dark:hover:bg-slate-800/80 animate-in fade-in slide-in-from-bottom-2"
+                    style={{ animationDelay: `${Math.min(index * 50, 500)}ms`, animationFillMode: "both" }}
+                  >
+                    <div className="absolute left-0 top-0 h-full w-1 bg-rose-500/0 transition-colors group-hover:bg-rose-500" />
+                    
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-rose-50 text-rose-500 shadow-inner dark:from-rose-500/20 dark:to-rose-500/5">
+                      <Trash2 className="h-5 w-5 transition-transform group-hover:scale-110 group-hover:rotate-12" />
                     </div>
+                    
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold">{log.description}</div>
-                      <div className="text-xs opacity-60 mt-0.5 flex gap-2">
-                        <span>{new Date(log.timestamp).toLocaleString("vi-VN")}</span>
-                        <span>·</span>
-                        <span>User: {log.userName}</span>
-                        <span>·</span>
-                        <span>Module: {MODULE_LABELS[log.module as Module] || log.module}</span>
+                      <div className="font-bold text-base line-clamp-1">{log.description}</div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] font-medium opacity-70">
+                        <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> {new Date(log.timestamp).toLocaleString("vi-VN")}</span>
+                        <span className="h-3 w-px bg-slate-300 dark:bg-slate-700" />
+                        <span className="flex items-center gap-1.5"><UserCog className="w-3.5 h-3.5" /> {log.userName}</span>
+                        <span className="h-3 w-px bg-slate-300 dark:bg-slate-700" />
+                        <span className="flex items-center gap-1 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full">{MODULE_LABELS[log.module as Module] || log.module}</span>
                       </div>
                     </div>
-                    <div className="shrink-0 flex items-center gap-2">
+                    
+                    <div className="flex shrink-0 items-center gap-2 opacity-80 transition-opacity group-hover:opacity-100">
                       <button 
-                        className="btn-secondary text-xs px-3 py-1"
+                        className="flex items-center justify-center h-9 px-4 rounded-lg bg-slate-100 text-slate-700 font-medium transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                         onClick={() => setSelectedLog(log)}
                       >
                         Chi tiết
                       </button>
-                      {isSupported && (
+                      {isSupported ? (
                         <button 
-                          className="btn-primary text-xs px-3 py-1 flex items-center gap-1"
+                          className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium shadow-sm transition-all hover:scale-105 hover:shadow-emerald-500/25 active:scale-95"
                           onClick={() => handleRestore(log)}
                         >
-                          <RefreshCw className="w-3 h-3" /> Khôi phục
+                          <RefreshCw className="h-4 w-4" /> Khôi phục
                         </button>
+                      ) : (
+                        <div className="flex items-center h-9 px-3 rounded-lg bg-slate-100 text-xs text-slate-400 dark:bg-slate-800" title="Chưa hỗ trợ khôi phục module này">
+                          Không hỗ trợ
+                        </div>
                       )}
                     </div>
                   </div>

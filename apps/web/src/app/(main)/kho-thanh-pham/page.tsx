@@ -522,6 +522,11 @@ export default function KhoThanhPhamPage() {
         loaiSP: updatedItems[0].phanLoai as any,
         giaBanDuKien: Math.max(...updatedItems.map(i => i.giaBanLe || 0), dm.giaBanDuKien || 0),
         giaVonDuKien: Math.max(...updatedItems.map(i => i.giaVon || 0), dm.giaVonDuKien || 0),
+        giaBanLe: updatedItems[0].giaBanLe,
+        giaBanSi: updatedItems[0].giaBanSi,
+        giaBanLo: updatedItems[0].giaBanLo,
+        giaTikTok: updatedItems[0].giaTikTok,
+        giaShopee: updatedItems[0].giaShopee,
       });
     }
 

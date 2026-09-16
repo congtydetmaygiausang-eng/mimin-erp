@@ -161,7 +161,6 @@ export function toSupabaseRow(sp: SanPhamTP) {
     mau: sp.mau,
     size: sp.size,
     lsx: sp.lsx,
-    ma_lenh_cat: sp.maLenhCat ?? null,
     ngay_nhap: sp.ngayNhap,
     so_luong: sp.soLuong,
     don_gia: sp.donGia,

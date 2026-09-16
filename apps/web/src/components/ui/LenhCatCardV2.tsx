@@ -56,15 +56,15 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
               {renderStatus}
             </div>
             
-            <div className="flex items-center gap-2.5 py-1.5 px-3.5 bg-slate-50 border border-slate-200/60 rounded-full shadow-sm hover:shadow transition-shadow">
-              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200/50">
-                {ptInfo?.avatar ? <img src={ptInfo.avatar} className="w-full h-full object-cover" /> : <Users className="w-3.5 h-3.5" />}
+            <div className="flex items-center gap-3 py-2 px-4 bg-slate-50 border border-slate-200/60 rounded-full shadow-sm hover:shadow transition-shadow">
+              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200/50 shadow-sm">
+                {ptInfo?.avatar ? <img src={ptInfo.avatar} className="w-full h-full object-cover" /> : <Users className="w-4 h-4" />}
               </div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phụ trách:</span>
-              <span className="font-black text-slate-800 text-xs">{ptDisplayName}</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Phụ trách:</span>
+              <span className="font-black text-slate-800 text-sm">{ptDisplayName}</span>
               {ptPhone && (
-                <a href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="ml-1 w-5 h-5 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" alt="Zalo" className="w-full h-full" />
+                <a href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="ml-1 w-6 h-6 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" alt="Zalo" className="w-full h-full drop-shadow-sm" />
                 </a>
               )}
             </div>

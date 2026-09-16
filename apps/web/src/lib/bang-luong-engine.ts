@@ -46,17 +46,21 @@ const LUONG_CUNG_DEFAULT: Record<string, number> = {
   "Media": 10_000_000,
 };
 
+import { type NhanSuExt } from "@/app/(main)/nhan-su/data";
+
 /**
  * Tính bảng lương cho tất cả NV trong 1 tháng
  * @param thang 1-12
  * @param nam yyyy
  * @param allPhieu PhieuWorkflow[] (mặc định ALL_REAL_PHIEU - có thể truyền task từ localStorage)
- * @returns BangLuongNV[] - 17 NV
+ * @param nhanSuList Danh sách nhân sự đang hoạt động từ Supabase
+ * @returns BangLuongNV[]
  */
 export function tinhBangLuongThang(
   thang: number,
   nam: number,
-  allPhieu: any[] = []
+  allPhieu: any[] = [],
+  nhanSuList: NhanSuExt[] = []
 ): BangLuongNV[] {
   // Lấy tasks trong tháng
   const startDate = new Date(nam, thang - 1, 1);
@@ -72,7 +76,18 @@ export function tinhBangLuongThang(
   // Tính cho từng NV
   const result: BangLuongNV[] = [];
 
-  for (const nv of REAL_NHAN_VIEN) {
+  // Lọc ra danh sách NV (nếu truyền nhanSuList thì ưu tiên, nếu không thì fallback về REAL_NHAN_VIEN)
+  const dsNhanVien = nhanSuList.length > 0
+    ? nhanSuList.filter(nv => nv.trangThai !== "nghi_viec").map(nv => ({
+        ma: nv.maNV,
+        ten: nv.hoTen || (nv as any).ten || "",
+        boPhan: nv.boPhan || "",
+        donGia: Number(nv.donGiaSP) || 0,
+        ghiChu: nv.ghiChu || ""
+      }))
+    : REAL_NHAN_VIEN;
+
+  for (const nv of dsNhanVien) {
     // Lấy đơn giá từ NV info (REAL_NHAN_VIEN.donGia)
     const donGia = nv.donGia || 0;
 

@@ -5,6 +5,7 @@ import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { X, Save, Scissors, Shirt, Package } from "lucide-react";
 import type { LenhCat, MauVai, PhanCongGiaCong, CongDoanItem } from "@/lib/data/lenh-cat-store";
 import { productionStageRank } from "@/lib/production-stage-order";
+import { kiemTraChoPhepSua } from "@/lib/data/cong-doan-helper";
 import { Portal } from "@/components/ui/Portal";
 
 interface Props {
@@ -237,7 +238,8 @@ export function TyLeSizeModal({ lc, mauIdx, onClose, onSave }: Props) {
                 const sizes = tyLeChiTiet[khau.id] || [];
                 const tongSL = sizes.reduce((acc, curr) => acc + (curr.sl || 0), 0);
                 const isCatStage = (khau.id || "").toLowerCase().includes("cat") || (khau.tenCongDoan || "").toLowerCase().includes("cắt");
-                const daKhoa = !isCatStage;
+                // Khóa nếu KHÔNG phải khâu Cắt HOẶC khâu Cắt không được phép sửa (khâu sau đã làm)
+                const daKhoa = !isCatStage || !kiemTraChoPhepSua(lc, khau);
                 const daNhap = isCatStage || khau.chiTietMau?.some(color => color.mau === mau.ten)
                   || (mau.tyLeSizeChiTiet?.[khau.id] || []).some(size => size.sl > 0);
 

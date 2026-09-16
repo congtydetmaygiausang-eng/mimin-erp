@@ -9,11 +9,11 @@
  * Created: 2026-08-03 by Mavis
  */
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useState, useMemo } from "react";
 import {
   Calculator, Download, Users, TrendingUp, TrendingDown,
   DollarSign, Calendar, ChevronLeft, ChevronRight, Filter, FileText,
-  CheckCircle2, AlertCircle, Wallet, Award, Loader2
+  CheckCircle2, AlertCircle, Wallet, Award, Loader2, type LucideIcon
 } from "lucide-react";
 import {
   tinhBangLuongThang, tongKetBangLuong, fmtVND, fmtVNDFull,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/bang-luong-engine";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
 import { useBangLuongData } from "@/lib/use-bang-luong";
+import { NhanSuTabs } from "@/components/nhan-su-tabs";
 
 export default function BangLuongPage() {
   const now = new Date();
@@ -29,7 +30,7 @@ export default function BangLuongPage() {
   const [tab, setTab] = useState<"tong-hop" | "chi-tiet" | "thanh-toan">("tong-hop");
 
   // Hook lấy data từ các store (workflow thật)
-  const { bangLuong, tongKet, loading, allPhieuCount } = useBangLuongData(thang, nam);
+  const { bangLuong, tongKet, loading, allPhieuCount, source } = useBangLuongData(thang, nam);
 
   // Phân loại NV
   const luongSP = bangLuong.filter(b => b.isLuongSP);
@@ -63,147 +64,144 @@ export default function BangLuongPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/30 p-3 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Header */}
-        <div className="rounded-2xl bg-gradient-to-br from-teal-600 via-cyan-600 to-cyan-500 text-white p-5 md:p-7 shadow-xl">
-          <div className="flex items-start justify-between flex-wrap gap-3">
-            <div>
-              <div className="text-xs font-medium opacity-90 mb-1 flex items-center gap-2">
-                <Calculator className="w-3.5 h-3.5" /> MIMIN ERP · Bảng lương
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-                <Wallet className="w-7 h-7" /> Bảng Lương Tự Động
-              </h1>
-              <p className="text-sm opacity-95 mt-1">
-                Tính lương cho {REAL_NHAN_VIEN.length} NV mới từ Excel (1 admin + 17 NV)
-                {loading && <span className="ml-2 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Đang tải workflow...</span>}
-                {!loading && allPhieuCount > 0 && <span className="ml-2 opacity-80">· {allPhieuCount} workflow</span>}
-              </p>
+    <div className="min-h-screen bg-slate-50/50 space-y-5 animate-fade-in pb-10">
+      
+      {/* Premium Header */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-5 md:p-7 text-white shadow-xl shadow-teal-500/20">
+        {/* Background Decorative Elements */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-teal-400 opacity-20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-medium backdrop-blur-md border border-white/10 uppercase tracking-wide">
+              <Calculator className="h-3.5 w-3.5" />
+              <span>MIMIN ERP · Kế Toán & Mua Bán</span>
+            </div>
+            <h1 className="flex items-center gap-3 text-2xl md:text-3xl font-extrabold tracking-tight">
+              <Wallet className="h-7 w-7 md:h-8 md:w-8 opacity-90" /> Bảng Lương
+            </h1>
+            <p className="text-xs md:text-sm font-medium opacity-90 max-w-lg">
+              Tính lương tự động cho <span className="font-bold text-teal-100">{tongKet.tongNV} nhân sự</span>. Dữ liệu đồng bộ trực tiếp từ module Nhân Sự và các phân hệ công việc.
+            </p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+            <div className="inline-flex items-center gap-2 rounded-lg bg-black/10 px-3 py-1.5 text-xs font-medium backdrop-blur-md border border-white/5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Nguồn: {source === "supabase" ? "Supabase (Live)" : "Thiết bị này"}
             </div>
             <button
               onClick={xuatExcel}
-              className="px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur rounded-lg text-sm font-medium flex items-center gap-2 transition"
+              className="inline-flex items-center gap-2 rounded-lg bg-white text-teal-700 px-4 py-2 text-sm font-bold shadow-md transition-all hover:bg-slate-50 focus:scale-95"
             >
-              <Download className="w-4 h-4" /> Xuất CSV
+              <Download className="w-4 h-4" /> Xuất Excel
             </button>
           </div>
         </div>
+      </section>
 
-        {/* Filter Tháng/Năm */}
-        <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <button onClick={prevMonth} className="p-2 hover:bg-slate-100 rounded-lg">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
-              <Calendar className="w-4 h-4 text-emerald-700" />
-              <span className="font-bold text-emerald-900">
-                Tháng {String(thang).padStart(2, "0")} / {nam}
-              </span>
-            </div>
-            <button onClick={nextMonth} className="p-2 hover:bg-slate-100 rounded-lg">
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Filter className="w-4 h-4 text-slate-500" />
+      {/* Control Bar (Tabs & Filters) */}
+      <section className="sticky top-4 z-20 flex flex-col xl:flex-row items-center justify-between gap-4 rounded-2xl bg-white/80 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-xl border border-white">
+        
+        {/* Tabs */}
+        <div className="flex w-full overflow-x-auto xl:w-auto p-1 bg-slate-100/80 rounded-xl">
+          <TabButton active={tab === "tong-hop"} onClick={() => setTab("tong-hop")} icon={TrendingUp}>Tổng hợp</TabButton>
+          <TabButton active={tab === "chi-tiet"} onClick={() => setTab("chi-tiet")} icon={Users}>Chi tiết</TabButton>
+          <TabButton active={tab === "thanh-toan"} onClick={() => setTab("thanh-toan")} icon={Wallet}>Thanh toán</TabButton>
+        </div>
+
+        {/* Date Filter */}
+        <div className="flex w-full xl:w-auto items-center justify-between xl:justify-end gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+          <button onClick={prevMonth} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition text-slate-500 hover:text-slate-900">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          
+          <div className="flex items-center gap-2 px-3">
+            <Calendar className="w-3.5 h-3.5 text-teal-600" />
             <select
               value={thang}
               onChange={(e) => setThang(Number(e.target.value))}
-              className="border rounded px-2 py-1"
+              className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer text-sm"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <option key={m} value={m}>Tháng {m}</option>
               ))}
             </select>
+            <span className="text-slate-300 font-light">/</span>
             <select
               value={nam}
               onChange={(e) => setNam(Number(e.target.value))}
-              className="border rounded px-2 py-1"
+              className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer text-sm"
             >
               {[2024, 2025, 2026, 2027].map(y => (
                 <option key={y} value={y}>Năm {y}</option>
               ))}
             </select>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2">
-          {[
-            { id: "tong-hop", label: "Tổng hợp", icon: TrendingUp },
-            { id: "chi-tiet", label: "Chi tiết", icon: Users },
-            { id: "thanh-toan", label: "Thanh toán", icon: Wallet },
-          ].map(t => {
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id as any)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition ${
-                  tab === t.id
-                    ? "bg-emerald-600 text-white shadow-md"
-                    : "bg-white text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <Icon className="w-4 h-4" /> {t.label}
-              </button>
-            );
-          })}
+          <button onClick={nextMonth} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition text-slate-500 hover:text-slate-900">
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
+      </section>
 
         {/* Tab: Tổng hợp */}
         {tab === "tong-hop" && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <SummaryCard
                 icon={Users}
-                label="Tổng NV"
+                label="Tổng Nhân Sự"
                 value={`${tongKet.tongNV}`}
-                sub={`${luongSP.length} lương SP + ${luongCung.length} lương cứng`}
-                color="from-blue-500 to-indigo-500"
+                sub={`${luongSP.length} SP + ${luongCung.length} Cứng`}
+                color="from-blue-600 to-indigo-600 shadow-blue-500/20"
               />
               <SummaryCard
                 icon={DollarSign}
-                label="Tổng thực nhận"
+                label="Tổng Thực Nhận"
                 value={fmtVND(tongKet.tongThucNhan)}
                 sub={`Lương cứng: ${fmtVND(tongKet.tongLuongCung)}`}
-                color="from-emerald-500 to-teal-500"
+                color="from-emerald-500 to-teal-600 shadow-emerald-500/20"
               />
               <SummaryCard
                 icon={TrendingUp}
-                label="Thưởng vượt"
+                label="Thưởng Vượt"
                 value={fmtVND(tongKet.tongThuongVuot)}
                 sub={`+${tongKet.tongThuongVuot > 0 ? "🎉" : ""}`}
-                color="from-amber-500 to-orange-500"
+                color="from-amber-500 to-orange-500 shadow-orange-500/20"
               />
               <SummaryCard
                 icon={TrendingDown}
-                label="Phạt lỗi + trễ"
+                label="Phạt Lỗi & Trễ"
                 value={fmtVND(tongKet.tongPhatLoi + tongKet.tongPhatTreHan)}
                 sub={`Lỗi: ${fmtVND(tongKet.tongPhatLoi)} | Trễ: ${fmtVND(tongKet.tongPhatTreHan)}`}
-                color="from-rose-500 to-pink-500"
+                color="from-rose-500 to-pink-600 shadow-rose-500/20"
               />
             </div>
 
             {/* Theo bộ phận */}
-            <div className="bg-white rounded-2xl shadow-sm p-4">
-              <h2 className="text-sm font-bold mb-3 flex items-center gap-2">
-                <Award className="w-4 h-4 text-emerald-600" /> Phân bổ theo bộ phận
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg shadow-slate-200/50 p-5 md:p-6 border border-white">
+              <h2 className="text-lg font-extrabold text-slate-800 mb-5 flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-600">
+                  <Award className="w-4 h-4" />
+                </div>
+                Phân bổ theo bộ phận
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {tongKet.theoBoPhan.map(bp => (
                   <div
                     key={bp.boPhan}
-                    className="p-3 rounded-lg border-l-4"
-                    style={{ borderLeftColor: bp.mau, backgroundColor: `${bp.mau}10` }}
+                    className="relative overflow-hidden p-4 rounded-xl bg-white shadow-sm border border-slate-100 hover:shadow-md transition-shadow group"
                   >
-                    <div className="text-xs text-slate-600">{bp.ten}</div>
-                    <div className="text-lg font-bold" style={{ color: bp.mau }}>
+                    <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: bp.mau }}></div>
+                    <div className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wide">{bp.ten}</div>
+                    <div className="text-xl font-black mb-1.5 transition-transform group-hover:scale-105 origin-left" style={{ color: bp.mau }}>
                       {fmtVND(bp.thucNhan)}
                     </div>
-                    <div className="text-xs text-slate-500">{bp.tongNV} NV</div>
+                    <div className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" /> {bp.tongNV} nhân sự
+                    </div>
                   </div>
                 ))}
               </div>
@@ -224,14 +222,19 @@ export default function BangLuongPage() {
 
         {/* Tab: Chi tiết */}
         {tab === "chi-tiet" && (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b flex items-center justify-between flex-wrap gap-2">
-              <h2 className="font-bold text-sm flex items-center gap-2">
-                <Users className="w-4 h-4 text-emerald-600" /> Bảng lương chi tiết
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg shadow-slate-200/50 overflow-hidden border border-white">
+            <div className="p-5 md:p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-white/50">
+              <h2 className="font-extrabold text-lg text-slate-800 flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-600">
+                  <Users className="w-4 h-4" />
+                </div>
+                Bảng lương chi tiết
               </h2>
-              <span className="text-xs text-slate-500">
-                {bangLuong.length} NV · Lương SP: {luongSP.length} · Lương cứng: {luongCung.length}
-              </span>
+              <div className="flex gap-2 text-xs font-semibold">
+                <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full">{bangLuong.length} Nhân sự</span>
+                <span className="px-2.5 py-1 bg-sky-50 text-sky-600 rounded-full border border-sky-100">Lương SP: {luongSP.length}</span>
+                <span className="px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full border border-amber-100">Lương cứng: {luongCung.length}</span>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -277,10 +280,10 @@ export default function BangLuongPage() {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-slate-100 font-bold">
+                <tfoot className="bg-emerald-50/50 font-black border-t-2 border-emerald-100">
                   <tr>
-                    <td colSpan={11} className="px-3 py-2 text-right">TỔNG THỰC NHẬN:</td>
-                    <td className="px-3 py-2 text-right text-emerald-700">{fmtVNDFull(tongKet.tongThucNhan)}</td>
+                    <td colSpan={11} className="px-3 py-4 text-right text-emerald-900">TỔNG THỰC NHẬN:</td>
+                    <td className="px-3 py-4 text-right text-emerald-600 text-lg">{fmtVNDFull(tongKet.tongThucNhan)}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -291,24 +294,35 @@ export default function BangLuongPage() {
 
         {/* Tab: Thanh toán */}
         {tab === "thanh-toan" && (
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="font-bold text-sm flex items-center gap-2 mb-4">
-              <Wallet className="w-4 h-4 text-emerald-600" /> Kế hoạch thanh toán
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg shadow-slate-200/50 p-5 md:p-6 border border-white">
+            <h2 className="font-extrabold text-lg text-slate-800 flex items-center gap-2 mb-5">
+              <div className="p-1.5 rounded-lg bg-teal-100 text-teal-600">
+                <Wallet className="w-4 h-4" />
+              </div>
+              Kế hoạch thanh toán
             </h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {bangLuong.map(b => (
-                <div key={b.maNV} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div>
-                    <div className="font-medium text-sm">{b.tenNV}</div>
-                    <div className="text-xs text-slate-500">{b.maNV} · {b.boPhan}</div>
+                <div key={b.maNV} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 shrink-0 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+                      {b.tenNV.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800 text-sm">{b.tenNV}</div>
+                      <div className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <span>{b.maNV}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                        <span className="text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">{b.boPhan}</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-emerald-700">{fmtVNDFull(b.thucNhan)}</div>
-                    <div className="text-xs text-slate-500">Ngày trả: {b.ngayTra}</div>
+                    <div className="font-black text-base text-emerald-600">{fmtVNDFull(b.thucNhan)}</div>
+                    <div className="text-[11px] font-semibold text-slate-400 mt-1 flex items-center justify-end gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Ngày trả: {b.ngayTra}
+                    </div>
                   </div>
-                  <button className="px-3 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700">
-                    <CheckCircle2 className="w-3 h-3 inline mr-1" /> Đã trả
-                  </button>
                 </div>
               ))}
             </div>
@@ -319,7 +333,6 @@ export default function BangLuongPage() {
         <div className="text-center text-xs text-slate-400 pt-2">
           Tính lương tự động dựa trên workflow + đơn giá NV • Bảng lương cứng dựa theo Excel sếp Sang 2026-08-03
         </div>
-      </div>
     </div>
   );
 }
@@ -328,13 +341,24 @@ function SummaryCard({
   icon: Icon, label, value, sub, color
 }: { icon: any; label: string; value: string; sub: string; color: string }) {
   return (
-    <div className={`rounded-2xl p-4 bg-gradient-to-br ${color} text-white shadow-md`}>
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className="w-4 h-4" />
-        <span className="text-xs opacity-90">{label}</span>
+    <div className={`relative overflow-hidden rounded-2xl p-4 md:p-5 bg-gradient-to-br ${color} text-white shadow-lg hover:-translate-y-1 transition-transform duration-300`}>
+      <div className="absolute top-0 right-0 p-3 opacity-20">
+        <Icon className="w-20 h-20 -mr-6 -mt-6" />
       </div>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs opacity-80 mt-1">{sub}</div>
+      <div className="relative z-10">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
+            <Icon className="w-4 h-4" />
+          </div>
+          <span className="text-xs font-semibold tracking-wide opacity-90 uppercase">{label}</span>
+        </div>
+        <div className="text-2xl md:text-3xl font-black tracking-tight mt-2">{value}</div>
+        <div className="text-xs font-medium opacity-90 mt-2 bg-black/10 w-fit px-2.5 py-1 rounded border border-white/10">{sub}</div>
+      </div>
     </div>
   );
+}
+
+function TabButton({ active, onClick, icon: Icon, children }: { active: boolean; onClick: () => void; icon: LucideIcon; children: ReactNode }) {
+  return <button onClick={onClick} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition md:text-sm ${active ? "bg-white text-teal-700 shadow-sm dark:bg-slate-700 dark:text-teal-300" : "opacity-65 hover:opacity-100"}`}><Icon className="h-4 w-4" />{children}</button>;
 }

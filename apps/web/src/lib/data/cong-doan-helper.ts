@@ -51,6 +51,35 @@ export function congDoanTruoc(lc: LenhCat, pc: any): CongDoanItem | undefined {
 }
 
 /**
+ * Công đoạn liền sau trong quy trình.
+ */
+export function congDoanSau(lc: LenhCat, pc: any): CongDoanItem | undefined {
+  const ds = lc?.phanCong || [];
+  const idx = ds.findIndex((x: any) => x.id === pc?.id);
+  if (idx < 0 || idx >= ds.length - 1) return undefined;
+  return ds[idx + 1];
+}
+
+/**
+ * Kịch bản A: Kiểm tra xem khâu này có được phép mở modal nhập số lượng để sửa hay không.
+ * Cho phép nếu:
+ * 1. Đang làm / có lỗi.
+ * 2. Đã hoàn thành, NHƯNG khâu liền sau (nếu có) chưa bắt đầu (vẫn đang cho_giao/cho_nhan_viec).
+ */
+export function kiemTraChoPhepSua(lc: LenhCat, pc: any): boolean {
+  if (!pc) return false;
+  const tt = pc.trangThaiCD;
+  if (tt === "dang_lam" || tt === "co_loi") return true;
+  if (tt === "hoan_thanh") {
+    const sau = congDoanSau(lc, pc);
+    if (!sau) return true; // Khâu cuối cùng
+    const ttSau = sau.trangThaiCD || "cho_giao";
+    if (ttSau === "cho_giao" || ttSau === "cho_nhan_viec") return true;
+  }
+  return false;
+}
+
+/**
  * Trần số lượng được phép khai ở công đoạn này = số ĐẠT của khâu liền trước.
  * Trả về null nếu khâu trước chưa khai báo (không đủ căn cứ để chặn).
  */

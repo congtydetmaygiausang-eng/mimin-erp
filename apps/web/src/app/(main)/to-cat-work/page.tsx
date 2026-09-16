@@ -10,6 +10,7 @@ import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriang
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
+import { kiemTraTruocHoanThanh, kiemTraChoPhepSua } from "@/lib/data/cong-doan-helper";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAI, KHO_VAT_TU } from "@/lib/data/real-data";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
@@ -475,7 +476,7 @@ export default function CongViecCatPage() {
           mau={selectedMau.mau}
           currentPCs={(() => {
             const pc = getPhanCongCat(selectedMau.lc) as any;
-            return pc && pc.trangThaiCD === "dang_lam" ? [pc] : [];
+            return pc && kiemTraChoPhepSua(selectedMau.lc, pc) ? [pc] : [];
           })()}
           onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
           onSaveBatch={handleSaveColorBatch}

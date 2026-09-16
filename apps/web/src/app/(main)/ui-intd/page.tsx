@@ -9,7 +9,7 @@ import React, { useState } from "react";
 import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
-import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
+import { kiemTraTruocHoanThanh, kiemTraChoPhepSua } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
@@ -262,7 +262,7 @@ export default function UiInTheuPage() {
           onClose={() => setSelectedMau(null)}
           lc={selectedMau.lc}
           mau={selectedMau.mau}
-          currentPCs={getIntdPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
+          currentPCs={getIntdPC(selectedMau.lc).filter((pc: any) => kiemTraChoPhepSua(selectedMau.lc, pc))}
           onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
           onSaveBatch={handleSaveColorBatch}
           historyStage="in_theu"
