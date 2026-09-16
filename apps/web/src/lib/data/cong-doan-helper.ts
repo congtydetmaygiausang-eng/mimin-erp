@@ -39,12 +39,14 @@ export function tongKhaiBao(pc: any): KetQuaKhaiBao {
   return { slDat, slLoi, daKhaiBao: true };
 }
 
+import { productionStageRank } from "../production-stage-order";
+
 /**
  * Công đoạn liền trước trong quy trình. Thứ tự mảng phanCong chính là thứ tự
  * chạy chuyền (Cắt -> ... -> Đóng gói).
  */
 export function congDoanTruoc(lc: LenhCat, pc: any): CongDoanItem | undefined {
-  const ds = lc?.phanCong || [];
+  const ds = [...(lc?.phanCong || [])].sort((a, b) => productionStageRank(a) - productionStageRank(b));
   const idx = ds.findIndex((x: any) => x.id === pc?.id);
   if (idx <= 0) return undefined;
   return ds[idx - 1];
@@ -54,7 +56,7 @@ export function congDoanTruoc(lc: LenhCat, pc: any): CongDoanItem | undefined {
  * Công đoạn liền sau trong quy trình.
  */
 export function congDoanSau(lc: LenhCat, pc: any): CongDoanItem | undefined {
-  const ds = lc?.phanCong || [];
+  const ds = [...(lc?.phanCong || [])].sort((a, b) => productionStageRank(a) - productionStageRank(b));
   const idx = ds.findIndex((x: any) => x.id === pc?.id);
   if (idx < 0 || idx >= ds.length - 1) return undefined;
   return ds[idx + 1];
@@ -69,6 +71,7 @@ export function congDoanSau(lc: LenhCat, pc: any): CongDoanItem | undefined {
 export function kiemTraChoPhepSua(lc: LenhCat, pc: any): boolean {
   if (!pc) return false;
   const tt = pc.trangThaiCD;
+  if (!tt) return true; // Nếu chưa có trạng thái (fallback), luôn cho phép
   if (tt === "dang_lam" || tt === "co_loi") return true;
   if (tt === "hoan_thanh") {
     const sau = congDoanSau(lc, pc);

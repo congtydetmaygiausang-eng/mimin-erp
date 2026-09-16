@@ -383,9 +383,22 @@ export default function CongViecCatPage() {
                       </>
                     )}
                     {tt === "hoan_thanh" && (
-                      <div className="w-full py-2.5 rounded-xl bg-emerald-50/80 text-emerald-700 font-bold text-sm border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm hover:bg-emerald-100 transition-colors">
-                        <CheckCircle2 className="w-4 h-4" /> Đã cắt xong {pc?.soLuongHoanThanh || lc.tongSL} SP
-                        {pc?.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                      <div className="w-full flex gap-2">
+                        <div className="flex-1 py-2.5 rounded-xl bg-emerald-50/80 text-emerald-700 font-bold text-sm border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm">
+                          <CheckCircle2 className="w-4 h-4" /> Đã cắt xong {pc?.soLuongHoanThanh || lc.tongSL} SP
+                          {pc?.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                        </div>
+                        {kiemTraChoPhepSua(lc, pc) && (
+                          <button
+                            onClick={() => {
+                              capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                              toast.success("Đã mở lại lệnh cắt để chỉnh sửa!");
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-600 font-bold text-sm hover:bg-slate-100 hover:text-slate-900 border border-slate-200 shadow-sm transition-colors whitespace-nowrap"
+                          >
+                            Mở sửa lệnh
+                          </button>
+                        )}
                       </div>
                     )}
                     {tt === "co_loi" && (
