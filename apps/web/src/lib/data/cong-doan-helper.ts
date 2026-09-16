@@ -73,7 +73,7 @@ export function kiemTraChoPhepSua(lc: LenhCat, pc: any): boolean {
   const tt = pc.trangThaiCD;
   if (!tt) return true; // Nếu chưa có trạng thái (fallback), luôn cho phép
   if (tt === "dang_lam" || tt === "co_loi") return true;
-  if (tt === "hoan_thanh") {
+  if (tt === "hoan_thanh" || tt === "cho_qc") {
     const sau = congDoanSau(lc, pc);
     if (!sau) return true; // Khâu cuối cùng
     const ttSau = sau.trangThaiCD || "cho_giao";
