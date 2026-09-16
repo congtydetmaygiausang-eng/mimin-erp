@@ -46,10 +46,10 @@ import { productionStageRank } from "../production-stage-order";
  * chạy chuyền (Cắt -> ... -> Đóng gói).
  */
 export function congDoanTruoc(lc: LenhCat, pc: any): CongDoanItem | undefined {
-  const ds = [...(lc?.phanCong || [])].sort((a, b) => productionStageRank(a) - productionStageRank(b));
-  const idx = ds.findIndex((x: any) => x.id === pc?.id);
-  if (idx <= 0) return undefined;
-  return ds[idx - 1];
+  const ds = [...(lc?.phanCong || [])].sort((a, b) => productionStageRank(b) - productionStageRank(a)); // Sort descending
+  const currentRank = productionStageRank(pc);
+  // Tìm công đoạn đầu tiên có rank nhỏ hơn rank hiện tại
+  return ds.find(x => productionStageRank(x) < currentRank);
 }
 
 /**
@@ -57,9 +57,9 @@ export function congDoanTruoc(lc: LenhCat, pc: any): CongDoanItem | undefined {
  */
 export function congDoanSau(lc: LenhCat, pc: any): CongDoanItem | undefined {
   const ds = [...(lc?.phanCong || [])].sort((a, b) => productionStageRank(a) - productionStageRank(b));
-  const idx = ds.findIndex((x: any) => x.id === pc?.id);
-  if (idx < 0 || idx >= ds.length - 1) return undefined;
-  return ds[idx + 1];
+  const currentRank = productionStageRank(pc);
+  // Tìm công đoạn đầu tiên có rank lớn hơn rank hiện tại
+  return ds.find(x => productionStageRank(x) > currentRank);
 }
 
 /**
