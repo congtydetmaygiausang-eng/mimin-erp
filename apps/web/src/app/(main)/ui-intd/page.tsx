@@ -236,6 +236,9 @@ export default function UiInTheuPage() {
                                 <CheckCircle2 className="w-4 h-4" />
                                 Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
                                 {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                                <span className="text-xs text-rose-500 font-normal">
+                                  [DB: sau={congDoanSau(lc, pc)?.tenCongDoan || "none"}, tt={congDoanSau(lc, pc)?.trangThaiCD || "none"}]
+                                </span>
                               </div>
                               {kiemTraChoPhepSua(lc, pc) && (
                                 <button

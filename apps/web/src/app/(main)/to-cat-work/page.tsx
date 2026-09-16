@@ -10,7 +10,7 @@ import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriang
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
-import { kiemTraTruocHoanThanh, kiemTraChoPhepSua } from "@/lib/data/cong-doan-helper";
+import { kiemTraTruocHoanThanh, kiemTraChoPhepSua, congDoanSau } from "@/lib/data/cong-doan-helper";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAI, KHO_VAT_TU } from "@/lib/data/real-data";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
@@ -387,6 +387,9 @@ export default function CongViecCatPage() {
                         <div className="flex-1 py-2.5 rounded-xl bg-emerald-50/80 text-emerald-700 font-bold text-sm border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm">
                           <CheckCircle2 className="w-4 h-4" /> Đã cắt xong {pc?.soLuongHoanThanh || lc.tongSL} SP
                           {pc?.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                          <span className="text-xs text-rose-500 font-normal">
+                            [DB: sau={congDoanSau(lc, pc)?.tenCongDoan || "none"}, tt={congDoanSau(lc, pc)?.trangThaiCD || "none"}]
+                          </span>
                         </div>
                         {kiemTraChoPhepSua(lc, pc) && (
                           <button
