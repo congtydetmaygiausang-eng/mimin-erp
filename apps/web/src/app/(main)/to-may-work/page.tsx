@@ -253,11 +253,23 @@ export default function UiMayPage() {
                               <span className="relative z-10 tracking-wide uppercase text-sm">Báo hoàn thành</span>
                             </button>
                           )}
-                          {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Xong {pc.soLuongHoanThanh || pc.soLuong || lc.tongSL} SP
-                              {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                          {(tt === "hoan_thanh" || tt === "cho_qc") && (
+                            <div className="flex-1 flex gap-2">
+                              <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
+                                <CheckCircle2 className="w-4 h-4" />
+                                {tt === "cho_qc" ? "Đã gửi QC duyệt" : "Xong"} {pc.soLuongHoanThanh || pc.soLuong || lc.tongSL} SP
+                                {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                              </div>
+                              {kiemTraChoPhepSua(lc, pc) && (
+                                <button
+                                  onClick={() => {
+                                    capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                  }}
+                                  className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-600 font-bold text-sm hover:bg-slate-100 hover:text-slate-900 border border-slate-200 shadow-sm transition-colors whitespace-nowrap"
+                                >
+                                  Mở sửa lệnh
+                                </button>
+                              )}
                             </div>
                           )}
                           {tt === "co_loi" && (
