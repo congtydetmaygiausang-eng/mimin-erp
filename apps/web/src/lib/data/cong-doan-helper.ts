@@ -72,13 +72,14 @@ export function kiemTraChoPhepSua(lc: LenhCat, pc: any): boolean {
   if (!pc) return false;
   const tt = pc.trangThaiCD;
   if (!tt) return true; // Nếu chưa có trạng thái (fallback), luôn cho phép
-  if (tt === "dang_lam" || tt === "co_loi") return true;
-  if (tt === "hoan_thanh" || tt === "cho_qc") {
-    const sau = congDoanSau(lc, pc);
-    if (!sau) return true; // Khâu cuối cùng
-    const ttSau = sau.trangThaiCD || "cho_giao";
-    if (ttSau === "cho_giao" || ttSau === "cho_nhan_viec") return true;
+  
+  // Cho phép sửa ở mọi trạng thái ngoại trừ một số trạng thái đặc biệt nếu có
+  // Hiện tại: dang_lam, co_loi, hoan_thanh, cho_qc đều cho phép mở lại lệnh
+  if (tt === "dang_lam" || tt === "co_loi" || tt === "hoan_thanh" || tt === "cho_qc") {
+    return true;
   }
+  
+  // Mặc định các trạng thái khác (cho_giao, v.v.) thì không cần "Mở sửa lệnh" vì chưa bắt đầu
   return false;
 }
 
