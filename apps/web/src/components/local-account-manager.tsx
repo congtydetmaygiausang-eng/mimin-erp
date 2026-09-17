@@ -1,14 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Link2, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Link2, RefreshCw, Shield, Users, Building2 } from "lucide-react";
 import { CrudModal, type FieldDef } from "./ui/CrudModal";
 import { ALL_ROLES, ROLE_LABELS, type Role } from "@/lib/permissions";
+import { VAI_TRO_LABELS, NHOM_VAI_TRO, type VaiTroChuan } from "@/lib/vai-tro-chuan";
 import { localActiveAccount, readLocalAccounts, saveLocalAccount, useLocalAccountRevision } from "@/lib/local-account-store";
 import type { AccountAccess, AccountKind, AccountScope } from "@/lib/data/account-access";
 import { useAccountDirectory } from "@/lib/use-account-directory";
 
 export const ACCOUNT_SCOPE_LABELS: Record<AccountScope, string> = { ASSIGNED: "Chỉ việc được giao", TEAM: "Việc của tổ quản lý", DEPARTMENT: "Việc của bộ phận quản lý", COMPANY: "Toàn công ty (theo quyền)" };
+
+const LEGACY_TO_STANDARD_ROLE: Record<string, VaiTroChuan> = {
+  admin: "QUAN_TRI_HE_THONG",
+  planner: "DIEU_PHOI_SX",
+  warehouse: "THU_KHO_VAI",
+  sewing: "PHU_TRACH_MAY",
+  qc: "PHU_TRACH_QC",
+  finishing: "PHU_TRACH_DONG_GOI",
+  accountant: "KE_TOAN",
+  content: "PHU_TRACH_IN_THEU",
+  partner: "DOI_TAC_MAY",
+  supplier: "THU_KHO_VAI",
+  workshop_customer: "NHAN_VIEN_DONG_GOI",
+  buyer_customer: "NHAN_VIEN_CAT",
+};
+
+const displayStandardRole = (role: string): string => {
+  const standard = LEGACY_TO_STANDARD_ROLE[role] ?? role;
+  if (standard in VAI_TRO_LABELS) return VAI_TRO_LABELS[standard as VaiTroChuan];
+  return ROLE_LABELS[role as Role] ?? role;
+};
+
+const STANDARD_ROLE_GROUPS = Object.entries(NHOM_VAI_TRO) as Array<[string, VaiTroChuan[]]>;
+
 export function LocalAccountManager() {
   useLocalAccountRevision();
   const { sources, loading, error, refresh } = useAccountDirectory(Boolean(localActiveAccount()?.roles.includes("admin")));
@@ -25,6 +50,10 @@ export function LocalAccountManager() {
     return (linked.length ? linked : [null]).map(account => ({ source, account }));
   });
   const visibleRows = rows.filter(({ source, account }) => (sourceFilter === "all" || source.kind === sourceFilter) && `${source.name} ${source.code} ${source.email} ${account?.email || ""}`.toLocaleLowerCase("vi").includes(search.toLocaleLowerCase("vi")));
+  const roleSummary = STANDARD_ROLE_GROUPS.map(([group, roles]) => ({
+    group,
+    count: accounts.filter(account => account.roles.some(role => roles.includes(LEGACY_TO_STANDARD_ROLE[role] ?? role as VaiTroChuan))).length,
+  }));
   const openSource = (row: typeof rows[number]) => setEditing(row.account ? { ...row.account, name: row.source.name } : {
     ...blank(), name: row.source.name, email: row.source.email, kind: row.source.kind, department: row.source.department,
     employeeCode: row.source.kind === "employee" ? row.source.code : "",
@@ -54,8 +83,8 @@ export function LocalAccountManager() {
             <Link2 size={22} aria-hidden="true" />
           </span>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Quản lý tài khoản</h1>
-            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">Cấp tài khoản và phân quyền cho nhân sự, đối tác, nhà cung cấp.</p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Quản lý tài khoản & phân vai trò</h1>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">Đồng bộ với bảng quyền hiện tại: role chuẩn, nhóm vai trò, phạm vi dữ liệu.</p>
           </div>
         </div>
         <button type="button" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/50 bg-white/30 px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-700 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20" disabled={loading} onClick={() => { setEditing(null); void refresh(); }}>
@@ -65,9 +94,19 @@ export function LocalAccountManager() {
       </div>
     </header>
     {error && <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">{error}. Vui lòng kiểm tra kết nối và quyền truy cập Supabase, rồi thử lại.</p>}
+    <div className="grid gap-2 md:grid-cols-3">
+      {roleSummary.map(item => (
+        <div key={item.group} className="card p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+            <Shield className="h-3.5 w-3.5" /> {item.group}
+          </div>
+          <div className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{item.count}</div>
+        </div>
+      ))}
+    </div>
     <input aria-label="Tìm tài khoản" className="input w-full" placeholder="Tìm tên, email, mã liên kết…" value={search} onChange={event => setSearch(event.target.value)} />
     <div className="flex flex-wrap gap-2">{(["all", "employee", "partner", "supplier"] as const).map(kind => <button key={kind} onClick={() => setSourceFilter(kind)} className={`rounded px-3 py-2 text-sm ${sourceFilter === kind ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`}>{kind === "all" ? "Tất cả" : sourceLabels[kind]} ({rows.filter(row => kind === "all" || row.source.kind === kind).length})</button>)}</div>
-    <div className="card overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b"><th className="p-3">Nguồn / Mã</th><th className="p-3">Họ tên / Đơn vị</th><th className="p-3">Email tài khoản</th><th className="p-3">Vai trò</th><th className="p-3">Trạng thái</th><th className="p-3">Thao tác</th></tr></thead><tbody>{visibleRows.map(row => <tr key={`${row.source.kind}:${row.source.code}:${row.account?.id || "new"}`} className="border-b"><td className="p-3">{sourceLabels[row.source.kind]}<div className="text-xs text-slate-500">{row.source.code}</div></td><td className="p-3 font-medium">{row.source.name}</td><td className="p-3">{row.account?.email || row.source.email || "Chưa có email"}</td><td className="p-3">{row.account?.roles.map(role => ROLE_LABELS[role]).join(", ") || "Chưa phân quyền"}</td><td className="p-3">{!row.account ? "Chưa có tài khoản" : row.account.active ? "Hoạt động" : "Tạm khóa"}</td><td className="p-3"><button className="flex items-center gap-1 text-blue-600" onClick={() => openSource(row)}>{row.account ? <Pencil size={16} /> : <Plus size={16} />}{row.account ? "Phân quyền" : "Cấp tài khoản"}</button></td></tr>)}</tbody></table>{!visibleRows.length && <p className="p-6 text-center text-slate-500">Không có hồ sơ phù hợp.</p>}</div>
+    <div className="card overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b"><th className="p-3">Nguồn / Mã</th><th className="p-3">Họ tên / Đơn vị</th><th className="p-3">Email tài khoản</th><th className="p-3">Vai trò chuẩn</th><th className="p-3">Trạng thái</th><th className="p-3">Thao tác</th></tr></thead><tbody>{visibleRows.map(row => <tr key={`${row.source.kind}:${row.source.code}:${row.account?.id || "new"}`} className="border-b"><td className="p-3">{sourceLabels[row.source.kind]}<div className="text-xs text-slate-500">{row.source.code}</div></td><td className="p-3 font-medium">{row.source.name}</td><td className="p-3">{row.account?.email || row.source.email || "Chưa có email"}</td><td className="p-3">{row.account?.roles.length ? row.account.roles.map(displayStandardRole).join(", ") : "Chưa phân quyền"}</td><td className="p-3">{!row.account ? "Chưa có tài khoản" : row.account.active ? "Hoạt động" : "Tạm khóa"}</td><td className="p-3"><button className="flex items-center gap-1 text-blue-600" onClick={() => openSource(row)}>{row.account ? <Pencil size={16} /> : <Plus size={16} />}{row.account ? "Phân quyền" : "Cấp tài khoản"}</button></td></tr>)}</tbody></table>{!visibleRows.length && <p className="p-6 text-center text-slate-500">Không có hồ sơ phù hợp.</p>}</div>
     {editing && <CrudModal open title="Liên kết tài khoản" fields={fields.filter(field => editing.kind === "employee" || !["department", "team"].includes(field.name))} maxWidth="3xl" onClose={() => setEditing(null)} initial={{ ...editing, scope: editing.kind === "employee" ? editing.scope : "ASSIGNED", roles: editing.roles.join(","), active: String(editing.active) }} onSubmit={values => {
       const code = values.kind === "employee" ? values.employeeCode : values.kind === "partner" ? values.partnerCode : values.supplierCode;
       const source = sources.find(item => item.kind === values.kind && item.code === code);
