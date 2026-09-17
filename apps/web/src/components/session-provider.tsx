@@ -8,11 +8,16 @@ import { migrateLegacyKeys } from "@/lib/migrate-legacy-keys";
 import { migrateLarkConfig } from "@/lib/lark-config";
 import { toast } from "sonner";
 import { loadSharedPermissionMatrix, subscribeSharedPermissionMatrix } from "@/lib/permissions";
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { localActiveAccount, readLocalAccounts, selectLocalAccount, useLocalAccountRevision } from "@/lib/local-account-store";
+import { LocalAccountBar } from "@/components/local-account-bar";
+import { useAccountDisplayProfile } from "@/lib/use-account-display-profile";
 
 export type AppUser = {
   id: string;
   email: string;
   name: string;
+  avatar?: string;
   role: string;
   title: string;
   source: "supabase" | "demo";
@@ -25,6 +30,7 @@ export type AppUser = {
   organizationName?: string;
   workspaceRole?: string;
   dataScope?: string;
+  roles?: string[];
 };
 
 type SessionContextValue = {
@@ -67,9 +73,32 @@ function clearMockSession() {
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
+  return LOCAL_ACCOUNT_MODE ? <LocalSessionProvider>{children}</LocalSessionProvider> : <LiveSessionProvider>{children}</LiveSessionProvider>;
+}
+
+function LocalSessionProvider({ children }: { children: React.ReactNode }) {
+  useLocalAccountRevision();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const account = mounted ? localActiveAccount() : null;
+  const profile = useAccountDisplayProfile(account?.email, account?.kind === "employee" ? account.employeeCode : undefined);
+  const user: AppUser | null = account?.active ? {
+    id: account.id, name: profile?.name || account.name, avatar: profile?.avatar, email: account.email, role: account.roles[0], roles: account.roles,
+    title: profile?.title || account.department, source: "demo", maNV: account.employeeCode || account.partnerCode || account.supplierCode,
+    phongBan: account.department, dataScope: account.scope,
+  } : null;
+  return <SessionContext.Provider value={{ user, loading: !mounted, authSource: "demo",
+    signIn: async () => ({ ok: false, error: "Chọn tài khoản trên thanh Test local" }),
+    signOut: async () => { const admin = readLocalAccounts().find(item => item.active && item.roles.includes("admin")); if (admin) selectLocalAccount(admin.id); },
+  }}><LocalAccountBar activeName={user?.name} />{children}</SessionContext.Provider>;
+}
+
+function LiveSessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authSource, setAuthSource] = useState<"supabase" | "demo" | "none">("none");
+  const profile = useAccountDisplayProfile(user?.email, user?.maNV);
+  const displayUser = user ? { ...user, name: profile?.name || user.name, avatar: profile?.avatar || user.avatar, title: profile?.title || user.title } : null;
 
   useEffect(() => {
     void loadSharedPermissionMatrix();
@@ -363,7 +392,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ user, loading, signIn, signOut, authSource }}>
+    <SessionContext.Provider value={{ user: displayUser, loading, signIn, signOut, authSource }}>
       {children}
     </SessionContext.Provider>
   );

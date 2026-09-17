@@ -10,6 +10,11 @@ import {
   useEffect, useState, type ReactNode,
 } from "react";
 import type { Order, OrderItem, OrderPayment, OrderShipping, TrangThaiVanChuyen } from "@/components/order-detail/types";
+import { useSession } from "@/components/session-provider";
+import { LOCAL_ACCOUNT_MODE } from "../local-account-mode";
+import { localActiveAccount } from "../local-account-store";
+import { canAccessBusinessRecord, hasAccountPermission } from "../account-access";
+import { can, type Action } from "../permissions";
 
 const STORAGE_KEY = "mimin_don_hang_v3";
 
@@ -305,7 +310,23 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
 
 export function useDonHang() {
   const ctx = useContext(DonHangContext);
+  useSession();
   if (!ctx) throw new Error("useDonHang must be used within DonHangProvider");
+  if (LOCAL_ACCOUNT_MODE) {
+    const assert = (id: string, action: Action = "edit") => {
+      const order = ctx.dsOrder.find(item => item.id === id);
+      if (!order || !canAccessBusinessRecord(localActiveAccount(), order, "don-hang", action, can)) throw new Error("Đơn hàng không thuộc quyền hoặc phạm vi được giao");
+    };
+    return { ...ctx,
+      dsOrder: ctx.dsOrder.filter(order => canAccessBusinessRecord(localActiveAccount(), order, "don-hang", "view", can)),
+      themOrder: (...args: Parameters<typeof ctx.themOrder>) => { if (!hasAccountPermission(localActiveAccount(), "don-hang", "create", can)) throw new Error("Không có quyền tạo đơn"); return ctx.themOrder(...args); },
+      suaOrder: (...args: Parameters<typeof ctx.suaOrder>) => { assert(args[0]); if (["userIds", "team", "department"].some(key => key in args[1]) && !localActiveAccount()?.roles.includes("admin")) throw new Error("Chỉ quản trị viên được đổi phân công đơn hàng"); return ctx.suaOrder(...args); },
+      xoaOrder: (...args: Parameters<typeof ctx.xoaOrder>) => { assert(args[0], "delete"); return ctx.xoaOrder(...args); },
+      themThanhToan: (...args: Parameters<typeof ctx.themThanhToan>) => { assert(args[0]); if (!hasAccountPermission(localActiveAccount(), "cong-no-cong-doan", "edit", can)) throw new Error("Không có quyền ghi nhận thanh toán"); return ctx.themThanhToan(...args); },
+      capNhatVanChuyen: (...args: Parameters<typeof ctx.capNhatVanChuyen>) => { assert(args[0]); return ctx.capNhatVanChuyen(...args); },
+      doiTrangThai: (...args: Parameters<typeof ctx.doiTrangThai>) => { assert(args[0]); return ctx.doiTrangThai(...args); },
+    };
+  }
   return ctx;
 }
 

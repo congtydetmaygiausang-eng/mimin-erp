@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Upload, X, Image as ImageIcon, FileText, Eye, Download } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +23,7 @@ type Props = {
   accept?: string;
   label?: string;
   hint?: string;
+  multiple?: boolean;
 };
 
 const ACCEPT_DEFAULT = "image/*,.pdf,.ai,.psd,.svg";
@@ -35,6 +37,7 @@ export function ImageUploader({
   accept = ACCEPT_DEFAULT,
   label,
   hint,
+  multiple = true,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
@@ -44,16 +47,27 @@ export function ImageUploader({
   const handleFiles = async (fileList: FileList | null | undefined) => {
     if (!fileList) return;
     const newFiles: UploadedFile[] = [];
-    for (const file of Array.from(fileList)) {
+    for (const file of (multiple ? Array.from(fileList) : Array.from(fileList).slice(0, 1))) {
+      if (accept === "image/*" && !file.type.startsWith("image/")) {
+        toast.error("Vui lòng chọn tệp hình ảnh");
+        continue;
+      }
       if (file.size > maxSize) {
         toast.error(`${file.name} quá lớn (max ${(maxSize / 1024 / 1024).toFixed(0)}MB)`);
         continue;
       }
-      const dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
+      let dataUrl: string;
+      try {
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Không đọc được ảnh"));
+          reader.readAsDataURL(file);
+        });
+      } catch {
+        toast.error("Không đọc được ảnh, vui lòng chọn lại");
+        continue;
+      }
       newFiles.push({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name: file.name || 'image.png',
@@ -64,8 +78,10 @@ export function ImageUploader({
         uploadedAt: new Date().toISOString(),
       });
     }
-    onChange([...files, ...newFiles]);
-    toast.success(`Đã upload ${newFiles.length} file`);
+    if (!newFiles.length) return;
+    onChange(multiple ? [...files, ...newFiles] : [...files.filter((file) => file.category !== category), ...newFiles]);
+    if (inputRef.current) inputRef.current.value = "";
+    toast.success(`Đã chọn ${newFiles.length} tệp`);
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -110,7 +126,7 @@ export function ImageUploader({
         <input
           ref={inputRef}
           type="file"
-          multiple
+          multiple={multiple}
           accept={accept}
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
@@ -146,6 +162,7 @@ export function ImageUploader({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => isImage(f.type) && setPreviewIdx(files.indexOf(f))}
                 className="rounded p-1.5 transition hover:bg-white/40 dark:hover:bg-white/10"
                 title="Phóng to"
@@ -161,6 +178,7 @@ export function ImageUploader({
                 <Download className="w-3.5 h-3.5" />
               </a>
               <button
+                type="button"
                 onClick={() => remove(f.id)}
                 className="p-1.5 rounded hover:bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition"
                 title="Xóa"
@@ -173,8 +191,8 @@ export function ImageUploader({
       )}
 
       {/* Image preview modal */}
-      {previewIdx !== null && files[previewIdx] && (
-        <div className="fixed inset-0 z-[80] flex cursor-zoom-out items-center justify-center bg-black/85 p-3 animate-fade-in md:p-6" onClick={() => setPreviewIdx(null)}>
+      {previewIdx !== null && files[previewIdx] && createPortal(
+        <div className="fixed inset-0 z-[140] flex cursor-zoom-out items-center justify-center bg-black/85 p-3 animate-fade-in md:p-6" onClick={() => setPreviewIdx(null)}>
           <div className="relative flex h-full w-full items-center justify-center" onClick={(event) => event.stopPropagation()}>
             <img src={files[previewIdx].dataUrl} alt={files[previewIdx].name} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
             <div className="absolute left-3 top-3 max-w-[70%] truncate rounded bg-black/70 px-3 py-1.5 text-xs text-white">
@@ -184,7 +202,7 @@ export function ImageUploader({
               <X className="h-5 w-5" />
             </button>
           </div>
-        </div>
+        </div>, document.body
       )}
     </div>
   );

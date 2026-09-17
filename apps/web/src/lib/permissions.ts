@@ -546,6 +546,39 @@ const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v3_admin_only";
 export const PERMISSION_MATRIX_CHANGED_EVENT = "mimin:permission-matrix-changed";
 export type PermissionMatrix = Record<Role, Partial<Record<Module, string>>>;
 
+/** Read the previous browser cache without replacing either saved version. */
+export function getLegacyPermissionMatrix(): PermissionMatrix | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("mimin_permission_matrix_v2");
+  if (!raw) return null;
+  const parsed: unknown = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Bản phân quyền cũ không hợp lệ");
+  }
+  const custom = parsed as Record<string, unknown>;
+  if (!Object.keys(PERMISSIONS).some((role) => role in custom)) {
+    throw new Error("Bản phân quyền cũ không có vai trò hợp lệ");
+  }
+  const restored = {} as PermissionMatrix;
+  for (const role of Object.keys(PERMISSIONS) as Role[]) {
+    const overrides = custom[role];
+    restored[role] = { ...PERMISSIONS[role] };
+    if (overrides === undefined) continue;
+    if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
+      throw new Error(`Quyền cũ của ${role} không hợp lệ`);
+    }
+    for (const [module, value] of Object.entries(overrides)) {
+      if (typeof value !== "string" || !/^[rcud]*$/.test(value)) {
+        throw new Error(`Quyền cũ của ${role}/${module} không hợp lệ`);
+      }
+      if (Object.prototype.hasOwnProperty.call(MODULE_LABELS, module)) {
+        restored[role][module as Module] = value;
+      }
+    }
+  }
+  return normalizeMatrix(restored);
+}
+
 function getAdminOnlyMatrix(): PermissionMatrix {
   const modules = Object.keys(MODULE_LABELS) as Module[];
   return Object.fromEntries(
@@ -614,7 +647,9 @@ export async function loadSharedPermissionMatrix(): Promise<PermissionMatrix> {
 
 export function subscribeSharedPermissionMatrix(onChange: (matrix: PermissionMatrix) => void): () => void {
   if (!isSupabaseEnabled || !supabase) return () => {};
-  const channel = supabase.channel("permission-settings-global").on(
+  // Each consumer owns its channel: Supabase reuses channels with the same topic,
+  // so mounting the permissions page after SessionProvider must use a new topic.
+  const channel = supabase.channel(`permission-settings-global-${crypto.randomUUID()}`).on(
     "postgres_changes",
     { event: "*", schema: "public", table: "permission_settings", filter: "id=eq.global" },
     (payload) => {

@@ -59,3 +59,12 @@ assert.strictEqual(saved.luong_cung, 8000000);
 assert.strictEqual(saved.avatar_url, 'https://example.com/b.png');
 
 console.log('employee-records tests passed');
+
+const complete = { ...payload, luongCB: 0, luongCung: 0, rating: 3, facebookUrl: 'https://facebook.com/example', ghiChu: 'Test', donGiaSP: 'Test rate', soTK: '000123', nganHang: 'Test bank' };
+const roundtrip = normalizeEmployeeRecord(toSupabaseEmployeeRecord(complete));
+for (const field of ['hoTen', 'maNV', 'avatar', 'cccdFrontImage', 'cccdBackImage', 'ngaySinh', 'ngayVao', 'diaChiTT', 'diaChiTamTru', 'facebookUrl', 'luongCB', 'luongCung', 'rating', 'ghiChu', 'donGiaSP', 'soTK', 'nganHang']) {
+  assert.strictEqual(roundtrip[field], complete[field], `Roundtrip field: ${field}`);
+}
+assert.strictEqual(normalizeEmployeeRecord({ luong_cb: 0, luongCB: 9000000 }).luongCB, 0);
+assert.strictEqual(normalizeEmployeeRecord({ ngay_vao_lam: '2025-01-02' }).ngayVao, '2025-01-02');
+console.log('employee profile field roundtrip tests passed');
