@@ -111,6 +111,29 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
                  </div>
               </div>
             )}
+
+            {/* BỘ ẢNH CHI TIẾT (GALLERY) - THUMBNAILS DỌC */}
+            {selectedColor?.hinhAnhChiTiet && selectedColor.hinhAnhChiTiet.length > 0 && (
+              <div className="absolute top-1/2 -translate-y-1/2 left-3 md:left-4 flex flex-col gap-2.5 z-20 pointer-events-auto overflow-y-auto max-h-[70%] no-scrollbar py-2">
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setSelectedImage(selectedColor.img); setViewingMode("image"); }} 
+                  className={`w-11 h-14 md:w-12 md:h-16 shrink-0 rounded-lg cursor-pointer border-2 transition-all shadow-sm bg-white overflow-hidden ${selectedImage === selectedColor.img && viewingMode === "image" ? "border-cyan-500 scale-105 ring-2 ring-cyan-500/20" : "border-white/90 hover:border-white opacity-60 hover:opacity-100 hover:scale-105"}`}
+                  title="Ảnh chính"
+                >
+                  <img src={selectedColor.img} className="w-full h-full object-cover" />
+                </div>
+                {selectedColor.hinhAnhChiTiet.map((imgUrl, i) => (
+                  <div 
+                    key={i} 
+                    onClick={(e) => { e.stopPropagation(); setSelectedImage(imgUrl); setViewingMode("image"); }} 
+                    className={`w-11 h-14 md:w-12 md:h-16 shrink-0 rounded-lg cursor-pointer border-2 transition-all shadow-sm bg-white overflow-hidden ${selectedImage === imgUrl && viewingMode === "image" ? "border-cyan-500 scale-105 ring-2 ring-cyan-500/20" : "border-white/90 hover:border-white opacity-60 hover:opacity-100 hover:scale-105"}`}
+                    title={`Chi tiết ${i + 1}`}
+                  >
+                    <img src={imgUrl} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Media Toggle Button */}
