@@ -150,6 +150,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
               let newHinhAnh = item.hinhAnh;
               let newImgQuan = item.imgQuan;
               let newVideo = item.video;
+              let newMaSKU = item.maSKU;
 
               if (data.dsMau && Array.isArray(data.dsMau)) {
                 const matchedMau = data.dsMau.find(m => m.ten === item.mau);
@@ -163,6 +164,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                   if (matchedMau.video !== undefined) {
                     newVideo = matchedMau.video;
                   }
+                  if (matchedMau.maSKU !== undefined) {
+                    newMaSKU = matchedMau.maSKU;
+                  }
                 }
               }
 
@@ -172,7 +176,8 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                 ...(data.tenSP ? { tenSP: data.tenSP } : {}),
                 ...(newHinhAnh ? { hinhAnh: newHinhAnh } : {}),
                 ...(newImgQuan ? { imgQuan: newImgQuan } : {}),
-                ...(newVideo !== undefined ? { video: newVideo } : {})
+                ...(newVideo !== undefined ? { video: newVideo } : {}),
+                ...(newMaSKU !== undefined ? { maSKU: newMaSKU } : {})
               };
             }
             return item;
@@ -213,6 +218,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                  }
                  if (m.video !== undefined) {
                    variantUpdates.video = m.video;
+                 }
+                 if (m.maSKU !== undefined) {
+                   variantUpdates.ma_sku = m.maSKU;
                  }
                  await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
                }

@@ -193,8 +193,9 @@ export const SupabaseAdapter = {
   subscribeTasks(callback: (payload: any) => void): () => void {
     if (isSupabaseEnabled && supabase) {
       const sb = supabase;
+      const channelId = `tasks-realtime-${Date.now()}-${Math.random()}`;
       const channel = sb
-        .channel("tasks-realtime")
+        .channel(channelId)
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, (payload) => {
           console.log("[Realtime] tasks:", payload.eventType);
           callback(payload);
@@ -214,8 +215,9 @@ export const SupabaseAdapter = {
   subscribeKho(callback: (payload: any) => void): () => void {
     if (isSupabaseEnabled && supabase) {
       const sb = supabase;
+      const channelId = `kho-realtime-${Date.now()}-${Math.random()}`;
       const channel = sb
-        .channel("kho-realtime")
+        .channel(channelId)
         .on("postgres_changes", { event: "*", schema: "public", table: "kho" }, (payload) => {
           callback(payload);
         })
