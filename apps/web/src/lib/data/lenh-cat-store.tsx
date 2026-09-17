@@ -13,7 +13,7 @@ import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } f
 import type { AppUser } from "@/components/session-provider";
 import { usePhanCong } from "./cong-no-store";
 
-export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron" | "AoPolo" | "PhuKien";
+export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron" | "PhuKien";
 export type LoaiLenh = "HangNha" | "HangDat";
 
 export const LOAI_SP_LABELS: Record<LoaiSP, string> = {
@@ -21,13 +21,12 @@ export const LOAI_SP_LABELS: Record<LoaiSP, string> = {
   "AoCoTron": "Áo Cổ Tròn",
   "BoTru": "Bộ Trụ",
   "BoCoTron": "Bộ Cổ Tròn",
-  "AoPolo": "Áo Polo",
   "PhuKien": "Phụ Kiện",
 };
 
 export function detectLoaiSP(text: string): LoaiSP {
   const checkStr = (text || "").toLowerCase();
-  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
+  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoTru";
   // "bộ polo" is a polo set, so it's a "bộ trụ" (BoTru)
   if (checkStr.includes("bộ polo") || checkStr.includes("bo polo")) return "BoTru";
   if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) return "AoTru";
@@ -45,7 +44,6 @@ export const BANG_CHI_PHI_CO_DINH: Record<LoaiSP, ChiPhiCoDinh> = {
   "AoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
   "BoCoTron": { "EPKEOTRU": 0, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
   "AoCoTron": { "EPKEOTRU": 0, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
-  "AoPolo": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
   "PhuKien": { "BAOBI_GIAY": 0, "THEBAI": 0 }
 };
 
