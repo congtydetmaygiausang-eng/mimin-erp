@@ -42,7 +42,7 @@ export function RoleDashboard() {
         
         <div className="flex items-center gap-4 relative z-10">
           <div className="relative">
-            <Avatar name={user.name} size="xl" />
+            <Avatar name={user.name} src={user.avatar} size="xl" />
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse shadow-sm"></div>
           </div>
           <div className="flex-1">

@@ -10,7 +10,13 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { logWorkflow } from "../audit-log";
 import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabaseUpsert, supabaseDelete, supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
-import type { AppUser } from "@/components/session-provider";
+import { useSession, type AppUser } from "@/components/session-provider";
+import type { RecordAssignment } from "./account-access";
+import { LOCAL_ACCOUNT_MODE } from "../local-account-mode";
+import { localActiveAccount } from "../local-account-store";
+import { canAccessProductionOrder, canAccessStage, hasAccountPermission } from "../account-access";
+import { can } from "../permissions";
+import { assertLocalProductionPatch, canManageLocalOrder } from "../local-record-access";
 import { usePhanCong } from "./cong-no-store";
 
 export type LoaiSP = "AoTru" | "AoCoTron" | "BoTru" | "BoCoTron" | "AoPolo" | "PhuKien";
@@ -234,7 +240,7 @@ export type PhanCongXuongNgoai = CongDoanBase & {
 };
 
 // Discriminated union
-export type CongDoanItem = PhanCongNoiBo | PhanCongXuongNgoai;
+export type CongDoanItem = (PhanCongNoiBo | PhanCongXuongNgoai) & RecordAssignment;
 export type PhanCongGiaCong = CongDoanItem[];
 
 export type ChiPhiCoDinh = {
@@ -252,7 +258,7 @@ export type BangCOGS = {
   tongGiaVon?: number;      // = giaVonBinhQuan * tongSL
 };
 
-export type LenhCat = {
+export type LenhCat = RecordAssignment & {
   id: string; // Tự sinh VD: LC-2026-0001
   loaiLenh: LoaiLenh;
   khachHang?: string; // Nếu là Hàng Đặt
@@ -483,6 +489,15 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   // Dùng để đồng bộ với isLoaded (localStorage) trước khi render Provider
   const [isSupabaseDone, setIsSupabaseDone] = useState(false);
 
+  useEffect(() => {
+    if (!LOCAL_ACCOUNT_MODE) return;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) setDsLenhCat(JSON.parse(stored) as LenhCat[]);
+  }, []);
+  useEffect(() => {
+    if (LOCAL_ACCOUNT_MODE && isLoaded && isSupabaseDone) localStorage.setItem(STORAGE_KEY, JSON.stringify(dsLenhCat));
+  }, [dsLenhCat, isLoaded, isSupabaseDone]);
+
   // Load Lệnh Cắt từ Supabase
   useEffect(() => {
     let mounted = true;
@@ -580,6 +595,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
 
     setDsLenhCat((prev) => [lenh, ...prev]);
     logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
+    if (LOCAL_ACCOUNT_MODE) return;
     const { supabase } = await import("@/lib/supabase/client");
     if (!supabase) throw new Error("Supabase chưa kết nối");
     const { error } = await supabase!.from("lenh_cat").upsert({
@@ -603,6 +619,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
   const suaLenhCat = useCallback(async (id: string, lenh: Partial<LenhCat>, u: AppUser) => {
     setDsLenhCat((prev) => prev.map((item) => item.id === id ? { ...item, ...lenh } : item));
     logWorkflow(u, "update", `Cập nhật lệnh cắt ${id}`, id, { module: "lenh-cat" });
+    if (LOCAL_ACCOUNT_MODE) return;
     const { supabase } = await import("@/lib/supabase/client");
     if (supabase) {
       const updateData: any = {};
@@ -853,6 +870,43 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
 
 export function useLenhCat() {
   const ctx = useContext(LenhCatContext);
+  useSession();
   if (!ctx) throw new Error("useLenhCat must be used within LenhCatProvider");
+  if (LOCAL_ACCOUNT_MODE) {
+    const account = localActiveAccount();
+    const getOrder = (id: string) => {
+      const order = ctx.dsLenhCat.find(item => item.id === id);
+      if (!order || !canAccessProductionOrder(localActiveAccount(), order, can)) throw new Error("Lệnh không thuộc phạm vi được giao");
+      return order;
+    };
+    return {
+      ...ctx,
+      dsLenhCat: ctx.dsLenhCat.filter(order => canAccessProductionOrder(account, order, can)),
+      themLenhCat: async (...args: Parameters<typeof ctx.themLenhCat>) => {
+        if (!hasAccountPermission(localActiveAccount(), "lenh-cat", "create", can)) throw new Error("Không có quyền tạo lệnh");
+        return ctx.themLenhCat(...args);
+      },
+      suaLenhCat: async (...args: Parameters<typeof ctx.suaLenhCat>) => {
+        assertLocalProductionPatch(getOrder(args[0]), args[1]);
+        return ctx.suaLenhCat(...args);
+      },
+      xoaLenhCat: async (...args: Parameters<typeof ctx.xoaLenhCat>) => {
+        if (!canManageLocalOrder(getOrder(args[0])) || !hasAccountPermission(localActiveAccount(), "lenh-cat", "delete", can)) throw new Error("Không có quyền xóa lệnh");
+        return ctx.xoaLenhCat(...args);
+      },
+      capNhatCongDoan: (...args: Parameters<typeof ctx.capNhatCongDoan>) => {
+        const stage = getOrder(args[0]).phanCong.find(item => item.id === args[1]);
+        if (!stage || !canAccessStage(localActiveAccount(), stage, "edit", can)) throw new Error("Không có quyền cập nhật công đoạn được giao");
+        return ctx.capNhatCongDoan(...args);
+      },
+      capNhatTrangThai: (...args: Parameters<typeof ctx.capNhatTrangThai>) => {
+        const order = getOrder(args[0]);
+        const cutting = order.phanCong.find(stage => stage.id === "cat");
+        if (!canManageLocalOrder(order) && !(args[1] === "DangCat" && cutting && canAccessStage(localActiveAccount(), cutting, "edit", can))) throw new Error("Không có quyền chuyển trạng thái lệnh");
+        return ctx.capNhatTrangThai(...args);
+      },
+      reset: () => { if (!localActiveAccount()?.roles.includes("admin")) throw new Error("Chỉ quản trị viên được đặt lại dữ liệu"); return ctx.reset(); },
+    };
+  }
   return ctx;
 }

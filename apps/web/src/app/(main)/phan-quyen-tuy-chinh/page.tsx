@@ -23,6 +23,7 @@ import { usePermission } from "@/components/PermissionGuard";
 import {
   getFullMatrix,
   saveCustomMatrix,
+  getLegacyPermissionMatrix,
   resetCustomMatrix,
   getEffectivePermissions,
   loadSharedPermissionMatrix,
@@ -429,6 +430,20 @@ export default function PhanQuyenTuyChinhPage() {
       toast.error(`Không đồng bộ được phân quyền: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
     }
   };
+  const handleRestoreLegacy = () => {
+    try {
+      const previous = getLegacyPermissionMatrix();
+      if (!previous) {
+        toast.error("Không tìm thấy bản cũ. Hãy mở đúng trình duyệt và địa chỉ web anh đã dùng để chỉnh quyền, hoặc Import bản JSON đã xuất.");
+        return;
+      }
+      setMatrix(previous as Matrix);
+      setDirty(true);
+      toast.success("Đã lấy lại bản quyền cũ. Kiểm tra bảng rồi bấm Lưu để áp dụng và đồng bộ.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không đọc được bản quyền cũ");
+    }
+  };
   // Reset về mặc định
   const handleReset = async () => {
     resetCustomMatrix();
@@ -554,6 +569,13 @@ export default function PhanQuyenTuyChinhPage() {
                 <AlertTriangle className="w-3 h-3" /> Chưa lưu
               </span>
             )}
+            <button
+              onClick={handleRestoreLegacy}
+              className="btn-secondary text-xs flex items-center gap-1"
+              title="Lấy lại phân quyền đã chỉnh trước bản cập nhật"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Khôi phục bản cũ
+            </button>
             <button
               onClick={handleImport}
               className="btn-secondary text-xs flex items-center gap-1"

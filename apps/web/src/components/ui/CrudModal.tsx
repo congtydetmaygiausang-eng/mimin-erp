@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +27,8 @@ export function CrudModal({
   initial,
   submitLabel = "Lưu",
   onImageUpload,
+  children,
+  maxWidth = "lg",
 }: {
   open: boolean;
   onClose: () => void;
@@ -36,9 +38,12 @@ export function CrudModal({
   initial?: Record<string, string>;
   submitLabel?: string;
   onImageUpload?: (file: File) => Promise<string>;
+  children?: ReactNode;
+  maxWidth?: "lg" | "3xl";
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const submitting = useRef(false);
 
   const initialStr = JSON.stringify(initial || {});
   useEffect(() => {
@@ -49,6 +54,7 @@ export function CrudModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting.current) return;
     for (const f of fields) {
       if (f.required && !values[f.name]?.trim()) {
         toast.error(`Vui lòng nhập ${f.label.toLowerCase()}`);
@@ -61,6 +67,7 @@ export function CrudModal({
         }
       }
     }
+    submitting.current = true;
     setLoading(true);
     try {
       await onSubmit(values);
@@ -70,13 +77,16 @@ export function CrudModal({
       const message = err instanceof Error ? err.message : "Có lỗi xảy ra";
       toast.error(message, { duration: 8000 });
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
 
   return (
-    <ResponsiveModal open={open} onClose={onClose} title={title} maxWidth="lg">
+    <ResponsiveModal open={open} onClose={() => { if (!submitting.current) onClose(); }} title={title} maxWidth={maxWidth}>
       <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
+        <fieldset disabled={loading} className="min-w-0 space-y-4">
+        {children}
         {fields.map((f) => (
           <div key={f.name}>
             <label className="block text-sm font-medium mb-1.5">
@@ -171,12 +181,13 @@ export function CrudModal({
           </div>
         ))}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/10 mt-2">
-          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">Hủy</button>
+          <button type="button" onClick={onClose} disabled={loading} className="btn-secondary w-full sm:w-auto">Hủy</button>
           <button type="submit" disabled={loading} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {submitLabel}
           </button>
         </div>
+        </fieldset>
       </form>
     </ResponsiveModal>
   );

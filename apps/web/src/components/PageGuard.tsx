@@ -175,7 +175,7 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!canView(user.role, route.module)) {
+  if (!(user.roles || [user.role]).some(role => canView(role, route.module))) {
     logAudit({ user, action: "permission_denied", module: route.module as any, description: `Denied ${pathname}`, }).catch(() => {});
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">

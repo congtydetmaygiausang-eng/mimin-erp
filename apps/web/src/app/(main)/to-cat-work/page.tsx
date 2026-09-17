@@ -16,6 +16,10 @@ import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useSession } from "@/components/session-provider";
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { localActiveAccount } from "@/lib/local-account-store";
+import { canAccessStage } from "@/lib/account-access";
+import { can } from "@/lib/permissions";
 
 export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
@@ -30,6 +34,7 @@ export default function CongViecCatPage() {
   function getPhanCongCat(lc: any) {
     let pcCat = lc.phanCong?.find((pc: any) => {
       const isCat = pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt");
+      if (LOCAL_ACCOUNT_MODE) return isCat && canAccessStage(localActiveAccount(), pc, "view", can);
       if (user?.laCongNhan && isCat) {
         if (pc.nguoiMa && pc.nguoiMa !== user.id && pc.nguoiMa !== user.maNV && !pc.nguoiTen?.includes(user.name)) {
           return false;
@@ -40,6 +45,7 @@ export default function CongViecCatPage() {
     });
 
     if (!pcCat) {
+      if (LOCAL_ACCOUNT_MODE) return undefined;
       if (user?.laCongNhan && lc.phuTrachCat && lc.phuTrachCat !== user.id && lc.phuTrachCat !== user.maNV) {
         return undefined;
       }

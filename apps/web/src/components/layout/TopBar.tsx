@@ -12,6 +12,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { InstallPWAButton } from "@/components/InstallPWAButton";
 import { NotificationToggle } from "@/components/notification/NotificationToggle";
+import { Avatar } from "@/components/Avatar";
 
 export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSignOut: () => Promise<void>; onMenuClick?: () => void }) {
   const { theme, setTheme } = useTheme();
@@ -73,9 +74,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
           {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
           
           <div className="flex items-center gap-1 sm:gap-3 pl-1.5 sm:pl-3 border-l border-white/10 shrink-0">
-            <div className="hidden sm:flex w-9 h-9 rounded-full bg-white/20 items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white/10 shrink-0">
-              {user.name?.charAt(0) || "U"}
-            </div>
+            <Avatar name={user.name} src={user.avatar} size="sm" className="hidden sm:block" />
             <div className="hidden lg:block leading-tight">
             <div className="text-sm font-bold text-white">{user.name}</div>
             <div className="text-xs font-medium text-slate-300">{user.title}</div>
