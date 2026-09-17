@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const PALETTE = [
   ["#14b8a6", "#0ea5e9"],  // teal → sky
@@ -56,6 +56,7 @@ export function Avatar({
   isOnline?: boolean;
 }) {
   const initials = useMemo(() => getInitials(name), [name]);
+  const [failedSrc, setFailedSrc] = useState<string>();
   const [c1, c2] = useMemo(() => getColor(name), [name]);
 
   const sizeClass = {
@@ -78,9 +79,9 @@ export function Avatar({
 
   return (
     <div className={`relative shrink-0 ${className}`}>
-      {src ? (
+      {src && src !== failedSrc ? (
         <div className={`${sizeClass} rounded-full overflow-hidden shadow-md ring-2 ring-white/30 bg-slate-100 dark:bg-slate-800`}>
-          <img src={src} alt={name} className="w-full h-full object-cover" />
+          <img src={src} alt={name} onError={() => setFailedSrc(src)} className="w-full h-full object-cover" />
         </div>
       ) : (
         <div

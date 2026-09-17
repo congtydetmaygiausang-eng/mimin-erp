@@ -2,6 +2,7 @@ import type { Module } from "@/lib/permissions";
 
 /** Nguồn duy nhất ánh xạ URL sang module quyền. */
 export const ROUTE_MODULES: ReadonlyArray<readonly [string, Module]> = [
+  ["/cong-viec-duoc-giao", "dashboard"],
   ["/danh-muc-vat-tu-san-xuat", "dat-ncc-phu-lieu"], ["/phieu-dat-ncc-phu-lieu", "dat-ncc-phu-lieu"],
   ["/mang-luoi-san-xuat", "nha-cung-cap"], ["/nha-cung-cap", "nha-cung-cap"], ["/doi-tac-gia-cong", "nha-cung-cap"], ["/cong-nhan-gia-cong", "nha-cung-cap"], ["/master-data", "nha-cung-cap"], ["/kham-pha", "nha-cung-cap"],
   ["/hoa-don-dien-tu", "hoa-don"], ["/thanh-toan-misa-mock", "hoa-don"], ["/thanh-toan-thanh-cong", "hoa-don"],

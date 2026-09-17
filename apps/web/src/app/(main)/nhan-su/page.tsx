@@ -21,7 +21,7 @@ import { NhanSuTabs } from "@/components/nhan-su-tabs";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 
 export default function NhanSuPage() {
-  const { list, themNhanSu, suaNhanSu, xoaNhanSu, loading } = useNhanSu();
+  const { list, capNhatDaLuu, xoaNhanSu, loading } = useNhanSu();
   const [search, setSearch] = useState("");
   const [filterBP, setFilterBP] = useState<string>("all");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; nv?: NhanSuExt } | null>(null);
@@ -84,17 +84,8 @@ export default function NhanSuPage() {
   }, [dedupedList, search, filterBP]);
 
   const handleSave = useCallback(async (nv: NhanSuExt) => {
-    if (showForm?.mode === "add") {
-      const ok = await themNhanSu(nv);
-      if (ok) toast.success(`Đã thêm NV: ${nv.hoTen}`);
-      else toast.error("Có lỗi khi thêm nhân sự vào Supabase");
-    } else {
-      const ok = await suaNhanSu(nv);
-      if (ok) toast.success(`Đã cập nhật: ${nv.hoTen}`);
-      else toast.error("Có lỗi khi cập nhật nhân sự trên Supabase");
-    }
-    setShowForm(null);
-  }, [showForm, themNhanSu, suaNhanSu]);
+    await capNhatDaLuu(nv);
+  }, [capNhatDaLuu]);
 
   const handleDelete = useCallback(async (nv: NhanSuExt) => {
     if (!confirm(`Xoá NV "${nv.hoTen}"?`)) return;
@@ -118,7 +109,7 @@ export default function NhanSuPage() {
       {viewMode === "card" && <CardView filtered={filtered} luongSPTheoNV={luongSPTheoNV} onShowDetail={setShowDetail} onShowLuong={setShowLuong} onEdit={(n) => setShowForm({ mode: "edit", nv: n })} onDelete={handleDelete} />}
       {viewMode === "list" && <ListView filtered={filtered} luongSPTheoNV={luongSPTheoNV} onShowDetail={setShowDetail} onShowLuong={setShowLuong} onEdit={(n) => setShowForm({ mode: "edit", nv: n })} onDelete={handleDelete} />}
 
-      {showForm && <NVFormModal mode={showForm.mode} nv={showForm.nv} existingCount={list.length} onClose={() => setShowForm(null)} onSave={handleSave} />}
+      {showForm && <NVFormModal mode={showForm.mode} nv={showForm.nv} existingCount={list.length} existingCodes={list.map((nv) => nv.maNV)} onClose={() => setShowForm(null)} onSave={handleSave} />}
       {showDetail && <ChiTietNhanSuModal nv={showDetail} luongSP={luongSPTheoNV[showDetail.maNV] || 0} onClose={() => setShowDetail(null)} onEdit={() => { const target = showDetail; setShowDetail(null); setShowForm({ mode: "edit", nv: target }); }} onLuong={() => { const target = showDetail; setShowDetail(null); setShowLuong(target); }} />}
       {showLuong && <BangLuongNV nv={showLuong} luongSP={luongSPTheoNV[showLuong.maNV] || 0} onClose={() => setShowLuong(null)} />}
       <ImagePreviewModal src={previewImage} onClose={() => setPreviewImage(null)} />

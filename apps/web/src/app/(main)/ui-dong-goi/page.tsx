@@ -1,5 +1,11 @@
 "use client";
 
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { localActiveAccount } from "@/lib/local-account-store";
+import { canAccessStage } from "@/lib/account-access";
+import { can } from "@/lib/permissions";
+
+
 // ============ UI ĐÓNG GÓI (/ui-dong-goi) ============
 // Nhận hàng từ Ủi đạt, Đóng gói, giao Kho Thành Phẩm
 
@@ -42,6 +48,7 @@ export default function UiDongGoiPage() {
       // Nếu là công nhân thì chỉ thấy việc của mình
       // Quản lý/tổ trưởng thấy tất cả
 
+      if (LOCAL_ACCOUNT_MODE) return isHT && canAccessStage(localActiveAccount(), pc, "view", can);
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isHT && isMyTask;

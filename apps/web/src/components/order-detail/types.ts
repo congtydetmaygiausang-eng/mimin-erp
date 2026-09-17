@@ -73,7 +73,7 @@ export type OrderShipping = {
   ghiChu?: string;
 };
 
-export type Order = {
+export type Order = import("@/lib/data/account-access").RecordAssignment & {
   id: string;
   maDH: string;
   ngayDat: string;

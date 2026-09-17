@@ -3,6 +3,11 @@
 import { createContext, useCallback, useContext, type ReactNode } from "react";
 import { useSupabaseSync } from "@/lib/supabase/client";
 import type { PhieuDatNccPhuLieu, TrangThaiPhieuDatNcc } from "./phieu-dat-ncc";
+import { useSession } from "@/components/session-provider";
+import { LOCAL_ACCOUNT_MODE } from "../local-account-mode";
+import { localActiveAccount } from "../local-account-store";
+import { canAccessBusinessRecord, hasAccountPermission } from "../account-access";
+import { can } from "../permissions";
 
 const STORAGE_KEY = "mimin_phieu_dat_ncc_phu_lieu_v1";
 
@@ -95,6 +100,26 @@ export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
 
 export function usePhieuDatNcc() {
   const context = useContext(Context);
+  useSession();
   if (!context) throw new Error("usePhieuDatNcc must be used within PhieuDatNccProvider");
+  if (LOCAL_ACCOUNT_MODE) {
+    return { ...context,
+      orders: context.orders.filter(order => canAccessBusinessRecord(localActiveAccount(), order, "dat-ncc-phu-lieu", "view", can)),
+      saveOrder: async (order: PhieuDatNccPhuLieu) => {
+        const account = localActiveAccount();
+        const old = context.orders.find(item => item.id === order.id);
+        if (account?.kind !== "employee" || (old ? !canAccessBusinessRecord(account, old, "dat-ncc-phu-lieu", "edit", can) : !hasAccountPermission(account, "dat-ncc-phu-lieu", "create", can))) throw new Error("Không có quyền sửa đơn đặt NCC");
+        if (old && !account.roles.includes("admin") && JSON.stringify([old.userIds, old.team, old.department, old.maNcc]) !== JSON.stringify([order.userIds, order.team, order.department, order.maNcc])) throw new Error("Không có quyền đổi phân công hoặc nhà cung cấp");
+        return context.saveOrder(order);
+      },
+      updateStatus: async (...args: Parameters<typeof context.updateStatus>) => {
+        const account = localActiveAccount();
+        const old = context.orders.find(item => item.id === args[0]);
+        if (!old || !canAccessBusinessRecord(account, old, "dat-ncc-phu-lieu", "edit", can)) throw new Error("Không có quyền cập nhật đơn đặt NCC");
+        if (account?.kind === "supplier" && !["NCC xác nhận", "Đang dệt", "Hoàn thành", "Đã giao"].includes(args[1])) throw new Error("NCC chỉ được cập nhật xác nhận và tiến độ giao hàng");
+        return context.updateStatus(args[0], args[1], account?.id || "", args[3]);
+      },
+    };
+  }
   return context;
 }

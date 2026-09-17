@@ -1,5 +1,11 @@
 "use client";
 
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { localActiveAccount } from "@/lib/local-account-store";
+import { canAccessStage } from "@/lib/account-access";
+import { can } from "@/lib/permissions";
+
+
 // ============ UI GIA CÔNG IN THÊU (/ui-intd) ============
 // Trang dành riêng cho bộ phận In / Thêu
 // Nhận bán thành phẩm từ Cắt, hoàn thành chuyển cho May
@@ -32,6 +38,7 @@ export default function UiInTheuPage() {
       // Nếu là công nhân thì chỉ thấy việc của mình
       // Còn quản lý/tổ trưởng thì thấy hết (cả những việc chưa phân cho ai)
 
+      if (LOCAL_ACCOUNT_MODE) return isIntd && canAccessStage(localActiveAccount(), pc, "view", can);
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isIntd && isMyTask;

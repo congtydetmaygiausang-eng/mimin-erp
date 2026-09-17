@@ -33,9 +33,9 @@ create policy "admin_write_permission_settings"
     )
   );
 
--- Reset dữ liệu dùng chung. Client sẽ dựng admin=rcud cho mọi module và các role khác rỗng.
+-- Chỉ khởi tạo khi chưa có cấu hình; không ghi đè quyền đã chỉnh hoặc khôi phục.
 insert into public.permission_settings (id, matrix, updated_at)
 values ('global', '{}'::jsonb, now())
-on conflict (id) do update set matrix = excluded.matrix, updated_at = excluded.updated_at;
+on conflict (id) do nothing;
 
 alter publication supabase_realtime add table public.permission_settings;

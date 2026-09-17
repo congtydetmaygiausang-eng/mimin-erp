@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 import { NHAN_SU_KHOI_DAU, type NhanSuExt } from "@/app/(main)/nhan-su/data";
@@ -17,6 +17,12 @@ import { toast } from "sonner";
 const isEmployeeStoragePath = (value?: string): value is string => Boolean(value && value.startsWith("nhan-su/"));
 
 async function resolveEmployeeImageUrls(items: NhanSuExt[]): Promise<NhanSuExt[]> {
+  items = items.map((nv) => ({
+    ...nv,
+    avatar: isEmployeeStoragePath(nv.avatar) ? nv.avatar : nv.avatarPath || nv.avatar,
+    cccdFrontImage: isEmployeeStoragePath(nv.cccdFrontImage) ? nv.cccdFrontImage : nv.cccdFrontPath || nv.cccdFrontImage,
+    cccdBackImage: isEmployeeStoragePath(nv.cccdBackImage) ? nv.cccdBackImage : nv.cccdBackPath || nv.cccdBackImage,
+  }));
   const paths = new Set<string>();
   items.forEach((nv) => {
     if (isEmployeeStoragePath(nv.avatar)) paths.add(nv.avatar);
@@ -32,6 +38,7 @@ async function resolveEmployeeImageUrls(items: NhanSuExt[]): Promise<NhanSuExt[]
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paths: Array.from(paths) }),
     });
+    if (!res.ok) throw new Error("Không tải được ảnh hồ sơ");
     const json = await res.json();
     urls = json.urls || {};
   } catch (err) {
@@ -43,9 +50,9 @@ async function resolveEmployeeImageUrls(items: NhanSuExt[]): Promise<NhanSuExt[]
     avatarPath: isEmployeeStoragePath(nv.avatar) ? nv.avatar : nv.avatarPath,
     cccdFrontPath: isEmployeeStoragePath(nv.cccdFrontImage) ? nv.cccdFrontImage : nv.cccdFrontPath,
     cccdBackPath: isEmployeeStoragePath(nv.cccdBackImage) ? nv.cccdBackImage : nv.cccdBackPath,
-    avatar: isEmployeeStoragePath(nv.avatar) ? (urls[nv.avatar] || nv.avatar) : nv.avatar,
-    cccdFrontImage: isEmployeeStoragePath(nv.cccdFrontImage) ? (urls[nv.cccdFrontImage] || nv.cccdFrontImage) : nv.cccdFrontImage,
-    cccdBackImage: isEmployeeStoragePath(nv.cccdBackImage) ? (urls[nv.cccdBackImage] || nv.cccdBackImage) : nv.cccdBackImage,
+    avatar: isEmployeeStoragePath(nv.avatar) ? urls[nv.avatar] : nv.avatar,
+    cccdFrontImage: isEmployeeStoragePath(nv.cccdFrontImage) ? urls[nv.cccdFrontImage] : nv.cccdFrontImage,
+    cccdBackImage: isEmployeeStoragePath(nv.cccdBackImage) ? urls[nv.cccdBackImage] : nv.cccdBackImage,
   }));
 }
 
@@ -55,6 +62,7 @@ type NhanSuContextType = {
   suaNhanSu: (nv: NhanSuExt) => Promise<boolean>;
   xoaNhanSu: (maNV: string) => Promise<boolean>;
   loading: boolean;
+  capNhatDaLuu: (nv: NhanSuExt & { oldMaNV?: string }) => Promise<void>;
 };
 
 const Ctx = createContext<NhanSuContextType | null>(null);
@@ -64,6 +72,31 @@ const STORAGE_KEY = "mimin_nhan_su_v1";
 export function NhanSuProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<NhanSuExt[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentList = useRef(list);
+  currentList.current = list;
+
+  useEffect(() => {
+    let active = true;
+    let refreshing = false;
+    let lastRefresh = Date.now();
+    const refreshImages = async () => {
+      if (refreshing || document.visibilityState === "hidden" || Date.now() - lastRefresh < 45 * 60_000) return;
+      refreshing = true;
+      const snapshot = currentList.current;
+      try {
+        const resolved = await resolveEmployeeImageUrls(snapshot);
+        if (!active) return;
+        setList((current) => current.map((item) => {
+          const index = snapshot.indexOf(item);
+          return index < 0 ? item : resolved[index];
+        }));
+        lastRefresh = Date.now();
+      } finally { refreshing = false; }
+    };
+    const timer = window.setInterval(() => { void refreshImages(); }, 60_000);
+    document.addEventListener("visibilitychange", refreshImages);
+    return () => { active = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", refreshImages); };
+  }, []);
 
   // Load from local storage initially for fast UI
   useEffect(() => {
@@ -107,7 +140,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
         // avatar_url (không phải "avatar") - đúng tên cột gốc trong schema.sql;
         // toSupabaseEmployeeRecord() cũng ghi vào avatar_url, lệch tên ở đây
         // trước đó khiến ảnh đại diện không bao giờ đọc lại được sau khi lưu.
-        const { data, error } = await supabase!.from("nhan_su").select("ma_nv, ho_ten, bo_phan, chuc_vu, sdt, email, ngay_sinh, gioi_tinh, cccd, dia_chi_tt, ngay_vao_lam, luong_cb, loai_luong, trang_thai, role, ma_dm, ghi_chu, avatar_url, cccd_front_url, cccd_back_url, bhxh, mst, so_tk, ngan_hang, don_gia_sp").order("stt", { ascending: true });
+        const { data, error } = await supabase!.from("nhan_su").select("*").order("stt", { ascending: true });
         if (error) {
           console.warn("[nhan-su] Supabase fetch error:", error.message);
           // Fallback to localStorage
@@ -124,7 +157,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
 
         if (mounted) {
           if (data && data.length > 0) {
-            const normalized = data.map((d: any) => normalizeEmployeeRecord(d) as NhanSuExt);
+            const normalized = data.map((d) => normalizeEmployeeRecord(d) as NhanSuExt);
             
             // Lọc trùng lặp theo mã NV hoặc Tên NV (ưu tiên mã NV)
             const uniqueMap = new Map<string, NhanSuExt>();
@@ -167,6 +200,25 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
       mounted = false;
     };
   }, []); // Run once on mount
+
+  // The form has already persisted this record. Only resolve images and refresh
+  // the local list here; a second upsert can overwrite server-assigned fields.
+  const capNhatDaLuu = useCallback(async (nv: NhanSuExt & { oldMaNV?: string }) => {
+    const display = (await resolveEmployeeImageUrls([nv]))[0];
+    setList((previous) => {
+      const target = nv.oldMaNV || nv.maNV;
+      const next = previous.filter((item) => item.maNV !== target && item.maNV !== nv.maNV);
+      next.push(display);
+      next.sort((a, b) => a.stt - b.stt);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+    catch { console.warn("[nhan-su] Không cập nhật được bộ nhớ đệm"); }
+  }, [list, loading]);
 
   const themNhanSu = useCallback(async (nv: NhanSuExt) => {
     // nv.avatar/cccdFrontImage/cccdBackImage ở đây là path bền (NVFormModal đã
@@ -237,7 +289,7 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ list, themNhanSu, suaNhanSu, xoaNhanSu, loading }}>
+    <Ctx.Provider value={{ list, themNhanSu, suaNhanSu, xoaNhanSu, loading, capNhatDaLuu }}>
       {children}
     </Ctx.Provider>
   );
