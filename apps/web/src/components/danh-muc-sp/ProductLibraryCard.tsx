@@ -269,6 +269,39 @@ export default function ProductLibraryCard({
                       );
                     })}
                   </div>
+                  
+                  {/* BỘ ẢNH CHI TIẾT (GALLERY) */}
+                  {mau.hinhAnhChiTiet && mau.hinhAnhChiTiet.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-cyan-200/50">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <Sparkles className="w-3 h-3 text-cyan-500" />
+                        <span className="text-[10px] font-bold text-cyan-700 uppercase">Ảnh chi tiết ({mau.hinhAnhChiTiet.length})</span>
+                      </div>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                        {mau.hinhAnhChiTiet.map((imgUrl, idx) => (
+                          <div key={idx} className="group/gal relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <img 
+                              src={imgUrl} 
+                              alt={`${mau.ten} - Ảnh ${idx + 1}`} 
+                              loading="lazy" 
+                              decoding="async" 
+                              className="w-11 h-14 object-cover rounded border border-cyan-100 hover:border-cyan-400 transition-colors shadow-sm cursor-pointer" 
+                            />
+                            {/* Hover preview */}
+                            <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-xl border-[4px] border-white bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.4)] group-hover/gal:block">
+                              <img 
+                                src={imgUrl} 
+                                alt={`Xem lớn - Ảnh ${idx + 1}`} 
+                                loading="lazy" 
+                                decoding="async" 
+                                className="h-64 w-64 max-w-none rounded-lg object-contain bg-slate-50" 
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
