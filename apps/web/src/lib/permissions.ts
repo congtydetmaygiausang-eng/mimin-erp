@@ -647,9 +647,8 @@ export async function loadSharedPermissionMatrix(): Promise<PermissionMatrix> {
 
 export function subscribeSharedPermissionMatrix(onChange: (matrix: PermissionMatrix) => void): () => void {
   if (!isSupabaseEnabled || !supabase) return () => {};
-  // Each consumer owns its channel: Supabase reuses channels with the same topic,
-  // so mounting the permissions page after SessionProvider must use a new topic.
-  const channel = supabase.channel(`permission-settings-global-${crypto.randomUUID()}`).on(
+  const channelId = `permission-settings-global-${Date.now()}-${Math.random()}`;
+  const channel = supabase.channel(channelId).on(
     "postgres_changes",
     { event: "*", schema: "public", table: "permission_settings", filter: "id=eq.global" },
     (payload) => {
