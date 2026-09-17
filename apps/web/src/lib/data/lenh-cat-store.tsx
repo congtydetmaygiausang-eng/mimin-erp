@@ -432,13 +432,11 @@ interface LenhCatStore {
     lichSuQC?: any[];
     soLuongSuaXong?: number;
     soLuongPhePham?: number;
->>>>>>> origin/main
     soLuongDatCuoi?: number;
     lichSuNhapSL?: any[];
     bangChungURLs?: string[];
     chuKy?: string;
   }) => void;
-<<<<<<< HEAD
   reset: () => void;
   loading: boolean;
 }
