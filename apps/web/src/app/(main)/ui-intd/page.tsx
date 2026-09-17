@@ -20,6 +20,7 @@ const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo", "in_theu", "in_theu_ao
 export default function UiInTheuPage() {
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
+  const [editingPC, setEditingPC] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { user } = useSession();
   const [zoomImage, setZoomImage] = useState<string | null>(null);
@@ -216,27 +217,76 @@ export default function UiInTheuPage() {
                               <Package className="w-4 h-4" /> Nhận hàng In/Thêu
                             </button>
                           )}
-                          {tt === "dang_lam" && (
-                            <>
-                              <button
-                                onClick={() => setUploadModal({ lc, pc })}
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
-                              >
-                                <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển tiếp
-                              </button>
-                              <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}
-                                className="px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 font-bold text-sm transition-colors shadow-sm">
-                                <AlertTriangle className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-                          {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
-                              {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
-                            </div>
-                          )}
+                          {tt === "dang_lam" && (() => {
+                            const isEditing = editingPC === pc.id || pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            return (
+                              <div className="flex-1 flex flex-col gap-2">
+                                {isEditing && (
+                                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-50/80 border border-amber-200/60 rounded-lg text-amber-700 text-[12px] font-medium shadow-sm transition-all duration-300">
+                                    <span className="relative flex h-2 w-2 shrink-0">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    <span>Chế độ sửa số lượng: Vui lòng bấm vào <strong>Màu Áo</strong> ở trên để cập nhật.</span>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      if (isEditing) {
+                                        setEditingPC(null);
+                                        const kiemTra = kiemTraTruocHoanThanh(lc, pc);
+                                        if (!kiemTra.ok) {
+                                          toast.error(kiemTra.loi);
+                                          return;
+                                        }
+                                        capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", nguoiMa: user?.maNV, nguoiTen: user?.name, bangChungURLs: pc.bangChungURLs || [], chuKy: pc.chuKy || "" });
+                                        toast.success("Đã hoàn thành");
+                                      } else {
+                                        setUploadModal({ lc, pc });
+                                      }
+                                    }}
+                                    className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200 ${isEditing ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" /> {isEditing ? 'Lưu SL đã sửa & Đóng' : 'Hoàn thành & Chuyển tiếp'}
+                                  </button>
+                                  {!isEditing && (
+                                    <button onClick={() => capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "co_loi" })}
+                                      className="px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 font-bold text-sm transition-colors shadow-sm">
+                                      <AlertTriangle className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          {tt === "hoan_thanh" && (() => {
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+                            
+                            return (
+                              <div className="flex-1 flex gap-2">
+                                <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  Xong {pc.soLuongHoanThanh ?? pc.soLuong ?? lc.tongSL} SP
+                                  {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                                </div>
+                                {nextStageNotStarted && (
+                                  <button
+                                    onClick={() => {
+                                      setEditingPC(pc.id);
+                                      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                      toast.info("Đã mở lại khâu In/Thêu. Vui lòng bấm vào từng màu ở trên để sửa số lượng, sau đó bấm Hoàn thành lại.");
+                                    }}
+                                    className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-lg shadow-sm hover:bg-emerald-100 active:scale-95 transition-all text-[11px] whitespace-nowrap flex items-center gap-1"
+                                  >
+                                    ✏️ Sửa SL
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {tt === "co_loi" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
                               className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-amber-200">

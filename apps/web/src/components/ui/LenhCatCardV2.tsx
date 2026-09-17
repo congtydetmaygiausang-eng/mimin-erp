@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Calendar, Package, Shirt, Hash, Users, WalletCards } from "lucide-react";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangChungSlot }: Props) {
+  const [zoomLogo, setZoomLogo] = useState<string | null>(null);
   const { list: dsNhanSu } = useNhanSu();
   const { giaoDich } = useKho();
   const mainImg = lc.dsMau?.[0]?.img || "";
@@ -174,8 +176,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                   try {
                     const fileData = JSON.parse(lc.hinhMauInTheu!);
                     if (fileData.url) {
-                      const w = window.open();
-                      if (w) w.document.write(`<img src="${fileData.url}" style="max-width:100%; max-height:100vh; object-fit:contain;"/>`);
+                      setZoomLogo(fileData.url);
                     }
                   } catch (e) {}
                 }}
@@ -276,6 +277,9 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
         )}
         
       </div>
+      {zoomLogo && (
+        <ImageLightbox src={zoomLogo} onClose={() => setZoomLogo(null)} />
+      )}
     </div>
   );
 }

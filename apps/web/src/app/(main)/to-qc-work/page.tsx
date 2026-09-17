@@ -473,13 +473,38 @@ export default function UiQCPage() {
                         </div>
 
                         <div className="p-4 space-y-4">
-                          {isHoanThanh ? (
-                            <div className="text-center py-6 flex flex-col items-center justify-center space-y-2">
-                              <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                              <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
-                              <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
-                            </div>
-                          ) : (
+                          {isHoanThanh ? (() => {
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+
+                            return (
+                              <div className="text-center py-6 flex flex-col items-center justify-center space-y-3 relative">
+                                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                                <div>
+                                  <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
+                                  <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
+                                </div>
+                                {nextStageNotStarted && (
+                                  <button
+                                    onClick={() => {
+                                      capNhatCongDoan(lc.id, pc.id, { 
+                                        trangThaiCD: "dang_lam",
+                                        // Reset soLuongHoanThanh and soLuongDatCuoi so it can be re-entered
+                                        soLuongHoanThanh: slDatTam,
+                                        soLuongDatCuoi: slDatTam
+                                      } as any);
+                                      toast.info("Đã mở lại khâu QC. Bạn có thể nhập lại số lượng Đạt/Lỗi.");
+                                    }}
+                                    className="px-4 py-2 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-xl shadow-sm hover:bg-emerald-50 active:scale-95 transition-all text-xs flex items-center gap-1.5"
+                                  >
+                                    ✏️ Sửa SL
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })() : (
                             <>
                               {/* ===== PANEL SL ĐẠT TẠM (nổi bật khi đang co_loi) ===== */}
                               {isTraLai && slDatTam > 0 && (

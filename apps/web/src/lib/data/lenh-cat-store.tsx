@@ -750,9 +750,13 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     bangChungURLs?: string[];
     chuKy?: string;
   }) => {
-    // 1. Lấy thông tin bản ghi hiện tại
-    const lcCurrent = dsLenhCat.find(x => x.id === lenhId);
-    if (!lcCurrent) return; // Không tìm thấy lệnh cắt
+    let finalPhanCong_ext: any = null;
+    let congNoSyncInfo_ext: any = null;
+
+    setDsLenhCat(prevDs => {
+      // 1. Lấy thông tin bản ghi hiện tại
+      const lcCurrent = prevDs.find(x => x.id === lenhId);
+      if (!lcCurrent) return prevDs; // Không tìm thấy lệnh cắt
 
     // 2. Tính toán finalPhanCong
     const finalPhanCong = lcCurrent.phanCong.map((pc: any) => {
@@ -811,13 +815,16 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setDsLenhCat(prev => {
-      const next = prev.map(lc => lc.id === lenhId ? { ...lc, phanCong: finalPhanCong } : lc);
+      finalPhanCong_ext = finalPhanCong;
+      congNoSyncInfo_ext = congNoSyncInfo;
+
+      const next = prevDs.map(lc => lc.id === lenhId ? { ...lc, phanCong: finalPhanCong } : lc);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
 
-    const newPhanCong = finalPhanCong;
+    const newPhanCong = finalPhanCong_ext;
+    const congNoSyncInfo = congNoSyncInfo_ext;
 
     // Đồng bộ công nợ công đoạn qua store thật (=> lên Supabase) - KHÔNG ghi thẳng
     // localStorage["mimin_phan_cong_v2"] nữa, vì làm vậy sẽ bị useSupabaseSync ghi

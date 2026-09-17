@@ -884,8 +884,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   };
   
   // Section 4 - Phân công
-  const [mauCongDoan, setMauCongDoan] = useState<string>("MCD-AO-TRON");
-  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "MCD-AO-TRON")?.giaCong || []);
+  const [mauCongDoan, setMauCongDoan] = useState<string>("");
+  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>([]);
   const visiblePhanCong = useMemo(() => getVisibleStages(phanCong, loaiSP, congDoanInTheu), [phanCong, loaiSP, congDoanInTheu]);
   const hasInTheuStage = Boolean(congDoanInTheu) && visiblePhanCong.some(stage => isInTheuStage(stage.tenCongDoan));
   const activeSoDoPhoi = loaiSoDoPhoi === "quan" ? soDoPhoiQuan : soDoPhoiAo || soDoPhoiQuan;

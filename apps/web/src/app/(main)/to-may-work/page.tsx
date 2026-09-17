@@ -20,6 +20,7 @@ const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 export default function UiMayPage() {
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
+  const [editingPC, setEditingPC] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const [mauInputs, setMauInputs] = useState<Record<string, Record<string, ChiTietMauInput>>>({});
   const [lyDoLoi, setLyDoLoi] = useState<Record<string, string>>({});
@@ -246,20 +247,68 @@ export default function UiMayPage() {
                             </button>
                           )}
                           
-                          {tt === "dang_lam" && (
-                            <button onClick={() => setUploadModal({ lc, pc })}
-                                    className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200">
-                              <CheckCircle2 className="w-5 h-5 relative z-10" /> 
-                              <span className="relative z-10 tracking-wide uppercase text-sm">Báo hoàn thành</span>
-                            </button>
-                          )}
-                          {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Xong {pc.soLuongHoanThanh || pc.soLuong || lc.tongSL} SP
-                              {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
-                            </div>
-                          )}
+                          {tt === "dang_lam" && (() => {
+                            const isEditing = editingPC === pc.id || pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            return (
+                              <div className="flex-1 flex flex-col gap-2">
+                                {isEditing && (
+                                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-50/80 border border-amber-200/60 rounded-lg text-amber-700 text-[12px] font-medium shadow-sm transition-all duration-300">
+                                    <span className="relative flex h-2 w-2 shrink-0">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    <span>Chế độ sửa số lượng: Vui lòng sửa ở <strong>form phía trên</strong>.</span>
+                                  </div>
+                                )}
+                                <button onClick={() => {
+                                  if (isEditing) {
+                                    setEditingPC(null);
+                                    handleSuaXong(lc, pc);
+                                  } else {
+                                    setUploadModal({ lc, pc });
+                                  }
+                                }}
+                                  className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm ${isEditing ? "bg-rose-500 hover:bg-rose-600 shadow-rose-200" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"}`}>
+                                  <CheckCircle2 className="w-5 h-5 relative z-10" /> 
+                                  <span className="relative z-10 tracking-wide uppercase text-sm">{isEditing ? "Lưu SL đã sửa & Đóng lại" : "Báo hoàn thành"}</span>
+                                </button>
+                              </div>
+                            );
+                          })()}
+                          {tt === "hoan_thanh" && (() => {
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+
+                            return (
+                              <div className="flex flex-col gap-1.5 w-full">
+                                <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex items-center justify-between gap-2 shadow-sm">
+                                  <div className="flex items-center gap-2 font-bold text-emerald-700">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    Xong {pc.soLuongHoanThanh || pc.soLuong || lc.tongSL} SP
+                                    {pc.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
+                                  </div>
+                                  {nextStageNotStarted && (
+                                    <button 
+                                      onClick={() => {
+                                        setEditingPC(pc.id);
+                                        capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                        toast.info("Đã mở lại khâu May. Bạn có thể sửa số lượng rồi bấm Hoàn thành lại.");
+                                      }}
+                                      className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-lg shadow-sm hover:bg-emerald-100 active:scale-95 transition-all text-[11px] whitespace-nowrap flex items-center gap-1"
+                                    >
+                                      ✏️ Sửa SL
+                                    </button>
+                                  )}
+                                </div>
+                                {!nextStageNotStarted && (
+                                  <div className="flex items-center justify-center gap-1.5 text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-200 py-1.5 rounded-lg shadow-sm animate-pulse">
+                                    🚀 Đã chuyển sang khâu kế tiếp
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {tt === "co_loi" && (
                             <div className="space-y-2 w-full">
                               <div className="px-3 py-2 bg-rose-50 border border-rose-200 rounded-lg">

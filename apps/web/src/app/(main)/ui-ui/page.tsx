@@ -19,6 +19,7 @@ export default function UiUiPage() {
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [editingPC, setEditingPC] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
 
   const { user } = useSession();
@@ -44,22 +45,18 @@ export default function UiUiPage() {
     const htPCs = getHTPC(lc);
     if (htPCs.length === 0) return false;
 
-    // 2. Kiểm tra Khuy nút hoặc May
+    // 2. Kiểm tra Khuy nút hoặc QC hoặc May
     const khuyNutPCs = lc.phanCong?.filter((pc: any) => pc.id === "khuy_nut" || pc.tenCongDoan?.toLowerCase().includes("khuy nút")) || [];
     if (khuyNutPCs.length > 0) {
       return khuyNutPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
     }
 
-    const mayPCs = lc.phanCong?.filter((pc: any) => pc.tenCongDoan?.toLowerCase().includes("may")) || [];
-    
     const qcPC = lc.phanCong?.find((pc: any) => pc.id === "qc");
-    const isBo = lc.loaiLenh?.toLowerCase().includes("bo") || mayPCs.length > 1;
-
-    // Chốt chặn ở bước QC cho hàng Bộ: Phải hoàn thành cả Áo và Quần (QC ghép bộ xong)
-    if (isBo && qcPC) {
+    if (qcPC) {
       return qcPC.trangThaiCD === "hoan_thanh";
     }
 
+    const mayPCs = lc.phanCong?.filter((pc: any) => pc.tenCongDoan?.toLowerCase().includes("may")) || [];
     return mayPCs.length > 0 && mayPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
   });
 
@@ -227,17 +224,22 @@ export default function UiUiPage() {
                             </button>
                           )}
                           {tt === "dang_lam" && (() => {
-                            const isEditing = pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            const isEditing = editingPC === pc.id || pc.bangChungURLs?.length > 0 || pc.chuKy;
                             return (
                               <div className="flex-1 flex flex-col gap-2">
                                 {isEditing && (
-                                  <div className="text-center text-rose-600 font-bold text-[11px] animate-pulse bg-rose-50 py-1.5 rounded-lg border border-rose-200 shadow-sm flex items-center justify-center gap-1">
-                                    👆 Bạn đang ở chế độ sửa SL - Hãy bấm vào Màu Áo ở trên để sửa
+                                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-50/80 border border-amber-200/60 rounded-lg text-amber-700 text-[12px] font-medium shadow-sm transition-all duration-300">
+                                    <span className="relative flex h-2 w-2 shrink-0">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    <span>Chế độ sửa số lượng: Vui lòng bấm vào <strong>Màu Áo</strong> ở trên để cập nhật.</span>
                                   </div>
                                 )}
                                 <button 
                                   onClick={() => {
                                     if (isEditing) {
+                                      setEditingPC(null);
                                       handleXong(lc, pc, pc.bangChungURLs, pc.chuKy);
                                     } else {
                                       setUploadModal({ lc, pc });
@@ -252,8 +254,9 @@ export default function UiUiPage() {
                             );
                           })()}
                           {tt === "hoan_thanh" && (() => {
-                            const dongGoiPC = lc.phanCong?.find((p: any) => p.id === "dong_goi" || p.tenCongDoan?.toLowerCase().includes("đóng gói"));
-                            const nextStageNotStarted = !dongGoiPC || !dongGoiPC.trangThaiCD || dongGoiPC.trangThaiCD === "cho_giao";
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
 
                             return (
                               <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex items-center justify-between gap-2">
@@ -270,6 +273,7 @@ export default function UiUiPage() {
                                 {nextStageNotStarted && (
                                   <button 
                                     onClick={() => {
+                                      setEditingPC(pc.id);
                                       capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
                                       toast.info("Đã mở lại khâu Ủi. Vui lòng bấm vào từng màu ở trên để sửa số lượng, sau đó bấm Hoàn thành lại.");
                                     }}
