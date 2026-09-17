@@ -1,22 +1,41 @@
 "use client";
 
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { localActiveAccount } from "@/lib/local-account-store";
+import { canAccessStage } from "@/lib/account-access";
+import { can } from "@/lib/permissions";
+
+
 // ============ UI ĐÓNG GÓI (/ui-dong-goi) ============
 // Nhận hàng từ Ủi đạt, Đóng gói, giao Kho Thành Phẩm
 
+import { useStageColorInput } from "@/lib/use-stage-color-input";
 import { useState } from "react";
 import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import ImageLightbox from "@/components/ui/ImageLightbox";
+import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
+import React from "react";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
-import { toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
+import { taoMaLoTonKhoTheoDong, toSupabaseRow, type SanPhamTP } from "../kho-thanh-pham/data";
+import { usePhanCong } from "@/lib/data/cong-no-store";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 
 export default function UiDongGoiPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
+  const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
+  const [editingPC, setEditingPC] = useState<string | null>(null);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { upsertTuLenhCat } = usePhanCong();
+  const { giaoDich } = useKho();
+
   const { dsSanPham: dsDanhMuc, suaSP } = useDanhMucSP();
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
@@ -25,6 +44,11 @@ export default function UiDongGoiPage() {
   function getHTPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
       const isHT = pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói");
+      
+      // Nếu là công nhân thì chỉ thấy việc của mình
+      // Quản lý/tổ trưởng thấy tất cả
+
+      if (LOCAL_ACCOUNT_MODE) return isHT && canAccessStage(localActiveAccount(), pc, "view", can);
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isHT && isMyTask;
@@ -48,45 +72,14 @@ export default function UiDongGoiPage() {
     return true; // Nếu không có ủi thì hiển thị (Dự phòng)
   });
 
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
 
-    try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
-
-      if (existingIdx >= 0) {
-        newChiTiet[existingIdx] = data;
-      } else {
-        newChiTiet.push(data);
-      }
-
-      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
-
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          const newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
-        }
-      }
-
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     toast.success(`🧺 Nhận hàng hoàn thiện: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleXong(lc: any, pc: any) {
+  function handleXong(lc: any, pc: any, bangChungURLs?: string[], chuKyUrl?: string) {
     // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
@@ -101,6 +94,8 @@ export default function UiDongGoiPage() {
       trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
+      bangChungURLs: bangChungURLs,
+      chuKy: chuKyUrl,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -111,10 +106,11 @@ export default function UiDongGoiPage() {
       p.id === pc.id ? true : p.trangThaiCD === "hoan_thanh"
     );
     if (allDone) {
-      toast.success(`🎉 ${lc.id} đóng gói hoàn thành toàn bộ – Đang chờ Nhập kho thành phẩm!`);
+      toast.success(`🎉 ${lc.id} hoàn thành toàn bộ – Đang chờ Nhập kho thành phẩm!`);
     } else {
-      toast.success(`✅ Hoàn thành: ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
+      toast.success(`✅ Xong: ${slDat} Đạt (Lỗi: ${slLoi})`);
     }
+    setUploadModal(null);
   }
 
   return (
@@ -169,11 +165,57 @@ export default function UiDongGoiPage() {
                     </span>
                   ) : null
                 }
+                bangChungSlot={
+                  (() => {
+                    const completedPCs = htPCs.filter((pc: any) => pc.bangChungURLs?.length > 0 || pc.chuKy);
+                    if (completedPCs.length === 0) return null;
+                    return (
+                      <div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
+                          <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Bằng chứng & Chữ ký ({completedPCs.length})</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+                          {completedPCs.map((pc: any, idx: number) => {
+                             return (
+                               <React.Fragment key={idx}>
+                                 {pc.bangChungURLs?.map((url: string, i: number) => (
+                                    <div key={`img-${idx}-${i}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(url)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative">
+                                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Ảnh {pc.tenCongDoan}
+                                        </div>
+                                      </div>
+                                    </div>
+                                 ))}
+                                 {pc.chuKy && (
+                                    <div key={`chuKy-${idx}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(pc.chuKy)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 border-dashed group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-slate-50 relative p-4 flex flex-col items-center justify-center">
+                                        <img src={pc.chuKy} className="w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Chữ ký ({pc.nguoiTen || pc.nguoiMa})
+                                        </div>
+                                      </div>
+                                    </div>
+                                 )}
+                               </React.Fragment>
+                             )
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
               >
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {htPCs.map((pc: any) => {
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -187,31 +229,75 @@ export default function UiDongGoiPage() {
                           </span>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 flex items-center justify-center gap-1.5">
+                              className="flex-1 py-2.5 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-sky-200">
                               <Package className="w-4 h-4" /> Nhận hàng
                             </button>
                           )}
-                          {tt === "dang_lam" && (
-                            <button onClick={() => handleXong(lc, pc)}
-                              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm">
-                              <CheckCircle2 className="w-4 h-4" /> Đóng Gói Xong & Chuyển Kho
-                            </button>
-                          )}
-                          {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
-                              <div className="flex items-center gap-2 font-bold text-emerald-700">
-                                <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
+                          {tt === "dang_lam" && (() => {
+                            const isEditing = editingPC === pc.id || pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            return (
+                              <div className="flex-1 flex flex-col gap-2">
+                                {isEditing && (
+                                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-50/80 border border-amber-200/60 rounded-lg text-amber-700 text-[12px] font-medium shadow-sm transition-all duration-300">
+                                    <span className="relative flex h-2 w-2 shrink-0">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    <span>Chế độ sửa số lượng: Vui lòng bấm vào <strong>Màu Áo</strong> ở trên để cập nhật.</span>
+                                  </div>
+                                )}
+                                <button 
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      setEditingPC(null);
+                                      handleXong(lc, pc, pc.bangChungURLs, pc.chuKy);
+                                    } else {
+                                      setUploadModal({ lc, pc });
+                                    }
+                                  }}
+                                  className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm ${isEditing ? "bg-rose-500 hover:bg-rose-600 shadow-rose-200" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"}`}
+                                >
+                                  <CheckCircle2 className="w-4 h-4" /> 
+                                  {isEditing ? "Lưu SL đã sửa & Đóng lại" : "Đóng Gói Xong & Chuyển Kho"}
+                                </button>
                               </div>
-                              {(pc.soLuongLoi > 0) && (
-                                <div className="text-xs text-rose-600 font-semibold pl-6">
-                                  ⚠️ Lỗi: {pc.soLuongLoi} SP
+                            );
+                          })()}
+                          {tt === "hoan_thanh" && (() => {
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+
+                            return (
+                              <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex items-center justify-between gap-2">
+                                <div className="flex flex-col justify-center gap-1">
+                                  <div className="flex items-center gap-2 font-bold text-emerald-700">
+                                    <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
+                                  </div>
+                                  {(pc.soLuongLoi > 0) && (
+                                    <div className="text-xs text-rose-600 font-semibold pl-6">
+                                      ⚠️ Lỗi: {pc.soLuongLoi} SP
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          )}
+                                {nextStageNotStarted && (
+                                  <button 
+                                    onClick={() => {
+                                      setEditingPC(pc.id);
+                                      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                      toast.info("Đã mở lại khâu Đóng gói. Vui lòng bấm vào từng màu ở trên để sửa số lượng, sau đó bấm Hoàn thành lại.");
+                                    }}
+                                    className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-lg shadow-sm hover:bg-emerald-100 active:scale-95 transition-all text-[11px] whitespace-nowrap flex items-center gap-1"
+                                  >
+                                    ✏️ Sửa SL
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -228,48 +314,94 @@ export default function UiDongGoiPage() {
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400/30"
                         >
                           <option value="">-- Chọn khu vực lưu trữ --</option>
-                          <option value="Khu A - Tầng 1">Khu A - Tầng 1</option>
-                          <option value="Khu A - Tầng 2">Khu A - Tầng 2</option>
-                          <option value="Khu B - Kệ 01">Khu B - Kệ 01</option>
-                          <option value="Khu B - Kệ 02">Khu B - Kệ 02</option>
-                          <option value="Khu C chờ xuất">Khu C chờ xuất</option>
+                          {(() => {
+                            const isBo = lc.loaiSP?.toLowerCase().startsWith("bo");
+                            const prefix = isBo ? "Bộ" : "Áo";
+                            return ["A","B","C","D","E","F"].map(khu => (
+                              <option key={khu} value={`${prefix} - Khu ${khu}`}>
+                                {prefix} - Khu {khu}
+                              </option>
+                            ));
+                          })()}
                         </select>
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (!khuVuc[lc.id]) {
                             toast.error("Vui lòng chọn khu vực nhập kho!");
                             return;
                           }
-                          capNhatTrangThai(lc.id, "HoanThanh", null);
-
                           // Thêm vào kho thành phẩm: 1 dòng riêng cho MỖI MÀU (không gộp
                           // "Nhiều màu") - lấy ảnh từ dsMau gốc, số lượng thật từ chiTietMau
                           // của khâu Đóng gói (nếu có), fallback chia đều theo tổng SL.
                           const dongGoiPCs = getHTPC(lc);
                           const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
-                          const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
+                          const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" } as any];
+
+                          // BUG FIX: Tự động copy số lượng sang khâu Đóng Gói để hiển thị trong Bảng Tỷ Lệ Size
+                          const dongGoiPCToUpdate = dongGoiPCs[0];
+                          if (dongGoiPCToUpdate) {
+                            const newDsMau = [...dsMauLC].map((mau) => {
+                              let dongGoiSizes = mau.tyLeSizeChiTiet?.["dongGoi"] || mau.tyLeSizeChiTiet?.["dong_goi"] || [];
+                              if (dongGoiSizes.length === 0 && mau.tyLeSizeChiTiet?.[dongGoiPCToUpdate.id]) {
+                                dongGoiSizes = mau.tyLeSizeChiTiet[dongGoiPCToUpdate.id];
+                              }
+                              // Nếu vẫn trống thì lấy từ khâu Ủi hoặc Khuy nút (khâu trước đó)
+                              if (dongGoiSizes.length === 0) {
+                                dongGoiSizes = mau.tyLeSizeChiTiet?.["ui"] || mau.tyLeSizeChiTiet?.["khuy_nut"] || [];
+                              }
+                              return {
+                                ...mau,
+                                tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [dongGoiPCToUpdate.id]: dongGoiSizes }
+                              };
+                            });
+                            
+                            const newPhanCong = (lc.phanCong || []).map((pc: any) => {
+                              if (pc.id === dongGoiPCToUpdate.id) {
+                                const tongNhap = chiTietMauAll.reduce((s, c) => s + (c.soLuongDat || 0), 0);
+                                return {
+                                  ...pc,
+                                  trangThaiCD: "hoan_thanh",
+                                  soLuongHoanThanh: tongNhap,
+                                  soLuongDatCuoi: tongNhap,
+                                  chiTietMau: chiTietMauAll.map((c: any) => ({
+                                    ...c,
+                                    soLuongNhan: c.soLuongDat,
+                                    soLuongLoi: 0
+                                  }))
+                                };
+                              }
+                              return pc;
+                            });
+                            suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
+                          }
 
                           // Giá vốn 1 SP đã được tính sẵn lúc tạo lệnh cắt (vải + phụ liệu
                           // + gia công + chi phí cố định). Trước đây bị gán cứng donGia: 0
                           // nên cột "Giá trị" của Kho thành phẩm luôn hiện 0đ.
-                          const giaVon1SP = Math.round(
-                            lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0
-                          );
+                          const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+                          const giaVon1SP = ketQuaGiaVon.giaVon1SP;
+                          if (giaVon1SP <= 0) {
+                            const chiTiet = ketQuaGiaVon.maVatTuThieuGia.length > 0 ? ` Thiếu đơn giá nhập của: ${ketQuaGiaVon.maVatTuThieuGia.join(", ")}.` : "";
+                            toast.error(`Lệnh cắt chưa tính được giá vốn.${chiTiet}`, { duration: 7000 });
+                            return;
+                          }
 
                           const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
                             const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
                             const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
-                            const chiTietSz = ct?.sizes || m.phanBoSize || [];
+                            const chiTietSz = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
                             const strTiLeSize = chiTietSz.filter((x: any) => x.sl > 0).map((x: any) => `${x.size}:${x.sl}`).join(", ");
+                            const variantKey = String(m.maSKU || m.ten || idx).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-").toUpperCase();
                             return {
-                              id: `SP-${Date.now()}-${idx}`,
+                              id: `TP-${lc.id}-${variantKey}`,
                               maSP: lc.maSP || lc.id,
                               tenSP: lc.tenSP,
-                              phanLoai: "Áo",
+                              phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
                               mau: m.ten,
-                              size: "Nhiều size",
-                              lsx: lc.id,
+                              size: chiTietSz.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
+                              lsx: taoMaLoTonKhoTheoDong(`TP-${lc.id}-${variantKey}`, new Date().toISOString().split("T")[0]),
+                              maLenhCat: lc.id,
                               ngayNhap: new Date().toISOString().split("T")[0],
                               soLuong: sl,
                               donGia: giaVon1SP,
@@ -284,18 +416,37 @@ export default function UiDongGoiPage() {
                           });
 
                           try {
+                            await Promise.all(newSPs.map((sp) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(sp))));
                             const khoKey = "mimin_kho_thanh_pham_v2";
-                            const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]");
-                            currentKho.push(...newSPs);
-                            localStorage.setItem(khoKey, JSON.stringify(currentKho));
+                            const currentKho = JSON.parse(localStorage.getItem(khoKey) || "[]") as SanPhamTP[];
+                            const incomingIds = new Set(newSPs.map((sp) => sp.id));
+                            localStorage.setItem(khoKey, JSON.stringify([...newSPs, ...currentKho.filter((sp) => !incomingIds.has(sp.id))]));
                           } catch (e) {
-                            console.error("Lỗi khi thêm vào kho thành phẩm (local)", e);
+                            console.error("Lỗi khi thêm vào kho thành phẩm", e);
+                            toast.error("Chưa thể đồng bộ Kho thành phẩm. Lệnh chưa được chốt để anh có thể thử lại.", { duration: 7000 });
+                            return;
                           }
-                          newSPs.forEach((sp) => {
-                            supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(sp)).catch((e) =>
-                              console.error("Lỗi khi đồng bộ kho thành phẩm lên Supabase", e)
-                            );
+
+                          // Chốt công nợ tại thời điểm nhập kho. Hàm upsert dùng khóa
+                          // lệnh + công đoạn + người phụ trách nên chạy lại vẫn không
+                          // cộng trùng, đồng thời cập nhật đúng SL đạt và đơn giá mới nhất.
+                          const congNoCongDoan = (lc.phanCong || []).filter((pc: any) =>
+                            pc.trangThaiCD === "hoan_thanh" && pc.nguoiMa && (pc.donGia || 0) > 0
+                          );
+                          congNoCongDoan.forEach((pc: any) => {
+                            const soLuongDat = pc.soLuongDatCuoi ?? pc.soLuongHoanThanh ?? pc.soLuong ?? 0;
+                            upsertTuLenhCat({
+                              lenhCatId: lc.id,
+                              congDoan: pc.tenCongDoan || "Gia công",
+                              nguoiMa: pc.nguoiMa,
+                              nguoiTen: pc.nguoiTen || "Chưa rõ",
+                              donGia: pc.donGia,
+                              soLuongGiao: soLuongDat,
+                              ngayGiao: pc.ngayNhanViec,
+                              daThanhToan: pc.daThanhToan || 0,
+                            });
                           });
+                          capNhatTrangThai(lc.id, "HoanThanh", null);
 
                           // Cập nhật lại màu và size chuẩn vào Danh mục sản phẩm
                           const existingDM = dsDanhMuc.find(d => d.id === lc.maSP || d.maSP === lc.maSP);
@@ -334,7 +485,7 @@ export default function UiDongGoiPage() {
                             }
                           }
 
-                          toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) tại ${khuVuc[lc.id]}`);
+                          toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) và chốt ${congNoCongDoan.length} khoản công đoạn`);
                         }}
                         className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black hover:from-emerald-600 hover:to-teal-600 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02]"
                       >
@@ -357,8 +508,27 @@ export default function UiDongGoiPage() {
           lc={selectedMau.lc}
           mau={selectedMau.mau}
           currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
-          onSave={handleSaveColorModal}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          historyStage="dong_goi"
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? { lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau } : null)}
         />
+      )}
+
+      {/* Modal Upload Bằng chứng */}
+      <UploadBangChungModal 
+        open={!!uploadModal}
+        onClose={() => setUploadModal(null)}
+        onConfirm={(urls, chuKyUrl) => {
+          if (uploadModal) handleXong(uploadModal.lc, uploadModal.pc, urls, chuKyUrl);
+        }}
+        existingUrls={uploadModal?.pc?.bangChungURLs}
+        existingChuKy={uploadModal?.pc?.chuKy}
+      />
+
+      {/* Lightbox for Evidence Images */}
+      {zoomImage && (
+        <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
       )}
     </div>
   );

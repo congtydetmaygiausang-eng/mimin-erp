@@ -66,14 +66,13 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.ok) return auth.response;
 
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-    if (!supabaseUrl || !anonKey) {
-      return NextResponse.json({ error: "Supabase URL hoặc Anon Key chưa cấu hình" }, { status: 500 });
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ error: "Supabase service role chưa cấu hình" }, { status: 500 });
     }
 
     const payload = await request.json();
-    const supabase = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: request.headers.get("Authorization") || "" } },
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
@@ -81,7 +80,9 @@ export async function POST(request: NextRequest) {
 
     // Xử lý tự động tính số thứ tự (stt) để tránh lỗi trùng khóa chính (Primary Key)
     if (record.ma_nv) {
-      const { data: existing } = await supabase.from("nhan_su").select("stt").eq("ma_nv", record.ma_nv).single();
+      // Nếu đổi mã NV (oldMaNV có giá trị và khác ma_nv mới), ta tìm stt của mã cũ
+      const checkMa = payload.oldMaNV || record.ma_nv;
+      const { data: existing } = await supabase.from("nhan_su").select("stt").eq("ma_nv", checkMa).single();
       if (existing) {
         // Đang update: giữ nguyên stt cũ
         record.stt = existing.stt;
@@ -91,6 +92,16 @@ export async function POST(request: NextRequest) {
         const maxStt = (maxData && maxData.length > 0) ? maxData[0].stt : 0;
         record.stt = maxStt + 1;
       }
+    }
+
+    if (payload.oldMaNV && payload.oldMaNV !== record.ma_nv) {
+      // Nếu đổi mã nhân viên, cập nhật trực tiếp dòng có mã cũ thành mã mới (kèm toàn bộ dữ liệu mới)
+      // Việc này giúp giữ nguyên các liên kết khoá ngoại (nếu DB có ON UPDATE CASCADE)
+      const { error: updateError } = await supabase.from("nhan_su").update(record).eq("ma_nv", payload.oldMaNV);
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, record });
     }
 
     const { error } = await supabase.from("nhan_su").upsert(record, { onConflict: "ma_nv" });

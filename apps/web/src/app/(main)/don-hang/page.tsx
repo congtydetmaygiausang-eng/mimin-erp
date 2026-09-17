@@ -173,9 +173,10 @@ export default function DonHangPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table & Mobile Cards */}
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="text-left border-b bg-slate-50" style={{ borderColor: "var(--border)" }}>
@@ -269,6 +270,82 @@ export default function DonHangPage() {
               )}
             </tbody>
           </table>
+        </div>
+        
+        {/* Mobile Cards */}
+        <div className="md:hidden flex flex-col gap-2 p-2">
+          {filtered.map((d) => {
+            const s = TRANG_THAI_STYLE[d.trangThai];
+            const Icon = s.icon;
+            const tongTien = calcTongTien(d);
+            const daTra = calcDaThanhToan(d);
+            const conNo = tongTien - daTra;
+
+            return (
+              <div key={d.id} className="bg-white border rounded-xl p-3 shadow-sm flex flex-col gap-2 relative">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-mono text-brand-700 font-bold">{d.maDH}</div>
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> {d.ngayDat}
+                    </div>
+                  </div>
+                  <button onClick={() => handleAdvanceStatus(d)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${s.bg} ${s.color}`}>
+                    <Icon className="w-3 h-3" /> {d.trangThai}
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 text-slate-400" />
+                  <div className="text-sm font-semibold text-slate-800">{d.khachHang}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded-lg">
+                  <div>
+                    <span className="text-slate-500 block">Tổng tiền</span>
+                    <span className="font-bold text-emerald-600">{tongTien.toLocaleString()}đ</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-slate-500 block">Còn nợ</span>
+                    {conNo > 0 ? (
+                      <span className="font-bold text-amber-600">{conNo.toLocaleString()}đ</span>
+                    ) : (
+                      <span className="font-semibold text-emerald-600">Đã TT đủ</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mt-1 border-t pt-2">
+                  <div className="text-xs">
+                    {d.shipping ? (
+                      <span className="text-slate-600 font-medium">{d.shipping.trangThai}</span>
+                    ) : (
+                      <span className="text-slate-400">Chưa giao hàng</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setShowInvoice(d)} className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded" title="In hoá đơn">
+                      <Printer className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setShowPayment(d)} className="p-1.5 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Ghi thanh toán">
+                      <Wallet className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setShowShipping(d)} className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded" title="Vận chuyển">
+                      <Truck className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setShowForm({ mode: "edit", dh: d })} className="p-1.5 text-slate-600 hover:text-brand-600 hover:bg-brand-50 rounded" title="Sửa đơn">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="p-8 text-center text-slate-500 text-sm">
+              Không tìm thấy đơn hàng nào.
+            </div>
+          )}
         </div>
       </div>
 

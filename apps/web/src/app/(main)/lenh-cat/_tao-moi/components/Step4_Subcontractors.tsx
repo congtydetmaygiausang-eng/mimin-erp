@@ -2,7 +2,7 @@
 
 import { useEffect, useWizard } from "../WizardContext";
 import { Users, Briefcase } from "lucide-react";
-import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
+import { useDoiTac } from "@/lib/data/doi-tac-store";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 
 const DEFAULT_GIA_CONG: any[] = [
@@ -18,17 +18,18 @@ const DEFAULT_GIA_CONG: any[] = [
 export function Step4Subcontractors() {
   const { state, updateState } = useWizard();
   const { list: nhanSuList } = useNhanSu();
+  const { list: doiTacList } = useDoiTac();
   
   // Initialize if empty
   const phanCong = state.phanCong.length > 0 ? state.phanCong : DEFAULT_GIA_CONG;
-  const isBo = state.loaiSP.toLowerCase().includes("bo");
+  const isBo = state.loaiSP?.toLowerCase().includes("bo") || false;
   const visiblePhanCong = phanCong
     .map((pc, idx) => ({ pc, idx }))
-    .filter(({ pc }) => isBo || !pc.tenCongDoan.toLowerCase().includes("quần"));
+    .filter(({ pc }) => isBo || !pc.tenCongDoan?.toLowerCase().includes("quần"));
 
   useEffect(() => {
     if (state.phanCong.length > 0 && !isBo) {
-      const filtered = state.phanCong.filter(pc => !pc.tenCongDoan.toLowerCase().includes("quần"));
+      const filtered = state.phanCong.filter(pc => !pc.tenCongDoan?.toLowerCase().includes("quần"));
       if (filtered.length !== state.phanCong.length) updateState({ phanCong: filtered });
     }
   }, [isBo, state.phanCong, updateState]);
@@ -41,7 +42,7 @@ export function Step4Subcontractors() {
     if (field === "nguoiMa") {
       const isDoiTac = value.startsWith("GC-");
       if (isDoiTac) {
-        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === value);
+        const dt = doiTacList.find(d => d.ma === value);
         if (dt) updated[index].nguoiTen = dt.tenDonVi;
       } else {
         const nv = nhanSuList.find(n => n.maNV === value);
@@ -55,7 +56,7 @@ export function Step4Subcontractors() {
   const getDoiTuongOptions = () => {
     return [
       { label: "Nội bộ", items: nhanSuList.map(nv => ({ ma: nv.maNV, ten: `${nv.maNV} - ${nv.hoTen}` })) },
-      { label: "Gia công ngoài", items: DOI_TAC_GIA_CONG.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi}` })) }
+      { label: "Gia công ngoài", items: doiTacList.map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi}` })) }
     ];
   };
 

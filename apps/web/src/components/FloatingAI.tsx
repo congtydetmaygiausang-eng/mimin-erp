@@ -19,28 +19,26 @@ interface ChatMessage {
   timestamp: number;
 }
 
-// Khu vực hướng ra khách hàng/đối tác bên ngoài (Mạng Lưới Sản Xuất + nhóm
-// "MIMIN Group") - Vy (CSKH) phụ trách tư vấn/hỗ trợ ở đây thay vì MIMIN AI
-// chung chung. 5 agent còn lại (Mavis/Minh/Lan/Hà/MIMIN Help) vẫn được phân
-// bổ theo domain qua bộ định tuyến tự động (agent-routing-rules.ts), không
-// cần ép route riêng như Kho/Vy vì không có khu vực nào chỉ-dành-riêng cho
-// từng agent đó như 2 khu này.
-const VY_ROUTES = ["/mang-luoi-san-xuat", "/huong-dan-vai-tro", "/so-do-chien-luoc", "/cong-thuc-dinh-muc", "/bang-tin"];
+const MINH_ROUTES = ["san-xuat", "lenh-", "to-", "-cl", "qc", "may", "tien-cong", "san-luong", "gia-cong", "hoan-thien", "cong-doan"];
+const LAN_ROUTES = ["-kho", "kho-", "khach-hang", "lo-hang"];
+const HA_ROUTES = ["nha-cung-cap", "nhan-su", "cong-no", "tai-chinh", "luong"];
+const VY_ROUTES = ["mang-luoi-san-xuat", "huong-dan-vai-tro", "so-do-chien-luoc", "cong-thuc-dinh-muc", "bang-tin", "mau-da-thich"];
+const HELP_ROUTES = ["audit-log", "realtime", "workflow", "he-thong", "cai-dat", "test-", "phan-quyen"];
 
-type RouteMode = "kho" | "vy" | "default";
+type RouteMode = "lan" | "vy" | "minh" | "ha" | "mimin-help" | "mavis";
 
 interface ModeTheme {
-  agentId: string | undefined; // undefined = để bộ định tuyến tự chọn
+  agentId: string;
   botName: string;
   subtitle: string;
-  BubbleIcon: typeof Sparkles;
-  iconTextClass: string; // màu icon trong khung tròn
-  bubbleGradient: string; // bong bóng nổi + shadow
+  BubbleIcon: any;
+  iconTextClass: string;
+  bubbleGradient: string;
   pulseGradient: string;
-  headerBg: string; // CSS gradient string cho header panel
-  badgeGradient: string; // avatar tin nhắn
+  headerBg: string;
+  badgeGradient: string;
   userBubbleClass: string;
-  accentTextClass: string; // chữ đậm trong tin nhắn chào mừng
+  accentTextClass: string;
   loaderClass: string;
   ringClass: string;
   sendBtnClass: string;
@@ -48,10 +46,10 @@ interface ModeTheme {
 }
 
 const THEME: Record<RouteMode, ModeTheme> = {
-  kho: {
+  lan: {
     agentId: "lan",
-    botName: "Minimax AI (Kho)",
-    subtitle: "Chuyên gia Tồn Kho & Vật tư",
+    botName: "Lan (Kho & Bán Hàng)",
+    subtitle: "Chuyên gia Tồn Kho, Vật tư & Đơn hàng",
     BubbleIcon: Warehouse,
     iconTextClass: "text-white",
     bubbleGradient: "from-emerald-600 via-teal-600 to-emerald-700 shadow-emerald-500/40",
@@ -63,12 +61,12 @@ const THEME: Record<RouteMode, ModeTheme> = {
     loaderClass: "text-emerald-500",
     ringClass: "focus:ring-emerald-500",
     sendBtnClass: "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-emerald-500/20",
-    welcomeText: "👋 Chào anh! Em là **Minimax**, AI phụ trách Quản lý Kho.\n\nAnh cần tra cứu tồn kho, kiểm tra phiếu nhập hay hỏi về định mức vật tư ạ? 📦",
+    welcomeText: "👋 Chào anh! Em là **Lan**, phụ trách Kho & Bán hàng.\n\nAnh cần tra cứu tồn kho, kiểm tra phiếu nhập hay hỏi về định mức vật tư, đơn bán ạ? 📦",
   },
   vy: {
     agentId: "vy",
-    botName: "Vy - MIMIN Care AI",
-    subtitle: "Chuyên gia tư vấn bán hàng & CSKH",
+    botName: "Vy (MIMIN Care)",
+    subtitle: "Tư vấn & Chăm sóc khách hàng",
     BubbleIcon: MessageSquare,
     iconTextClass: "text-white",
     bubbleGradient: "from-pink-500 via-rose-500 to-rose-600 shadow-rose-500/40",
@@ -82,10 +80,61 @@ const THEME: Record<RouteMode, ModeTheme> = {
     sendBtnClass: "bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 shadow-rose-500/20",
     welcomeText: "👋 Chào anh/chị! Em là **Vy**, phụ trách tư vấn & hỗ trợ khách hàng của MIMIN.\n\nAnh/chị cần tìm đối tác gia công, tra cứu năng lực nhà cung cấp hay hỗ trợ đơn hàng ạ? 💬",
   },
-  default: {
-    agentId: undefined,
-    botName: "MIMIN AI",
-    subtitle: "Trợ lý đa năng ERP · Online",
+  minh: {
+    agentId: "minh",
+    botName: "Minh (Sản Xuất E2E)",
+    subtitle: "Chuyên gia Kế hoạch & Sản xuất",
+    BubbleIcon: Sparkles,
+    iconTextClass: "text-white",
+    bubbleGradient: "from-orange-500 via-amber-500 to-orange-600 shadow-orange-500/40",
+    pulseGradient: "from-orange-500 to-amber-500",
+    headerBg: "linear-gradient(135deg, #ea580c 0%, #d97706 50%, #f59e0b 100%)",
+    badgeGradient: "from-orange-500 to-amber-600",
+    userBubbleClass: "bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-br-md",
+    accentTextClass: "text-orange-700 dark:text-orange-400",
+    loaderClass: "text-orange-500",
+    ringClass: "focus:ring-orange-500",
+    sendBtnClass: "bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 shadow-orange-500/20",
+    welcomeText: "👋 Chào anh! Em là **Minh**, phụ trách toàn bộ quy trình sản xuất.\n\nTừ lệnh cắt → may → QC → hoàn thiện. Anh muốn kiểm tra tiến độ, lệnh sản xuất hay công đoạn nào? 🏭",
+  },
+  ha: {
+    agentId: "ha",
+    botName: "Hà (Kế toán & Nhân sự)",
+    subtitle: "Chuyên gia Tài chính, Công nợ & Nhân sự",
+    BubbleIcon: Sparkles,
+    iconTextClass: "text-white",
+    bubbleGradient: "from-violet-500 via-purple-500 to-violet-600 shadow-violet-500/40",
+    pulseGradient: "from-violet-500 to-purple-500",
+    headerBg: "linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #7c3aed 100%)",
+    badgeGradient: "from-violet-500 to-purple-600",
+    userBubbleClass: "bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-br-md",
+    accentTextClass: "text-violet-700 dark:text-violet-400",
+    loaderClass: "text-violet-500",
+    ringClass: "focus:ring-violet-500",
+    sendBtnClass: "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20",
+    welcomeText: "👋 Chào anh! Em là **Hà**, phụ trách Tài chính – Kế toán – Nhân sự.\n\nAnh muốn em kiểm tra thu chi, công nợ, bảng lương hay hồ sơ nhân sự nào hôm nay? 💰",
+  },
+  "mimin-help": {
+    agentId: "mimin-help",
+    botName: "MIMIN Help (Phân tích AI)",
+    subtitle: "Chuyên gia Giải pháp & Tối ưu",
+    BubbleIcon: Sparkles,
+    iconTextClass: "text-slate-800",
+    bubbleGradient: "from-slate-200 via-slate-300 to-slate-400 shadow-slate-500/40",
+    pulseGradient: "from-slate-300 to-slate-400",
+    headerBg: "linear-gradient(135deg, #475569 0%, #64748b 50%, #334155 100%)",
+    badgeGradient: "from-slate-400 to-slate-500",
+    userBubbleClass: "bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-br-md",
+    accentTextClass: "text-slate-700 dark:text-slate-400",
+    loaderClass: "text-slate-500",
+    ringClass: "focus:ring-slate-500",
+    sendBtnClass: "bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-slate-500/20",
+    welcomeText: "👋 Chào anh! Em là **MIMIN Help**, chuyên gia tư vấn giải pháp AI hệ thống.\n\nAnh cần hỗ trợ phân tích dữ liệu, tìm nguyên nhân lỗi, hay tối ưu hóa cấu hình hệ thống? 🤖",
+  },
+  mavis: {
+    agentId: "mavis",
+    botName: "Mavis (Điều phối)",
+    subtitle: "Trợ lý Điều phối Tổng quan",
     BubbleIcon: Sparkles,
     iconTextClass: "text-amber-400",
     bubbleGradient: "from-sky-500 via-cyan-600 to-teal-600 shadow-cyan-500/40",
@@ -97,7 +146,7 @@ const THEME: Record<RouteMode, ModeTheme> = {
     loaderClass: "text-cyan-500",
     ringClass: "focus:ring-cyan-500",
     sendBtnClass: "bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 shadow-cyan-500/20",
-    welcomeText: "👋 Xin chào! Em là **MIMIN AI** — trợ lý đa năng của hệ thống ERP.\n\nEm có thể đọc được toàn bộ dữ liệu thật của hệ thống. Anh cần xem tồn kho, công nợ hay danh sách nhân sự ạ? 🚀",
+    welcomeText: "👋 Xin chào! Em là **Mavis**, trợ lý điều phối tổng quan hệ thống.\n\nAnh cứ giao việc cho em, em sẽ phân tích và điều hướng đến bộ phận chuyên trách (Kho, SX, Kế toán...). Hôm nay anh muốn làm gì? 🚀",
   },
 };
 
@@ -121,9 +170,19 @@ export function FloatingAI() {
   const pathname = usePathname();
   const { user } = useSession();
 
-  const isKhoRoute = pathname?.includes("-kho") || pathname?.includes("trang-chu-kho");
-  const isVyRoute = !isKhoRoute && VY_ROUTES.some((r) => pathname?.startsWith(r));
-  const mode: RouteMode = isKhoRoute ? "kho" : isVyRoute ? "vy" : "default";
+  const isMinhRoute = MINH_ROUTES.some((r) => pathname?.includes(r)) && !pathname?.includes("mang-luoi-san-xuat");
+  const isLanRoute = LAN_ROUTES.some((r) => pathname?.includes(r));
+  const isHaRoute = HA_ROUTES.some((r) => pathname?.includes(r));
+  const isVyRoute = VY_ROUTES.some((r) => pathname?.includes(r));
+  const isHelpRoute = HELP_ROUTES.some((r) => pathname?.includes(r));
+
+  let mode: RouteMode = "mavis";
+  if (isMinhRoute) mode = "minh";
+  else if (isLanRoute) mode = "lan";
+  else if (isHaRoute) mode = "ha";
+  else if (isVyRoute) mode = "vy";
+  else if (isHelpRoute) mode = "mimin-help";
+  
   const theme = THEME[mode];
 
   // Hiện đúng "nhân vật" thật của agent phụ trách (ảnh hoặc emoji riêng từng

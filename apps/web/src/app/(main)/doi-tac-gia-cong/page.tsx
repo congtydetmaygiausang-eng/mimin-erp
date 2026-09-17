@@ -158,10 +158,11 @@ export default function DoiTacGiaCongPage() {
         </div>
       </div>
 
-      {/* Table view */}
+      {/* Table view & Mobile Cards */}
       {viewMode === "table" && (
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b bg-slate-50" style={{ borderColor: "var(--border)" }}>
@@ -232,6 +233,55 @@ export default function DoiTacGiaCongPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          
+          {/* Mobile Cards for Table View */}
+          <div className="md:hidden flex flex-col gap-2 p-2 bg-slate-50">
+            {filtered.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-sm">Không tìm thấy đối tác nào</div>
+            ) : filtered.map((d) => (
+              <div key={d.ma} className="bg-white border rounded-xl p-3 shadow-sm flex flex-col gap-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-semibold text-brand-700">{d.tenDonVi}</div>
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                      <span className="font-mono">{d.ma}</span> • <Users className="w-3 h-3" /> {d.nguoiLienHe}
+                    </div>
+                  </div>
+                  {d.trangThai === "dang_hop_tac" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                      <CheckCircle2 className="w-3 h-3" /> Đang hợp tác
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
+                      <XCircle className="w-3 h-3" /> Ngừng
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="px-2 py-0.5 rounded bg-violet-500/10 text-violet-700 text-[10px] font-medium">{d.chuyenMon}</span>
+                  {d.sdt && (
+                    <a href={`tel:${d.sdt}`} className="flex items-center gap-1 text-[11px] text-brand-600 hover:underline">
+                      <Phone className="w-3 h-3" /> {d.sdt}
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] text-slate-500 flex items-start gap-1 max-w-[70%]">
+                    <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <span className="line-clamp-1">{d.diaChi || "Chưa có địa chỉ"}</span>
+                  </div>
+                  <button
+                    onClick={() => setSelected(d)}
+                    className="text-[10px] px-2 py-1 rounded bg-brand-50 text-brand-600 hover:bg-brand-100 font-semibold"
+                  >
+                    Chi tiết
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

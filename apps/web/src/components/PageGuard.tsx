@@ -5,6 +5,8 @@ import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit-log";
 import { Lock, ShieldCheck, Loader2 } from "lucide-react";
+import { getModuleForPath } from "@/lib/route-permissions";
+import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 // Map tất cả 50+ routes -> module (mở rộng để fix lỗ hổng)
 const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
@@ -25,6 +27,14 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/hoan-thien",      module: "hoan-thien" },
   { match: "/qc",              module: "kiem-tra-chat-luong" },
   { match: "/workflow",        module: "lenh-cat" },
+  { match: "/ui-cat",         module: "to-cat" },
+  { match: "/to-cat-work",    module: "to-cat" },
+  { match: "/ui-intd",        module: "to-in-theu" },
+  { match: "/ui-khuy-nut",    module: "to-khuy-nut" },
+  { match: "/ui-ui",          module: "to-ui" },
+  { match: "/ui-dong-goi",    module: "to-dong-goi" },
+  { match: "/to-ht-work",     module: "hoan-thien" },
+  { match: "/to-may-work",    module: "to-may" },
   { match: "/tong-hop-cong-doan", module: "bao-cao" },
   { match: "/lenh-tong",       module: "ke-hoach-sx" },
   { match: "/san-xuat-erp",    module: "ke-hoach-sx" },
@@ -37,6 +47,8 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/role-workspaces", module: "nhan-su" },
   // Bán hàng
   { match: "/don-hang",        module: "don-hang" },
+  { match: "/phieu-dat-ncc-phu-lieu", module: "dat-ncc-phu-lieu" },
+  { match: "/danh-muc-vat-tu-san-xuat", module: "dat-ncc-phu-lieu" },
   { match: "/khach-hang",      module: "khach-hang" },
   // Kho + giao
   { match: "/giao-hang",       module: "giao-hang" },
@@ -88,10 +100,11 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
 // /test-phan-quyen và /test-real-data đã có mapping module "cai-dat" (chỉ admin) ở
 // trên - trước đây bị liệt kê thêm ở đây nên PUBLIC_ROUTES bypass luôn, mọi role
 // đăng nhập đều xem được. Bỏ khỏi danh sách public để module check phía trên có hiệu lực.
-const PUBLIC_ROUTES = ["/login", "/ui-cat", "/ui-khuy-nut", "/ui-ui", "/ui-dong-goi"];
+const PUBLIC_ROUTES = ["/login"];
 
 function findRouteModule(pathname: string) {
-  return ROUTE_TO_MODULE.find((r) => pathname === r.match || pathname.startsWith(r.match + "/"));
+  const module = getModuleForPath(pathname);
+  return module ? { match: pathname, module } : undefined;
 }
 
 export default function PageGuard({ children }: { children: React.ReactNode }) {
@@ -99,6 +112,7 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  usePermissionRevision();
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -149,11 +163,19 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
 
   const route = findRouteModule(pathname);
   if (!route) {
-    // Không match → render (page chưa map)
-    return <>{children}</>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4">
+        <div className="card max-w-md p-6 text-center">
+          <ShieldCheck className="mx-auto mb-3 h-12 w-12 text-amber-500" />
+          <h2 className="mb-1 text-lg font-bold">Trang chưa được khai báo quyền</h2>
+          <p className="mb-3 text-sm text-slate-500">Quản trị viên cần gán module cho đường dẫn <b>{pathname}</b>.</p>
+          <button onClick={() => router.replace("/dashboard")} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white">Về Dashboard</button>
+        </div>
+      </div>
+    );
   }
 
-  if (!canView(user.role, route.module)) {
+  if (!(user.roles || [user.role]).some(role => canView(role, route.module))) {
     logAudit({ user, action: "permission_denied", module: route.module as any, description: `Denied ${pathname}`, }).catch(() => {});
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">

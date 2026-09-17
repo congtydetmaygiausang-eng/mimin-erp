@@ -156,10 +156,13 @@ export function kiemTraKhopBo(lc: LenhCat, pc: any): KetQuaKhopBo {
   const mayQuan = timCongDoan(lc, "mayquan");
   if (!mayAo || !mayQuan) return { ok: true }; // lệnh cắt không tách riêng 2 khâu này
 
-  // Đang đứng ở chính khâu May áo/May quần thì chưa cần so - 1 trong 2 vế có thể
-  // chưa xong, đó là chuyện bình thường.
+  // Đang đứng ở các khâu trước May (như Cắt, In, Thêu) hoặc đang ở chính 
+  // khâu May áo/May quần thì chưa cần so - vì May chưa hoàn thành.
   const idHienTai = (pc?.id || "").toLowerCase();
-  if (idHienTai === (mayAo.id || "").toLowerCase() || idHienTai === (mayQuan.id || "").toLowerCase()) {
+  const preMayStages = ["cat", "in_theu", "in", "theu"];
+  const isPreMay = preMayStages.some(prefix => idHienTai.startsWith(prefix));
+
+  if (isPreMay || idHienTai === (mayAo.id || "").toLowerCase() || idHienTai === (mayQuan.id || "").toLowerCase()) {
     return { ok: true };
   }
 

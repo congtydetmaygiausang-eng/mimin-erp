@@ -10,6 +10,9 @@ import type { AppUser } from "@/components/session-provider";
 import { DemoBanner } from "@/components/DemoBanner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { InstallPWAButton } from "@/components/InstallPWAButton";
+import { NotificationToggle } from "@/components/notification/NotificationToggle";
+import { Avatar } from "@/components/Avatar";
 
 export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSignOut: () => Promise<void>; onMenuClick?: () => void }) {
   const { theme, setTheme } = useTheme();
@@ -43,6 +46,8 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
         <div className="flex-1" />
         
         <div className="flex items-center gap-2 sm:gap-3">
+          <InstallPWAButton />
+          
           <button
             className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white hidden sm:block"
             onClick={() => {
@@ -55,21 +60,21 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
             <Sparkles className="w-5 h-5 text-amber-300" />
           </button>
           <button
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white hidden sm:block"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Đổi theme"
           >
             {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           
+          <NotificationToggle />
+          
           <NotificationBell />
           
           {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
           
-          <div className="flex items-center gap-3 pl-2 sm:pl-3 border-l border-white/10">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold shadow-sm ring-2 ring-white/10">
-              {user.name?.charAt(0) || "U"}
-            </div>
+          <div className="flex items-center gap-1 sm:gap-3 pl-1.5 sm:pl-3 border-l border-white/10 shrink-0">
+            <Avatar name={user.name} src={user.avatar} size="sm" className="hidden sm:block" />
             <div className="hidden lg:block leading-tight">
             <div className="text-sm font-bold text-white">{user.name}</div>
             <div className="text-xs font-medium text-slate-300">{user.title}</div>
@@ -79,7 +84,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
               await onSignOut();
               router.replace("/login");
             }}
-            className="p-2 rounded-lg hover:bg-red-500/20 text-red-300 transition-colors ml-1"
+            className="p-1.5 sm:p-2 rounded-lg hover:bg-red-500/20 text-red-300 transition-colors shrink-0"
             aria-label="Đăng xuất"
             title="Đăng xuất"
           >

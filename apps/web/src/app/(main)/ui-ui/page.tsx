@@ -1,18 +1,31 @@
 "use client";
 
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { localActiveAccount } from "@/lib/local-account-store";
+import { canAccessStage } from "@/lib/account-access";
+import { can } from "@/lib/permissions";
+
+
 // ============ UI ỦI (/ui-ui) ============
 // Nhận hàng từ Khuy nút (hoặc QC đạt), Ủi phẳng, giao Đóng gói
 
+import { useStageColorInput } from "@/lib/use-stage-color-input";
 import { useState } from "react";
 import { CheckCircle2, Wind, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import ImageLightbox from "@/components/ui/ImageLightbox";
+import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
+import React from "react";
 
 export default function UiUiPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
+  const [uploadModal, setUploadModal] = useState<{ lc: any; pc: any } | null>(null);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [editingPC, setEditingPC] = useState<string | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
 
   const { user } = useSession();
@@ -20,6 +33,11 @@ export default function UiUiPage() {
   function getHTPC(lc: any) {
     return lc.phanCong?.filter((pc: any) => {
       const isHT = pc.id === "ui" || pc.tenCongDoan?.toLowerCase().includes("ủi");
+      
+      // Nếu là công nhân thì chỉ thấy việc của mình
+      // Quản lý/tổ trưởng thấy tất cả
+
+      if (LOCAL_ACCOUNT_MODE) return isHT && canAccessStage(localActiveAccount(), pc, "view", can);
       if (user?.laCongNhan) {
         const isMyTask = pc.nguoiMa === user.id || pc.nguoiMa === user.maNV || pc.nguoiTen?.includes(user.name);
         return isHT && isMyTask;
@@ -34,55 +52,29 @@ export default function UiUiPage() {
     const htPCs = getHTPC(lc);
     if (htPCs.length === 0) return false;
 
-    // 2. Kiểm tra Khuy nút hoặc May
+    // 2. Kiểm tra Khuy nút hoặc QC hoặc May
     const khuyNutPCs = lc.phanCong?.filter((pc: any) => pc.id === "khuy_nut" || pc.tenCongDoan?.toLowerCase().includes("khuy nút")) || [];
     if (khuyNutPCs.length > 0) {
       return khuyNutPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
+    }
+
+    const qcPC = lc.phanCong?.find((pc: any) => pc.id === "qc");
+    if (qcPC) {
+      return qcPC.trangThaiCD === "hoan_thanh";
     }
 
     const mayPCs = lc.phanCong?.filter((pc: any) => pc.tenCongDoan?.toLowerCase().includes("may")) || [];
     return mayPCs.length > 0 && mayPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
   });
 
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
 
-    try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
-
-      if (existingIdx >= 0) {
-        newChiTiet[existingIdx] = data;
-      } else {
-        newChiTiet.push(data);
-      }
-
-      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
-
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          const newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
-        }
-      }
-
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
   function handleNhanHang(lc: any, pc: any) {
     capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
     toast.success(`💨 Nhận hàng ủi: ${lc.id} – ${pc.tenCongDoan}`);
   }
 
-  function handleXong(lc: any, pc: any) {
+  function handleXong(lc: any, pc: any, bangChungURLs?: string[], chuKyUrl?: string) {
     // Bắt buộc khai báo đạt/lỗi theo màu + chặn số vượt khâu trước.
     const kiemTra = kiemTraTruocHoanThanh(lc, pc);
     if (!kiemTra.ok) {
@@ -97,6 +89,8 @@ export default function UiUiPage() {
       trangThaiCD: "hoan_thanh",
       soLuongHoanThanh: slDat,
       soLuongLoi: slLoi,
+      bangChungURLs: bangChungURLs,
+      chuKy: chuKyUrl,
       thanhTien: thanhTienDat, // Cập nhật lại công nợ theo SP đạt
       conLai: thanhTienDat - (pc.daThanhToan || 0)
     });
@@ -109,8 +103,9 @@ export default function UiUiPage() {
     if (allDone) {
       toast.success(`🎉 ${lc.id} hoàn thành toàn bộ – Đang chờ Nhập kho thành phẩm!`);
     } else {
-      toast.success(`✅ Hoàn thành: ${slDat} SP đạt${slLoi > 0 ? `, ${slLoi} SP lỗi` : ""}`);
+      toast.success(`✅ Xong: ${slDat} Đạt (Lỗi: ${slLoi})`);
     }
+    setUploadModal(null);
   }
 
   return (
@@ -164,11 +159,57 @@ export default function UiUiPage() {
                     </span>
                   ) : null
                 }
+                bangChungSlot={
+                  (() => {
+                    const completedPCs = htPCs.filter((pc: any) => pc.bangChungURLs?.length > 0 || pc.chuKy);
+                    if (completedPCs.length === 0) return null;
+                    return (
+                      <div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
+                          <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Bằng chứng & Chữ ký ({completedPCs.length})</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+                          {completedPCs.map((pc: any, idx: number) => {
+                             return (
+                               <React.Fragment key={idx}>
+                                 {pc.bangChungURLs?.map((url: string, i: number) => (
+                                    <div key={`img-${idx}-${i}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(url)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative">
+                                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Ảnh {pc.tenCongDoan}
+                                        </div>
+                                      </div>
+                                    </div>
+                                 ))}
+                                 {pc.chuKy && (
+                                    <div key={`chuKy-${idx}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => setZoomImage(pc.chuKy)}>
+                                      <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 border-dashed group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-slate-50 relative p-4 flex flex-col items-center justify-center">
+                                        <img src={pc.chuKy} className="w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-700" />
+                                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                          Chữ ký ({pc.nguoiTen || pc.nguoiMa})
+                                        </div>
+                                      </div>
+                                    </div>
+                                 )}
+                               </React.Fragment>
+                             )
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
               >
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {htPCs.map((pc: any) => {
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
 
                     return (
                       <div key={pc.id} className={`rounded-xl border p-4 ${style.bg} border-current/20`}>
@@ -182,31 +223,75 @@ export default function UiUiPage() {
                           </span>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           {tt === "cho_giao" && (
                             <button onClick={() => handleNhanHang(lc, pc)}
-                              className="flex-1 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 flex items-center justify-center gap-1.5">
+                              className="flex-1 py-2.5 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-sky-200">
                               <Package className="w-4 h-4" /> Nhận hàng
                             </button>
                           )}
-                          {tt === "dang_lam" && (
-                              <button onClick={() => handleXong(lc, pc)}
-                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl transition-colors shadow-sm">
-                                <CheckCircle2 className="w-4 h-4" /> Hoàn thành & Chuyển Đóng Gói
-                              </button>
-                          )}
-                          {tt === "hoan_thanh" && (
-                            <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex flex-col justify-center gap-1">
-                              <div className="flex items-center gap-2 font-bold text-emerald-700">
-                                <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
+                          {tt === "dang_lam" && (() => {
+                            const isEditing = editingPC === pc.id || pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            return (
+                              <div className="flex-1 flex flex-col gap-2">
+                                {isEditing && (
+                                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-amber-50/80 border border-amber-200/60 rounded-lg text-amber-700 text-[12px] font-medium shadow-sm transition-all duration-300">
+                                    <span className="relative flex h-2 w-2 shrink-0">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    <span>Chế độ sửa số lượng: Vui lòng bấm vào <strong>Màu Áo</strong> ở trên để cập nhật.</span>
+                                  </div>
+                                )}
+                                <button 
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      setEditingPC(null);
+                                      handleXong(lc, pc, pc.bangChungURLs, pc.chuKy);
+                                    } else {
+                                      setUploadModal({ lc, pc });
+                                    }
+                                  }}
+                                  className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm ${isEditing ? "bg-rose-500 hover:bg-rose-600 shadow-rose-200" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"}`}
+                                >
+                                  <CheckCircle2 className="w-4 h-4" /> 
+                                  {isEditing ? "Lưu SL đã sửa & Đóng lại" : "Hoàn thành & Chuyển Đóng Gói"}
+                                </button>
                               </div>
-                              {(pc.soLuongLoi > 0) && (
-                                <div className="text-xs text-rose-600 font-semibold pl-6">
-                                  ⚠️ Lỗi: {pc.soLuongLoi} SP
+                            );
+                          })()}
+                          {tt === "hoan_thanh" && (() => {
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+
+                            return (
+                              <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm flex items-center justify-between gap-2">
+                                <div className="flex flex-col justify-center gap-1">
+                                  <div className="flex items-center gap-2 font-bold text-emerald-700">
+                                    <CheckCircle2 className="w-4 h-4" /> Xong: {pc.soLuongHoanThanh ?? (pc.soLuong || lc.tongSL)} Đạt
+                                  </div>
+                                  {(pc.soLuongLoi > 0) && (
+                                    <div className="text-xs text-rose-600 font-semibold pl-6">
+                                      ⚠️ Lỗi: {pc.soLuongLoi} SP
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          )}
+                                {nextStageNotStarted && (
+                                  <button 
+                                    onClick={() => {
+                                      setEditingPC(pc.id);
+                                      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                      toast.info("Đã mở lại khâu Ủi. Vui lòng bấm vào từng màu ở trên để sửa số lượng, sau đó bấm Hoàn thành lại.");
+                                    }}
+                                    className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-lg shadow-sm hover:bg-emerald-100 active:scale-95 transition-all text-[11px] whitespace-nowrap flex items-center gap-1"
+                                  >
+                                    ✏️ Sửa SL
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -226,8 +311,27 @@ export default function UiUiPage() {
           lc={selectedMau.lc}
           mau={selectedMau.mau}
           currentPCs={getHTPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "dang_lam")}
-          onSave={handleSaveColorModal}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          historyStage="ui"
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? { lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau } : null)}
         />
+      )}
+
+      {/* Modal Upload Bằng chứng */}
+      <UploadBangChungModal 
+        open={!!uploadModal}
+        onClose={() => setUploadModal(null)}
+        onConfirm={(urls, chuKyUrl) => {
+          if (uploadModal) handleXong(uploadModal.lc, uploadModal.pc, urls, chuKyUrl);
+        }}
+        existingUrls={uploadModal?.pc?.bangChungURLs}
+        existingChuKy={uploadModal?.pc?.chuKy}
+      />
+
+      {/* Lightbox for Evidence Images */}
+      {zoomImage && (
+        <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
       )}
     </div>
   );

@@ -124,14 +124,40 @@ export async function supabaseUpsertRaw<T extends { id: string }>(
   onConflict: string = "id"
 ): Promise<T | null> {
   if (!checkSupabase()) return null;
+  const payload = { ...row } as any;
+  if (onConflict !== 'id') delete payload.id;
+
   const { data, error } = await supabase!
     .from(table)
-    .upsert(row, { onConflict })
+    .upsert(payload, { onConflict })
     .select()
     .single();
   if (error) {
-    console.warn(`[Supabase] upsertRaw(${table}) error:`, error.message, error.details);
-    return null;
+    if (error.code === 'PGRST204' || error.message.includes('column')) {
+       const fallback = { ...payload } as any;
+       delete fallback.hinh_anh; delete fallback.trang_thai; delete fallback.chat_lieu;
+       delete fallback.ncc; delete fallback.da_ban; delete fallback.rating; delete fallback.luot_xem;
+       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien; delete fallback.gia_tri;
+       delete fallback.ghi_chu; delete fallback.ngay_tao; delete fallback.ngay_nhap;
+       delete fallback.gia_ban_le; delete fallback.gia_ban_si; delete fallback.gia_von; delete fallback.gia_ban_lo;
+       delete fallback.gia_tiktok; delete fallback.gia_shopee; delete fallback.kenh_ban; delete fallback.img_quan;
+       delete fallback.video; delete fallback.chi_tiet_size; delete fallback.khach_hang;
+       delete fallback.tong_s_l_thuc_te_ao; delete fallback.tong_s_l_thuc_te_quan; delete fallback.tong_sl_thuc_te_ao; delete fallback.tong_sl_thuc_te_quan;
+       delete fallback.ti_le_size; delete fallback.ma_lenh_cat;
+       const { data: d2, error: e2 } = await supabase!
+         .from(table)
+         .upsert(fallback, { onConflict })
+         .select()
+         .single();
+         
+       if (e2) {
+         console.warn(`[Supabase] upsertRaw(${table}) fallback error:`, e2.message);
+         throw e2;
+       }
+       return d2 as T;
+    }
+    console.warn(`[Supabase] upsertRaw(${table}) error:`, error.message);
+    throw error;
   }
   return (data as T) ?? null;
 }
@@ -193,12 +219,21 @@ export function useSupabaseSync<T extends { id: string }>(
      * nguoiPhuTrach.ma). Trả về object snake_case hoàn chỉnh, kể cả `id`.
      */
     mapOut?: (row: T) => Record<string, any> & { id: string };
+    /**
+     * Map thủ công 1 row snake_case từ Supabase → row app.
+     */
+    mapIn?: (row: any) => T;
+    /**
+     * Cột để check conflict khi upsert (mặc định 'id')
+     */
+    onConflict?: string;
   }
 ) {
   const mapOut = options?.mapOut;
+  const onConflict = options?.onConflict || "id";
   const upsertRow = useCallback(
-    (row: T) => (mapOut ? supabaseUpsertRaw(table, mapOut(row)) : supabaseUpsert(table, row)),
-    [table, mapOut]
+    (row: T) => (mapOut ? supabaseUpsertRaw(table, mapOut(row), onConflict) : supabaseUpsert(table, row, onConflict)),
+    [table, mapOut, onConflict]
   );
   const [data, setDataState] = useState<T[]>(initialData);
   const [loading, setLoading] = useState(true);
@@ -229,25 +264,16 @@ export function useSupabaseSync<T extends { id: string }>(
     (async () => {
       try {
         if (checkSupabase()) {
-          const remote = await supabaseFetchAll<T>(table);
+          let remote = await supabaseFetchAll<any>(table);
+          if (options?.mapIn) {
+            remote = remote.map(options.mapIn);
+          }
           if (!cancelled) {
-            if (remote.length > 0) {
-              setDataState(remote);
-              saveLocal(remote); // sync xuống local
-              setSource("supabase");
-              console.log(`[useSupabaseSync] ${table}: ${remote.length} rows from Supabase`);
-            } else {
-              // Supabase rỗng → lấy từ localStorage và push lên
-              const local = loadLocal();
-              setDataState(local);
-              if (local.length > 0) {
-                console.log(`[useSupabaseSync] ${table}: pushing ${local.length} rows to Supabase`);
-                for (const row of local) {
-                  await upsertRow(row);
-                }
-                setSource("merged");
-              }
-            }
+            // Nguồn Supabase luôn là chân lý khi fetch thành công (kể cả khi rỗng).
+            setDataState(remote);
+            saveLocal(remote); // sync xuống local
+            setSource("supabase");
+            console.log(`[useSupabaseSync] ${table}: ${remote.length} rows from Supabase`);
           }
         } else {
           // Supabase tắt → chỉ dùng localStorage
@@ -285,13 +311,17 @@ export function useSupabaseSync<T extends { id: string }>(
           setDataState((prev) => {
             let next = [...prev];
             if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const newRow = payload.new as T;
+              const newRow = options?.mapIn ? options.mapIn(payload.new) : (payload.new as T);
               const idx = next.findIndex((r) => r.id === newRow.id);
               if (idx >= 0) next[idx] = newRow;
               else next = [newRow, ...next];
             } else if (payload.eventType === "DELETE") {
-              const oldId = (payload.old as any).id;
-              next = next.filter((r) => r.id !== oldId);
+              const oldPayload = payload.old as any;
+              const oldId = oldPayload.id || oldPayload.ma_sp || oldPayload.ma_khsx || oldPayload.ma_lenh;
+              // So sánh cả id và dbId (vì danh-muc-sp-store map id thành dbId)
+              if (oldId) {
+                next = next.filter((r) => r.id !== oldId && (r as any).dbId !== oldId);
+              }
             }
             saveLocal(next);
             return next;
@@ -309,12 +339,18 @@ export function useSupabaseSync<T extends { id: string }>(
       saveLocal(next);
       // Ghi Supabase async (không block UI)
       if (checkSupabase()) {
-        // Xoá rows không còn
         const oldIds = prev.map((r) => r.id);
         const newIds = next.map((r) => r.id);
         const deletedIds = oldIds.filter((id) => !newIds.includes(id));
+        
+        // Chỉ upsert những row mới hoặc bị thay đổi reference
+        const rowsToUpsert = next.filter((row) => {
+          const oldRow = prev.find((r) => r.id === row.id);
+          return !oldRow || oldRow !== row;
+        });
+
         Promise.all([
-          ...next.map((row) => upsertRow(row)),
+          ...rowsToUpsert.map((row) => upsertRow(row)),
           ...deletedIds.map((id) => supabaseDelete(table, id)),
         ]).catch((err) => console.error(`[Sync] ${table} setData error:`, err));
       }
@@ -324,3 +360,94 @@ export function useSupabaseSync<T extends { id: string }>(
 
   return { data, setData, loading, error, source };
 }
+
+/**
+ * Hook `useSupabaseRealtime` dùng để gắn vào các module đang xài manual fetch (như Khách hàng, Lệnh cắt)
+ * để tự động Subscribe vào sự kiện INSERT/UPDATE/DELETE và cập nhật local state.
+ */
+export function useSupabaseRealtime<T>(
+  table: string,
+  setDataState: React.Dispatch<React.SetStateAction<T[]>>,
+  options?: {
+    mapIn?: (row: any) => T;
+    // Khóa chính trong CSDL để dò tìm dòng bị xóa, mặc định là "id"
+    primaryKey?: string; 
+    // Key để tự động lưu xuống localStorage khi có event Realtime
+    localStorageKey?: string;
+  }
+) {
+  useEffect(() => {
+    if (!checkSupabase()) return;
+    
+    // Thêm random suffix để tránh trùng channel name khi mount
+    const channelName = `${table}-realtime-${Math.random().toString(36).slice(2)}`;
+    const channel = supabase!
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table },
+        (payload) => {
+          console.log(`[Realtime] ${table}:`, payload.eventType);
+          setDataState((prev) => {
+            let next = [...prev];
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              const newRow = options?.mapIn ? options.mapIn(payload.new) : (payload.new as T);
+              const pk = options?.primaryKey || "id";
+              // Tìm bằng khóa chính của object đã map
+              const rowId = (newRow as any)[pk];
+              const idx = next.findIndex((r) => (r as any)[pk] === rowId);
+              
+              if (idx >= 0) {
+                if (payload.eventType === "UPDATE") {
+                  // Chỉ cập nhật những field thực sự có trong payload.new để tránh ghi đè = default (null/[])
+                  const updatedKeys = Object.keys(payload.new).map(k => k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()));
+                  const merged: any = { ...next[idx] };
+                  for (const key of updatedKeys) {
+                     if (key in newRow) {
+                        (merged as any)[key] = (newRow as any)[key];
+                     }
+                  }
+                  next[idx] = merged;
+                } else {
+                  next[idx] = newRow;
+                }
+              }
+              else next = [newRow, ...next];
+            } else if (payload.eventType === "DELETE") {
+              const oldPayload = payload.old as any;
+              // Khóa chính trên Supabase (vd: ma_sp, ma_khsx, id, v.v...)
+              const dbPrimaryKey = oldPayload.id || oldPayload.ma_sp || oldPayload.ma_khsx || oldPayload.ma_lenh || oldPayload.ma_kh || oldPayload.ma_nv || oldPayload.ma_ncc;
+              if (dbPrimaryKey) {
+                // Ta so sánh với tất cả các khóa có thể của local object để tìm
+                next = next.filter(
+                  (r: any) =>
+                    r.id !== dbPrimaryKey &&
+                    r.maKH !== dbPrimaryKey &&
+                    r.maNV !== dbPrimaryKey &&
+                    r.maNCC !== dbPrimaryKey &&
+                    r.maSP !== dbPrimaryKey &&
+                    r.maKHSX !== dbPrimaryKey &&
+                    r.maLenh !== dbPrimaryKey &&
+                    r.dbId !== dbPrimaryKey
+                );
+              }
+            }
+            
+            // Persist realtime update to localStorage if requested
+            if (options?.localStorageKey) {
+              try {
+                localStorage.setItem(options.localStorageKey, JSON.stringify(next));
+              } catch (err) {}
+            }
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase!.removeChannel(channel);
+    };
+  }, [table, setDataState]);
+}
+

@@ -8,7 +8,7 @@ export type Tab = "dashboard" | "master" | "lenhtong" | "flow" | "congno" | "bao
 export const TABS: { key: Tab; label: string; icon: any; color: string }[] = [
   { key: "dashboard", label: "Tổng", icon: BarChart3, color: "blue" },
   { key: "master", label: "Danh bạ", icon: Users, color: "slate" },
-  { key: "lenhtong", label: "Lệnh", icon: Plus, color: "emerald" },
+  { key: "lenhtong", label: "Lệnh SX vải", icon: Plus, color: "emerald" },
   { key: "flow", label: "Quy trình", icon: GitBranch, color: "violet" },
   { key: "congno", label: "Công nợ", icon: CreditCard, color: "rose" },
   { key: "baocao", label: "Báo cáo", icon: FileText, color: "amber" },

@@ -1,19 +1,23 @@
+"use client";
+
 // ============ NV FORM MODAL (Add/Edit) ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.3)
 
 import { useState, useEffect } from "react";
-import { X, Plus, Edit2, ImagePlus } from "lucide-react";
-import { toast } from "sonner";
+import { ImagePlus } from "lucide-react";
+import { CrudModal } from "@/components/ui/CrudModal";
+import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
+import { normalizeEmployeeRecord } from "@/lib/employee-records";
 import type { NhanSuExt } from "../data";
 import { ImagePreviewModal } from "./ImagePreviewModal";
 import { authFetch } from "@/lib/auth-fetch";
 
-export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode: "add" | "edit"; nv?: NhanSuExt; existingCount: number; onClose: () => void; onSave: (n: NhanSuExt) => void }) {
+export function NVFormModal({ mode, nv, existingCount, existingCodes, onClose, onSave }: { mode: "add" | "edit"; nv?: NhanSuExt; existingCount: number; existingCodes: string[]; onClose: () => void; onSave: (n: NhanSuExt) => Promise<void> }) {
   const [form, setForm] = useState<NhanSuExt>(nv || {
     stt: existingCount + 1,
-    maNV: `NV${(existingCount + 19).toString().padStart(3, "0")}`,
+    maNV: `NV-${(Math.max(0, ...existingCodes.map((code) => Number(code.match(/^NV-?(\d+)$/i)?.[1] || 0))) + 1).toString().padStart(3, "0")}`,
     hoTen: "",
-    ngaySinh: "1995-01-01",
+    ngaySinh: "",
     ngayCap: "",
     noiCap: "",
     gioiTinh: "Nam",
@@ -36,171 +40,83 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
     boPhan: "Sản xuất",
     chucVu: "Công nhân",
     ngayVao: new Date().toISOString().split("T")[0],
-    luongCung: 7500000,
+    luongCung: 0,
     rating: 4,
     taiKhoan: "",
   } as NhanSuExt);
 
-  const [uploadFiles, setUploadFiles] = useState<Record<string, File | null>>({});
+  const [uploadFiles, setUploadFiles] = useState<Partial<Record<"avatar" | "cccdFrontImage" | "cccdBackImage", UploadedFile>>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
+    const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = "auto"; };
+    return () => { document.body.style.overflow = previous; };
   }, []);
 
-  const handleUpload = (field: "avatar" | "cccdFrontImage" | "cccdBackImage") => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadFiles((prev) => ({ ...prev, [field]: file }));
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target?.result as string }));
-    };
-    reader.readAsDataURL(file);
+  const handleImageChange = (field: "avatar" | "cccdFrontImage" | "cccdBackImage", files: UploadedFile[]) => {
+    const selected = files[files.length - 1];
+    setUploadFiles((previous) => ({ ...previous, [field]: selected }));
+    setForm((previous) => ({ ...previous, [field]: selected?.dataUrl ?? nv?.[field] ?? "" }));
   };
 
-  const uploadToSupabase = async (field: "avatar" | "cccdFrontImage" | "cccdBackImage", file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    const safeBase = (form.maNV || `nv-${existingCount + 1}`).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "employee";
-    const path = `nhan-su/${safeBase}/${field}-${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-    formData.append("path", path);
-
-    const response = await fetch("/api/employee-uploads", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Không thể upload ảnh lên Supabase");
+  const uploadImage = async (field: string, file: UploadedFile): Promise<string> => {
+    const blob = await (await fetch(file.dataUrl)).blob();
+    const body = new FormData();
+    body.append("file", blob, file.name);
+    const safeCode = form.maNV.trim().replace(/[^a-zA-Z0-9-]/g, "-");
+    body.append("path", `nhan-su/${safeCode}/${field}-${crypto.randomUUID()}`);
+    const response = await authFetch("/api/employee-uploads", { method: "POST", body });
+    const result: { path?: string; error?: string } = await response.json();
+    if (!response.ok || !result.path?.startsWith("nhan-su/")) {
+      throw new Error(result.error || "Không tải được ảnh, vui lòng thử lại");
     }
-
-    const data = await response.json();
-    // Bucket private - lưu path bền vào DB, không lưu url (chỉ dùng tạm 1
-    // tiếng). nhan-su-store.tsx sẽ tự ký lại URL mới mỗi khi tải danh sách.
-    return data.path as string;
+    return result.path;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.hoTen || !form.sdt) {
-      toast.error("Vui lòng nhập tên và SĐT");
-      return;
+  const handleSubmit = async () => {
+    const code = form.maNV.trim();
+    if (!code || !form.hoTen.trim() || !form.sdt.trim()) {
+      throw new Error("Vui lòng nhập mã nhân viên, họ tên và SĐT");
     }
-
-    const hasFront = Boolean(form.cccdFrontImage || uploadFiles.cccdFrontImage || nv?.cccdFrontImage);
-    const hasBack = Boolean(form.cccdBackImage || uploadFiles.cccdBackImage || nv?.cccdBackImage);
-    if (!hasFront || !hasBack) {
-      toast.error("Vui lòng tải cả ảnh CCCD mặt trước và mặt sau trước khi lưu");
-      return;
+    if (existingCodes.some((existing) => existing.trim().toLowerCase() === code.toLowerCase() && existing !== nv?.maNV)) {
+      throw new Error("Mã nhân viên đã tồn tại. Vui lòng chọn mã khác");
     }
-
+    if (!(form.cccdFrontImage || nv?.cccdFrontPath) || !(form.cccdBackImage || nv?.cccdBackPath)) {
+      throw new Error("Vui lòng tải cả ảnh CCCD mặt trước và mặt sau trước khi lưu");
+    }
     setIsUploading(true);
     try {
-      // Bucket employee-documents là private - nv.avatar/cccdFrontImage/cccdBackImage
-      // hiện trên form là URL đã ký tạm (chỉ để xem), KHÔNG được lưu lại vào DB.
-      // Khi không upload ảnh mới, phải lấy path bền từ nv.*Path (do nhan-su-store
-      // gắn vào lúc tải danh sách) - nếu không có (vd chọn ảnh mẫu tĩnh /avatars/...
-      // hoặc thêm mới chưa từng lưu), giữ nguyên giá trị đang có trên form.
-      const [avatarPath, cccdFrontPath, cccdBackPath] = await Promise.all([
-        uploadFiles.avatar ? uploadToSupabase("avatar", uploadFiles.avatar) : Promise.resolve(null),
-        uploadFiles.cccdFrontImage ? uploadToSupabase("cccdFrontImage", uploadFiles.cccdFrontImage) : Promise.resolve(null),
-        uploadFiles.cccdBackImage ? uploadToSupabase("cccdBackImage", uploadFiles.cccdBackImage) : Promise.resolve(null),
+      const [avatar, front, back] = await Promise.all([
+        uploadFiles.avatar ? uploadImage("avatar", uploadFiles.avatar) : nv?.avatarPath ?? form.avatar ?? "",
+        uploadFiles.cccdFrontImage ? uploadImage("cccdFrontImage", uploadFiles.cccdFrontImage) : nv?.cccdFrontPath ?? form.cccdFrontImage ?? "",
+        uploadFiles.cccdBackImage ? uploadImage("cccdBackImage", uploadFiles.cccdBackImage) : nv?.cccdBackPath ?? form.cccdBackImage ?? "",
       ]);
-
-      const savedEmployee = {
-        ...form,
-        avatar: avatarPath ?? nv?.avatarPath ?? form.avatar ?? "",
-        cccdFrontImage: cccdFrontPath ?? nv?.cccdFrontPath ?? form.cccdFrontImage ?? "",
-        cccdBackImage: cccdBackPath ?? nv?.cccdBackPath ?? form.cccdBackImage ?? "",
-      } as NhanSuExt;
-
+      const saved = { ...form, maNV: code, hoTen: form.hoTen.trim(), sdt: form.sdt.trim(), avatar, cccdFrontImage: front, cccdBackImage: back, oldMaNV: mode === "edit" ? nv?.maNV : undefined };
       const response = await authFetch("/api/employee-records", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(savedEmployee),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Không thể lưu dữ liệu nhân sự vào Supabase");
-      }
-
-      onSave(savedEmployee);
-      toast.success("Đã lưu nhân sự vào Supabase");
-    } catch (error) {
-      console.error("Upload employee images failed", error);
-      toast.error(error instanceof Error ? error.message : "Không thể lưu ảnh lên Supabase");
+      const result: { record?: Record<string, unknown>; error?: string } = await response.json();
+      if (!response.ok || !result.record) throw new Error(result.error || "Không thể lưu hồ sơ nhân sự");
+      await onSave({ ...saved, ...normalizeEmployeeRecord(result.record), oldMaNV: saved.oldMaNV } as NhanSuExt);
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
-      <div className="w-full sm:w-[96%] sm:max-w-2xl sm:max-w-3xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 min-h-[90vh] sm:min-h-0 max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
-              {mode === "add" ? <Plus className="w-6 h-6" /> : <Edit2 className="w-6 h-6" />}
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                {mode === "add" ? "Thêm nhân viên mới" : `Chỉnh sửa: ${nv?.hoTen}`}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Nhập đầy đủ thông tin hồ sơ nhân sự xưởng may</p>
+    <>
+      <CrudModal open onClose={onClose} title={mode === "add" ? "Thêm nhân viên mới" : `Chỉnh sửa: ${nv?.hoTen}`} fields={[]} onSubmit={handleSubmit} maxWidth="3xl" submitLabel={isUploading ? "Đang lưu..." : "Lưu thay đổi"}>
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <button type="button" aria-label="Xem ảnh đại diện" disabled={!form.avatar} onClick={() => setPreviewImage(form.avatar || null)} className="w-24 h-24 shrink-0 rounded-full overflow-hidden bg-teal-600 text-white text-2xl font-bold">
+              {form.avatar ? <img src={form.avatar} alt={form.hoTen || "Ảnh đại diện"} className="w-full h-full object-cover" /> : (form.hoTen.trim().charAt(0).toUpperCase() || "NV")}
+            </button>
+            <div className="min-w-0 flex-1 w-full space-y-2">
+              <div className="font-semibold text-slate-900 dark:text-white break-words">{form.hoTen.trim() || "Nhân viên mới"}</div>
+              <ImageUploader files={uploadFiles.avatar ? [uploadFiles.avatar] : []} onChange={(files) => handleImageChange("avatar", files)} category="avatar" accept="image/*" multiple={false} label="Ảnh đại diện" hint="Chọn ảnh chân dung thật, tối đa 5 MB" />
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Avatar Upload Header */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80">
-            <div className="relative group cursor-pointer">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-teal-500/30 shadow-md overflow-hidden bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold cursor-pointer" onClick={() => (form.avatar ? setPreviewImage(form.avatar) : null)}>
-                {form.avatar ? (
-                  <img src={form.avatar} alt={form.hoTen} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{form.hoTen ? form.hoTen.charAt(0).toUpperCase() : "NV"}</span>
-                )}
-              </div>
-              <label className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer">
-                <span className="text-xs font-semibold">Tải ảnh</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleUpload("avatar")}
-                />
-              </label>
-            </div>
-
-            <div className="text-center sm:text-left space-y-1">
-              <div className="text-sm font-semibold text-slate-900 dark:text-white">Ảnh đại diện nhân viên</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Tải ảnh chân dung công nhân hoặc chọn ảnh đại diện từ thiết bị</div>
-              <div className="flex flex-wrap gap-2 pt-1 justify-center sm:justify-start">
-                {["/avatars/female-1.png", "/avatars/male-1.png", "/avatars/female-2.png", "/avatars/male-2.png"].map((url, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setForm({ ...form, avatar: url })}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-teal-500 text-slate-700 dark:text-slate-200 transition"
-                  >
-                    Mẫu {idx + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Form Fields Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
@@ -261,20 +177,14 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
                 { key: "cccdFrontImage", label: "CCCD mặt trước", preview: form.cccdFrontImage },
                 { key: "cccdBackImage", label: "CCCD mặt sau", preview: form.cccdBackImage },
               ].map((item) => (
-                <label key={item.key} className="cursor-pointer rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/50 p-3 transition hover:border-teal-500">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{item.label}</span>
-                    <span className="text-[10px] px-2 py-1 rounded-full bg-teal-500/10 text-teal-700 dark:text-teal-300">Tải ảnh</span>
-                  </div>
-                  {item.preview ? (
-                    <img src={item.preview} alt={item.label} className="h-28 w-full rounded-xl object-cover border border-slate-200 dark:border-slate-700 cursor-pointer" onClick={(e) => { e.stopPropagation(); setPreviewImage(item.preview || null); }} />
-                  ) : (
-                    <div className="flex h-28 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-800/70 text-[11px] text-slate-500 dark:text-slate-400">
-                      Chưa có ảnh
-                    </div>
+                <div key={item.key} className="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-600 p-3 space-y-2">
+                  {item.preview && !uploadFiles[item.key as "cccdFrontImage" | "cccdBackImage"] && (
+                    <button type="button" onClick={() => setPreviewImage(item.preview || null)} className="w-full" aria-label={`Xem ${item.label}`}>
+                      <img src={item.preview} alt={item.label} className="h-28 w-full rounded-xl object-contain" />
+                    </button>
                   )}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleUpload(item.key as "cccdFrontImage" | "cccdBackImage")} />
-                </label>
+                  <ImageUploader files={uploadFiles[item.key as "cccdFrontImage" | "cccdBackImage"] ? [uploadFiles[item.key as "cccdFrontImage" | "cccdBackImage"]!] : []} onChange={(files) => handleImageChange(item.key as "cccdFrontImage" | "cccdBackImage", files)} category={item.key} label={item.label} accept="image/*" multiple={false} />
+                </div>
               ))}
             </div>
           </div>
@@ -316,7 +226,7 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Lương cơ bản (đ/tháng)</label>
-              <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500" value={form.luongCB || form.luongCung || 0} onChange={(e) => setForm({ ...form, luongCB: Number(e.target.value), luongCung: Number(e.target.value) })} />
+              <input type="number" min={0} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500" value={form.luongCB ?? form.luongCung ?? 0} onChange={(e) => setForm({ ...form, luongCB: Number(e.target.value), luongCung: Number(e.target.value) })} />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Số tài khoản</label>
@@ -328,7 +238,7 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Đánh giá (1-5)</label>
-              <input type="number" min={1} max={5} step={0.5} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.rating} onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })} />
+              <input type="number" min={1} max={5} step={1} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.rating} onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })} />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -342,27 +252,8 @@ export function NVFormModal({ mode, nv, existingCount, onClose, onSave }: { mode
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full sm:w-1/3 py-3.5 rounded-2xl font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={isUploading}
-              className="w-full sm:w-2/3 py-3.5 rounded-2xl font-bold bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white shadow-lg shadow-teal-500/25 transition flex items-center justify-center gap-2 text-base disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {mode === "add" ? <Plus className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />}
-              {isUploading ? "Đang lưu ảnh lên Supabase..." : (mode === "add" ? "Thêm nhân viên mới" : "Lưu thay đổi")}
-            </button>
-          </div>
-        </form>
-      </div>
+      </CrudModal>
       <ImagePreviewModal src={previewImage} onClose={() => setPreviewImage(null)} />
-    </div>
+    </>
   );
 }

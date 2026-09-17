@@ -8,6 +8,7 @@
 // ============================================
 
 import Link from "next/link";
+import { Avatar } from "@/components/Avatar";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
@@ -67,7 +68,7 @@ const NAV_GROUPS: NavGroup[] = [
     color: "from-sky-500 to-cyan-600",
     iconColor: "text-sky-400",
     items: [
-      { href: "/kho-vai-tinhmann", label: "Kho vải" },
+      { href: "/kho-vai-tinhmann", label: "Vải thành phẩm" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu" },
       { href: "/kho-thanh-pham", label: "Kho thành phẩm" },
       { href: "/giao-hang", label: "Giao hàng" },
@@ -86,6 +87,8 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/doi-soat-tien-cong", label: "Đối soát tiền công" },
       { href: "/cong-no", label: "Công nợ công đoạn" },
       { href: "/don-hang", label: "Đơn hàng" },
+      { href: "/phieu-dat-ncc-phu-lieu", label: "Đặt NCC phụ liệu" },
+      { href: "/danh-muc-vat-tu-san-xuat", label: "Mẫu vật tư sản xuất" },
       { href: "/bang-gia", label: "Bảng giá bán" },
     ],
   },
@@ -100,6 +103,11 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/nhan-su", label: "Nhân sự" },
       { href: "/khach-hang", label: "Khách hàng" },
       { href: "/nha-cung-cap", label: "Nhà cung cấp" },
+      { href: "/nha-cung-cap/hop-dong", label: "Hợp đồng" },
+      { href: "/nha-cung-cap/giao-dich-mua", label: "Giao dịch mua NCC" },
+      { href: "/nha-cung-cap/cong-no-tong", label: "Công nợ tổng" },
+      { href: "/nha-cung-cap/thanh-toan", label: "Thanh toán" },
+      { href: "/nha-cung-cap/lich-su", label: "Lịch sử hoạt động" },
       { href: "/doi-tac-gia-cong", label: "Đối tác gia công" },
       { href: "/cong-nhan-gia-cong", label: "Công nhân gia công" },
       { href: "/master-data", label: "Master Data" },
@@ -171,9 +179,7 @@ export function HorizontalNav() {
           <NotificationBell />
           {user && (
             <div className="flex items-center gap-2 pl-3 border-l border-[#0d4a59]">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                {user.name?.charAt(0) || "U"}
-              </div>
+              <Avatar name={user.name} src={user.avatar} size="sm" />
               <div className="hidden xl:block leading-tight">
                 <div className="text-sm font-bold text-white">{user.name}</div>
                 <div className="text-xs text-white/70">{user.title}</div>

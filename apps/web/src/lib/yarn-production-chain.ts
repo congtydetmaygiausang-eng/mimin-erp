@@ -8,6 +8,16 @@
 
 import { logAudit } from "./audit-log";
 
+export interface ChungTuSanXuat {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  dataUrl: string;
+  category: string;
+  uploadedAt: string;
+}
+
 // ============ KHO LOG (BẮT BUỘC) ============
 export interface KhoLog {
   id: string;
@@ -62,6 +72,7 @@ export interface PhieuNhapSoi {
   khoNhap: string;        // Kho Sợi
   nguoiPhuTrach: string;
   ghiChu: string;
+  chungTu?: ChungTuSanXuat[];
   khoa: boolean;          // true = đã khóa, không được sửa
 }
 
@@ -153,9 +164,14 @@ export interface LenhDet {
   soMetDuKien: number;    // = soKgGiao * SOI_TO_VAI_RATIO (4m/kg)
   nguoiPhuTrach: string;
   trangThai: TrangThaiLenhDet;
+  soKgXuongXacNhan?: number;
+  ngayXacNhanNhanSoi?: string;
+  haoHutBanGiaoSoiKg?: number;
+  chungTuXuatNhanSoi?: ChungTuSanXuat[];
   // Sau nghiệm thu
   soKgMocNhan?: number;
   soCayMoc?: number;
+  danhSachCayMoc?: Array<{ maCay: string; kg: number }>;
   soKgLoi?: number;
   haoHutKg?: number;
   haoHutPt?: number;
@@ -227,17 +243,48 @@ export function capNhatTrangThaiLenhDet(lenhId: string, trangThai: TrangThaiLenh
   return { ok: true, message: `✅ Đã cập nhật ${lenhId} → ${trangThai}` };
 }
 
+export function xacNhanXuongDetNhanSoi(
+  lenhId: string,
+  soKgThucNhan: number,
+  chungTu: ChungTuSanXuat[],
+  user: any
+): { ok: boolean; message: string } {
+  const list = getLD();
+  const lenh = list.find((item) => item.id === lenhId);
+  if (!lenh) return { ok: false, message: "Không tìm thấy lệnh dệt" };
+  if (soKgThucNhan <= 0 || soKgThucNhan > lenh.soKgGiao) {
+    return { ok: false, message: `Số kg thực nhận phải từ 1 đến ${lenh.soKgGiao}kg` };
+  }
+  const haoHutBanGiaoSoiKg = lenh.soKgGiao - soKgThucNhan;
+  saveLD(list.map((item) => item.id === lenhId ? {
+    ...item,
+    soKgXuongXacNhan: soKgThucNhan,
+    ngayXacNhanNhanSoi: new Date().toISOString().slice(0, 10),
+    haoHutBanGiaoSoiKg,
+    chungTuXuatNhanSoi: chungTu,
+    trangThai: "Đang dệt" as TrangThaiLenhDet,
+  } : item));
+  logAudit({
+    user, action: "update", module: "kho-soi",
+    description: `${lenhId}: xưởng dệt nhận ${soKgThucNhan}kg, chênh lệch bàn giao ${haoHutBanGiaoSoiKg}kg`,
+    resourceId: lenhId, success: true,
+  });
+  return { ok: true, message: `Đã xác nhận nhận ${soKgThucNhan}kg sợi` };
+}
+
 // ============ BƯỚC 3: NGHIỆM THU VẢI MỘC ============
 export function nghiemThuDet_V2(
   lenhId: string,
   data: {
     soKgMocNhan: number;
     soCayMoc: number;
+    danhSachCayMoc: Array<{ maCay: string; kg: number }>;
     soKgLoi: number;
     chiPhiPhatSinh: number;
     daThanhToan: number;
     khoMocNhap: string;
     ketQuaKiemTra: string;
+    chungTuBanGiaoMoc?: ChungTuSanXuat[];
   },
   user: any
 ): { ok: boolean; message: string; haoHutPt: number } {
@@ -245,8 +292,9 @@ export function nghiemThuDet_V2(
   const lenh = list.find((l) => l.id === lenhId);
   if (!lenh) return { ok: false, message: "Không tìm thấy lệnh dệt", haoHutPt: 0 };
 
-  const haoHutKg = lenh.soKgGiao - data.soKgMocNhan;
-  const haoHutPt = lenh.soKgGiao > 0 ? (haoHutKg / lenh.soKgGiao) * 100 : 0;
+  const soKgSoiThucNhan = lenh.soKgXuongXacNhan ?? lenh.soKgGiao;
+  const haoHutKg = soKgSoiThucNhan - data.soKgMocNhan;
+  const haoHutPt = soKgSoiThucNhan > 0 ? (haoHutKg / soKgSoiThucNhan) * 100 : 0;
   const tienGiaCong = lenh.soKgGiao * lenh.donGiaDet; // tính theo kg sợi giao (hoặc kg mộc theo quy ước)
   const congNo = tienGiaCong + data.chiPhiPhatSinh - data.daThanhToan;
 
@@ -254,6 +302,7 @@ export function nghiemThuDet_V2(
     ...l,
     soKgMocNhan: data.soKgMocNhan,
     soCayMoc: data.soCayMoc,
+    danhSachCayMoc: data.danhSachCayMoc,
     soKgLoi: data.soKgLoi,
     haoHutKg, haoHutPt,
     chiPhiPhatSinh: data.chiPhiPhatSinh,
@@ -261,6 +310,7 @@ export function nghiemThuDet_V2(
     congNoXuong: congNo,
     khoMocNhap: data.khoMocNhap,
     ketQuaKiemTra: data.ketQuaKiemTra,
+    chungTuBanGiaoMoc: data.chungTuBanGiaoMoc || [],
     ngayNghiemThu: new Date().toISOString().slice(0, 10),
     trangThai: "Hoàn thành" as TrangThaiLenhDet,
   } : l);
@@ -273,11 +323,20 @@ export function nghiemThuDet_V2(
     maLoMoc: `LM-${lenhId}`,
     maLenhDet: lenhId, loaiVai: "Vải thun cotton",
     soKg: data.soKgMocNhan, soCay: data.soCayMoc, soKgLoi: data.soKgLoi,
+    danhSachCay: data.danhSachCayMoc,
     ngayNhap: new Date().toISOString().slice(0, 10),
     kho: data.khoMocNhap,
     trangThai: "Chờ nhuộm",
   });
   localStorage.setItem("mimin_lo_moc", JSON.stringify(loMocs));
+
+  const meNhuoms = getMN();
+  saveMN(meNhuoms.map((me) => me.maLoMoc === `LM-${lenhId}` ? {
+    ...me,
+    tongKgXuat: data.soKgMocNhan,
+    soKgMocGiao: data.soKgMocNhan,
+    soCayMocGiao: data.soCayMoc,
+  } : me));
 
   ghiLog({
     loaiPhieu: "NHAP_MOC", maPhieu: lenhId, loaiKho: "MOC", loaiAction: "NHAP",
@@ -301,9 +360,13 @@ export function nghiemThuDet_V2(
 
 // ============ BƯỚC 4: XUẤT VẢI MỘC ĐI NHUỘM (MẺ NHUỘM - NHIỀU MÀU) ============
 export interface MauNhuom {
+  maMau?: string;         // Mã màu lấy từ danh mục Kho vải thành phẩm
   mau: string;            // Đen, Trắng, Navy
   soKg: number;
+  soCay?: number;
+  maCayMoc?: string[];
   donGiaNhuom: number;    // đ/kg (riêng từng màu)
+  giaVonDuKien?: number;
   ghiChu?: string;
 }
 
@@ -317,6 +380,14 @@ export interface MeNhuom {
   danhSachMau: MauNhuom[]; // NHIỀU MÀU
   nguoiPhuTrach: string;
   trangThai: "Đã giao mộc" | "Đang nhuộm" | "Chờ nghiệm thu" | "Hoàn thành" | "Hủy";
+  soKgMocGiao?: number;
+  soCayMocGiao?: number;
+  soKgMocNhan?: number;
+  soCayMocNhan?: number;
+  ngayXacNhanNhanMoc?: string;
+  haoHutBanGiaoMocKg?: number;
+  chungTuNhanMoc?: ChungTuSanXuat[];
+  chungTuNghiemThuNhuom?: ChungTuSanXuat[];
   ghiChu: string;
 }
 
@@ -361,6 +432,43 @@ export function taoMeNhuom(data: Omit<MeNhuom, "id" | "tongKgXuat" | "trangThai"
   return { ok: true, me, message: `✅ Tạo mẻ nhuộm ${me.id}: ${tongKg}kg, ${data.danhSachMau.length} màu` };
 }
 
+export function xacNhanNhuomNhanMoc(
+  meNhuomId: string,
+  data: { soKgMocNhan: number; soCayMocNhan: number; danhSachMau: MauNhuom[]; chungTu: ChungTuSanXuat[] },
+  user: any
+): { ok: boolean; message: string } {
+  const list = getMN();
+  const me = list.find((item) => item.id === meNhuomId);
+  if (!me) return { ok: false, message: "Không tìm thấy mẻ nhuộm" };
+  if (data.soKgMocNhan <= 0 || data.soCayMocNhan <= 0) return { ok: false, message: "Số kg và số cây nhận phải lớn hơn 0" };
+  const tongKgPhan = data.danhSachMau.reduce((sum, item) => sum + item.soKg, 0);
+  const tongCayPhan = data.danhSachMau.reduce((sum, item) => sum + (item.soCay || 0), 0);
+  if (Math.abs(tongKgPhan - data.soKgMocNhan) > 0.01 || tongCayPhan !== data.soCayMocNhan) {
+    return { ok: false, message: `Phải phân đủ ${data.soKgMocNhan}kg và ${data.soCayMocNhan} cây cho các màu` };
+  }
+  if (data.danhSachMau.some((item) => !item.mau.trim() || item.soKg <= 0 || (item.soCay || 0) <= 0)) {
+    return { ok: false, message: "Mỗi màu phải có tên màu, số kg và số cây" };
+  }
+  const haoHutBanGiaoMocKg = Math.max((me.soKgMocGiao ?? me.tongKgXuat) - data.soKgMocNhan, 0);
+  saveMN(list.map((item) => item.id === meNhuomId ? {
+    ...item,
+    soKgMocNhan: data.soKgMocNhan,
+    soCayMocNhan: data.soCayMocNhan,
+    danhSachMau: data.danhSachMau,
+    tongKgXuat: data.soKgMocNhan,
+    ngayXacNhanNhanMoc: new Date().toISOString().slice(0, 10),
+    haoHutBanGiaoMocKg,
+    chungTuNhanMoc: data.chungTu,
+    trangThai: "Đang nhuộm" as const,
+  } : item));
+  logAudit({
+    user, action: "update", module: "kho-soi",
+    description: `${meNhuomId}: nhuộm nhận ${data.soKgMocNhan}kg/${data.soCayMocNhan} cây, phân ${data.danhSachMau.length} màu`,
+    resourceId: meNhuomId, success: true,
+  });
+  return { ok: true, message: `Đã nhận và phân đủ ${data.soKgMocNhan}kg/${data.soCayMocNhan} cây` };
+}
+
 // ============ BƯỚC 5: NGHIỆM THU VẢI MÀU (TỪNG MÀU RIÊNG) ============
 export interface NghiemThuMau {
   mau: string;
@@ -373,6 +481,10 @@ export interface NghiemThuMau {
   chiPhiHoanThien: number;
   chiPhiPhatSinh: number;
   daThanhToan: number;
+  haoHutKg?: number;
+  haoHutPt?: number;
+  tienNhuom?: number;
+  tongChiPhi?: number;
 }
 
 export interface PhieuNghiemThuMau {
@@ -384,6 +496,7 @@ export interface PhieuNghiemThuMau {
   congNoXuong: number;
   nguoiPhuTrach: string;
   ghiChu: string;
+  chungTu?: ChungTuSanXuat[];
 }
 
 const NTM_KEY = "mimin_phieu_nghiem_thu_mau";
@@ -398,7 +511,8 @@ export function nghiemThuMau_V2(
   meNhuomId: string,
   danhSachMau: NghiemThuMau[],
   nguoiPhuTrach: string,
-  user: any
+  user: any,
+  chungTu: ChungTuSanXuat[] = []
 ): { ok: boolean; phieu?: PhieuNghiemThuMau; message: string; chiTiet: any[] } {
   // Tính từng màu
   const chiTiet = danhSachMau.map((m) => {
@@ -413,10 +527,10 @@ export function nghiemThuMau_V2(
   const congNo = tongCong - tongDaTra;
 
   const phieu: PhieuNghiemThuMau = {
-    id: `NTM_${Date.now().toString().slice(-6)}`,
+    id: `NTM_${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(-3).toUpperCase()}`,
     meNhuomId, ngayNghiemThu: new Date().toISOString().slice(0, 10),
     danhSachMau: chiTiet, tongCong, congNoXuong: congNo, nguoiPhuTrach,
-    ghiChu: "",
+    ghiChu: "", chungTu,
   };
   const list = getNTM();
   list.unshift(phieu);
@@ -516,6 +630,7 @@ export interface LoVaiTP {
   nguoiPhuTrach: string;
   ghiChu: string;
   khoa: boolean;           // true = đã khóa giá vốn
+  chungTuNhapKho?: ChungTuSanXuat[];
 }
 
 const LTP_KEY = "mimin_lo_vai_tp";
@@ -532,7 +647,7 @@ export function nhapKhoVaiTP(
 ): { ok: boolean; lo?: LoVaiTP; message: string } {
   const tongKg = data.danhSachCay.reduce((s, c) => s + c.kg, 0);
   const lo: LoVaiTP = {
-    ...data, id: `LTP_${Date.now().toString().slice(-6)}`,
+    ...data, id: `LTP_${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(-3).toUpperCase()}`,
     tongKg, tongGiaTri: tongKg * data.giaVonPerKg, khoa: true, // Khóa giá vốn ngay khi nhập
   };
   const list = getLTP();
@@ -571,10 +686,10 @@ export interface TruyNguoc {
   loVaiTP: LoVaiTP;
   phieuNghiemThuMau: PhieuNghiemThuMau;
   meNhuom: MeNhuom;
-  loMoc: any;
+  loMoc: unknown;
   lenhDet: LenhDet;
   phieuNhapSoi: PhieuNhapSoi;
-  loSoi: any;
+  loSoi: unknown;
 }
 
 /**
@@ -636,7 +751,7 @@ export interface CongNoGiaCong {
   tongPhatSinh: number;
   daThanhToan: number;
   conNo: number;
-  chiTiet: any[];          // Danh sách phiếu liên quan
+  chiTiet: unknown[];      // Danh sách phiếu liên quan
 }
 
 export function baoCaoCongNoGiaCong(): CongNoGiaCong[] {
@@ -685,7 +800,7 @@ export function baoCaoCongNoGiaCong(): CongNoGiaCong[] {
 
 // ============ BÁO CÁO HAO HỤT ============
 export interface HaoHutReport {
-  loai: "Dệt" | "Nhuộm";
+  loai: "Bàn giao sợi" | "Dệt" | "Bàn giao mộc" | "Nhuộm";
   maPhieu: string;
   ngay: string;
   dauVao: number;
@@ -698,6 +813,17 @@ export interface HaoHutReport {
 export function baoCaoHaoHut(): HaoHutReport[] {
   const result: HaoHutReport[] = [];
 
+  getLD().forEach((l) => {
+    if (l.soKgXuongXacNhan === undefined) return;
+    const haoHutKg = l.soKgGiao - l.soKgXuongXacNhan;
+    const haoHutPt = l.soKgGiao > 0 ? (haoHutKg / l.soKgGiao) * 100 : 0;
+    result.push({
+      loai: "Bàn giao sợi", maPhieu: l.id, ngay: l.ngayXacNhanNhanSoi || l.ngayGiao,
+      dauVao: l.soKgGiao, dauRa: l.soKgXuongXacNhan, haoHutKg, haoHutPt,
+      canhBao: haoHutKg === 0 ? "Xanh" : haoHutPt <= 1 ? "Vàng" : "Đỏ",
+    });
+  });
+
   // Hao hụt dệt
   getLD().forEach((l) => {
     if (l.haoHutPt === undefined) return;
@@ -706,22 +832,37 @@ export function baoCaoHaoHut(): HaoHutReport[] {
       l.haoHutPt <= 10 ? "Vàng" : "Đỏ";
     result.push({
       loai: "Dệt", maPhieu: l.id, ngay: l.ngayGiao,
-      dauVao: l.soKgGiao, dauRa: l.soKgMocNhan || 0,
+      dauVao: l.soKgXuongXacNhan ?? l.soKgGiao, dauRa: l.soKgMocNhan || 0,
       haoHutKg: l.haoHutKg || 0, haoHutPt: l.haoHutPt, canhBao,
     });
   });
 
   // Hao hụt nhuộm (từng màu)
   getNTM().forEach((n) => {
-    n.danhSachMau.forEach((m: any) => {
+    n.danhSachMau.forEach((m) => {
+      const haoHutKg = m.haoHutKg ?? (m.soKgMocGiao - m.soKgMauNhan);
+      const haoHutPt = m.haoHutPt ?? (m.soKgMocGiao > 0 ? (haoHutKg / m.soKgMocGiao) * 100 : 0);
       const canhBao: "Xanh" | "Vàng" | "Đỏ" =
-        m.haoHutPt <= 2 ? "Xanh" :
-        m.haoHutPt <= 5 ? "Vàng" : "Đỏ";
+        haoHutPt <= 2 ? "Xanh" :
+        haoHutPt <= 5 ? "Vàng" : "Đỏ";
       result.push({
         loai: "Nhuộm", maPhieu: `${n.id}-${m.mau}`, ngay: n.ngayNghiemThu,
         dauVao: m.soKgMocGiao, dauRa: m.soKgMauNhan,
-        haoHutKg: m.haoHutKg, haoHutPt: m.haoHutPt, canhBao,
+        haoHutKg, haoHutPt, canhBao,
       });
+    });
+  });
+
+  getMN().forEach((m) => {
+    if (m.soKgMocNhan === undefined) return;
+    const loMoc = getLoMoc().find((item: { maLoMoc?: string; soKg?: number }) => item.maLoMoc === m.maLoMoc);
+    const dauVao = loMoc?.soKg || m.tongKgXuat;
+    const haoHutKg = Math.max(dauVao - m.soKgMocNhan, 0);
+    const haoHutPt = dauVao > 0 ? (haoHutKg / dauVao) * 100 : 0;
+    result.push({
+      loai: "Bàn giao mộc", maPhieu: m.id, ngay: m.ngayXacNhanNhanMoc || m.ngayGiao,
+      dauVao, dauRa: m.soKgMocNhan, haoHutKg, haoHutPt,
+      canhBao: haoHutKg === 0 ? "Xanh" : haoHutPt <= 1 ? "Vàng" : "Đỏ",
     });
   });
 

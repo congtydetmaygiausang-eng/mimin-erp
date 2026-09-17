@@ -13,6 +13,8 @@ import {
   Calendar,
   Package,
   ShoppingCart,
+  ShoppingBag,
+  CreditCard,
   ShieldCheck,
   Shirt,
   Heart,
@@ -54,9 +56,11 @@ import {
   Search,
   Wind,
   Tag,
+  History,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
+import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 type SubItem = {
   href: string;
@@ -121,6 +125,11 @@ const NAV: NavItem[] = [
     ]
   },
   {
+    href: "/san-xuat-erp", label: "Sản Xuất Sợi - Dệt - Nhuộm", icon: Factory,
+    color: "border-orange-400", iconColor: "text-orange-300", permModule: "bang-dieu-hanh-sx",
+    ...cardStyle("from-orange-500", "to-amber-600", "from-orange-50", "to-amber-50", "text-orange-900"),
+  },
+  {
     label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
     color: "border-teal-400", iconColor: "text-teal-300",
     ...cardStyle("from-teal-500", "to-emerald-600", "from-teal-50", "to-emerald-50", "text-teal-900"),
@@ -144,7 +153,7 @@ const NAV: NavItem[] = [
     color: "border-emerald-400", iconColor: "text-emerald-300",
     ...cardStyle("from-emerald-500", "to-green-600", "from-emerald-50", "to-green-50", "text-emerald-900"),
     subItems: [
-      { href: "/kho-vai-tinhmann", label: "Kho vải", icon: Package, iconColor: "text-emerald-400", permModule: "kho-vai" },
+      { href: "/kho-vai-tinhmann", label: "Vải thành phẩm", icon: Package, iconColor: "text-emerald-400", permModule: "kho-vai" },
       { href: "/kho-phu-lieu", label: "Kho phụ liệu", icon: Boxes, iconColor: "text-orange-400", permModule: "kho-phu-lieu" },
       { href: "/kho-thanh-pham", label: "Kho thành phẩm", icon: Boxes, iconColor: "text-violet-400", permModule: "kho-thanh-pham" },
       { href: "/giao-hang", label: "Giao hàng", icon: Truck, iconColor: "text-sky-400", permModule: "giao-hang" },
@@ -160,6 +169,8 @@ const NAV: NavItem[] = [
       { href: "/doi-soat-tien-cong", label: "Đối soát tiền công", icon: Wallet2, iconColor: "text-orange-400", permModule: "doi-soat-tien-cong" },
       { href: "/cong-no", label: "Công nợ công đoạn", icon: Wallet2, iconColor: "text-red-400", permModule: "cong-no-cong-doan" },
       { href: "/don-hang", label: "Đơn hàng", icon: ShoppingCart, iconColor: "text-pink-400", permModule: "don-hang" },
+      { href: "/phieu-dat-ncc-phu-lieu", label: "Đặt NCC phụ liệu", icon: ShoppingBag, iconColor: "text-emerald-400", permModule: "dat-ncc-phu-lieu" },
+      { href: "/danh-muc-vat-tu-san-xuat", label: "Mẫu vật tư sản xuất", icon: Package, iconColor: "text-teal-400", permModule: "dat-ncc-phu-lieu" },
       { href: "/bang-gia", label: "Bảng giá bán", icon: Tag, iconColor: "text-amber-400", permModule: "don-hang" },
     ]
   },
@@ -184,6 +195,11 @@ const NAV: NavItem[] = [
       { href: "/nhan-su", label: "Nhân sự", icon: Users, iconColor: "text-blue-400", permModule: "nhan-su" },
       { href: "/khach-hang", label: "Khách hàng", icon: Users, iconColor: "text-emerald-400", permModule: "khach-hang" },
       { href: "/nha-cung-cap", label: "Nhà cung cấp", icon: Building2, iconColor: "text-amber-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/hop-dong", label: "Hợp đồng", icon: FileText, iconColor: "text-sky-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/giao-dich-mua", label: "Giao dịch mua NCC", icon: ShoppingBag, iconColor: "text-emerald-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/cong-no-tong", label: "Công nợ tổng", icon: Wallet, iconColor: "text-amber-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/thanh-toan", label: "Thanh toán", icon: CreditCard, iconColor: "text-teal-400", permModule: "nha-cung-cap" },
+      { href: "/nha-cung-cap/lich-su", label: "Lịch sử hoạt động", icon: History, iconColor: "text-slate-300", permModule: "nha-cung-cap" },
       { href: "/doi-tac-gia-cong", label: "Đối tác gia công", icon: Users, iconColor: "text-cyan-400", permModule: "nha-cung-cap" },
       { href: "/cong-nhan-gia-cong", label: "Công nhân gia công dự phòng", icon: Hammer, iconColor: "text-orange-400", permModule: "nha-cung-cap" },
       { href: "/master-data", label: "Master Data", icon: Database, iconColor: "text-slate-400", permModule: "nha-cung-cap" },
@@ -229,6 +245,7 @@ const NAV: NavItem[] = [
 function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pathname: string; onItemClick?: () => void; isCollapsed?: boolean; toggleCollapse?: () => void }) {
   const { user } = useSession();
   const role = user?.role;
+  const permissionRevision = usePermissionRevision();
   
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -264,15 +281,15 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
   const visibleNav = useMemo(() => {
     if (user?.laCongNhan) {
       const boPhan = user.phongBan?.toLowerCase() || "";
-      if (boPhan.includes("cắt")) {
+      if (boPhan.includes("cắt") && canView(role, "to-cat")) {
         return [{ href: "/to-cat-work", label: "✂️ Việc của tôi (Cắt)", icon: Scissors }];
-      } else if (boPhan.includes("may")) {
+      } else if (boPhan.includes("may") && canView(role, "to-may")) {
         return [{ href: "/to-may-work", label: "👕 Việc của tôi (May)", icon: Shirt }];
-      } else if (boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) {
+      } else if ((boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) && canView(role, "hoan-thien")) {
         return [{ href: "/to-ht-work", label: "🦺 Việc của tôi (Hoàn thiện)", icon: ClipboardList }];
-      } else if (boPhan.includes("khuy nút")) {
+      } else if (boPhan.includes("khuy nút") && canView(role, "to-khuy-nut")) {
         return [{ href: "/ui-khuy-nut", label: "🔘 Việc của tôi (Khuy nút)", icon: CheckCircle2 }]; 
-      } else if (boPhan.includes("in") || boPhan.includes("thêu")) {
+      } else if ((boPhan.includes("in") || boPhan.includes("thêu")) && canView(role, "to-in-theu")) {
         return [{ href: "/ui-intd", label: "🎨 Việc của tôi (In/Thêu)", icon: Palette }];
       }
       return [];
@@ -290,7 +307,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
       }
     }
     return filtered;
-  }, [role, user]);
+  }, [role, user, permissionRevision]);
 
   return (
     <>
@@ -426,24 +443,36 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
             }
             
             // Render item đơn lẻ
-            const active = pathname?.startsWith(item.href || "");
+            const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const singleIdleClasses = item.idleBg
+              ? `${groupBorderColor} ${item.idleBg} ${item.idleText || "text-slate-800"}`
+              : "border-transparent hover:bg-white/5 text-slate-200 hover:text-white";
+              
             return (
-              <Link
-                key={item.href || item.label}
-                href={item.href || "#"}
-                onClick={onItemClick}
-                className={clsx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all border-l-2",
-                  active
-                    ? `${groupBorderColor} bg-white/10 text-white`
-                    : "border-transparent hover:bg-white/8 text-slate-200 hover:text-white",
-                  isCollapsed && "justify-center px-0"
-                )}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <Icon className={clsx("w-[18px] h-[18px] shrink-0", active ? groupIconColor : "text-slate-300")} />
-                {!isCollapsed && <span className="flex-1">{item.label}</span>}
-              </Link>
+              <div key={item.label} className="mb-1">
+                <Link
+                  href={item.href || "#"}
+                  onClick={onItemClick}
+                  className={clsx(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold transition-all duration-150",
+                    !item.noAccentBar && "border-l-2",
+                    active
+                      ? `${groupBorderColor} ${activeBg} ${activeText}`
+                      : singleIdleClasses,
+                    isCollapsed && "justify-center px-2"
+                  )}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  {item.iconChip ? (
+                    <span className={clsx("shrink-0 flex items-center justify-center rounded-lg transition-transform duration-150", item.iconChip)}>
+                      <Icon className="w-[15px] h-[15px]" />
+                    </span>
+                  ) : (
+                    <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", active ? groupIconColor : (item.idleIcon || "text-slate-400"))} />
+                  )}
+                  {!isCollapsed && <span className="flex-1 tracking-wide">{item.label}</span>}
+                </Link>
+              </div>
             );
           })
         )}
@@ -467,7 +496,8 @@ export function Sidebar() {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("mimin-sidebar-collapsed");
     if (saved === "true") setIsCollapsed(true);
-    if (saved === "false") setIsCollapsed(false);
+    else if (saved === "false") setIsCollapsed(false);
+    else if (window.innerWidth < 1280) setIsCollapsed(true);
   }, []);
 
   useEffect(() => {
@@ -482,8 +512,8 @@ export function Sidebar() {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!isCollapsed && target && !target.closest("aside")) {
-        // Chỉ auto-collapse trên desktop vì mobile menu có cách đóng riêng
-        if (window.innerWidth >= 768) {
+        // Tự động đóng sidebar khi click ra ngoài trên các màn hình vừa (iPad)
+        if (window.innerWidth >= 768 && window.innerWidth < 1280) {
           setIsCollapsed(true);
         }
       }

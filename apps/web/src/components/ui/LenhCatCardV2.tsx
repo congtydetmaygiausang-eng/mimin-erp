@@ -1,101 +1,168 @@
-import React from "react";
-import { Calendar, Package, Shirt, Hash, Users, MapPin, ArrowRight } from "lucide-react";
+"use client";
+
+import React, { useState } from "react";
+import { Calendar, Package, Shirt, Hash, Users, WalletCards } from "lucide-react";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { DateDisplay } from "./DateDisplay";
+import { useKho } from "@/lib/data/kho-store";
+import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 
 interface Props {
   lc: LenhCat;
   onColorClick?: (mau: MauVai) => void;
   renderStatus?: React.ReactNode;
+  bangChungSlot?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Props) {
+export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangChungSlot }: Props) {
+  const [zoomLogo, setZoomLogo] = useState<string | null>(null);
+  const { list: dsNhanSu } = useNhanSu();
+  const { giaoDich } = useKho();
   const mainImg = lc.dsMau?.[0]?.img || "";
+  const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+  const giaVon1SP = ketQuaGiaVon.giaVon1SP;
+
+  // Find Nguoi Phu Trach SX
+  const ptCode = lc.phuTrachSX || "";
+  const ptInfo = dsNhanSu.find(nv => nv.maNV === ptCode || nv.hoTen === ptCode);
+  const ptDisplayName = ptInfo?.hoTen || ptCode || "Chưa phân công";
+  const ptPhone = ptInfo?.sdt;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col md:flex-row">
       
       {/* LEFT COLUMN: Main Image */}
-      <div className="w-full md:w-64 lg:w-80 shrink-0 bg-slate-100 border-r border-slate-200 relative min-h-[300px]">
+      <div className="w-full md:w-64 lg:w-[320px] xl:w-[360px] shrink-0 bg-slate-100 border-b md:border-b-0 md:border-r border-slate-200 relative min-h-[250px] md:min-h-full overflow-hidden group">
         {mainImg ? (
-          <img src={mainImg} alt={lc.tenSP} className="w-full h-full object-cover absolute inset-0" />
+          <img src={mainImg} alt={lc.tenSP} className="w-full h-full object-cover absolute inset-0 transition-transform duration-700 group-hover:scale-105" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-            <span className="font-bold tracking-widest uppercase">NO IMAGE</span>
+            <span className="font-bold tracking-widest uppercase text-sm">NO IMAGE</span>
           </div>
         )}
       </div>
 
       {/* RIGHT COLUMN: Info & Colors */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header Section */}
-        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <span className="font-black text-teal-700 font-mono text-lg">{lc.id}</span>
+        <div className="px-6 py-6 border-b border-slate-100 flex flex-col gap-5 bg-white relative z-10">
+          
+          {/* Top row: Tags and Phụ trách SX */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center flex-wrap gap-2">
+              <span className="font-black text-teal-700 font-mono text-sm bg-teal-50 px-2.5 py-1 rounded-md border border-teal-100/80 shadow-sm tracking-wide">{lc.id}</span>
               {renderStatus}
             </div>
-            <h2 className="text-2xl font-black text-slate-800">{lc.tenSP}</h2>
-            <div className="flex items-center gap-3 mt-2 text-sm">
-              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold border border-slate-200">
-                Mã SP: {lc.maSP}
-              </span>
-              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold border border-slate-200">
-                {/* loaiSP là "AoTru" | "BoTru" | "PhuKien"... - so sánh với "bo"/"ao"
-                    luôn sai nên trước đây mọi lệnh cắt đều hiện "Quần". */}
-                Loại: {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP}
-              </span>
+            
+            <div className="flex items-center gap-2.5 py-1.5 px-3.5 bg-slate-50 border border-slate-200/60 rounded-full shadow-sm hover:shadow transition-shadow">
+              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200/50">
+                {ptInfo?.avatar ? <img src={ptInfo.avatar} className="w-full h-full object-cover" /> : <Users className="w-3.5 h-3.5" />}
+              </div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phụ trách:</span>
+              <span className="font-black text-slate-800 text-xs">{ptDisplayName}</span>
+              {ptPhone && (
+                <a href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="ml-1 w-5 h-5 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" alt="Zalo" className="w-full h-full" />
+                </a>
+              )}
             </div>
           </div>
-          
-          <div className="flex flex-row sm:flex-col gap-6 sm:gap-2 text-sm text-right">
-            <div className="flex flex-col items-end">
-              <span className="text-slate-400 flex items-center gap-1 text-xs uppercase font-bold"><Hash className="w-3 h-3" /> Tổng SL</span>
-              <span className="font-black text-lg text-slate-800">{lc.tongSL?.toLocaleString()}</span>
+
+          {/* Title and Stats Row */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 sm:gap-6">
+            <div className="flex-1 min-w-0 w-full">
+              <h2 className="text-[26px] md:text-[30px] font-black text-slate-900 leading-[1.1] mb-3 group-hover:text-sky-600 transition-colors drop-shadow-sm">{lc.tenSP}</h2>
+              <div className="flex items-center flex-wrap gap-3 text-xs font-bold">
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                  <span className="uppercase text-[9px] text-slate-400 tracking-widest">Mã SP:</span>
+                  <span className="text-slate-800">{lc.maSP || "---"}</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                  <span className="uppercase text-[9px] text-slate-400 tracking-widest">Loại:</span>
+                  <span className="text-slate-800">{LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP || "---"}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col items-end">
-              <span className="text-slate-400 flex items-center gap-1 text-xs uppercase font-bold"><Shirt className="w-3 h-3" /> Tỷ lệ</span>
-              <span className="font-black text-lg text-sky-600">{lc.tiLeSize || "-"}</span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-slate-400 flex items-center gap-1 text-xs uppercase font-bold"><Calendar className="w-3 h-3" /> Hạn giao</span>
-              <span className="font-black text-lg text-rose-600"><DateDisplay value={lc.hanHoanThanh} format="dd/MM" /></span>
+
+            {/* Stats Blocks */}
+            <div className="flex items-center gap-2 w-full lg:w-auto overflow-hidden pb-1 lg:pb-0">
+              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-sky-50/70 border border-sky-100 rounded-xl py-3 px-2 sm:px-5 min-w-0 sm:min-w-[110px] shadow-sm hover:shadow hover:bg-sky-50 transition-all">
+                <span className="text-sky-600/80 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Hash className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Tổng SL</span></span>
+                <span className="font-black text-2xl sm:text-3xl text-sky-900 leading-none truncate">{lc.tongSL?.toLocaleString() || "0"}</span>
+              </div>
+              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-slate-50/70 border border-slate-200/60 rounded-xl py-3 px-2 sm:px-5 min-w-0 sm:min-w-[90px] shadow-sm hover:shadow hover:bg-slate-50 transition-all">
+                <span className="text-slate-500 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Shirt className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Tỷ lệ</span></span>
+                <span className="font-black text-lg sm:text-xl text-slate-800 leading-none truncate">{lc.tiLeSize || "-"}</span>
+              </div>
+              <div className={`flex-1 lg:flex-none flex flex-col items-center justify-center rounded-xl border py-3 px-2 sm:px-5 min-w-0 sm:min-w-[120px] shadow-sm ${giaVon1SP > 0 ? "border-amber-200 bg-amber-50/80" : "border-rose-200 bg-rose-50/80"}`}>
+                <span className={`flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5 ${giaVon1SP > 0 ? "text-amber-700" : "text-rose-600"}`}><WalletCards className="w-3.5 h-3.5 shrink-0" /> Giá vốn/SP</span>
+                <span className={`font-black text-base sm:text-lg leading-none whitespace-nowrap ${giaVon1SP > 0 ? "text-amber-900" : "text-rose-700"}`}>{giaVon1SP > 0 ? `${giaVon1SP.toLocaleString("vi-VN")}đ` : "Thiếu dữ liệu"}</span>
+                {ketQuaGiaVon.nguon === "tinh-lai" && <span className="mt-1 text-[9px] font-semibold text-amber-700">Tính lại từ kho</span>}
+              </div>
+              <div className="flex-1 lg:flex-none flex flex-col items-center justify-center bg-rose-50/70 border border-rose-100 rounded-xl py-3 px-2 sm:px-5 min-w-0 sm:min-w-[110px] shadow-sm hover:shadow hover:bg-rose-50 transition-all">
+                <span className="text-rose-500 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5"><Calendar className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Hạn giao</span></span>
+                <span className="font-black text-lg sm:text-xl text-rose-700 leading-none truncate"><DateDisplay value={lc.hanHoanThanh} format="dd/MM" /></span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Stages & Logo (Hình in thêu & Công đoạn) */}
-        <div className="px-6 py-4 bg-white border-b border-slate-100 flex flex-col gap-3">
+        <div className="px-6 py-5 bg-white border-b border-slate-100 flex flex-col gap-4">
           {/* Workflow Stages */}
           {lc.phanCong && lc.phanCong.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Quy trình:</span>
-              {[...lc.phanCong].sort((a, b) => {
-                const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
-                const aRank = STAGE_ORDER.findIndex(k => a.id.toLowerCase().includes(k));
-                const bRank = STAGE_ORDER.findIndex(k => b.id.toLowerCase().includes(k));
-                return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
-              }).map((pc, i) => {
-                const tt = (pc.trangThaiCD as any) || "cho_giao";
-                const ttStyles: any = {
-                  cho_giao: "bg-slate-100 text-slate-500 border-slate-200",
-                  dang_lam: "bg-sky-100 text-sky-700 border-sky-300",
-                  cho_qc: "bg-amber-100 text-amber-700 border-amber-300",
-                  hoan_thanh: "bg-emerald-100 text-emerald-700 border-emerald-300",
-                  co_loi: "bg-rose-100 text-rose-700 border-rose-300"
-                };
-                const s = ttStyles[tt] || ttStyles.cho_giao;
-                return (
-                  <React.Fragment key={pc.id}>
-                    <div className={`px-2 py-0.5 rounded border text-[11px] font-bold ${s} whitespace-nowrap`}>
-                      {pc.tenCongDoan}
-                    </div>
-                    {i < lc.phanCong!.length - 1 && <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />}
-                  </React.Fragment>
-                );
-              })}
+            <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến trình đơn hàng</span>
+              </div>
+              <div className="flex items-start min-w-full relative px-2 sm:px-4">
+                <div className="flex items-start justify-between w-full relative z-10">
+                  {[...lc.phanCong].sort((a, b) => {
+                    const STAGE_ORDER = ["cat", "in", "theu", "in_theu", "may_ao", "may_quan", "may", "qc", "khuy_nut", "ui", "dong_goi", "nhap_kho"];
+                    const aRank = STAGE_ORDER.findIndex(k => (a.id || "").toLowerCase().includes(k));
+                    const bRank = STAGE_ORDER.findIndex(k => (b.id || "").toLowerCase().includes(k));
+                    return (aRank >= 0 ? aRank : 999) - (bRank >= 0 ? bRank : 999);
+                  }).map((pc, i, arr) => {
+                    const tt = (pc.trangThaiCD as any) || "cho_giao";
+                    const isCompleted = tt === "hoan_thanh" || tt === "cho_qc";
+                    const isWorking = tt === "dang_lam";
+                    const isError = tt === "co_loi";
+                    
+                    let dotColor = "bg-slate-200 border-white";
+                    let textColor = "text-slate-400";
+                    let lineColor = "bg-slate-100";
+                    
+                    if (isCompleted) { dotColor = "bg-emerald-500 border-emerald-100 text-white"; textColor = "text-emerald-700 font-bold"; lineColor = "bg-emerald-500"; }
+                    else if (isWorking) { dotColor = "bg-teal-500 border-teal-100 text-white shadow-[0_0_12px_rgba(20,184,166,0.4)]"; textColor = "text-teal-700 font-black"; lineColor = "bg-slate-200 bg-gradient-to-r from-teal-500 to-slate-200"; }
+                    else if (isError) { dotColor = "bg-rose-500 border-rose-100 text-white"; textColor = "text-rose-600 font-bold"; }
+
+                    return (
+                      <div key={pc.id} className="flex-1 flex flex-col items-center relative group min-w-0 sm:min-w-[70px]">
+                        {/* Connecting Line */}
+                        {i < arr.length - 1 && (
+                          <div className={`absolute top-[11px] left-[50%] w-full h-[4px] rounded-full z-0 ${lineColor} transition-colors duration-500`} />
+                        )}
+                        
+                        <div className="relative flex items-center justify-center mb-2.5 h-[26px]">
+                          {isWorking && <div className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-30" style={{ transform: 'scale(2.2)' }} />}
+                          <div className={`w-[22px] h-[22px] rounded-full border-[3px] box-content z-10 transition-all duration-300 flex items-center justify-center ${dotColor}`}>
+                            {isCompleted && <svg className="w-3.5 h-3.5 stroke-current stroke-[3]" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>}
+                          </div>
+                        </div>
+                        
+                        <div className={`text-center leading-tight text-[9px] sm:text-[10px] max-w-[60px] sm:max-w-none transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
+                          <span>{pc.tenCongDoan}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
@@ -109,8 +176,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
                   try {
                     const fileData = JSON.parse(lc.hinhMauInTheu!);
                     if (fileData.url) {
-                      const w = window.open();
-                      if (w) w.document.write(`<img src="${fileData.url}" style="max-width:100%; max-height:100vh; object-fit:contain;"/>`);
+                      setZoomLogo(fileData.url);
                     }
                   } catch (e) {}
                 }}
@@ -124,46 +190,82 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
           )}
         </div>
 
-        {/* Colors Section */}
-        <div className="p-6 bg-slate-50 flex-1">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Danh sách màu ({lc.dsMau?.length || 0})</div>
-          <div className="flex flex-wrap gap-4">
-            {lc.dsMau?.map((mau, idx) => (
-              <div key={idx} className="flex flex-col w-32 sm:w-40 group">
-                {/* Red box (Image) */}
-                <div className="w-full aspect-square rounded-t-xl overflow-hidden border-2 border-slate-200 group-hover:border-rose-400 transition-colors bg-white relative flex">
-                  <div className={`relative h-full ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200" : "w-full"}`}>
-                    {mau.img ? (
-                      <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
+        {/* Middle Section: Colors & Right Slot */}
+        <div className="p-6 bg-slate-50 flex-1 flex flex-col xl:flex-row gap-6">
+          {/* Colors Section */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+              <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Danh sách màu ({lc.dsMau?.length || 0})</span>
+            </div>
+            <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+              {lc.dsMau?.map((mau, idx) => {
+                const hasAoQuan = lc.loaiSP?.includes("Bo");
+                return (
+                <div key={idx} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={(e) => {
+                  // Prevent bubble up if clicking the button directly
+                  if ((e.target as HTMLElement).closest('button')) return;
+                  onColorClick?.(mau);
+                }}>
+                  {/* Red box (Image) */}
+                  <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative flex">
+                    {hasAoQuan ? (
+                      <>
+                        <div className="relative h-full w-[55%] skew-x-[-8deg] -ml-[5%] overflow-hidden border-r-[3px] border-white z-10 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
+                          <div className="w-[120%] h-full skew-x-[8deg] ml-[5%]">
+                            {mau.img ? (
+                              <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            ) : (
+                              <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300 font-bold text-[9px]">ÁO</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="relative h-full w-[55%] skew-x-[-8deg] overflow-hidden -mr-[5%] bg-slate-100">
+                          <div className="w-[120%] h-full skew-x-[8deg] -ml-[15%]">
+                            {(mau as any).imgQuan ? (
+                              <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            ) : (
+                              <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-[9px]">QUẦN</div>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
-                        <span className="text-[10px] font-bold text-center">NO IMG{lc.loaiSP?.includes("Bo") ? <br /> : ""} {lc.loaiSP?.includes("Bo") ? "ÁO" : ""}</span>
+                      <div className="relative h-full w-full">
+                        {mau.img ? (
+                          <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
+                            <span className="text-[10px] font-bold tracking-wider">NO IMG</span>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                  {lc.loaiSP?.includes("Bo") && (
-                    <div className="relative h-full w-1/2">
-                      {(mau as any).imgQuan ? (
-                        <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
-                          <span className="text-[10px] font-bold text-center">NO IMG<br/>QUẦN</span>
-                        </div>
-                      )}
+                    
+                    {/* Floating badge for Color Name */}
+                    <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-xs border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                      {mau.ten}
                     </div>
-                  )}
+                  </div>
+                  
+                  {/* Green box (Button) */}
+                  <div className="mt-3 w-full text-center">
+                    <button 
+                      onClick={() => onColorClick?.(mau)}
+                      className="inline-block text-[10px] text-sky-600 font-bold bg-white px-3 py-1.5 rounded-lg group-hover:bg-sky-500 group-hover:text-white transition-colors w-full border border-sky-200 group-hover:border-sky-500 shadow-sm"
+                    >
+                      Nhập số lượng
+                    </button>
+                  </div>
                 </div>
-                
-                {/* Green box (Button) */}
-                <button 
-                  onClick={() => onColorClick?.(mau)}
-                  className="w-full bg-white border-x-2 border-b-2 border-slate-200 group-hover:border-emerald-500 group-hover:bg-emerald-50 rounded-b-xl px-2 py-2 text-center transition-colors cursor-pointer"
-                >
-                  <div className="font-black text-slate-800 text-sm truncate">{mau.ten}</div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">Nhập số lượng</div>
-                </button>
+              )})}
+            </div>
+            
+            {bangChungSlot && (
+              <div className="mt-8 border-t border-slate-200/60 pt-6">
+                {bangChungSlot}
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -175,6 +277,9 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children }: Prop
         )}
         
       </div>
+      {zoomLogo && (
+        <ImageLightbox src={zoomLogo} onClose={() => setZoomLogo(null)} />
+      )}
     </div>
   );
 }

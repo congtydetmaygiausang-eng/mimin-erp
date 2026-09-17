@@ -2,7 +2,7 @@
 // Giao diện mới: card biến thể là ảnh phủ full, thông tin overlay ở đáy -
 // giống lưới sản phẩm e-commerce. Tông màu trắng/slate/emerald khớp phần còn lại của app.
 
-import type { RefObject } from "react";
+import React, { type RefObject, useState } from "react";
 import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Package, Tag, Hash, DollarSign, MapPin, RefreshCw } from "lucide-react";
 import { DS_KENH_BAN, type SanPhamTP } from "../data";
 
@@ -29,10 +29,16 @@ interface ProductGridProps {
   onDangBan: (group: ProductGroup) => void;
   onOpenVariant: (sp: SanPhamTP) => void;
   onRebuildFromLC: (group: ProductGroup) => void;
+  onSuaTong?: (group: ProductGroup) => void;
+  onXoaTong?: (group: ProductGroup) => void;
   dsLenhCat: any[];
 }
 
-export function ProductGrid({ groups, productImages, setUploadingSP, setUploadType, fileInputRef, setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, onOpenVariant, onRebuildFromLC, dsLenhCat }: ProductGridProps) {
+export function ProductGrid({ 
+  groups, productImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, 
+  setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, 
+  onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, dsLenhCat 
+}: ProductGridProps) {
   return (
     <div className="flex flex-col gap-6">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={() => {}} />
@@ -44,7 +50,7 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
           : priceRange.length === 1 ? priceRange[0].toLocaleString()
           : `${Math.min(...priceRange).toLocaleString()} - ${Math.max(...priceRange).toLocaleString()}`;
 
-        const lsx = group.items[0]?.lsx || group.maSP;
+        const lsx = group.items[0]?.maLenhCat || group.maSP;
         const lc = dsLenhCat.find((l) => l.id === lsx);
         const soMauThat = lc?.dsMau?.length || 0;
         const maSPSai = !!lc?.maSP && lc.maSP !== group.maSP;
@@ -58,19 +64,19 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
               <div>
                 <span className="font-black text-teal-700 font-mono text-base">{group.maSP || "CHƯA CÓ MÃ"}</span>
                 <h2 className="text-xl font-black text-slate-800">{group.tenSP || "Sản phẩm mới"}</h2>
+                {/* Interactive Price Chips */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <PriceChip label="Bán lẻ" price={group.items[0]?.giaBanLe} />
+                  <PriceChip label="Bán sỉ" price={group.items[0]?.giaBanSi} />
+                  <PriceChip label="Bán lô" price={group.items[0]?.giaBanLo} />
+                  <PriceChip label="TikTok" price={group.items[0]?.giaTikTok} />
+                  <PriceChip label="Shopee" price={group.items[0]?.giaShopee} />
+                </div>
               </div>
               <div className="flex items-center gap-5 text-sm text-right shrink-0">
                 <div className="flex flex-col items-end">
                   <span className="text-slate-400 flex items-center gap-1 text-[11px] uppercase font-bold"><Hash className="w-3 h-3" /> Tổng SL</span>
                   <span className="font-black text-base text-slate-800">{totalQty.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-slate-400 flex items-center gap-1 text-[11px] uppercase font-bold"><DollarSign className="w-3 h-3" /> Giá bán</span>
-                  <span className="font-black text-base text-emerald-600">{priceDisplay ? `${priceDisplay}đ` : "Chưa có"}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-slate-400 text-[11px] uppercase font-bold">Giá trị</span>
-                  <span className="font-black text-base text-sky-600">{(totalValue / 1000).toFixed(0)}K</span>
                 </div>
               </div>
             </div>
@@ -116,12 +122,14 @@ export function ProductGrid({ groups, productImages, setUploadingSP, setUploadTy
               <button onClick={() => onDangBan(group)} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Đăng bán vào Danh mục sản phẩm">
                 <Tag className="w-4 h-4" /> Đăng bán
               </button>
-              <button onClick={() => alert('Chức năng sửa tổng')} className="px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Sửa tổng">
+              <button onClick={() => { if (onSuaTong) onSuaTong(group); }} className="px-4 py-2 bg-amber-500 hover:bg-amber-600 rounded-xl text-white transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Sửa tổng">
                 <Edit className="w-4 h-4" /> Sửa tổng
               </button>
-              <button onClick={() => { if (confirm('Xóa toàn bộ sản phẩm này?')) update(dsSanPham.filter(s => s.maSP !== group.maSP)); }} className="p-2.5 bg-rose-50 hover:bg-rose-100 rounded-xl text-rose-600 transition-all border border-rose-200 ml-auto" title="Xóa toàn bộ sản phẩm">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {onXoaTong && (
+                <button onClick={() => onXoaTong(group)} className="p-2.5 bg-rose-50 hover:bg-rose-100 rounded-xl text-rose-600 transition-all border border-rose-200 ml-auto" title="Xóa toàn bộ nhóm sản phẩm">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         );
@@ -163,10 +171,25 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
           </div>
         )}
 
-        <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${trangThai.bg} ${trangThai.text}`}>
-          {trangThai.label}
-        </span>
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* OVERLAY HẾT HÀNG */}
+        {sp.soLuong <= 0 && (
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+             <div className="bg-rose-500 text-white font-black text-xs md:text-sm tracking-widest px-4 py-1 border-y-2 border-rose-600 -rotate-12 uppercase drop-shadow-lg shadow-xl">
+               Hết Hàng
+             </div>
+          </div>
+        )}
+
+        {sp.soLuong <= 0 ? (
+          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm bg-rose-500 text-white z-20">
+            Hết hàng
+          </span>
+        ) : (
+          <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${trangThai.bg} ${trangThai.text} z-20`}>
+            {trangThai.label}
+          </span>
+        )}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
           <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Sửa">
             <Edit className="w-3.5 h-3.5" />
           </button>
@@ -202,11 +225,6 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
           <span className="text-slate-600 text-xs font-bold flex items-center gap-1">
             <Box className="w-3.5 h-3.5" /> {sp.soLuong.toLocaleString()} sp
           </span>
-          {sp.giaBanLe ? (
-            <span className="text-emerald-600 text-sm font-black">{sp.giaBanLe.toLocaleString()}đ</span>
-          ) : (
-            <span className="text-slate-300 text-xs font-bold">Chưa có giá</span>
-          )}
         </div>
         {sp.viTri && (
           <div className="text-slate-400 text-[11px] font-semibold flex items-center gap-1 mt-1.5">
@@ -215,5 +233,24 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
         )}
       </div>
     </div>
+  );
+}
+
+function PriceChip({ label, price }: { label: string; price?: number }) {
+  const [show, setShow] = useState(false);
+  
+  if (price == null || price === 0) return null; // Only show channels that have a price configured
+  
+  return (
+    <button 
+      onClick={() => setShow(!show)} 
+      className={`text-[10px] font-bold px-2 py-1 rounded border transition-all duration-200 shadow-sm ${
+        show 
+          ? 'bg-amber-100 border-amber-300 text-amber-800' 
+          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
+      }`}
+    >
+      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
+    </button>
   );
 }

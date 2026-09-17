@@ -6,9 +6,10 @@
 // Chế độ Sửa giữ nguyên form 1 biến thể như cũ (sửa 1 dòng tồn kho có sẵn).
 
 import { useState, useRef, useEffect } from "react";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { Camera, Save, Plus, Trash2, Package, Calculator, X } from "lucide-react";
 import { toast } from "sonner";
-import { DS_TI_LE_SIZE, DS_KHU_KE_HANG, DS_KENH_BAN, ALL_PHIEU, type KenhBan, type SanPhamTP } from "../data";
+import { DS_KHU_KE_HANG, DS_KENH_BAN, layMaLoTonKho, hienThiDanhSachSize, type KenhBan, type SanPhamTP } from "../data";
 import {
   SIZE_RATIO_PRESETS,
   type SizeRatioPreset,
@@ -17,6 +18,9 @@ import {
   saveSharedSizeRatioPreset,
 } from "@/lib/size-ratio-presets";
 import { uploadProductFile } from "@/lib/product-upload";
+import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
+import { useBangGia, type KenhBan as KenhBanBangGia } from "@/lib/data/bang-gia-store";
 
 // Chỉ còn Màu + số lượng theo size là khác nhau giữa các biến thể - mọi thứ
 // khác (mã/tên SP, phân loại, tỉ lệ size, giá vốn/bán/sỉ/lẻ/lô) đều dùng
@@ -40,7 +44,7 @@ function bienTheMoi(sizes: string[]): BienTheDraft {
     img: "",
     sizes: sizes.map((s) => ({ size: s, sl: 0 })),
     slDuKien: 0,
-    viTri: "Kệ A1-A2",
+    viTri: "",
     trangThai: "con",
     ghiChu: "",
     kenhBan: ["ban-le"],
@@ -48,9 +52,32 @@ function bienTheMoi(sizes: string[]): BienTheDraft {
 }
 
 function phanBoTheoTiLe(ratios: number[], sizes: string[], slDuKien: number): { size: string; sl: number }[] {
+  if (sizes.length === 0) return [];
   const tongTiLe = ratios.reduce((a, b) => a + b, 0) || 1;
-  const base = Math.floor(slDuKien / tongTiLe);
-  return sizes.map((s, i) => ({ size: s, sl: base * (ratios[i] || 0) }));
+  const raw = sizes.map((_, i) => (slDuKien * (ratios[i] || 0)) / tongTiLe);
+  const quantities = raw.map(Math.floor);
+  const remainder = slDuKien - quantities.reduce((sum, value) => sum + value, 0);
+  const priority = raw
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction || a.index - b.index);
+  for (let i = 0; i < remainder; i += 1) quantities[priority[i % priority.length].index] += 1;
+  return sizes.map((size, index) => ({ size, sl: quantities[index] || 0 }));
+}
+
+function taoMaLoTonKho(): string {
+  const ngay = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `LTK-${ngay}-${suffix}`;
+}
+
+function detectLoaiSP(value: string): LoaiSP {
+  const normalized = value.toLocaleLowerCase("vi");
+  if (normalized.includes("phụ kiện") || normalized.includes("quần")) return "PhuKien";
+  if (normalized.includes("bộ") && (normalized.includes("cổ tròn") || normalized.includes("tròn"))) return "BoCoTron";
+  if (normalized.includes("bộ")) return "BoTru";
+  if (normalized.includes("polo")) return "AoPolo";
+  if (normalized.includes("trụ")) return "AoTru";
+  return "AoCoTron";
 }
 
 export function ProductFormModal({ sp, initialImage, onClose, onSave }: { sp?: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
@@ -62,20 +89,17 @@ export function ProductFormModal({ sp, initialImage, onClose, onSave }: { sp?: S
 
 // =================== THÊM MỚI - NHIỀU BIẾN THỂ ===================
 function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave: (data: any[]) => void }) {
+  const { dsSanPham: dsDanhMuc, loading: loadingDanhMuc } = useDanhMucSP();
+  const { layGia, loading: loadingBangGia } = useBangGia();
   // === Thông tin CHUNG cho cả lô (nhập 1 lần) ===
   const [maSP, setMaSP] = useState("");
   const [tenSP, setTenSP] = useState("");
-  const [phanLoai, setPhanLoai] = useState("");
-  const [lsx, setLsx] = useState("LSX-2026-007");
+  const [phanLoai, setPhanLoai] = useState<string>("BoTru");
+  const [maLoKho] = useState(taoMaLoTonKho);
   const [ngayNhap, setNgayNhap] = useState(new Date().toISOString().slice(0, 10));
-  const [presetId, setPresetId] = useState(SIZE_RATIO_PRESETS[0].id);
+  const [presetId, setPresetId] = useState("");
   const [giaVon, setGiaVon] = useState(0);
   const [donGia, setDonGia] = useState(0);
-  const [giaBanSi, setGiaBanSi] = useState(0);
-  const [giaBanLe, setGiaBanLe] = useState(0);
-  const [giaBanLo, setGiaBanLo] = useState(0);
-  const [giaTikTok, setGiaTikTok] = useState(0);
-  const [giaShopee, setGiaShopee] = useState(0);
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
   useEffect(() => {
@@ -86,8 +110,34 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
     return () => { active = false; };
   }, []);
 
-  const allPresets = [...SIZE_RATIO_PRESETS, ...customPresets];
-  const preset = allPresets.find((p) => p.id === presetId) || SIZE_RATIO_PRESETS[0];
+  const selectedProduct = dsDanhMuc.find((product) => product.id === maSP);
+  const productSizePreset: SizeRatioPreset | undefined = selectedProduct?.bangSize?.sizes?.length
+    ? {
+        id: `product-${selectedProduct.id}`,
+        label: `Bảng size danh mục · ${selectedProduct.id}`,
+        value: selectedProduct.bangSize.ratios.join(":"),
+        sizes: selectedProduct.bangSize.sizes,
+        ratios: selectedProduct.bangSize.ratios,
+        riSo: selectedProduct.bangSize.ratios.reduce((sum, value) => sum + value, 0),
+      }
+    : undefined;
+  const allPresets = [...(productSizePreset ? [productSizePreset] : []), ...SIZE_RATIO_PRESETS, ...customPresets];
+  const preset = allPresets.find((p) => p.id === presetId);
+
+  const chonSanPham = (productId: string) => {
+    const product = dsDanhMuc.find((item) => item.id === productId);
+    setMaSP(productId);
+    if (!product) return;
+    setTenSP(product.tenSP);
+    setPhanLoai(product.loaiSP);
+    if (product.bangSize?.sizes?.length && product.bangSize.ratios.some((value) => value > 0)) {
+      setPresetId(`product-${product.id}`);
+      setBienThe([bienTheMoi(product.bangSize.sizes)]);
+    } else {
+      setPresetId("");
+      setBienThe([bienTheMoi([])]);
+    }
+  };
 
   const handleLuuBangSizeMoi = async (p: SizeRatioPreset) => {
     try {
@@ -102,7 +152,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   };
 
   // === Danh sách biến thể (chỉ khác Màu + số lượng theo size) ===
-  const [bienThe, setBienThe] = useState<BienTheDraft[]>([bienTheMoi(preset.sizes)]);
+  const [bienThe, setBienThe] = useState<BienTheDraft[]>([bienTheMoi([])]);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -111,8 +161,9 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   // Nhận thêm `fromList` (dùng khi vừa lưu 1 bảng size mới, tránh phụ thuộc
   // vào customPresets trong closure vì setCustomPresets chưa kịp cập nhật).
   const doiPresetChung = (id: string, fromList: SizeRatioPreset[] = allPresets) => {
-    const p = fromList.find((x) => x.id === id) || SIZE_RATIO_PRESETS[0];
+    const p = fromList.find((x) => x.id === id);
     setPresetId(id);
+    if (!p) return;
     setBienThe((prev) => prev.map((bt) => ({ ...bt, sizes: p.sizes.map((s) => ({ size: s, sl: 0 })), slDuKien: 0 })));
   };
 
@@ -121,16 +172,8 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   };
 
   const doiSlDuKien = (idx: number, sl: number) => {
+    if (!preset) return;
     capNhatBienThe(idx, { slDuKien: sl, sizes: phanBoTheoTiLe(preset.ratios, preset.sizes, sl) });
-  };
-
-  const doiSizeSL = (idx: number, sizeIdx: number, sl: number) => {
-    setBienThe((prev) => prev.map((bt, i) => {
-      if (i !== idx) return bt;
-      const sizes = [...bt.sizes];
-      sizes[sizeIdx] = { ...sizes[sizeIdx], sl };
-      return { ...bt, sizes };
-    }));
   };
 
   const handleUploadAnh = async (idx: number, file: File) => {
@@ -149,18 +192,38 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const tongSLTatCa = bienThe.reduce((s, bt) => s + tongSLBienThe(bt), 0);
   const tongGiaTriVon = tongSLTatCa * (giaVon || 0);
 
+  const laySkuTheoMau = (mau: string) => selectedProduct?.dsMau.find((item) => item.ten === mau)?.maSKU || undefined;
+  const layGiaBienThe = (bt: BienTheDraft, kenh: KenhBan) => layGia(kenh as KenhBanBangGia, maSP, laySkuTheoMau(bt.mau), Math.max(1, tongSLBienThe(bt)));
+
   const handleSubmit = () => {
-    if (!maSP.trim() || !tenSP.trim()) {
-      toast.error("Vui lòng nhập Mã SP và Tên SP");
+    if (!selectedProduct) {
+      toast.error("Vui lòng chọn sản phẩm từ Danh mục sản phẩm");
       return;
     }
-    const hopLe = bienThe.filter((bt) => bt.mau.trim() && tongSLBienThe(bt) > 0);
+    if (!preset || preset.ratios.reduce((sum, value) => sum + value, 0) <= 0) {
+      toast.error("Vui lòng chọn đúng bảng tỷ lệ size trước khi nhập kho");
+      return;
+    }
+    const hopLe = bienThe.filter((bt) => bt.mau.trim());
     if (hopLe.length === 0) {
-      toast.error("Cần ít nhất 1 biến thể có màu và số lượng > 0");
+      toast.error("Cần ít nhất 1 biến thể có tên màu");
+      return;
+    }
+    if (new Set(hopLe.map((bt) => bt.mau)).size !== hopLe.length) {
+      toast.error("Không được chọn trùng màu / SKU trong cùng một lần nhập kho");
+      return;
+    }
+    if (hopLe.some((bt) => tongSLBienThe(bt) <= 0)) {
+      toast.error("Mỗi màu cần có số lượng nhập kho lớn hơn 0");
       return;
     }
     if (hopLe.some((bt) => bt.kenhBan.length === 0)) {
       toast.error("Mỗi màu cần chọn ít nhất 1 kênh bán");
+      return;
+    }
+    const missingPrice = hopLe.flatMap((bt) => bt.kenhBan.filter((kenh) => layGiaBienThe(bt, kenh) == null).map((kenh) => `${bt.mau} · ${DS_KENH_BAN.find((item) => item.value === kenh)?.label || kenh}`));
+    if (missingPrice.length > 0) {
+      toast.error(`Chưa có bảng giá đang áp dụng cho: ${missingPrice.join(", ")}`);
       return;
     }
     setSaving(true);
@@ -172,235 +235,312 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       size: bt.sizes.filter((s) => s.sl > 0).map((s) => s.size).join(", "),
       chiTietSize: bt.sizes,
       tiLeSize: preset.value,
-      lsx,
+      lsx: maLoKho,
       ngayNhap,
       soLuong: tongSLBienThe(bt),
-      donGia,
+      donGia: 0,
       giaVon,
-      giaBanSi,
-      giaBanLe,
-      giaBanLo,
-      giaTikTok,
-      giaShopee,
+      giaBanSi: bt.kenhBan.includes("ban-si") ? layGiaBienThe(bt, "ban-si") || 0 : 0,
+      giaBanLe: bt.kenhBan.includes("ban-le") ? layGiaBienThe(bt, "ban-le") || 0 : 0,
+      giaBanLo: bt.kenhBan.includes("ban-lo") ? layGiaBienThe(bt, "ban-lo") || 0 : 0,
+      giaTikTok: bt.kenhBan.includes("tiktok") ? layGiaBienThe(bt, "tiktok") || 0 : 0,
+      giaShopee: bt.kenhBan.includes("shopee") ? layGiaBienThe(bt, "shopee") || 0 : 0,
       kenhBan: bt.kenhBan,
-      viTri: bt.viTri,
-      trangThai: bt.trangThai,
-      ghiChu: bt.ghiChu,
+      viTri: bt.viTri.trim(),
+      ghiChu: bt.ghiChu.trim(),
       __tempImage: bt.img,
     }));
     onSave(rows);
-    setSaving(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 flex items-center justify-between sticky top-0 z-10">
-          <h2 className="font-bold text-lg flex items-center gap-2"><Package className="w-5 h-5" /> Nhập lô hàng tồn kho (nhiều biến thể)</h2>
-          <button onClick={onClose} className="px-2 py-1 hover:bg-white/20 rounded">✕</button>
-        </div>
-
-        <div className="p-4 space-y-4">
-          {/* === Thông tin CHUNG: mã/tên SP, phân loại, tỉ lệ size, giá === */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Thông tin chung (áp dụng cho mọi biến thể trong lô)</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1 block">Mã SP mẹ *</label>
-                <input value={maSP} onChange={(e) => setMaSP(e.target.value.toUpperCase())} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono" placeholder="VD: M024" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP mẹ *</label>
-                <input value={tenSP} onChange={(e) => setTenSP(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="VD: Bộ Trụ Phối Lé" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1 block">Phân loại</label>
-                <input value={phanLoai} onChange={(e) => setPhanLoai(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="VD: Bộ Trụ" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1 block">LSX / Lô nhập</label>
-                <input value={lsx} onChange={(e) => setLsx(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono" />
-              </div>
+    <>
+      <ResponsiveModal
+        open={true}
+        maxWidth="3xl"
+        onClose={onClose}
+        title={
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#2B4C3E] flex items-center justify-center shadow-inner">
+              <Package className="w-5 h-5 text-emerald-300" />
             </div>
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-700 block">Tỉ lệ Size *</label>
-                <button
-                  type="button"
-                  onClick={() => setOpenSizeBuilder(true)}
-                  className="flex items-center gap-1 text-[11px] font-bold text-amber-600 hover:text-amber-700 hover:underline"
-                >
-                  <Calculator className="w-3.5 h-3.5" /> + Bảng size mới
-                </button>
-              </div>
-              <select value={presetId} onChange={(e) => doiPresetChung(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none">
-                {SIZE_RATIO_PRESETS.length > 0 && (
-                  <optgroup label="Bảng chuẩn">
-                    {SIZE_RATIO_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </optgroup>
-                )}
-                {customPresets.length > 0 && (
-                  <optgroup label="Bảng tự tạo">
-                    {customPresets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </optgroup>
-                )}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá vốn</label>
-                <input type="number" min={0} value={giaVon || ""} onChange={(e) => setGiaVon(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá bán</label>
-                <input type="number" min={0} value={donGia || ""} onChange={(e) => setDonGia(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá bán sỉ</label>
-                <input type="number" min={0} value={giaBanSi || ""} onChange={(e) => setGiaBanSi(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá bán lẻ</label>
-                <input type="number" min={0} value={giaBanLe || ""} onChange={(e) => setGiaBanLe(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá bán lô</label>
-                <input type="number" min={0} value={giaBanLo || ""} onChange={(e) => setGiaBanLo(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá TikTok</label>
-                <input type="number" min={0} value={giaTikTok || ""} onChange={(e) => setGiaTikTok(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
-              </div>
-              <div>
-                <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Giá Shopee</label>
-                <input type="number" min={0} value={giaShopee || ""} onChange={(e) => setGiaShopee(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-2 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="0" />
+              <div className="text-lg font-bold text-slate-800 tracking-tight">Nhập lô hàng tồn kho</div>
+              <div className="text-xs font-medium text-slate-500">
+                Thêm nhiều biến thể cùng lúc
               </div>
             </div>
           </div>
-
-          {/* === Danh sách biến thể: chỉ Màu + SL theo size + vị trí/trạng thái === */}
-          <div className="space-y-3">
-            {bienThe.map((bt, idx) => {
-              const tong = tongSLBienThe(bt);
-              return (
-                <div key={idx} className="border-2 border-slate-200 rounded-xl p-3 space-y-3 relative">
-                  {bienThe.length > 1 && (
-                    <button onClick={() => setBienThe((prev) => prev.filter((_, i) => i !== idx))} className="absolute top-2 right-2 p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded" title="Xoá biến thể này">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                  <div className="flex gap-3 items-start">
-                    <div className="w-16 h-16 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-amber-400 transition-colors" onClick={() => fileInputs.current[idx]?.click()}>
-                      <input ref={(el) => { fileInputs.current[idx] = el; }} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadAnh(idx, f); }} />
-                      {uploadingIdx === idx ? (
-                        <div className="text-[9px] text-amber-600 font-bold text-center px-1">Đang tải...</div>
-                      ) : bt.img ? (
-                        <img src={bt.img} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
-                      ) : (
-                        <Camera className="w-5 h-5 text-slate-300 group-hover:text-amber-500 transition-colors" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Tên màu biến thể *</label>
-                      <input value={bt.mau} onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} className="w-full px-2.5 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" placeholder="VD: Trắng" />
-                    </div>
-                  </div>
-
-                  {/* SL dự kiến -> tự phân bổ theo tỉ lệ chung, vẫn sửa tay được từng size */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] font-semibold text-slate-500 shrink-0">SL dự kiến (tự chia theo tỉ lệ)</label>
-                    <input type="number" min={0} value={bt.slDuKien || ""} onChange={(e) => doiSlDuKien(idx, Math.max(0, parseInt(e.target.value) || 0))} className="w-24 px-2 py-1 border border-slate-200 rounded text-sm focus:border-amber-500 outline-none" placeholder="0" />
-                  </div>
-                  <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                    {bt.sizes.map((s, si) => (
-                      <div key={s.size} className="flex flex-col items-center shrink-0 min-w-[48px]">
-                        <span className="w-full px-1 py-1 text-[11px] font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">{s.size}</span>
-                        <input
-                          type="number" min={0} value={s.sl}
-                          onChange={(e) => doiSizeSL(idx, si, Math.max(0, parseInt(e.target.value) || 0))}
-                          className="w-full px-1 py-1 text-sm font-extrabold text-center bg-emerald-50 text-emerald-700 border border-slate-200 rounded-b outline-none focus:border-emerald-500"
-                        />
-                      </div>
-                    ))}
-                    <div className="flex flex-col items-center shrink-0 min-w-[48px] ml-1">
-                      <span className="w-full px-1 py-1 text-[11px] font-bold rounded-t bg-slate-800 text-white text-center">Tổng</span>
-                      <span className="w-full px-1 py-1 text-sm font-extrabold text-center bg-white border-2 border-slate-800 rounded-b">{tong}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Vị trí (Khu kệ)</label>
-                      <input list="ds-khu-ke-hang" value={bt.viTri} onChange={(e) => capNhatBienThe(idx, { viTri: e.target.value })} className="w-full px-2.5 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Trạng thái</label>
-                      <select value={bt.trangThai} onChange={(e) => capNhatBienThe(idx, { trangThai: e.target.value as any })} className="w-full px-2.5 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none">
-                        <option value="con">Còn hàng</option>
-                        <option value="dat-hang">Đã đặt hàng</option>
-                        <option value="xuat-kho">Đã xuất kho</option>
-                        <option value="khong-dat">Không đạt</option>
-                      </select>
-                    </div>
+        }
+      >
+        <div className="flex flex-col h-[85vh]">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50 space-y-6">
+            
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">1</span>
+                Thông Tin Chung
+              </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Sản phẩm trong danh mục *</label>
+                    <select value={maSP} onChange={(e) => chonSanPham(e.target.value)} disabled={loadingDanhMuc} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:opacity-60">
+                      <option value="">{loadingDanhMuc ? "Đang tải danh mục..." : "-- Chọn sản phẩm --"}</option>
+                      {[...dsDanhMuc].sort((a, b) => a.id.localeCompare(b.id)).map((product) => <option key={product.id} value={product.id}>{product.id} — {product.tenSP}</option>)}
+                    </select>
+                    {!loadingDanhMuc && dsDanhMuc.length === 0 && <p className="mt-1.5 text-xs font-semibold text-rose-600">Danh mục sản phẩm đang trống. Hãy tạo sản phẩm trước khi nhập kho.</p>}
+                    {selectedProduct && selectedProduct.dsMau.length === 0 && <p className="mt-1.5 text-xs font-semibold text-rose-600">Sản phẩm chưa có màu / SKU trong danh mục.</p>}
                   </div>
                   <div>
-                    <div className="text-[10px] font-semibold text-slate-500 mb-1">Kênh được phép bán *</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {DS_KENH_BAN.map((kenh) => {
-                        const selected = bt.kenhBan.includes(kenh.value);
-                        return (
-                          <button
-                            key={kenh.value}
-                            type="button"
-                            onClick={() => capNhatBienThe(idx, {
-                              kenhBan: selected
-                                ? bt.kenhBan.filter((value) => value !== kenh.value)
-                                : [...bt.kenhBan, kenh.value],
-                            })}
-                            className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-500"}`}
-                          >
-                            {selected ? "✓ " : ""}{kenh.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Mã sản phẩm</label>
+                    <input value={maSP} readOnly className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono bg-slate-50" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Tên sản phẩm</label>
+                    <input value={tenSP} readOnly className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none bg-slate-50" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Phân loại</label>
+                    <select 
+                      value={phanLoai} 
+                      onChange={(e) => setPhanLoai(e.target.value)} 
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium"
+                    >
+                      {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Mã lô tồn kho</label>
+                    <input value={maLoKho} readOnly className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono bg-slate-50" />
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setBienThe((prev) => [...prev, bienTheMoi(preset.sizes)])}
-            className="w-full py-2.5 border-2 border-dashed border-amber-300 rounded-xl text-amber-600 font-bold text-sm hover:bg-amber-50 flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Thêm biến thể (màu khác)
-          </button>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-fuchsia-500"></div>
+              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-xs">2</span>
+                  Đặc Tính & Tỉ Lệ Size
+                </div>
+              </h3>
+              
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Chọn bảng tỉ lệ áp dụng *</label>
+                <select value={presetId} onChange={(e) => doiPresetChung(e.target.value)} disabled={!selectedProduct || !!productSizePreset} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
+                  <option value="">-- Chọn bảng tỷ lệ size --</option>
+                  {productSizePreset && <option value={productSizePreset.id}>{productSizePreset.label} (đúng theo danh mục)</option>}
+                  {SIZE_RATIO_PRESETS.length > 0 && (
+                    <optgroup label="Bảng chuẩn">
+                      {SIZE_RATIO_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                    </optgroup>
+                  )}
+                  {customPresets.length > 0 && (
+                    <optgroup label="Bảng tự tạo">
+                      {customPresets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+              {productSizePreset && <p className="mt-2 text-xs font-semibold text-emerald-700">Đang dùng đúng bảng size đã thiết lập trong Danh mục sản phẩm; không thể thay đổi tại phiếu nhập.</p>}
+              <div className="mt-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center gap-2 text-xs text-slate-600">
+                <span className="font-bold text-slate-800 shrink-0">Tỉ lệ:</span> 
+                <span className="tracking-widest">{preset ? `${preset.sizes.join(":")} = ${preset.ratios.join(":")}` : "Chưa chọn bảng size"}</span>
+              </div>
+            </div>
 
-          <datalist id="ds-khu-ke-hang">
-            {DS_KHU_KE_HANG.map((s) => <option key={s} value={s} />)}
-          </datalist>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xs">3</span>
+                Giá Vốn & Bảng Giá
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Giá vốn</label>
+                  <div className="relative">
+                    <input type="number" min={0} value={giaVon || ""} onChange={(e) => setGiaVon(Math.max(0, parseInt(e.target.value) || 0))} className="w-full pl-3 pr-8 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-bold focus:border-[#2B4C3E] outline-none bg-white text-slate-800" placeholder="0" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">đ</span>
+                  </div>
+                </div>
+                
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <p className="font-bold">Giá bán lấy tự động từ tab Bảng giá bán</p>
+                  <p className="mt-1">Chọn kênh bán tại từng biến thể. Hệ thống sẽ tra đúng sản phẩm, SKU, số lượng và ngày hiệu lực khi lưu.</p>
+                  {loadingBangGia && <p className="mt-2 font-semibold">Đang tải bảng giá...</p>}
+                </div>
+              </div>
+            </div>
 
-          <div className="bg-amber-50 p-3 rounded-lg text-xs space-y-0.5">
-            <div className="font-semibold text-amber-800">Tóm tắt lô nhập:</div>
-            <div><b>{maSP || "—"}</b> - {tenSP || "—"} · {bienThe.length} biến thể · Tỉ lệ {preset.label}</div>
-            <div>Tổng SL: <b>{tongSLTatCa.toLocaleString()}</b> sản phẩm · Tổng giá trị vốn: <b className="text-emerald-600">{tongGiaTriVon.toLocaleString()}đ</b></div>
-          </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">4</span>
+                  Danh Sách Biến Thể Màu ({bienThe.length})
+                </h3>
+                <span className="text-xs font-semibold text-[#2B4C3E] bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
+                  Tổng: {tongSLTatCa.toLocaleString()} SP
+                </span>
+              </div>
+              
+              <div className="space-y-4">
+                {bienThe.map((bt, idx) => {
+                  const tong = tongSLBienThe(bt);
+                  return (
+                    <div key={idx} className="border-2 border-slate-200 bg-slate-50/50 rounded-xl p-4 relative group transition-colors hover:border-[#2B4C3E]">
+                      {bienThe.length > 1 && (
+                        <button onClick={() => setBienThe((prev) => prev.filter((_, i) => i !== idx))} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="Xoá biến thể này">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      <div className="flex flex-col sm:flex-row gap-5 mb-4">
+                        <div className="w-20 h-20 bg-white rounded-xl border-2 border-slate-200 shrink-0 flex items-center justify-center cursor-pointer overflow-hidden relative shadow-sm hover:border-[#2B4C3E] transition-colors" onClick={() => fileInputs.current[idx]?.click()}>
+                          <input ref={(el) => { fileInputs.current[idx] = el; }} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadAnh(idx, f); }} />
+                          {uploadingIdx === idx ? (
+                            <div className="text-[10px] text-emerald-600 font-bold text-center px-1">Đang tải...</div>
+                          ) : bt.img ? (
+                            <img src={bt.img} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          ) : (
+                            <div className="flex flex-col items-center">
+                              <Camera className="w-6 h-6 text-slate-300" />
+                              <span className="text-[9px] text-slate-400 font-bold uppercase mt-1">Tải ảnh</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 space-y-4">
+                          <div className="pr-8">
+                            <label className="text-xs font-bold text-slate-700 mb-1.5 block">Màu / SKU trong danh mục *</label>
+                            <select value={bt.mau} onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} disabled={!selectedProduct} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
+                              <option value="">-- Chọn màu / SKU --</option>
+                              {selectedProduct?.dsMau.map((variant) => <option key={variant.maSKU || variant.ten} value={variant.ten}>{variant.ten}{variant.maSKU ? ` — ${variant.maSKU}` : ""}</option>)}
+                            </select>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs font-bold text-slate-700">Chia số lượng theo Size</label>
+                              <div className="flex items-center gap-2">
+                                <label className="text-[10px] text-slate-500 shrink-0">Nhập tổng SL tự chia:</label>
+                                <input type="number" min={0} value={bt.slDuKien || ""} onChange={(e) => doiSlDuKien(idx, Math.max(0, parseInt(e.target.value) || 0))} className="w-20 px-2 py-1 border-2 border-slate-200 rounded-lg text-xs focus:border-[#2B4C3E] outline-none text-right font-bold bg-white" placeholder="0" />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar items-end">
+                              {bt.sizes.map((s) => (
+                                <div key={s.size} className="flex flex-col shrink-0 min-w-[54px]">
+                                  <span className="w-full px-1 py-1 text-[11px] font-bold rounded-t-lg bg-slate-200 text-slate-600 text-center">{s.size}</span>
+                                  <span className="w-full px-1 py-1.5 text-sm font-extrabold text-center bg-slate-50 text-emerald-700 border-x-2 border-b-2 border-slate-200 rounded-b-lg">{s.sl}</span>
+                                </div>
+                              ))}
+                              <div className="flex flex-col shrink-0 min-w-[60px] ml-2">
+                                <span className="w-full px-1 py-1 text-[11px] font-bold rounded-t-lg bg-[#2B4C3E] text-white text-center">Tổng SL</span>
+                                <span className="w-full px-1 py-1.5 text-sm font-extrabold text-center bg-white border-x-2 border-b-2 border-[#2B4C3E] rounded-b-lg text-slate-800">{tong}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t-2 border-slate-200 border-dashed">
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 mb-1.5 block">Vị trí (Khu kệ)</label>
+                          <select value={bt.viTri} onChange={(e) => capNhatBienThe(idx, { viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium">
+                            <option value="">-- Chọn --</option>
+                            {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 mb-1.5 block">Trạng thái</label>
+                          <select value={bt.trangThai} onChange={(e) => capNhatBienThe(idx, { trangThai: e.target.value as any })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium">
+                            <option value="con">Còn hàng</option>
+                            <option value="dat-hang">Đã đặt hàng</option>
+                            <option value="xuat-kho">Đã xuất kho</option>
+                            <option value="khong-dat">Không đạt</option>
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="text-xs font-bold text-slate-700 mb-2 block">Kênh được phép bán *</label>
+                          <div className="flex flex-wrap gap-2">
+                            {DS_KENH_BAN.map((kenh) => {
+                              const selected = bt.kenhBan.includes(kenh.value);
+                              const gia = bt.mau ? layGiaBienThe(bt, kenh.value) : undefined;
+                              return (
+                                <button
+                                  key={kenh.value}
+                                  type="button"
+                                  onClick={() => capNhatBienThe(idx, {
+                                    kenhBan: selected
+                                      ? bt.kenhBan.filter((value) => value !== kenh.value)
+                                      : [...bt.kenhBan, kenh.value],
+                                  })}
+                                  className={`rounded-xl border-2 px-4 py-2 text-xs font-bold transition-all ${selected ? "border-[#2B4C3E] bg-emerald-50 text-[#2B4C3E]" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
+                                >
+                                  <span>{selected ? "✓ " : ""}{kenh.label}</span>
+                                  {bt.mau && <span className={`ml-1 ${gia == null ? "text-rose-600" : "text-emerald-700"}`}>· {gia == null ? "Chưa có giá" : `${gia.toLocaleString("vi-VN")}đ`}</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => preset && setBienThe((prev) => [...prev, bienTheMoi(preset.sizes)])}
+                disabled={!preset}
+                className="w-full mt-4 py-3 border-2 border-dashed border-[#2B4C3E] rounded-xl text-[#2B4C3E] font-bold text-sm hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" /> Thêm biến thể mới
+              </button>
+            </div>
+
+            {/* Summary widget */}
+            <div className="bg-[#2B4C3E]/5 p-4 rounded-2xl border-2 border-[#2B4C3E]/20">
+              <div className="text-xs font-bold text-[#2B4C3E] mb-2">TÓM TẮT LÔ NHẬP</div>
+              <div className="space-y-1.5 text-sm text-[#2B4C3E]">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="font-bold shrink-0">{maSP || "—"}</span>
+                  <span className="text-right truncate">{tenSP || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Số lượng màu:</span>
+                  <span className="font-bold">{bienThe.length}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-[#2B4C3E]/20 mt-2">
+                  <span className="font-bold">Tổng nhập kho:</span>
+                  <span className="font-black text-[#2B4C3E] text-lg">{tongSLTatCa.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
         </div>
 
-        <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-2xl sticky bottom-0">
-          <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-semibold">Hủy</button>
-          <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 flex items-center gap-2 disabled:opacity-50">
-            <Save className="w-4 h-4" /> Lưu {bienThe.length > 1 ? `${bienThe.length} biến thể` : "biến thể"}
-          </button>
+          <div className="p-4 bg-white border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 rounded-b-2xl z-20">
+            <button onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-white hover:bg-slate-50 border-2 border-slate-200 rounded-xl font-bold transition-colors">
+              Hủy bỏ
+            </button>
+            <button 
+              onClick={handleSubmit} 
+              disabled={saving || loadingDanhMuc || loadingBangGia || !selectedProduct}
+              className="px-6 py-2.5 bg-[#2B4C3E] hover:bg-[#203a2f] text-white rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="w-5 h-5" /> {saving ? "Đang lưu..." : loadingBangGia ? "Đang tải bảng giá..." : `Lưu ${bienThe.length} biến thể`}
+            </button>
+          </div>
         </div>
-      </div>
+      </ResponsiveModal>
 
       {openSizeBuilder && (
         <SizeRatioBuilderModal onClose={() => setOpenSizeBuilder(false)} onSave={handleLuuBangSizeMoi} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -512,24 +652,27 @@ function SizeRatioBuilderModal({ onClose, onSave }: { onClose: () => void; onSav
 
 // =================== SỬA 1 BIẾN THỂ (giữ nguyên hành vi cũ) ===================
 function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
+  const isValidKey = Object.keys(LOAI_SP_LABELS).includes(sp.phanLoai || "");
+  const detectedPhanLoai = isValidKey ? sp.phanLoai : detectLoaiSP((sp.tenSP || "") + " " + (sp.phanLoai || ""));
+
   const [form, setForm] = useState({
     maSP: sp.maSP || "",
     tenSP: sp.tenSP || "",
-    phanLoai: sp.phanLoai || "",
+    phanLoai: detectedPhanLoai || "BoTru",
     mau: sp.mau || "Trắng",
-    size: sp.size || "M, L, XL",
-    lsx: sp.lsx || "LSX-2026-007",
+    size: hienThiDanhSachSize(sp.size || "", sp.chiTietSize),
+    lsx: layMaLoTonKho(sp),
     ngayNhap: sp.ngayNhap || new Date().toISOString().slice(0, 10),
-    soLuong: sp.soLuong || 100,
-    donGia: sp.donGia || 50000,
-    giaVon: sp.giaVon || 0,
-    giaBanSi: sp.giaBanSi || 0,
-    giaBanLe: sp.giaBanLe || 0,
-    giaBanLo: sp.giaBanLo || 0,
-    giaTikTok: sp.giaTikTok || 0,
-    giaShopee: sp.giaShopee || 0,
+    soLuong: sp.soLuong ?? 0,
+    donGia: sp.donGia ?? 0,
+    giaVon: sp.giaVon ?? 0,
+    giaBanSi: sp.giaBanSi ?? 0,
+    giaBanLe: sp.giaBanLe ?? 0,
+    giaBanLo: sp.giaBanLo ?? 0,
+    giaTikTok: sp.giaTikTok ?? 0,
+    giaShopee: sp.giaShopee ?? 0,
     kenhBan: sp.kenhBan?.length ? sp.kenhBan : (["ban-le"] as KenhBan[]),
-    viTri: sp.viTri || "Kệ A1-A2",
+    viTri: sp.viTri || "",
     trangThai: sp.trangThai || "con",
     ghiChu: sp.ghiChu || "",
   });
@@ -553,177 +696,235 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 flex items-center justify-between">
-          <h2 className="font-bold text-lg">Sửa biến thể</h2>
-          <button onClick={onClose} className="px-2 py-1 hover:bg-white/20 rounded">✕</button>
+    <ResponsiveModal
+      open={true}
+      maxWidth="3xl"
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2 text-slate-800 font-black tracking-tight">
+          <div className="bg-[#2B4C3E] p-1.5 rounded-lg">
+            <Package className="w-5 h-5 text-white" />
+          </div>
+          <span>CẬP NHẬT BIẾN THỂ</span>
         </div>
-        <div className="p-4 space-y-3">
-          <div className="flex gap-4 items-start mb-4">
-             <div className="w-24 h-24 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-amber-400 transition-colors" onClick={() => fileInputRef.current?.click()}>
-               <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
-               {uploading ? (
-                 <div className="text-[9px] text-amber-600 font-bold text-center px-1">Đang tải...</div>
-               ) : image ? (
-                 <img src={image} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
-               ) : (
-                 <div className="text-center text-slate-400 group-hover:text-amber-500 transition-colors">
-                   <Camera className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                   <div className="text-[9px] font-bold uppercase">Tải ảnh</div>
-                 </div>
-               )}
-             </div>
-             <div className="flex-1 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 mb-1 block">Mã SP mẹ *</label>
-                    <input value={form.maSP} onChange={(e) => setForm({ ...form, maSP: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên SP mẹ *</label>
-                    <input value={form.tenSP} onChange={(e) => setForm({ ...form, tenSP: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-                  </div>
-                </div>
-             </div>
+      }
+    >
+      <div className="flex flex-col bg-slate-50/50 h-full">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-6">
+
+          {/* KHỐI 1: THÔNG TIN CHUNG */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">1</span>
+              Thông Tin Chung
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Mã SP mẹ *</label>
+                <input 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 uppercase font-mono font-bold text-slate-800 bg-slate-50 transition-all hover:bg-white" 
+                  value={form.maSP} onChange={(e) => setForm({ ...form, maSP: e.target.value.toUpperCase() })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Tên SP mẹ *</label>
+                <input 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 text-slate-800 bg-slate-50 transition-all hover:bg-white" 
+                  value={form.tenSP} onChange={(e) => {
+                    const val = e.target.value;
+                    setForm({ ...form, tenSP: val, phanLoai: detectLoaiSP(val) });
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Phân loại</label>
+                <select 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 bg-slate-50 font-medium text-slate-700 transition-all hover:bg-white cursor-pointer"
+                  value={form.phanLoai} onChange={(e) => setForm({ ...form, phanLoai: e.target.value })}
+                >
+                  {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Mã lô tồn kho</label>
+                <input 
+                  readOnly
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 bg-slate-100 font-mono text-slate-700 cursor-not-allowed"
+                  value={form.lsx}
+                />
+                <p className="mt-1.5 text-xs font-semibold text-slate-500">
+                  {sp.maLenhCat ? `Nguồn sản xuất: ${sp.maLenhCat}` : "Nguồn: nhập tồn kho trực tiếp"}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Màu</label>
-              <input value={form.mau} onChange={(e) => setForm({ ...form, mau: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Size / Tỉ lệ</label>
-              <input list="ds-ti-le-size" value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-              <datalist id="ds-ti-le-size">
-                {DS_TI_LE_SIZE.map(s => <option key={s} value={s} />)}
-              </datalist>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">LSX (Tự động điền màu)</label>
-              <input
-                value={form.lsx}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const newForm = { ...form, lsx: val };
-                  const matchedLC = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.id?.startsWith("LC_"));
-                  const matched = ALL_PHIEU.find((p: any) => p.lenhSX === val && p.mau);
+          {/* KHỐI 2: ĐẶC TÍNH & TRẠNG THÁI */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">2</span>
+              Đặc Tính & Trạng Thái
+            </h3>
 
-                  if (matchedLC) {
-                    if (!form.maSP) newForm.maSP = matchedLC.maSP || "";
-                    if (!form.tenSP) newForm.tenSP = matchedLC.phanLoai || "";
-                    if (!form.mau) newForm.mau = matchedLC.mau || "Trắng";
-                    if (!form.size) newForm.size = matchedLC.size || "M";
-                  } else if (matched && matched.mau) {
-                    newForm.mau = matched.mau;
-                    if (!form.maSP) newForm.maSP = matched.maSP || "";
-                    if (!form.tenSP) newForm.tenSP = matched.phanLoai || "";
-                  }
-                  setForm(newForm);
-                }}
-                className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none font-mono"
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Màu</label>
+                <input 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white" 
+                  value={form.mau} onChange={(e) => setForm({ ...form, mau: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Size / Tỉ lệ</label>
+                <input readOnly className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-slate-100 cursor-not-allowed" value={form.size} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Vị trí (Khu kệ)</label>
+                <select 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white cursor-pointer" 
+                  value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })}
+                >
+                  <option value="">-- Chọn --</option>
+                  {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Trạng thái</label>
+                <select 
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 bg-white cursor-pointer" 
+                  value={form.trangThai} onChange={(e) => setForm({ ...form, trangThai: e.target.value as any })}
+                >
+                  <option value="con">Còn hàng</option>
+                  <option value="dat-hang">Đã đặt hàng</option>
+                  <option value="xuat-kho">Đã xuất kho</option>
+                  <option value="khong-dat">Không đạt</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-center">
+              <div className="w-24 h-24 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-blue-400 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
+                {uploading ? (
+                  <div className="text-[9px] text-blue-600 font-bold text-center px-1">Đang tải...</div>
+                ) : image ? (
+                  <img src={image} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+                ) : (
+                  <div className="text-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                    <Camera className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                    <div className="text-[9px] font-bold uppercase">Tải ảnh</div>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <label className="block text-xs font-bold text-blue-900 mb-1.5 uppercase tracking-wider">Số Lượng Thực Tế *</label>
+                <input 
+                  type="number" min="0" 
+                  className="w-32 border-2 border-blue-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-lg font-bold text-blue-700 bg-white" 
+                  value={form.soLuong} onChange={(e) => setForm({ ...form, soLuong: Math.max(0, parseInt(e.target.value) || 0) })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* KHỐI 3: THIẾT LẬP GIÁ BÁN */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs">3</span>
+              Thiết Lập Giá Bán
+            </h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {[
+                { label: "Giá Vốn", value: form.giaVon, set: (v: number) => setForm({ ...form, giaVon: v }) },
+                { label: "Giá Bán Lẻ", value: form.giaBanLe, set: (v: number) => setForm({ ...form, giaBanLe: v }) },
+                { label: "Giá Bán Sỉ", value: form.giaBanSi, set: (v: number) => setForm({ ...form, giaBanSi: v }) },
+                { label: "Giá Bán Lô", value: form.giaBanLo, set: (v: number) => setForm({ ...form, giaBanLo: v }) },
+                { label: "Giá TikTok", value: form.giaTikTok, set: (v: number) => setForm({ ...form, giaTikTok: v }) },
+                { label: "Giá Shopee", value: form.giaShopee, set: (v: number) => setForm({ ...form, giaShopee: v }) },
+              ].map((item, idx) => (
+                <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">{item.label}</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₫</span>
+                    <input 
+                      type="number" 
+                      className="w-full border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 font-mono font-bold text-slate-700" 
+                      placeholder="0" 
+                      value={item.value || ""} 
+                      onChange={e => item.set(Math.max(0, parseInt(e.target.value) || 0))} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* KHỐI 4: THÔNG TIN KHÁC */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-fuchsia-500"></div>
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-xs">4</span>
+              Kênh Bán & Ghi Chú
+            </h3>
+
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kênh được phép bán *</label>
+              <div className="flex flex-wrap gap-2">
+                {DS_KENH_BAN.map((kenh) => {
+                  const selected = form.kenhBan.includes(kenh.value);
+                  return (
+                    <button
+                      key={kenh.value}
+                      type="button"
+                      onClick={() => setForm({
+                        ...form,
+                        kenhBan: selected
+                          ? form.kenhBan.filter((value) => value !== kenh.value)
+                          : [...form.kenhBan, kenh.value],
+                      })}
+                      className={`rounded-lg border px-3 py-2 text-xs font-bold shadow-sm transition-colors ${selected ? "border-[#2B4C3E] bg-[#2B4C3E]/5 text-[#2B4C3E]" : "border-slate-200 text-slate-500 hover:border-slate-300 bg-white"}`}
+                    >
+                      {selected ? "✓ " : ""}{kenh.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ghi chú thêm</label>
+              <textarea 
+                value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} 
+                rows={2} 
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-fuchsia-500/50 focus:border-fuchsia-500 outline-none bg-slate-50" 
               />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Số lượng *</label>
-              <input type="number" min="0" value={form.soLuong} onChange={(e) => setForm({ ...form, soLuong: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-emerald-300 rounded-lg text-lg font-bold focus:border-emerald-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Vị trí (Khu kệ)</label>
-              <input list="ds-khu-ke-hang" value={form.viTri} onChange={(e) => setForm({ ...form, viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-              <datalist id="ds-khu-ke-hang">
-                {DS_KHU_KE_HANG.map(s => <option key={s} value={s} />)}
-              </datalist>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Trạng thái</label>
-              <select value={form.trangThai} onChange={(e) => setForm({ ...form, trangThai: e.target.value as any })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none">
-                <option value="con">Còn hàng</option>
-                <option value="dat-hang">Đã đặt hàng</option>
-                <option value="xuat-kho">Đã xuất kho</option>
-                <option value="khong-dat">Không đạt</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá vốn</label>
-              <input type="number" min="0" value={form.giaVon} onChange={(e) => setForm({ ...form, giaVon: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán</label>
-              <input type="number" min="0" value={form.donGia} onChange={(e) => setForm({ ...form, donGia: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán sỉ</label>
-              <input type="number" min="0" value={form.giaBanSi} onChange={(e) => setForm({ ...form, giaBanSi: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán lẻ</label>
-              <input type="number" min="0" value={form.giaBanLe} onChange={(e) => setForm({ ...form, giaBanLe: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá bán lô</label>
-              <input type="number" min="0" value={form.giaBanLo} onChange={(e) => setForm({ ...form, giaBanLo: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá TikTok</label>
-              <input type="number" min="0" value={form.giaTikTok} onChange={(e) => setForm({ ...form, giaTikTok: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 mb-1 block">Giá Shopee</label>
-              <input type="number" min="0" value={form.giaShopee} onChange={(e) => setForm({ ...form, giaShopee: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-700 mb-1">Kênh được phép bán *</div>
-            <div className="flex flex-wrap gap-2">
-              {DS_KENH_BAN.map((kenh) => {
-                const selected = form.kenhBan.includes(kenh.value);
-                return (
-                  <button
-                    key={kenh.value}
-                    type="button"
-                    onClick={() => setForm({
-                      ...form,
-                      kenhBan: selected
-                        ? form.kenhBan.filter((value) => value !== kenh.value)
-                        : [...form.kenhBan, kenh.value],
-                    })}
-                    className={`rounded-lg border px-3 py-2 text-xs font-bold ${selected ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}
-                  >
-                    {selected ? "✓ " : ""}{kenh.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-700 mb-1 block">Ghi chú</label>
-            <textarea value={form.ghiChu} onChange={(e) => setForm({ ...form, ghiChu: e.target.value })} rows={2} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-amber-500 outline-none" />
-          </div>
-          <div className="bg-amber-50 p-3 rounded-lg text-xs">
-            <div className="font-semibold text-amber-800">Tóm tắt:</div>
-            <div><b>{form.maSP}</b> - {form.tenSP} | Màu {form.mau} | Size {form.size}</div>
-            <div>SL: <b>{form.soLuong.toLocaleString()}</b> × {form.donGia.toLocaleString()}đ = <b className="text-emerald-600">{(form.soLuong * form.donGia).toLocaleString()}đ</b></div>
-          </div>
+
         </div>
-        <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-2xl">
-          <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-semibold">Hủy</button>
+
+        {/* STICKY FOOTER */}
+        <div className="p-4 sm:px-6 sm:py-4 border-t border-slate-200 bg-white flex justify-end gap-3 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] rounded-b-2xl">
+          <button onClick={onClose} className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors border-2 border-slate-200">Đóng</button>
           <button onClick={() => {
             if (form.kenhBan.length === 0) {
               toast.error("Cần chọn ít nhất 1 kênh bán");
               return;
             }
             onSave({ ...sp, ...form, __tempImage: image });
-          }} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 flex items-center gap-2">
-            <Save className="w-4 h-4" /> Lưu biến thể
+          }} className="px-8 py-2.5 font-bold text-white bg-[#2B4C3E] hover:bg-[#1f382d] rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02]">
+            <Save className="w-5 h-5" /> LƯU THAY ĐỔI
           </button>
         </div>
       </div>
-    </div>
+    </ResponsiveModal>
   );
 }

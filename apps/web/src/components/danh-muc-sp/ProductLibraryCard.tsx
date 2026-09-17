@@ -1,7 +1,7 @@
 // ProductLibraryCard - Card compact cho thu vien (grid 3-4 cols)
 // 2026-08-07 - redesign theo sep Sang: layout "thu vien the card"
 // 2026-08-07 - them thong tin: trang thai, da ban, NCC, chat lieu, rating
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye, ChevronDown } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
@@ -18,6 +18,7 @@ interface ProductLibraryCardProps {
   onFavorite?: (sp: SanPham) => void;
   isFavorite?: boolean;
   onClick?: (sp: SanPham) => void;
+  activeFilter?: string;
 }
 
 // Helper: render label trang thai
@@ -47,6 +48,7 @@ export default function ProductLibraryCard({
   onFavorite,
   isFavorite = false,
   onClick,
+  activeFilter = "all",
 }: ProductLibraryCardProps) {
   const [mauMoRong, setMauMoRong] = useState<string | null>(null);
   const topColors = (sp.dsMau || []).slice(0, 3);
@@ -54,11 +56,41 @@ export default function ProductLibraryCard({
   const soMau = (sp.dsMau || []).length;
   // Tổng số lượng thật toàn sản phẩm (cộng tất cả màu, tất cả size) - 0 nếu
   // chưa có dữ liệu kho_thanh_pham cho mã SP này (chưa nhập kho, không phải lỗi).
-  const tongTonKho = Object.values(tonKhoTheoMau || {}).reduce(
-    (tong, sizes) => tong + sizes.reduce((s, x) => s + (x.sl || 0), 0),
-    0
-  );
-  const trangThai = sp.trangThai || "con-hang";
+  const tongTonKho = useMemo(() => {
+    if (!tonKhoTheoMau) return 0;
+    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + tonMau.reduce((s, row) => s + (row.sl || 0), 0), 0);
+  }, [tonKhoTheoMau]);
+
+  const displayPrice = useMemo(() => {
+    switch (activeFilter) {
+      case "ban-le": return sp.giaBanLe || sp.giaBanDuKien || 0;
+      case "ban-si": return sp.giaBanSi || sp.giaBanDuKien || 0;
+      case "ban-lo": return sp.giaBanLo || sp.giaBanDuKien || 0;
+      case "tiktok": return sp.giaTikTok || sp.giaBanDuKien || 0;
+      case "shopee": return sp.giaShopee || sp.giaBanDuKien || 0;
+      default: return sp.giaBanLe || sp.giaBanSi || sp.giaBanLo || sp.giaTikTok || sp.giaShopee || sp.giaBanDuKien || 0;
+    }
+  }, [activeFilter, sp]);
+
+  const priceLabel = useMemo(() => {
+    switch (activeFilter) {
+      case "ban-le": return "Giá bán lẻ";
+      case "ban-si": return "Giá bán sỉ";
+      case "ban-lo": return "Giá bán lô";
+      case "tiktok": return "Giá TikTok";
+      case "shopee": return "Giá Shopee";
+      default: return "Giá bán";
+    }
+  }, [activeFilter]);
+
+  const hasPrice = displayPrice > 0;
+
+  const trangThai = useMemo(() => {
+    // Nếu có dữ liệu kho (tonKhoTheoMau !== undefined) và tổng = 0 -> Hết hàng
+    if (tonKhoTheoMau && tongTonKho <= 0) return "het-hang";
+    return sp.trangThai || "con-hang";
+  }, [tonKhoTheoMau, tongTonKho, sp.trangThai]);
+  
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
   const rating = sp.rating || 0;
@@ -76,21 +108,32 @@ export default function ProductLibraryCard({
   return (
     <div 
       onClick={() => onClick && onClick(sp)}
-      className={`group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
+      className={`group relative bg-white rounded-2xl shadow-md hover:shadow-2xl hover:z-50 transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
     >
       {/* === ANH SAN PHAM === */}
-      <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden">
+      <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden rounded-t-2xl">
         {/* Placeholder icon */}
         <div className="absolute inset-0 flex items-center justify-center">
           <Shirt className="w-20 h-20 md:w-24 md:h-24 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-500" />
         </div>
         {/* Hình ảnh thật */}
-        {sp.hinhAnh && (
+        {sp.dsMau?.[0]?.img || sp.hinhAnh ? (
           <img
-            src={sp.hinhAnh}
+            src={sp.dsMau?.[0]?.img || sp.hinhAnh}
             alt={sp.tenSP}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
+        ) : null}
+
+        {/* OVERLAY HẾT HÀNG */}
+        {trangThai === "het-hang" && (
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+             <div className="bg-rose-500 text-white font-black text-lg md:text-xl tracking-widest px-6 py-1.5 border-y-2 border-rose-600 -rotate-12 uppercase drop-shadow-lg shadow-xl">
+               Hết Hàng
+             </div>
+          </div>
         )}
 
         {/* === BADGES GOC TREN TRAI === */}
@@ -177,11 +220,16 @@ export default function ProductLibraryCard({
                     key={idx}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setMauMoRong(dangMo ? null : mau.ten); }}
-                    className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-xs font-bold transition-colors ${dangMo ? "border-cyan-500 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"}`}
+                    className={`group/skuimg relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-xs font-bold transition-colors ${dangMo ? "border-cyan-500 bg-cyan-50 text-cyan-700" : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300"}`}
                     title={mau.maSKU || mau.ten}
                   >
                     {mau.img ? (
-                      <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                      <>
+                        <img src={mau.img} alt={mau.ten} loading="lazy" decoding="async" className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-2xl border-[6px] border-white bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group-hover/skuimg:block">
+                          <img src={mau.img} alt={`Xem trước màu ${mau.ten}`} loading="lazy" decoding="async" className="h-48 w-48 max-w-none rounded-xl object-contain bg-slate-50" />
+                        </div>
+                      </>
                     ) : (
                       <span
                         className="w-5 h-5 rounded-full border border-slate-200 shrink-0"
@@ -221,6 +269,39 @@ export default function ProductLibraryCard({
                       );
                     })}
                   </div>
+                  
+                  {/* BỘ ẢNH CHI TIẾT (GALLERY) */}
+                  {mau.hinhAnhChiTiet && mau.hinhAnhChiTiet.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-cyan-200/50">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <Sparkles className="w-3 h-3 text-cyan-500" />
+                        <span className="text-[10px] font-bold text-cyan-700 uppercase">Ảnh chi tiết ({mau.hinhAnhChiTiet.length})</span>
+                      </div>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                        {mau.hinhAnhChiTiet.map((imgUrl, idx) => (
+                          <div key={idx} className="group/gal relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <img 
+                              src={imgUrl} 
+                              alt={`${mau.ten} - Ảnh ${idx + 1}`} 
+                              loading="lazy" 
+                              decoding="async" 
+                              className="w-11 h-14 object-cover rounded border border-cyan-100 hover:border-cyan-400 transition-colors shadow-sm cursor-pointer" 
+                            />
+                            {/* Hover preview */}
+                            <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 rounded-xl border-[4px] border-white bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.4)] group-hover/gal:block">
+                              <img 
+                                src={imgUrl} 
+                                alt={`Xem lớn - Ảnh ${idx + 1}`} 
+                                loading="lazy" 
+                                decoding="async" 
+                                className="h-64 w-64 max-w-none rounded-lg object-contain bg-slate-50" 
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -295,22 +376,34 @@ export default function ProductLibraryCard({
           </div>
         )}
 
+        {/* === Interactive Price Chips === */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          <PriceChip label="Bán lẻ" price={sp.giaBanLe} />
+          <PriceChip label="Bán sỉ" price={sp.giaBanSi} />
+          <PriceChip label="Bán lô" price={sp.giaBanLo} />
+          <PriceChip label="TikTok" price={sp.giaTikTok} />
+          <PriceChip label="Shopee" price={sp.giaShopee} />
+        </div>
+
         {/* === Gia ban + Gia von === */}
         <div className="mt-auto mb-3 pt-2 border-t border-slate-100">
-          {sp.giaBanDuKien > 0 ? (
+          {hasPrice ? (
             <>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
-                  {formatVNDShort(sp.giaBanDuKien)}
-                </span>
-                <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{priceLabel}</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base md:text-lg font-extrabold text-cyan-700 dark:text-cyan-300">
+                    {formatVNDShort(displayPrice)}
+                  </span>
+                  <span className="text-[10px] md:text-xs text-slate-400">VNĐ</span>
+                </div>
               </div>
               {sp.giaVonDuKien > 0 && (
                 <div className="text-[10px] md:text-xs text-slate-400 line-through opacity-70 mt-0.5">
                   Vốn: {formatVNDShort(sp.giaVonDuKien)}
-                  {sp.giaBanDuKien > 0 && sp.giaVonDuKien > 0 && (
+                  {displayPrice > 0 && sp.giaVonDuKien > 0 && (
                     <span className="ml-1.5 text-emerald-600 font-bold">
-                      +{Math.round(((sp.giaBanDuKien - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
+                      +{Math.round(((displayPrice - sp.giaVonDuKien) / sp.giaVonDuKien) * 100)}%
                     </span>
                   )}
                 </div>
@@ -366,5 +459,27 @@ export default function ProductLibraryCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function PriceChip({ label, price }: { label: string; price?: number }) {
+  const [show, setShow] = useState(false);
+  
+  if (price == null || price === 0) return null; // Only show channels that have a price configured
+  
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        setShow(!show);
+      }} 
+      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-all duration-200 shadow-sm ${
+        show 
+          ? 'bg-amber-100 border-amber-300 text-amber-800' 
+          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
+      }`}
+    >
+      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
+    </button>
   );
 }

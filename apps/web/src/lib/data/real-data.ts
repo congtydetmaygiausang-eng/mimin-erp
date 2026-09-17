@@ -1,5 +1,30 @@
 // Real data from Excel v2 - Nhan_su + Doi_tac_NCC + Data_Setup
 // Generated: 2026-07-23
+import type { AccountAccess } from "./account-access";
+import type { LenhCat, CongDoanItem } from "./lenh-cat-store";
+import type { PhieuDatNccPhuLieu } from "./phieu-dat-ncc";
+
+/** Opt-in fixtures for the isolated local test. Never seeded into Supabase. */
+export function createAccountAssignmentTestData(adminId: string): { accounts: AccountAccess[]; production: LenhCat[]; purchases: PhieuDatNccPhuLieu[] } {
+  const stages = [["cat", "Cắt", "cutting"], ["in_theu", "In/Thêu", "printing"], ["may_ao", "May áo", "sewing"], ["qc", "QC", "qc"], ["khuy_nut", "Khuy nút", "buttoning"], ["ui", "Ủi", "ironing"], ["dong_goi", "Đóng gói", "packaging"]] as const;
+  const accounts: AccountAccess[] = stages.map(([id, name, role]) => ({ id: `TK-TEST-${id}`, name: `TEST · ${name} A`, email: `test-${id}@example.test`, roles: [role], kind: "employee", employeeCode: `NV-TEST-${id}`, partnerCode: "", supplierCode: "", department: "SX-TEST", team: `${id}-A`, scope: "ASSIGNED", active: true }));
+  accounts.push({ ...accounts[0], id: "TK-TEST-cat-B", name: "TEST · Cắt B", email: "test-cat-b@example.test", employeeCode: "NV-TEST-cat-B", team: "cat-B" });
+  for (const kind of ["partner", "supplier"] as const) for (const suffix of ["A", "B"]) accounts.push({ id: `TK-TEST-${kind}-${suffix}`, name: `TEST · ${kind === "partner" ? "Xưởng" : "NCC"} ${suffix}`, email: `test-${kind}-${suffix.toLowerCase()}@example.test`, roles: [kind], kind, employeeCode: "", partnerCode: kind === "partner" ? `DT-TEST-${suffix}` : "", supplierCode: kind === "supplier" ? `NCC-TEST-${suffix}` : "", department: "", team: "", scope: "ASSIGNED", active: true });
+  const production: LenhCat[] = ["A", "B"].map(suffix => ({
+    id: `LC-TEST-${suffix}`, loaiLenh: "HangNha", loaiSP: "AoTru", maSP: `SP-TEST-${suffix}`, tenSP: `Áo test phân công ${suffix}`, tongSL: 100, hanHoanThanh: "2026-09-30", tiLeSize: "1:1", trangThai: "DaTao", phienBanDinhMuc: 1, ngayTao: "2026-09-16", nguoiTao: adminId,
+    phuTrachCat: suffix === "A" ? "NV-TEST-cat" : "NV-TEST-cat-B", phuTrachSX: adminId, userIds: [adminId], department: "SX-TEST",
+    dsMau: [{ ten: "Đen", maVai: "", dinhMuc: 0, slDuKien: 100, ghiChu: "Dữ liệu test local", img: "", phanBoSize: [{ size: "M", sl: 50 }, { size: "L", sl: 50 }] }], dsPhuLieu: [], chiPhiCoDinh: {},
+    phanCong: stages.map(([id, name]) => {
+      const external = id === "may_ao";
+      const employee = `TK-TEST-${id}${id === "cat" && suffix === "B" ? "-B" : ""}`;
+      const assignee = accounts.find(item => item.id === (external ? `TK-TEST-partner-${suffix}` : employee))!;
+      return { id, tenCongDoan: name, nguoiMa: external ? assignee.partnerCode : assignee.employeeCode, nguoiTen: assignee.name, loaiNguoi: external ? "xuong_ngoai" : "noi_bo", userIds: [assignee.id], department: "SX-TEST", team: assignee.team, donGia: 1000, soLuong: 100, thanhTien: 100000, daThanhToan: 0, conLai: 100000, trangThaiTT: "chua_tra", trangThaiCD: "cho_giao" } as CongDoanItem;
+    }),
+  }));
+  const purchases: PhieuDatNccPhuLieu[] = ["A", "B"].map(suffix => ({ id: `PD-TEST-${suffix}`, maPhieu: `PD-TEST-${suffix}`, ngayDat: "2026-09-16", ngayGiao: "2026-09-30", nguoiTao: adminId, maKhachHang: "", maNcc: `NCC-TEST-${suffix}`, maVatTu: "VT-TEST", tenVatTu: "Vải test phân quyền", mauSac: "Đen", quyCach: "", donVi: "kg", soLuong: 100, donGiaMua: 100000, donGiaBan: 120000, phiVanChuyen: 0, chiPhiKhac: 0, thueVat: 0, giaoThangKhach: false, diaChiGiao: "Kho test", ghiChu: "Dữ liệu test local", hinhAnh: [], trangThai: "Đã gửi NCC", createdAt: "2026-09-16T00:00:00.000Z" }));
+  return { accounts, production, purchases };
+}
+
 export type NhanSu = {
   stt: number;
   maNV: string;

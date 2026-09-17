@@ -32,6 +32,19 @@ export type KHSX = {
   lenhCatId?: string;
 };
 
+function getCorrectLoaiSP(val: string, tenSP: string): any {
+  const validKeys = ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"];
+  if (val && validKeys.includes(val) && val !== "BoTru") return val;
+  const checkStr = (tenSP || "").toLowerCase();
+  if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) return "AoPolo";
+  if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) return "AoTru";
+  if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) return "AoCoTron";
+  if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) return "BoCoTron";
+  if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) return "PhuKien";
+  if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) return "AoCoTron";
+  return "BoTru";
+}
+
 const STORAGE_KEY = "mimin_khsx_v2";
 const Ctx = createContext<StoreContext | null>(null);
 type RemoteKHSX = KHSX & { maKhsx?: string; maSp?: string; tenSp?: string; loaiSp?: LoaiSP };
@@ -68,9 +81,8 @@ function saveData(items: KHSX[]) {
 function persist(item: KHSX) {
   if (!isSupabaseEnabled) return;
   
-  // Bảng khsx trên Supabase của dự án này đang dùng cột camelCase (cùng tên với type KHSX)
-  // Nên ta không map sang snake_case nữa mà truyền thẳng dữ liệu item
-  supabaseUpsertRaw("khsx", item).catch((error) => console.error("[KHSX] Supabase upsert error:", error));
+  // Bảng khsx trên Supabase thực tế đang dùng cột camelCase, nên ta dùng supabaseUpsertRaw
+  supabaseUpsertRaw("khsx", item, "id").catch((error) => console.error("[KHSX] Supabase upsert error:", error));
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
@@ -83,45 +95,110 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseEnabled) return;
     
     let active = true;
+    let channel: any;
+    
     supabaseFetchAllRaw<any>("khsx", "created_at", false)
       .then((remote) => {
         if (!active) return;
         const normalized = remote.map((item) => ({
           id: item.id,
-          maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || "",
-          maSP: item.ma_sp || item.maSp || item.maSP,
-          tenSP: item.ten_sp || item.tenSp || item.tenSP,
-          loaiSP: item.loai_sp || item.loaiSp || item.loaiSP,
-          tiLeSize: item.ti_le_size || item.tiLeSize,
-          dsMau: item.ds_mau || item.dsMau || [],
+          maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || item.makhsx || "",
+          maSP: item.ma_sp || item.maSp || item.maSP || item.masp,
+          tenSP: item.ten_sp || item.tenSp || item.tenSP || item.tensp,
+          loaiSP: getCorrectLoaiSP(item.loai_sp || item.loaiSp || item.loaiSP || item.loaisp, item.ten_sp || item.tenSp || item.tenSP || item.tensp || item.san_pham || item.sanPham),
+          tiLeSize: item.ti_le_size || item.tiLeSize || item.tilesize,
+          dsMau: item.ds_mau || item.dsMau || item.dsmau || [],
           tuan: item.tuan || "",
-          tuNgay: item.tu_ngay || item.tuNgay,
-          denNgay: item.den_ngay || item.denNgay,
-          sanPham: item.san_pham || item.sanPham,
+          tuNgay: item.tu_ngay || item.tuNgay || item.tungay,
+          denNgay: item.den_ngay || item.denNgay || item.denngay,
+          sanPham: item.san_pham || item.sanPham || item.sanpham,
           loai: item.loai,
-          soLuong: item.so_luong ?? item.soLuong ?? 0,
-          daHoanThanh: item.da_hoan_thanh ?? item.daHoanThanh ?? 0,
-          xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || "Tổ cắt",
-          trangThai: item.trang_thai || item.trangThai || "Lên kế hoạch",
-          ghiChu: item.ghi_chu || item.ghiChu,
-          ngayTao: item.ngay_tao || item.ngayTao,
-          nguoiTao: item.nguoi_tao || item.nguoiTao,
-          lenhCatId: item.lenh_cat_id || item.lenhCatId,
+          soLuong: item.so_luong ?? item.soLuong ?? item.soluong ?? 0,
+          daHoanThanh: item.da_hoan_thanh ?? item.daHoanThanh ?? item.dahoanthanh ?? 0,
+          xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || item.xuongphutrach || "Tổ cắt",
+          trangThai: item.trang_thai || item.trangThai || item.trangthai || "Lên kế hoạch",
+          ghiChu: item.ghi_chu || item.ghiChu || item.ghichu,
+          ngayTao: item.ngay_tao || item.ngayTao || item.ngaytao,
+          nguoiTao: item.nguoi_tao || item.nguoiTao || item.nguoitao,
+          lenhCatId: item.lenh_cat_id || item.lenhCatId || item.lenhcatid,
         }));
         
-        const currentLocal = loadData();
-        const remoteIds = new Set(normalized.map((r) => r.id));
-        const merged = [
-          ...normalized,
-          ...currentLocal.filter((x) => !remoteIds.has(x.id)),
-        ];
+        // Remote là nguồn chân lý tuyệt đối khi fetch thành công.
+        const merged = normalized;
         
         saveData(merged as KHSX[]);
         setKHSX(merged as KHSX[]);
       })
       .catch((err) => console.error("Lỗi fetch khsx:", err));
       
-    return () => { active = false; };
+    // Đăng ký realtime lắng nghe thay đổi
+    import("@/lib/supabase/client").then(({ supabase }) => {
+      if (!supabase) return;
+      const channelName = `khsx-changes-${Math.random().toString(36).slice(2)}`;
+      channel = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "khsx" },
+          (payload) => {
+            console.log(`[Realtime] khsx:`, payload.eventType);
+            setKHSX((prev) => {
+              if (payload.eventType === "DELETE") {
+                const oldId = (payload.old as any).id;
+                const next = prev.filter((r) => r.id !== oldId);
+                saveData(next);
+                return next;
+              }
+              if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+                const item = payload.new as any;
+                const prevItem = prev.find(r => r.id === item.id);
+                const mapped: KHSX = {
+                  id: item.id,
+                  maKHSX: item.ma_khsx || item.maKhsx || item.maKHSX || item.makhsx || prevItem?.maKHSX || "",
+                  maSP: item.ma_sp || item.maSp || item.maSP || item.masp || prevItem?.maSP,
+                  tenSP: item.ten_sp || item.tenSp || item.tenSP || item.tensp || prevItem?.tenSP,
+                  loaiSP: getCorrectLoaiSP(item.loai_sp || item.loaiSp || item.loaiSP || item.loaisp || prevItem?.loaiSP, item.ten_sp || item.tenSp || item.tenSP || item.tensp || prevItem?.tenSP || item.san_pham || item.sanPham || prevItem?.sanPham),
+                  tiLeSize: item.ti_le_size || item.tiLeSize || item.tilesize || prevItem?.tiLeSize,
+                  dsMau: item.ds_mau || item.dsMau || item.dsmau || prevItem?.dsMau || [],
+                  tuan: item.tuan || prevItem?.tuan || "",
+                  tuNgay: item.tu_ngay || item.tuNgay || item.tungay || prevItem?.tuNgay,
+                  denNgay: item.den_ngay || item.denNgay || item.denngay || prevItem?.denNgay,
+                  sanPham: item.san_pham || item.sanPham || item.sanpham || prevItem?.sanPham,
+                  loai: item.loai || prevItem?.loai,
+                  soLuong: item.so_luong ?? item.soLuong ?? item.soluong ?? prevItem?.soLuong ?? 0,
+                  daHoanThanh: item.da_hoan_thanh ?? item.daHoanThanh ?? item.dahoanthanh ?? prevItem?.daHoanThanh ?? 0,
+                  xuongPhuTrach: item.xuong_phu_trach || item.xuongPhuTrach || item.xuongphutrach || prevItem?.xuongPhuTrach || "Tổ cắt",
+                  trangThai: item.trang_thai || item.trangThai || item.trangthai || prevItem?.trangThai || "Lên kế hoạch",
+                  ghiChu: item.ghi_chu || item.ghiChu || item.ghichu || prevItem?.ghiChu,
+                  ngayTao: item.ngay_tao || item.ngayTao || item.ngaytao || prevItem?.ngayTao,
+                  nguoiTao: item.nguoi_tao || item.nguoiTao || item.nguoitao || prevItem?.nguoiTao,
+                  lenhCatId: item.lenh_cat_id || item.lenhCatId || item.lenhcatid || prevItem?.lenhCatId,
+                };
+                const exists = prev.some((r) => r.id === mapped.id);
+                let next;
+                if (exists) {
+                  next = prev.map((r) => (r.id === mapped.id ? mapped : r));
+                } else {
+                  next = [mapped, ...prev];
+                }
+                saveData(next);
+                return next;
+              }
+              return prev;
+            });
+          }
+        )
+        .subscribe();
+    });
+
+    return () => { 
+      active = false;
+      if (channel) {
+        import("@/lib/supabase/client").then(({ supabase }) => {
+          supabase?.removeChannel(channel);
+        });
+      }
+    };
   }, []);
 
   const themKHSX = useCallback((item: Omit<KHSX, "id">, user: AppUser | null) => {
@@ -192,7 +269,7 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
     });
   }, []);
   const reset = useCallback(() => {
-    setKHSX([]);
+    setKHSX(prev => { prev.forEach(k => { if (isSupabaseEnabled) supabaseDelete("khsx", k.id); }); return []; });
     saveData([]);
   }, []);
 

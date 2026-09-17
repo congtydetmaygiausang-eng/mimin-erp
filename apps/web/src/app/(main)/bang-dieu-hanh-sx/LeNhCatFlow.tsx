@@ -102,7 +102,7 @@ export function LenhCatFlowBoard() {
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-slate-500">
         {Object.entries(TRANG_THAI_CD_LABELS).map(([k, v]) => {
-          const s = TRANG_THAI_CD_STYLE[k as TrangThaiCongDoan];
+          const s = TRANG_THAI_CD_STYLE[k as TrangThaiCongDoan] || TRANG_THAI_CD_STYLE["cho_giao"];
           return (
             <span key={k} className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ${s.bg} ${s.text} font-medium`}>
               <span className={`w-2 h-2 rounded-full ${s.dot}`} />
@@ -204,8 +204,8 @@ export function LenhCatFlowBoard() {
                         <td colSpan={20} className="px-4 py-3 bg-slate-50/80 border-b border-slate-200">
                           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
                             {(lc.phanCong || []).map((pc: any) => {
-                              const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                              const style = TRANG_THAI_CD_STYLE[tt];
+                              const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                              const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
                               return (
                                 <div key={pc.id} className={`rounded-xl border p-3 ${CELL_BG[tt]}`}>
                                   <div className="font-black text-slate-700 text-xs mb-1">{pc.tenCongDoan}</div>

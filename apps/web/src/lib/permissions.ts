@@ -3,7 +3,9 @@
 // 2026-08-05: thêm 2 role content + partner (cho 44 user @mimin.vn)
 // 2026-08-05: thêm 4 module gia-cong-mobile (trang-chu-gia-cong, cong-viec, san-luong, tien-cong)
 
-export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging";
+import { isSupabaseEnabled, supabase } from "./supabase/client";
+
+export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "supplier" | "workshop_customer" | "buyer_customer" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging";
 export type Action = "view" | "create" | "edit" | "delete";
 
 export type Module =
@@ -37,6 +39,11 @@ export type Module =
   | "audit-log"
   | "phan-quyen-tuy-chinh"
   | "danh-muc-sp"
+  | "dat-ncc-phu-lieu"
+  | "hoa-don"
+  | "van-chuyen"
+  | "tin-nhan"
+  | "workspace"
   // Modules gia cong mobile (cho NCC + cong nhan)
   | "cong-viec-gia-cong"
   | "ban-giao-gia-cong"
@@ -59,6 +66,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   accountant: "Kế toán",
   content: "Content / Media",
   partner: "Đối tác gia công",
+  supplier: "Nhà cung cấp",
+  workshop_customer: "Khách hàng xưởng",
+  buyer_customer: "Khách mua hàng",
   cutting: "Tổ trưởng cắt",
   printing: "Tổ trưởng in thêu",
   buttoning: "Tổ trưởng khuy nút",
@@ -76,6 +86,9 @@ export const ROLE_COLORS: Record<Role, string> = {
   accountant: "from-blue-500 to-indigo-500",
   content: "from-pink-500 to-rose-500",
   partner: "from-purple-500 to-fuchsia-500",
+  supplier: "from-emerald-500 to-teal-500",
+  workshop_customer: "from-blue-500 to-cyan-500",
+  buyer_customer: "from-orange-500 to-amber-500",
   cutting: "from-red-500 to-orange-500",
   printing: "from-indigo-500 to-blue-500",
   buttoning: "from-teal-500 to-emerald-500",
@@ -114,6 +127,11 @@ export const MODULE_LABELS: Record<Module, string> = {
   "audit-log": "Audit log (lịch sử thao tác)",
   "phan-quyen-tuy-chinh": "Phân quyền tùy chỉnh",
   "danh-muc-sp": "Danh mục sản phẩm",
+  "dat-ncc-phu-lieu": "Đơn đặt nhà cung cấp",
+  "hoa-don": "Hóa đơn điện tử",
+  "van-chuyen": "Vận chuyển",
+  "tin-nhan": "Tin nhắn & bảng tin",
+  "workspace": "Không gian làm việc",
   "cong-viec-gia-cong": "Công việc gia công",
   "ban-giao-gia-cong": "Bàn giao gia công",
   "san-luong-gia-cong": "Sản lượng gia công",
@@ -161,6 +179,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "audit-log": "rcud",
     "phan-quyen-tuy-chinh": "rcud",
     "danh-muc-sp": "rcud",
+    "dat-ncc-phu-lieu": "rcud",
     "cong-viec-gia-cong": "rcud",
     "ban-giao-gia-cong": "rcud",
     "san-luong-gia-cong": "rcud",
@@ -203,6 +222,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "rcu",
+    "dat-ncc-phu-lieu": "rcu",
     "cong-viec-gia-cong": "r",
     "ban-giao-gia-cong": "r",
     "san-luong-gia-cong": "r",
@@ -440,7 +460,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
   // Partner (đối tác gia công may): CHỈ thấy phiếu giao cho mình - dùng cho 20 NCC
   partner: {
     "dashboard": "",
-    "lenh-cat": "",
+    "lenh-cat": "rcu",
     "khach-hang": "",
     "ke-hoach-sx": "",
     "nhan-su": "",
@@ -471,48 +491,185 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
   },
+  // Nhà cung cấp: xem đơn được giao, xác nhận và cập nhật tiến độ sản xuất.
+  supplier: {
+    "dashboard": "r",
+    "nha-cung-cap": "r",
+    "dat-ncc-phu-lieu": "ru",
+  },
+  // Khách hàng xưởng: tạo và chỉnh sửa đơn của chính xưởng mình.
+  workshop_customer: {
+    "dashboard": "r",
+    "don-hang": "rcu",
+    "danh-muc-sp": "r",
+    "dat-ncc-phu-lieu": "r",
+    "giao-hang": "r",
+  },
+  // Khách mua hàng: đặt mua, sửa đơn chưa xác nhận và theo dõi giao hàng.
+  buyer_customer: {
+    "dashboard": "r",
+    "don-hang": "rcu",
+    "danh-muc-sp": "r",
+    "giao-hang": "r",
+  },
+};
+
+/** Quyền cho các phân hệ dùng chung và tài khoản ngoài hệ thống. */
+const ADDITIONAL_PERMISSIONS: Partial<Record<Role, Partial<Record<Module, string>>>> = {
+  admin: { "hoa-don": "rcud", "van-chuyen": "rcud", "tin-nhan": "rcud", "workspace": "rcud" },
+  planner: { "hoa-don": "r", "van-chuyen": "r", "tin-nhan": "rcu", "workspace": "r" },
+  warehouse: { "van-chuyen": "rcu", "tin-nhan": "r", "workspace": "r" },
+  sewing: { "tin-nhan": "r", "workspace": "r" },
+  qc: { "tin-nhan": "r", "workspace": "r" },
+  finishing: { "van-chuyen": "ru", "tin-nhan": "r", "workspace": "r" },
+  accountant: { "hoa-don": "rcud", "van-chuyen": "r", "tin-nhan": "r", "workspace": "r" },
+  content: { "tin-nhan": "rcud", "workspace": "r" },
+  partner: {
+    "dashboard": "r", "dat-ncc-phu-lieu": "ru", "cong-no-cong-doan": "r", "cham-cong": "rcu",
+    "bang-luong": "r", "hoa-don": "rcu", "tin-nhan": "rcu", "workspace": "r",
+  },
+  supplier: { "hoa-don": "rcu", "tin-nhan": "rcu", "workspace": "r" },
+  workshop_customer: { "hoa-don": "r", "tin-nhan": "r", "workspace": "r" },
+  buyer_customer: { "hoa-don": "r", "tin-nhan": "r", "workspace": "r" },
+  cutting: { "tin-nhan": "r", "workspace": "r" },
+  printing: { "tin-nhan": "r", "workspace": "r" },
+  buttoning: { "tin-nhan": "r", "workspace": "r" },
+  ironing: { "tin-nhan": "r", "workspace": "r" },
+  packaging: { "tin-nhan": "r", "workspace": "r" },
 };
 
 // ============================================
 // CUSTOM PERMISSION MATRIX (admin có thể tùy chỉnh)
-// Lưu localStorage - ưu tiên dùng khi có
+// Cache local-first + đồng bộ Supabase giữa các máy.
 // ============================================
-const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v2";
+const CUSTOM_MATRIX_KEY = "mimin_permission_matrix_v3_admin_only";
+export const PERMISSION_MATRIX_CHANGED_EVENT = "mimin:permission-matrix-changed";
+export type PermissionMatrix = Record<Role, Partial<Record<Module, string>>>;
+
+/** Read the previous browser cache without replacing either saved version. */
+export function getLegacyPermissionMatrix(): PermissionMatrix | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("mimin_permission_matrix_v2");
+  if (!raw) return null;
+  const parsed: unknown = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Bản phân quyền cũ không hợp lệ");
+  }
+  const custom = parsed as Record<string, unknown>;
+  if (!Object.keys(PERMISSIONS).some((role) => role in custom)) {
+    throw new Error("Bản phân quyền cũ không có vai trò hợp lệ");
+  }
+  const restored = {} as PermissionMatrix;
+  for (const role of Object.keys(PERMISSIONS) as Role[]) {
+    const overrides = custom[role];
+    restored[role] = { ...PERMISSIONS[role] };
+    if (overrides === undefined) continue;
+    if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
+      throw new Error(`Quyền cũ của ${role} không hợp lệ`);
+    }
+    for (const [module, value] of Object.entries(overrides)) {
+      if (typeof value !== "string" || !/^[rcud]*$/.test(value)) {
+        throw new Error(`Quyền cũ của ${role}/${module} không hợp lệ`);
+      }
+      if (Object.prototype.hasOwnProperty.call(MODULE_LABELS, module)) {
+        restored[role][module as Module] = value;
+      }
+    }
+  }
+  return normalizeMatrix(restored);
+}
+
+function getAdminOnlyMatrix(): PermissionMatrix {
+  const modules = Object.keys(MODULE_LABELS) as Module[];
+  return Object.fromEntries(
+    (Object.keys(PERMISSIONS) as Role[]).map((role) => [
+      role,
+      Object.fromEntries(modules.map((module) => [module, role === "admin" ? "rcud" : ""])),
+    ]),
+  ) as PermissionMatrix;
+}
+
+function normalizeMatrix(matrix?: PermissionMatrix): PermissionMatrix {
+  const base = getAdminOnlyMatrix();
+  if (!matrix) return base;
+  (Object.keys(base) as Role[]).forEach((role) => {
+    if (role === "admin") return;
+    (Object.keys(MODULE_LABELS) as Module[]).forEach((module) => {
+      base[role][module] = matrix[role]?.[module] || "";
+    });
+  });
+  return base;
+}
+
+function cacheMatrix(matrix: PermissionMatrix): PermissionMatrix {
+  const normalized = normalizeMatrix(matrix);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(CUSTOM_MATRIX_KEY, JSON.stringify(normalized));
+    window.dispatchEvent(new CustomEvent(PERMISSION_MATRIX_CHANGED_EVENT, { detail: normalized }));
+  }
+  return normalized;
+}
 
 /** Load matrix hiệu lực: ưu tiên localStorage (admin tùy chỉnh), fallback PERMISSIONS mặc định */
-export function getEffectivePermissions(): Record<Role, Partial<Record<Module, string>>> {
-  if (typeof window === "undefined") return PERMISSIONS;
+export function getEffectivePermissions(): PermissionMatrix {
+  const defaults = getAdminOnlyMatrix();
+  if (typeof window === "undefined") return defaults;
   try {
     const raw = localStorage.getItem(CUSTOM_MATRIX_KEY);
     if (raw) {
-      const custom = JSON.parse(raw) as Record<Role, Partial<Record<Module, string>>>;
-      // Merge: ưu tiên custom nhưng fallback PERMISSIONS nếu thiếu key
-      const merged: any = { ...PERMISSIONS };
-      (Object.keys(PERMISSIONS) as Role[]).forEach((role) => {
-        if (custom[role]) {
-          merged[role] = { ...PERMISSIONS[role], ...custom[role] };
-        }
-      });
-      return merged;
+      return normalizeMatrix(JSON.parse(raw) as PermissionMatrix);
     }
   } catch {}
-  return PERMISSIONS;
+  return defaults;
 }
 
-/** Lưu matrix tùy chỉnh vào localStorage */
-export function saveCustomMatrix(matrix: Record<Role, Partial<Record<Module, string>>>): void {
+/** Lưu cache ngay để UI phản hồi nhanh, sau đó đồng bộ dùng chung lên Supabase. */
+export async function saveCustomMatrix(matrix: PermissionMatrix): Promise<void> {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(CUSTOM_MATRIX_KEY, JSON.stringify(matrix));
+    const normalized = cacheMatrix(matrix);
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.from("permission_settings").upsert({ id: "global", matrix: normalized, updated_at: new Date().toISOString() });
+      if (error) throw error;
+    }
   } catch (err) {
     console.error("[permissions] Không lưu được custom matrix:", err);
+    throw err;
   }
+}
+
+export async function loadSharedPermissionMatrix(): Promise<PermissionMatrix> {
+  if (!isSupabaseEnabled || !supabase) return getEffectivePermissions();
+  const { data, error } = await supabase.from("permission_settings").select("matrix").eq("id", "global").maybeSingle();
+  if (error || !data?.matrix) return getEffectivePermissions();
+  return cacheMatrix(data.matrix as PermissionMatrix);
+}
+
+export function subscribeSharedPermissionMatrix(onChange: (matrix: PermissionMatrix) => void): () => void {
+  if (!isSupabaseEnabled || !supabase) return () => {};
+<<<<<<< Updated upstream
+  // Each consumer owns its channel: Supabase reuses channels with the same topic,
+  // so mounting the permissions page after SessionProvider must use a new topic.
+  const channel = supabase.channel(`permission-settings-global-${crypto.randomUUID()}`).on(
+=======
+  const channelId = `permission-settings-global-${Date.now()}-${Math.random()}`;
+  const channel = supabase.channel(channelId).on(
+>>>>>>> Stashed changes
+    "postgres_changes",
+    { event: "*", schema: "public", table: "permission_settings", filter: "id=eq.global" },
+    (payload) => {
+      const matrix = (payload.new as { matrix?: PermissionMatrix })?.matrix;
+      if (matrix) onChange(cacheMatrix(matrix));
+    },
+  ).subscribe();
+  return () => { void supabase?.removeChannel(channel); };
 }
 
 /** Reset về mặc định */
 export function resetCustomMatrix(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(CUSTOM_MATRIX_KEY);
+  window.dispatchEvent(new Event(PERMISSION_MATRIX_CHANGED_EVENT));
 }
 
 export function can(role: Role | string | undefined, module: Module, action: Action): boolean {
@@ -548,7 +705,7 @@ export function getFullMatrix(): Record<Role, Partial<Record<Module, string>>> {
 }
 
 export const ALL_ROLES: Role[] = [
-  "admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner",
+  "admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner", "supplier", "workshop_customer", "buyer_customer",
   "cutting", "printing", "buttoning", "ironing", "packaging"
 ];
 
@@ -560,7 +717,8 @@ export const ALL_MODULES: Module[] = [
   "gia-cong-ngoai", "bao-cao", "ai-tinh-gia", "khach-hang-tiem-nang",
   "so-do-chien-luoc", "realtime", "cai-dat",
   "trang-chu-gia-cong", "bang-dieu-hanh-sx", "doi-soat-tien-cong",
-  "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp",
+  "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp", "dat-ncc-phu-lieu",
+  "hoa-don", "van-chuyen", "tin-nhan", "workspace",
   "cong-viec-gia-cong", "ban-giao-gia-cong", "san-luong-gia-cong", "tien-cong-gia-cong",
   "to-cat", "to-in-theu", "to-khuy-nut", "to-ui", "to-dong-goi"
 ];

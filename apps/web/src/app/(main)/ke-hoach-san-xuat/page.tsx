@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Calendar, CheckCircle2, Edit2, Filter, Plus, Scissors, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { CrudModal } from "@/components/ui/CrudModal";
 import { useSession } from "@/components/session-provider";
 import { useKHSX, type KHSX, type TrangThaiKHSX } from "@/lib/data/khsx-store";
 import { useLenhCat, generateLenhCatId } from "@/lib/data/lenh-cat-store";
+import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 
 const TRANG_THAI: TrangThaiKHSX[] = ["Lên kế hoạch", "Đang SX", "Hoàn thành", "Trễ hạn"];
 const XUONG = ["Tổ cắt", "Xưởng May 1 – Polomimin", "Xưởng May 2 – Polomimin", "Gia công ngoài"];
@@ -17,10 +18,48 @@ export default function KeHoachSXPage() {
   const { user } = useSession();
   const { khsx, themKHSX, suaKHSX, xoaKHSX } = useKHSX();
   const { dsLenhCat, themLenhCat } = useLenhCat();
+  const { dsSanPham } = useDanhMucSP();
   
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<KHSX | null>(null);
   const [filter, setFilter] = useState<TrangThaiKHSX | "Tất cả">("Tất cả");
+  const [activeEditors, setActiveEditors] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    let channel: any = null;
+    let sb: any = null;
+
+    import("@/lib/supabase/client").then(({ supabase }) => {
+      if (!supabase) return;
+      sb = supabase;
+      channel = supabase.channel('global_lenh_cat_presence', {
+        config: { presence: { key: 'watcher-' + Math.random() } }
+      });
+      channel.on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const newMap: Record<string, string[]> = {};
+        for (const key in state) {
+          const presences = state[key] as any[];
+          for (const p of presences) {
+            if (p.editingId && p.name) {
+              if (!newMap[p.editingId]) newMap[p.editingId] = [];
+              if (!newMap[p.editingId].includes(p.name)) {
+                newMap[p.editingId].push(p.name);
+              }
+            }
+          }
+        }
+        setActiveEditors(newMap);
+      }).subscribe();
+    });
+
+    return () => {
+      if (sb && channel) {
+        sb.removeChannel(channel);
+      }
+    };
+  }, []);
+
   const visible = filter === "Tất cả" ? khsx : khsx.filter((item) => item.trangThai === filter);
   const tongSL = khsx.reduce((sum, item) => sum + item.soLuong, 0);
   const tongXong = khsx.reduce((sum, item) => sum + item.daHoanThanh, 0);
@@ -48,36 +87,69 @@ export default function KeHoachSXPage() {
   const taoLenhCat = async (item: KHSX) => {
     try {
       const newId = generateLenhCatId(dsLenhCat);
+      const { supabase } = await import("@/lib/supabase/client");
+      
+      if (supabase) {
+        // Fast-fail check
+        const { data: checkData } = await supabase.from("khsx").select("lenhCatId").eq("id", item.id).single();
+        const existingLenhCatId = checkData ? checkData.lenhCatId : null;
+        if (existingLenhCatId) {
+           toast.error(`Kế hoạch này đã được tạo Lệnh Cắt (${existingLenhCatId}) bởi người khác!`);
+           suaKHSX(item.id, { lenhCatId: existingLenhCatId }, null);
+           return;
+        }
+      }
+
+
       const now = new Date().toISOString().slice(0, 10);
       
+      let sp: any = null;
+      if (item.maSP || item.sanPham || item.tenSP) {
+        try {
+          const spRaw = localStorage.getItem("mimin_danh_muc_v2") || localStorage.getItem("mimin_danh_muc_sp");
+          if (spRaw) {
+            const spList = JSON.parse(spRaw);
+            sp = spList.find((s: any) => 
+              (item.maSP && (s.id === item.maSP || s.ma_sp === item.maSP)) ||
+              ((item.tenSP || item.sanPham) && s.tenSP === (item.tenSP || item.sanPham))
+            );
+          }
+        } catch (e) {}
+      }
+
       const newLenhCat = {
         id: newId,
         loaiLenh: "HangNha" as const,
-        loaiSP: (item.loaiSP as any) || "BoTru",
-        maSP: item.maSP || "",
-        tenSP: item.tenSP || item.sanPham,
+        loaiSP: (function() {
+          let val = item.loaiSP;
+          if (sp && sp.loaiSP) val = sp.loaiSP;
+          
+          // Nếu vẫn bị "BoTru" do data cũ hoặc thiếu, parse lại từ tên SP
+          if (!val || val === "BoTru") {
+             const checkStr = (item.sanPham || item.tenSP || "").toLowerCase();
+             if (checkStr.includes("áo polo") || checkStr.includes("ao polo")) val = "AoPolo";
+             else if (checkStr.includes("áo trụ") || checkStr.includes("ao tru") || checkStr.includes("cổ trụ") || checkStr.includes("co tru")) val = "AoTru";
+             else if (checkStr.includes("áo tròn") || checkStr.includes("áo cổ tròn") || checkStr.includes("cổ tròn") || checkStr.includes("co tron")) val = "AoCoTron";
+             else if (checkStr.includes("bộ tròn") || checkStr.includes("bộ cổ tròn") || checkStr.includes("bo tron") || checkStr.includes("bo co tron")) val = "BoCoTron";
+             else if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) val = "PhuKien";
+             else if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) val = "AoCoTron";
+          }
+          return (["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"].includes(val as string) ? val : "BoTru") as import("@/lib/data/lenh-cat-store").LoaiSP;
+        })(),
+        maSP: item.maSP || sp?.id || "",
+        tenSP: item.tenSP || item.sanPham || sp?.tenSP || "",
         tongSL: item.soLuong,
         hanHoanThanh: item.denNgay,
-        tiLeSize: item.tiLeSize || "1:2:2:1",
+        tiLeSize: item.tiLeSize || sp?.tiLeSize || "1:2:2:1",
         dsMau: (item.dsMau || []).map((mau) => {
           let mergedImg = mau.img;
           let mergedImgQuan = (mau as any).imgQuan;
-          if (!mergedImg && item.maSP) {
-            try {
-              // Dùng đúng key của danh mục sản phẩm (không phải v2)
-              const spRaw = localStorage.getItem("mimin_danh_muc_sp");
-              if (spRaw) {
-                const spList = JSON.parse(spRaw);
-                const sp = spList.find((s: any) => s.id === item.maSP || s.ma_sp === item.maSP);
-                if (sp && sp.dsMau) {
-                  const spMau = sp.dsMau.find((sm: any) => sm.ten === mau.ten || sm.maSKU === mau.maSKU);
-                  if (spMau) {
-                    mergedImg = spMau.img || "";
-                    mergedImgQuan = spMau.imgQuan || "";
-                  }
-                }
-              }
-            } catch (e) {}
+          if (!mergedImg && sp && sp.dsMau) {
+             const spMau = sp.dsMau.find((sm: any) => sm.ten === mau.ten || sm.maSKU === mau.maSKU);
+             if (spMau) {
+               mergedImg = spMau.img || "";
+               mergedImgQuan = spMau.imgQuan || "";
+             }
           }
           return {
             ...mau,
@@ -85,33 +157,75 @@ export default function KeHoachSXPage() {
             imgQuan: mergedImgQuan || "",
           };
         }),
-        dsPhuLieu: [],
-        phanCong: [],
-        chiPhiCoDinh: {},
+        dsPhuLieu: sp?.dsPhuLieu || [],
+        phanCong: sp?.phanCong || [],
+        chiPhiCoDinh: sp?.chiPhiCoDinh || {},
         phuTrachCat: "NV006",
-        ghiChu: `Tạo từ kế hoạch ${item.maKHSX}`,
+        ghiChu: `Tạo từ kế hoạch ${item.maKHSX} bởi ${user?.name || "Người dùng"} lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${new Date().toLocaleDateString("vi-VN")}`,
         trangThai: "Nhap" as const,
         phienBanDinhMuc: 1,
         ngayTao: now,
       };
 
       await themLenhCat(newLenhCat, user as any);
+
+      if (supabase) {
+        // Atomic update to claim KHSX (handles both null and empty string defaults)
+        const { data: updateData } = await supabase
+          .from("khsx")
+          .update({ lenhCatId: newId })
+          .eq("id", item.id)
+          .or('lenhCatId.is.null,lenhCatId.eq.""')
+          .select();
+
+        // If another user already claimed it exactly at the same time
+        if (!updateData || updateData.length === 0) {
+          // Rollback orphaned LenhCat
+          await supabase.from("lenh_cat").delete().eq("id", newId);
+          
+          const { data: checkData } = await supabase.from("khsx").select("lenhCatId").eq("id", item.id).single();
+          const existingLenhCatId = checkData && checkData.lenhCatId !== "" ? checkData.lenhCatId : null;
+          
+          toast.error(`Trùng lặp: Kế hoạch này vừa được người khác tạo Lệnh Cắt (${existingLenhCatId || 'khác'}) cùng lúc!`);
+          if (existingLenhCatId) {
+            suaKHSX(item.id, { lenhCatId: existingLenhCatId }, null);
+          }
+          return;
+        }
+      }
+
+      suaKHSX(item.id, { lenhCatId: newId }, user as any);
       toast.success(`Đã chuyển ${item.maSP || item.sanPham} thành Lệnh cắt ${newId}`);
       localStorage.setItem("mimin_edit_lenh_cat_id", newId);
       router.push("/lenh-cat");
     } catch (err: any) {
+      if (err.message && err.message.includes("đã tồn tại")) {
+        // Có thể mã này trùng do người khác vừa tạo cùng lúc. Ta check lại KHSX thử xem đã bị lấy chưa.
+        const { supabase } = await import("@/lib/supabase/client");
+        if (supabase) {
+           const { data: checkData } = await supabase.from("khsx").select("lenhCatId").eq("id", item.id).single();
+           if (checkData && checkData.lenhCatId) {
+              toast.error(`Trùng lặp: Kế hoạch này vừa được tạo Lệnh Cắt (${checkData.lenhCatId}) bởi người khác!`);
+              suaKHSX(item.id, { lenhCatId: checkData.lenhCatId }, null);
+              return;
+           }
+        }
+      }
       toast.error(err.message || "Lỗi tạo lệnh cắt");
     }
   };
 
   return <div className="space-y-5 animate-fade-in">
-    <section className="rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-500 p-6 text-white shadow-xl">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div>
-        <p className="flex items-center gap-2 text-sm font-semibold"><Calendar className="h-4 w-4" /> MIMIN ERP · Sản xuất & Kế hoạch</p>
-        <h1 className="mt-2 text-3xl font-black md:text-4xl">Kế hoạch sản xuất</h1>
-        <p className="mt-2 text-sm">{khsx.length} kế hoạch · Tổng SL {tongSL.toLocaleString("vi-VN")} · Hoàn thành {tongXong.toLocaleString("vi-VN")} · Tiến độ {tienDo.toFixed(1)}%</p>
-        <div className="mt-4 h-2 w-80 max-w-full overflow-hidden rounded-full bg-white/25"><div className="h-full rounded-full bg-white" style={{ width: `${Math.min(tienDo, 100)}%` }} /></div>
-      </div><button onClick={() => { setEditing(null); setShowForm(true); }} className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30"><Plus className="h-5 w-5" /> Tạo KHSX</button></div>
+    <section className="rounded-3xl bg-gradient-to-r from-teal-600 to-cyan-500 p-5 sm:p-6 text-white shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 w-full">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Calendar className="h-4 w-4" /> MIMIN ERP · Sản xuất & Kế hoạch</p>
+          <h1 className="mt-2 text-3xl font-black md:text-4xl">Kế hoạch sản xuất</h1>
+          <p className="mt-2 text-sm leading-relaxed">{khsx.length} kế hoạch · Tổng SL {tongSL.toLocaleString("vi-VN")} · Hoàn thành {tongXong.toLocaleString("vi-VN")} · Tiến độ {tienDo.toFixed(1)}%</p>
+          <div className="mt-4 h-2 w-full max-w-sm overflow-hidden rounded-full bg-white/25"><div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${Math.min(tienDo, 100)}%` }} /></div>
+        </div>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/20 px-4 py-3 font-bold hover:bg-white/30 shrink-0"><Plus className="h-5 w-5" /> Tạo KHSX</button>
+      </div>
     </section>
 
     <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">{[
@@ -124,12 +238,46 @@ export default function KeHoachSXPage() {
     <section className="card flex flex-wrap items-center gap-2 p-3"><Filter className="h-4 w-4 text-slate-400" />{(["Tất cả", ...TRANG_THAI] as const).map((item) => <button key={item} onClick={() => setFilter(item)} className={`rounded-lg px-3 py-2 text-xs font-bold ${filter === item ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-600"}`}>{item}{item !== "Tất cả" ? ` (${khsx.filter((x) => x.trangThai === item).length})` : ""}</button>)}</section>
 
     {visible.length === 0 ? <section className="card py-16 text-center text-slate-400"><Calendar className="mx-auto mb-3 h-12 w-12 opacity-25" /><p className="font-bold">Chưa có kế hoạch sản xuất nào</p><p className="mt-1 text-sm">Chọn “Đặt sản xuất” trong Danh mục sản phẩm hoặc bấm “Tạo KHSX”.</p></section> :
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((item) => <article key={item.id} className="card p-5">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold text-teal-600">{item.maKHSX}</p><h2 className="mt-1 text-lg font-black text-slate-900">{item.sanPham}</h2><p className="text-sm text-slate-500">{item.maSP || "Chưa có mã SP"}</p></div><span className="rounded-full bg-teal-50 px-2 py-1 text-xs font-bold text-teal-700">{item.trangThai}</span></div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((item) => {
+        const sp = dsSanPham.find((s: any) => 
+          (item.maSP && (s.id === item.maSP || s.ma_sp === item.maSP)) ||
+          ((item.tenSP || item.sanPham) && s.tenSP === (item.tenSP || item.sanPham))
+        );
+        const imageToDisplay = item.dsMau?.[0]?.img || (item.dsMau?.[0] as any)?.imgQuan || sp?.dsMau?.[0]?.img || sp?.dsMau?.[0]?.imgQuan || null;
+        
+        return <article key={item.id} className="card p-5">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4 relative">
+          <div className="flex flex-col sm:flex-row items-start gap-3 w-full sm:w-auto">
+            {imageToDisplay && (
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl border border-slate-200 bg-slate-50 shrink-0 overflow-hidden shadow-sm self-center sm:self-start">
+                <img src={imageToDisplay} alt={item.sanPham} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div>
+              <p className="text-lg font-black text-teal-700">Mã kế hoạch: {item.maKHSX}</p>
+              <p className="mt-1 text-sm font-bold text-slate-700">Mã sản phẩm: {item.maSP || "Chưa có mã SP"}</p>
+              <h2 className="text-sm font-medium text-slate-900 leading-tight mt-0.5">Tên sản phẩm: {item.sanPham}</h2>
+            </div>
+          </div>
+          <span className="rounded-full bg-teal-50 px-2 py-1 text-xs font-bold text-teal-700 shrink-0 absolute top-0 right-0 sm:static">{item.trangThai}</span>
+        </div>
         <div className="my-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm"><div><p className="text-slate-400">Số lượng</p><b>{item.soLuong.toLocaleString("vi-VN")} SP</b></div><div><p className="text-slate-400">Thời gian</p><b>{item.tuNgay} → {item.denNgay}</b></div></div>
-        <button onClick={() => taoLenhCat(item)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white hover:bg-violet-700"><Scissors className="h-4 w-4" /> Tạo lệnh cắt</button>
+        {item.ghiChu && <div className="mb-4 text-xs text-slate-500 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/50">{item.ghiChu}</div>}
+        {item.lenhCatId ? (
+          <>
+            <button onClick={() => { localStorage.setItem("mimin_edit_lenh_cat_id", item.lenhCatId!); router.push("/lenh-cat"); }} className="mb-1 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-bold text-white hover:bg-blue-700"><Scissors className="h-4 w-4" /> Xem Lệnh Cắt ({item.lenhCatId})</button>
+            {activeEditors[item.lenhCatId] && activeEditors[item.lenhCatId].length > 0 && (
+              <p className="text-sm text-rose-600 font-bold mb-3 text-center bg-rose-50 py-2 rounded-md border border-rose-100 shadow-sm animate-pulse">
+                ⚠️ {activeEditors[item.lenhCatId].join(", ")} đang chỉnh sửa...
+              </p>
+            )}
+            {(!activeEditors[item.lenhCatId] || activeEditors[item.lenhCatId].length === 0) && <div className="mb-3"></div>}
+          </>
+        ) : (
+          <button onClick={() => taoLenhCat(item)} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white hover:bg-violet-700"><Scissors className="h-4 w-4" /> Tạo lệnh cắt</button>
+        )}
         <div className="flex gap-2"><button onClick={() => { setEditing(item); setShowForm(true); }} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-50 py-2 text-xs font-bold text-amber-700"><Edit2 className="h-3 w-3" /> Sửa</button><button onClick={() => { if (confirm(`Xóa kế hoạch ${item.maKHSX}?`)) xoaKHSX(item.id, user); }} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-red-50 py-2 text-xs font-bold text-red-700"><Trash2 className="h-3 w-3" /> Xóa</button></div>
-      </article>)}</section>}
+      </article>})}</section>}
 
     <CrudModal open={showForm} onClose={() => setShowForm(false)} title={editing ? "Sửa kế hoạch sản xuất" : "Tạo kế hoạch sản xuất"} fields={[
       { name: "maKHSX", label: "Mã kế hoạch", type: "text", required: true }, { name: "maSP", label: "Mã sản phẩm", type: "text" }, { name: "sanPham", label: "Tên sản phẩm", type: "text", required: true }, { name: "soLuong", label: "Số lượng", type: "number", min: 1, required: true }, { name: "tuNgay", label: "Từ ngày", type: "date", required: true }, { name: "denNgay", label: "Đến ngày", type: "date", required: true }, { name: "xuongPhuTrach", label: "Xưởng phụ trách", type: "select", options: XUONG.map((x) => ({ value: x, label: x })) }, { name: "trangThai", label: "Trạng thái", type: "select", options: TRANG_THAI.map((x) => ({ value: x, label: x })) }, { name: "ghiChu", label: "Ghi chú", type: "textarea" },

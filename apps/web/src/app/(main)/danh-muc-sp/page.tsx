@@ -9,6 +9,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store } from "lucide-react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
+import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { useGioHang } from "@/lib/data/gio-hang-store";
 import { useDonHang } from "@/lib/data/don-hang-store";
 import { toast } from "sonner";
@@ -22,6 +23,9 @@ import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, gener
 import { generateVariants } from "@/lib/data/product-variants";
 import type { Order, OrderItem } from "@/components/order-detail/types";
 import type { GioHangItem } from "@/lib/data/gio-hang-store";
+import { useCustomerCart } from "@/lib/data/customer-cart-store";
+import CustomerCheckoutModal from "@/components/danh-muc-sp/CustomerCheckoutModal";
+import CustomerAddToCartModal from "@/components/danh-muc-sp/CustomerAddToCartModal";
 import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 import { useKHSX } from "@/lib/data/khsx-store";
 import { useSession } from "@/components/session-provider";
@@ -35,6 +39,20 @@ const FILTER_TABS = [
   { id: "tiktok", label: "TikTok", icon: Tag },
   { id: "shopee", label: "Shopee", icon: ShoppingCart },
 ];
+
+const getStrictPhanLoaiKey = (phanLoai: string): SanPham["loaiSP"] => {
+  if (!phanLoai) return "BoTru";
+  if (Object.keys(LOAI_SP_LABELS).includes(phanLoai)) return phanLoai as SanPham["loaiSP"];
+  
+  const plLower = phanLoai.toLowerCase();
+  if (plLower.includes("bộ polo") || plLower.includes("bo polo") || plLower.includes("bộ trụ") || plLower.includes("bo tru")) return "BoTru";
+  if (plLower.includes("áo polo") || plLower.includes("ao polo") || plLower.includes("áo trụ") || plLower.includes("ao tru") || plLower.includes("cổ trụ") || plLower.includes("co tru")) return "AoTru";
+  if (plLower.includes("bộ tròn") || plLower.includes("bộ cổ tròn") || plLower.includes("bo tron") || plLower.includes("bo co tron")) return "BoCoTron";
+  if (plLower.includes("áo tròn") || plLower.includes("áo cổ tròn") || plLower.includes("cổ tròn") || plLower.includes("co tron") || plLower.includes("áo thun") || plLower.includes("áo") || plLower.includes("ao")) return "AoCoTron";
+  if (plLower.includes("phụ kiện") || plLower.includes("quần") || plLower.includes("quan")) return "PhuKien";
+  
+  return "BoTru";
+};
 
 export default function DanhMucSanPhamPage() {
   const router = useRouter();
@@ -58,6 +76,11 @@ export default function DanhMucSanPhamPage() {
   const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
   const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  // B2C Customer Cart States
+  const { getTotalItems: getCustomerCartItems } = useCustomerCart();
+  const [showCustomerAddToCart, setShowCustomerAddToCart] = useState<SanPham | null>(null);
+  const [showCustomerCheckout, setShowCustomerCheckout] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -97,11 +120,7 @@ export default function DanhMucSanPhamPage() {
         img: mau.img,
       }));
       const current = map.get(item.maSP);
-      const loaiSP: SanPham["loaiSP"] = /áo|polo/i.test(item.phanLoai)
-        ? "AoPolo"
-        : /phụ kiện|quần/i.test(item.phanLoai)
-          ? "PhuKien"
-          : "BoTru";
+      const loaiSP = getStrictPhanLoaiKey(item.phanLoai || "");
       map.set(item.maSP, {
         ...(current || {
           id: item.maSP,
@@ -116,23 +135,33 @@ export default function DanhMucSanPhamPage() {
           ngayTao: new Date().toISOString().slice(0, 10),
         }),
         tenSP: current?.tenSP || item.tenSP || item.maSP,
-        dsMau: colors.length 
-          ? colors.map(c => {
-              const existing = current?.dsMau?.find(x => x.ten === c.ten);
-              return existing ? { ...c, dinhMuc: existing.dinhMuc || 0, img: existing.img || c.img, video: existing.video, hinhAnhChiTiet: existing.hinhAnhChiTiet } : c;
-            })
-          : (current?.dsMau || []),
+        dsMau: (() => {
+          // Nếu user đã từng lưu sản phẩm này → dùng hoàn toàn data của user,
+          // không merge với kho (vì maSKU format khác nhau gây ra duplicate).
+          // Chỉ append màu thực sự mới từ kho (tên chưa có trong current).
+          if (current?.dsMau?.length) {
+            const base = [...current.dsMau];
+            colors.forEach(c => {
+              const alreadyIn = base.some(x => x.ten === c.ten);
+              if (!alreadyIn) base.push(c); // màu mới thêm vào kho, chưa có trong SP
+            });
+            return base;
+          }
+          // Chưa lưu lần nào → dùng màu từ kho
+          return colors;
+        })(),
+
         bangSize: current?.bangSize?.sizes?.length
           ? current.bangSize
           : (sizes.length ? { sizes, ratios: sizes.map(() => 1), riSo: sizes.length } : { sizes: [], ratios: [], riSo: 1 }),
-        giaVonDuKien: current?.giaVonDuKien || item.giaVon || 0,
+        giaVonDuKien: item.giaVon || current?.giaVonDuKien || 0,
         giaBanDuKien: current?.giaBanDuKien || item.giaBanLe || item.giaBanSi || item.giaBanLo || 0,
-        giaBanLe: current?.giaBanLe || item.giaBanLe || 0,
-        giaBanSi: current?.giaBanSi || item.giaBanSi || 0,
-        giaBanLo: current?.giaBanLo || item.giaBanLo,
-        giaTikTok: current?.giaTikTok || item.giaTikTok,
-        giaShopee: current?.giaShopee || item.giaShopee,
-        kenhBan: current?.kenhBan || item.kenhBan,
+        giaBanLe: item.giaBanLe || current?.giaBanLe || 0,
+        giaBanSi: item.giaBanSi || current?.giaBanSi || 0,
+        giaBanLo: item.giaBanLo || current?.giaBanLo || 0,
+        giaTikTok: item.giaTikTok || current?.giaTikTok || 0,
+        giaShopee: item.giaShopee || current?.giaShopee || 0,
+        kenhBan: item.kenhBan?.length ? item.kenhBan : (current?.kenhBan || []),
         hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
       });
     }
@@ -142,21 +171,80 @@ export default function DanhMucSanPhamPage() {
   const filtered = useMemo(() => {
     let result = dsDongBo;
     if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (sp) =>
-          (sp.id || "").toLowerCase().includes(q) ||
-          (sp.tenSP || "").toLowerCase().includes(q)
-      );
+      const searchLower = search.toLowerCase().trim();
+      const predefinedMap: Record<string, string> = {
+        "áo trụ": "AoTru",
+        "áo cổ tròn": "AoCoTron",
+        "bộ trụ": "BoTru",
+        "bộ cổ tròn": "BoCoTron",
+        "phụ kiện": "PhuKien",
+      };
+
+      if (predefinedMap[searchLower]) {
+        const exactLoai = predefinedMap[searchLower];
+        result = result.filter(sp => sp.loaiSP === exactLoai);
+      } else {
+        const rawSearchNoAccent = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const qTokensNoAccent = rawSearchNoAccent.split(/\s+/);
+        
+        result = result.filter((sp) => {
+          const id = (sp.id || "").toLowerCase();
+          const tenNoAccent = (sp.tenSP || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          const loai = LOAI_SP_LABELS[sp.loaiSP as LoaiSP] || "";
+          const loaiNoAccent = loai.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          
+          if (id.startsWith(rawSearchNoAccent)) return true;
+          if (id.includes(rawSearchNoAccent) || tenNoAccent.includes(rawSearchNoAccent) || loaiNoAccent.includes(rawSearchNoAccent)) return true;
+          
+          return qTokensNoAccent.every(token => id.includes(token) || tenNoAccent.includes(token) || loaiNoAccent.includes(token));
+        });
+      }
     }
-    if (activeFilter !== "all") result = result.filter((sp) => sp.kenhBan?.includes(activeFilter as KenhBanKho));
+    if (activeFilter !== "all") {
+      result = result.filter((sp) => {
+        // Return true if explicitly in kenhBan array
+        if (sp.kenhBan?.includes(activeFilter as KenhBanKho)) return true;
+        
+        // OR return true if it has a price configured for this channel
+        switch (activeFilter) {
+          case "ban-le": return (sp.giaBanLe && sp.giaBanLe > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "ban-si": return (sp.giaBanSi && sp.giaBanSi > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "ban-lo": return (sp.giaBanLo && sp.giaBanLo > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "tiktok": return (sp.giaTikTok && sp.giaTikTok > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          case "shopee": return (sp.giaShopee && sp.giaShopee > 0) || (sp.giaBanDuKien && sp.giaBanDuKien > 0);
+          default: return true;
+        }
+      });
+    }
+    // Sort by created date first (stably, ignoring edits so items don't jump around)
+    result.sort((a, b) => {
+      // Priority: prefix match on ID when searching
+      if (search) {
+        const rawSearchNoAccent = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const idA = (a.id || "").toLowerCase();
+        const idB = (b.id || "").toLowerCase();
+        const startsA = idA.startsWith(rawSearchNoAccent) ? 1 : 0;
+        const startsB = idB.startsWith(rawSearchNoAccent) ? 1 : 0;
+        if (startsA !== startsB) {
+          return startsB - startsA; // 1 comes before 0
+        }
+      }
+
+      const dateA = a.ngayTao || "";
+      const dateB = b.ngayTao || "";
+      if (dateA === dateB) {
+        return (b.id || "").localeCompare(a.id || "");
+      }
+      return dateB.localeCompare(dateA);
+    });
     return result;
   }, [dsDongBo, search, activeFilter]);
 
   // === HANDLERS (3 CTA buttons) ===
   const handleAddToCart = (sp: SanPham) => {
-    themVaoGio(sp);
-    toast.success(`Đã thêm "${sp.tenSP}" vào giỏ`);
+    // For Internal Admin, it was: themVaoGio(sp); toast...
+    // Now we open Customer AddToCart Modal
+    setShowCustomerAddToCart(sp);
   };
 
   const handleConfirmAddToCart = (data: { 
@@ -300,20 +388,20 @@ export default function DanhMucSanPhamPage() {
         ghiChu: "",
         img: mau.img || "",
         imgQuan: (mau as any).imgQuan || "",
-        phanBoSize: (sp.bangSize?.sizes || []).map((size) => ({ size, sl: 0 })),
+        phanBoSize: (sp.bangSize?.sizes || []).map((size: string) => ({ size, sl: 0 })),
       })),
       tuan: "",
       tuNgay: today.toISOString().slice(0, 10),
       denNgay: deadline.toISOString().slice(0, 10),
       sanPham: sp.tenSP,
       loai: sp.loaiSP.startsWith("Ao") ? "Áo" : sp.loaiSP === "PhuKien" ? "Phụ kiện" : "Bộ",
-      soLuong: 1,
+      soLuong: sp.dsMau?.length || 1,
       daHoanThanh: 0,
       xuongPhuTrach: "Tổ cắt",
       trangThai: "Lên kế hoạch",
-      ghiChu: "Tạo từ Danh mục sản phẩm – vui lòng cập nhật số lượng kế hoạch",
-    }, user);
-    toast.success(`Đã chuyển ${sp.id} vào ${created.maKHSX}`);
+      ghiChu: `Tạo từ Danh mục sản phẩm bởi ${user?.name || "Người dùng"} lúc ${today.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${today.toLocaleDateString("vi-VN")} – vui lòng cập nhật số lượng kế hoạch`,
+    }, user as any);
+    toast.success(`Đã chuyển ${sp.id} vào kế hoạch`);
     router.push("/ke-hoach-san-xuat");
   };
 
@@ -403,13 +491,17 @@ export default function DanhMucSanPhamPage() {
 
   const handleSaveProduct = async (sp: Partial<SanPham>) => {
     if (productToEdit) {
-      const existsInDb = dsSanPham?.some(p => p.id === productToEdit.id);
-      if (existsInDb && suaSP) {
+      // Luôn dùng suaSP khi đang sửa — kể cả SP từ kho chưa có trong dsSanPham
+      if (suaSP) {
         await suaSP(productToEdit.id, sp);
         toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP}`);
+        if (selectedProduct && selectedProduct.id === productToEdit.id) {
+          setSelectedProduct({ ...selectedProduct, ...sp } as SanPham);
+        }
       } else if (themSP) {
-        await themSP(sp as SanPham);
-        toast.success(`Đã lưu sản phẩm từ Kho vào Danh mục: ${sp.tenSP}`);
+        // Fallback: lưu mới nếu không có suaSP
+        await themSP({ ...productToEdit, ...sp } as SanPham);
+        toast.success(`Đã lưu sản phẩm: ${sp.tenSP}`);
       }
     } else if (themSP) {
       await themSP(sp as SanPham);
@@ -445,34 +537,53 @@ export default function DanhMucSanPhamPage() {
           </div>
 
           {/* Search bar & Add Button */}
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
-              <input
-                type="text"
-                placeholder="Tìm theo mã hoặc tên sản phẩm..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-white/30 bg-white/95 backdrop-blur-md text-sm focus:ring-2 focus:ring-white focus:border-white outline-none shadow-xl"
-              />
+          <div className="flex flex-col gap-2 w-full md:w-auto">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo mã hoặc tên sản phẩm..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-white/30 bg-white/95 backdrop-blur-md text-sm focus:ring-2 focus:ring-white focus:border-white outline-none shadow-xl"
+                />
+              </div>
+              
+  
+  
+              {/* B2C Cart Header Button */}
+              <button
+                onClick={() => setShowCustomerCheckout(true)}
+                className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-white/30 transition-colors whitespace-nowrap"
+              >
+                <ShoppingCart className="w-5 h-5" /> Giỏ hàng
+                {getCustomerCartItems() > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center shadow-md">
+                    {getCustomerCartItems()}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setShowProductForm(true)}
+                className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white text-cyan-700 font-extrabold rounded-2xl shadow-xl hover:bg-cyan-50 transition-colors whitespace-nowrap"
+              >
+                <Plus className="w-5 h-5"/> Tạo Mới
+              </button>
             </div>
-            <button
-              onClick={() => setShowGioHang(true)}
-              className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-white/30 transition-colors whitespace-nowrap"
-            >
-              <ShoppingCart className="w-5 h-5" /> Giỏ hàng
-              {soLuongTrongGio > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center shadow-md">
-                  {soLuongTrongGio}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setShowProductForm(true)}
-              className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white text-cyan-700 font-extrabold rounded-2xl shadow-xl hover:bg-cyan-50 transition-colors whitespace-nowrap"
-            >
-              <Plus className="w-5 h-5"/> Tạo Mới
-            </button>
+            
+            {/* Gợi ý tìm kiếm */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-96 px-1">
+              {["Áo Trụ", "Áo Cổ Tròn", "Bộ Trụ", "Bộ Cổ Tròn", "Phụ Kiện"].map(tag => (
+                <button 
+                  key={tag}
+                  onClick={() => setSearch(tag)}
+                  className="px-2.5 py-1 text-xs font-semibold bg-white/10 hover:bg-white/20 text-cyan-50 rounded-full transition-colors border border-white/20"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -517,17 +628,17 @@ export default function DanhMucSanPhamPage() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 bg-white/10 backdrop-blur rounded-3xl max-w-[1600px] mx-auto">
           <Shirt className="w-16 h-16 mx-auto text-white/40 mb-4" />
-          <p className="text-white font-semibold text-lg">Không tìm thấy sản phẩm nào trong database</p>
-          <p className="text-cyan-100 text-sm mt-2">Vào Supabase Dashboard → SQL Editor → chạy file <code className="bg-white/20 px-2 py-0.5 rounded">fix-rls-and-add-columns.sql</code></p>
+          <p className="text-white font-semibold text-lg">Không tìm thấy sản phẩm nào</p>
         </div>
       ) : (
         <div className="w-full px-2 md:px-6">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
             {filtered.map((sp) => (
               <ProductLibraryCard
                 key={sp.id}
                 sp={sp}
                 tonKhoTheoMau={tonKho[sp.id]}
+                activeFilter={activeFilter}
                 onAddToCart={handleAddToCart}
                 onCreateOrder={handleCreateOrder}
                 onProduceOrder={handleProduceOrder}
@@ -543,6 +654,7 @@ export default function DanhMucSanPhamPage() {
       {selectedProduct && (
         <ProductDetailModal
           sp={selectedProduct}
+          tonKhoTheoMau={tonKho[selectedProduct.id]}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
           onCreateOrder={handleCreateOrder}
@@ -592,6 +704,36 @@ export default function DanhMucSanPhamPage() {
         }}
         onSave={handleSaveOrderForm}
       />
+
+      {/* CUSTOMER (B2C) MODALS */}
+      {showCustomerAddToCart && (
+        <CustomerAddToCartModal 
+          sp={showCustomerAddToCart} 
+          onClose={() => setShowCustomerAddToCart(null)} 
+        />
+      )}
+
+      {showCustomerCheckout && (
+        <CustomerCheckoutModal 
+          onClose={() => setShowCustomerCheckout(false)} 
+        />
+      )}
+
+      {/* Floating Customer Cart Button */}
+      {getCustomerCartItems() > 0 && !showCustomerCheckout && (
+        <button
+          onClick={() => setShowCustomerCheckout(true)}
+          className="fixed bottom-10 right-10 z-[90] flex items-center justify-center gap-3 bg-rose-600 hover:bg-rose-700 text-white p-5 rounded-full shadow-[0_0_40px_rgba(225,29,72,0.6)] hover:shadow-[0_0_50px_rgba(225,29,72,0.8)] transition-all hover:scale-110 active:scale-95 animate-bounce"
+        >
+          <div className="relative">
+            <ShoppingCart className="w-8 h-8" />
+            <span className="absolute -top-3 -right-3 bg-white text-rose-600 text-[12px] font-extrabold w-6 h-6 flex items-center justify-center rounded-full border-2 border-rose-600 shadow-md">
+              {getCustomerCartItems()}
+            </span>
+          </div>
+          <span className="font-extrabold pr-2 text-lg hidden sm:inline">Tiến hành thanh toán</span>
+        </button>
+      )}
     </div>
   );
 }

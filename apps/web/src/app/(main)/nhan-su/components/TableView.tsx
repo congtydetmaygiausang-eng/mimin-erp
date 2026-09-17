@@ -9,7 +9,8 @@ import type { NhanSuExt } from "../data";
 export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, onEdit, onDelete }: { filtered: NhanSuExt[]; luongSPTheoNV: Record<string, number>; onShowDetail: (n: NhanSuExt) => void; onShowLuong: (n: NhanSuExt) => void; onEdit: (n: NhanSuExt) => void; onDelete: (n: NhanSuExt) => void }) {
   return (
     <div className="card overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* Desktop Table */}
+      <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
@@ -101,6 +102,73 @@ export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, 
             })}
           </tbody>
         </table>
+      </div>
+      
+      {/* Mobile Cards */}
+      <div className="md:hidden flex flex-col gap-2 p-2 bg-slate-50">
+        {filtered.map((n) => {
+          const luongSP = luongSPTheoNV[n.maNV] || 0;
+          return (
+            <div key={n.maNV} className="bg-white border rounded-xl p-3 shadow-sm flex flex-col gap-2 relative">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => onShowDetail(n)}>
+                  <Avatar name={n.hoTen} src={n.avatar} size="md" />
+                  <div>
+                    <div className="font-semibold text-teal-700">{n.hoTen}</div>
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                      <span className="font-mono">{n.maNV}</span> • <span className="px-1.5 py-0.5 rounded bg-brand-500/15 text-brand-700 font-medium">{n.boPhan}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-1 text-[11px] mt-1">
+                {n.sdt && (
+                  <a href={`tel:${n.sdt}`} className="flex items-center gap-1 text-brand-600 hover:underline">
+                    <Phone className="w-3 h-3" /> {n.sdt}
+                  </a>
+                )}
+                {n.chucVu && (
+                  <div className="flex items-center gap-1 text-slate-600">
+                    <span className="opacity-70">Chức vụ:</span> {n.chucVu}
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg mt-1">
+                <div>
+                  <span className="text-slate-500 block">Lương cơ bản</span>
+                  <span className="font-semibold text-slate-700">{formatVNDShort(n.luongCB || n.luongCung || 0)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 block">Lương SP</span>
+                  <span className="font-bold text-emerald-600">{luongSP > 0 ? formatVNDShort(luongSP) : (n.donGiaSP ? "Có bảng giá" : "—")}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mt-1 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-0.5">
+                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                  <span className="text-[11px] font-medium ml-0.5">{n.rating || 0}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => onShowLuong(n)} className="text-[10px] px-2 py-1 rounded bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 font-semibold flex items-center gap-1">
+                    <Wallet className="w-3 h-3" /> Lương
+                  </button>
+                  <button onClick={() => onEdit(n)} className="p-1.5 rounded bg-sky-500/15 text-sky-700 hover:bg-sky-500/25">
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => onDelete(n)} className="p-1.5 rounded bg-red-500/15 text-red-700 hover:bg-red-500/25">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="p-8 text-center text-slate-500 text-sm">Không tìm thấy nhân sự nào.</div>
+        )}
       </div>
     </div>
   );

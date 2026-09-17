@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat, type LichSuQCItem, type MauVai } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { ghepAoQuanTheoSize } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { applyStageColorEntries, type StageColorEntry } from "@/lib/stage-color-input";
 import { useSession } from "@/components/session-provider";
 
 const LOAI_LOI_OPTIONS = [
@@ -20,10 +21,14 @@ const LOAI_LOI_OPTIONS = [
 const KHAU_GAY_LOI_OPTIONS = ["Tổ Cắt", "Xưởng In/Thêu", "Tổ May", "Khác"];
 
 export default function UiQCPage() {
-  const [selectedMau, setSelectedMau] = useState<{lc: LenhCat, mau: any} | null>(null);
+  const [selection, setSelectedMau] = useState<{lc: LenhCat, mau: MauVai} | null>(null);
   const { dsLenhCat, capNhatCongDoan, suaLenhCat } = useLenhCat();
   const { themPhanCong } = usePhanCong();
   const { user } = useSession();
+  const liveLC = selection && (dsLenhCat.find(lc => lc.id === selection.lc.id) || selection.lc);
+  const selectedMau = selection && liveLC ? {
+    lc: liveLC, mau: liveLC.dsMau?.find(mau => mau.ten === selection.mau.ten) || selection.mau,
+  } : null;
 
   // State nhập liệu QC - key = `${lcId}_${pcId}`
   const [slDatInput, setSlDatInput] = useState<Record<string, number>>({});
@@ -52,8 +57,9 @@ export default function UiQCPage() {
     if (mayPCs.length === 0) return false;
 
     // Nếu khâu QC đã hoàn thành -> Không hiển thị nữa
+    // BUG FIX: Bỏ điều kiện này đi để QC sau khi hoàn thành vẫn hiển thị để theo dõi như các khâu khác
     const qcPC = lc.phanCong?.find((pc: any) => pc.id === "qc");
-    if (qcPC && qcPC.trangThaiCD === "hoan_thanh") return false;
+    // if (qcPC && qcPC.trangThaiCD === "hoan_thanh") return false;
 
     // Phải có ít nhất 1 khâu may đã đến QC (cho_qc, co_loi, hoan_thanh)
     const hasToQC = mayPCs.some((pc: any) => pc.trangThaiCD === "cho_qc" || pc.trangThaiCD === "co_loi" || pc.trangThaiCD === "hoan_thanh");
@@ -80,26 +86,29 @@ export default function UiQCPage() {
       return ss + tinhSlDatTam(pc.lichSuQC || []);
     }, 0), 0);
 
-  const handleSaveColorModal = (pcId: string, data: ChiTietMauInput) => {
-    if (!selectedMau) return;
-    const { lc } = selectedMau;
-    const pc = lc.phanCong?.find((p: any) => p.id === pcId);
-    if (!pc) return;
+  const handleSaveColorBatch = async (entries: StageColorEntry[]): Promise<boolean> => {
+    if (!selectedMau || !user) return false;
+    const currentLC = dsLenhCat.find(lc => lc.id === selectedMau.lc.id) || selectedMau.lc;
+    const { lc: updatedLC, totals } = applyStageColorEntries(currentLC, entries);
     try {
-      const existingIdx = pc.chiTietMau?.findIndex((m: any) => m.mau === data.mau) ?? -1;
-      let newChiTiet = [...(pc.chiTietMau || [])];
-      if (existingIdx >= 0) { newChiTiet[existingIdx] = data; } else { newChiTiet.push(data); }
-      capNhatCongDoan(lc.id, pcId, { chiTietMau: newChiTiet });
-      if (data.sizes && data.sizes.length > 0) {
-        const mauIdx = lc.dsMau?.findIndex((m: any) => m.ten === data.mau) ?? -1;
-        if (mauIdx >= 0) {
-          const newDsMau = [...(lc.dsMau || [])];
-          newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...(newDsMau[mauIdx].tyLeSizeChiTiet || {}), [pcId]: data.sizes } };
-          suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
-        }
-      }
-      toast.success(`Đã lưu thông tin màu ${data.mau}`);
-    } catch (e: any) { toast.error(e.message); }
+      // Save áo/quần together, preserving the other colors and stages.
+      await suaLenhCat(currentLC.id, { dsMau: updatedLC.dsMau, phanCong: updatedLC.phanCong }, user);
+      setSlDatInput(prev => ({ ...prev, ...Object.fromEntries(
+        Object.entries(totals).map(([pcId, total]) => [currentLC.id + "_" + pcId, total.dat])
+      ) }));
+      setSlLoiInput(prev => ({ ...prev, ...Object.fromEntries(
+        Object.entries(totals).map(([pcId, total]) => [currentLC.id + "_" + pcId, total.loi])
+      ) }));
+      setSelectedMau(prev => prev ? {
+        lc: updatedLC,
+        mau: updatedLC.dsMau?.find(mau => mau.ten === prev.mau.ten) || prev.mau,
+      } : null);
+      toast.success("Đã lưu thông tin màu " + selectedMau.mau.ten);
+      return true;
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu số lượng QC");
+      return false;
+    }
   };
 
   // Với hàng Bộ: mỗi màu cần đã nhập SL đạt theo từng size cho CẢ May áo lẫn
@@ -128,11 +137,31 @@ export default function UiQCPage() {
     const today = new Date().toISOString().slice(0, 10);
 
     if (!isBo) {
-      const slQC = mayPCs[0]?.soLuongHoanThanh || 0;
+      const mayPC = mayPCs[0];
+      const slQC = mayPC?.soLuongHoanThanh || 0;
+      
+      // Copy sizes and chiTietMau from May to QC for tracking
+      const newDsMau: MauVai[] = (lc.dsMau || []).map((mau) => {
+        const maySizes = mayPC ? mau.tyLeSizeChiTiet?.[mayPC.id] || [] : [];
+        return {
+          ...mau,
+          tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [qcPC.id]: maySizes }
+        };
+      });
+      suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+
+      const chiTietMauQC = (mayPC?.chiTietMau || []).map((c: any) => ({
+        mau: c.mau,
+        soLuongNhan: c.soLuongDat,
+        soLuongDat: c.soLuongDat,
+        soLuongLoi: 0,
+      }));
+
       capNhatCongDoan(lc.id, qcPC.id, {
         trangThaiCD: "hoan_thanh",
         soLuongHoanThanh: slQC,
         soLuongDatCuoi: slQC,
+        chiTietMau: chiTietMauQC,
         lichSuNhapSL: [{ ngay: today, loai: "qc_dat", soLuong: slQC, nguoiNhap: user?.name, ghiChu: "QC hoàn tất toàn bộ" }],
       } as any);
       toast.success(`🎉 Lệnh cắt ${lc.id} đã hoàn tất QC. Chuyển sang Hoàn Thiện!`);
@@ -152,7 +181,7 @@ export default function UiQCPage() {
       if (!found) return mau;
       return {
         ...mau,
-        tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), qc: found.ket.ghepSizes },
+        tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [qcPC.id]: found.ket.ghepSizes },
         aoDuTheoSize: found.ket.aoDuSizes,
         quanDuTheoSize: found.ket.quanDuSizes,
       };
@@ -216,6 +245,36 @@ export default function UiQCPage() {
       lichSuQC: newLichSuQC,
       lichSuNhapSL: [{ ngay: today, nguoiNhap: user?.name, soLuong: slDat, loai: "qc_dat", ghiChu: `QC lần ${lanKiem} – Hoàn tất (tích lũy ${slDatTichLuy} SP → Cộng CN)` }],
     } as any);
+
+    const mayPCs = lc.phanCong?.filter((p: any) => p.tenCongDoan?.toLowerCase().includes("may")) || [];
+    const isBo = lc.loaiLenh?.toLowerCase().includes("bo") || mayPCs.length > 1;
+    const qcPC = lc.phanCong?.find((p: any) => p.id === "qc");
+    
+    // Nếu không phải hàng bộ, copy bảng size sang QC luôn khi duyệt Đạt
+    if (!isBo && qcPC) {
+      const newDsMau = (lc.dsMau || []).map((mau: any) => {
+        const maySizes = pc ? mau.tyLeSizeChiTiet?.[pc.id] || [] : [];
+        return {
+          ...mau,
+          tyLeSizeChiTiet: { ...(mau.tyLeSizeChiTiet || {}), [qcPC.id]: maySizes }
+        };
+      });
+      suaLenhCat(lc.id, { dsMau: newDsMau }, user as any);
+      
+      const chiTietMauQC = (pc?.chiTietMau || []).map((c: any) => ({
+        mau: c.mau,
+        soLuongNhan: c.soLuongDat,
+        soLuongDat: c.soLuongDat,
+        soLuongLoi: 0,
+      }));
+      
+      capNhatCongDoan(lc.id, qcPC.id, {
+        trangThaiCD: "hoan_thanh",
+        soLuongHoanThanh: slDatTichLuy,
+        soLuongDatCuoi: slDatTichLuy,
+        chiTietMau: chiTietMauQC
+      } as any);
+    }
 
     toast.success(`✅ QC Hoàn Tất: ${pc.tenCongDoan} – ${slDatTichLuy} SP đạt → Cộng vào Công Nợ${slLoi > 0 ? ` · ${slLoi} SP phế phẩm` : ""}`);
 
@@ -357,10 +416,14 @@ export default function UiQCPage() {
             return (
               <LenhCatCardV2 key={lc.id} lc={lc} onColorClick={(mau) => setSelectedMau({ lc, mau })}>
                 <div className="space-y-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Tiến độ chi tiết</span>
+                  </div>
                   {mayPCs.map((pc: any) => {
                     const key = `${lc.id}_${pc.id}`;
-                    const tt = (pc.trangThaiCD as TrangThaiCongDoan | undefined) ?? "cho_giao";
-                    const style = TRANG_THAI_CD_STYLE[tt];
+                    const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+                    const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
                     const lichSuQC: LichSuQCItem[] = pc.lichSuQC || [];
                     const lanKiemTiepTheo = lichSuQC.length + 1;
 
@@ -410,13 +473,38 @@ export default function UiQCPage() {
                         </div>
 
                         <div className="p-4 space-y-4">
-                          {isHoanThanh ? (
-                            <div className="text-center py-6 flex flex-col items-center justify-center space-y-2">
-                              <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                              <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
-                              <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
-                            </div>
-                          ) : (
+                          {isHoanThanh ? (() => {
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+
+                            return (
+                              <div className="text-center py-6 flex flex-col items-center justify-center space-y-3 relative">
+                                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                                <div>
+                                  <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
+                                  <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
+                                </div>
+                                {nextStageNotStarted && (
+                                  <button
+                                    onClick={() => {
+                                      capNhatCongDoan(lc.id, pc.id, { 
+                                        trangThaiCD: "dang_lam",
+                                        // Reset soLuongHoanThanh and soLuongDatCuoi so it can be re-entered
+                                        soLuongHoanThanh: slDatTam,
+                                        soLuongDatCuoi: slDatTam
+                                      } as any);
+                                      toast.info("Đã mở lại khâu QC. Bạn có thể nhập lại số lượng Đạt/Lỗi.");
+                                    }}
+                                    className="px-4 py-2 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-xl shadow-sm hover:bg-emerald-50 active:scale-95 transition-all text-xs flex items-center gap-1.5"
+                                  >
+                                    ✏️ Sửa SL
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })() : (
                             <>
                               {/* ===== PANEL SL ĐẠT TẠM (nổi bật khi đang co_loi) ===== */}
                               {isTraLai && slDatTam > 0 && (
@@ -550,7 +638,7 @@ export default function UiQCPage() {
                               {/* Action buttons */}
                               <div className="flex gap-3">
                                 <button onClick={() => handleDatPC(lc, pc)}
-                                  className="flex-1 px-3 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 flex items-center justify-center gap-1.5 transition-colors shadow-sm">
+                                  className="flex-1 px-3 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200">
                                   <CheckCircle2 className="w-4 h-4" />
                                   QC Đạt – Hoàn tất
                                 </button>
@@ -695,32 +783,53 @@ export default function UiQCPage() {
                             </p>
                           )}
                           <div className="text-center">
-                            <button
-                              onClick={() => handleHoanTatQC(lc)}
-                              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
-                            >
-                              <Package className="w-5 h-5" />
-                              Xác nhận Ghép {tongGhep} Bộ → Chuyển Ủi
-                            </button>
+                            {lc.phanCong?.find((p: any) => p.id === "qc")?.trangThaiCD === "hoan_thanh" ? (
+                              <button
+                                disabled
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 text-emerald-700 border-2 border-emerald-500 font-black rounded-xl shadow-sm opacity-80 cursor-not-allowed"
+                              >
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                                Đã chuyển khâu ({tongGhep} Bộ)
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleHoanTatQC(lc)}
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
+                              >
+                                <Package className="w-5 h-5" />
+                                Xác nhận Ghép {tongGhep} Bộ → Chuyển Ủi
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
                     }
 
                     if (allMayDone) {
+                      const isQCDone = lc.phanCong?.find((p: any) => p.id === "qc")?.trangThaiCD === "hoan_thanh";
                       return (
                         <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-4">
                           <div className="text-emerald-700 font-black text-lg">✅ Đã kiểm tra hoàn tất!</div>
                           <p className="text-sm text-emerald-600 font-bold max-w-sm mx-auto leading-relaxed">
-                            QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện.
+                            {isQCDone ? "Lệnh cắt này đã được QC duyệt và đẩy sang khâu Hoàn Thiện." : "QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện."}
                           </p>
-                          <button
-                            onClick={() => handleHoanTatQC(lc)}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
-                          >
-                            <Package className="w-5 h-5" />
-                            Chốt QC → Chuyển Ủi
-                          </button>
+                          {isQCDone ? (
+                            <button
+                              disabled
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 text-emerald-700 border-2 border-emerald-500 font-black rounded-xl shadow-sm opacity-80 cursor-not-allowed"
+                            >
+                              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                              Đã chuyển khâu thành công
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleHoanTatQC(lc)}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
+                            >
+                              <Package className="w-5 h-5" />
+                              Chốt QC → Chuyển Ủi
+                            </button>
+                          )}
                         </div>
                       );
                     }
@@ -740,7 +849,12 @@ export default function UiQCPage() {
           lc={selectedMau.lc}
           mau={selectedMau.mau}
           currentPCs={getMayPC(selectedMau.lc)}
-          onSave={handleSaveColorModal}
+          onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
+          onSaveBatch={handleSaveColorBatch}
+          historyStage="qc"
+          onNextColor={(nextMau) => setSelectedMau(prev => prev ? {
+            lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau,
+          } : null)}
         />
       )}
     </div>

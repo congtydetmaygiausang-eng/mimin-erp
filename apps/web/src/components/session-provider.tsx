@@ -7,11 +7,17 @@ import { is2FAEnabled, generate2FACode, verify2FACode } from "@/lib/two-factor";
 import { migrateLegacyKeys } from "@/lib/migrate-legacy-keys";
 import { migrateLarkConfig } from "@/lib/lark-config";
 import { toast } from "sonner";
+import { loadSharedPermissionMatrix, subscribeSharedPermissionMatrix } from "@/lib/permissions";
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { localActiveAccount, readLocalAccounts, selectLocalAccount, useLocalAccountRevision } from "@/lib/local-account-store";
+import { LocalAccountBar } from "@/components/local-account-bar";
+import { useAccountDisplayProfile } from "@/lib/use-account-display-profile";
 
 export type AppUser = {
   id: string;
   email: string;
   name: string;
+  avatar?: string;
   role: string;
   title: string;
   source: "supabase" | "demo";
@@ -19,6 +25,12 @@ export type AppUser = {
   phongBan?: string;
   donGia?: number;
   laCongNhan?: boolean;
+  organizationId?: string;
+  organizationCode?: string;
+  organizationName?: string;
+  workspaceRole?: string;
+  dataScope?: string;
+  roles?: string[];
 };
 
 type SessionContextValue = {
@@ -61,9 +73,56 @@ function clearMockSession() {
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
+  return LOCAL_ACCOUNT_MODE ? <LocalSessionProvider>{children}</LocalSessionProvider> : <LiveSessionProvider>{children}</LiveSessionProvider>;
+}
+
+function LocalSessionProvider({ children }: { children: React.ReactNode }) {
+  useLocalAccountRevision();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const account = mounted ? localActiveAccount() : null;
+  const profile = useAccountDisplayProfile(account?.email, account?.kind === "employee" ? account.employeeCode : undefined);
+  const user: AppUser | null = account?.active ? {
+    id: account.id, name: profile?.name || account.name, avatar: profile?.avatar, email: account.email, role: account.roles[0], roles: account.roles,
+    title: profile?.title || account.department, source: "demo", maNV: account.employeeCode || account.partnerCode || account.supplierCode,
+    phongBan: account.department, dataScope: account.scope,
+  } : null;
+  return <SessionContext.Provider value={{ user, loading: !mounted, authSource: "demo",
+    signIn: async () => ({ ok: false, error: "Chọn tài khoản trên thanh Test local" }),
+    signOut: async () => { const admin = readLocalAccounts().find(item => item.active && item.roles.includes("admin")); if (admin) selectLocalAccount(admin.id); },
+  }}><LocalAccountBar activeName={user?.name} />{children}</SessionContext.Provider>;
+}
+
+function LiveSessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authSource, setAuthSource] = useState<"supabase" | "demo" | "none">("none");
+  const profile = useAccountDisplayProfile(user?.email, user?.maNV);
+  const displayUser = user ? { ...user, name: profile?.name || user.name, avatar: profile?.avatar || user.avatar, title: profile?.title || user.title } : null;
+
+  useEffect(() => {
+    void loadSharedPermissionMatrix();
+    return subscribeSharedPermissionMatrix(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseEnabled || !supabase || !user?.email) return;
+    const email = user.email.toLowerCase();
+    const channel = supabase.channel(`user-role-${email}`).on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "users", filter: `email=eq.${email}` },
+      (payload) => {
+        const next = payload.new as { role?: string; chucVu?: string; chuc_vu?: string; phongBan?: string; phong_ban?: string };
+        setUser((current) => current ? {
+          ...current,
+          role: next.role || current.role,
+          title: next.chucVu || next.chuc_vu || current.title,
+          phongBan: next.phongBan || next.phong_ban || current.phongBan,
+        } : current);
+      },
+    ).subscribe();
+    return () => { void supabase?.removeChannel(channel); };
+  }, [user?.email]);
 
   useEffect(() => {
     // Auto-migrate legacy keys
@@ -71,27 +130,43 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     migrateLarkConfig();
     // Xoá session nếu còn dùng email mock cũ (force re-login)
     clearMockSession();
-    // Get session with TTL check
+    let currentUserSource: "supabase" | "demo" | "none" = "none";
+
     const ttlUser = getSessionWithTTL();
     if (ttlUser) {
       setUser(ttlUser);
-      setAuthSource(ttlUser.source || "demo");
+      currentUserSource = ttlUser.source === "supabase" ? "supabase" : "demo";
+      setAuthSource(currentUserSource);
       setLoading(false);
-      return;
-    }
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setUser(parsed);
-        setAuthSource(parsed.source || "demo");
-      } catch {
-        // ignore
+      // Bỏ 'return;' ở đây để code chạy tiếp xuống dưới, 
+      // cho phép đăng ký supabase.auth.onAuthStateChange!
+    } else {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setUser(parsed);
+          // Những session cũ (trước khi thêm field 'source') nếu không có TTL (rơi xuống else block này)
+          // thì CHẮC CHẮN là Supabase session. Mặc định phải là "supabase", không phải "demo".
+          currentUserSource = parsed.source === "demo" ? "demo" : "supabase";
+          setAuthSource(currentUserSource);
+        } catch {
+          // ignore
+        }
       }
+      setLoading(false);
     }
     
     // Lắng nghe thay đổi trạng thái từ Supabase (đặc biệt quan trọng cho OAuth/Google Login)
     if (isSupabaseEnabled && supabase) {
+      // Tạm thời vô hiệu hoá tính năng force logout vì gây ra lỗi vòng lặp đăng nhập
+      // (user vừa login xong thì data.session = null, dẫn tới bị đá văng ra liên tục).
+      supabase.auth.getSession().then(({ data, error }) => {
+        if (error || !data.session) {
+          console.warn("[session] Supabase session is null on mount. Token might be missing.");
+        }
+      });
+
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
           const appMeta = (session.user.app_metadata as Record<string, unknown>) || {};
@@ -118,6 +193,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             phongBan: userMeta.phongBan as string | undefined,
             donGia: userMeta.donGia as number | undefined,
             laCongNhan: userMeta.laCongNhan as boolean | undefined,
+            organizationId: userMeta.organization_id as string | undefined,
+            organizationCode: userMeta.organization_code as string | undefined,
+            organizationName: userMeta.organization_name as string | undefined,
+            workspaceRole: userMeta.workspace_role as string | undefined,
+            dataScope: userMeta.data_scope as string | undefined,
           };
           
           setUser(u);
@@ -139,9 +219,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else if (event === "SIGNED_OUT") {
-          setUser(null);
-          setAuthSource("none");
-          localStorage.removeItem(STORAGE_KEY);
+          setUser((prev) => {
+            if (prev && prev.source === "supabase") {
+              setAuthSource("none");
+              localStorage.removeItem(STORAGE_KEY);
+              return null;
+            }
+            return prev;
+          });
         }
       });
       
@@ -307,7 +392,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ user, loading, signIn, signOut, authSource }}>
+    <SessionContext.Provider value={{ user: displayUser, loading, signIn, signOut, authSource }}>
       {children}
     </SessionContext.Provider>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 import { NCCS, formatVNDShort } from "@/lib/data/real-data";
 import { toast } from "sonner";
@@ -24,6 +25,19 @@ export type NhaCungCapModel = {
   facebook_url?: string; // 2026-08-08 - them link FB
   danh_muc_chi_tiet?: string[]; // 2026-08-18 - Danh muc chi tiet chon nhieu
 };
+
+export type LoaiNccSanXuatVai = "soi" | "det" | "nhuom";
+
+export function thuocNhomSanXuatVai(ncc: NhaCungCapModel, nhom: LoaiNccSanXuatVai): boolean {
+  const source = [ncc.loai, ...(ncc.danh_muc_chi_tiet || [])]
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (nhom === "soi") return source.includes("soi");
+  if (nhom === "det") return source.includes("det");
+  return source.includes("nhuom");
+}
 
 // Convert UI model to DB model
 export function toDBNhaCungCap(ncc: NhaCungCapModel) {

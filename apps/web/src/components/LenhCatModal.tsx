@@ -19,8 +19,8 @@ import {
   Wand2, CheckCircle2, UploadCloud, Download, Eye, Printer, Share2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
-import { useSupabaseSync } from "@/lib/supabase/client";
+import { KHO_VAT_TU, formatVND, formatVNDShort, type KhoVai } from "@/lib/data/real-data";
+import { supabase, useSupabaseSync } from "@/lib/supabase/client";
 import { useSession, type AppUser } from "@/components/session-provider";
 import { DOI_TAC_GIA_CONG } from "@/lib/doi-tac-gia-cong";
 import { AIMockupModal } from "@/components/AIMockupModal";
@@ -39,9 +39,15 @@ import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
+import { getAllInventory, syncInventoryWithSupabase } from "@/lib/inventory-engine";
 
+type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string; sdt?: string };
 
-type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string };
+const formatTonKhoVai = (tonKho: number) =>
+  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(tonKho);
+
+const getVaiOptionLabel = (vai: KhoVai) =>
+  `${vai.maMoi || vai.maVT} - ${vai.mauSac || vai.tenChuan || vai.tenVT} — Tồn: ${formatTonKhoVai(vai.tonKho || 0)} kg`;
 
 const getAllOutsourceOptions = (suffix = "Gia công ngoài", excludePrefix?: string) => DOI_TAC_GIA_CONG
   .filter(dt => !excludePrefix || !dt.ma.startsWith(excludePrefix))
@@ -82,11 +88,17 @@ const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions
   
   // 4. Đóng Gói
   if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
-    return [
-      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("gấp") || (nv.ghiChu || "").toLowerCase().includes("gấp") || (nv.boPhan || "").toLowerCase().includes("xếp"))
-        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` })),
-      ...getAllOutsourceOptions("Gia công ngoài - Đóng gói"),
-    ];
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` }));
+  }
+
+  // QC (Kiểm hàng)
+  if (cd.includes("qc") || cd.includes("kiểm") || cd.includes("kiem")) {
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (QC)` }));
+  }
+
+  // Nhập kho
+  if (cd.includes("nhập kho") || cd.includes("nhap kho")) {
+    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Kho)` }));
   }
 
   // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
@@ -187,10 +199,12 @@ const isQuanStage = (tenCongDoan: string) => {
   const cd = (tenCongDoan || "").toLowerCase();
   return cd.includes("quần") || cd.includes("quan");
 };
-
-const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP) => {
-  const isBo = loaiSP.toLowerCase().includes("bo");
-  return stages.filter(stage => isBo || !isQuanStage(stage.tenCongDoan));
+const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP, congDoanInTheu: string = "") => {
+  const isBo = loaiSP?.toLowerCase().includes("bo") || false;
+  return stages.filter(stage => {
+    if (!congDoanInTheu && isInTheuStage(stage.tenCongDoan)) return false;
+    return isBo || !isQuanStage(stage.tenCongDoan);
+  });
 };
 
 // Constants
@@ -232,23 +246,127 @@ const MAU_CARD_ACCENT = [
   { stripe: "border-l-fuchsia-500", badge: "bg-fuchsia-500", tint: "bg-fuchsia-50/50", ring: "focus-within:ring-fuchsia-200" },
 ] as const;
 
-export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onClose: () => void; editId?: string | null }) {
+export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: boolean; onClose: () => void; editId?: string | null; initialSP?: import("@/lib/data/danh-muc-sp-store").SanPham | null }) {
   const { list: nhanSuList } = useNhanSu();
   const nhanVienOptions: NhanVienOption[] = nhanSuList.map(nv => ({
     ma: nv.maNV,
     ten: nv.hoTen,
     boPhan: nv.boPhan,
     ghiChu: nv.ghiChu,
+    sdt: nv.sdt,
   }));
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { dsLenhCat, themLenhCat, suaLenhCat, dsMauCongDoan, themMauCongDoan, dsMauChiPhi, themMauChiPhi } = useLenhCat();
   const { dsSanPham } = useDanhMucSP();
+  const [khoVaiReals, setKhoVaiReals] = useState<KhoVai[]>([]);
+  const [isKhoVaiLoading, setIsKhoVaiLoading] = useState(true);
+  useEffect(() => {
+    let isActive = true;
+    setKhoVaiReals(getAllInventory());
+    void syncInventoryWithSupabase()
+      .then(() => {
+        if (isActive) setKhoVaiReals(getAllInventory());
+      })
+      .finally(() => {
+        if (isActive) setIsKhoVaiLoading(false);
+      });
+    return () => { isActive = false; };
+  }, []);
+
+  const { data: rawKho } = useSupabaseSync<any>("mimin_kho_all_real", "kho");
+  const khoPhuLieuReals = useMemo(() => {
+    if (!rawKho) return KHO_VAT_TU;
+    const phuLieu = rawKho.filter((x: any) => x.loai === "Phu lieu");
+    if (phuLieu.length === 0) return KHO_VAT_TU;
+    return phuLieu.map((r: any) => ({
+      maVT: r.sku || "",
+      tenVT: r.tenVt || "",
+      mauSac: r.mauSac || "",
+      dvt: r.dvt || "cái",
+      donGia: Number(r.donGia) || 0,
+      loai: r.loaiChiTiet || "Phụ liệu", 
+      tonKho: r.tonKho || 0, 
+      tonToiThieu: r.tonToiThieu || 0, 
+      kho: "Kho phụ liệu",
+      ghiChu: r.ghiChu || "",
+      soCayNhap: r.soCayNhap || 0,
+      tonCay: r.tonCay || 0,
+      tenChuan: r.tenVt || "",
+      maMoi: r.maMoi || "",
+    }));
+  }, [rawKho]);
+
   const { user } = useSession();
   const editing = editId ? dsLenhCat.find((l) => l.id === editId) : null;
 
+  const [activeEditor, setActiveEditor] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+
+  useEffect(() => {
+    if (!editId || !supabase) {
+      setIsLocked(false);
+      setActiveEditor(null);
+      return;
+    }
+
+    const channelName = `lenh_cat_presence_${editId}`;
+    const myClientId = `${user?.id || "anon"}-${Math.random().toString(36).slice(2, 9)}`;
+    const myName = user?.name || "Người dùng ẩn danh";
+    
+    const channel = supabase.channel(channelName, {
+      config: { presence: { key: myClientId } },
+    });
+    
+    const globalChannel = supabase.channel('global_lenh_cat_presence', {
+      config: { presence: { key: myClientId } },
+    });
+
+    const myState = {
+      id: myClientId,
+      name: myName,
+      joinedAt: Date.now(),
+    };
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        let firstEditor: any = null;
+        
+        for (const key in state) {
+          const presences = state[key] as any[];
+          for (const p of presences) {
+            if (!firstEditor || p.joinedAt < firstEditor.joinedAt) {
+              firstEditor = p;
+            }
+          }
+        }
+        
+        if (firstEditor && firstEditor.id !== myClientId) {
+          setIsLocked(true);
+          setActiveEditor(firstEditor.name);
+        } else {
+          setIsLocked(false);
+          setActiveEditor(null);
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track(myState);
+        }
+      });
+
+    return () => {
+      channel.untrack();
+      supabase?.removeChannel(channel);
+    };
+  }, [editId, user]);
+
+  const loadedEditId = useRef<string | null>(null);
+
   // Sync editing data into states when editing changes
   useEffect(() => {
-    if (editing) {
+    if (editing && loadedEditId.current !== editing.id) {
+      loadedEditId.current = editing.id;
       setLoaiLenh(editing.loaiLenh);
       setKhachHang(editing.khachHang || "");
       setLoaiSP(editing.loaiSP);
@@ -258,7 +376,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setTongSLThucTe(editing.tongSLThucTe || "");
       if (editing.ngayTao) setNgayBatDau(editing.ngayTao);
       setHanHoanThanh(editing.hanHoanThanh);
-      setPhuTrachCat(editing.phuTrachCat || "NV006");
+      setPhuTrachCat(editing.phuTrachCat || "");
       setPhuTrachSX(editing.phuTrachSX || "");
       setPhuTrachSoDo(editing.phuTrachSoDo || "");
       setGhiChu(editing.ghiChu || "");
@@ -268,12 +386,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setSoMau(editing.dsMau?.length || 4);
       setDsMau(editing.dsMau || []);
       setDsPhuLieu(editing.dsPhuLieu || []);
-      setMauCongDoan(editing.mauCongDoan || "BoTheThao");
+      setMauCongDoan(editing.mauCongDoan || "MCD-AO-TRON");
       if (editing.phanCong) {
         setPhanCong(editing.phanCong);
         const inTheuItem = getInTheuStage(editing.phanCong);
         if (inTheuItem) {
-          setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
+          setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan?.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
           if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
           else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
           else setLoaiInTheu("bo");
@@ -309,6 +427,43 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       setGhiChuInTheu(editing.ghiChuInTheu || "");
     }
   }, [editing]);
+
+  // Reset loadedEditId when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      loadedEditId.current = null;
+    }
+  }, [isOpen]);
+
+  // Pre-fill product info khi mở từ nút "Sản Xuất" ở Danh Mục SP
+  useEffect(() => {
+    if (!initialSP || editId) return; // chỉ áp dụng khi tạo mới (không phải edit)
+    setMaSP(initialSP.id || "");
+    setTenSP(initialSP.tenSP || "");
+    if (initialSP.loaiSP) setLoaiSP(initialSP.loaiSP as LoaiSP);
+    if (initialSP.tiLeSize) setTiLeSize(initialSP.tiLeSize);
+    try {
+      let dsMauToSet: unknown = initialSP.dsMau;
+      if (typeof dsMauToSet === "string") {
+        dsMauToSet = JSON.parse(dsMauToSet);
+      }
+      if (Array.isArray(dsMauToSet) && dsMauToSet.length > 0) {
+        setSoMau(dsMauToSet.length);
+        setDsMau(dsMauToSet.map((m: Record<string, unknown>) => ({
+          ten: (m.ten as string) || "",
+          maSKU: (m.maSKU as string) || "",
+          dinhMuc: (m.dinhMuc as number) || 0.25,
+          img: (m.img as string) || "",
+          maVai: "",
+          slDuKien: 0,
+          ghiChu: "",
+          phanBoSize: [],
+        })));
+      }
+    } catch (e) {
+      console.error("Lỗi parse dsMau từ initialSP:", e);
+    }
+  }, [initialSP, editId]);
 
   // ============ Form state ============
   const [loaiLenh, setLoaiLenh] = useState<LoaiLenh>("HangNha");
@@ -520,7 +675,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     sp.tenSP.toLowerCase().includes(productSearch.toLowerCase())
   );
   
-  const [phuTrachCat, setPhuTrachCat] = useState("NV006");
+  const [phuTrachCat, setPhuTrachCat] = useState("");
   const [phuTrachSX, setPhuTrachSX] = useState("");
   const [phuTrachSoDo, setPhuTrachSoDo] = useState("");
   const [ghiChu, setGhiChu] = useState("");
@@ -539,6 +694,56 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   const [dsMau, setDsMau] = useState<MauVai[]>(Array.from({ length: 4 }).map(() => ({ 
     ten: "", maSKU: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
   })));
+
+  const getCanhBaoTonKho = (mau: MauVai, maVai: string): string | null => {
+    if (!maVai || !mau.slDuKien) return null;
+    const vai = khoVaiReals.find((item) => item.maVT === maVai);
+    if (!vai) return null;
+
+    const dinhMucCungLoai =
+      (mau.maVai === maVai ? mau.dinhMuc || 0 : 0)
+      + (mau.maVaiQuan === maVai ? mau.dinhMucQuan || 0 : 0);
+    const kgCan = mau.slDuKien * dinhMucCungLoai;
+    const tonKho = vai.tonKho || 0;
+    if (kgCan <= tonKho) return null;
+
+    return `Tồn kho không đủ cho số lượng cắt màu ${mau.ten || "này"}. Vải ${vai.maMoi || vai.maVT} còn ${formatTonKhoVai(tonKho)} kg, cần ${formatTonKhoVai(kgCan)} kg, thiếu ${formatTonKhoVai(kgCan - tonKho)} kg.`;
+  };
+
+  const handleChonVai = (idx: number, maVai: string, phan: "ao" | "quan") => {
+    if (!maVai) {
+      setDsMau((prev) => prev.map((mau, mauIdx) => mauIdx === idx
+        ? { ...mau, ...(phan === "quan" ? { maVaiQuan: "" } : { maVai: "" }) }
+        : mau));
+      return;
+    }
+    if (isKhoVaiLoading) {
+      toast.error("Kho vải đang đồng bộ số lượng tồn. Vui lòng chọn lại sau ít giây.");
+      return;
+    }
+
+    const mauHienTai = dsMau[idx];
+    const dinhMuc = phan === "quan" ? mauHienTai.dinhMucQuan || 0 : mauHienTai.dinhMuc || 0;
+    if (!mauHienTai.slDuKien || dinhMuc <= 0) {
+      toast.error(`Vui lòng nhập số lượng cắt màu và định mức kg/${phan === "quan" ? "quần" : "áo"} trước khi chọn vải.`);
+      return;
+    }
+    if (!khoVaiReals.some((vai) => vai.maVT === maVai)) {
+      toast.error("Không tìm thấy mã vải trong dữ liệu tồn kho mới nhất. Vui lòng tải lại trang.");
+      return;
+    }
+
+    const mauMoi: MauVai = {
+      ...mauHienTai,
+      ...(phan === "quan" ? { maVaiQuan: maVai } : { maVai }),
+    };
+    const canhBao = getCanhBaoTonKho(mauMoi, maVai);
+    if (canhBao) {
+      toast.error(canhBao);
+      return;
+    }
+    setDsMau((prev) => prev.map((mau, mauIdx) => mauIdx === idx ? mauMoi : mau));
+  };
   const [canhBaoTonKho, setCanhBaoTonKho] = useState<string[]>([]);
 
   // ============ AI Mockup state (MiniMax image-01) - tách riêng component ============
@@ -594,6 +799,23 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     const parts = tiLeSize.split(":").map(Number).filter((n) => Number.isFinite(n) && n >= 0);
     return parts.length > 0 ? parts.reduce((a, b) => a + b, 0) : 0;
   }, [tiLeSize]);
+  const soSizeThucTe = useMemo(
+    () => dsMau.reduce((max, mau) => Math.max(max, mau.phanBoSize?.length || 0), 0),
+    [dsMau],
+  );
+  const soSPToiThieuMoiMau = Math.max(soSpTrongSoDo, soSizeThucTe);
+  const tongSLToiThieu = Math.max(dsMau.length, soMau) * soSPToiThieuMoiMau;
+
+  // Dữ liệu cũ có thể lưu tổng SL nhỏ hơn số màu × số size. Khi mở form,
+  // chỉ hiệu chỉnh state để người dùng kiểm tra; chưa ghi DB cho tới khi bấm lưu.
+  useEffect(() => {
+    if (!soSPToiThieuMoiMau || typeof tongSL !== "number" || tongSL >= tongSLToiThieu) return;
+    setDsMau((prev) => prev.map((mau) => ({
+      ...mau,
+      slDuKien: Math.max(mau.slDuKien || 0, soSPToiThieuMoiMau),
+    })));
+    setTongSL(tongSLToiThieu);
+  }, [soSPToiThieuMoiMau, tongSL, tongSLToiThieu]);
 
   const dinhMucAoTuDong = useMemo(() => {
     const dai = parseFloat(daiSoDoAo);
@@ -638,25 +860,33 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   }, [dinhMucQuanTuDong]);
 
   // Adjust soMau length
-  useEffect(() => {
-    setDsMau(prev => {
-      if (prev.length === soMau) return prev;
-      if (prev.length < soMau) {
-        return [...prev, ...Array.from({ length: soMau - prev.length }).map(() => ({ 
-          ten: "", maSKU: "", maVai: "", dinhMuc: 0.25, slDuKien: 0, ghiChu: "", img: "", phanBoSize: []
-        }))];
-      }
-      return prev.slice(0, soMau);
-    });
-  }, [soMau]);
+  // Removed redundant useEffect for soMau to prevent stale closure bugs on mount
 
   // Section 3 - Phụ liệu
   const [dsPhuLieu, setDsPhuLieu] = useState<LenhCatPhuLieu[]>([]);
+
+  const themVatTuTheoMau = (mauIdx: number, apDungCho: "ao" | "quan") => {
+    const vatTuMacDinh = khoPhuLieuReals[0];
+    if (!vatTuMacDinh) {
+      toast.error("Kho phụ liệu chưa có vật tư để chọn");
+      return;
+    }
+    const soLuongMau = dsMau[mauIdx]?.slDuKien || 0;
+    setDsPhuLieu((prev) => [...prev, {
+      maPL: vatTuMacDinh.maVT,
+      tenPL: vatTuMacDinh.tenVT,
+      soLuong: soLuongMau,
+      donGia: vatTuMacDinh.donGia || 1000,
+      dvt: vatTuMacDinh.dvt || "cái",
+      apDungCho,
+      mauIdx,
+    }]);
+  };
   
   // Section 4 - Phân công
-  const [mauCongDoan, setMauCongDoan] = useState<string>("BoTheThao");
-  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>(dsMauCongDoan.find(x => x.id === "BoTheThao")?.giaCong || []);
-  const visiblePhanCong = useMemo(() => getVisibleStages(phanCong, loaiSP), [phanCong, loaiSP]);
+  const [mauCongDoan, setMauCongDoan] = useState<string>("");
+  const [phanCong, setPhanCong] = useState<PhanCongGiaCong>([]);
+  const visiblePhanCong = useMemo(() => getVisibleStages(phanCong, loaiSP, congDoanInTheu), [phanCong, loaiSP, congDoanInTheu]);
   const hasInTheuStage = Boolean(congDoanInTheu) && visiblePhanCong.some(stage => isInTheuStage(stage.tenCongDoan));
   const activeSoDoPhoi = loaiSoDoPhoi === "quan" ? soDoPhoiQuan : soDoPhoiAo || soDoPhoiQuan;
   
@@ -675,74 +905,76 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   useEffect(() => {
     if (!editId && !draftLoaded) {
-      try {
-        const saved = localStorage.getItem("lenhCatDraft");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.loaiLenh) setLoaiLenh(parsed.loaiLenh);
-          if (parsed.khachHang) setKhachHang(parsed.khachHang);
-          if (parsed.loaiSP) setLoaiSP(parsed.loaiSP);
-          if (parsed.maSP) setMaSP(parsed.maSP);
-          if (parsed.tenSP) setTenSP(parsed.tenSP);
-          if (parsed.tongSL) setTongSL(parsed.tongSL);
-          if (parsed.tongSLThucTe) setTongSLThucTe(parsed.tongSLThucTe);
-          if (parsed.ngayBatDau) setNgayBatDau(parsed.ngayBatDau);
-          if (parsed.sdtLienHe) setSdtLienHe(parsed.sdtLienHe);
-          if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
-          if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
-          if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
-          if (parsed.phuTrachSoDo) setPhuTrachSoDo(parsed.phuTrachSoDo);
-          if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
-          if (parsed.ghiChuKyThuat) setGhiChuKyThuat(parsed.ghiChuKyThuat);
-          if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
-          if (parsed.soMau) setSoMau(parsed.soMau);
-          if (parsed.dsMau && parsed.dsMau.length > 0) setDsMau(parsed.dsMau);
-          if (parsed.dsPhuLieu && parsed.dsPhuLieu.length > 0) setDsPhuLieu(parsed.dsPhuLieu);
-          if (parsed.mauCongDoan) setMauCongDoan(parsed.mauCongDoan);
-          if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
-          if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
-          if (parsed.soDoChinh) setSoDoChinh(parsed.soDoChinh);
-          if (parsed.pdfSoDoChinh) setPdfSoDoChinh(parsed.pdfSoDoChinh);
-          if (parsed.khoSoDoChinh) setKhoSoDoChinh(parsed.khoSoDoChinh);
-          if (parsed.daiSoDoChinh) setDaiSoDoChinh(parsed.daiSoDoChinh);
-          if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
-          const phoiFiles = splitPhoiFiles(parsed.soDoPhoi);
-          setSoDoPhoiAo(phoiFiles.ao);
-          setSoDoPhoiQuan(phoiFiles.quan);
-          if (parsed.pdfSoDoPhoi) setPdfSoDoPhoi(parsed.pdfSoDoPhoi);
-          if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
-          if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
-          if (parsed.ghiChuSoDoChinh) setGhiChuSoDoChinh(parsed.ghiChuSoDoChinh);
-          if (parsed.ghiChuSoDoPhoi) setGhiChuSoDoPhoi(parsed.ghiChuSoDoPhoi);
-          if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
-          if (parsed.daiSoDoAo) setDaiSoDoAo(parsed.daiSoDoAo);
-          const diagramAo = splitDiagramFiles(parsed.soDoAo);
-          setSoDoAo(diagramAo.file);
-          setHinhAnhSoDoAo(diagramAo.image);
-          if (parsed.daiSoDoQuan) setDaiSoDoQuan(parsed.daiSoDoQuan);
-          const diagramQuan = splitDiagramFiles(parsed.soDoQuan);
-          setSoDoQuan(diagramQuan.file);
-          setHinhAnhSoDoQuan(diagramQuan.image);
-          if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
-          if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
-          if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
-          
-          if (parsed.phanCong) {
-            const inTheuItem = getInTheuStage(parsed.phanCong);
-            if (inTheuItem) {
-              setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
-              if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
-              else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
-              else setLoaiInTheu("bo");
+      if (!initialSP) {
+        try {
+          const saved = localStorage.getItem("lenhCatDraft");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.loaiLenh) setLoaiLenh(parsed.loaiLenh);
+            if (parsed.khachHang) setKhachHang(parsed.khachHang);
+            if (parsed.loaiSP) setLoaiSP(parsed.loaiSP);
+            if (parsed.maSP) setMaSP(parsed.maSP);
+            if (parsed.tenSP) setTenSP(parsed.tenSP);
+            if (parsed.tongSL) setTongSL(parsed.tongSL);
+            if (parsed.tongSLThucTe) setTongSLThucTe(parsed.tongSLThucTe);
+            if (parsed.ngayBatDau) setNgayBatDau(parsed.ngayBatDau);
+            if (parsed.sdtLienHe) setSdtLienHe(parsed.sdtLienHe);
+            if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
+            if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
+            if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
+            if (parsed.phuTrachSoDo) setPhuTrachSoDo(parsed.phuTrachSoDo);
+            if (parsed.ghiChu) setGhiChu(parsed.ghiChu);
+            if (parsed.ghiChuKyThuat) setGhiChuKyThuat(parsed.ghiChuKyThuat);
+            if (parsed.tiLeSize) setTiLeSize(parsed.tiLeSize);
+            if (parsed.soMau) setSoMau(parsed.soMau);
+            if (parsed.dsMau && parsed.dsMau.length > 0) setDsMau(parsed.dsMau);
+            if (parsed.dsPhuLieu && parsed.dsPhuLieu.length > 0) setDsPhuLieu(parsed.dsPhuLieu);
+            if (parsed.mauCongDoan) setMauCongDoan(parsed.mauCongDoan);
+            if (parsed.phanCong && parsed.phanCong.length > 0) setPhanCong(parsed.phanCong);
+            if (parsed.chiPhiCoDinh) setChiPhiCoDinh(parsed.chiPhiCoDinh);
+            if (parsed.soDoChinh) setSoDoChinh(parsed.soDoChinh);
+            if (parsed.pdfSoDoChinh) setPdfSoDoChinh(parsed.pdfSoDoChinh);
+            if (parsed.khoSoDoChinh) setKhoSoDoChinh(parsed.khoSoDoChinh);
+            if (parsed.daiSoDoChinh) setDaiSoDoChinh(parsed.daiSoDoChinh);
+            if (parsed.soDoPhoi) setSoDoPhoi(parsed.soDoPhoi);
+            const phoiFiles = splitPhoiFiles(parsed.soDoPhoi);
+            setSoDoPhoiAo(phoiFiles.ao);
+            setSoDoPhoiQuan(phoiFiles.quan);
+            if (parsed.pdfSoDoPhoi) setPdfSoDoPhoi(parsed.pdfSoDoPhoi);
+            if (parsed.khoSoDoPhoi) setKhoSoDoPhoi(parsed.khoSoDoPhoi);
+            if (parsed.daiSoDoPhoi) setDaiSoDoPhoi(parsed.daiSoDoPhoi);
+            if (parsed.ghiChuSoDoChinh) setGhiChuSoDoChinh(parsed.ghiChuSoDoChinh);
+            if (parsed.ghiChuSoDoPhoi) setGhiChuSoDoPhoi(parsed.ghiChuSoDoPhoi);
+            if (parsed.daCoSoDo) setDaCoSoDo(parsed.daCoSoDo);
+            if (parsed.daiSoDoAo) setDaiSoDoAo(parsed.daiSoDoAo);
+            const diagramAo = splitDiagramFiles(parsed.soDoAo);
+            setSoDoAo(diagramAo.file);
+            setHinhAnhSoDoAo(diagramAo.image);
+            if (parsed.daiSoDoQuan) setDaiSoDoQuan(parsed.daiSoDoQuan);
+            const diagramQuan = splitDiagramFiles(parsed.soDoQuan);
+            setSoDoQuan(diagramQuan.file);
+            setHinhAnhSoDoQuan(diagramQuan.image);
+            if (parsed.hinhMauInTheu) setHinhMauInTheu(parsed.hinhMauInTheu);
+            if (parsed.fileGocInTheu) setFileGocInTheu(parsed.fileGocInTheu);
+            if (parsed.ghiChuInTheu) setGhiChuInTheu(parsed.ghiChuInTheu);
+            
+            if (parsed.phanCong) {
+              const inTheuItem = getInTheuStage(parsed.phanCong);
+              if (inTheuItem) {
+                setCongDoanInTheu((IN_THEU_OPTIONS.find(option => inTheuItem.tenCongDoan?.toLowerCase().includes(option.toLowerCase())) || "In") as InTheuOption);
+                if (inTheuItem.id === "in_theu_ao") setLoaiInTheu("ao");
+                else if (inTheuItem.id === "in_theu_quan") setLoaiInTheu("quan");
+                else setLoaiInTheu("bo");
+              }
             }
           }
+        } catch (e) {
+          console.error("Lỗi tải nháp", e);
         }
-      } catch (e) {
-        console.error("Lỗi tải nháp", e);
       }
       setDraftLoaded(true);
     }
-  }, [editId, draftLoaded]);
+  }, [editId, draftLoaded, initialSP]);
 
   useEffect(() => {
     if (!editId && draftLoaded) {
@@ -761,7 +993,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   // Sync default phanCong and chiPhiCoDinh when templates are loaded
   useEffect(() => {
     if (dsMauCongDoan.length > 0 && (!phanCong || phanCong.length === 0)) {
-      const defaultCD = dsMauCongDoan.find(x => x.id === "BoTheThao") || dsMauCongDoan[0];
+      const defaultCD = dsMauCongDoan.find(x => x.id === "MCD-AO-TRON") || dsMauCongDoan[0];
       if (defaultCD) {
         setMauCongDoan(defaultCD.id);
         setPhanCong(defaultCD.giaCong);
@@ -794,9 +1026,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     dsMau.forEach((m, i) => {
       if (m.maVai && m.slDuKien && m.dinhMuc) {
         const req = m.slDuKien * m.dinhMuc;
-        // Mock inventory = 50 cho vui. Thực tế lấy từ KHO_VAI.find().tonKho
-        const v = KHO_VAI.find(x => x.maVT === m.maVai);
-        const tonKhoThuc = v ? (v.tonKho || 50) : 50; 
+        // Lấy từ khoVaiReals
+        const v = khoVaiReals.find((x) => x.maVT === m.maVai);
+        const tonKhoThuc = v?.tonKho ?? 0;
         if (req > tonKhoThuc) {
           alerts.push(`Thiếu vải Màu ${i+1} (${v?.tenVT || m.maVai}): Cần ${req}kg, chỉ còn ${tonKhoThuc}kg`);
         }
@@ -805,7 +1037,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
     dsPhuLieu.forEach((p) => {
       if (p.maPL && p.soLuong) {
-        const v = KHO_VAT_TU.find(x => x.maVT === p.maPL);
+        const v = khoPhuLieuReals.find(x => x.maVT === p.maPL);
         const tonKhoThuc = v ? (v.tonKho || 1000) : 1000;
         if (p.soLuong > tonKhoThuc) {
           alerts.push(`Thiếu phụ liệu ${p.tenPL}: Cần ${p.soLuong}, chỉ còn ${tonKhoThuc}`);
@@ -814,7 +1046,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     });
 
     setCanhBaoTonKho(alerts);
-  }, [dsMau, dsPhuLieu]);
+  }, [dsMau, dsPhuLieu, khoVaiReals, khoPhuLieuReals]);
 
   // Tải ảnh mẫu cho 1 màu. Hàng Bộ có 2 ảnh riêng: ÁO (img) và QUẦN (imgQuan).
   const handleColorImageUpload = (idx: number, phan: "ao" | "quan" = "ao") => {
@@ -873,20 +1105,67 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     if (!daiSoDoAo || (isBo && !daiSoDoQuan)) thieu.push(`Sơ đồ ${!daiSoDoAo ? "áo" : "quần"} (chưa nhập chiều dài sơ đồ)`);
     if (dsMau.some(m => !m.dinhMuc || m.dinhMuc <= 0) || (isBo && dsMau.some(m => !m.dinhMucQuan || m.dinhMucQuan <= 0))) thieu.push("Định mức (còn màu chưa có định mức áo/quần)");
     if (dsMau.some(m => !m.maVai) || (isBo && dsMau.some(m => !m.maVaiQuan))) thieu.push("Vải (còn màu chưa chọn mã vải áo/quần)");
+    dsMau.forEach((mau) => {
+      const cacMaVai = [...new Set(
+        [mau.maVai, isBo ? mau.maVaiQuan : ""].filter((maVai): maVai is string => Boolean(maVai)),
+      )];
+      cacMaVai.forEach((maVai) => {
+        const canhBao = getCanhBaoTonKho(mau, maVai);
+        if (canhBao) thieu.push(canhBao);
+      });
+    });
     if (!dsPhuLieu || dsPhuLieu.length === 0) thieu.push("Vật tư/phụ liệu (chưa thêm khoản mục nào)");
     const tongSLMau = dsMau.reduce((s, m) => s + (m.slDuKien || 0), 0);
+    if (soSpTrongSoDo > 0 && Number(tongSL) < tongSLToiThieu) {
+      thieu.push(`Tổng SL dự kiến tối thiểu là ${tongSLToiThieu} SP (${dsMau.length} màu × ${soSpTrongSoDo} SP/màu theo tỷ lệ ${tiLeSize})`);
+    }
+    if (soSPToiThieuMoiMau > 0 && dsMau.some(m => (m.slDuKien || 0) < soSPToiThieuMoiMau)) {
+      thieu.push(`Mỗi màu phải có tối thiểu ${soSPToiThieuMoiMau} SP cho ${soSizeThucTe || tiLeSize.split(":").length} size`);
+    }
+    if (soSpTrongSoDo > 0 && dsMau.some(m => (m.slDuKien || 0) % soSpTrongSoDo !== 0)) {
+      thieu.push(`Số lượng từng màu phải là bội số của ${soSpTrongSoDo} để giữ đúng tỷ lệ ${tiLeSize}`);
+    }
     if (!tongSL || dsMau.some(m => !m.slDuKien || m.slDuKien <= 0) || tongSLMau !== Number(tongSL)) thieu.push(`Số lượng (tổng SL từng màu = ${tongSLMau}, chưa khớp Tổng SL dự kiến = ${tongSL || 0})`);
     if (!phuTrachSX && !phuTrachCat) thieu.push("Người phụ trách sản xuất");
     return thieu;
   };
 
+  const getCongDoanChuaPhanCong = (): string[] => visiblePhanCong
+    .filter((congDoan) => !congDoan.nguoiMa?.trim())
+    .map((congDoan) => congDoan.tenCongDoan);
+
+  const getCongDoanChuaDonGia = (): string[] => visiblePhanCong
+    .filter((congDoan) => !Number.isFinite(Number(congDoan.donGia)) || Number(congDoan.donGia) <= 0)
+    .map((congDoan) => congDoan.tenCongDoan);
+
   const handleSave = async (status: TrangThaiLenhCat) => {
+    if (editing?.trangThai === "ChuyenTiep") {
+      toast.error("Lệnh cắt đã chuyển khâu, chỉ được phép xem");
+      return;
+    }
     if (!maSP || !tenSP || !tongSL) {
       toast.error("Vui lòng điền đầy đủ Mã SP, Tên SP và Tổng SL!");
       return;
     }
 
-    if (status === "DaTao") {
+    if (status === "ChuyenTiep") {
+      const congDoanChuaPhanCong = getCongDoanChuaPhanCong();
+      const congDoanChuaDonGia = getCongDoanChuaDonGia();
+      if (congDoanChuaPhanCong.length > 0 || congDoanChuaDonGia.length > 0) {
+        const chiTietThieu = [
+          congDoanChuaPhanCong.length > 0
+            ? `Chưa gắn người phụ trách: ${congDoanChuaPhanCong.join(", ")}`
+            : "",
+          congDoanChuaDonGia.length > 0
+            ? `Chưa có bảng giá công đoạn: ${congDoanChuaDonGia.join(", ")}`
+            : "",
+        ].filter(Boolean);
+        toast.error(`Chưa thể chuyển khâu. Bạn có thể "Hoàn tất lệnh" hoặc "Lưu nháp" để bổ sung sau:\n• ${chiTietThieu.join("\n• ")}`);
+        return;
+      }
+    }
+
+    if (status === "DaTao" || status === "ChuyenTiep") {
       const thieu = validateLenhCatDayDu();
       if (thieu.length > 0) {
         toast.error(`Chưa đủ điều kiện hoàn tất lệnh, còn thiếu:\n• ${thieu.join("\n• ")}`);
@@ -902,11 +1181,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       giaVonBinhQuan
     };
 
-    const catStage = phanCong.find(x => x.tenCongDoan.toLowerCase().includes("cắt") || x.tenCongDoan.toLowerCase().includes("cat"));
-    const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "NV006";
+    const catStage = phanCong.find(x => x.tenCongDoan?.toLowerCase().includes("cắt") || x.tenCongDoan?.toLowerCase().includes("cat"));
+    const actualPhuTrachCat = catStage?.nguoiMa || phuTrachCat || "";
 
     if (editing) {
-      suaLenhCat(editing.id, {
+      try {
+      await suaLenhCat(editing.id, {
         loaiLenh,
         khachHang: loaiLenh === "HangDat" ? khachHang : undefined,
         loaiSP,
@@ -948,8 +1228,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         fileGocInTheu,
         ghiChuInTheu,
       }, user || getFallbackUser());
-
       toast.success(`Đã cập nhật Lệnh Cắt ${editing.id} với trạng thái: ${status === "DaTao" ? "Đã tạo" : status === "Nhap" ? "Bản nháp" : "Chuyển tiếp"}`);
+      } catch (err: any) {
+        toast.error("Lỗi khi cập nhật: " + (err?.message || err));
+        return; // Dừng lại, không đóng modal nếu Supabase lỗi
+      }
     } else {
       // Dùng generateLenhCatId (max số hiện có + 1) thay vì dsLenhCat.length + 1:
       // đếm theo length sẽ sinh mã TRÙNG với lệnh đang tồn tại ngay khi có 1 lệnh
@@ -1090,7 +1373,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
     const lines = [
       `📋 Phân công gia công - ${tenSP || maSP}`,
       `Công đoạn: ${item.tenCongDoan}`,
-      `Số lượng: ${item.soLuong} × ${item.donGia.toLocaleString("vi-VN")}đ = ${item.thanhTien.toLocaleString("vi-VN")}đ`,
+      `Số lượng: ${item.soLuong ?? 0} × ${(item.donGia ?? 0).toLocaleString("vi-VN")}đ = ${(item.thanhTien ?? 0).toLocaleString("vi-VN")}đ`,
       `Hạn giao: ${hanHoanThanh}`,
       ghiChuKyThuat ? `Yêu cầu kỹ thuật: ${ghiChuKyThuat}` : "",
     ].filter(Boolean).join("\n");
@@ -1112,13 +1395,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
   dsMau.forEach(m => {
     if (m.maVai && m.slDuKien && m.dinhMuc) {
-      const v = KHO_VAI.find(x => x.maVT === m.maVai);
+      const v = khoVaiReals.find((x: any) => x.maVT === m.maVai);
       if (v) {
         tongTienVai += m.slDuKien * m.dinhMuc * (v.donGia || 0);
       }
     }
     if (isBo && m.maVaiQuan && m.slDuKien && m.dinhMucQuan) {
-      const vQuan = KHO_VAI.find(x => x.maVT === m.maVaiQuan);
+      const vQuan = khoVaiReals.find((x: any) => x.maVT === m.maVaiQuan);
       if (vQuan) {
         tongTienVai += m.slDuKien * m.dinhMucQuan * (vQuan.donGia || 0);
       }
@@ -1142,32 +1425,43 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
       open={isOpen}
       onClose={onClose}
       maxWidth="full"
-      className="bg-[#2B4C3E] text-white"
+      className="bg-[#2B4C3E] text-white overflow-hidden"
       overlayClassName="bg-black/60 backdrop-blur-sm"
+      fullScreenMobile={true}
     >
-      <div className="w-full h-[95vh] flex flex-col overflow-hidden">
+      <div className="w-full flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center gap-4 px-5 py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-              <Scissors className="w-4.5 h-4.5 text-white" />
+        <div className="sticky top-0 z-50 flex flex-wrap md:flex-nowrap justify-between items-start md:items-center gap-3 md:gap-4 px-4 md:px-5 py-3 md:py-3.5 bg-[#2B4C3E] border-b border-white/10 shrink-0 shadow-sm w-full overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0 w-full md:w-auto flex-1">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+              <Scissors className="w-4 h-4 md:w-4.5 md:h-4.5 text-white" />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-white font-bold text-base leading-tight truncate">Tạo Lệnh Cắt Sản Xuất</h2>
-              <p className="text-white/60 text-xs font-mono truncate">{editId || "LC-" + new Date().getFullYear() + "-XXXX"}</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-white font-bold text-sm md:text-base leading-tight truncate">Tạo Lệnh Cắt Sản Xuất</h2>
+              <p className="text-white/60 text-[10px] md:text-xs font-mono truncate">{editId || "LC-" + new Date().getFullYear() + "-XXXX"}</p>
             </div>
+            <button onClick={onClose} className="md:hidden p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors shrink-0 ml-auto">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="flex gap-2 items-center shrink-0">
-            <span className="bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full font-medium">
+          <div className="flex gap-2 items-center shrink-0 w-full md:w-auto justify-between md:justify-end border-t border-white/10 pt-2 md:border-0 md:pt-0">
+            <span className="bg-white/10 text-white/80 text-[10px] md:text-xs px-2.5 py-1 md:px-3 md:py-1.5 rounded-full font-medium">
               Version BOM: {phienBanDinhMuc}.0
             </span>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors">
+            <button onClick={onClose} className="hidden md:block p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#F4F1EA] p-2.5 md:p-6 flex flex-col gap-4">
+        {isLocked && activeEditor && (
+          <div className="bg-red-500 text-white px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 shrink-0 border-b border-red-600">
+            <AlertTriangle className="w-5 h-5" />
+            Lệnh cắt này đang được chỉnh sửa bởi {activeEditor}. Bạn chỉ có thể xem và không thể lưu đè.
+          </div>
+        )}
+
+        <div className="w-full bg-[#F4F1EA] p-3 md:p-6 pb-8 flex flex-col gap-4 text-slate-900">
           
           {/* CẢNH BÁO TỒN KHO */}
           {canhBaoTonKho.length > 0 && (
@@ -1181,14 +1475,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
           {/* KHỐI 1: THÔNG TIN CHÍNH */}
           <div className="order-1 bg-slate-100 p-3 md:p-5 rounded-lg border-2 border-slate-300 shadow-md relative">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-6">
-              <h2 className="text-lg md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
-              <div className="flex gap-4 items-center pr-0 md:pr-6">
-                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 md:mb-6">
+              <h2 className="text-base md:text-xl font-bold text-[#2B4C3E] uppercase tracking-wide break-words">THÔNG TIN CHUNG & KẾ HOẠCH</h2>
+              <div className="flex gap-3 md:gap-4 items-center pr-0 md:pr-6">
+                <label className="flex flex-1 md:flex-none items-center justify-center gap-2 bg-white px-3 py-2 md:py-1.5 rounded-lg border shadow-sm cursor-pointer">
                   <input type="radio" name="loaiLenh" checked={loaiLenh === "HangNha"} onChange={() => setLoaiLenh("HangNha")} className="accent-[#2B4C3E]" />
                   <span className="text-sm font-bold text-slate-700">Hàng Nhà</span>
                 </label>
-                <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm cursor-pointer">
+                <label className="flex flex-1 md:flex-none items-center justify-center gap-2 bg-white px-3 py-2 md:py-1.5 rounded-lg border shadow-sm cursor-pointer">
                   <input type="radio" name="loaiLenh" checked={loaiLenh === "HangDat"} onChange={() => setLoaiLenh("HangDat")} className="accent-[#2B4C3E]" />
                   <span className="text-sm font-bold text-slate-700">Hàng Đặt</span>
                 </label>
@@ -1196,20 +1490,23 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
             
             {/* ID + Ngày bắt đầu banner */}
-            <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-[#2B4C3E]/10 rounded-xl">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">ID Lệnh cắt</span>
-                <span className="px-3 py-1 bg-[#2B4C3E] text-white rounded-lg text-sm font-bold tracking-widest">
-                  {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
-                </span>
+            <div className="flex flex-col md:grid md:grid-cols-[120px_1fr_120px_1fr] md:items-center gap-y-2 md:gap-x-6 mb-6 p-3 md:p-5 bg-gradient-to-r from-[#2B4C3E]/10 to-[#2B4C3E]/5 rounded-xl border border-[#2B4C3E]/20 shadow-sm w-full">
+              <span className="text-xs md:text-sm font-bold text-slate-600 uppercase">Mã Lệnh cắt</span>
+              <span className="px-3 py-2 md:px-4 md:py-1.5 bg-[#2B4C3E] text-white rounded-lg text-sm md:text-base font-bold tracking-widest shadow-inner truncate block w-full text-center md:text-left">
+                {editId || "LC-" + new Date().getFullYear() + "-XXXX"}
+              </span>
+              <div className="hidden md:block col-span-2"></div>
+            </div>
+
+            <div className="flex flex-col md:grid md:grid-cols-[120px_1fr_120px_1fr] md:items-center gap-4 md:gap-6 mb-6 p-3 md:p-5 bg-slate-50 rounded-xl border border-slate-200 shadow-sm w-full">
+              <div className="flex flex-col gap-1.5 md:contents">
+                <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Ngày bắt đầu</label>
+                <input type="date" className="w-full px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">Ngày bắt đầu</span>
-                <input type="date" className="px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={ngayBatDau} onChange={e => setNgayBatDau(e.target.value)} />
-              </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs font-bold text-slate-500 uppercase">→ Hoàn thành</span>
-                <input type="date" className="px-2 py-1 text-sm border border-slate-300 rounded bg-white focus:ring-2 focus:ring-[#2B4C3E]" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
+              
+              <div className="flex flex-col gap-1.5 md:contents">
+                <label className="text-xs md:text-sm font-bold text-slate-600 uppercase">Hoàn thành</label>
+                <input type="date" className="w-full px-3 py-2 text-sm md:text-base font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E] shadow-sm min-w-0" value={hanHoanThanh} onChange={e => setHanHoanThanh(e.target.value)} />
               </div>
             </div>
             
@@ -1223,14 +1520,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               </div>
               <div className="lg:col-span-2">
                 <label className="text-sm font-bold text-slate-700 block mb-1">Tổng SL cắt dự kiến *</label>
-                <input type="number" min={1} className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tongSL} onChange={(e) => {
-                  const val = e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value) || 0);
+                <input type="number" min={tongSLToiThieu || 1} className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tongSL} onChange={(e) => {
+                  const val = e.target.value === "" ? "" : Math.max(tongSLToiThieu || 1, parseInt(e.target.value) || 0);
                   setTongSL(val);
                   if (val && typeof val === "number") {
                     const perColor = Math.floor(val / soMau);
                     setDsMau(prev => prev.map(m => ({ ...m, slDuKien: perColor })));
                   }
                 }} placeholder="Nhập số lượng..." />
+                {tongSLToiThieu > 0 && <p className="mt-1 text-[11px] font-semibold text-slate-500">Tối thiểu {tongSLToiThieu} SP = {dsMau.length} màu × {soSPToiThieuMoiMau} SP/màu ({soSizeThucTe || tiLeSize.split(":").length} size).</p>}
               </div>
 
               {/* Row 2 */}
@@ -1273,23 +1571,33 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 <div 
                                   key={sp.id} 
                                   className={`flex items-center gap-3 p-2.5 border-b border-slate-100 cursor-pointer transition-colors ${maSP === sp.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
-                                  onClick={() => {
-                                    setMaSP(sp.id);
-                                    setTenSP(sp.tenSP);
-                                    setLoaiSP(sp.loaiSP);
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setShowProductDropdown(false);
+                                    setMaSP(sp.id || "");
+                                    setTenSP(sp.tenSP || "");
+                                    if (sp.loaiSP) setLoaiSP(sp.loaiSP);
                                     if (sp.tiLeSize) setTiLeSize(sp.tiLeSize);
-                                    if (sp.dsMau && sp.dsMau.length > 0) {
-                                      setSoMau(sp.dsMau.length);
-                                      setDsMau(sp.dsMau.map(m => ({
-                                        ten: m.ten,
-                                        maSKU: m.maSKU || "",
-                                        dinhMuc: m.dinhMuc || 0.25,
-                                        img: m.img || "",
-                                        maVai: "",
-                                        slDuKien: 0,
-                                        ghiChu: "",
-                                        phanBoSize: []
-                                      })));
+                                    try {
+                                      let dsMauToSet = sp.dsMau;
+                                      if (typeof dsMauToSet === 'string') {
+                                        dsMauToSet = JSON.parse(dsMauToSet);
+                                      }
+                                      if (Array.isArray(dsMauToSet) && dsMauToSet.length > 0) {
+                                        setSoMau(dsMauToSet.length);
+                                        setDsMau(dsMauToSet.map((m) => ({
+                                          ten: m.ten || "",
+                                          maSKU: m.maSKU || "",
+                                          dinhMuc: m.dinhMuc || 0.25,
+                                          img: m.img || "",
+                                          maVai: "",
+                                          slDuKien: 0,
+                                          ghiChu: "",
+                                          phanBoSize: []
+                                        })));
+                                      }
+                                    } catch (e) {
+                                      console.error("Lỗi parse dsMau khi chọn SP:", e);
                                     }
                                     toast.success(`✅ Đã chọn: [${sp.id}] ${sp.tenSP}`);
                                     setShowProductDropdown(false);
@@ -1319,7 +1627,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               </div>
               <div>
                 <label className="text-sm font-bold text-slate-700 block mb-1">Tên SP *</label>
-                <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tenSP} onChange={(e) => setTenSP(e.target.value)} placeholder="VD: Bộ Trụ" />
+                <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={tenSP} onChange={(e) => {
+                  const val = e.target.value;
+                  setTenSP(val);
+                  const lowerVal = val.toLowerCase();
+                  if (lowerVal.includes("áo polo") || lowerVal.includes("ao polo")) setLoaiSP("AoPolo");
+                  else if (lowerVal.includes("áo trụ") || lowerVal.includes("ao tru")) setLoaiSP("AoTru");
+                  else if (lowerVal.includes("áo tròn") || lowerVal.includes("áo cổ tròn") || lowerVal.includes("cổ tròn")) setLoaiSP("AoCoTron");
+                  else if (lowerVal.includes("bộ tròn") || lowerVal.includes("bộ cổ tròn")) setLoaiSP("BoCoTron");
+                  else if (lowerVal.includes("bộ trụ") || lowerVal.includes("bo tru")) setLoaiSP("BoTru");
+                  else if (lowerVal.includes("phụ kiện") || lowerVal.includes("quần") || lowerVal.includes("quan")) setLoaiSP("PhuKien");
+                }} placeholder="VD: Bộ Trụ" />
               </div>
 
               {/* Row 3 */}
@@ -1378,8 +1696,13 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       const val = e.target.value;
                       setPhuTrachSX(val);
                       if (val) {
-                        const numericPart = val.replace(/\D/g, "");
-                        setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                        const nv = nhanVienOptions.find(n => n.ma === val);
+                        if (nv?.sdt) {
+                          setSdtLienHe(nv.sdt);
+                        } else {
+                          const numericPart = val.replace(/\D/g, "");
+                          setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                        }
                       } else {
                         setSdtLienHe("");
                       }
@@ -1404,9 +1727,16 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               
               return (
                 <div className="mt-6 p-4 md:p-5 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center">
-                  <div className="relative w-full md:w-32 md:h-32 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center">
-                    <img src={spImg} alt={spTen} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm uppercase">
+                  <div 
+                    className="relative w-full md:w-32 md:h-32 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center group cursor-zoom-in"
+                    onClick={(e) => {
+                      if (spImg && !spImg.includes("placehold.co")) {
+                        handlePreviewImage(e, JSON.stringify({ url: spImg, name: spTen }));
+                      }
+                    }}
+                  >
+                    <img src={spImg} alt={spTen} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] font-bold rounded backdrop-blur-sm uppercase pointer-events-none">
                       {spLoai}
                     </div>
                   </div>
@@ -1452,12 +1782,8 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   onChange={e => setPhuTrachSoDo(e.target.value)}
                 >
                   <option value="">-- Chọn NV phụ trách --</option>
-                  {nhanVienOptions.filter(nv => nv.boPhan?.includes("Sản xuất") || nv.boPhan?.includes("Kỹ thuật")).map(nv => (
-                    <option key={nv.ma} value={nv.ma}>{nv.ten}</option>
-                  ))}
-                  {/* Fallback nếu không có NV nào thoả điều kiện lọc thì hiện hết */}
                   {nhanVienOptions.map(nv => (
-                    <option key={`all-${nv.ma}`} value={nv.ma}>{nv.ma} - {nv.ten}</option>
+                    <option key={nv.ma} value={nv.ma}>{nv.ma} - {nv.ten}</option>
                   ))}
                 </select>
               </div>
@@ -1465,11 +1791,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>
               {/* Sơ đồ áo */}
               <div>
-                <div className="flex items-center justify-between mb-2 gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4" /> Sơ đồ áo (PLT)</label>
-                  <div className="flex items-center gap-2">
-                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
-                    <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="flex-1 min-w-0 w-full sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoAo} onChange={e => setDaiSoDoAo(e.target.value)} />
+                    <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap shrink-0">
                       {dinhMucAoTuDong ? dinhMucAoTuDong.toFixed(4) : "0"} kg/áo
                     </span>
                   </div>
@@ -1514,11 +1840,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
               {/* Sơ đồ quần - chỉ hiện khi loại SP là Bộ */}
               {isBo && (
                 <div>
-                  <div className="flex items-center justify-between mb-2 gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5"><Shirt className="w-4 h-4 rotate-180" /> Sơ đồ quần (PLT)</label>
-                    <div className="flex items-center gap-2">
-                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
-                      <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <input type="text" inputMode="decimal" placeholder="Dài sơ đồ (cm)..." className="flex-1 min-w-0 w-full sm:w-40 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm focus:ring-1 focus:ring-violet-500" value={daiSoDoQuan} onChange={e => setDaiSoDoQuan(e.target.value)} />
+                      <span className="px-2 py-1 rounded bg-violet-100 text-violet-800 text-xs font-bold whitespace-nowrap shrink-0">
                         {dinhMucQuanTuDong ? dinhMucQuanTuDong.toFixed(4) : "0"} kg/quần
                       </span>
                     </div>
@@ -1570,7 +1896,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           </div>
 
           {/* SƠ ĐỒ CẮT (MARKER) */}
-          <div className={`${loaiSoDoPhoi ? "" : "hidden"} order-5 bg-[#DCEAF2] p-5 rounded-lg border border-blue-300/80 shadow-sm mt-6`}>
+          <div className={`${loaiSoDoPhoi ? "" : "hidden"} order-3 bg-[#DCEAF2] p-5 rounded-lg border border-blue-300/80 shadow-sm mt-6`}>
              <div className="flex justify-between items-center mb-4">
                <h2 className="text-xl font-bold text-[#1E3A8A] uppercase tracking-wide">SƠ ĐỒ CẮT (MARKER)</h2>
                <div className="flex items-center gap-2 bg-blue-100/50 px-3 py-1.5 rounded-full">
@@ -1749,7 +2075,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
              </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-orange-200 shadow-sm mt-6">
+          <div className="order-3 bg-white p-4 rounded-lg border border-orange-200 shadow-sm mt-6">
             <label className="text-sm font-bold text-slate-700 block mb-2">Công đoạn In / Thêu / Dập</label>
             <select
               className="w-full md:max-w-md px-3 py-2 border border-orange-300 rounded bg-white text-sm font-semibold text-orange-900"
@@ -1884,12 +2210,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   </div>
                 )}
                 
-                <div className="flex-1 bg-orange-50 border-2 border-orange-300 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm w-full">
-                  <span className="text-sm font-black text-orange-800 whitespace-nowrap">
-                    GIA CÔNG {congDoanInTheu?.toUpperCase() || "IN/THÊU"}{loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
+                <div className="flex-1 bg-orange-50 border-2 border-orange-300 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm w-full min-w-0">
+                  <span className="text-sm font-black text-orange-800 whitespace-nowrap shrink-0">
+                    GIA CÔNG IN/THÊU{loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
                   </span>
                   <select 
-                    className="flex-1 min-w-0 px-2 py-1.5 border border-orange-300 rounded text-sm focus:outline-none bg-white font-semibold text-orange-900"
+                    className="w-full flex-1 min-w-0 px-2 py-1.5 border border-orange-300 rounded text-sm focus:outline-none bg-white font-semibold text-orange-900"
                     value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id?.startsWith("in_theu"))?.nguoiMa || ""}
                     onChange={e => {
                       setPhanCong(p => {
@@ -1922,7 +2248,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                      {getDoiTuongOptions(congDoanInTheu || "In/Thêu", loaiSP, nhanVienOptions).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                   </select>
                   <div className="flex items-center gap-1 w-full md:w-auto">
-                    <span className="text-xs font-bold text-orange-700">Đơn giá thực tế:</span>
+                    <span className="text-xs font-bold text-orange-700">Đơn giá:</span>
                     <input 
                       type="number" min={0}
                       placeholder="0" 
@@ -1957,19 +2283,29 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             {/* THÔNG TIN GIA CÔNG MAY (ÁO / QUẦN) */}
             <div className="flex flex-col md:flex-row gap-4 mb-4">
               {/* Box Áo */}
-              <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
-                <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG ÁO:</span>
+              <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm min-w-0">
+                <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG ÁO:</span>
                 <select 
-                  className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
-                  value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.nguoiMa || ""}
+                  className="w-full flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                  value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao")?.nguoiMa || ""}
                   onChange={e => {
                     setPhanCong(p => {
                       const next = [...(p as any[])];
-                      const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
+                      const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao");
+                      const nv = nhanVienOptions.find(n => n.ma === e.target.value);
+                      const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                      const ten = nv?.ten || dt?.tenDonVi || e.target.value;
                       if (idx >= 0) {
-                        const nv = nhanVienOptions.find(n => n.ma === e.target.value);
-                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
-                        next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                        next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: ten };
+                      } else {
+                        next.push({
+                          id: loaiSP?.toLowerCase().includes("bo") ? "may_ao" : "may",
+                          tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
+                          nguoiMa: e.target.value,
+                          nguoiTen: ten,
+                          donGia: 0,
+                          trangThaiCD: "chua_bat_dau"
+                        });
                       }
                       return next as any;
                     });
@@ -1979,17 +2315,29 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                    {getDoiTuongOptions("May Áo", loaiSP, nhanVienOptions).map(opt => <option key={opt.ma} value={opt.ma}>{opt.ten}</option>)}
                 </select>
                 <div className="flex items-center gap-1 w-full md:w-auto">
-                  <span className="text-xs font-bold text-emerald-700">Đơn giá thực tế:</span>
+                  <span className="text-xs font-bold text-emerald-700">Đơn giá:</span>
                   <input 
                     type="number" min={0}
                     placeholder="0" 
-                    className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
-                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may")?.donGia || ""}
+                    className="w-full md:w-24 px-2 py-1 border border-emerald-300 rounded text-sm bg-white text-right font-bold text-emerald-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao")?.donGia || ""}
                     onChange={e => {
+                      const val = parseInt(e.target.value) || 0;
                       setPhanCong(p => {
                         const next = [...(p as any[])];
-                        const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may");
-                        if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                        const idx = next.findIndex(k => k.id === "mayAo" || k.id === "may" || k.id === "may_ao");
+                        if (idx >= 0) {
+                          next[idx] = { ...next[idx], donGia: val };
+                        } else {
+                          next.push({
+                            id: loaiSP?.toLowerCase().includes("bo") ? "may_ao" : "may",
+                            tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
+                            donGia: val,
+                            nguoiMa: "",
+                            nguoiTen: "",
+                            trangThaiCD: "chua_bat_dau"
+                          });
+                        }
                         return next as any;
                       });
                     }}
@@ -2000,19 +2348,29 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
               {/* Box Quần (Chỉ hiện nếu là hàng Bộ) */}
               {loaiSP?.toLowerCase().includes("bo") && (
-                <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3 shadow-sm">
-                  <span className="text-sm font-black text-emerald-800 whitespace-nowrap">GIA CÔNG QUẦN:</span>
+                <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm min-w-0">
+                  <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG QUẦN:</span>
                   <select 
-                    className="flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
-                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.nguoiMa || ""}
+                    className="w-full flex-1 min-w-0 px-2 py-1.5 border border-emerald-300 rounded text-sm focus:outline-none bg-white font-semibold text-emerald-900"
+                    value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan" || k.id === "may_quan")?.nguoiMa || ""}
                     onChange={e => {
                       setPhanCong(p => {
                         const next = [...(p as any[])];
-                        const idx = next.findIndex(k => k.id === "mayQuan");
+                        const idx = next.findIndex(k => k.id === "mayQuan" || k.id === "may_quan");
+                        const nv = nhanVienOptions.find(n => n.ma === e.target.value);
+                        const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
+                        const ten = nv?.ten || dt?.tenDonVi || e.target.value;
                         if (idx >= 0) {
-                          const nv = nhanVienOptions.find(n => n.ma === e.target.value);
-                          const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
-                          next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: nv?.ten || dt?.tenDonVi || e.target.value };
+                          next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: ten };
+                        } else {
+                          next.push({
+                            id: "may_quan",
+                            tenCongDoan: "May Quần",
+                            nguoiMa: e.target.value,
+                            nguoiTen: ten,
+                            donGia: 0,
+                            trangThaiCD: "chua_bat_dau"
+                          });
                         }
                         return next as any;
                       });
@@ -2027,12 +2385,24 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       type="number" min={0}
                       placeholder="0" 
                       className="w-full md:w-28 px-2 py-1.5 border border-emerald-300 rounded text-sm text-right font-bold tabular-nums text-emerald-900"
-                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan")?.donGia || ""}
+                      value={((Array.isArray(phanCong) ? phanCong : []) as any[]).find(k => k.id === "mayQuan" || k.id === "may_quan")?.donGia || ""}
                       onChange={e => {
+                        const val = parseInt(e.target.value) || 0;
                         setPhanCong(p => {
                           const next = [...(p as any[])];
-                          const idx = next.findIndex(k => k.id === "mayQuan");
-                          if (idx >= 0) next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                          const idx = next.findIndex(k => k.id === "mayQuan" || k.id === "may_quan");
+                          if (idx >= 0) {
+                            next[idx] = { ...next[idx], donGia: val };
+                          } else {
+                            next.push({
+                              id: "may_quan",
+                              tenCongDoan: "May Quần",
+                              donGia: val,
+                              nguoiMa: "",
+                              nguoiTen: "",
+                              trangThaiCD: "chua_bat_dau"
+                            });
+                          }
                           return next as any;
                         });
                       }}
@@ -2069,12 +2439,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     <div className="grid grid-cols-1 gap-2">
                       {/* Ảnh mẫu ÁO (hàng Bộ hiển thị cạnh ảnh QUẦN) */}
                       <div
-                        className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto bg-white border-2 border-dashed border-blue-300 rounded-lg cursor-pointer overflow-hidden group hover:border-blue-500 transition-colors flex items-center justify-center"
+                        className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto bg-white border-2 border-dashed border-blue-300 rounded-lg cursor-pointer group hover:border-blue-500 transition-colors flex items-center justify-center z-10 hover:z-50"
                         onClick={() => handleColorImageUpload(idx, "ao")}
                       >
                         {mau.img ? (
                           <>
-                            <img src={mau.img} className="w-full h-full object-cover" />
+                            <img src={mau.img} className="w-full h-full object-cover rounded-lg group-hover:scale-[1.75] transition-transform duration-300 group-hover:shadow-2xl origin-center" />
                             <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[10px] font-bold">ÁO</span>
                             <span className="absolute bottom-0 inset-x-0 py-1 bg-black/60 text-white text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">
                               Bấm để thay ảnh {isBo ? "ÁO" : ""}
@@ -2095,10 +2465,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                     <div className="flex gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          const p = KHO_VAT_TU[0];
-                          setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "ao", mauIdx: idx }]);
-                        }}
+                        onClick={() => themVatTuTheoMau(idx, "ao")}
                         className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-[#2B4C3E] text-white text-xs font-bold rounded hover:bg-[#2B4C3E]/80 transition"
                       >
                         <Plus className="w-3.5 h-3.5" /> Vật tư áo
@@ -2125,7 +2492,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 className="flex-1 font-medium text-slate-700 bg-transparent border-b border-slate-300 outline-none hover:border-[#2B4C3E] focus:border-[#2B4C3E] w-24 text-[11px]"
                                 value={p.maPL}
                                 onChange={e => {
-                                  const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
+                                  const v = khoPhuLieuReals.find(x => x.maVT === e.target.value);
                                   if(v) {
                                     setDsPhuLieu(prev => {
                                       const next = [...prev];
@@ -2135,7 +2502,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                   }
                                 }}
                               >
-                                {KHO_VAT_TU.map(v => <option key={v.maVT} value={v.maVT}>{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
+                                {khoPhuLieuReals.map(v => <option key={v.maVT} value={v.maVT} className="text-black bg-white">{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
                               </select>
                               <div className="flex items-center shrink-0">
                                 <input 
@@ -2169,14 +2536,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   {/* Right: Details & Sizes */}
                   {(() => {
                     // Pre-calculate prices
-                    const v = KHO_VAI.find(x => x.maVT === mau.maVai);
+                    const v = khoVaiReals.find((x: any) => x.maVT === mau.maVai);
                     const donGia = v ? (v.donGia || 0) : 0;
                     let tienVaiAo1SP = mau.dinhMuc * donGia;
                     
                     let vQuan = null;
                     let tienVaiQuan1SP = 0;
                     if (isBo && mau.maVaiQuan) {
-                      vQuan = KHO_VAI.find(x => x.maVT === mau.maVaiQuan);
+                      vQuan = khoVaiReals.find((x: any) => x.maVT === mau.maVaiQuan);
                       const donGiaQuan = vQuan ? (vQuan.donGia || 0) : 0;
                       tienVaiQuan1SP = (mau.dinhMucQuan || 0) * donGiaQuan;
                     }
@@ -2209,13 +2576,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 <select 
                                   className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
                                   value={mau.maVai}
-                                  onChange={(e) => {
-                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                                  }}
+                                  onChange={(e) => handleChonVai(idx, e.target.value, "ao")}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.map((kv) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  {khoVaiReals.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2260,13 +2625,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 <select 
                                   className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
                                   value={mau.maVai}
-                                  onChange={(e) => {
-                                    const next = [...dsMau]; next[idx].maVai = e.target.value; setDsMau(next);
-                                  }}
+                                  onChange={(e) => handleChonVai(idx, e.target.value, "ao")}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.map((kv) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  {khoVaiReals.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2336,6 +2699,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                             <label className="text-[10px] font-bold text-slate-500 block text-blue-700 mb-1">SL Dự kiến cắt (Màu này):</label>
                             <input
                               type="number"
+                              min={soSPToiThieuMoiMau || 1}
                               className="w-full px-2 py-1.5 border-2 border-blue-400 text-sm rounded font-bold text-blue-800"
                               value={mau.slDuKien || ""}
                               placeholder="VD: 125"
@@ -2352,9 +2716,22 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 // Cập nhật số lượng vật tư của màu này
                                 setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
                               }}
+                              onBlur={(e) => {
+                                const newVal = Math.max(soSPToiThieuMoiMau || 1, parseInt(e.target.value) || 0);
+                                if (newVal !== mau.slDuKien) {
+                                  const next = [...dsMau];
+                                  next[idx].slDuKien = newVal;
+                                  setDsMau(next);
+                                  
+                                  const newTongSL = next.reduce((sum, m) => sum + (m.slDuKien || 0), 0);
+                                  setTongSL(newTongSL);
+                                  
+                                  setDsPhuLieu(prev => prev.map(p => p.mauIdx === idx ? { ...p, soLuong: newVal } : p));
+                                }
+                              }}
                             />
                             {soSpTrongSoDo > 0 && mau.slDuKien > 0 && mau.slDuKien % soSpTrongSoDo !== 0 && (() => {
-                              const duoi = Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo;
+                              const duoi = Math.max(soSpTrongSoDo, Math.floor(mau.slDuKien / soSpTrongSoDo) * soSpTrongSoDo);
                               const tren = duoi + soSpTrongSoDo;
                               return (
                                 <div className="mt-1.5 px-2 py-1.5 rounded bg-amber-50 border border-amber-300 text-[11px] text-amber-800 flex items-center gap-2 flex-wrap">
@@ -2408,12 +2785,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         <div className="grid grid-cols-1 md:grid-cols-[160px_minmax(0,1fr)] gap-2 min-w-0 min-h-[300px] rounded-lg border-2 border-teal-300 bg-white/95 p-2 text-xs shadow-sm [&_input]:py-1 [&_select]:py-1 [&_textarea]:py-1">
                           {isBo && (
                             <div
-                              className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto md:row-span-2 self-start bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer overflow-hidden group hover:border-teal-500 transition-colors flex items-center justify-center"
+                              className="relative w-[260px] h-[260px] max-w-full aspect-square mx-auto md:row-span-2 self-start bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer group hover:border-teal-500 transition-colors flex items-center justify-center z-10 hover:z-50"
                               onClick={() => handleColorImageUpload(idx, "quan")}
                             >
                               {mau.imgQuan ? (
                                 <>
-                                  <img src={mau.imgQuan} alt={`Ảnh màu quần ${mau.ten || idx + 1}`} className="w-full h-full object-cover" />
+                                  <img src={mau.imgQuan} alt={`Ảnh màu quần ${mau.ten || idx + 1}`} className="w-full h-full object-cover rounded-lg group-hover:scale-[1.75] transition-transform duration-300 group-hover:shadow-2xl origin-center" />
                                   <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-teal-700/90 text-white text-[10px] font-bold">QUẦN</span>
                                   <span className="absolute bottom-0 inset-x-0 py-1.5 bg-black/60 text-white text-xs font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">Bấm để thay ảnh quần</span>
                                 </>
@@ -2433,13 +2810,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                                 <select 
                                   className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
                                   value={mau.maVaiQuan || ""}
-                                  onChange={(e) => {
-                                    const next = [...dsMau]; next[idx].maVaiQuan = e.target.value; setDsMau(next);
-                                  }}
+                                  onChange={(e) => handleChonVai(idx, e.target.value, "quan")}
                                 >
                                   <option value="">-- Chọn vải --</option>
-                                  {KHO_VAI.map((kv) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{kv.maMoi || kv.maVT} - {kv.tenChuan || kv.tenVT}</option>
+                                  {khoVaiReals.map((kv) => (
+                                    <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
                                   ))}
                                 </select>
                               </div>
@@ -2486,10 +2861,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                           {isBo && (
                             <button
                               type="button"
-                              onClick={() => {
-                                const p = KHO_VAT_TU[0];
-                                setDsPhuLieu(prev => [...prev, { maPL: p.maVT, tenPL: p.tenVT, soLuong: (tongSL as number) || 500, donGia: p.donGia || 1000, dvt: p.dvt || "cái", apDungCho: "quan", mauIdx: idx }]);
-                              }}
+                              onClick={() => themVatTuTheoMau(idx, "quan")}
                               className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-teal-700 text-white text-xs font-bold rounded hover:bg-teal-800 transition md:col-start-2"
                             >
                               <Plus className="w-3.5 h-3.5" /> Vật tư quần
@@ -2545,7 +2917,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       {dsNhom.length === 0 && <div className="text-xs text-slate-400 italic px-1">Chưa có vật tư nào</div>}
                       {dsNhom.map((p) => {
                         const idx = dsPhuLieu.indexOf(p);
-                        const laNguyenLieuMoi = !KHO_VAT_TU.some(v => v.maVT === p.maPL);
+                        const laNguyenLieuMoi = !khoPhuLieuReals.some(v => v.maVT === p.maPL);
                         return (
                           <div key={idx} className="flex flex-col sm:grid sm:grid-cols-13 gap-2 sm:items-center bg-white p-2 rounded shadow-sm">
                             <select
@@ -2554,7 +2926,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                               title="Vật tư này đi với màu nào - hiển thị ngay trong card màu tương ứng"
                               onChange={e => {
                                 const next = [...dsPhuLieu];
-                                next[idx] = { ...next[idx], mauIdx: e.target.value === "" ? undefined : Number(e.target.value) };
+                                const mauIdxMoi = e.target.value === "" ? undefined : Number(e.target.value);
+                                next[idx] = {
+                                  ...next[idx],
+                                  mauIdx: mauIdxMoi,
+                                  ...(mauIdxMoi === undefined ? {} : { soLuong: dsMau[mauIdxMoi]?.slDuKien || 0 }),
+                                };
                                 setDsPhuLieu(next);
                               }}
                             >
@@ -2572,14 +2949,14 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                               />
                             ) : (
                               <select className="sm:col-span-3 text-sm p-1.5 border rounded" value={p.maPL} onChange={e => {
-                                const v = KHO_VAT_TU.find(x => x.maVT === e.target.value);
+                                const v = khoPhuLieuReals.find(x => x.maVT === e.target.value);
                                 if(v) {
                                   const next = [...dsPhuLieu];
                                   next[idx] = { ...next[idx], maPL: v.maVT, tenPL: v.tenVT, donGia: v.donGia || 0, dvt: v.dvt || "cái" };
                                   setDsPhuLieu(next);
                                 }
                               }}>
-                                {KHO_VAT_TU.map(v => <option key={v.maVT} value={v.maVT}>{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
+                                {khoPhuLieuReals.map(v => <option key={v.maVT} value={v.maVT} className="text-black bg-white">{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
                               </select>
                             )}
                             <div className="flex gap-2 sm:contents">
@@ -2676,7 +3053,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                             {kh.nguoiMa ? (nhanVienOptions.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
                           <select 
-                          className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none"
+                          className={`flex-1 min-w-0 px-2 py-1.5 border rounded text-sm focus:outline-none ${kh.nguoiMa ? "border-slate-200" : "border-rose-300 bg-rose-50/50"}`}
                           value={kh.nguoiMa}
                           onChange={(e) => {
                             const nv = nhanVienOptions.find(n => n.ma === e.target.value);
@@ -2684,7 +3061,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                             const selectedName = nv?.ten || dt?.tenDonVi || e.target.value;
                             setPhanCong(p => {
                               const next = [...(p as any[])];
-                              next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: selectedName };
+                              const actualIdx = next.findIndex(x => x.tenCongDoan === kh.tenCongDoan);
+                              if (actualIdx !== -1) {
+                                next[actualIdx] = { ...next[actualIdx], nguoiMa: e.target.value, nguoiTen: selectedName };
+                              }
                               return next as any;
                             });
                           }}
@@ -2698,12 +3078,15 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                         <div className="col-span-3 relative">
                           <input 
                             type="number" min={0}
-                            className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm text-right pr-6"
+                            className={`w-full px-2 py-1.5 border rounded text-sm text-right pr-6 ${Number(kh.donGia) > 0 ? "border-slate-200" : "border-rose-300 bg-rose-50/50"}`}
                             value={kh.donGia}
                             onChange={(e) => {
                               setPhanCong(p => {
                                 const next = [...(p as any[])];
-                                next[idx] = { ...next[idx], donGia: parseInt(e.target.value) || 0 };
+                                const actualIdx = next.findIndex(x => x.tenCongDoan === kh.tenCongDoan);
+                                if (actualIdx !== -1) {
+                                  next[actualIdx] = { ...next[actualIdx], donGia: parseInt(e.target.value) || 0 };
+                                }
                                 return next as any;
                               });
                             }}
@@ -2794,29 +3177,52 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
         </div>
 
         {/* Footer Buttons */}
-        <div className="shrink-0 bg-white px-6 py-4 flex items-center justify-between border-t border-slate-200 rounded-b-xl relative gap-4">
-          {/* Left Actions */}
-          <div className="flex items-center gap-2">
+        <div className="shrink-0 bg-white p-3 md:px-6 md:py-4 flex flex-col md:flex-row items-stretch md:items-center justify-between border-t border-slate-200 rounded-b-xl gap-3 w-full">
+          
+          {/* Right Actions (Primary) - Đưa lên trên ở mobile */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 order-1 md:order-2 w-full md:w-auto">
+            {/* Tam cap 2: xac nhan lenh da du dieu kien */}
+            <button
+              className={`flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 transition-all text-center justify-center ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-100 hover:border-blue-300"}`}
+              onClick={() => handleSave("DaTao")}
+              disabled={isLocked}
+            >
+              Hoàn tất lệnh
+            </button>
+
+            {/* Tam cap 1 (CTA chinh): chuyen sang khau san xuat tiep theo */}
+            <button
+              className={`flex-1 md:flex-none px-5 py-2 md:py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] transition-all flex items-center justify-center gap-2 ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-[#d9930f] shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5"}`}
+              onClick={() => handleSave("ChuyenTiep")}
+              disabled={isLocked}
+            >
+              <Send className="w-4 h-4" />
+              Lưu & chuyển khâu
+            </button>
+          </div>
+
+          {/* Left Actions (Secondary) - Nằm dưới ở mobile */}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 order-2 md:order-1 w-full md:w-auto">
             <button
               onClick={onClose}
-              className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
+              className="px-3 py-1.5 md:py-2 rounded-lg text-sm font-semibold text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all"
             >
               Đóng
             </button>
             
-            <span className="w-px h-6 bg-slate-200 mx-1" />
+            <span className="hidden md:block w-px h-6 bg-slate-200 mx-1" />
             
-            {/* Tam cap 3: hanh dong nhe nhat - luu tam, chua can du dieu kien */}
             <button
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
+              className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-slate-500 bg-transparent border border-slate-300 transition-all ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-50 hover:border-slate-400"}`}
               onClick={() => handleSave("Nhap")}
+              disabled={isLocked}
             >
               Lưu nháp
             </button>
             
             <button
               onClick={handleInPhieuGiaCong}
-              className="px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-2"
+              className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-slate-600 bg-transparent border border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center gap-1.5"
             >
               <Printer className="w-4 h-4" /> In phiếu
             </button>
@@ -2824,12 +3230,12 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             <div className="relative">
               <button
                 onClick={() => setZaloPickerOpen(v => !v)}
-                className="px-4 py-2 rounded-lg font-semibold text-sm text-sky-600 bg-transparent border border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold text-sm text-sky-600 bg-transparent border border-sky-300 hover:bg-sky-50 hover:border-sky-400 transition-all flex items-center gap-1.5"
               >
                 <Share2 className="w-4 h-4" /> Zalo
               </button>
               {zaloPickerOpen && (
-                <div className="absolute bottom-full mb-2 left-0 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                <div className="absolute bottom-full mb-2 left-0 md:left-auto md:right-0 w-[calc(100vw-32px)] md:w-72 max-w-[280px] bg-white border border-slate-200 rounded-xl shadow-xl z-[150] overflow-hidden">
                   <div className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-50 border-b border-slate-200">
                     Chọn người nhận - họ chỉ thấy giá của chính mình
                   </div>
@@ -2843,45 +3249,26 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                       className="w-full text-left px-3 py-2 text-sm hover:bg-sky-50 border-b border-slate-100 last:border-0 flex items-center justify-between"
                     >
                       <span className="font-medium text-slate-700">{item.tenCongDoan} · {item.nguoiTen}</span>
-                      <span className="text-xs text-slate-400">{item.soLuong}×{item.donGia.toLocaleString("vi-VN")}đ</span>
+                      <span className="text-xs text-slate-400">{item.soLuong ?? 0}×{(item.donGia ?? 0).toLocaleString("vi-VN")}đ</span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
           </div>
-          
-          {/* Right Actions */}
-          <div className="flex items-center gap-3">
 
-            {/* Tam cap 2: xac nhan lenh da du dieu kien */}
-            <button
-              className="px-5 py-2.5 rounded-lg font-bold text-sm text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all"
-              onClick={() => handleSave("DaTao")}
-            >
-              Hoàn tất lệnh
-            </button>
-
-            {/* Tam cap 1 (CTA chinh): chuyen sang khau san xuat tiep theo */}
-            <button
-              className="px-7 py-2.5 rounded-lg font-bold text-sm text-white bg-[#F0A619] hover:bg-[#d9930f] transition-all shadow-md shadow-[#F0A619]/30 hover:shadow-lg hover:shadow-[#F0A619]/40 hover:-translate-y-0.5 flex items-center gap-2"
-              onClick={() => handleSave("ChuyenTiep")}
-            >
-              <Send className="w-4 h-4" />
-              Chuyển khâu
-            </button>
-          </div>
+        </div>
 
 
   {/* Modal Tạo Mẫu Công Đoạn */}
   {showTaoMauCD && (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Công Đoạn Mới</h3>
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
+        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Tạo Mẫu Công Đoạn Mới</h3>
         <div className="space-y-3 mb-6">
           <div>
-            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cd_" + Date.now() }))} />
+            <label className="block text-sm font-bold mb-1 text-slate-900 dark:text-slate-200">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border dark:border-slate-700 rounded bg-transparent text-slate-900 dark:text-white" placeholder="VD: Áo Thun Cổ Tròn" value={newMauCD.ten} onChange={e => setNewMauCD(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cd_" + Date.now() }))} />
           </div>
           {newMauCD.giaCong.map((item, index) => (
             <div key={index} className="flex items-center justify-between gap-2">
@@ -2890,17 +3277,17 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                   const newGiaCong = [...newMauCD.giaCong];
                   newGiaCong.splice(index, 1);
                   setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
-                }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
+                }} className="text-rose-500 hover:bg-rose-500/20 p-1 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <input className="text-sm font-medium border-b border-dashed border-slate-300 focus:outline-none flex-1 bg-transparent" value={item.tenCongDoan} onChange={e => {
+                <input className="text-sm font-medium border-b border-dashed border-slate-300 dark:border-slate-700 focus:outline-none flex-1 bg-transparent text-slate-900 dark:text-white" value={item.tenCongDoan} onChange={e => {
                   const newGiaCong = [...newMauCD.giaCong];
                   newGiaCong[index] = { ...newGiaCong[index], tenCongDoan: e.target.value };
                   setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
                 }} />
               </div>
-              <div className="flex items-center gap-1 w-32 border rounded px-2">
-                <input type="number" className="w-full py-1 focus:outline-none bg-transparent" placeholder="Đơn giá" value={item.donGia || ""} onChange={e => {
+              <div className="flex items-center gap-1 w-32 border dark:border-slate-700 rounded px-2">
+                <input type="number" className="w-full py-1 focus:outline-none bg-transparent text-slate-900 dark:text-white" placeholder="Đơn giá" value={item.donGia || ""} onChange={e => {
                   const newGiaCong = [...newMauCD.giaCong];
                   newGiaCong[index] = { ...newGiaCong[index], donGia: parseInt(e.target.value) || 0 };
                   setNewMauCD(prev => ({ ...prev, giaCong: newGiaCong }));
@@ -2910,9 +3297,9 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
             </div>
           ))}
           {/* Thêm công đoạn mới */}
-          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100 dark:border-slate-800">
             <input 
-              className="flex-1 px-3 py-1.5 border rounded text-sm" 
+              className="flex-1 px-3 py-1.5 border dark:border-slate-700 rounded text-sm bg-transparent text-slate-900 dark:text-white" 
               placeholder="Nhập tên công đoạn mới..." 
               value={customStepName} 
               onChange={e => setCustomStepName(e.target.value)}
@@ -2930,11 +3317,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 setNewMauCD(prev => ({ ...prev, giaCong: [...prev.giaCong, { id: newId, tenCongDoan: customStepName.trim(), nguoiMa: "", nguoiTen: "", donGia: 0 }] }));
                 setCustomStepName("");
               }
-            }} className="px-3 py-1.5 bg-slate-100 text-slate-700 font-medium text-sm rounded hover:bg-slate-200 whitespace-nowrap">+ Thêm</button>
+            }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-sm rounded hover:bg-slate-200 dark:hover:bg-slate-700 whitespace-nowrap">+ Thêm</button>
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border rounded text-slate-600">Huỷ</button>
+          <button onClick={() => setShowTaoMauCD(false)} className="px-4 py-2 border dark:border-slate-700 rounded text-slate-600 dark:text-slate-400">Huỷ</button>
           <button onClick={() => {
             if (!newMauCD.ten.trim()) { toast.error("Vui lòng nhập tên mẫu"); return; }
             themMauCongDoan({ id: newMauCD.id || "cd_" + Date.now(), ten: newMauCD.ten, giaCong: newMauCD.giaCong });
@@ -2952,11 +3339,11 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
   {showTaoMauChiPhi && (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">Tạo Mẫu Chi Phí Mới</h3>
+        <h3 className="text-lg font-bold mb-4 text-slate-900">Tạo Mẫu Chi Phí Mới</h3>
         <div className="space-y-3 mb-6">
           <div>
-            <label className="block text-sm font-bold mb-1">Tên Mẫu</label>
-            <input className="w-full px-3 py-2 border rounded" placeholder="VD: Chi Phí Hàng Thun" value={newMauChiPhi.ten} onChange={e => setNewMauChiPhi(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cp_" + Date.now() }))} />
+            <label className="block text-sm font-bold mb-1 text-slate-900">Tên Mẫu</label>
+            <input className="w-full px-3 py-2 border rounded text-slate-900" placeholder="VD: Chi Phí Hàng Thun" value={newMauChiPhi.ten} onChange={e => setNewMauChiPhi(prev => ({ ...prev, ten: e.target.value, id: e.target.value.replace(/\s/g, "") || "cp_" + Date.now() }))} />
           </div>
           {Object.entries(newMauChiPhi.chiPhi).map(([tenKhoan, donGia]) => (
             <div key={tenKhoan} className="flex items-center justify-between gap-2">
@@ -2968,10 +3355,10 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
                 }} className="text-rose-500 hover:bg-rose-100 p-1 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium flex-1">{tenKhoan}</span>
+                <span className="text-sm font-medium flex-1 text-slate-900">{tenKhoan}</span>
               </div>
               <div className="flex items-center gap-1 w-32 border rounded px-2">
-                <input type="number" className="w-full py-1 focus:outline-none bg-transparent" placeholder="Đơn giá" value={donGia || ""} onChange={e => {
+                <input type="number" className="w-full py-1 focus:outline-none bg-transparent text-slate-900" placeholder="Đơn giá" value={donGia || ""} onChange={e => {
                   const newChiPhi = { ...newMauChiPhi.chiPhi };
                   newChiPhi[tenKhoan] = parseInt(e.target.value) || 0;
                   setNewMauChiPhi(prev => ({ ...prev, chiPhi: newChiPhi }));
@@ -2983,7 +3370,7 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
           {/* Thêm khoản chi phí mới */}
           <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
             <input 
-              className="flex-1 px-3 py-1.5 border rounded text-sm" 
+              className="flex-1 px-3 py-1.5 border rounded text-sm text-slate-900" 
               placeholder="Nhập khoản chi phí mới..." 
               value={customChiPhiName} 
               onChange={e => setCustomChiPhiName(e.target.value)}
@@ -3018,7 +3405,6 @@ export function LenhCatModal({ isOpen, onClose, editId }: { isOpen: boolean; onC
 
 
       </div>
-    </div>
 
     {previewImage && (
       <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4" onClick={() => setPreviewImage(null)}>

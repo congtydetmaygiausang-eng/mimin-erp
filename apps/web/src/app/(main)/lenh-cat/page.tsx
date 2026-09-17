@@ -40,6 +40,7 @@ export default function LenhCatPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [draftData, setDraftData] = useState<any>(null);
   const [filterTrangThai, setFilterTrangThai] = useState<"ALL" | TrangThaiLenhCat>("ALL");
   const [expandedMauCD, setExpandedMauCD] = useState<string | null>(null);
   const [expandedMauCP, setExpandedMauCP] = useState<string | null>(null);
@@ -55,6 +56,17 @@ export default function LenhCatPage() {
     }
     if (localStorage.getItem("mimin_open_lenh_cat") === "1") {
       localStorage.removeItem("mimin_open_lenh_cat");
+      
+      const draftStr = localStorage.getItem("mimin_draft_lenh_cat");
+      if (draftStr) {
+        try {
+          setDraftData(JSON.parse(draftStr));
+        } catch (e) {
+          console.error("Lỗi parse draft data:", e);
+        }
+        localStorage.removeItem("mimin_draft_lenh_cat");
+      }
+      
       setEditId(null);
       setShowModal(true);
     }
@@ -86,7 +98,15 @@ export default function LenhCatPage() {
   const filteredLC = dsLenhCat.filter((l) => filterTrangThai === "ALL" || l.trangThai === filterTrangThai);
 
   // Handlers
-  const handleEdit = (id: string) => { router.push(`/lenh-cat/${id}`); };
+  const handleEdit = (lc: (typeof dsLenhCat)[number]) => {
+    if (lc.trangThai === "ChuyenTiep") {
+      router.push(`/lenh-cat/${lc.id}`);
+      return;
+    }
+    setDraftData(null);
+    setEditId(lc.id);
+    setShowModal(true);
+  };
   // Tạm dùng lại LenhCatModal: wizard /lenh-cat/tao-moi chưa chạy được
   // (thiếu framer-motion + @/components/ui/button), đã chuyển vào _tao-moi.
   const handleCreate = () => { setEditId(null); setShowModal(true); };
@@ -153,10 +173,10 @@ export default function LenhCatPage() {
             <LenhCatCard
               key={lc.id}
               lc={lc}
-              onEdit={() => handleEdit(lc.id)}
+              onEdit={() => handleEdit(lc)}
               onDelete={() => handleDelete(lc.id)}
               onChangeStatus={async (tt) => {
-                await capNhatTrangThai(lc.id, tt, null);
+                await capNhatTrangThai(lc.id, tt, user);
                 if (tt === "DangCat") {
                   // Đổi trạng thái ở đây KHÔNG trừ kho - kho vải/phụ liệu chỉ bị trừ
                   // khi tổ cắt bấm "Nhận việc" ở trang Cắt (to-cat-work). Toast trước
@@ -168,24 +188,53 @@ export default function LenhCatPage() {
                   });
                 }
               }}
-              onSaveTyLe={(mauIdx, newTyLe) => {
+              onSaveTyLe={(mauIdx, newTyLe, _tongDuCat, fixedPhanCong) => {
                 const newDsMau = [...(lc.dsMau || [])];
                 if (newDsMau[mauIdx]) {
-                  newDsMau[mauIdx].tyLeSizeChiTiet = newTyLe;
+                  newDsMau[mauIdx] = { ...newDsMau[mauIdx], tyLeSizeChiTiet: { ...newDsMau[mauIdx].tyLeSizeChiTiet, ...newTyLe } };
+
+                  // ===== ĐồNG BỘ phanBoSize với data Cắt thực tế =====
+                  // Khi lưu tỷ lệ size, cập nhật luôn phanBoSize của màu này
+                  // = data khâu Cắt. Đây là nguồn fallback tin cậy sau F5.
+                  const catKeySync = Object.keys(newTyLe).find(k =>
+                    k.toLowerCase().includes("cat") ||
+                    (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                    (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                  );
+                  if (catKeySync && newTyLe[catKeySync]) {
+                    newDsMau[mauIdx].phanBoSize = newTyLe[catKeySync].map((sz: any) => ({
+                      size: sz.size,
+                      sl: sz.sl || 0,
+                    }));
+                  }
                   
                   // Tự động tính lại tổng SL thực tế của khâu Cắt
                   let totalThucTe = 0;
                   newDsMau.forEach(mau => {
                     if (mau.tyLeSizeChiTiet) {
-                      const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k => k.toLowerCase().includes("cat"));
+                      const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k =>
+                        k.toLowerCase().includes("cat") ||
+                        (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                        (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                      );
                       if (catKey && mau.tyLeSizeChiTiet[catKey]) {
                         totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
                       }
                     }
                   });
 
-                  suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!);
-                  toast.success("Đã cập nhật tỷ lệ size thành công!");
+                  // ===== TÁCH 2 LẦN LƯU ĐỘC LẬP =====
+                  // Lần 1: Lưu dsMau + tongSLThucTe (quan trọng nhất - PHẢI thành công)
+                  suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user!)
+                    .then(() => toast.success("Đã cập nhật tỷ lệ size thành công!"))
+                    .catch((err: any) => toast.error("Lỗi khi lưu tỷ lệ size: " + (err?.message || err)));
+
+                  // Lần 2: Repair phanCong nếu đang rỗng (KHÔNG ảnh hưởng lần lưu trên)
+                  // Gọi bất đồng bộ riêng, lỗi chỉ log console, không block UI.
+                  if (fixedPhanCong && fixedPhanCong.length > 0) {
+                    suaLenhCat(lc.id, { phanCong: fixedPhanCong }, user!)
+                      .catch((err: any) => console.warn("[phanCong repair]", err?.message || err));
+                  }
                 }
               }}
               onSaveGiaCong={(slThucTe, dsPhanCong, newDsMau) => {
@@ -194,7 +243,7 @@ export default function LenhCatPage() {
                 if (newDsMau) {
                   updatePayload.dsMau = newDsMau;
                   // Xác định xem đang lưu áo hay quần để cập nhật tổng SL thực tế
-                  const hasMayAo = dsPhanCong.some((pc: any) => pc.tenCongDoan.toLowerCase().includes("may áo"));
+                  const hasMayAo = dsPhanCong.some((pc: any) => pc.tenCongDoan?.toLowerCase().includes("may áo"));
                   if (hasMayAo) updatePayload.tongSLThucTeAo = slThucTe;
                   else updatePayload.tongSLThucTeQuan = slThucTe;
                 }
@@ -234,8 +283,9 @@ export default function LenhCatPage() {
       {showModal && (
         <LenhCatModal
           isOpen={true}
-          onClose={() => { setShowModal(false); setEditId(null); }}
+          onClose={() => { setShowModal(false); setEditId(null); setDraftData(null); }}
           editId={editId}
+          initialSP={draftData}
         />
       )}
     </div>

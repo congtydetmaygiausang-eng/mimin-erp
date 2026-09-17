@@ -9,8 +9,8 @@
 // Cách hoạt động: client đính kèm header "Authorization: Bearer <access_token>"
 // (access_token lấy từ supabase.auth.getSession() phía client, KHÔNG phải mật
 // khẩu). Server xác minh token này bằng chính Supabase Auth (getUser), rồi đọc
-// role từ app_metadata - field này CHỈ set được qua service-role Admin API,
-// người dùng thường không tự sửa được, nên đáng tin cậy hơn hẳn role client tự khai.
+// vai trò và trạng thái hiện tại từ hồ sơ ERP, để khóa/hạ quyền có hiệu lực
+// ngay cả khi token đăng nhập cũ vẫn còn hạn.
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -44,7 +44,12 @@ async function verifyCaller(req: NextRequest): Promise<AuthResult> {
     return unauthorized("Token không hợp lệ hoặc đã hết hạn - vui lòng đăng nhập lại", 401);
   }
 
-  const role = String((data.user.app_metadata as Record<string, unknown> | null)?.role || "");
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("users").select('role,"isActive"').eq("id", data.user.id).maybeSingle();
+  if (profileError || !profile || profile.isActive !== true) {
+    return unauthorized("Tài khoản không hoạt động hoặc chưa được cấp quyền ERP", 403);
+  }
+  const role = typeof profile.role === "string" ? profile.role : "";
   return {
     ok: true,
     caller: { id: data.user.id, email: data.user.email || "", role },

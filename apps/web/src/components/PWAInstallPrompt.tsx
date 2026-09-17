@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, X, Smartphone, Zap, Wifi, Bell, Info } from "lucide-react";
+import { Download, X, Smartphone, Zap, Wifi, Bell, Info, ArrowDown, ArrowUp } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+declare global {
+  interface Window {
+    pwaDeferredPrompt: BeforeInstallPromptEvent | null;
+  }
 }
 
 export function PWAInstallPrompt() {
@@ -17,20 +23,39 @@ export function PWAInstallPrompt() {
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
     if (typeof window === "undefined") return;
+
+    // Luôn luôn đăng ký sự kiện manual trigger
+    const forceShowHandler = () => {
+      setShowPrompt(true);
+      localStorage.removeItem("pwa-install-dismissed");
+    };
+    window.addEventListener("force-show-pwa-prompt", forceShowHandler);
+
+    const installedHandler = () => {
+      setIsInstalled(true);
+      setShowPrompt(false);
+      window.pwaDeferredPrompt = null;
+    };
+    window.addEventListener("appinstalled", installedHandler);
+
+    // Check if already installed
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
-      return;
+      return () => {
+        window.removeEventListener("force-show-pwa-prompt", forceShowHandler);
+        window.removeEventListener("appinstalled", installedHandler);
+      };
     }
 
     // Check if dismissed recently (within 3 days)
     const dismissed = localStorage.getItem("pwa-install-dismissed");
+    let isDismissed = false;
     if (dismissed) {
       const dismissedAt = Number(dismissed);
       const threeDays = 3 * 24 * 60 * 60 * 1000;
       if (Date.now() - dismissedAt < threeDays) {
-        return;
+        isDismissed = true;
       }
     }
 
@@ -45,33 +70,33 @@ export function PWAInstallPrompt() {
     setIsAndroid(isAndroidDevice);
     setIsInAppBrowser(inAppBrowser);
 
-    // Listen for beforeinstallprompt (Android/Chrome/Edge)
+    // Read the prompt that might have fired before React hydrated
+    if (window.pwaDeferredPrompt) {
+      setDeferredPrompt(window.pwaDeferredPrompt);
+    }
+
+    // Listen for beforeinstallprompt in case it fires late
     const handler = (e: Event) => {
       e.preventDefault();
+      window.pwaDeferredPrompt = e as BeforeInstallPromptEvent;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Show after 3 seconds
-      setTimeout(() => setShowPrompt(true), 3000);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // For mobile devices, if beforeinstallprompt doesn't fire, we still want to show a manual guide
-    if (isIOSDevice || isAndroidDevice || inAppBrowser) {
-      setTimeout(() => setShowPrompt(true), 3000);
-    } else {
-       // Desktop fallback
-       setTimeout(() => setShowPrompt(true), 5000);
+    // Show prompt after a delay if not dismissed
+    if (!isDismissed) {
+      if (isIOSDevice || isAndroidDevice || inAppBrowser) {
+        setTimeout(() => setShowPrompt(true), 2000);
+      } else {
+         // Desktop fallback
+         setTimeout(() => setShowPrompt(true), 4000);
+      }
     }
-
-    // Detect app installed
-    const installedHandler = () => {
-      setIsInstalled(true);
-      setShowPrompt(false);
-    };
-    window.addEventListener("appinstalled", installedHandler);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
+      window.removeEventListener("force-show-pwa-prompt", forceShowHandler);
     };
   }, []);
 
@@ -83,6 +108,7 @@ export function PWAInstallPrompt() {
         setIsInstalled(true);
       }
       setDeferredPrompt(null);
+      window.pwaDeferredPrompt = null;
     }
     setShowPrompt(false);
   };
@@ -122,7 +148,7 @@ export function PWAInstallPrompt() {
             )}
 
             {!isInAppBrowser && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 flex items-center gap-1">
                   <Zap className="w-3 h-3" /> Nhanh hơn
                 </span>
@@ -135,7 +161,7 @@ export function PWAInstallPrompt() {
               </div>
             )}
             
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-2">
               {deferredPrompt ? (
                 <button
                   onClick={handleInstall}
@@ -155,15 +181,21 @@ export function PWAInstallPrompt() {
             </div>
             
             {!deferredPrompt && isIOS && !isInAppBrowser && (
-              <p className="text-[10px] opacity-70 mt-2 italic text-center">
-                📱 Bấm nút <b>Chia sẻ</b> ⬆️ ở dưới cùng Safari <br/> → chọn <b>"Thêm vào MH chính"</b>
-              </p>
+              <div className="mt-3 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex flex-col items-center justify-center animate-pulse relative">
+                <p className="text-[11px] text-blue-700 dark:text-blue-300 text-center font-medium">
+                  Bấm nút <b>Chia sẻ</b> dưới Safari <br/> sau đó chọn <b>"Thêm vào MH chính"</b>
+                </p>
+                <ArrowDown className="w-5 h-5 text-blue-600 dark:text-blue-400 absolute -bottom-5" />
+              </div>
             )}
             
             {!deferredPrompt && isAndroid && !isInAppBrowser && (
-              <p className="text-[10px] opacity-70 mt-2 italic text-center">
-                📱 Bấm nút <b>3 chấm</b> ⋮ góc trên Chrome <br/> → chọn <b>"Thêm vào MH chính"</b>
-              </p>
+              <div className="mt-3 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 flex flex-col items-center justify-center animate-pulse relative">
+                <ArrowUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400 absolute -top-5 right-2" />
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 text-center font-medium">
+                  Bấm nút <b>3 chấm ⋮</b> góc trên Chrome <br/> sau đó chọn <b>"Thêm vào MH chính"</b>
+                </p>
+              </div>
             )}
           </div>
         </div>

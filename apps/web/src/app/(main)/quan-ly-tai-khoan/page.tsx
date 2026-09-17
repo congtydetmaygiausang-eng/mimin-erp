@@ -13,6 +13,8 @@ import { ROLE_LABELS, ROLE_COLORS, ALL_ROLES } from "@/lib/permissions";
 import { authFetch } from "@/lib/auth-fetch";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 import type { NhanSuExt } from "@/app/(main)/nhan-su/data";
+import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
+import { LocalAccountManager } from "@/components/local-account-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +95,10 @@ type UserRow = {
 type UserType = "all" | "noi-bo" | "ncc";
 
 export default function QuanLyTaiKhoanPage() {
+  return LOCAL_ACCOUNT_MODE ? <LocalAccountManager /> : <LiveAccountManager />;
+}
+
+function LiveAccountManager() {
   const { user, authSource } = useSession();
   const [list, setList] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);

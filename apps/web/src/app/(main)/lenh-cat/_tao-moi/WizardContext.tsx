@@ -104,7 +104,7 @@ const defaultState: WizardState = {
   ghiChuSoDoPhoi: "",
   dsSoDo: [],
   dsPhuLieu: [],
-  mauCongDoan: "BoTheThao",
+  mauCongDoan: "MCD-AO-TRON",
   phanCong: [],
   chiPhiCoDinh: BANG_CHI_PHI_CO_DINH["BoTru"] || {},
 };

@@ -5,21 +5,42 @@ import { Box, FileSpreadsheet } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
 export function StatsHeader({ stats }: { stats: { tongSP: number; soLoai: number; tongGT: number; conHang: number; daDat: number } }) {
+  const formatGiaTri = (val: number) => {
+    if (val >= 1_000_000_000) return { num: (val / 1_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 2 }), unit: "tỷ" };
+    if (val >= 1_000_000) return { num: (val / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 }), unit: "tr" };
+    return { num: val.toLocaleString("vi-VN"), unit: "đ" };
+  };
+  const gt = formatGiaTri(stats.tongGT);
+
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white p-5 md:p-7 shadow-xl">
-      <div className="text-xs font-medium opacity-90 mb-1 flex items-center gap-2">
-        <Box className="w-3.5 h-3.5" /> MIMIN OS · Kho thành phẩm
-      </div>
-      <h1 className="text-2xl md:text-3xl font-bold">📦 Kho Thành Phẩm</h1>
-      <p className="text-sm opacity-95 mt-1 max-w-3xl">
-        Quản lý sản phẩm hoàn thành từ khâu Đóng gói. Tự động đồng bộ từ workflow data, hỗ trợ nhập/xuất kho, thống kê doanh thu tiềm năng.
-      </p>
-      <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.tongSP.toLocaleString()}</div><div className="opacity-90">Tổng SP</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.soLoai}</div><div className="opacity-90">Loại SP</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{(stats.tongGT/1_000_000).toFixed(1)}tr</div><div className="opacity-90">Giá trị</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.conHang}</div><div className="opacity-90">Còn hàng</div></div>
-        <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl md:text-2xl font-bold">{stats.daDat}</div><div className="opacity-90">Đã đặt</div></div>
+    <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white p-5 md:p-8 shadow-lg relative overflow-hidden mb-4">
+      {/* Decorative background element */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white opacity-5 blur-3xl pointer-events-none"></div>
+      <div className="absolute top-10 right-20 w-32 h-32 rounded-full bg-indigo-400 opacity-20 blur-3xl pointer-events-none"></div>
+      
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-80 mb-2 flex items-center gap-2 text-indigo-100">
+            <Box className="w-4 h-4" /> BẢNG ĐIỀU KHIỂN
+          </div>
+          <h1 className="text-2xl md:text-4xl font-black tracking-tight flex items-center gap-2">Kho Thành Phẩm</h1>
+          <div className="mt-2 text-indigo-100 text-sm font-medium opacity-90 hidden md:block">Quản lý không gian lưu trữ và sản phẩm xuất/nhập kho</div>
+        </div>
+        
+        <div className="grid grid-cols-3 md:flex gap-3 text-center text-xs w-full md:w-auto">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
+            <div className="text-xl md:text-3xl font-black mb-1">{stats.tongSP.toLocaleString("vi-VN")}</div>
+            <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Tổng SP</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-32 hover:bg-white/20 transition-colors cursor-default">
+            <div className="text-xl md:text-3xl font-black mb-1">{stats.soLoai}</div>
+            <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Loại SP</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 shadow-sm flex-1 md:w-36 hover:bg-white/20 transition-colors cursor-default">
+            <div className="text-xl md:text-3xl font-black mb-1">{gt.num}<span className="text-[12px] md:text-sm ml-1 opacity-80">{gt.unit}</span></div>
+            <div className="opacity-70 text-[10px] md:text-xs uppercase font-bold tracking-wider">Giá trị</div>
+          </div>
+        </div>
       </div>
     </div>
   );

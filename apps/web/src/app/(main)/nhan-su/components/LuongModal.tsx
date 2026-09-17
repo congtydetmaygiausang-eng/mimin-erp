@@ -53,7 +53,8 @@ export function BangLuongNV({ nv, luongSP, onClose }: { nv: NhanSuExt; luongSP: 
         </div>
 
         <div className="text-sm font-semibold mb-2">📋 Chi tiết lương sản phẩm ({pcNV.length} công đoạn):</div>
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
@@ -94,6 +95,40 @@ export function BangLuongNV({ nv, luongSP, onClose }: { nv: NhanSuExt; luongSP: 
               </tr>
             </tfoot>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden flex flex-col gap-2">
+          {pcNV.length === 0 ? (
+            <div className="p-6 text-center opacity-60 text-sm">Chưa có công đoạn nào</div>
+          ) : pcNV.map((p) => (
+            <div key={p.id} className="bg-slate-50 border rounded-lg p-2 text-xs">
+              <div className="flex justify-between items-center mb-1">
+                <div className="font-semibold text-brand-700">{p.congDoan}</div>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] ${p.trangThai === "Đã thanh toán" ? "bg-emerald-500/15 text-emerald-700" : "bg-amber-500/15 text-amber-700"}`}>
+                  {p.trangThai}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-500 mb-2 font-mono">Lệnh cắt: {p.lenhCatId}</div>
+              
+              <div className="grid grid-cols-2 gap-2 mt-1 pt-1 border-t border-slate-200">
+                <div>
+                  <span className="text-[10px] text-slate-500 block">Khối lượng</span>
+                  <span className="font-medium">{p.soLuongGiao} x {p.donGiaGiao.toLocaleString()}đ</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 block">Thành tiền</span>
+                  <span className="font-bold text-emerald-600">{(p.donGiaGiao * p.soLuongGiao).toLocaleString()}đ</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {pcNV.length > 0 && (
+            <div className="mt-2 bg-emerald-500/10 border border-emerald-500/20 rounded p-2 text-xs flex justify-between font-bold">
+              <span>TỔNG CỘNG</span>
+              <span className="text-emerald-700">{formatVNDShort(tongCongDoan)}</span>
+            </div>
+          )}
         </div>
         {conNo > 0 && (
           <div className="mt-3 text-xs bg-amber-500/10 border border-amber-500/30 rounded p-2 flex items-center gap-2">

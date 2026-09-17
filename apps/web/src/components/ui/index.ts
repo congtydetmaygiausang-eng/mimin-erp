@@ -19,3 +19,4 @@ export { KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "./KhaiBaoSoLuongThe
 
 // Re-export formatVND helpers từ real-data (dùng nhiều nơi)
 export { formatVND, formatVNDShort } from "@/lib/data/real-data";
+export * from "./MayCard";

@@ -4,7 +4,7 @@
   "description": "Hệ thống quản lý sản xuất may mặc cho xưởng Polomimin",
   "lang": "vi",
   "dir": "ltr",
-  "start_url": "/dashboard",
+  "start_url": "/dashboard/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -41,19 +41,19 @@
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "url": "/dashboard",
+      "url": "/dashboard/",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Lệnh cắt",
       "short_name": "Lệnh cắt",
-      "url": "/lenh-cat",
+      "url": "/lenh-cat/",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Kho vải",
       "short_name": "Kho vải",
-      "url": "/kho-vai-tinhmann",
+      "url": "/kho-vai-tinhmann/",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

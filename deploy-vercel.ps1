@@ -133,8 +133,8 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "📋 Sếp vào https://vercel.com/dashboard để xem URL" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "🔗 Sau khi deploy, sếp cần:" -ForegroundColor Yellow
-    Write-Host "   1. Cập nhật Lark App → Redirect URL: https://[your-domain]/lark-callback"
-    Write-Host "   2. Cập nhật Lark App → Webhook URL: https://[your-domain]/api/v1/lark/webhook"
+    Write-Host "   1. Cập nhật Lark App -> Redirect URL: https://[your-domain]/lark-callback"
+    Write-Host "   2. Cập nhật Lark App -> Webhook URL: https://[your-domain]/api/v1/lark/webhook"
     Write-Host "   3. Test OAuth ở /lark-setup/"
     Write-Host "   4. Gửi card test ở /lark-card-builder/"
     Write-Host ""

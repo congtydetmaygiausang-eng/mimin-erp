@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { useSupabaseRealtime } from "@/lib/supabase/sync-helper";
 import { supabase, supabaseUpsert, supabaseDelete, isSupabaseEnabled } from "@/lib/supabase/client";
 import { DOI_TAC_GIA_CONG, type DoiTacGiaCong } from "@/lib/doi-tac-gia-cong";
 
