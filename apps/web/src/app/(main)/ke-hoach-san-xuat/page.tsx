@@ -134,7 +134,7 @@ export default function KeHoachSXPage() {
              else if (checkStr.includes("phụ kiện") || checkStr.includes("quần") || checkStr.includes("quan")) val = "PhuKien";
              else if (checkStr.includes("áo thun") || checkStr.includes("áo") || checkStr.includes("ao")) val = "AoCoTron";
           }
-          return ["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"].includes(val as string) ? val : "BoTru";
+          return (["AoTru", "AoCoTron", "BoTru", "BoCoTron", "AoPolo", "PhuKien"].includes(val as string) ? val : "BoTru") as import("@/lib/data/lenh-cat-store").LoaiSP;
         })(),
         maSP: item.maSP || sp?.id || "",
         tenSP: item.tenSP || item.sanPham || sp?.tenSP || "",

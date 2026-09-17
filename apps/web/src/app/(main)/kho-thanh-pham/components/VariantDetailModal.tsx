@@ -18,6 +18,7 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
   const [video, setVideo] = useState<string | undefined>(sp.video);
   const [giaBanLe, setGiaBanLe] = useState(sp.giaBanLe || 0);
   const [giaBanSi, setGiaBanSi] = useState(sp.giaBanSi || 0);
+  const [maSKU, setMaSKU] = useState(sp.maSKU || "");
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,7 +55,7 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
   };
 
   const handleSave = () => {
-    onSave({ ...sp, hinhAnh, video, giaBanLe, giaBanSi });
+    onSave({ ...sp, hinhAnh, video, giaBanLe, giaBanSi, maSKU: maSKU.trim() || undefined });
     onClose();
   };
 
@@ -148,8 +149,18 @@ export function VariantDetailModal({ sp, onClose, onSave }: Props) {
             </div>
           </div>
 
-          {/* Giá */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Giá & SKU */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1">Mã SKU Phân Loại</label>
+              <input
+                type="text"
+                value={maSKU}
+                onChange={(e) => setMaSKU(e.target.value)}
+                placeholder="VD: BPJ-289"
+                className="w-full px-3 py-2.5 border border-slate-200 bg-white rounded-lg text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400/50"
+              />
+            </div>
             <div>
               <label className="text-xs font-bold text-slate-600 block mb-1">Giá bán lẻ</label>
               <input

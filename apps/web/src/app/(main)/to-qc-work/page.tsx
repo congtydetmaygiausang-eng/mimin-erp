@@ -473,13 +473,38 @@ export default function UiQCPage() {
                         </div>
 
                         <div className="p-4 space-y-4">
-                          {isHoanThanh ? (
-                            <div className="text-center py-6 flex flex-col items-center justify-center space-y-2">
-                              <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                              <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
-                              <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
-                            </div>
-                          ) : (
+                          {isHoanThanh ? (() => {
+                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                            
+                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+
+                            return (
+                              <div className="text-center py-6 flex flex-col items-center justify-center space-y-3 relative">
+                                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                                <div>
+                                  <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
+                                  <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
+                                </div>
+                                {nextStageNotStarted && (
+                                  <button
+                                    onClick={() => {
+                                      capNhatCongDoan(lc.id, pc.id, { 
+                                        trangThaiCD: "dang_lam",
+                                        // Reset soLuongHoanThanh and soLuongDatCuoi so it can be re-entered
+                                        soLuongHoanThanh: slDatTam,
+                                        soLuongDatCuoi: slDatTam
+                                      } as any);
+                                      toast.info("Đã mở lại khâu QC. Bạn có thể nhập lại số lượng Đạt/Lỗi.");
+                                    }}
+                                    className="px-4 py-2 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-xl shadow-sm hover:bg-emerald-50 active:scale-95 transition-all text-xs flex items-center gap-1.5"
+                                  >
+                                    ✏️ Sửa SL
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })() : (
                             <>
                               {/* ===== PANEL SL ĐẠT TẠM (nổi bật khi đang co_loi) ===== */}
                               {isTraLai && slDatTam > 0 && (
@@ -758,32 +783,53 @@ export default function UiQCPage() {
                             </p>
                           )}
                           <div className="text-center">
-                            <button
-                              onClick={() => handleHoanTatQC(lc)}
-                              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
-                            >
-                              <Package className="w-5 h-5" />
-                              Xác nhận Ghép {tongGhep} Bộ → Chuyển Ủi
-                            </button>
+                            {lc.phanCong?.find((p: any) => p.id === "qc")?.trangThaiCD === "hoan_thanh" ? (
+                              <button
+                                disabled
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 text-emerald-700 border-2 border-emerald-500 font-black rounded-xl shadow-sm opacity-80 cursor-not-allowed"
+                              >
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                                Đã chuyển khâu ({tongGhep} Bộ)
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleHoanTatQC(lc)}
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
+                              >
+                                <Package className="w-5 h-5" />
+                                Xác nhận Ghép {tongGhep} Bộ → Chuyển Ủi
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
                     }
 
                     if (allMayDone) {
+                      const isQCDone = lc.phanCong?.find((p: any) => p.id === "qc")?.trangThaiCD === "hoan_thanh";
                       return (
                         <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-4">
                           <div className="text-emerald-700 font-black text-lg">✅ Đã kiểm tra hoàn tất!</div>
                           <p className="text-sm text-emerald-600 font-bold max-w-sm mx-auto leading-relaxed">
-                            QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện.
+                            {isQCDone ? "Lệnh cắt này đã được QC duyệt và đẩy sang khâu Hoàn Thiện." : "QC đã hoàn tất cho lệnh cắt này. Bấm xác nhận để gửi sang Hoàn Thiện."}
                           </p>
-                          <button
-                            onClick={() => handleHoanTatQC(lc)}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
-                          >
-                            <Package className="w-5 h-5" />
-                            Chốt QC → Chuyển Ủi
-                          </button>
+                          {isQCDone ? (
+                            <button
+                              disabled
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 text-emerald-700 border-2 border-emerald-500 font-black rounded-xl shadow-sm opacity-80 cursor-not-allowed"
+                            >
+                              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                              Đã chuyển khâu thành công
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleHoanTatQC(lc)}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
+                            >
+                              <Package className="w-5 h-5" />
+                              Chốt QC → Chuyển Ủi
+                            </button>
+                          )}
                         </div>
                       );
                     }

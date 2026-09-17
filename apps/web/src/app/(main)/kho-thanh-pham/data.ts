@@ -67,6 +67,7 @@ export interface SanPhamTP {
   imgQuan?: string; // Ảnh thứ 2 (áo mặt sau / quần bộ) - lấy nguyên từ mau.imgQuan của lệnh cắt gốc
   video?: string;
   chiTietSize?: { size: string; sl: number }[];
+  maSKU?: string; // Mã SKU phân loại (từ Danh Mục SP)
 }
 
 export const STORAGE_KEY = "mimin_kho_thanh_pham_v2";
@@ -149,6 +150,7 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     imgQuan: r.img_quan ?? undefined,
     video: r.video ?? undefined,
     chiTietSize,
+    maSKU: r.ma_sku ?? r.maSKU ?? undefined,
   };
 }
 
@@ -182,6 +184,7 @@ export function toSupabaseRow(sp: SanPhamTP) {
     img_quan: sp.imgQuan ?? null,
     video: sp.video ?? null,
     chi_tiet_size: sp.chiTietSize ?? null,
+    ma_sku: sp.maSKU ?? null,
   };
 }
 

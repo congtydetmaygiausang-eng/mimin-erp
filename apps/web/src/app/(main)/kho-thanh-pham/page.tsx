@@ -292,7 +292,7 @@ export default function KhoThanhPhamPage() {
         const oldMau = existingDM?.dsMau.find(old => old.ten === r.mau);
         return {
           ten: r.mau,
-          maSKU: `${groupMaSP}-${r.mau}`,
+          maSKU: r.maSKU || oldMau?.maSKU || `${groupMaSP}-${r.mau}`,
           dinhMuc: oldMau ? oldMau.dinhMuc : 0,
           img: r.hinhAnh?.[0] || oldMau?.img || "",
           video: r.video || oldMau?.video || "",
@@ -489,6 +489,11 @@ export default function KhoThanhPhamPage() {
             dsMauChanged = true;
           }
 
+          if (updated.maSKU !== undefined && newMau.maSKU !== updated.maSKU) {
+            newMau.maSKU = updated.maSKU;
+            dsMauChanged = true;
+          }
+
           if (dsMauChanged) {
             const newDsMau = [...newDM.dsMau];
             newDsMau[mauIndex] = newMau;
@@ -631,7 +636,7 @@ export default function KhoThanhPhamPage() {
       const mauGoc = mauTuLC.find((m) => m.ten === item.mau);
       return {
         ten: item.mau,
-        maSKU: mauGoc?.maSKU || `${group.maSP}-${item.mau}`,
+        maSKU: item.maSKU || mauGoc?.maSKU || `${group.maSP}-${item.mau}`,
         dinhMuc: mauGoc?.dinhMuc || 0,
         img: item.hinhAnh?.[0] || mauGoc?.img || "",
         video: item.video,

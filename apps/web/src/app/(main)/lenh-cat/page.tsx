@@ -285,7 +285,7 @@ export default function LenhCatPage() {
           isOpen={true}
           onClose={() => { setShowModal(false); setEditId(null); setDraftData(null); }}
           editId={editId}
-          initialData={draftData}
+          initialSP={draftData}
         />
       )}
     </div>

@@ -45,9 +45,8 @@ const getStrictPhanLoaiKey = (phanLoai: string): SanPham["loaiSP"] => {
   if (Object.keys(LOAI_SP_LABELS).includes(phanLoai)) return phanLoai as SanPham["loaiSP"];
   
   const plLower = phanLoai.toLowerCase();
-  if (plLower.includes("áo polo") || plLower.includes("ao polo")) return "AoPolo";
   if (plLower.includes("bộ polo") || plLower.includes("bo polo") || plLower.includes("bộ trụ") || plLower.includes("bo tru")) return "BoTru";
-  if (plLower.includes("áo trụ") || plLower.includes("ao tru") || plLower.includes("cổ trụ") || plLower.includes("co tru")) return "AoTru";
+  if (plLower.includes("áo polo") || plLower.includes("ao polo") || plLower.includes("áo trụ") || plLower.includes("ao tru") || plLower.includes("cổ trụ") || plLower.includes("co tru")) return "AoTru";
   if (plLower.includes("bộ tròn") || plLower.includes("bộ cổ tròn") || plLower.includes("bo tron") || plLower.includes("bo co tron")) return "BoCoTron";
   if (plLower.includes("áo tròn") || plLower.includes("áo cổ tròn") || plLower.includes("cổ tròn") || plLower.includes("co tron") || plLower.includes("áo thun") || plLower.includes("áo") || plLower.includes("ao")) return "AoCoTron";
   if (plLower.includes("phụ kiện") || plLower.includes("quần") || plLower.includes("quan")) return "PhuKien";
@@ -172,20 +171,34 @@ export default function DanhMucSanPhamPage() {
   const filtered = useMemo(() => {
     let result = dsDongBo;
     if (search) {
-      const rawSearchNoAccent = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-      const qTokensNoAccent = rawSearchNoAccent.split(/\s+/);
-      
-      result = result.filter((sp) => {
-        const id = (sp.id || "").toLowerCase();
-        const tenNoAccent = (sp.tenSP || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        const loai = LOAI_SP_LABELS[sp.loaiSP as LoaiSP] || "";
-        const loaiNoAccent = loai.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const searchLower = search.toLowerCase().trim();
+      const predefinedMap: Record<string, string> = {
+        "áo trụ": "AoTru",
+        "áo cổ tròn": "AoCoTron",
+        "bộ trụ": "BoTru",
+        "bộ cổ tròn": "BoCoTron",
+        "phụ kiện": "PhuKien",
+      };
+
+      if (predefinedMap[searchLower]) {
+        const exactLoai = predefinedMap[searchLower];
+        result = result.filter(sp => sp.loaiSP === exactLoai);
+      } else {
+        const rawSearchNoAccent = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const qTokensNoAccent = rawSearchNoAccent.split(/\s+/);
         
-        if (id.startsWith(rawSearchNoAccent)) return true;
-        if (id.includes(rawSearchNoAccent) || tenNoAccent.includes(rawSearchNoAccent) || loaiNoAccent.includes(rawSearchNoAccent)) return true;
-        
-        return qTokensNoAccent.every(token => id.includes(token) || tenNoAccent.includes(token) || loaiNoAccent.includes(token));
-      });
+        result = result.filter((sp) => {
+          const id = (sp.id || "").toLowerCase();
+          const tenNoAccent = (sp.tenSP || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          const loai = LOAI_SP_LABELS[sp.loaiSP as LoaiSP] || "";
+          const loaiNoAccent = loai.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          
+          if (id.startsWith(rawSearchNoAccent)) return true;
+          if (id.includes(rawSearchNoAccent) || tenNoAccent.includes(rawSearchNoAccent) || loaiNoAccent.includes(rawSearchNoAccent)) return true;
+          
+          return qTokensNoAccent.every(token => id.includes(token) || tenNoAccent.includes(token) || loaiNoAccent.includes(token));
+        });
+      }
     }
     if (activeFilter !== "all") {
       result = result.filter((sp) => {
@@ -561,7 +574,7 @@ export default function DanhMucSanPhamPage() {
             
             {/* Gợi ý tìm kiếm */}
             <div className="flex flex-wrap items-center gap-2 w-full md:w-96 px-1">
-              {["Áo Trụ", "Áo Cổ Tròn", "Bộ Trụ", "Bộ Cổ Tròn", "Áo Polo", "Phụ Kiện"].map(tag => (
+              {["Áo Trụ", "Áo Cổ Tròn", "Bộ Trụ", "Bộ Cổ Tròn", "Phụ Kiện"].map(tag => (
                 <button 
                   key={tag}
                   onClick={() => setSearch(tag)}

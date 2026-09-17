@@ -387,12 +387,33 @@ export default function CongViecCatPage() {
                         </button>
                       </>
                     )}
-                    {tt === "hoan_thanh" && (
-                      <div className="w-full py-2.5 rounded-xl bg-emerald-50/80 text-emerald-700 font-bold text-sm border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm hover:bg-emerald-100 transition-colors">
-                        <CheckCircle2 className="w-4 h-4" /> Đã cắt xong {pc?.soLuongHoanThanh || lc.tongSL} SP
-                        {pc?.soLuongLoi > 0 && <span className="text-rose-500 text-xs ml-2">({pc.soLuongLoi} lỗi)</span>}
-                      </div>
-                    )}
+                    {tt === "hoan_thanh" && (() => {
+                      const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
+                      const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
+                      const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+
+                      return (
+                        <div className="w-full py-2 px-3 rounded-xl bg-emerald-50/80 text-sm border border-emerald-200 flex items-center justify-between gap-2 shadow-sm">
+                          <div className="flex flex-col justify-center gap-0.5">
+                            <div className="font-bold text-emerald-700 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4" /> Đã cắt xong {pc?.soLuongHoanThanh || lc.tongSL} SP
+                            </div>
+                            {pc?.soLuongLoi > 0 && <div className="text-rose-500 text-[11px] font-semibold pl-5">({pc.soLuongLoi} lỗi)</div>}
+                          </div>
+                          {nextStageNotStarted && (
+                            <button
+                              onClick={() => {
+                                capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "dang_lam" });
+                                toast.info("Đã mở lại khâu Cắt. Bạn có thể bấm vào 'Size...' ở trên để sửa số lượng, sau đó bấm Hoàn thành lại.");
+                              }}
+                              className="px-3 py-1.5 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-lg shadow-sm hover:bg-emerald-100 active:scale-95 transition-all text-[11px] whitespace-nowrap flex items-center gap-1"
+                            >
+                              ✏️ Sửa SL
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {tt === "co_loi" && (
                       <button
                         onClick={() => handleNhanViec(lc)}

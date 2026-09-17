@@ -230,7 +230,7 @@ export default function AuditLogPage() {
           phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, trang_thai: lenh.trangThai,
           phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao
         };
-      } else if (log.module === "danh-muc-sp") {
+      } else if (log.module === ("danh-muc-sp" as any)) {
         tableName = "san_pham";
         payload = camelToSnake(log.oldValue);
         payload.ma_sp = (log.oldValue as any).id;
@@ -249,7 +249,10 @@ export default function AuditLogPage() {
       const newLog: AuditLog = {
         id: "log_" + Date.now(),
         timestamp: new Date().toISOString(),
-        user: user?.name || "Unknown",
+        userName: user?.name || "Unknown",
+        userId: user?.id || "",
+        userEmail: user?.email || "",
+        success: true,
         userRole: user?.role || "user",
         action: "create",
         module: log.module,
