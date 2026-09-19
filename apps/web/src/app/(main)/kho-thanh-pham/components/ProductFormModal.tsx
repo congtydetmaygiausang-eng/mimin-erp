@@ -102,6 +102,8 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [donGia, setDonGia] = useState(0);
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
+  const [isNewProduct, setIsNewProduct] = useState(false);
+  
   useEffect(() => {
     let active = true;
     loadSharedSizeRatioPresets().then((items) => {
@@ -125,6 +127,16 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const preset = allPresets.find((p) => p.id === presetId);
 
   const chonSanPham = (productId: string) => {
+    if (productId === "NEW") {
+      setIsNewProduct(true);
+      setMaSP("");
+      setTenSP("");
+      setPhanLoai("BoTru");
+      setPresetId("");
+      setBienThe([bienTheMoi([])]);
+      return;
+    }
+    setIsNewProduct(false);
     const product = dsDanhMuc.find((item) => item.id === productId);
     setMaSP(productId);
     if (!product) return;
@@ -196,8 +208,12 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const layGiaBienThe = (bt: BienTheDraft, kenh: KenhBan) => layGia(kenh as KenhBanBangGia, maSP, laySkuTheoMau(bt.mau), Math.max(1, tongSLBienThe(bt)));
 
   const handleSubmit = () => {
-    if (!selectedProduct) {
-      toast.error("Vui lòng chọn sản phẩm từ Danh mục sản phẩm");
+    if (!selectedProduct && !isNewProduct) {
+      toast.error("Vui lòng chọn hoặc thêm mới sản phẩm");
+      return;
+    }
+    if (isNewProduct && (!maSP.trim() || !tenSP.trim())) {
+      toast.error("Vui lòng nhập đầy đủ Mã và Tên sản phẩm");
       return;
     }
     if (!preset || preset.ratios.reduce((sum, value) => sum + value, 0) <= 0) {
@@ -285,8 +301,9 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-slate-700 mb-1.5 block">Sản phẩm trong danh mục *</label>
-                    <select value={maSP} onChange={(e) => chonSanPham(e.target.value)} disabled={loadingDanhMuc} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:opacity-60">
+                    <select value={isNewProduct ? "NEW" : maSP} onChange={(e) => chonSanPham(e.target.value)} disabled={loadingDanhMuc} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:opacity-60">
                       <option value="">{loadingDanhMuc ? "Đang tải danh mục..." : "-- Chọn sản phẩm --"}</option>
+                      <option value="NEW" className="font-bold text-emerald-600">-- Thêm sản phẩm mới --</option>
                       {[...dsDanhMuc].sort((a, b) => a.id.localeCompare(b.id)).map((product) => <option key={product.id} value={product.id}>{product.id} — {product.tenSP}</option>)}
                     </select>
                     {!loadingDanhMuc && dsDanhMuc.length === 0 && <p className="mt-1.5 text-xs font-semibold text-rose-600">Danh mục sản phẩm đang trống. Hãy tạo sản phẩm trước khi nhập kho.</p>}
@@ -294,18 +311,19 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-700 mb-1.5 block">Mã sản phẩm</label>
-                    <input value={maSP} readOnly className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono bg-slate-50" />
+                    <input value={maSP} onChange={(e) => isNewProduct && setMaSP(e.target.value)} readOnly={!isNewProduct} className={`w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono ${isNewProduct ? 'bg-white focus:border-[#2B4C3E]' : 'bg-slate-50'}`} placeholder={isNewProduct ? "Nhập mã SP..." : ""} />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-700 mb-1.5 block">Tên sản phẩm</label>
-                    <input value={tenSP} readOnly className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none bg-slate-50" />
+                    <input value={tenSP} onChange={(e) => isNewProduct && setTenSP(e.target.value)} readOnly={!isNewProduct} className={`w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none ${isNewProduct ? 'bg-white focus:border-[#2B4C3E]' : 'bg-slate-50'}`} placeholder={isNewProduct ? "Nhập tên SP..." : ""} />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-700 mb-1.5 block">Phân loại</label>
                     <select 
                       value={phanLoai} 
-                      onChange={(e) => setPhanLoai(e.target.value)} 
-                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium"
+                      onChange={(e) => isNewProduct && setPhanLoai(e.target.value)} 
+                      disabled={!isNewProduct && !!selectedProduct}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-50"
                     >
                       {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
@@ -328,7 +346,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
               
               <div>
                 <label className="text-xs font-bold text-slate-700 mb-1.5 block">Chọn bảng tỉ lệ áp dụng *</label>
-                <select value={presetId} onChange={(e) => doiPresetChung(e.target.value)} disabled={!selectedProduct || !!productSizePreset} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
+                <select value={presetId} onChange={(e) => doiPresetChung(e.target.value)} disabled={(!selectedProduct && !isNewProduct) || !!productSizePreset} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
                   <option value="">-- Chọn bảng tỷ lệ size --</option>
                   {productSizePreset && <option value={productSizePreset.id}>{productSizePreset.label} (đúng theo danh mục)</option>}
                   {SIZE_RATIO_PRESETS.length > 0 && (
@@ -414,11 +432,20 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                         
                         <div className="flex-1 space-y-4">
                           <div className="pr-8">
-                            <label className="text-xs font-bold text-slate-700 mb-1.5 block">Màu / SKU trong danh mục *</label>
-                            <select value={bt.mau} onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} disabled={!selectedProduct} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
-                              <option value="">-- Chọn màu / SKU --</option>
-                              {selectedProduct?.dsMau.map((variant) => <option key={variant.maSKU || variant.ten} value={variant.ten}>{variant.ten}{variant.maSKU ? ` — ${variant.maSKU}` : ""}</option>)}
-                            </select>
+                            <label className="text-xs font-bold text-slate-700 mb-1.5 block">{isNewProduct ? "Tên màu sắc *" : "Màu / SKU trong danh mục *"}</label>
+                            {isNewProduct ? (
+                              <input 
+                                value={bt.mau} 
+                                onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} 
+                                placeholder="VD: Đen, Trắng..." 
+                                className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium" 
+                              />
+                            ) : (
+                              <select value={bt.mau} onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} disabled={!selectedProduct} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
+                                <option value="">-- Chọn màu / SKU --</option>
+                                {selectedProduct?.dsMau.map((variant) => <option key={variant.maSKU || variant.ten} value={variant.ten}>{variant.ten}{variant.maSKU ? ` — ${variant.maSKU}` : ""}</option>)}
+                              </select>
+                            )}
                           </div>
 
                           <div>

@@ -142,8 +142,12 @@ export default function DanhMucSanPhamPage() {
           if (current?.dsMau?.length) {
             const base = [...current.dsMau];
             colors.forEach(c => {
-              const alreadyIn = base.some(x => x.ten === c.ten);
-              if (!alreadyIn) base.push(c); // màu mới thêm vào kho, chưa có trong SP
+              const idx = base.findIndex(x => x.ten === c.ten);
+              if (idx === -1) {
+                 base.push(c); // màu mới thêm vào kho, chưa có trong SP
+              } else {
+                 if (c.img) base[idx].img = c.img; // Cập nhật hình ảnh nếu có mới từ kho
+              }
             });
             return base;
           }

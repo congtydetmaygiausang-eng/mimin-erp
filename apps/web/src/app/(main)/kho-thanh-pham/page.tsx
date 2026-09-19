@@ -860,6 +860,7 @@ export default function KhoThanhPhamPage() {
             <ProductGrid
               groups={groupedProducts}
               productImages={mergedProductImages}
+              productVariantImages={mergedVariantImages}
               productVideos={productVideos}
               setUploadingSP={setUploadingSP}
               setUploadType={setUploadType}
