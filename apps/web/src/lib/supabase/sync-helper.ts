@@ -295,7 +295,10 @@ export function useSupabaseSync<T extends { id: string }>(
       }
     })();
     return () => { cancelled = true; };
-  }, [table, localStorageKey, loadLocal, saveLocal, upsertRow]);
+  // Loading does not use the write mapper. Inline mapOut callbacks change on
+  // every render; depending on upsertRow here repeatedly reloads local data
+  // and triggers an infinite render loop when Supabase is disabled.
+  }, [table, localStorageKey, loadLocal, saveLocal]);
 
   // Subscribe realtime updates từ Supabase
   useEffect(() => {

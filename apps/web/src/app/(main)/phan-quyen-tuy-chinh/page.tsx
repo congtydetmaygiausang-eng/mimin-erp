@@ -37,274 +37,11 @@ import {
   type Module,
 } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit-log";
+import { authFetch } from "@/lib/auth-fetch";
 import { supabase, supabaseUpsert, isSupabaseEnabled } from "@/lib/supabase/client";
 import { useState as useReactState } from "react";
 type Matrix = Record<Role, Record<Module, string>>;
-// 44 user @mimin.vn (sync tu Supabase 2026-08-05)
-const USERS_MIMIN_VN: Array<{
-  email: string;
-  name: string;
-  role: Role;
-  phongBan: string;
-  chucVu?: string;
-}> = [
-  {
-    email: "sang@mimin.vn",
-    name: "Hồ Minh Sang",
-    role: "admin",
-    phongBan: "BĐH",
-    chucVu: "Quản trị hệ thống",
-  },
-  {
-    email: "hoa@mimin.vn",
-    name: "Huỳnh Xuân Hòa",
-    role: "admin",
-    phongBan: "BĐH",
-    chucVu: "Trợ lý admin (Media)",
-  },
-  {
-    email: "phi@mimin.vn",
-    name: "Lương Hoàng Phi",
-    role: "admin",
-    phongBan: "BĐH",
-    chucVu: "Media",
-  },
-  { email: "vy2@mimin.vn", name: "Vy (Kho)", role: "admin", phongBan: "BĐH", chucVu: "NV Kho phụ" },
-  {
-    email: "giau@mimin.vn",
-    name: "Nguyễn Thị Giàu",
-    role: "planner",
-    phongBan: "ĐPSX",
-    chucVu: "Điều hành SX",
-  },
-  {
-    email: "huyen@mimin.vn",
-    name: "Đỗ Thị Huyền",
-    role: "planner",
-    phongBan: "ĐPSX",
-    chucVu: "QL Khách hàng Sỉ",
-  },
-  {
-    email: "huyen2@mimin.vn",
-    name: "Huyền 2 (Bán sỉ)",
-    role: "planner",
-    phongBan: "ĐPSX",
-    chucVu: "Bán sỉ",
-  },
-  {
-    email: "thanh@mimin.vn",
-    name: "Bùi Thị Thanh",
-    role: "accountant",
-    phongBan: "Kế toán",
-    chucVu: "Kế toán trưởng",
-  },
-  { email: "thanh2@mimin.vn", name: "Thanh 2", role: "accountant", phongBan: "Kế toán" },
-  {
-    email: "vy@mimin.vn",
-    name: "Cẩm Vy",
-    role: "content",
-    phongBan: "Marketing",
-    chucVu: "Content - Media",
-  },
-  {
-    email: "hau@mimin.vn",
-    name: "Quốc Hậu",
-    role: "warehouse",
-    phongBan: "Kho vải",
-    chucVu: "Thủ kho trưởng",
-  },
-  {
-    email: "khoi@mimin.vn",
-    name: "Nguyễn Văn Khôi",
-    role: "qc",
-    phongBan: "QC",
-    chucVu: "Kiểm tra chất lượng (QC)",
-  },
-  {
-    email: "giang@mimin.vn",
-    name: "Phan Văn Giang",
-    role: "sewing",
-    phongBan: "Tổ cắt",
-    chucVu: "Tổ trưởng Cắt",
-  },
-  {
-    email: "de@mimin.vn",
-    name: "Phạm Văn Đệ",
-    role: "sewing",
-    phongBan: "Tổ cắt",
-    chucVu: "CN Cắt",
-  },
-  {
-    email: "phu@mimin.vn",
-    name: "Nguyễn Văn Phú",
-    role: "sewing",
-    phongBan: "Tổ cắt",
-    chucVu: "CN Cắt hỗ trợ",
-  },
-  {
-    email: "vinh@mimin.vn",
-    name: "Dương Tấn Vĩnh",
-    role: "sewing",
-    phongBan: "Tổ cắt",
-    chucVu: "CN Cắt",
-  },
-  {
-    email: "minh1@mimin.vn",
-    name: "Nguyễn Quốc Minh",
-    role: "sewing",
-    phongBan: "Tổ cắt",
-    chucVu: "CN Cắt",
-  },
-  {
-    email: "ruong@mimin.vn",
-    name: "Nguyễn Văn Ruộng",
-    role: "sewing",
-    phongBan: "Khuy nút",
-    chucVu: "Tổ trưởng Khuy nút",
-  },
-  {
-    email: "phuong@mimin.vn",
-    name: "Võ Thị Phượng",
-    role: "finishing",
-    phongBan: "Gấp xếp",
-    chucVu: "Gấp xếp",
-  },
-  {
-    email: "be@mimin.vn",
-    name: "Nguyễn Thị Bé",
-    role: "finishing",
-    phongBan: "Gấp xếp",
-    chucVu: "Gấp xếp",
-  },
-  {
-    email: "duc1@mimin.vn",
-    name: "Nguyễn Minh Đức",
-    role: "finishing",
-    phongBan: "Ủi",
-    chucVu: "Ủi",
-  },
-  { email: "dinh@mimin.vn", name: "Lê Đỉnh", role: "finishing", phongBan: "Ủi", chucVu: "Ủi" },
-  {
-    email: "gc-gc-in-001@mimin.vn",
-    name: "Bảo Ngân (IN-001)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-in-002@mimin.vn",
-    name: "Hạnh (IN-002)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-in-003@mimin.vn",
-    name: "Thanh Sơn (IN-003)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-in-004@mimin.vn",
-    name: "Tiến Đạt (IN-004)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-in-006@mimin.vn",
-    name: "Anh Vui (IN-006)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-quan-001@mimin.vn",
-    name: "Chị Dung (QUAN-001)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-quan-002@mimin.vn",
-    name: "Minh Vy (QUAN-002)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-quan-003@mimin.vn",
-    name: "Anh Thơ (QUAN-003)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-quan-004@mimin.vn",
-    name: "Chị Hương (QUAN-004)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tron-001@mimin.vn",
-    name: "Anh Trai (TRON-001)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tron-002@mimin.vn",
-    name: "Chị Hằng (TRON-002)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tron-003@mimin.vn",
-    name: "Anh Chiến (TRON-003)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tron-004@mimin.vn",
-    name: "Anh Thuận (TRON-004)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tron-005@mimin.vn",
-    name: "Anh Quang (TRON-005)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tru-001@mimin.vn",
-    name: "Chị Liễu (TRU-001)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tru-002@mimin.vn",
-    name: "Tý Sơn (TRU-002)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tru-003@mimin.vn",
-    name: "Anh Duẩn (TRU-003)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tru-005@mimin.vn",
-    name: "Anh Thông (TRU-005)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tru-006@mimin.vn",
-    name: "Cô Cúc (TRU-006)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-  {
-    email: "gc-gc-tru-007@mimin.vn",
-    name: "Anh Sản (TRU-007)",
-    role: "partner",
-    phongBan: "Gia công ngoài",
-  },
-];
+interface PermissionUser { id: string; email: string; name: string; role: Role; phongBan: string; chucVu?: string; }
 const ACTION_META = {
   r: { label: "Xem", icon: Eye, color: "blue", letter: "X" },
   c: { label: "Tạo", icon: Plus, color: "emerald", letter: "T" },
@@ -321,16 +58,21 @@ export default function PhanQuyenTuyChinhPage() {
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matrix" | "users">("matrix");
-  const [users, setUsers] = useState(USERS_MIMIN_VN);
+  const [users, setUsers] = useState<PermissionUser[]>([]);
   const [savingUser, setSavingUser] = useState<string | null>(null);
   useEffect(() => {
     const fetchUsers = async () => {
       if (isSupabaseEnabled && supabase) {
         try {
-          const { data, error } = await supabase.from("users").select("*").order("name");
+          const response = await authFetch("/api/admin/users", { cache: "no-store" });
+          const result = await response.json();
+          if (!response.ok || result.error || !Array.isArray(result.users)) throw new Error(result.error || "Không tải được tài khoản");
+          const data = result.users as PermissionUser[];
+          const error = null;
           if (!error && data) {
             // Map data from DB to match the structure expected by the UI
             const formattedUsers = data.map((u) => ({
+              id: u.id,
               email: u.email,
               name: u.name,
               role: u.role as Role,
@@ -341,6 +83,7 @@ export default function PhanQuyenTuyChinhPage() {
           }
         } catch (e) {
           console.error("Lỗi khi tải danh sách users:", e);
+          toast.error("Không tải được tài khoản. Vui lòng tải lại trang.");
         }
       }
       setLoading(false);
@@ -645,7 +388,7 @@ export default function PhanQuyenTuyChinhPage() {
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 w-fit">
         {[
           { key: "matrix", label: "🛡️ Ma trận 9×30", count: 30 },
-          { key: "users", label: "👥 Gán user cho role", count: 44 },
+          { key: "users", label: "👥 Gán user cho role", count: users.length },
         ].map((t: any) => (
           <button
             key={t.key}
@@ -836,8 +579,8 @@ function UserRoleManager({
   savingUser,
   setSavingUser,
 }: {
-  users: typeof USERS_MIMIN_VN;
-  setUsers: (u: typeof USERS_MIMIN_VN) => void;
+  users: PermissionUser[];
+  setUsers: (u: PermissionUser[]) => void;
   savingUser: string | null;
   setSavingUser: (s: string | null) => void;
 }) {
@@ -865,15 +608,18 @@ function UserRoleManager({
     setSavingUser(email);
     try {
       if (isSupabaseEnabled && supabase) {
-        const { data: existing } = await supabase
-          .from("users")
-          .select("id")
-          .eq("email", email)
-          .single();
+        const existing = users.find(account => account.email === email);
         if (existing) {
-          const { error } = await supabase.from("users").update({ role: newRole }).eq("email", email);
-          if (error) throw error;
+          const response = await authFetch(`/api/admin/users/${encodeURIComponent(existing.id)}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: newRole }),
+          });
+          const result = await response.json();
+          if (!response.ok || result.error) throw new Error(result.error || "Không lưu được vai trò");
+        } else {
+          throw new Error("Không tìm thấy tài khoản");
         }
+      } else {
+        throw new Error("Chưa kết nối dữ liệu tài khoản");
       }
       setUsers(users.map((u) => (u.email === email ? { ...u, role: newRole } : u)));
       toast.success(`Đã đổi role ${email} → ${newRole}`);

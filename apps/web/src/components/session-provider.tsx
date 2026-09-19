@@ -90,7 +90,7 @@ function LocalSessionProvider({ children }: { children: React.ReactNode }) {
   return <SessionContext.Provider value={{ user, loading: !mounted, authSource: "demo",
     signIn: async () => ({ ok: false, error: "Chọn tài khoản trên thanh Test local" }),
     signOut: async () => { const admin = readLocalAccounts().find(item => item.active && item.roles.includes("admin")); if (admin) selectLocalAccount(admin.id); },
-  }}><LocalAccountBar activeName={user?.name} />{children}</SessionContext.Provider>;
+  }}>{children}</SessionContext.Provider>;
 }
 
 function LiveSessionProvider({ children }: { children: React.ReactNode }) {

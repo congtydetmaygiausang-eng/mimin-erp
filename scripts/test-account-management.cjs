@@ -25,11 +25,20 @@ async function main() {
     department: '', team: '', scope: 'COMPANY', active: true };
   const member = { ...admin, id: 'TK-member', email: 'member@example.com', employeeCode: 'NV-02', roles: ['sewing'] };
   storage.set(key, JSON.stringify([admin, member]));
+  const fixtures = load('data/real-data.ts', {});
   const store = load('local-account-store.ts', {
     react: {}, './users': { USERS: [] }, './permissions': { ALL_ROLES: ['admin', 'sewing', 'partner', 'supplier'] },
     './local-account-mode': { LOCAL_ACCOUNT_MODE: true },
+    './data/real-data': fixtures,
   }, { localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
     window: { dispatchEvent() {} }, Event: class {} });
+  const previews = store.readLocalAccounts().filter(account => account.id.startsWith('TK-LOCAL-'));
+  assert.equal(previews.length, 10);
+  assert.equal(new Set(previews.map(account => account.email)).size, 10);
+  assert.equal(previews.some(account => account.roles.includes('admin')), false);
+  store.selectLocalAccount('TK-LOCAL-cat');
+  assert.equal(store.localActiveAccount().roles[0], 'cutting');
+  store.selectLocalAccount(admin.id);
   store.saveLocalAccount({ ...member, email: '  MEMBER@EXAMPLE.COM  ' });
   assert.equal(store.readLocalAccounts().find(x => x.id === member.id).email, 'member@example.com');
   assert.throws(() => store.saveLocalAccount({ ...member, email: 'ADMIN@example.com' }), /Email đã/);

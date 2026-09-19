@@ -308,7 +308,7 @@ export default function KhoThanhPhamPage() {
          suaSP(existingDM.id, {
            giaBanDuKien: Math.max(existingDM.giaBanDuKien || 0, giaBanDuKien),
            dsMau: dsMauMoi,
-           hinhAnh: existingDM.hinhAnh || anhDaiDien,
+           hinhAnh: anhDaiDien || existingDM.hinhAnh,
            loaiSP: (newRows[0]?.phanLoai as any) || existingDM.loaiSP,
            tenSP: newRows[0]?.tenSP || existingDM.tenSP,
          });
@@ -387,6 +387,24 @@ export default function KhoThanhPhamPage() {
       if (sp.tenSP && newDM.tenSP !== sp.tenSP) {
         newDM.tenSP = sp.tenSP;
         changed = true;
+      }
+      
+      if (__tempImage) {
+        // Cập nhật ảnh đại diện nếu chưa có
+        if (!newDM.hinhAnh) {
+          newDM.hinhAnh = __tempImage;
+          changed = true;
+        }
+        // Cập nhật ảnh của biến thể màu tương ứng trong dsMau
+        if (newDM.dsMau) {
+          const newDsMau = [...newDM.dsMau];
+          const mauIndex = newDsMau.findIndex(m => m.ten === sp.mau);
+          if (mauIndex >= 0) {
+            newDsMau[mauIndex] = { ...newDsMau[mauIndex], img: __tempImage };
+            newDM.dsMau = newDsMau;
+            changed = true;
+          }
+        }
       }
       
       if (changed) {
