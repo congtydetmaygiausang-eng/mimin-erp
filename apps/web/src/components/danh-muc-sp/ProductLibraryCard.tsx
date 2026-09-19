@@ -86,10 +86,10 @@ export default function ProductLibraryCard({
   const hasPrice = displayPrice > 0;
 
   const trangThai = useMemo(() => {
-    // Nếu có dữ liệu kho (tonKhoTheoMau !== undefined) và tổng = 0 -> Hết hàng
-    if (tonKhoTheoMau && tongTonKho <= 0) return "het-hang";
+    // Nếu tổng tồn kho = 0 -> Hết hàng
+    if (tongTonKho <= 0) return "het-hang";
     return sp.trangThai || "con-hang";
-  }, [tonKhoTheoMau, tongTonKho, sp.trangThai]);
+  }, [tongTonKho, sp.trangThai]);
   
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
@@ -203,13 +203,11 @@ export default function ProductLibraryCard({
         {/* === TÓM TẮT: Tổng tồn kho + danh sách màu/SKU (bấm để xem chi tiết) === */}
         {sp.dsMau && sp.dsMau.length > 0 ? (
           <div className="mb-3">
-            {tonKhoTheoMau && (
               <div className="flex items-center gap-1.5 mb-2 text-xs">
                 <Package className="w-3.5 h-3.5 text-slate-500" />
                 <span className="text-slate-500">Tổng tồn kho:</span>
-                <span className={`font-extrabold ${tongTonKho > 0 ? "text-emerald-600" : "text-slate-400"}`}>{tongTonKho}</span>
+                <span className={`font-extrabold ${tongTonKho > 0 ? "text-emerald-600" : "text-rose-500"}`}>{tongTonKho}</span>
               </div>
-            )}
             <div className="flex flex-wrap gap-1.5">
               {sp.dsMau.map((mau, idx) => {
                 const dangMo = mauMoRong === mau.ten;
@@ -237,7 +235,9 @@ export default function ProductLibraryCard({
                       />
                     )}
                     <span className="truncate max-w-[70px]">{mau.ten}</span>
-                    {tonKhoTheoMau && <span className="text-slate-400 font-normal">· {tongMau}</span>}
+                    <span className={`font-normal ${tongMau > 0 ? "text-slate-400" : "text-rose-400"}`}>
+                      · {tongMau > 0 ? tongMau : "Hết hàng"}
+                    </span>
                     <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${dangMo ? "rotate-180" : ""}`} />
                   </button>
                 );
