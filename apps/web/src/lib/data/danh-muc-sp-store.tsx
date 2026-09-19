@@ -254,6 +254,8 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
               let newImgQuan = item.imgQuan;
               let newVideo = item.video;
               let newMaSKU = item.maSKU;
+              let newSoLuong = item.soLuong;
+              let newChiTietSize = item.chiTietSize;
 
               if (data.dsMau && Array.isArray(data.dsMau)) {
                 const matchedMau = data.dsMau.find(m => m.ten === item.mau);
@@ -270,6 +272,20 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                   if (matchedMau.maSKU !== undefined) {
                     newMaSKU = matchedMau.maSKU;
                   }
+                  if (matchedMau.soLuongKho !== undefined && matchedMau.soLuongKho !== item.soLuong) {
+                    newSoLuong = matchedMau.soLuongKho;
+                    if (data.bangSize && data.bangSize.sizes) {
+                        const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                        let conLai = newSoLuong;
+                        newChiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
+                           if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                           const ratio = data.bangSize.ratios[index] || 0;
+                           const chia = Math.round((ratio / tongRatio) * newSoLuong);
+                           conLai -= chia;
+                           return { size, sl: Math.max(0, chia) };
+                        });
+                    }
+                  }
                 }
               }
 
@@ -280,11 +296,49 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                 ...(newHinhAnh ? { hinhAnh: newHinhAnh } : {}),
                 ...(newImgQuan ? { imgQuan: newImgQuan } : {}),
                 ...(newVideo !== undefined ? { video: newVideo } : {}),
-                ...(newMaSKU !== undefined ? { maSKU: newMaSKU } : {})
+                ...(newMaSKU !== undefined ? { maSKU: newMaSKU } : {}),
+                ...(newSoLuong !== undefined ? { soLuong: newSoLuong, trangThai: newSoLuong > 0 ? "con" : "het" } : {}),
+                ...(newChiTietSize !== undefined ? { chiTietSize: newChiTietSize } : {})
               };
             }
             return item;
           });
+
+          // Xử lý thêm mới color variant vào localStorage nếu chưa có
+          if (data.dsMau && Array.isArray(data.dsMau)) {
+             for (let i = 0; i < data.dsMau.length; i++) {
+                const m = data.dsMau[i];
+                const existingColor = khoData.find((x: any) => x.maSP === id && x.mau === m.ten);
+                if (!existingColor && m.soLuongKho !== undefined) {
+                   changed = true;
+                   khoData.push({
+                      id: `TP${Date.now().toString().slice(-6)}${i}`,
+                      maSP: id,
+                      tenSP: data.tenSP || id,
+                      mau: m.ten,
+                      soLuong: m.soLuongKho,
+                      trangThai: m.soLuongKho > 0 ? "con" : "het",
+                      ngayNhap: new Date().toISOString().slice(0, 10),
+                      phanLoai: data.loaiSP || "BoTru",
+                      maSKU: m.maSKU,
+                      hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
+                      imgQuan: (m as any).imgQuan,
+                      video: m.video,
+                      viTri: "Khu A1",
+                      giaTri: m.soLuongKho * (data.giaVonDuKien || 0),
+                      donGia: data.giaVonDuKien || 0,
+                      giaBanLe: data.giaBanLe || 0,
+                      giaBanSi: data.giaBanSi || 0,
+                      chiTietSize: data.bangSize?.sizes?.map((size: string, index: number) => {
+                          const tongRatio = data.bangSize!.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                          const ratio = data.bangSize!.ratios[index] || 0;
+                          return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
+                      }) || [],
+                   });
+                }
+             }
+          }
+
           if (changed) {
             localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
             if (typeof window !== "undefined") {
