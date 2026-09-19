@@ -40,6 +40,7 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
           <div className={`relative h-full overflow-hidden ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200/50" : "w-full"}`}>
             {mainImg ? (
               <img 
+                loading="lazy" decoding="async"
                 src={mainImg} 
                 alt={lc.tenSP} 
                 className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-110 origin-left" 
@@ -217,7 +218,7 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                 <div className="w-20 h-20 rounded-xl shrink-0 bg-slate-100 overflow-hidden relative shadow-sm flex">
                   <div className={`relative h-full overflow-hidden ${lc.loaiSP?.includes("Bo") ? "w-1/2 border-r border-slate-200/50" : "w-full"}`}>
                     {mau.img ? (
-                      <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-left" />
+                      <img loading="lazy" decoding="async" src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-left" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-slate-300">
                         <span className="text-[9px] font-bold">NO IMG</span>
@@ -227,7 +228,7 @@ export function MayCard({ lc, onColorClick, renderStatus, children }: Props) {
                   {lc.loaiSP?.includes("Bo") && (
                     <div className="relative h-full w-1/2 overflow-hidden">
                       {(mau as any).imgQuan ? (
-                        <img src={(mau as any).imgQuan} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-right" />
+                        <img loading="lazy" decoding="async" src={(mau as any).imgQuan} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 origin-right" />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
                           <span className="text-[9px] font-bold text-center leading-none">NO<br/>IMG</span>

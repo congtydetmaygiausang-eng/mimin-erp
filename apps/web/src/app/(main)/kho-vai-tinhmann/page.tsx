@@ -74,7 +74,17 @@ function getErrorMessage(error: unknown): string {
 
 export default function KhoVaiPage() {
   const { user } = useSession();
-  const [inventory, setInventory] = useState<KhoVai[]>([]);
+  const [inventory, setInventory] = useState<KhoVai[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("mimin_kho_vai_v2_inventory");
+        // Wait, where does getAllInventory get it from? I will just use getAllInventory()
+        // since it's imported from @/lib/inventory-engine
+        return getAllInventory();
+      } catch {}
+    }
+    return [];
+  });
   const [tab, setTab] = useState<"thanhpham" | "menhuom" | "moc" | "tinhman" | "baocao" | "danhmuc" | "lichsu">("thanhpham");
   const [searchVai, setSearchVai] = useState("");
   const [filterLoaiGD, setFilterLoaiGD] = useState<"TAT_CA" | "NHAP" | "XUAT">("TAT_CA");

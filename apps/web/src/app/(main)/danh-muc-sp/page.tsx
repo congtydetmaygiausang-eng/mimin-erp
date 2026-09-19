@@ -26,7 +26,7 @@ import type { GioHangItem } from "@/lib/data/gio-hang-store";
 import { useCustomerCart } from "@/lib/data/customer-cart-store";
 import CustomerCheckoutModal from "@/components/danh-muc-sp/CustomerCheckoutModal";
 import CustomerAddToCartModal from "@/components/danh-muc-sp/CustomerAddToCartModal";
-import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
+import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, layTonKhoTheoSanPhamSync, layDanhMucKhoThanhPhamSync, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 import { useKHSX } from "@/lib/data/khsx-store";
 import { useSession } from "@/components/session-provider";
 import { supabase } from "@/lib/supabase/client";
@@ -73,8 +73,8 @@ export default function DanhMucSanPhamPage() {
   const [orderFormInitial, setOrderFormInitial] = useState<Order | null>(null);
   const [orderFromCart, setOrderFromCart] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
-  const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
+  const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>(() => typeof window !== "undefined" ? layTonKhoTheoSanPhamSync() : {});
+  const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>(() => typeof window !== "undefined" ? layDanhMucKhoThanhPhamSync() : {});
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   // B2C Customer Cart States
@@ -97,16 +97,25 @@ export default function DanhMucSanPhamPage() {
   // trang bằng router) - nếu không tự gọi refresh() ở đây, vào lại trang
   // này sau khi đã ở trang khác sẽ thấy dữ liệu cũ, phải F5 mới cập nhật.
   useEffect(() => {
+    const fetchKhoData = () => {
+      Promise.all([layTonKhoTheoSanPham(), layDanhMucKhoThanhPham()])
+        .then(([stock, catalog]) => {
+          setTonKho(stock);
+          setDanhMucKho(catalog);
+        })
+        .catch(() => {
+          setTonKho({});
+          setDanhMucKho({});
+        });
+    };
+
     refresh();
-    Promise.all([layTonKhoTheoSanPham(), layDanhMucKhoThanhPham()])
-      .then(([stock, catalog]) => {
-        setTonKho(stock);
-        setDanhMucKho(catalog);
-      })
-      .catch(() => {
-        setTonKho({});
-        setDanhMucKho({});
-      });
+    fetchKhoData();
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("mimin:kho-thanh-pham-changed", fetchKhoData);
+      return () => window.removeEventListener("mimin:kho-thanh-pham-changed", fetchKhoData);
+    }
   }, [refresh]);
 
   const dsDongBo = useMemo<SanPham[]>(() => {
@@ -136,22 +145,22 @@ export default function DanhMucSanPhamPage() {
         }),
         tenSP: current?.tenSP || item.tenSP || item.maSP,
         dsMau: (() => {
-          // Nếu user đã từng lưu sản phẩm này → dùng hoàn toàn data của user,
-          // không merge với kho (vì maSKU format khác nhau gây ra duplicate).
-          // Chỉ append màu thực sự mới từ kho (tên chưa có trong current).
           if (current?.dsMau?.length) {
-            const base = [...current.dsMau];
+            let base = [...current.dsMau];
+            // Đồng bộ xoá: Loại bỏ các màu đã bị xóa khỏi Kho thành phẩm
+            base = base.filter(m => colors.some(c => c.ten === m.ten));
+            
+            // Đồng bộ thêm: Cập nhật màu mới và hình ảnh
             colors.forEach(c => {
               const idx = base.findIndex(x => x.ten === c.ten);
               if (idx === -1) {
-                 base.push(c); // màu mới thêm vào kho, chưa có trong SP
+                 base.push(c); 
               } else {
-                 if (c.img) base[idx].img = c.img; // Cập nhật hình ảnh nếu có mới từ kho
+                 if (c.img) base[idx].img = c.img;
               }
             });
             return base;
           }
-          // Chưa lưu lần nào → dùng màu từ kho
           return colors;
         })(),
 
@@ -169,7 +178,18 @@ export default function DanhMucSanPhamPage() {
         hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
       });
     }
-    return Array.from(map.values());
+    
+    // Đồng bộ triệt để: Nếu sản phẩm có trong Danh mục nhưng đã bị xoá SẠCH 
+    // bên Kho Thành Phẩm (không còn dòng nào trong danhMucKho),
+    // thì cũng phải xoá sạch danh sách màu của nó ở Danh mục sản phẩm.
+    const result = Array.from(map.values());
+    result.forEach(sp => {
+       if (!danhMucKho[sp.id]) {
+          sp.dsMau = [];
+       }
+    });
+    
+    return result;
   }, [dsSanPham, danhMucKho]);
 
   const filtered = useMemo(() => {

@@ -30,7 +30,18 @@ export default function KhoThanhPhamPage() {
   const { layGia, loading: loadingBangGia, chiTiet, themChiTiet, suaChiTiet } = useBangGia();
   const [lenhDangNhap, setLenhDangNhap] = useState<(typeof dsLenhCat)[number] | null>(null);
   const [kenhNhapKho, setKenhNhapKho] = useState<KenhBan[]>(["ban-le"]);
-  const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>([]);
+  const [dsSanPham, setDsSanPhamState] = useState<SanPhamTP[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("mimin_kho_thanh_pham_v2");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(chuanHoaSanPhamKho);
+        }
+      } catch {}
+    }
+    return [];
+  });
   const { dsSanPham: dsDanhMuc, themSP, suaSP } = useDanhMucSP();
   const [dangBanGroup, setDangBanGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);
   const [suaTongGroup, setSuaTongGroup] = useState<{ maSP: string; tenSP: string; items: SanPhamTP[] } | null>(null);

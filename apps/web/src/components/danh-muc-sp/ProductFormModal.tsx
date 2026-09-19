@@ -129,15 +129,18 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       tenSP,
       loaiSP,
       tiLeSize: tiLeSizeStr,
-      dsMau: dsMau.map(m => ({
-        ten: m.ten,
-        maSKU: m.maSKU || `${maSP}-${m.ten.toUpperCase()}`,
-        dinhMuc: m.dinhMuc,
-        img: m.img || "",
-        video: m.video || "",
-        hinhAnhChiTiet: m.hinhAnhChiTiet || [],
-        soLuongKho: m.soLuongKho || 0
-      })),
+      dsMau: dsMau.map(m => {
+        const mauTen = m.ten?.trim() || "Mặc định";
+        return {
+          ten: mauTen,
+          maSKU: m.maSKU || `${maSP}-${mauTen.toUpperCase()}`,
+          dinhMuc: m.dinhMuc,
+          img: m.img || "",
+          video: m.video || "",
+          hinhAnhChiTiet: m.hinhAnhChiTiet || [],
+          soLuongKho: m.soLuongKho || 0
+        };
+      }),
       hinhAnh: dsMau[0]?.img || "",
       bangSize,
       giaBanLe,

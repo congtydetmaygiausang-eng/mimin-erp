@@ -36,6 +36,19 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
     return Object.values(groups);
   }, [filtered]);
 
+  const [displayLimit, setDisplayLimit] = React.useState(20);
+
+  const handleScroll = () => {
+    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 500) {
+      setDisplayLimit(prev => prev + 20);
+    }
+  };
+
+  React.useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       {previewImage && (
@@ -47,7 +60,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
         </div>
       )}
       
-      {groupedProducts.map((group) => {
+      {groupedProducts.slice(0, displayLimit).map((group) => {
         const totalQty = group.reduce((s, x) => s + x.soLuong, 0);
         return (
         <div key={group[0].maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
