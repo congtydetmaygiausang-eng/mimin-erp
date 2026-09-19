@@ -434,6 +434,13 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                            trang_thai: m.soLuongKho > 0 ? "con" : "het",
                            ngay_nhap: new Date().toISOString(),
                            phan_loai: data.loaiSP || "AoPolo",
+                           lsx: `LTK-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Date.now().toString().slice(-6)}`,
+                           vi_tri: "Khu A1",
+                           don_gia: data.giaVonDuKien || 0,
+                           gia_tri: (m.soLuongKho || 0) * (data.giaVonDuKien || 0),
+                           gia_ban_le: data.giaBanLe || 0,
+                           gia_ban_si: data.giaBanSi || 0,
+                           gia_von: data.giaVonDuKien || 0,
                            ...variantUpdates
                         };
                         if (data.bangSize && data.bangSize.sizes) {
@@ -447,7 +454,10 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                               return { size, sl: Math.max(0, chia) };
                            });
                         }
-                        await supabase.from("kho_thanh_pham").insert([newRow]);
+                        const { error } = await supabase.from("kho_thanh_pham").insert([newRow]);
+                        if (error) {
+                            console.error("Lỗi insert kho_thanh_pham:", error);
+                        }
                      }
                  }
                }
