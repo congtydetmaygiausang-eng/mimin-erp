@@ -38,7 +38,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
       {/* LEFT COLUMN: Main Image */}
       <div className="w-full md:w-64 lg:w-[320px] xl:w-[360px] shrink-0 bg-slate-100 border-b md:border-b-0 md:border-r border-slate-200 relative min-h-[250px] md:min-h-full overflow-hidden group">
         {mainImg ? (
-          <img src={mainImg} alt={lc.tenSP} className="w-full h-full object-cover absolute inset-0 transition-transform duration-700 group-hover:scale-105" />
+          <img loading="lazy" decoding="async" src={mainImg} alt={lc.tenSP} className="w-full h-full object-cover absolute inset-0 transition-transform duration-700 group-hover:scale-105" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-slate-300">
             <span className="font-bold tracking-widest uppercase text-sm">NO IMAGE</span>
@@ -214,7 +214,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                         <div className="relative h-full w-[55%] skew-x-[-8deg] -ml-[5%] overflow-hidden border-r-[3px] border-white z-10 shadow-[2px_0_10px_rgba(0,0,0,0.1)]">
                           <div className="w-[120%] h-full skew-x-[8deg] ml-[5%]">
                             {mau.img ? (
-                              <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                              <img loading="lazy" decoding="async" src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                             ) : (
                               <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300 font-bold text-[9px]">ÁO</div>
                             )}
@@ -223,7 +223,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                         <div className="relative h-full w-[55%] skew-x-[-8deg] overflow-hidden -mr-[5%] bg-slate-100">
                           <div className="w-[120%] h-full skew-x-[8deg] -ml-[15%]">
                             {(mau as any).imgQuan ? (
-                              <img src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                              <img loading="lazy" decoding="async" src={(mau as any).imgQuan} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                             ) : (
                               <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-[9px]">QUẦN</div>
                             )}
@@ -233,7 +233,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                     ) : (
                       <div className="relative h-full w-full">
                         {mau.img ? (
-                          <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                          <img loading="lazy" decoding="async" src={mau.img} alt={mau.ten} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
                             <span className="text-[10px] font-bold tracking-wider">NO IMG</span>

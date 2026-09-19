@@ -26,7 +26,7 @@ import type { GioHangItem } from "@/lib/data/gio-hang-store";
 import { useCustomerCart } from "@/lib/data/customer-cart-store";
 import CustomerCheckoutModal from "@/components/danh-muc-sp/CustomerCheckoutModal";
 import CustomerAddToCartModal from "@/components/danh-muc-sp/CustomerAddToCartModal";
-import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
+import { layDanhMucKhoThanhPham, layTonKhoTheoSanPham, layTonKhoTheoSanPhamSync, layDanhMucKhoThanhPhamSync, type DanhMucKhoThanhPham, type KenhBanKho, type TonKhoTheoSanPham } from "@/lib/data/ton-kho-theo-mau";
 import { useKHSX } from "@/lib/data/khsx-store";
 import { useSession } from "@/components/session-provider";
 import { supabase } from "@/lib/supabase/client";
@@ -73,8 +73,8 @@ export default function DanhMucSanPhamPage() {
   const [orderFormInitial, setOrderFormInitial] = useState<Order | null>(null);
   const [orderFromCart, setOrderFromCart] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>({});
-  const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>({});
+  const [tonKho, setTonKho] = useState<TonKhoTheoSanPham>(() => typeof window !== "undefined" ? layTonKhoTheoSanPhamSync() : {});
+  const [danhMucKho, setDanhMucKho] = useState<DanhMucKhoThanhPham>(() => typeof window !== "undefined" ? layDanhMucKhoThanhPhamSync() : {});
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   // B2C Customer Cart States
