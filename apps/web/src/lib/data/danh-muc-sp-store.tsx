@@ -137,7 +137,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     });
 
     // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
-    if (data.loaiSP || data.tenSP || data.dsMau) {
+    if (data.loaiSP || data.tenSP || data.dsMau || data.hinhAnh) {
       try {
         const KHO_KEY = "mimin_kho_thanh_pham_v2";
         const raw = localStorage.getItem(KHO_KEY);
@@ -194,7 +194,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (isSupabaseEnabled && (data.loaiSP || data.tenSP || data.dsMau)) {
+    if (isSupabaseEnabled && (data.loaiSP || data.tenSP || data.dsMau || data.hinhAnh)) {
       try {
         const { supabase } = await import("@/lib/supabase/client");
         if (supabase) {
