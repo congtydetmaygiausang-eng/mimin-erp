@@ -1,0 +1,11 @@
+.worktrees/
+.agents/
+.codex/
+**/.env*
+**/node_modules/
+**/.next/
+**/.test-dist/
+**/*.tsbuildinfo
+**/*.log
+screenshots-tmp/
+scripts/_debug-env.bak

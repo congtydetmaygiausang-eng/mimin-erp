@@ -5,6 +5,7 @@ import { USERS } from "./users";
 import { ALL_ROLES, type Role } from "./permissions";
 import type { AccountAccess } from "./data/account-access";
 import { LOCAL_ACCOUNT_MODE } from "./local-account-mode";
+import { createLocalStageAccounts } from "./data/real-data";
 
 const KEY = "mimin_local_account_links_v1";
 const EVENT = "mimin-local-account-links";
@@ -13,13 +14,17 @@ let snapshot = "";
 export function readLocalAccounts(): AccountAccess[] {
   if (!LOCAL_ACCOUNT_MODE || typeof window === "undefined") return [];
   const raw = localStorage.getItem(KEY);
-  if (raw) return JSON.parse(raw) as AccountAccess[];
-  return USERS.map(user => ({
+  const accounts: AccountAccess[] = raw ? JSON.parse(raw) as AccountAccess[] : USERS.map(user => ({
     id: user.id, name: user.name, email: user.email,
     roles: [ALL_ROLES.includes(user.role as Role) ? user.role as Role : "sewing"],
     kind: "employee", employeeCode: user.maNV || "", partnerCode: "", supplierCode: "",
     department: user.phongBan || "", team: "", scope: ["admin", "planner", "accountant"].includes(user.role) ? "COMPANY" : "ASSIGNED", active: true,
   }));
+  // Add missing previews even in browsers with saved accounts; retain all edits.
+  return [...accounts, ...createLocalStageAccounts().filter(preview =>
+    !accounts.some(account => account.id === preview.id
+      || account.email.toLowerCase() === preview.email
+      || account.employeeCode === preview.employeeCode))];
 }
 export function localActiveAccount(): AccountAccess | null {
   const accounts = readLocalAccounts();

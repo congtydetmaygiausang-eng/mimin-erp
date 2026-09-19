@@ -6,7 +6,34 @@ import { useEffect, useState } from "react";
 export function LocalAccountBar({ activeName }: { activeName?: string }) {
   useLocalAccountRevision();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    async function syncRealNames() {
+      try {
+        const { isSupabaseEnabled, supabase } = await import("@/lib/supabase/client");
+        if (!isSupabaseEnabled || !supabase) return;
+        const { data } = await supabase.from("nhan_su").select("ma_nv, ho_ten");
+        if (data && data.length > 0) {
+          const raw = localStorage.getItem("mimin_local_account_links_v1");
+          let accounts = raw ? JSON.parse(raw) : readLocalAccounts();
+          let changed = false;
+          data.forEach(dbUser => {
+            const acc = accounts.find((a: any) => a.employeeCode === dbUser.ma_nv);
+            if (acc && acc.name !== dbUser.ho_ten) {
+              acc.name = dbUser.ho_ten;
+              changed = true;
+            }
+          });
+          if (changed) {
+            localStorage.setItem("mimin_local_account_links_v1", JSON.stringify(accounts));
+            window.dispatchEvent(new Event("mimin-local-account-links"));
+          }
+        }
+      } catch (e) {
+        console.error("Failed to sync local account names from Supabase", e);
+      }
+    }
+    syncRealNames().finally(() => setMounted(true));
+  }, []);
   if (!mounted) return null;
   const account = localActiveAccount();
   return <div className="sticky top-0 z-[100] flex flex-wrap items-center gap-3 bg-amber-100 px-4 py-2 text-xs text-amber-950 shadow">
