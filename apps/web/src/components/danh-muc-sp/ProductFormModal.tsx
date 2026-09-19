@@ -62,16 +62,17 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
   const [tenSP, setTenSP] = useState(initialData?.tenSP || "");
   const [loaiSP, setLoaiSP] = useState<LoaiSP>(initialData?.loaiSP || "BoTru");
   const [presetIdStateUnused, setPresetIdStateUnused] = useState(""); // Dummy unused to keep lines consistent or just delete
-  const [dsMau, setDsMau] = useState<{ ten: string; maSKU: string; dinhMuc: number; img: string; video: string; hinhAnhChiTiet?: string[] }[]>(
+  const [dsMau, setDsMau] = useState<{ ten: string; maSKU: string; dinhMuc: number; img: string; video: string; hinhAnhChiTiet?: string[], soLuongKho?: number }[]>(
     initialData?.dsMau?.map(m => ({
       ten: m.ten,
       maSKU: m.maSKU || "",
       dinhMuc: m.dinhMuc || 0.25,
       img: m.img || "",
       video: m.video || "",
-      hinhAnhChiTiet: m.hinhAnhChiTiet || []
+      hinhAnhChiTiet: m.hinhAnhChiTiet || [],
+      soLuongKho: m.soLuongKho || 0
     })) || [
-      { ten: "Đen", maSKU: "", dinhMuc: 0.25, img: "", video: "", hinhAnhChiTiet: [] },
+      { ten: "Đen", maSKU: "", dinhMuc: 0.25, img: "", video: "", hinhAnhChiTiet: [], soLuongKho: 0 },
     ]
   );
   
@@ -134,7 +135,8 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
         dinhMuc: m.dinhMuc,
         img: m.img || "",
         video: m.video || "",
-        hinhAnhChiTiet: m.hinhAnhChiTiet || []
+        hinhAnhChiTiet: m.hinhAnhChiTiet || [],
+        soLuongKho: m.soLuongKho || 0
       })),
       hinhAnh: dsMau[0]?.img || "",
       bangSize,
@@ -450,10 +452,11 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                         />
                       </div>
                       <div className="bg-white p-3 rounded-xl border border-slate-200">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Định mức Bo (kg/sp)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Số lượng Tồn Kho</label>
                         <input 
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none font-mono text-slate-400" 
-                          placeholder="Sắp ra mắt..." type="number" step="0.01" disabled
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none font-mono text-emerald-700 bg-emerald-50/30" 
+                          placeholder="0" type="number" min="0"
+                          value={m.soLuongKho === undefined ? "" : m.soLuongKho} onChange={e => { const n = [...dsMau]; n[i].soLuongKho = parseInt(e.target.value) || 0; setDsMau(n); }}
                         />
                       </div>
                     </div>

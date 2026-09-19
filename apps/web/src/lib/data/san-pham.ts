@@ -7,6 +7,7 @@ export interface MauTieuChuan {
   img: string;
   video?: string;
   hinhAnhChiTiet?: string[]; // Thêm mảng chứa nhiều ảnh cho biến thể
+  soLuongKho?: number; // Số lượng nhập trực tiếp từ Danh mục sản phẩm
 }
 
 export interface BangSize {

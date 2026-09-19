@@ -15,6 +15,7 @@ interface ProductGroup {
 interface ProductGridProps {
   groups: ProductGroup[];
   productImages: Record<string, string>;
+  productVariantImages: Record<string, string>;
   productVideos: Record<string, string>;
   setUploadingSP: (id: string | null) => void;
   setUploadType: (t: "image" | "video") => void;
@@ -35,7 +36,7 @@ interface ProductGridProps {
 }
 
 export function ProductGrid({ 
-  groups, productImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, 
+  groups, productImages, productVariantImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, 
   setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, 
   onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, dsLenhCat 
 }: ProductGridProps) {
@@ -88,7 +89,7 @@ export function ProductGrid({
                   <VariantCard
                     key={s.id}
                     sp={s}
-                    image={s.hinhAnh?.[0] || productImages[s.id]}
+                    image={s.hinhAnh?.[0] || productVariantImages[`${s.maSP}_${s.mau}`] || productImages[s.maSP]}
                     imageQuan={s.imgQuan || s.hinhAnh?.[1]}
                     onOpen={() => onOpenVariant(s)}
                     onEdit={() => setEditing(s)}

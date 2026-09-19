@@ -209,10 +209,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           // 2. Specific update for variant images
           if (data.dsMau && Array.isArray(data.dsMau)) {
              for (const m of data.dsMau) {
-               if (m.img) {
-                 const variantUpdates: any = {
-                   hinh_anh: [m.img, ...(m.hinhAnhChiTiet || [])]
-                 };
+               if (m.img || m.soLuongKho !== undefined) {
+                 const variantUpdates: any = {};
+                 if (m.img) {
+                    variantUpdates.hinh_anh = [m.img, ...(m.hinhAnhChiTiet || [])];
+                 }
                  if ((m as any).imgQuan) {
                    variantUpdates.img_quan = (m as any).imgQuan;
                  }
@@ -222,7 +223,76 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                  if (m.maSKU !== undefined) {
                    variantUpdates.ma_sku = m.maSKU;
                  }
-                 await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
+                 
+                 const { data: existingRows } = await supabase.from('kho_thanh_pham')
+                    .select('id, so_luong')
+                    .eq('ma_sp', id)
+                    .eq('mau', m.ten)
+                    .order('created_at', { ascending: false });
+
+                 if (existingRows && existingRows.length > 0) {
+                     const totalStock = existingRows.reduce((s: number, r: any) => s + (r.so_luong || 0), 0);
+                     const firstRowId = existingRows[0].id;
+
+                     if (m.soLuongKho !== undefined) {
+                        const diff = m.soLuongKho - totalStock;
+                        if (diff !== 0) {
+                           variantUpdates.so_luong = (existingRows[0].so_luong || 0) + diff;
+                           if (data.bangSize && data.bangSize.sizes) {
+                              const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                              let conLai = variantUpdates.so_luong;
+                              variantUpdates.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
+                                 if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                                 const ratio = data.bangSize.ratios[index] || 0;
+                                 const chia = Math.round((ratio / tongRatio) * variantUpdates.so_luong);
+                                 conLai -= chia;
+                                 return { size, sl: Math.max(0, chia) };
+                              });
+                           }
+                           variantUpdates.trang_thai = variantUpdates.so_luong > 0 ? "con" : "het";
+                        }
+                     }
+                     if (Object.keys(variantUpdates).length > 0) {
+                        if (variantUpdates.so_luong !== undefined) {
+                            await supabase.from("kho_thanh_pham").update(variantUpdates).eq("id", firstRowId);
+                            const imageUpdates = { ...variantUpdates };
+                            delete imageUpdates.so_luong;
+                            delete imageUpdates.chi_tiet_size;
+                            delete imageUpdates.trang_thai;
+                            if (Object.keys(imageUpdates).length > 0 && existingRows.length > 1) {
+                               await supabase.from("kho_thanh_pham").update(imageUpdates).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
+                            }
+                        } else {
+                            await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
+                        }
+                     }
+                 } else {
+                     if (m.soLuongKho !== undefined) {
+                        const newRow: any = {
+                           id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
+                           ma_sp: id,
+                           ten_sp: data.tenSP || id,
+                           mau: m.ten,
+                           so_luong: m.soLuongKho,
+                           trang_thai: m.soLuongKho > 0 ? "con" : "het",
+                           ngay_nhap: new Date().toISOString(),
+                           phan_loai: data.loaiSP || "AoPolo",
+                           ...variantUpdates
+                        };
+                        if (data.bangSize && data.bangSize.sizes) {
+                           const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                           let conLai = m.soLuongKho;
+                           newRow.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
+                              if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                              const ratio = data.bangSize.ratios[index] || 0;
+                              const chia = Math.round((ratio / tongRatio) * m.soLuongKho);
+                              conLai -= chia;
+                              return { size, sl: Math.max(0, chia) };
+                           });
+                        }
+                        await supabase.from("kho_thanh_pham").insert([newRow]);
+                     }
+                 }
                }
              }
           }

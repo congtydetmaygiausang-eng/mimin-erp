@@ -165,8 +165,12 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
     else if (r.hinhAnh && Array.isArray(r.hinhAnh) && r.hinhAnh.length > 0) imgToUse = r.hinhAnh[0];
     else imgToUse = r.img_quan || r.imgQuan || "";
 
-    if (existing) existing.sizes = congDonSize(existing.sizes, sizes);
-    else item.mau.push({ ten: color, img: imgToUse, sizes });
+    if (existing) {
+      existing.sizes = congDonSize(existing.sizes, sizes);
+      if (imgToUse) existing.img = imgToUse; // Ưu tiên ảnh mới từ kho
+    } else {
+      item.mau.push({ ten: color, img: imgToUse, sizes });
+    }
   }
   return result;
 }
