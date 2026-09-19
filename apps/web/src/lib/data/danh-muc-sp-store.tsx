@@ -304,8 +304,16 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
             return item;
           });
 
-          // Xử lý thêm mới color variant vào localStorage nếu chưa có
+          // Xử lý xoá color variant khỏi localStorage nếu đã xoá trong modal
           if (data.dsMau && Array.isArray(data.dsMau)) {
+             const keepColors = data.dsMau.map(m => m.ten);
+             const originalLength = khoData.length;
+             khoData = khoData.filter((x: any) => !(x.maSP === id && !keepColors.includes(x.mau)));
+             if (khoData.length !== originalLength) {
+                 changed = true;
+             }
+
+             // Xử lý thêm mới color variant vào localStorage nếu chưa có
              for (let i = 0; i < data.dsMau.length; i++) {
                 const m = data.dsMau[i];
                 const existingColor = khoData.find((x: any) => x.maSP === id && x.mau === m.ten);
@@ -458,6 +466,16 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      }
                  }
                }
+             }
+
+             // 3. Xoá các variant đã bị xoá khỏi danh mục khỏi kho_thanh_pham Supabase
+             const { data: currentRows } = await supabase.from('kho_thanh_pham').select('id, mau').eq('ma_sp', id);
+             if (currentRows && currentRows.length > 0) {
+                 const existingColors = data.dsMau.map(m => m.ten);
+                 const idsToDelete = currentRows.filter(r => !existingColors.includes(r.mau)).map(r => r.id);
+                 if (idsToDelete.length > 0) {
+                     await supabase.from('kho_thanh_pham').delete().in('id', idsToDelete);
+                 }
              }
           }
         }
