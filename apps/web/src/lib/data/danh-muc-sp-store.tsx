@@ -377,9 +377,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                  if (m.video !== undefined) {
                    variantUpdates.video = m.video;
                  }
-                 if (m.maSKU !== undefined) {
-                   variantUpdates.ma_sku = m.maSKU;
-                 }
                  
                  const { data: existingRows } = await supabase.from('kho_thanh_pham')
                     .select('id, so_luong')

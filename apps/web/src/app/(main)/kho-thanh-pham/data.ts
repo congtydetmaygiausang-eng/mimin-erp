@@ -184,7 +184,6 @@ export function toSupabaseRow(sp: SanPhamTP) {
     img_quan: sp.imgQuan ?? null,
     video: sp.video ?? null,
     chi_tiet_size: sp.chiTietSize ?? null,
-    ma_sku: sp.maSKU ?? null,
   };
 }
 
