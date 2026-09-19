@@ -15,6 +15,7 @@ import { useNhanSu } from "@/lib/data/nhan-su-store";
 import type { NhanSuExt } from "@/app/(main)/nhan-su/data";
 import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
 import { LocalAccountManager } from "@/components/local-account-manager";
+import { AccountLinkReview } from "@/components/account-link-review";
 
 export const dynamic = "force-dynamic";
 
@@ -176,6 +177,7 @@ function LiveAccountManager() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-3 p-3 animate-fade-in">
+      <AccountLinkReview onSaved={fetchUsers} />
       {/* Header */}
       <div className="card p-4 bg-gradient-to-r from-blue-500/10 via-violet-500/10 to-rose-500/10">
         <div className="flex items-center justify-between">
@@ -421,7 +423,6 @@ function EditUserModal({ user, onClose, onSaved }: {
           role: data.role,
           chucVu: data.chucVu,
           phongBan: data.phongBan,
-          maNV: data.maNV,
           isActive: data.isActive,
         }),
       });
@@ -439,7 +440,7 @@ function EditUserModal({ user, onClose, onSaved }: {
     <Modal onClose={onClose} title={`Sửa tài khoản: ${user.email}`}>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} />
-        <Field label="Mã NV" value={data.maNV || ""} onChange={(v) => setData({ ...data, maNV: v })} />
+        <div className="text-sm">Mã NV: {data.maNV || "Chưa liên kết"}<p className="text-xs opacity-60">Đổi tại bảng liên kết hồ sơ phía trên.</p></div>
         <Field label="Chức vụ" value={data.chucVu || ""} onChange={(v) => setData({ ...data, chucVu: v })} />
         <SelectField label="Role *" value={data.role} options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => setData({ ...data, role: v })} />
         <SelectField label="Phòng ban" value={data.phongBan || "khac"} options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))} onChange={(v) => setData({ ...data, phongBan: v })} />

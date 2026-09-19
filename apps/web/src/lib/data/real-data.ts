@@ -4,6 +4,28 @@ import type { AccountAccess } from "./account-access";
 import type { LenhCat, CongDoanItem } from "./lenh-cat-store";
 import type { PhieuDatNccPhuLieu } from "./phieu-dat-ncc";
 
+/** Local preview accounts: company scope within each role's existing permissions. */
+export function createLocalStageAccounts(): AccountAccess[] {
+  const stages = [
+    ["ke-hoach", "Kế hoạch SX", "planner"],
+    ["lenh-cat", "Lệnh cắt", "planner"],
+    ["cat", "Tổ Cắt", "cutting"],
+    ["in-theu", "In/Thêu", "printing"],
+    ["may", "Tổ May", "sewing"],
+    ["qc", "QC", "qc"],
+    ["khuy-nut", "Khuy nút", "buttoning"],
+    ["ui", "Tổ Ủi", "ironing"],
+    ["dong-goi", "Đóng gói nhập kho", "packaging"],
+    ["hoan-thien", "Hoàn thiện", "finishing"],
+  ] as const;
+  return stages.map(([stage, name, role], index) => ({
+    id: `TK-LOCAL-${stage}`, name: `LOCAL · ${String(index + 1).padStart(2, "0")} · ${name}`,
+    email: `local-${stage}@example.test`, roles: [role], kind: "employee",
+    employeeCode: `NV-LOCAL-${stage}`, partnerCode: "", supplierCode: "",
+    department: "SX-LOCAL", team: stage, scope: "COMPANY", active: true,
+  }));
+}
+
 /** Opt-in fixtures for the isolated local test. Never seeded into Supabase. */
 export function createAccountAssignmentTestData(adminId: string): { accounts: AccountAccess[]; production: LenhCat[]; purchases: PhieuDatNccPhuLieu[] } {
   const stages = [["cat", "Cắt", "cutting"], ["in_theu", "In/Thêu", "printing"], ["may_ao", "May áo", "sewing"], ["qc", "QC", "qc"], ["khuy_nut", "Khuy nút", "buttoning"], ["ui", "Ủi", "ironing"], ["dong_goi", "Đóng gói", "packaging"]] as const;
