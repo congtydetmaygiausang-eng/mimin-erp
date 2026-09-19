@@ -47,7 +47,7 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
         </div>
       )}
       
-      {groupedProducts.map((group) => {
+      {groupedProducts.slice(0, displayLimit).map((group) => {
         const totalQty = group.reduce((s, x) => s + x.soLuong, 0);
         return (
         <div key={group[0].maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">

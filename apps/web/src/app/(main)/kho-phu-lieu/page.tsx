@@ -43,7 +43,18 @@ export default function KhoPhuLieuPage() {
   const [selectedNhapMaVT, setSelectedNhapMaVT] = useState("");
   const [showAdd, setShowAdd] = useState(false);
 
-  const [inventory, setInventory] = useState<KhoVai[]>([]);
+  const [inventory, setInventory] = useState<KhoVai[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("mimin_kho_phuLieu_custom");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [editingVT, setEditingVT] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
 
