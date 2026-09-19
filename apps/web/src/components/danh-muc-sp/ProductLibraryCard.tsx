@@ -237,7 +237,11 @@ export default function ProductLibraryCard({
                       />
                     )}
                     <span className="truncate max-w-[70px]">{mau.ten}</span>
-                    {tonKhoTheoMau && <span className="text-slate-400 font-normal">· {tongMau}</span>}
+                    {tonKhoTheoMau && (
+                      <span className={`font-normal ${tongMau === 0 ? "text-rose-500" : "text-slate-400"}`}>
+                        · {tongMau === 0 ? "Hết hàng" : tongMau}
+                      </span>
+                    )}
                     <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${dangMo ? "rotate-180" : ""}`} />
                   </button>
                 );
