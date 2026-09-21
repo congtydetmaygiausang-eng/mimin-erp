@@ -59,28 +59,42 @@ type KhoPhuLieuRow = {
 const PL_IMAGES_KEY = "mimin_kho_phuLieu_images";
 const PL_INVENTORY_KEY = "mimin_kho_phuLieu_custom";
 
-const readSharedImage = (ghiChu: string | null | undefined): string => {
-  if (!ghiChu) return "";
-  try {
-    const parsed = JSON.parse(ghiChu) as { imageUrl?: unknown };
-    return typeof parsed.imageUrl === "string" ? parsed.imageUrl : "";
-  } catch {
-    return "";
+const parseSharedGhiChu = (ghiChu: string | null | undefined): { note: string; imageUrl: string } => {
+  if (!ghiChu) return { note: "", imageUrl: "" };
+  let current = ghiChu;
+  let finalNote = ghiChu;
+  let finalImage = "";
+
+  for (let i = 0; i < 10; i++) {
+    try {
+      const parsed = JSON.parse(current);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        if (typeof parsed.imageUrl === "string" && parsed.imageUrl && !finalImage) {
+          finalImage = parsed.imageUrl;
+        }
+        if (typeof parsed.note === "string") {
+          current = parsed.note;
+          finalNote = parsed.note;
+        } else {
+          finalNote = "";
+          break;
+        }
+      } else if (typeof parsed === "string") {
+        current = parsed;
+        finalNote = parsed;
+      } else {
+        break;
+      }
+    } catch {
+      finalNote = current;
+      break;
+    }
   }
+  return { note: finalNote === ghiChu ? ghiChu : finalNote, imageUrl: finalImage };
 };
 
-const readSharedNote = (ghiChu: string | null | undefined): string => {
-  if (!ghiChu) return "";
-  try {
-    const parsed = JSON.parse(ghiChu);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return typeof parsed.note === "string" ? parsed.note : "";
-    }
-    return ghiChu;
-  } catch {
-    return ghiChu;
-  }
-};
+const readSharedImage = (ghiChu: string | null | undefined): string => parseSharedGhiChu(ghiChu).imageUrl;
+const readSharedNote = (ghiChu: string | null | undefined): string => parseSharedGhiChu(ghiChu).note;
 
 export default function PhieuDatNccPhuLieuPage() {
   const { user } = useSession();
