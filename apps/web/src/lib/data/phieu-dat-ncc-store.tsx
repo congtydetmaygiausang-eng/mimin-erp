@@ -112,7 +112,7 @@ export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
     await setData((current) => current.map((item) => item.id === id ? { ...item, trangThai: "Đã hủy" } : item));
   }, [setData, data]);
 
-  const activeOrders = data.filter((o) => o.trangThai !== "Đã hủy" && !(o as any).isDeleted);
+  const activeOrders = data.filter((o) => o.trangThai !== "Đã hủy" && !(o as any).isDeleted && o.maPhieu && o.maPhieu.trim() !== "");
 
   return <Context.Provider value={{ orders: activeOrders, loading, saveOrder, updateStatus, deleteOrder }}>{children}</Context.Provider>;
 }
