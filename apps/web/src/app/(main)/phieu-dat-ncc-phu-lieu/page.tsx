@@ -69,6 +69,19 @@ const readSharedImage = (ghiChu: string | null | undefined): string => {
   }
 };
 
+const readSharedNote = (ghiChu: string | null | undefined): string => {
+  if (!ghiChu) return "";
+  try {
+    const parsed = JSON.parse(ghiChu);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return typeof parsed.note === "string" ? parsed.note : "";
+    }
+    return ghiChu;
+  } catch {
+    return ghiChu;
+  }
+};
+
 export default function PhieuDatNccPhuLieuPage() {
   const { user } = useSession();
   const { list: nccList } = useNhaCungCap();
@@ -157,7 +170,7 @@ export default function PhieuDatNccPhuLieuPage() {
     return () => { mounted = false; };
   }, []);
 
-  const materials = useMemo<SelectableMaterial[]>(() => orderPurpose === "customer" ? catalogMaterials : warehouseMaterials.map((item) => ({ id: `KHO-${item.maVT}`, maMau: item.maVT, tenMau: item.tenChuan || item.tenVT, loai: item.loai, mauSac: item.mauChuan || item.mauSac, quyCach: item.ghiChu || "", donVi: item.dvt, maNccMacDinh: "", giaMuaThamKhao: item.donGia, giaBanDeXuat: 0, soLuongToiThieu: 1, hinhAnh: item.hinhAnh || "", trangThai: "Đang dùng" })), [catalogMaterials, orderPurpose, warehouseMaterials]);
+  const materials = useMemo<SelectableMaterial[]>(() => orderPurpose === "customer" ? catalogMaterials : warehouseMaterials.map((item) => ({ id: `KHO-${item.maVT}`, maMau: item.maVT, tenMau: item.tenChuan || item.tenVT, loai: item.loai, mauSac: item.mauChuan || item.mauSac, quyCach: readSharedNote(item.ghiChu) || "", donVi: item.dvt, maNccMacDinh: "", giaMuaThamKhao: item.donGia, giaBanDeXuat: 0, soLuongToiThieu: 1, hinhAnh: item.hinhAnh || "", trangThai: "Đang dùng" })), [catalogMaterials, orderPurpose, warehouseMaterials]);
   const selected = materials.find((item) => item.id === selectedId) || null;
   const update = (name: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [name]: value }));
