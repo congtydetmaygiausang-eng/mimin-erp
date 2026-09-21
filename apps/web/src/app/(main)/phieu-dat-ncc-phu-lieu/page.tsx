@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Calculator, Check, Image as ImageIcon, ListChecks, Package, Plus, Printer, Save, Search, Send, ShoppingBag, Trash2, Truck, UserRound } from "lucide-react";
+import { Building2, Calculator, Check, Image as ImageIcon, ListChecks, Package, Plus, Printer, Save, Search, Send, ShoppingBag, Trash2, Truck, UserRound, List } from "lucide-react";
 import { toast } from "sonner";
 import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
@@ -15,6 +15,7 @@ import { useVatTuDatSanXuat } from "@/lib/data/vat-tu-dat-san-xuat-store";
 import { uploadProductFile } from "@/lib/product-upload";
 import { usePhieuDatNcc } from "@/lib/data/phieu-dat-ncc-store";
 import { TheoDoiTienDo } from "./theo-doi-tien-do";
+import { DanhSachDonHang } from "./danh-sach-don-hang";
 import { useWorkspace } from "@/lib/workspace-context";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -75,7 +76,7 @@ export default function PhieuDatNccPhuLieuPage() {
   const { list: catalogMaterials, themMau } = useVatTuDatSanXuat();
   const { saveOrder } = usePhieuDatNcc();
   const { activeWorkspace } = useWorkspace();
-  const [activeTab, setActiveTab] = useState<"create" | "progress">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "progress" | "list">("create");
   const [orderPurpose, setOrderPurpose] = useState<MucDichDatHang>("customer");
   const [search, setSearch] = useState("");
   const [showCustom, setShowCustom] = useState(false);
@@ -280,9 +281,10 @@ export default function PhieuDatNccPhuLieuPage() {
   return <div data-order-purpose={orderPurpose} className="min-h-[calc(100vh-7rem)] space-y-4 animate-fade-in">
     <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-white/10 dark:bg-slate-900">
       <button type="button" onClick={() => setActiveTab("create")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "create" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><Plus className="h-4 w-4" /> Tạo đơn đặt</button>
+      <button type="button" onClick={() => setActiveTab("list")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "list" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><List className="h-4 w-4" /> Danh sách đơn hàng</button>
       <button type="button" onClick={() => setActiveTab("progress")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "progress" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><ListChecks className="h-4 w-4" /> Theo dõi tiến độ</button>
     </div>
-    {activeTab === "progress" ? <TheoDoiTienDo user={user} /> : <>
+    {activeTab === "list" ? <DanhSachDonHang user={user} /> : activeTab === "progress" ? <TheoDoiTienDo user={user} /> : <>
     {orderPurpose === "internal" && <style>{`[data-order-purpose="internal"] .customer-only{display:none!important}[data-order-purpose="internal"] table th:nth-child(4),[data-order-purpose="internal"] table td:nth-child(4),[data-order-purpose="internal"] table th:nth-child(5),[data-order-purpose="internal"] table td:nth-child(5){display:none}[data-order-purpose="internal"] section label:has(input[type="checkbox"]){display:none}[data-order-purpose="internal"] aside .bg-gradient-to-r{display:none}[data-order-purpose="internal"] aside>div:first-child h2,[data-order-purpose="internal"] .grid>section:nth-child(2)>div:first-child p{font-size:0}[data-order-purpose="internal"] aside>div:first-child h2:after{content:"3. Chi phí đặt hàng";font-size:1rem}[data-order-purpose="internal"] .grid>section:nth-child(2)>div:first-child p:after{content:"MIMIN → nhà cung cấp → nhập kho";font-size:.75rem}`}</style>}
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-slate-900">
       <header className="bg-gradient-to-r from-slate-950 via-emerald-950 to-teal-900 px-4 py-5 text-white md:px-7 md:py-6">
