@@ -256,7 +256,7 @@ export default function KhachHangPage() {
                       <td className="p-3 font-mono text-xs opacity-70">{k.maKH}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
-                          <Avatar name={k.ten} size="sm" />
+                          <Avatar name={k.ten} src={k.avatar} size="sm" />
                           <div>
                             <div className="font-medium flex items-center gap-1.5">
                               {k.ten}
@@ -330,6 +330,7 @@ export default function KhachHangPage() {
                 key={k.maKH}
                 onClick={() => setShowForm({ mode: "edit", kh: k })}
                 name={k.ten}
+                avatarUrl={k.avatar}
                 titleAccessory={
                   <button onClick={(e) => toggleGhiNho(k, e)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition" title="Ghi nhớ khách hàng">
                     <Bookmark className={`w-4 h-4 ${k.ghiNho ? "fill-amber-500 text-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
@@ -363,7 +364,7 @@ export default function KhachHangPage() {
             const soDon = SO_DON_KH[k.ten] || 0;
             return (
               <div key={k.maKH} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => setShowForm({ mode: "edit", kh: k })}>
-                <Avatar name={k.ten} size="md" />
+                <Avatar name={k.ten} src={k.avatar} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate flex items-center gap-1.5">
                     {k.ten}
