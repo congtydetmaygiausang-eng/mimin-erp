@@ -97,10 +97,22 @@ export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const deleteOrder = useCallback(async (id: string) => {
-    await setData((current) => current.map((item) => item.id === id ? { ...item, isDeleted: true } : item));
-  }, [setData]);
+    const order = data.find((item) => item.id === id);
+    if (order && checkSupabase()) {
+      const mapped = mapOut({ ...order, trangThai: "Đã hủy" });
+      const { error } = await supabase!.from("phieu_dat_ncc_san_xuat").update(mapped).eq("id", id);
+      if (error) {
+        const { error: err2 } = await supabase!.from("phieu_dat_ncc_san_xuat").update(mapped).eq("ma_phieu", order.maPhieu);
+        if (err2) {
+          console.error("Lỗi xóa Supabase:", err2);
+          throw new Error("Không thể xóa phiếu: " + err2.message);
+        }
+      }
+    }
+    await setData((current) => current.map((item) => item.id === id ? { ...item, trangThai: "Đã hủy" } : item));
+  }, [setData, data]);
 
-  const activeOrders = data.filter((o) => !(o as any).isDeleted);
+  const activeOrders = data.filter((o) => o.trangThai !== "Đã hủy" && !(o as any).isDeleted);
 
   return <Context.Provider value={{ orders: activeOrders, loading, saveOrder, updateStatus, deleteOrder }}>{children}</Context.Provider>;
 }
