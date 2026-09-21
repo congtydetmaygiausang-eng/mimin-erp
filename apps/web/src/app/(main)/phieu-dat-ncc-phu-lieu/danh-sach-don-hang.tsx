@@ -90,30 +90,12 @@ export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button 
-                            onClick={() => setSelectedOrder(order)}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition"
-                          >
-                            <Eye className="h-3.5 w-3.5" /> Chi tiết
-                          </button>
-                          {onEdit && (
-                            <button
-                              onClick={() => onEdit(order)}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800 transition"
-                              title="Sửa phiếu"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDelete(order.id, order.maPhieu)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800 transition"
-                            title="Xóa phiếu"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        <button 
+                          onClick={() => setSelectedOrder(order)}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> Chi tiết
+                        </button>
                       </td>
                     </tr>
                   );
@@ -127,14 +109,16 @@ export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit
       {selectedOrder && (
         <OrderDetailsModal 
           order={selectedOrder} 
-          onClose={() => setSelectedOrder(null)} 
+          onClose={() => setSelectedOrder(null)}
+          onEdit={onEdit}
+          onDelete={handleDelete}
         />
       )}
     </div>
   );
 }
 
-function OrderDetailsModal({ order, onClose }: { order: PhieuDatNccPhuLieu, onClose: () => void }) {
+function OrderDetailsModal({ order, onClose, onEdit, onDelete }: { order: PhieuDatNccPhuLieu, onClose: () => void, onEdit?: (order: PhieuDatNccPhuLieu) => void, onDelete?: (id: string, maPhieu: string) => void }) {
   const isInternal = !order.maKhachHang;
   
   // Calculate totals
@@ -329,6 +313,34 @@ function OrderDetailsModal({ order, onClose }: { order: PhieuDatNccPhuLieu, onCl
               </div>
             </div>
           </div>
+          
+          {/* Action Buttons */}
+          {(onEdit || onDelete) && (
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-white/10 mt-2">
+              {onDelete && (
+                <button
+                  onClick={() => {
+                    onDelete(order.id, order.maPhieu);
+                    onClose();
+                  }}
+                  className="btn-secondary border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/30 dark:hover:bg-rose-950/30 transition"
+                >
+                  <Trash2 className="h-4 w-4" /> Xóa phiếu
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  onClick={() => {
+                    onEdit(order);
+                    onClose();
+                  }}
+                  className="btn-primary bg-blue-600 hover:bg-blue-700 transition"
+                >
+                  <Pencil className="h-4 w-4" /> Sửa phiếu
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
