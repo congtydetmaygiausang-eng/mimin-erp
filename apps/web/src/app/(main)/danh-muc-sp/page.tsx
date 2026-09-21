@@ -127,6 +127,7 @@ export default function DanhMucSanPhamPage() {
         maSKU: `${item.maSP}-${String(index + 1).padStart(2, "0")}`,
         dinhMuc: 0,
         img: mau.img,
+        soLuongKho: mau.sizes.reduce((sum, size) => sum + size.sl, 0),
       }));
       const current = map.get(item.maSP);
       const loaiSP = getStrictPhanLoaiKey(item.phanLoai || "");
@@ -157,6 +158,7 @@ export default function DanhMucSanPhamPage() {
                  base.push(c); 
               } else {
                  if (c.img) base[idx].img = c.img;
+                 base[idx].soLuongKho = c.soLuongKho;
               }
             });
             return base;

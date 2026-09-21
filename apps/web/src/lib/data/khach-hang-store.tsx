@@ -29,6 +29,8 @@ export type KhachHangDBModel = {
   nhu_cau_chinh?: string[];
   // === 2026-08-27 - Ghi nho ===
   ghi_nho?: boolean;
+  // === 2026-09-21 - Avatar KH ===
+  avatar_url?: string;
 };
 
 export type KhachHangUI = {
@@ -77,6 +79,7 @@ function mapToDB(ui: KhachHangUI): any {
     facebook_url: ui.facebookUrl || "", // 2026-08-08
     nhu_cau_chinh: ui.nhuCauChinh || [], // 2026-08-18
     ghi_nho: ui.ghiNho || false,
+    avatar_url: ui.avatar || "", // 2026-09-21
   };
 }
 
@@ -111,6 +114,7 @@ function mapToUI(db: any): KhachHangUI {
     facebookUrl: db.facebook_url || "", // 2026-08-08
     nhuCauChinh: Array.isArray(db.nhu_cau_chinh) ? db.nhu_cau_chinh : [], // 2026-08-18
     ghiNho: db.ghi_nho || false,
+    avatar: db.avatar_url || "", // 2026-09-21
   };
 }
 
@@ -195,6 +199,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
           delete safePayload.nhu_cau_chinh;
           delete safePayload.rating;
           delete safePayload.ghi_nho;
+          delete safePayload.avatar_url;
           ({ error } = await supabase!.from("khach_hang").insert(safePayload));
         }
 
@@ -224,6 +229,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
           delete safePayload.nhu_cau_chinh;
           delete safePayload.rating;
           delete safePayload.ghi_nho;
+          delete safePayload.avatar_url;
           ({ error } = await supabase!.from("khach_hang").update(safePayload).eq("ma_kh", kh.maKH));
         }
 
