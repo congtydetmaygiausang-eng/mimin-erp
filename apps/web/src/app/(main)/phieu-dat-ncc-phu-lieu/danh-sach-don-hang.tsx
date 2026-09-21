@@ -1,15 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Eye, X, Package, FileText, UserRound, Building2, Pencil, Trash2 } from "lucide-react";
+import { Search, Eye, X, Package, FileText, UserRound, Building2, Pencil, Trash2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import type { AppUser } from "@/components/session-provider";
 import type { PhieuDatNccPhuLieu } from "@/lib/data/phieu-dat-ncc";
 import { tinhTongTienPhieuDatNcc } from "@/lib/data/phieu-dat-ncc";
 import { usePhieuDatNcc } from "@/lib/data/phieu-dat-ncc-store";
+import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
+import { useKhachHang } from "@/lib/data/khach-hang-store";
 import { useWorkspace } from "@/lib/workspace-context";
 import { scopeOrders } from "./theo-doi-tien-do";
 import { formatVND } from "@/lib/data/real-data";
+
+const safe = (value: string) => value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] || char);
 
 export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit?: (order: PhieuDatNccPhuLieu) => void }) {
   const { orders, loading, deleteOrder } = usePhieuDatNcc();
@@ -120,6 +124,8 @@ export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit
 
 function OrderDetailsModal({ order, onClose, onEdit, onDelete }: { order: PhieuDatNccPhuLieu, onClose: () => void, onEdit?: (order: PhieuDatNccPhuLieu) => void, onDelete?: (id: string, maPhieu: string) => void }) {
   const isInternal = !order.maKhachHang;
+  const { list: nccList } = useNhaCungCap();
+  const { list: khachHangList } = useKhachHang();
   
   // Calculate totals
   const items = order.items || [{
@@ -142,6 +148,62 @@ function OrderDetailsModal({ order, onClose, onEdit, onDelete }: { order: PhieuD
   const vatDauRa = isInternal ? 0 : doanhThu * order.thueVat / 100;
   const tongHoaDon = doanhThu + vatDauRa;
   const bienLoiNhuan = doanhThu > 0 ? loiNhuan / doanhThu * 100 : 0;
+
+  const handlePrint = (target: "ncc" | "customer") => {
+    const customer = khachHangList.find((item) => item.maKH === order.maKhachHang);
+    const supplier = nccList.find((item) => item.ma_ncc === order.maNcc);
+    const isSupplier = target === "ncc";
+    
+    const printItems = items || [];
+    const subtotal = printItems.reduce((sum, item) => sum + item.soLuong * (isSupplier ? item.donGiaMua : item.donGiaBan), 0);
+    
+    const itemRows = printItems.map((item) => {
+      const unitPrice = isSupplier ? item.donGiaMua : item.donGiaBan;
+      return `<tr><td><b>${safe(item.maVatTu)}</b><br>${safe(item.tenVatTu)}</td><td>${safe(item.mauSac)}<br><span class="muted">${safe(item.quyCach || "Theo mẫu đính kèm")}</span></td><td class="right">${item.soLuong.toLocaleString("vi-VN")} ${safe(item.donVi)}</td><td class="right">${formatVND(unitPrice)}</td><td class="right"><b>${formatVND(item.soLuong * unitPrice)}</b></td></tr>`;
+    }).join("");
+    
+    const vat = isSupplier ? 0 : vatDauRa;
+    const imageUrl = order.hinhAnh?.[0]?.dataUrl || "";
+    
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.position = "fixed";
+    frame.style.right = "0";
+    frame.style.bottom = "0";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    document.body.appendChild(frame);
+    const popup = frame.contentWindow;
+    if (!popup) { frame.remove(); toast.error("Không khởi tạo được vùng in"); return; }
+    
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(order.maPhieu)}</title><style>body{font-family:Arial,sans-serif;color:#17202a;margin:36px}header{display:flex;justify-content:space-between;border-bottom:3px solid #047857;padding-bottom:18px}h1{font-size:24px;margin:0;color:#065f46}.muted{color:#64748b;font-size:12px}.box{border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin-top:18px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #cbd5e1;padding:10px;text-align:left}th{background:#ecfdf5}.right{text-align:right}.total{font-size:18px;font-weight:bold;color:#065f46}.photo{max-width:220px;max-height:160px;border-radius:8px;margin-top:12px}.signatures{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:50px;gap:80px}.note{white-space:pre-wrap}@media print{button{display:none}body{margin:15mm}}</style></head><body><header><div><div class="muted">MIMIN ERP</div><h1>${isSupplier ? "LỆNH ĐẶT SẢN XUẤT" : "PHIẾU XÁC NHẬN ĐẶT HÀNG"}</h1><div class="muted">Mã phiếu: ${safe(order.maPhieu)}</div></div><div class="right"><b>Ngày đặt: ${safe(order.ngayDat)}</b><div>Hạn giao: ${safe(order.ngayGiao)}</div></div></header><div class="box"><b>${isSupplier ? "NHÀ CUNG CẤP" : "KHÁCH HÀNG / XƯỞNG MAY"}</b><div>${safe(isSupplier ? supplier?.ten_ncc || order.maNcc : customer?.ten || order.maKhachHang || "MIMIN")}</div><div class="muted">${safe(isSupplier ? supplier?.sdt || "" : customer?.sdt || "")}</div>${isSupplier ? `<div class="muted">Nơi giao: ${safe(order.diaChiGiao || "Theo thỏa thuận")}</div>` : ""}</div><table><thead><tr><th>Mẫu vật tư</th><th>Màu / quy cách</th><th class="right">Số lượng</th><th class="right">Đơn giá</th><th class="right">Thành tiền</th></tr></thead><tbody>${itemRows}</tbody></table>${imageUrl ? `<div class="box"><b>Hình mẫu</b><br><img class="photo" src="${safe(imageUrl)}" alt="Hình mẫu"></div>` : ""}<div class="box right"><div>Tạm tính: <b>${formatVND(subtotal)}</b></div>${!isSupplier ? `<div>VAT ${order.thueVat}%: <b>${formatVND(vat)}</b></div><div class="total">Tổng thanh toán: ${formatVND(subtotal + vat)}</div>` : `<div class="total">Giá trị đặt NCC: ${formatVND(subtotal)}</div>`}</div><div class="box note"><b>Ghi chú:</b> ${safe(order.ghiChu || "Không có")}</div><div class="signatures"><div><b>${isSupplier ? "MIMIN ĐẶT HÀNG" : "ĐẠI DIỆN MIMIN"}</b><p class="muted">Ký và ghi rõ họ tên</p></div><div><b>${isSupplier ? "NHÀ CUNG CẤP XÁC NHẬN" : "KHÁCH HÀNG XÁC NHẬN"}</b><p class="muted">Ký và ghi rõ họ tên</p></div></div><script>window.onload=()=>window.print()</script></body></html>`);
+    popup.document.close();
+    const headerMeta = popup.document.querySelector<HTMLElement>("header .right");
+    if (headerMeta) {
+      headerMeta.innerHTML = `<div><b>Người tạo:</b> ${safe(order.nguoiTao || "Nhân viên MIMIN")}</div><div><b>Ngày bắt đầu:</b> ${safe(order.ngayDat)}</div><div><b>Ngày kết thúc:</b> ${safe(order.ngayGiao)}</div>`;
+    }
+    const contactBox = popup.document.querySelector<HTMLElement>(".box");
+    if (contactBox) {
+      const contactCode = isSupplier ? order.maNcc : order.maKhachHang;
+      const contactAddress = isSupplier ? supplier?.dia_chi || "" : customer?.diaChi || order.diaChiGiao;
+      contactBox.insertAdjacentHTML("beforeend", `<div class="muted">Mã: ${safe(contactCode || "")}</div>${contactAddress ? `<div class="muted">Địa chỉ: ${safe(contactAddress)}</div>` : ""}`);
+    }
+    const printedRows = popup.document.querySelectorAll<HTMLTableRowElement>("tbody tr");
+    printItems.forEach((item, index) => {
+      if (!item.hinhAnh) return;
+      const firstCell = printedRows[index]?.querySelector<HTMLTableCellElement>("td");
+      if (!firstCell) return;
+      const image = popup.document.createElement("img");
+      image.src = item.hinhAnh;
+      image.alt = "Hình vật tư";
+      image.style.cssText = "max-width:100px;max-height:100px;border-radius:4px;margin-top:8px;display:block;";
+      firstCell.appendChild(image);
+    });
+    setTimeout(() => {
+      frame.remove();
+    }, 5000);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -173,21 +235,31 @@ function OrderDetailsModal({ order, onClose, onEdit, onDelete }: { order: PhieuD
         <div className="flex-1 overflow-y-auto p-5 md:p-7 space-y-6">
           {/* General Info */}
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/30 relative">
               <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">
                 <UserRound className="h-4 w-4 text-blue-500" /> Khách hàng
               </div>
               <div className="text-lg font-bold">{order.maKhachHang || "Nội bộ (MIMIN)"}</div>
               {order.diaChiGiao && <div className="text-xs text-slate-500 mt-1">Giao đến: {order.diaChiGiao}</div>}
               <div className="mt-2 text-xs font-semibold text-slate-600">Ngày đặt: {order.ngayDat}</div>
+              
+              {!isInternal && (
+                <button title="In phiếu xác nhận đơn hàng" onClick={() => handlePrint("customer")} className="absolute top-4 right-4 p-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition border border-blue-100 dark:border-blue-900">
+                  <Printer className="h-4 w-4" />
+                </button>
+              )}
             </div>
             
-            <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/30 relative">
               <div className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-700 dark:text-slate-200">
                 <Building2 className="h-4 w-4 text-emerald-500" /> Nhà cung cấp
               </div>
               <div className="text-lg font-bold">{order.maNcc}</div>
               <div className="text-xs text-slate-500 mt-1">Hạn giao: {order.ngayGiao}</div>
+              
+              <button title="In lệnh sản xuất NCC" onClick={() => handlePrint("ncc")} className="absolute top-4 right-4 p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 transition border border-emerald-100 dark:border-emerald-900">
+                <Printer className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
