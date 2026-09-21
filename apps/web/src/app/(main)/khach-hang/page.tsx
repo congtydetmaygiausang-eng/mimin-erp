@@ -49,12 +49,17 @@ const SO_DON_KH: Record<string, number> = {
 export default function KhachHangPage() {
   const { list, themKhachHang, suaKhachHang, xoaKhachHang, loading } = useKhachHang();
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KhachHangUI } | null>(null);
+  const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KhachHangUI; initialLoai?: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [showGhiNhoOnly, setShowGhiNhoOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState<"Sỉ" | "Xưởng">("Sỉ");
 
   const filtered = useMemo(() => {
     return list.filter((k: KhachHangUI) => {
+      const isXuong = k.loai === "Xưởng";
+      if (activeTab === "Xưởng" && !isXuong) return false;
+      if (activeTab === "Sỉ" && isXuong) return false;
+
       if (showGhiNhoOnly && !k.ghiNho) return false;
       const s = search.toLowerCase();
       return (
@@ -71,8 +76,8 @@ export default function KhachHangPage() {
 
   // Top 3 KH
   const topKH = useMemo(() => {
-    return [...list].sort((a, b) => (DOANH_THU_KH[b.ten] || 0) - (DOANH_THU_KH[a.ten] || 0)).slice(0, 3);
-  }, [list]);
+    return [...filtered].sort((a, b) => (DOANH_THU_KH[b.ten] || 0) - (DOANH_THU_KH[a.ten] || 0)).slice(0, 3);
+  }, [filtered]);
 
   const toggleGhiNho = async (kh: KhachHangUI, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -144,18 +149,35 @@ export default function KhachHangPage() {
     <div className="space-y-5 animate-fade-in">
       <PageHeader
         moduleLabel="MIMIN ERP — Danh mục dữ liệu"
-        title="Khách hàng sỉ"
-        subtitle={`${tongKH} khách hàng · ${dsVIP.length} VIP · Tổng doanh thu ${formatVNDShort(tongDoanhThu)}`}
+        title={activeTab === "Sỉ" ? "Khách hàng sỉ" : "Khách hàng xưởng"}
+        subtitle={`${filtered.length} khách hàng · ${filtered.filter(k => (k.rating || 0) >= 4.5).length} VIP`}
         icon={<Users className="w-5 h-5" />}
         actions={
           <button
-            onClick={() => setShowForm({ mode: "add" })}
+            onClick={() => setShowForm({ mode: "add", initialLoai: activeTab === "Xưởng" ? "Xưởng" : "Đại lý cấp 1" })}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition"
           >
             <Plus className="w-4 h-4" /> Thêm KH
           </button>
         }
       />
+
+      {/* Tabs */}
+      <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl w-max">
+        {(["Sỉ", "Xưởng"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeTab === tab
+                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            Khách hàng {tab.toLowerCase()}
+          </button>
+        ))}
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -341,7 +363,7 @@ export default function KhachHangPage() {
                 rating={k.rating}
                 highlight={k.rating >= 4.5}
                 badges={k.mst ? [{ label: `MST: ${k.mst}`, bg: "bg-slate-500/15", color: "text-slate-700" }] : []}
-                subtitle={<span className="font-mono text-[10px]">{k.maKH}</span>}
+                subtitle={<span className="font-mono text-xs font-bold text-slate-500">{k.maKH}</span>}
                 stats={[
                   { label: "SĐT", value: k.sdt, icon: Phone },
                   { label: "Số đơn", value: `${soDon} đơn`, icon: ShoppingCart },
@@ -372,7 +394,7 @@ export default function KhachHangPage() {
                       <Bookmark className={`w-4 h-4 ${k.ghiNho ? "fill-amber-500 text-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
                     </button>
                   </div>
-                  <div className="text-[10px] opacity-60 flex items-center gap-2">
+                  <div className="text-xs font-bold text-slate-500 flex items-center gap-2">
                     <span className="font-mono">{k.maKH}</span>
                     <span>·</span>
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {k.sdt}</span>
@@ -405,12 +427,12 @@ export default function KhachHangPage() {
         </EntityCardList>
       )}
 
-      {showForm && <KHForm mode={showForm.mode} kh={showForm.kh} dsMaDaCo={list.map((x) => x.maKH)} onClose={() => setShowForm(null)} onSave={handleSave} />}
+      {showForm && <KHForm mode={showForm.mode} kh={showForm.kh} initialLoai={showForm.initialLoai} dsMaDaCo={list.map((x) => x.maKH)} onClose={() => setShowForm(null)} onSave={handleSave} />}
     </div>
   );
 }
 
-function KHForm({ mode, kh, dsMaDaCo, onClose, onSave }: { mode: "add" | "edit"; kh?: KhachHangUI; dsMaDaCo: string[]; onClose: () => void; onSave: (k: KhachHangUI) => void }) {
+function KHForm({ mode, kh, dsMaDaCo, onClose, onSave, initialLoai }: { mode: "add" | "edit"; kh?: KhachHangUI; dsMaDaCo: string[]; onClose: () => void; onSave: (k: KhachHangUI) => void; initialLoai?: string }) {
   // Mã KH mặc định dùng SỐ LỚN NHẤT hiện có + 1, KHÔNG dùng tổng số khách hàng.
   // Trước đây dùng `KH-${list.length + 1}` - đã kiểm chứng thực tế trên production:
   // với 727 khách hàng, mã sinh ra "KH-728" lại TRÙNG với 1 khách hàng có thật
@@ -430,6 +452,7 @@ function KHForm({ mode, kh, dsMaDaCo, onClose, onSave }: { mode: "add" | "edit";
     sdt: "",
     email: "",
     diaChi: "",
+    loai: initialLoai || "Cá nhân",
     mst: "",
     congNo: 0,
     rating: 4,
@@ -519,6 +542,7 @@ function KHForm({ mode, kh, dsMaDaCo, onClose, onSave }: { mode: "add" | "edit";
                 <option value="Công ty">🏢 Công ty (Có MST)</option>
                 <option value="Shop">🛍️ Shop (Bán lẻ)</option>
                 <option value="Cá nhân">👤 Cá nhân</option>
+                <option value="Xưởng">🏭 Xưởng gia công</option>
               </select>
             </div>
           </div>
