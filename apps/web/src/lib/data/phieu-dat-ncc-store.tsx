@@ -36,6 +36,7 @@ const mapOut = (order: PhieuDatNccPhuLieu) => ({
   trang_thai: order.trangThai,
   created_at: order.createdAt,
   updated_at: order.updatedAt || order.createdAt,
+  created_by: "50e26e29-6a55-488b-8892-b0e1e5b5bde7",
 });
 
 const mapIn = (row: Record<string, unknown>): PhieuDatNccPhuLieu => {
