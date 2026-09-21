@@ -70,7 +70,7 @@ export function DanhSachDonHang({ user }: { user: AppUser | null }) {
                         <div className="font-semibold">{order.maKhachHang || "MIMIN (Nội bộ)"}</div>
                       </td>
                       <td className="p-4 text-center font-bold">
-                        {totalQty.toLocaleString("vi-VN")}
+                        {(totalQty || 0).toLocaleString("vi-VN")}
                       </td>
                       <td className="p-4 text-center">
                         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -216,7 +216,7 @@ function OrderDetailsModal({ order, onClose }: { order: PhieuDatNccPhuLieu, onCl
                         <div className="text-xs text-slate-500 line-clamp-1">{item.quyCach}</div>
                       </td>
                       <td className="p-3 text-right font-bold">
-                        {item.soLuong.toLocaleString("vi-VN")} <span className="text-xs font-normal text-slate-500">{item.donVi}</span>
+                        {(item.soLuong || 0).toLocaleString("vi-VN")} <span className="text-xs font-normal text-slate-500">{item.donVi}</span>
                       </td>
                       <td className="p-3 text-right">
                         {formatVND(item.donGiaMua)}
