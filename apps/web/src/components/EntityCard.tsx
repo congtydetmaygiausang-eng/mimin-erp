@@ -78,13 +78,13 @@ export function EntityCard({
       <div className={`flex items-start ${compact ? "gap-2 mb-2" : "gap-3 mb-3"}`}>
         <Avatar name={name} src={avatarUrl} size={avatarSize} />
         <div className="flex-1 min-w-0">
-          <div className={`flex gap-2 ${compact ? "flex-col items-start gap-0.5" : "items-center"}`}>
-            <div className="flex items-center gap-1">
+          <div className={`flex gap-2 ${compact ? "flex-col items-start gap-0.5" : "items-center min-w-0"}`}>
+            <div className="flex items-center gap-1 min-w-0">
               <h3 className={`font-bold ${compact ? "text-sm leading-tight whitespace-normal break-words" : "truncate text-base"}`}>{name}</h3>
               {titleAccessory}
             </div>
             {rating !== undefined && (
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5 shrink-0">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Star
                     key={s}
