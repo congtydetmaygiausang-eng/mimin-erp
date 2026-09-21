@@ -68,11 +68,12 @@ export default function KhachHangPage() {
         (k.maKH || "").toLowerCase().includes(s)
       );
     });
-  }, [list, search, showGhiNhoOnly]);
+  }, [list, search, showGhiNhoOnly, activeTab]);
 
-  const tongKH = list.length;
-  const dsVIP = list.filter((k) => (k.rating || 0) >= 4.5);
-  const tongDoanhThu = Object.values(DOANH_THU_KH).reduce((s, v) => s + v, 0);
+  const tongKH = filtered.length;
+  const dsVIP = filtered.filter((k) => (k.rating || 0) >= 4.5);
+  const tongDoanhThu = filtered.reduce((sum, k) => sum + (DOANH_THU_KH[k.ten] || 0), 0);
+  const tongSoDon = filtered.reduce((sum, k) => sum + (SO_DON_KH[k.ten] || 0), 0);
 
   // Top 3 KH
   const topKH = useMemo(() => {
@@ -198,7 +199,7 @@ export default function KhachHangPage() {
         </div>
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><ShoppingCart className="w-3 h-3 text-sky-500" /> Tổng đơn</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-sky-600">{Object.values(SO_DON_KH).reduce((s, v) => s + v, 0)}</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1 text-sky-600">{tongSoDon}</div>
           <div className="text-xs opacity-60 mt-1">đơn hàng</div>
         </div>
       </div>
