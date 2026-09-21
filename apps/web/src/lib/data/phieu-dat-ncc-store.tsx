@@ -40,22 +40,23 @@ const mapOut = (order: PhieuDatNccPhuLieu) => ({
 });
 
 const mapIn = (row: Record<string, unknown>): PhieuDatNccPhuLieu => {
-  const content = (row.noi_dung && typeof row.noi_dung === "object" ? row.noi_dung : {}) as Partial<PhieuDatNccPhuLieu>;
+  const noiDungRaw = row.noiDung || row.noi_dung;
+  const content = (noiDungRaw && typeof noiDungRaw === "object" ? noiDungRaw : {}) as Partial<PhieuDatNccPhuLieu>;
   return {
     ...content,
     id: String(row.id || content.id || ""),
-    maPhieu: String(row.ma_phieu || content.maPhieu || ""),
-    ngayDat: String(row.ngay_dat || content.ngayDat || ""),
-    ngayGiao: String(row.ngay_giao || content.ngayGiao || ""),
-    nguoiTao: String(row.nguoi_tao || content.nguoiTao || ""),
-    maKhachHang: String(row.ma_khach_hang || content.maKhachHang || ""),
-    maNcc: String(row.ma_ncc || content.maNcc || ""),
-    ownerOrganizationId: String(row.owner_organization_id || content.ownerOrganizationId || "mimin"),
-    supplierOrganizationId: String(row.supplier_organization_id || content.supplierOrganizationId || ""),
-    customerOrganizationId: String(row.customer_organization_id || content.customerOrganizationId || ""),
-    trangThai: String(row.trang_thai || content.trangThai || "Nháp") as TrangThaiPhieuDatNcc,
-    createdAt: String(row.created_at || content.createdAt || new Date().toISOString()),
-    updatedAt: String(row.updated_at || content.updatedAt || new Date().toISOString()),
+    maPhieu: String(row.maPhieu || row.ma_phieu || content.maPhieu || ""),
+    ngayDat: String(row.ngayDat || row.ngay_dat || content.ngayDat || ""),
+    ngayGiao: String(row.ngayGiao || row.ngay_giao || content.ngayGiao || ""),
+    nguoiTao: String(row.nguoiTao || row.nguoi_tao || content.nguoiTao || ""),
+    maKhachHang: String(row.maKhachHang || row.ma_khach_hang || content.maKhachHang || ""),
+    maNcc: String(row.maNcc || row.ma_ncc || content.maNcc || ""),
+    ownerOrganizationId: String(row.ownerOrganizationId || row.owner_organization_id || content.ownerOrganizationId || "mimin"),
+    supplierOrganizationId: String(row.supplierOrganizationId || row.supplier_organization_id || content.supplierOrganizationId || ""),
+    customerOrganizationId: String(row.customerOrganizationId || row.customer_organization_id || content.customerOrganizationId || ""),
+    trangThai: String(row.trangThai || row.trang_thai || content.trangThai || "Nháp") as TrangThaiPhieuDatNcc,
+    createdAt: String(row.createdAt || row.created_at || content.createdAt || new Date().toISOString()),
+    updatedAt: String(row.updatedAt || row.updated_at || content.updatedAt || new Date().toISOString()),
   } as PhieuDatNccPhuLieu;
 };
 
