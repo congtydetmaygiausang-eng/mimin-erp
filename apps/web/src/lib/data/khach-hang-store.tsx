@@ -58,7 +58,7 @@ export type KhachHangUI = {
 };
 
 // P1 - 2026-08-07 - Enum phan loai KH
-export const LOAI_KH_OPTIONS = ["Đại lý cấp 1", "Đại lý cấp 2", "Công ty", "Shop", "Cá nhân", "Xưởng"] as const;
+export const LOAI_KH_OPTIONS = ["Đại lý cấp 1", "Đại lý cấp 2", "Công ty", "Shop", "Cá nhân", "Xưởng", "Khách hàng xưởng"] as const;
 export type LoaiKH = typeof LOAI_KH_OPTIONS[number];
 
 function mapToDB(ui: KhachHangUI): any {

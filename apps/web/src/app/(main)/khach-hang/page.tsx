@@ -56,7 +56,7 @@ export default function KhachHangPage() {
 
   const filtered = useMemo(() => {
     return list.filter((k: KhachHangUI) => {
-      const isXuong = k.loai === "Xưởng";
+      const isXuong = k.loai === "Xưởng" || k.loai === "Khách hàng xưởng";
       if (activeTab === "Xưởng" && !isXuong) return false;
       if (activeTab === "Sỉ" && isXuong) return false;
 
@@ -155,7 +155,7 @@ export default function KhachHangPage() {
         icon={<Users className="w-5 h-5" />}
         actions={
           <button
-            onClick={() => setShowForm({ mode: "add", initialLoai: activeTab === "Xưởng" ? "Xưởng" : "Đại lý cấp 1" })}
+            onClick={() => setShowForm({ mode: "add", initialLoai: activeTab === "Xưởng" ? "Khách hàng xưởng" : "Đại lý cấp 1" })}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition"
           >
             <Plus className="w-4 h-4" /> Thêm KH
@@ -543,7 +543,7 @@ function KHForm({ mode, kh, dsMaDaCo, onClose, onSave, initialLoai }: { mode: "a
                 <option value="Công ty">🏢 Công ty (Có MST)</option>
                 <option value="Shop">🛍️ Shop (Bán lẻ)</option>
                 <option value="Cá nhân">👤 Cá nhân</option>
-                <option value="Xưởng">🏭 Xưởng gia công</option>
+                <option value="Khách hàng xưởng">🏭 Khách hàng xưởng (Bán phụ liệu)</option>
               </select>
             </div>
           </div>
