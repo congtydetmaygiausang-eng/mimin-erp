@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Eye, X, Package, Calculator, Truck, FileText, UserRound, Building2 } from "lucide-react";
+import { Search, Eye, X, Package, FileText, UserRound, Building2, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import type { AppUser } from "@/components/session-provider";
 import type { PhieuDatNccPhuLieu } from "@/lib/data/phieu-dat-ncc";
 import { tinhTongTienPhieuDatNcc } from "@/lib/data/phieu-dat-ncc";
@@ -10,8 +11,8 @@ import { useWorkspace } from "@/lib/workspace-context";
 import { scopeOrders } from "./theo-doi-tien-do";
 import { formatVND } from "@/lib/data/real-data";
 
-export function DanhSachDonHang({ user }: { user: AppUser | null }) {
-  const { orders, loading } = usePhieuDatNcc();
+export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit?: (order: PhieuDatNccPhuLieu) => void }) {
+  const { orders, loading, deleteOrder } = usePhieuDatNcc();
   const { workspaces } = useWorkspace();
   const [query, setQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<PhieuDatNccPhuLieu | null>(null);
@@ -22,6 +23,17 @@ export function DanhSachDonHang({ user }: { user: AppUser | null }) {
       !keyword || [order.maPhieu, order.maNcc, order.maKhachHang, order.tenVatTu].some((value) => value?.toLocaleLowerCase("vi").includes(keyword))
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [orders, query, user, workspaces]);
+
+  const handleDelete = async (id: string, maPhieu: string) => {
+    if (confirm(`Bạn có chắc chắn muốn xóa phiếu ${maPhieu}?`)) {
+      try {
+        await deleteOrder(id);
+        toast.success(`Đã xóa phiếu ${maPhieu}`);
+      } catch (e: any) {
+        toast.error(e.message || "Lỗi khi xóa phiếu");
+      }
+    }
+  };
 
   if (loading) return <div className="card p-8 text-center text-sm text-slate-500">Đang tải danh sách đơn hàng...</div>;
 
@@ -78,12 +90,30 @@ export function DanhSachDonHang({ user }: { user: AppUser | null }) {
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <button 
-                          onClick={() => setSelectedOrder(order)}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition"
-                        >
-                          <Eye className="h-3.5 w-3.5" /> Chi tiết
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => setSelectedOrder(order)}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> Chi tiết
+                          </button>
+                          {onEdit && (
+                            <button
+                              onClick={() => onEdit(order)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800 transition"
+                              title="Sửa phiếu"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(order.id, order.maPhieu)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800 transition"
+                            title="Xóa phiếu"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

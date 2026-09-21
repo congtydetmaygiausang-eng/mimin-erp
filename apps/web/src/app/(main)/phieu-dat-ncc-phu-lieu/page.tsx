@@ -278,13 +278,48 @@ export default function PhieuDatNccPhuLieuPage() {
     if (isSupplier) toast.success(`Đã chuyển ${order.maPhieu} sang trạng thái Đã gửi NCC`);
   };
 
+  const handleEdit = (order: PhieuDatNccPhuLieu) => {
+    setActiveTab("create");
+    setOrderPurpose(order.maKhachHang ? "customer" : "internal");
+    setForm({
+      maPhieu: order.maPhieu,
+      ngayDat: order.ngayDat,
+      ngayGiao: order.ngayGiao,
+      maKhachHang: order.maKhachHang || "",
+      maNcc: order.maNcc,
+      soLuong: String(order.soLuong),
+      donGiaMua: String(order.donGiaMua),
+      donGiaBan: String(order.donGiaBan),
+      phiVanChuyen: String(order.phiVanChuyen),
+      chiPhiKhac: String(order.chiPhiKhac),
+      thueVat: String(order.thueVat),
+      quyCach: order.quyCach,
+      diaChiGiao: order.diaChiGiao || "",
+      ghiChu: order.ghiChu?.replace(/\[(Đặt cho MIMIN|Đặt theo đơn khách)\] /, "") || "",
+      giaoThangKhach: order.giaoThangKhach || false,
+    });
+    setOrderItems(order.items || [{
+      id: crypto.randomUUID(),
+      maVatTu: order.maVatTu,
+      tenVatTu: order.tenVatTu,
+      mauSac: order.mauSac,
+      quyCach: order.quyCach,
+      donVi: order.donVi,
+      soLuong: order.soLuong,
+      donGiaMua: order.donGiaMua,
+      donGiaBan: order.donGiaBan,
+      hinhAnh: order.hinhAnh?.[0]?.dataUrl || "",
+    }]);
+    setFiles(order.hinhAnh || []);
+  };
+
   return <div data-order-purpose={orderPurpose} className="min-h-[calc(100vh-7rem)] space-y-4 animate-fade-in">
     <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-white/10 dark:bg-slate-900">
       <button type="button" onClick={() => setActiveTab("create")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "create" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><Plus className="h-4 w-4" /> Tạo đơn đặt</button>
       <button type="button" onClick={() => setActiveTab("list")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "list" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><List className="h-4 w-4" /> Danh sách đơn hàng</button>
       <button type="button" onClick={() => setActiveTab("progress")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "progress" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><ListChecks className="h-4 w-4" /> Theo dõi tiến độ</button>
     </div>
-    {activeTab === "list" ? <DanhSachDonHang user={user} /> : activeTab === "progress" ? <TheoDoiTienDo user={user} /> : <>
+    {activeTab === "list" ? <DanhSachDonHang user={user} onEdit={handleEdit} /> : activeTab === "progress" ? <TheoDoiTienDo user={user} /> : <>
     {orderPurpose === "internal" && <style>{`[data-order-purpose="internal"] .customer-only{display:none!important}[data-order-purpose="internal"] table th:nth-child(4),[data-order-purpose="internal"] table td:nth-child(4),[data-order-purpose="internal"] table th:nth-child(5),[data-order-purpose="internal"] table td:nth-child(5){display:none}[data-order-purpose="internal"] section label:has(input[type="checkbox"]){display:none}[data-order-purpose="internal"] aside .bg-gradient-to-r{display:none}[data-order-purpose="internal"] aside>div:first-child h2,[data-order-purpose="internal"] .grid>section:nth-child(2)>div:first-child p{font-size:0}[data-order-purpose="internal"] aside>div:first-child h2:after{content:"3. Chi phí đặt hàng";font-size:1rem}[data-order-purpose="internal"] .grid>section:nth-child(2)>div:first-child p:after{content:"MIMIN → nhà cung cấp → nhập kho";font-size:.75rem}`}</style>}
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-slate-900">
       <header className="bg-gradient-to-r from-slate-950 via-emerald-950 to-teal-900 px-4 py-5 text-white md:px-7 md:py-6">

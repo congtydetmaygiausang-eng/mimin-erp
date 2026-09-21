@@ -16,6 +16,7 @@ interface PhieuDatNccContextValue {
   loading: boolean;
   saveOrder: (order: PhieuDatNccPhuLieu) => Promise<void>;
   updateStatus: (id: string, trangThai: TrangThaiPhieuDatNcc, nguoiCapNhat: string, ghiChu?: string) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
 }
 
 const Context = createContext<PhieuDatNccContextValue | null>(null);
@@ -95,7 +96,11 @@ export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
     }));
   }, [setData]);
 
-  return <Context.Provider value={{ orders: data, loading, saveOrder, updateStatus }}>{children}</Context.Provider>;
+  const deleteOrder = useCallback(async (id: string) => {
+    await setData((current) => current.filter((item) => item.id !== id));
+  }, [setData]);
+
+  return <Context.Provider value={{ orders: data, loading, saveOrder, updateStatus, deleteOrder }}>{children}</Context.Provider>;
 }
 
 export function usePhieuDatNcc() {
@@ -118,6 +123,12 @@ export function usePhieuDatNcc() {
         if (!old || !canAccessBusinessRecord(account, old, "dat-ncc-phu-lieu", "edit", can)) throw new Error("Không có quyền cập nhật đơn đặt NCC");
         if (account?.kind === "supplier" && !["NCC xác nhận", "Đang dệt", "Hoàn thành", "Đã giao"].includes(args[1])) throw new Error("NCC chỉ được cập nhật xác nhận và tiến độ giao hàng");
         return context.updateStatus(args[0], args[1], account?.id || "", args[3]);
+      },
+      deleteOrder: async (id: string) => {
+        const account = localActiveAccount();
+        const old = context.orders.find(item => item.id === id);
+        if (!old || !canAccessBusinessRecord(account, old, "dat-ncc-phu-lieu", "delete", can)) throw new Error("Không có quyền xóa đơn đặt NCC");
+        return context.deleteOrder(id);
       },
     };
   }
