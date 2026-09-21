@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, type ReactNode } from "react";
-import { useSupabaseSync } from "@/lib/supabase/client";
+import { useSupabaseSync, checkSupabase, supabase } from "@/lib/supabase/client";
 import type { PhieuDatNccPhuLieu, TrangThaiPhieuDatNcc } from "./phieu-dat-ncc";
 import { useSession } from "@/components/session-provider";
 import { LOCAL_ACCOUNT_MODE } from "../local-account-mode";
@@ -97,8 +97,19 @@ export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
   }, [setData]);
 
   const deleteOrder = useCallback(async (id: string) => {
+    const order = data.find((item) => item.id === id);
+    if (order && checkSupabase()) {
+      const { error } = await supabase!.from("phieu_dat_ncc_san_xuat").delete().eq("id", id);
+      if (error) {
+        const { error: err2 } = await supabase!.from("phieu_dat_ncc_san_xuat").delete().eq("ma_phieu", order.maPhieu);
+        if (err2) {
+          console.error("Lỗi xóa Supabase:", err2);
+          throw new Error("Không thể xóa phiếu trên máy chủ. Vui lòng liên hệ Admin!");
+        }
+      }
+    }
     await setData((current) => current.filter((item) => item.id !== id));
-  }, [setData]);
+  }, [setData, data]);
 
   return <Context.Provider value={{ orders: data, loading, saveOrder, updateStatus, deleteOrder }}>{children}</Context.Provider>;
 }
