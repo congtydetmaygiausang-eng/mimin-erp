@@ -101,16 +101,17 @@ export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
   const deleteOrder = useCallback(async (id: string) => {
     const order = data.find((item) => item.id === id);
     if (order && checkSupabase()) {
-      const { error } = await supabase!.from("phieu_dat_ncc_san_xuat").delete().eq("id", id);
+      const mapped = mapOut({ ...order, isDeleted: true } as any);
+      const { error } = await supabase!.from("phieu_dat_ncc_san_xuat").update(mapped).eq("id", id);
       if (error) {
-        const { error: err2 } = await supabase!.from("phieu_dat_ncc_san_xuat").delete().eq("ma_phieu", order.maPhieu);
+        const { error: err2 } = await supabase!.from("phieu_dat_ncc_san_xuat").update(mapped).eq("ma_phieu", order.maPhieu);
         if (err2) {
           console.error("Lỗi xóa Supabase:", err2);
           throw new Error("Không thể xóa phiếu: " + err2.message);
         }
       }
     }
-    await setData((current) => current.map((item) => item.id === id ? { ...item, trangThai: "Đã hủy" } : item));
+    await setData((current) => current.map((item) => item.id === id ? { ...item, isDeleted: true } : item));
   }, [setData, data]);
 
   const activeOrders = data.filter((o) => o.trangThai !== "Đã hủy" && !(o as any).isDeleted && o.maPhieu && o.maPhieu.trim() !== "");
