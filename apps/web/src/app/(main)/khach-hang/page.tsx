@@ -543,7 +543,7 @@ function KHForm({ mode, kh, dsMaDaCo, onClose, onSave, initialLoai }: { mode: "a
                 <option value="Công ty">🏢 Công ty (Có MST)</option>
                 <option value="Shop">🛍️ Shop (Bán lẻ)</option>
                 <option value="Cá nhân">👤 Cá nhân</option>
-                <option value="Khách hàng xưởng">🏭 Khách hàng xưởng (Bán phụ liệu)</option>
+                <option value="Khách hàng xưởng">🏭 Khách hàng xưởng</option>
               </select>
             </div>
           </div>
