@@ -11,7 +11,7 @@ import { useWorkspace, type OrganizationWorkspace } from "@/lib/workspace-contex
 const STATUS_FLOW: TrangThaiPhieuDatNcc[] = ["Nháp", "Đã gửi NCC", "NCC xác nhận", "Đang dệt", "Hoàn thành", "Đã giao"];
 const INTERNAL_ROLES = new Set(["admin", "planner", "accountant"]);
 
-function scopeOrders(orders: PhieuDatNccPhuLieu[], user: AppUser | null, workspaces: OrganizationWorkspace[]) {
+export function scopeOrders(orders: PhieuDatNccPhuLieu[], user: AppUser | null, workspaces: OrganizationWorkspace[]) {
   if (!user) return [];
   if (INTERNAL_ROLES.has(user.role) || workspaces.some((workspace) => workspace.dataScope === "SYSTEM")) return orders;
   const organizationIds = new Set(workspaces.map((workspace) => workspace.id));

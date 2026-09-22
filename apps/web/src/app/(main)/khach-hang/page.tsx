@@ -56,7 +56,7 @@ export default function KhachHangPage() {
 
   const filtered = useMemo(() => {
     return list.filter((k: KhachHangUI) => {
-      const isXuong = k.loai === "Xưởng";
+      const isXuong = k.loai === "Xưởng" || k.loai === "Khách hàng xưởng";
       if (activeTab === "Xưởng" && !isXuong) return false;
       if (activeTab === "Sỉ" && isXuong) return false;
 
@@ -68,11 +68,12 @@ export default function KhachHangPage() {
         (k.maKH || "").toLowerCase().includes(s)
       );
     });
-  }, [list, search, showGhiNhoOnly]);
+  }, [list, search, showGhiNhoOnly, activeTab]);
 
-  const tongKH = list.length;
-  const dsVIP = list.filter((k) => (k.rating || 0) >= 4.5);
-  const tongDoanhThu = Object.values(DOANH_THU_KH).reduce((s, v) => s + v, 0);
+  const tongKH = filtered.length;
+  const dsVIP = filtered.filter((k) => (k.rating || 0) >= 4.5);
+  const tongDoanhThu = filtered.reduce((sum, k) => sum + (DOANH_THU_KH[k.ten] || 0), 0);
+  const tongSoDon = filtered.reduce((sum, k) => sum + (SO_DON_KH[k.ten] || 0), 0);
 
   // Top 3 KH
   const topKH = useMemo(() => {
@@ -154,7 +155,7 @@ export default function KhachHangPage() {
         icon={<Users className="w-5 h-5" />}
         actions={
           <button
-            onClick={() => setShowForm({ mode: "add", initialLoai: activeTab === "Xưởng" ? "Xưởng" : "Đại lý cấp 1" })}
+            onClick={() => setShowForm({ mode: "add", initialLoai: activeTab === "Xưởng" ? "Khách hàng xưởng" : "Đại lý cấp 1" })}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition"
           >
             <Plus className="w-4 h-4" /> Thêm KH
@@ -198,7 +199,7 @@ export default function KhachHangPage() {
         </div>
         <div className="card p-5">
           <div className="text-xs opacity-70 flex items-center gap-1"><ShoppingCart className="w-3 h-3 text-sky-500" /> Tổng đơn</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-sky-600">{Object.values(SO_DON_KH).reduce((s, v) => s + v, 0)}</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1 text-sky-600">{tongSoDon}</div>
           <div className="text-xs opacity-60 mt-1">đơn hàng</div>
         </div>
       </div>
@@ -542,7 +543,7 @@ function KHForm({ mode, kh, dsMaDaCo, onClose, onSave, initialLoai }: { mode: "a
                 <option value="Công ty">🏢 Công ty (Có MST)</option>
                 <option value="Shop">🛍️ Shop (Bán lẻ)</option>
                 <option value="Cá nhân">👤 Cá nhân</option>
-                <option value="Xưởng">🏭 Xưởng gia công</option>
+                <option value="Khách hàng xưởng">🏭 Khách hàng xưởng</option>
               </select>
             </div>
           </div>

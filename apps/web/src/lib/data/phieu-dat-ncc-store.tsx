@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, type ReactNode } from "react";
-import { useSupabaseSync } from "@/lib/supabase/client";
+import { useSupabaseSync, checkSupabase, supabase } from "@/lib/supabase/client";
 import type { PhieuDatNccPhuLieu, TrangThaiPhieuDatNcc } from "./phieu-dat-ncc";
 import { useSession } from "@/components/session-provider";
 import { LOCAL_ACCOUNT_MODE } from "../local-account-mode";
@@ -16,6 +16,7 @@ interface PhieuDatNccContextValue {
   loading: boolean;
   saveOrder: (order: PhieuDatNccPhuLieu) => Promise<void>;
   updateStatus: (id: string, trangThai: TrangThaiPhieuDatNcc, nguoiCapNhat: string, ghiChu?: string) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
 }
 
 const Context = createContext<PhieuDatNccContextValue | null>(null);
@@ -35,25 +36,27 @@ const mapOut = (order: PhieuDatNccPhuLieu) => ({
   trang_thai: order.trangThai,
   created_at: order.createdAt,
   updated_at: order.updatedAt || order.createdAt,
+  created_by: "50e26e29-6a55-488b-8892-b0e1e5b5bde7",
 });
 
 const mapIn = (row: Record<string, unknown>): PhieuDatNccPhuLieu => {
-  const content = (row.noi_dung && typeof row.noi_dung === "object" ? row.noi_dung : {}) as Partial<PhieuDatNccPhuLieu>;
+  const noiDungRaw = row.noiDung || row.noi_dung;
+  const content = (noiDungRaw && typeof noiDungRaw === "object" ? noiDungRaw : {}) as Partial<PhieuDatNccPhuLieu>;
   return {
     ...content,
     id: String(row.id || content.id || ""),
-    maPhieu: String(row.ma_phieu || content.maPhieu || ""),
-    ngayDat: String(row.ngay_dat || content.ngayDat || ""),
-    ngayGiao: String(row.ngay_giao || content.ngayGiao || ""),
-    nguoiTao: String(row.nguoi_tao || content.nguoiTao || ""),
-    maKhachHang: String(row.ma_khach_hang || content.maKhachHang || ""),
-    maNcc: String(row.ma_ncc || content.maNcc || ""),
-    ownerOrganizationId: String(row.owner_organization_id || content.ownerOrganizationId || "mimin"),
-    supplierOrganizationId: String(row.supplier_organization_id || content.supplierOrganizationId || ""),
-    customerOrganizationId: String(row.customer_organization_id || content.customerOrganizationId || ""),
-    trangThai: String(row.trang_thai || content.trangThai || "Nháp") as TrangThaiPhieuDatNcc,
-    createdAt: String(row.created_at || content.createdAt || new Date().toISOString()),
-    updatedAt: String(row.updated_at || content.updatedAt || new Date().toISOString()),
+    maPhieu: String(row.maPhieu || row.ma_phieu || content.maPhieu || ""),
+    ngayDat: String(row.ngayDat || row.ngay_dat || content.ngayDat || ""),
+    ngayGiao: String(row.ngayGiao || row.ngay_giao || content.ngayGiao || ""),
+    nguoiTao: String(row.nguoiTao || row.nguoi_tao || content.nguoiTao || ""),
+    maKhachHang: String(row.maKhachHang || row.ma_khach_hang || content.maKhachHang || ""),
+    maNcc: String(row.maNcc || row.ma_ncc || content.maNcc || ""),
+    ownerOrganizationId: String(row.ownerOrganizationId || row.owner_organization_id || content.ownerOrganizationId || "mimin"),
+    supplierOrganizationId: String(row.supplierOrganizationId || row.supplier_organization_id || content.supplierOrganizationId || ""),
+    customerOrganizationId: String(row.customerOrganizationId || row.customer_organization_id || content.customerOrganizationId || ""),
+    trangThai: String(row.trangThai || row.trang_thai || content.trangThai || "Nháp") as TrangThaiPhieuDatNcc,
+    createdAt: String(row.createdAt || row.created_at || content.createdAt || new Date().toISOString()),
+    updatedAt: String(row.updatedAt || row.updated_at || content.updatedAt || new Date().toISOString()),
   } as PhieuDatNccPhuLieu;
 };
 
@@ -95,7 +98,13 @@ export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
     }));
   }, [setData]);
 
-  return <Context.Provider value={{ orders: data, loading, saveOrder, updateStatus }}>{children}</Context.Provider>;
+  const deleteOrder = useCallback(async (id: string) => {
+    await setData((current) => current.map((item) => item.id === id ? { ...item, isDeleted: true } : item));
+  }, [setData]);
+
+  const activeOrders = data.filter((o) => o.trangThai !== "Đã hủy" && !(o as any).isDeleted && o.maPhieu && o.maPhieu.trim() !== "");
+
+  return <Context.Provider value={{ orders: activeOrders, loading, saveOrder, updateStatus, deleteOrder }}>{children}</Context.Provider>;
 }
 
 export function usePhieuDatNcc() {
@@ -118,6 +127,12 @@ export function usePhieuDatNcc() {
         if (!old || !canAccessBusinessRecord(account, old, "dat-ncc-phu-lieu", "edit", can)) throw new Error("Không có quyền cập nhật đơn đặt NCC");
         if (account?.kind === "supplier" && !["NCC xác nhận", "Đang dệt", "Hoàn thành", "Đã giao"].includes(args[1])) throw new Error("NCC chỉ được cập nhật xác nhận và tiến độ giao hàng");
         return context.updateStatus(args[0], args[1], account?.id || "", args[3]);
+      },
+      deleteOrder: async (id: string) => {
+        const account = localActiveAccount();
+        const old = context.orders.find(item => item.id === id);
+        if (!old || !canAccessBusinessRecord(account, old, "dat-ncc-phu-lieu", "delete", can)) throw new Error("Không có quyền xóa đơn đặt NCC");
+        return context.deleteOrder(id);
       },
     };
   }
