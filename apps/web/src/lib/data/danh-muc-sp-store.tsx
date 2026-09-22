@@ -313,7 +313,10 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                          firstRow.so_luong = m.soLuongKho; // VERY IMPORTANT: Also update snake_case to prevent old data from being used
                          firstRow.trangThai = m.soLuongKho > 0 ? "con" : "het";
                      }
-                     if (newChiTietSize) firstRow.chiTietSize = newChiTietSize;
+                     if (newChiTietSize) {
+                         firstRow.chiTietSize = newChiTietSize;
+                         firstRow.chi_tiet_size = newChiTietSize;
+                     }
                      changed = true;
 
                      // Đưa các dòng trùng lặp về 0 (gom stock)
@@ -409,22 +412,20 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      const firstRowId = existingRows[0].id;
 
                      if (m.soLuongKho !== undefined) {
-                        const diff = m.soLuongKho - totalStock;
-                        if (diff !== 0 || existingRows.length > 1) { // Force update if duplicates exist
-                           variantUpdates.so_luong = m.soLuongKho; // Consolidate total stock into first row
-                           if (data.bangSize && data.bangSize.sizes) {
-                              const tongRatio = (data.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
-                              let conLai = variantUpdates.so_luong;
-                              variantUpdates.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
-                                 if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                                 const ratio = data.bangSize.ratios[index] || 0;
-                                 const chia = Math.round((ratio / tongRatio) * variantUpdates.so_luong);
-                                 conLai -= chia;
-                                 return { size, sl: Math.max(0, chia) };
-                              });
-                           }
-                           variantUpdates.trang_thai = variantUpdates.so_luong > 0 ? "con" : "het";
+                        // Always update if user explicitly provided a new value to ensure chi_tiet_size and so_luong are repaired
+                        variantUpdates.so_luong = m.soLuongKho; // Consolidate total stock into first row
+                        if (data.bangSize && data.bangSize.sizes) {
+                           const tongRatio = (data.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+                           let conLai = variantUpdates.so_luong;
+                           variantUpdates.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
+                              if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                              const ratio = data.bangSize.ratios[index] || 0;
+                              const chia = Math.round((ratio / tongRatio) * variantUpdates.so_luong);
+                              conLai -= chia;
+                              return { size, sl: Math.max(0, chia) };
+                           });
                         }
+                        variantUpdates.trang_thai = variantUpdates.so_luong > 0 ? "con" : "het";
                      }
                      if (Object.keys(variantUpdates).length > 0) {
                         if (variantUpdates.so_luong !== undefined) {
