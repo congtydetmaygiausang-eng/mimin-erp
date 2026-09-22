@@ -310,6 +310,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      if (m.maSKU !== undefined) firstRow.maSKU = m.maSKU;
                      if (m.soLuongKho !== undefined) {
                          firstRow.soLuong = m.soLuongKho;
+                         firstRow.so_luong = m.soLuongKho; // VERY IMPORTANT: Also update snake_case to prevent old data from being used
                          firstRow.trangThai = m.soLuongKho > 0 ? "con" : "het";
                      }
                      if (newChiTietSize) firstRow.chiTietSize = newChiTietSize;
@@ -318,6 +319,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      // Đưa các dòng trùng lặp về 0 (gom stock)
                      for (let j = 1; j < matchingRows.length; j++) {
                          matchingRows[j].soLuong = 0;
+                         matchingRows[j].so_luong = 0; // Prevent local duplication
                          matchingRows[j].trangThai = "het";
                          if (data.loaiSP) matchingRows[j].phanLoai = data.loaiSP;
                          if (data.tenSP) matchingRows[j].tenSP = data.tenSP;
@@ -327,8 +329,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      // Thêm mới nếu chưa có
                      if (m.soLuongKho !== undefined) {
                          changed = true;
+                         const newId = `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`;
+                         (m as any)._newId = newId; // Save for Supabase block later
+                         
                          khoData.push({
-                            id: `TP${Date.now().toString().slice(-6)}${i}`,
+                            id: newId,
                             maSP: id,
                             tenSP: data.tenSP || id,
                             mau: m.ten,
@@ -438,21 +443,29 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                              }
                              await supabase.from("kho_thanh_pham").update(variantUpdates).eq("id", firstRowId);
                          }
-                         
                          // Fix local ID to match Supabase ID to prevent duplication
+                         // AND clean up any duplicate local rows from previous bugs
                          const rawLocal = localStorage.getItem("mimin_kho_thanh_pham_v2");
                          if (rawLocal) {
-                             const localKho = JSON.parse(rawLocal);
-                             const localRow = localKho.find((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau === m.ten);
-                             if (localRow && localRow.id !== firstRowId) {
-                                 localRow.id = firstRowId;
+                             let localKho = JSON.parse(rawLocal);
+                             const matchingLocalRows = localKho.filter((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau === m.ten);
+                             if (matchingLocalRows.length > 0) {
+                                 const firstLocal = matchingLocalRows[0];
+                                 if (firstLocal.id !== firstRowId) {
+                                     firstLocal.id = firstRowId;
+                                 }
+                                 if (matchingLocalRows.length > 1) {
+                                     // Remove duplicate local rows to completely stop "cộng dồn"
+                                     const idsToRemove = matchingLocalRows.slice(1).map((r: any) => r.id);
+                                     localKho = localKho.filter((r: any) => !idsToRemove.includes(r.id));
+                                 }
                                  localStorage.setItem("mimin_kho_thanh_pham_v2", JSON.stringify(localKho));
                              }
                          }
                       }
                      } else if (m.soLuongKho !== undefined) {
                         const newRow: any = {
-                           id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
+                           id: (m as any)._newId || `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
                            ma_sp: id,
                            ten_sp: data.tenSP || id,
                            mau: m.ten,
