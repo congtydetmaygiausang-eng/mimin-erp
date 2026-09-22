@@ -51,7 +51,7 @@ function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   
-  const getTen = (o: any) => o.ten || o.ten_kh || o.tenKH || "";
+  const getTen = (o: any) => o.ten || o.tenKh || o.ten_kh || o.tenKH || "";
   const getMa = (o: any) => o.maKh || o.ma_kh || o.maKH || "";
 
   const filtered = options.filter((o) => getTen(o).toLowerCase().includes(search.toLowerCase()) || getMa(o).toLowerCase().includes(search.toLowerCase()));
