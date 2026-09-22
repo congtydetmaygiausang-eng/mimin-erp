@@ -1,7 +1,14 @@
 import type { UploadedFile } from "@/components/ui/ImageUploader";
 import type { RecordAssignment } from "./account-access";
 
-export type TrangThaiPhieuDatNcc = "Nháp" | "Đã gửi NCC" | "NCC xác nhận" | "Đang dệt" | "Hoàn thành" | "Đã giao";
+export type TrangThaiPhieuDatNcc =
+  | "Nháp"
+  | "Đã gửi NCC"
+  | "NCC xác nhận"
+  | "Đang dệt"
+  | "Hoàn thành"
+  | "Đã giao"
+  | "Đã hủy";
 
 export interface LichSuTrangThaiPhieuDatNcc {
   trangThai: TrangThaiPhieuDatNcc;
