@@ -5,7 +5,7 @@
 // giá bán sỉ/giá bán lẻ/giá bán lô - phục vụ nhập lô hàng tồn kho hiện tại.
 // Chế độ Sửa giữ nguyên form 1 biến thể như cũ (sửa 1 dòng tồn kho có sẵn).
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import { Camera, Save, Plus, Trash2, Package, Calculator, X } from "lucide-react";
 import { toast } from "sonner";
@@ -90,7 +90,7 @@ export function ProductFormModal({ sp, initialImage, onClose, onSave }: { sp?: S
 // =================== THÊM MỚI - NHIỀU BIẾN THỂ ===================
 function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave: (data: any[]) => void }) {
   const { dsSanPham: dsDanhMuc, loading: loadingDanhMuc } = useDanhMucSP();
-  const { layGia, loading: loadingBangGia } = useBangGia();
+  const { bangGia: dsBangGia, themChiTiet, layGia, loading: loadingBangGia } = useBangGia();
   // === Thông tin CHUNG cho cả lô (nhập 1 lần) ===
   const [maSP, setMaSP] = useState("");
   const [tenSP, setTenSP] = useState("");
@@ -103,6 +103,8 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
   const [isNewProduct, setIsNewProduct] = useState(false);
+  const [selectedBangGia, setSelectedBangGia] = useState<Record<string, string>>({});
+  const [inputPrices, setInputPrices] = useState<Record<string, number>>({});
   
   useEffect(() => {
     let active = true;
@@ -207,7 +209,15 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const laySkuTheoMau = (mau: string) => selectedProduct?.dsMau.find((item) => item.ten === mau)?.maSKU || undefined;
   const layGiaBienThe = (bt: BienTheDraft, kenh: KenhBan) => layGia(kenh as KenhBanBangGia, maSP, laySkuTheoMau(bt.mau), Math.max(1, tongSLBienThe(bt)));
 
-  const handleSubmit = () => {
+  const missingChannels = useMemo(() => {
+    const checked = new Set<string>();
+    bienThe.forEach(bt => bt.kenhBan.forEach(k => checked.add(k)));
+    return Array.from(checked).filter(k => {
+      return bienThe.some(bt => layGiaBienThe(bt, k as KenhBan) == null);
+    });
+  }, [bienThe, maSP, selectedProduct, layGia, layGiaBienThe]);
+
+  const handleSubmit = async () => {
     if (!selectedProduct && !isNewProduct) {
       toast.error("Vui lòng chọn hoặc thêm mới sản phẩm");
       return;
@@ -237,12 +247,37 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       toast.error("Mỗi màu cần chọn ít nhất 1 kênh bán");
       return;
     }
-    const missingPrice = hopLe.flatMap((bt) => bt.kenhBan.filter((kenh) => layGiaBienThe(bt, kenh) == null).map((kenh) => `${bt.mau} · ${DS_KENH_BAN.find((item) => item.value === kenh)?.label || kenh}`));
+    const missingPrice = hopLe.flatMap((bt) => bt.kenhBan.filter((kenh) => {
+       const giaStore = layGiaBienThe(bt, kenh);
+       const hasManual = selectedBangGia[kenh] && (inputPrices[kenh] || 0) > 0;
+       return giaStore == null && !hasManual;
+    }).map((kenh) => `${bt.mau} · ${DS_KENH_BAN.find((item) => item.value === kenh)?.label || kenh}`));
+    
     if (missingPrice.length > 0) {
       toast.error(`Chưa có bảng giá đang áp dụng cho: ${missingPrice.join(", ")}`);
       return;
     }
     setSaving(true);
+
+    try {
+      for (const kenh of missingChannels) {
+        const bgId = selectedBangGia[kenh];
+        const gia = inputPrices[kenh];
+        if (bgId && gia > 0) {
+           await themChiTiet({
+              bangGiaId: bgId,
+              maSP: maSP.trim().toUpperCase(),
+              giaBan: gia,
+              soLuongTu: 1
+           });
+        }
+      }
+    } catch (err) {
+      toast.error("Lỗi khi lưu bảng giá: " + (err as Error).message);
+      setSaving(false);
+      return;
+    }
+
     const rows = hopLe.map((bt) => ({
       maSP: maSP.trim().toUpperCase(),
       tenSP: tenSP.trim(),
@@ -256,11 +291,11 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       soLuong: tongSLBienThe(bt),
       donGia: 0,
       giaVon,
-      giaBanSi: bt.kenhBan.includes("ban-si") ? layGiaBienThe(bt, "ban-si") || 0 : 0,
-      giaBanLe: bt.kenhBan.includes("ban-le") ? layGiaBienThe(bt, "ban-le") || 0 : 0,
-      giaBanLo: bt.kenhBan.includes("ban-lo") ? layGiaBienThe(bt, "ban-lo") || 0 : 0,
-      giaTikTok: bt.kenhBan.includes("tiktok") ? layGiaBienThe(bt, "tiktok") || 0 : 0,
-      giaShopee: bt.kenhBan.includes("shopee") ? layGiaBienThe(bt, "shopee") || 0 : 0,
+      giaBanSi: bt.kenhBan.includes("ban-si") ? layGiaBienThe(bt, "ban-si") || inputPrices["ban-si"] || 0 : 0,
+      giaBanLe: bt.kenhBan.includes("ban-le") ? layGiaBienThe(bt, "ban-le") || inputPrices["ban-le"] || 0 : 0,
+      giaBanLo: bt.kenhBan.includes("ban-lo") ? layGiaBienThe(bt, "ban-lo") || inputPrices["ban-lo"] || 0 : 0,
+      giaTikTok: bt.kenhBan.includes("tiktok") ? layGiaBienThe(bt, "tiktok") || inputPrices["tiktok"] || 0 : 0,
+      giaShopee: bt.kenhBan.includes("shopee") ? layGiaBienThe(bt, "shopee") || inputPrices["shopee"] || 0 : 0,
       kenhBan: bt.kenhBan,
       viTri: bt.viTri.trim(),
       ghiChu: bt.ghiChu.trim(),
@@ -333,9 +368,48 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                     <input value={maLoKho} readOnly className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono bg-slate-50" />
                   </div>
                 </div>
-              </div>
+            </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+            {missingChannels.length > 0 && (
+              <div className="bg-rose-50 p-5 rounded-2xl border border-rose-200 shadow-sm relative overflow-hidden mt-4">
+                <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+                <h3 className="text-base font-bold text-rose-800 mb-4 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center text-xs">!</span>
+                  Bổ sung giá bán (Bắt buộc)
+                </h3>
+                <p className="text-xs text-rose-600 mb-4">Các kênh bán sau chưa có giá trong hệ thống. Vui lòng chọn Bảng giá và nhập giá để tiếp tục.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {missingChannels.map(kenhValue => {
+                    const kenh = DS_KENH_BAN.find(k => k.value === kenhValue)!;
+                    const activeLists = dsBangGia.filter(b => b.kenhBan === kenhValue && b.trangThai === "dang-ap-dung");
+                    return (
+                      <div key={kenh.value} className="border border-rose-200 rounded-xl p-3 bg-white">
+                         <label className="text-xs font-bold text-slate-700 mb-2 block">Kênh: {kenh.label}</label>
+                         <div className="space-y-2">
+                           <select 
+                             value={selectedBangGia[kenh.value] || ""}
+                             onChange={e => setSelectedBangGia({...selectedBangGia, [kenh.value]: e.target.value})}
+                             className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm bg-white focus:border-rose-500 outline-none"
+                           >
+                             <option value="">-- Chọn bảng giá --</option>
+                             {activeLists.map(b => <option key={b.id} value={b.id}>{b.tenBangGia}</option>)}
+                           </select>
+                           <input 
+                             type="number" 
+                             placeholder="Nhập giá bán..." 
+                             value={inputPrices[kenh.value] || ""}
+                             onChange={e => setInputPrices({...inputPrices, [kenh.value]: parseInt(e.target.value) || 0})}
+                             className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm bg-white focus:border-rose-500 outline-none"
+                           />
+                         </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden mt-4">
               <div className="absolute top-0 left-0 w-1 h-full bg-fuchsia-500"></div>
               <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -494,7 +568,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                           <div className="flex flex-wrap gap-2">
                             {DS_KENH_BAN.map((kenh) => {
                               const selected = bt.kenhBan.includes(kenh.value);
-                              const gia = bt.mau ? layGiaBienThe(bt, kenh.value) : undefined;
+                              const gia = bt.mau ? (layGiaBienThe(bt, kenh.value) || inputPrices[kenh.value]) : undefined;
                               return (
                                 <button
                                   key={kenh.value}
@@ -555,7 +629,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
             </button>
             <button 
               onClick={handleSubmit} 
-              disabled={saving || loadingDanhMuc || loadingBangGia || !selectedProduct}
+              disabled={saving || loadingDanhMuc || loadingBangGia || (!selectedProduct && !isNewProduct)}
               className="px-6 py-2.5 bg-[#2B4C3E] hover:bg-[#203a2f] text-white rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-5 h-5" /> {saving ? "Đang lưu..." : loadingBangGia ? "Đang tải bảng giá..." : `Lưu ${bienThe.length} biến thể`}
@@ -854,7 +928,13 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
                 <input 
                   type="number" min="0" 
                   className="w-32 border-2 border-blue-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-lg font-bold text-blue-700 bg-white" 
-                  value={form.soLuong} onChange={(e) => setForm({ ...form, soLuong: Math.max(0, parseInt(e.target.value) || 0) })}
+                  value={form.soLuong} onChange={(e) => {
+                    const newSl = Math.max(0, parseInt(e.target.value) || 0);
+                    let newTt = form.trangThai;
+                    if (newSl === 0) newTt = "xuat-kho";
+                    else if (newSl > 0 && (form.trangThai === "xuat-kho" || form.trangThai === "het" as any)) newTt = "con";
+                    setForm({ ...form, soLuong: newSl, trangThai: newTt });
+                  }}
                 />
               </div>
             </div>

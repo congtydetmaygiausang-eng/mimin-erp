@@ -151,6 +151,13 @@ export default function DanhMucSanPhamPage() {
             // Đồng bộ xoá: Loại bỏ các màu đã bị xóa khỏi Kho thành phẩm
             base = base.filter(m => colors.some(c => c.ten === m.ten));
             
+            // Lọc trùng trong base (đề phòng dữ liệu cũ bị lỗi duplicate)
+            const uniqueBase = new Map<string, any>();
+            for (const m of base) {
+                if (!uniqueBase.has(m.ten)) uniqueBase.set(m.ten, m);
+            }
+            base = Array.from(uniqueBase.values());
+            
             // Đồng bộ thêm: Cập nhật màu mới và hình ảnh
             colors.forEach(c => {
               const idx = base.findIndex(x => x.ten === c.ten);

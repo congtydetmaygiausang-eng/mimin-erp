@@ -51,24 +51,65 @@ function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   
-  const getTen = (o: any) => o.ten || o.ten_kh || o.tenKH || "";
+  const getTen = (o: any) => o.ten || o.tenKh || o.ten_kh || o.tenKH || "";
   const getMa = (o: any) => o.maKh || o.ma_kh || o.maKH || "";
 
-  const filtered = options.filter((o) => getTen(o).toLowerCase().includes(search.toLowerCase()) || getMa(o).toLowerCase().includes(search.toLowerCase()));
-  const selected = options.find((o) => getMa(o) === value);
+  const removeAccents = (str: string) => str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : "";
+  const searchNormalized = removeAccents(search);
+
+  const filtered = options.filter((o) => removeAccents(getTen(o)).includes(searchNormalized) || removeAccents(getMa(o)).includes(searchNormalized));
+  
+  // Match by name or ID (since older orders store the name directly)
+  const selected = options.find((o) => getMa(o) === value || getTen(o) === value);
+  
   return (
-    <div className="relative z-20">
+    <div className={`relative ${open ? "z-50" : "z-10"}`}>
       <div className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] cursor-pointer flex items-center justify-between" onClick={() => setOpen(!open)}>
-        <span className={selected ? "text-slate-900" : "text-slate-500"}>{selected ? getTen(selected) : placeholder}</span>
-        <ChevronDown className="h-4 w-4 text-slate-400" />
+        <span className={selected ? "text-black dark:text-white" : "text-slate-500"}>{selected ? getTen(selected) : placeholder}</span>
+        <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+      </div>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900 max-h-60 overflow-y-auto">
+          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm text-black dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <div>
+            {filtered.length === 0 ? <div className="p-3 text-center text-sm text-slate-500">Không tìm thấy</div> : filtered.map((o) => (
+              <button key={getMa(o)} type="button" onClick={() => { onChange(getTen(o)); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 text-black dark:text-white ${getMa(o) === value || getTen(o) === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
+                {getTen(o)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+function SearchableSelectNhanSu({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: NhanVienOption[]; placeholder: string }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  
+  const removeAccents = (str: string) => str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : "";
+  const searchNormalized = removeAccents(search);
+
+  const filtered = options.filter((o) => removeAccents(o.ten).includes(searchNormalized) || removeAccents(o.ma).includes(searchNormalized));
+  const selected = options.find((o) => o.ma === value || o.ten === value);
+  
+  const displayValue = selected ? `${selected.ma} - ${selected.ten}` : placeholder;
+
+  return (
+    <div className={`relative ${open ? "z-50" : "z-20"}`}>
+      <div className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] cursor-pointer flex items-center justify-between text-sm" onClick={() => setOpen(!open)}>
+        <span className={selected ? "text-slate-900 truncate" : "text-slate-500 truncate"}>{displayValue}</span>
+        <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
       </div>
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900">
-          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm text-slate-900 dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên, mã..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
           <div className="max-h-60 overflow-y-auto">
             {filtered.length === 0 ? <div className="p-3 text-center text-sm text-slate-500">Không tìm thấy</div> : filtered.map((o) => (
-              <button key={getMa(o)} type="button" onClick={() => { onChange(getMa(o)); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-white ${getMa(o) === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
-                {getTen(o)}
+              <button key={o.ma} type="button" onClick={() => { onChange(o.ma); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white ${o.ma === value || o.ten === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
+                {o.ma} - {o.ten}
               </button>
             ))}
           </div>
@@ -1730,24 +1771,25 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                     {nhanVienOptions.find(n => n.ma === phuTrachSX)?.ten?.substring(0,2) || "NV"}
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <select className="px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm" value={phuTrachSX} onChange={e => {
-                      const val = e.target.value;
-                      setPhuTrachSX(val);
-                      if (val) {
-                        const nv = nhanVienOptions.find(n => n.ma === val);
-                        if (nv?.sdt) {
-                          setSdtLienHe(nv.sdt);
+                    <SearchableSelectNhanSu 
+                      value={phuTrachSX} 
+                      onChange={val => {
+                        setPhuTrachSX(val);
+                        if (val) {
+                          const nv = nhanVienOptions.find(n => n.ma === val);
+                          if (nv?.sdt) {
+                            setSdtLienHe(nv.sdt);
+                          } else {
+                            const numericPart = val.replace(/\D/g, "");
+                            setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                          }
                         } else {
-                          const numericPart = val.replace(/\D/g, "");
-                          setSdtLienHe(`09${numericPart}123456`.substring(0, 10));
+                          setSdtLienHe("");
                         }
-                      } else {
-                        setSdtLienHe("");
-                      }
-                    }}>
-                      <option value="">-- Chọn Người phụ trách --</option>
-                      {nhanVienOptions.map(n => <option key={n.ma} value={n.ma}>{n.ma} - {n.ten}</option>)}
-                    </select>
+                      }}
+                      options={nhanVienOptions}
+                      placeholder="-- Chọn Người phụ trách --"
+                    />
                     <input className="px-3 py-2 bg-white border border-slate-300 rounded text-sm focus:ring-2 focus:ring-[#2B4C3E]" value={sdtLienHe} onChange={e => setSdtLienHe(e.target.value)} placeholder="SĐT liên hệ..." />
                   </div>
                 </div>
@@ -1814,16 +1856,14 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
               </div>
               <div className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-md border border-teal-200">
                 <span className="text-sm font-bold text-teal-800">Phụ trách sơ đồ:</span>
-                <select 
-                  className="px-2 py-1 text-sm border border-teal-300 rounded font-semibold text-teal-900 focus:outline-none bg-white min-w-[150px]"
-                  value={phuTrachSoDo}
-                  onChange={e => setPhuTrachSoDo(e.target.value)}
-                >
-                  <option value="">-- Chọn NV phụ trách --</option>
-                  {nhanVienOptions.map(nv => (
-                    <option key={nv.ma} value={nv.ma}>{nv.ma} - {nv.ten}</option>
-                  ))}
-                </select>
+                <div className="w-[200px]">
+                  <SearchableSelectNhanSu 
+                    value={phuTrachSoDo}
+                    onChange={setPhuTrachSoDo}
+                    options={nhanVienOptions}
+                    placeholder="-- Chọn NV phụ trách --"
+                  />
+                </div>
               </div>
             </div>
             <div className={`grid grid-cols-1 ${isBo ? "md:grid-cols-2" : ""} gap-4`}>

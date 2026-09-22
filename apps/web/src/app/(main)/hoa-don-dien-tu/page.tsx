@@ -434,9 +434,9 @@ function MeInvoiceSettingsModal({
   onSaved: () => void;
 }) {
   const [appId, setAppId] = useState(config?.app_id === "PENDING_APP_ID" ? "" : config?.app_id || "");
-  const [taxCode, setTaxCode] = useState(config?.tax_code || "0318507560");
-  const [username, setUsername] = useState(config?.username === "PENDING_USERNAME" ? "" : config?.username || "");
-  const [password, setPassword] = useState("");
+  const [taxCode, setTaxCode] = useState(config?.tax_code || "0101243150-733");
+  const [username, setUsername] = useState(config?.username === "PENDING_USERNAME" ? "hotrotichhopmisa@gmail.com" : config?.username || "hotrotichhopmisa@gmail.com");
+  const [password, setPassword] = useState("12345678@Abc");
   const [env, setEnv] = useState<"test" | "live">(config?.env || "test");
   const [signType, setSignType] = useState<2 | 5>(config?.sign_type || 2);
   const [saving, setSaving] = useState(false);
