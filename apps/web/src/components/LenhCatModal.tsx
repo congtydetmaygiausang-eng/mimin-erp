@@ -64,10 +64,10 @@ function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { 
       </div>
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900">
-          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm text-slate-900 dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
           <div className="max-h-60 overflow-y-auto">
             {filtered.length === 0 ? <div className="p-3 text-center text-sm text-slate-500">Không tìm thấy</div> : filtered.map((o) => (
-              <button key={getMa(o)} type="button" onClick={() => { onChange(getMa(o)); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-white ${getMa(o) === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
+              <button key={getMa(o)} type="button" onClick={() => { onChange(getMa(o)); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white ${getMa(o) === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
                 {getTen(o)}
               </button>
             ))}
