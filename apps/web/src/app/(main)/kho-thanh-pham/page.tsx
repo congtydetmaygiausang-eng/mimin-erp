@@ -65,6 +65,7 @@ export default function KhoThanhPhamPage() {
   const [uploadingSP, setUploadingSP] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<"image" | "video">("image");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [addVariantGroup, setAddVariantGroup] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -934,6 +935,7 @@ export default function KhoThanhPhamPage() {
               handleXuatKho={handleXuatKho}
               update={update}
               dsSanPham={dsSanPham}
+              onAddVariant={setAddVariantGroup}
               onDangBan={setDangBanGroup}
               onOpenVariant={setOpenVariant}
               onRebuildFromLC={handleRebuildFromLC}
@@ -962,6 +964,7 @@ export default function KhoThanhPhamPage() {
       {/* Modals */}
       {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={mergedProductImages} onClose={() => setShowMasterDetails(null)} />}
       {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
+      {addVariantGroup && <ProductFormModal defaultMaSP={addVariantGroup} onClose={() => setAddVariantGroup(null)} onSave={handleAdd} />}
       {editing && <ProductFormModal sp={editing} initialImage={editing.hinhAnh?.[0] || mergedVariantImages[`${editing.maSP}_${editing.mau}`] || mergedProductImages[editing.id] || mergedProductImages[editing.maSP]} onClose={() => setEditing(null)} onSave={handleEdit} />}
       {suaTongGroup && <SuaTongModal group={suaTongGroup} onClose={() => setSuaTongGroup(null)} onSave={handleSaveSuaTong} />}
       {dangBanGroup && (() => {

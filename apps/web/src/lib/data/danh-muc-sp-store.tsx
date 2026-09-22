@@ -255,119 +255,111 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       if (exists) {
         // Update record đã có
         return prev.map((p) => p.id === id ? { ...p, ...data, ngayCapNhat: new Date().toISOString().slice(0, 10) } : p);
-      } else {
-        // SP từ kho chưa có trong danh mục → thêm mới
-        const newSP: SanPham = { id, tenSP: "", loaiSP: "BoTru", ...data, ngayCapNhat: new Date().toISOString().slice(0, 10) } as SanPham;
-        return [...prev, newSP];
-      }
-    });
-
-    // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
+       // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
+    let shouldDispatch = true; // Always dispatch event since we updated Product Catalog
     if (data.loaiSP || data.tenSP || data.dsMau || data.hinhAnh) {
       try {
         const KHO_KEY = "mimin_kho_thanh_pham_v2";
         const raw = localStorage.getItem(KHO_KEY);
-        if (raw) {
-          let khoData = JSON.parse(raw);
-          let changed = false;
+        let khoData = raw ? JSON.parse(raw) : [];
+        let changed = false;
 
-          if (data.dsMau && Array.isArray(data.dsMau)) {
-             // 1. Xóa các màu không còn tồn tại
-             const keepColors = data.dsMau.map(m => m.ten);
-             const originalLength = khoData.length;
-             khoData = khoData.filter((x: any) => !((x.maSP === id || x.ma_sp === id) && !keepColors.includes(x.mau)));
-             if (khoData.length !== originalLength) changed = true;
+        if (data.dsMau && Array.isArray(data.dsMau)) {
+           // 1. Xóa các màu không còn tồn tại
+           const keepColors = data.dsMau.map(m => m.ten);
+           const originalLength = khoData.length;
+           khoData = khoData.filter((x: any) => !((x.maSP === id || x.ma_sp === id) && !keepColors.includes(x.mau)));
+           if (khoData.length !== originalLength) changed = true;
 
-             // 2. Cập nhật và gom stock cho từng màu
-             for (let i = 0; i < data.dsMau.length; i++) {
-                 const m = data.dsMau[i];
-                 const matchingRows = khoData.filter((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau === m.ten);
+           // 2. Cập nhật và gom stock cho từng màu
+           for (let i = 0; i < data.dsMau.length; i++) {
+               const m = data.dsMau[i];
+               const matchingRows = khoData.filter((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau === m.ten);
 
-                 if (matchingRows.length > 0) {
-                     const firstRow = matchingRows[0];
-                     let newChiTietSize = firstRow.chiTietSize;
-                     
-                     if (m.soLuongKho !== undefined && m.soLuongKho !== firstRow.soLuong) {
-                         if (data.bangSize && data.bangSize.sizes) {
-                             const tongRatio = (data.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
-                             let conLai = m.soLuongKho;
-                             newChiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
-                                if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                                const ratio = data.bangSize.ratios[index] || 0;
-                                const chia = Math.round((ratio / tongRatio) * m.soLuongKho!);
-                                conLai -= chia;
-                                return { size, sl: Math.max(0, chia) };
-                             });
-                         }
-                     }
+               if (matchingRows.length > 0) {
+                   const firstRow = matchingRows[0];
+                   let newChiTietSize = firstRow.chiTietSize;
+                   
+                   if (m.soLuongKho !== undefined && m.soLuongKho !== firstRow.soLuong) {
+                       if (data.bangSize && data.bangSize.sizes) {
+                           const tongRatio = (data.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+                           let conLai = m.soLuongKho;
+                           newChiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
+                              if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                              const ratio = data.bangSize.ratios[index] || 0;
+                              const chia = Math.round((ratio / tongRatio) * m.soLuongKho!);
+                              conLai -= chia;
+                              return { size, sl: Math.max(0, chia) };
+                           });
+                       }
+                   }
 
-                     // Update dòng đầu tiên
-                     if (data.loaiSP) firstRow.phanLoai = data.loaiSP;
-                     if (data.tenSP) firstRow.tenSP = data.tenSP;
-                     if (m.img) firstRow.hinhAnh = [m.img, ...(m.hinhAnhChiTiet || [])];
-                     if ((m as any).imgQuan) firstRow.imgQuan = (m as any).imgQuan;
-                     if (m.video !== undefined) firstRow.video = m.video;
-                     if (m.maSKU !== undefined) firstRow.maSKU = m.maSKU;
-                     if (m.soLuongKho !== undefined) {
-                         firstRow.soLuong = m.soLuongKho;
-                         firstRow.so_luong = m.soLuongKho; // VERY IMPORTANT: Also update snake_case to prevent old data from being used
-                         firstRow.trangThai = m.soLuongKho > 0 ? "con" : "het";
-                     }
-                     if (newChiTietSize) {
-                         firstRow.chiTietSize = newChiTietSize;
-                         firstRow.chi_tiet_size = newChiTietSize;
-                     }
-                     changed = true;
+                   // Update dòng đầu tiên
+                   if (data.loaiSP) firstRow.phanLoai = data.loaiSP;
+                   if (data.tenSP) firstRow.tenSP = data.tenSP;
+                   if (m.img) firstRow.hinhAnh = [m.img, ...(m.hinhAnhChiTiet || [])];
+                   if ((m as any).imgQuan) firstRow.imgQuan = (m as any).imgQuan;
+                   if (m.video !== undefined) firstRow.video = m.video;
+                   if (m.maSKU !== undefined) firstRow.maSKU = m.maSKU;
+                   if (m.soLuongKho !== undefined) {
+                       firstRow.soLuong = m.soLuongKho;
+                       firstRow.so_luong = m.soLuongKho; // VERY IMPORTANT: Also update snake_case to prevent old data from being used
+                       firstRow.trangThai = m.soLuongKho > 0 ? "con" : "het";
+                   }
+                   if (newChiTietSize) {
+                       firstRow.chiTietSize = newChiTietSize;
+                       firstRow.chi_tiet_size = newChiTietSize;
+                   }
+                   changed = true;
 
-                     // Đưa các dòng trùng lặp về 0 (gom stock)
-                     for (let j = 1; j < matchingRows.length; j++) {
-                         matchingRows[j].soLuong = 0;
-                         matchingRows[j].so_luong = 0; // Prevent local duplication
-                         matchingRows[j].trangThai = "het";
-                         if (data.loaiSP) matchingRows[j].phanLoai = data.loaiSP;
-                         if (data.tenSP) matchingRows[j].tenSP = data.tenSP;
-                         changed = true;
-                     }
-                 } else {
-                     // Thêm mới nếu chưa có
-                     if (m.soLuongKho !== undefined) {
-                         changed = true;
-                         const newId = `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`;
-                         (m as any)._newId = newId; // Save for Supabase block later
-                         
-                         khoData.push({
-                            id: newId,
-                            maSP: id,
-                            tenSP: data.tenSP || id,
-                            mau: m.ten,
-                            soLuong: m.soLuongKho,
-                            trangThai: m.soLuongKho > 0 ? "con" : "het",
-                            ngayNhap: new Date().toISOString().slice(0, 10),
-                            phanLoai: data.loaiSP || "BoTru",
-                            maSKU: m.maSKU,
-                            hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
-                            imgQuan: (m as any).imgQuan,
-                            video: m.video,
-                            viTri: "Khu A1",
-                            giaTri: m.soLuongKho * (data.giaVonDuKien || 0),
-                            donGia: data.giaVonDuKien || 0,
-                            giaBanLe: data.giaBanLe || 0,
-                            giaBanSi: data.giaBanSi || 0,
-                            chiTietSize: data.bangSize?.sizes?.map((size: string, index: number) => {
-                                const tongRatio = (data.bangSize!.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
-                                const ratio = data.bangSize!.ratios[index] || 0;
-                                return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
-                            }) || [],
-                         });
-                     }
-                 }
-             }
-          }
+                   // Đưa các dòng trùng lặp về 0 (gom stock)
+                   for (let j = 1; j < matchingRows.length; j++) {
+                       matchingRows[j].soLuong = 0;
+                       matchingRows[j].so_luong = 0; // Prevent local duplication
+                       matchingRows[j].trangThai = "het";
+                       if (data.loaiSP) matchingRows[j].phanLoai = data.loaiSP;
+                       if (data.tenSP) matchingRows[j].tenSP = data.tenSP;
+                       changed = true;
+                   }
+               } else {
+                   // Thêm mới nếu chưa có
+                   if (m.soLuongKho !== undefined) {
+                       changed = true;
+                       const newId = `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`;
+                       (m as any)._newId = newId; // Save for Supabase block later
+                       
+                       khoData.push({
+                          id: newId,
+                          maSP: id,
+                          tenSP: data.tenSP || id,
+                          mau: m.ten,
+                          soLuong: m.soLuongKho,
+                          so_luong: m.soLuongKho,
+                          trangThai: m.soLuongKho > 0 ? "con" : "het",
+                          ngayNhap: new Date().toISOString().slice(0, 10),
+                          phanLoai: data.loaiSP || "BoTru",
+                          maSKU: m.maSKU,
+                          hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
+                          imgQuan: (m as any).imgQuan,
+                          video: m.video,
+                          viTri: "Khu A1",
+                          giaTri: m.soLuongKho * (data.giaVonDuKien || 0),
+                          donGia: data.giaVonDuKien || 0,
+                          giaBanLe: data.giaBanLe || 0,
+                          giaBanSi: data.giaBanSi || 0,
+                          chiTietSize: data.bangSize?.sizes?.map((size: string, index: number) => {
+                              const tongRatio = (data.bangSize!.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+                              const ratio = data.bangSize!.ratios[index] || 0;
+                              return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
+                          }) || [],
+                       });
+                   }
+               }
+           }
+        }
 
-          if (changed) {
-            localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
-            shouldDispatch = true;
-          }
+        if (changed) {
+          localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
         }
       } catch (e) {
         console.error("Lỗi đồng bộ local kho_thanh_pham:", e);

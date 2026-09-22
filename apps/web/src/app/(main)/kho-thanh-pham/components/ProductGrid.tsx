@@ -32,13 +32,14 @@ interface ProductGridProps {
   onRebuildFromLC: (group: ProductGroup) => void;
   onSuaTong?: (group: ProductGroup) => void;
   onXoaTong?: (group: ProductGroup) => void;
+  onAddVariant?: (maSP: string) => void;
   dsLenhCat: any[];
 }
 
 export function ProductGrid({ 
   groups, productImages, productVariantImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, 
   setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, 
-  onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, dsLenhCat 
+  onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, onAddVariant, dsLenhCat 
 }: ProductGridProps) {
   return (
     <div className="flex flex-col gap-6">
@@ -104,8 +105,13 @@ export function ProductGrid({
               <button onClick={() => setShowMasterDetails(group.maSP || "NO_CODE")} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-all text-sm font-bold flex items-center gap-1.5" title="Xem chi tiết">
                 <Eye className="w-4 h-4" /> Chi tiết
               </button>
+              {onAddVariant && (
+                <button onClick={() => onAddVariant(group.maSP)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-all text-sm font-bold flex items-center gap-1.5" title="Thêm biến thể">
+                  <Plus className="w-4 h-4" /> Thêm biến thể
+                </button>
+              )}
               <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-all text-sm font-bold flex items-center gap-1.5" title="Thêm đơn hàng">
-                <Plus className="w-4 h-4" /> Thêm đơn
+                <Plus className="w-4 h-4" /> Thêm lô mới
               </button>
               {canRebuild && (
                 <button

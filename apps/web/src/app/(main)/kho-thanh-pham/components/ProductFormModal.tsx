@@ -80,19 +80,19 @@ function detectLoaiSP(value: string): LoaiSP {
   return "AoCoTron";
 }
 
-export function ProductFormModal({ sp, initialImage, onClose, onSave }: { sp?: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
+export function ProductFormModal({ sp, initialImage, onClose, onSave, defaultMaSP }: { sp?: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void; defaultMaSP?: string }) {
   if (sp) {
     return <SuaBienTheForm sp={sp} initialImage={initialImage} onClose={onClose} onSave={onSave} />;
   }
-  return <ThemNhieuBienTheForm onClose={onClose} onSave={onSave} />;
+  return <ThemNhieuBienTheForm onClose={onClose} onSave={onSave} defaultMaSP={defaultMaSP} />;
 }
 
 // =================== THÊM MỚI - NHIỀU BIẾN THỂ ===================
-function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave: (data: any[]) => void }) {
+function ThemNhieuBienTheForm({ onClose, onSave, defaultMaSP }: { onClose: () => void; onSave: (data: any[]) => void; defaultMaSP?: string }) {
   const { dsSanPham: dsDanhMuc, loading: loadingDanhMuc } = useDanhMucSP();
   const { bangGia: dsBangGia, themChiTiet, layGia, loading: loadingBangGia } = useBangGia();
   // === Thông tin CHUNG cho cả lô (nhập 1 lần) ===
-  const [maSP, setMaSP] = useState("");
+  const [maSP, setMaSP] = useState(defaultMaSP || "");
   const [tenSP, setTenSP] = useState("");
   const [phanLoai, setPhanLoai] = useState<string>("BoTru");
   const [maLoKho] = useState(taoMaLoTonKho);
@@ -113,6 +113,12 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
     });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (defaultMaSP && dsDanhMuc.length > 0) {
+      chonSanPham(defaultMaSP);
+    }
+  }, [defaultMaSP, dsDanhMuc.length]);
 
   const selectedProduct = dsDanhMuc.find((product) => product.id === maSP);
   const productSizePreset: SizeRatioPreset | undefined = selectedProduct?.bangSize?.sizes?.length
@@ -336,9 +342,9 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-slate-700 mb-1.5 block">Sản phẩm trong danh mục *</label>
-                    <select value={isNewProduct ? "NEW" : maSP} onChange={(e) => chonSanPham(e.target.value)} disabled={loadingDanhMuc} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:opacity-60">
+                    <select value={isNewProduct ? "NEW" : maSP} onChange={(e) => chonSanPham(e.target.value)} disabled={loadingDanhMuc || !!defaultMaSP} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:opacity-60">
                       <option value="">{loadingDanhMuc ? "Đang tải danh mục..." : "-- Chọn sản phẩm --"}</option>
-                      <option value="NEW" className="font-bold text-emerald-600">-- Thêm sản phẩm mới --</option>
+                      {!defaultMaSP && <option value="NEW" className="font-bold text-emerald-600">-- Thêm sản phẩm mới --</option>}
                       {[...dsDanhMuc].sort((a, b) => a.id.localeCompare(b.id)).map((product) => <option key={product.id} value={product.id}>{product.id} — {product.tenSP}</option>)}
                     </select>
                     {!loadingDanhMuc && dsDanhMuc.length === 0 && <p className="mt-1.5 text-xs font-semibold text-rose-600">Danh mục sản phẩm đang trống. Hãy tạo sản phẩm trước khi nhập kho.</p>}
