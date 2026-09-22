@@ -63,17 +63,17 @@ function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { 
   const selected = options.find((o) => getMa(o) === value || getTen(o) === value);
   
   return (
-    <div className={`relative ${open ? "z-50" : "z-20"}`}>
+    <div className={`relative ${open ? "z-50" : "z-10"}`}>
       <div className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] cursor-pointer flex items-center justify-between" onClick={() => setOpen(!open)}>
-        <span className={selected ? "text-slate-900" : "text-slate-500"}>{selected ? getTen(selected) : placeholder}</span>
+        <span className={selected ? "text-black dark:text-white" : "text-slate-500"}>{selected ? getTen(selected) : placeholder}</span>
         <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
       </div>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900">
-          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm text-slate-900 dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
-          <div className="max-h-60 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900 max-h-60 overflow-y-auto">
+          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm text-black dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <div>
             {filtered.length === 0 ? <div className="p-3 text-center text-sm text-slate-500">Không tìm thấy</div> : filtered.map((o) => (
-              <button key={getMa(o)} type="button" onClick={() => { onChange(getTen(o)); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white ${getMa(o) === value || getTen(o) === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
+              <button key={getMa(o)} type="button" onClick={() => { onChange(getTen(o)); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 text-black dark:text-white ${getMa(o) === value || getTen(o) === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
                 {getTen(o)}
               </button>
             ))}

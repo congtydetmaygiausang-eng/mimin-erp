@@ -141,8 +141,14 @@ export default function KhoThanhPhamPage() {
           logCRUD(user, "kho-thanh-pham", "delete", item.tenSP || "Sản phẩm", item.id, { oldValue: item });
         });
 
+        const changedItems = newDs.filter((row) => {
+          const oldRow = prev.find((p) => p.id === row.id);
+          if (!oldRow) return true;
+          return JSON.stringify(row) !== JSON.stringify(oldRow);
+        });
+
         Promise.all([
-          ...newDs.map((row) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(row))),
+          ...changedItems.map((row) => supabaseUpsertRaw("kho_thanh_pham", toSupabaseRow(row))),
           ...deletedIds.map((id) => supabaseDelete("kho_thanh_pham", id)),
         ]).catch((err) => console.error("[KhoThanhPham] sync error:", err));
       }
@@ -375,12 +381,22 @@ export default function KhoThanhPhamPage() {
     if (__tempImage) {
       if (!sp.hinhAnh || sp.hinhAnh.length === 0) {
         sp.hinhAnh = [__tempImage];
-      } else if (!sp.hinhAnh.includes(__tempImage)) {
-        sp.hinhAnh = [__tempImage, ...sp.hinhAnh];
+      } else {
+        const filtered = Array.isArray(sp.hinhAnh) ? sp.hinhAnh.filter((i: string) => i !== __tempImage) : [];
+        sp.hinhAnh = [__tempImage, ...filtered];
       }
     }
     
-    update(dsSanPham.map((s) => (s.id === sp.id ? { ...sp, giaTri: sp.soLuong * sp.donGia } : s)));
+    update(dsSanPham.map((s) => {
+      if (s.id === sp.id) {
+        let newTrangThai = sp.trangThai;
+        if (sp.soLuong === 0) newTrangThai = "xuat-kho";
+        else if (sp.soLuong > 0 && (sp.trangThai === "xuat-kho" || sp.trangThai === "het")) newTrangThai = "con";
+        
+        return { ...sp, giaTri: (sp.soLuong || 0) * (sp.donGia || 0), trangThai: newTrangThai };
+      }
+      return s;
+    }));
     if (__tempImage) {
       setProductImages((prev) => ({ ...prev, [sp.id]: __tempImage }));
     }
@@ -400,21 +416,38 @@ export default function KhoThanhPhamPage() {
         changed = true;
       }
       
-      if (__tempImage) {
-        // Cập nhật ảnh đại diện nếu chưa có
-        if (!newDM.hinhAnh) {
-          newDM.hinhAnh = __tempImage;
-          changed = true;
-        }
-        // Cập nhật ảnh của biến thể màu tương ứng trong dsMau
+      if (__tempImage || sp.soLuong !== undefined) {
+        // Cập nhật ảnh VÀ SỐ LƯỢNG của biến thể màu tương ứng trong dsMau
         if (newDM.dsMau) {
           const newDsMau = [...newDM.dsMau];
           const mauIndex = newDsMau.findIndex(m => m.ten === sp.mau);
           if (mauIndex >= 0) {
-            newDsMau[mauIndex] = { ...newDsMau[mauIndex], img: __tempImage };
+            const currentMau = { ...newDsMau[mauIndex] };
+            if (__tempImage) {
+               currentMau.img = __tempImage;
+               changed = true;
+            }
+            if (sp.soLuong !== undefined && currentMau.soLuongKho !== sp.soLuong) {
+               currentMau.soLuongKho = sp.soLuong;
+               changed = true;
+            }
+            newDsMau[mauIndex] = currentMau;
             newDM.dsMau = newDsMau;
-            changed = true;
           }
+          
+          // Luôn lấy ảnh của màu đầu tiên làm ảnh đại diện cho sản phẩm
+          if (__tempImage && newDsMau.length > 0 && newDsMau[0].img) {
+            if (newDM.hinhAnh !== newDsMau[0].img) {
+              newDM.hinhAnh = newDsMau[0].img;
+              changed = true;
+            }
+          } else if (!newDM.hinhAnh) {
+             newDM.hinhAnh = __tempImage;
+             changed = true;
+          }
+        } else if (!newDM.hinhAnh) {
+          newDM.hinhAnh = __tempImage;
+          changed = true;
         }
       }
       

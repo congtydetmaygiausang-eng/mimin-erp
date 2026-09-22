@@ -277,6 +277,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                     if (data.bangSize && data.bangSize.sizes) {
                         const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
                         let conLai = newSoLuong;
+                        
                         newChiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
                            if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
                            const ratio = data.bangSize.ratios[index] || 0;
@@ -428,8 +429,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                             await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
                         }
                      }
-                 } else {
-                     if (m.soLuongKho !== undefined) {
+                     } else if (m.soLuongKho !== undefined) {
                         const newRow: any = {
                            id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
                            ma_sp: id,
@@ -466,22 +466,21 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      }
                  }
                }
-             }
-
-             // 3. Xoá các variant đã bị xoá khỏi danh mục khỏi kho_thanh_pham Supabase
-             const { data: currentRows } = await supabase.from('kho_thanh_pham').select('id, mau').eq('ma_sp', id);
-             if (currentRows && currentRows.length > 0) {
-                 const existingColors = data.dsMau.map(m => m.ten);
-                 const idsToDelete = currentRows.filter(r => !existingColors.includes(r.mau)).map(r => r.id);
-                 if (idsToDelete.length > 0) {
-                     await supabase.from('kho_thanh_pham').delete().in('id', idsToDelete);
-                 }
+               
+               // 3. Xoá các variant đã bị xoá khỏi danh mục khỏi kho_thanh_pham Supabase
+               const { data: currentRows } = await supabase.from('kho_thanh_pham').select('id, mau').eq('ma_sp', id);
+               if (currentRows && currentRows.length > 0) {
+                   const existingColors = data.dsMau.map(m => m.ten);
+                   const idsToDelete = currentRows.filter(r => !existingColors.includes(r.mau)).map(r => r.id);
+                   if (idsToDelete.length > 0) {
+                       await supabase.from('kho_thanh_pham').delete().in('id', idsToDelete);
+                   }
+               }
              }
           }
+        } catch (e) {
+          console.error("Lỗi đồng bộ kho_thanh_pham khi suaSP:", e);
         }
-      } catch (e) {
-        console.error("Lỗi đồng bộ kho_thanh_pham khi suaSP:", e);
-      }
     }
   }, [setDsSanPham]);
 
