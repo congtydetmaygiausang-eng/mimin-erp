@@ -135,10 +135,10 @@ export async function supabaseUpsertRaw<T extends { id: string }>(
   if (error) {
     if (error.code === 'PGRST204' || error.message.includes('column')) {
        const fallback = { ...payload } as any;
-       delete fallback.hinh_anh; delete fallback.trang_thai; delete fallback.chat_lieu;
+       delete fallback.chat_lieu;
        delete fallback.ncc; delete fallback.da_ban; delete fallback.rating; delete fallback.luot_xem;
-       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien; delete fallback.gia_tri;
-       delete fallback.ghi_chu; delete fallback.ngay_tao; delete fallback.ngay_nhap;
+       delete fallback.gia_ban_du_kien; delete fallback.gia_von_du_kien;
+       delete fallback.ghi_chu; delete fallback.ngay_tao;
        delete fallback.gia_ban_le; delete fallback.gia_ban_si; delete fallback.gia_von; delete fallback.gia_ban_lo;
        delete fallback.gia_tiktok; delete fallback.gia_shopee; delete fallback.kenh_ban; delete fallback.img_quan;
        delete fallback.video; delete fallback.chi_tiet_size; delete fallback.khach_hang;

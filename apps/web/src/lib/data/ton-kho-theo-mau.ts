@@ -40,14 +40,16 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
   
-  // Create a map to deduplicate by ID if needed, or just combine them. 
+  // Create a map to deduplicate by maSP and mau.
   // Supabase has snake_case, localStorage has camelCase. We'll handle both.
-  const allRows = [...rows, ...localKho];
-  // Deduplicate by id
-  const uniqueRows = Array.from(new Map(allRows.map(r => [r.id, r])).values());
+  // We append `rows` (Supabase) AFTER `localKho` so that fresh DB data overwrites stale local cache when online.
+  const allRows = [...localKho, ...rows];
+  
+  // Deduplicate by row ID (UUID) to prevent doubling stock from localKho vs Supabase rows
+  const uniqueRowsById = Array.from(new Map(allRows.map(r => [r.id, r])).values());
 
   const result: TonKhoTheoSanPham = {};
-  for (const r of uniqueRows) {
+  for (const r of uniqueRowsById) {
     const maSP = r.ma_sp || r.maSP;
     const mau = r.mau || "";
     if (!maSP) continue;
@@ -134,7 +136,8 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
   
-  const allRows = [...rows, ...localKho];
+  // Deduplicate by row ID (UUID) to prevent doubling stock from localKho vs Supabase rows
+  const allRows = [...localKho, ...rows];
   const uniqueRows = Array.from(new Map(allRows.map(r => [r.id, r])).values());
 
   const result: DanhMucKhoThanhPham = {};
