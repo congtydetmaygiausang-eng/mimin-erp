@@ -43,6 +43,38 @@ import { getAllInventory, syncInventoryWithSupabase } from "@/lib/inventory-engi
 
 type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string; sdt?: string };
 
+function formatValue(value: string | number) {
+  return value.toLocaleString("vi-VN");
+}
+
+function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: any[]; placeholder: string }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = options.filter((o) => o.ten_kh?.toLowerCase().includes(search.toLowerCase()) || o.ma_kh?.toLowerCase().includes(search.toLowerCase()));
+  const selected = options.find((o) => o.ma_kh === value);
+  return (
+    <div className="relative z-20">
+      <div className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] cursor-pointer flex items-center justify-between" onClick={() => setOpen(!open)}>
+        <span className={selected ? "text-slate-900" : "text-slate-500"}>{selected?.ten_kh || placeholder}</span>
+        <ChevronDown className="h-4 w-4 text-slate-400" />
+      </div>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900">
+          <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <div className="max-h-60 overflow-y-auto">
+            {filtered.length === 0 ? <div className="p-3 text-center text-sm text-slate-500">Không tìm thấy</div> : filtered.map((o) => (
+              <button key={o.ma_kh} type="button" onClick={() => { onChange(o.ma_kh); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-white ${o.ma_kh === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
+                {o.ten_kh}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+    </div>
+  );
+}
+
 const formatTonKhoVai = (tonKho: number) =>
   new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(tonKho);
 
@@ -1657,10 +1689,12 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                 <>
                   <div className="lg:col-span-2">
                     <label className="text-sm font-bold text-slate-700 block mb-1">Khách Hàng *</label>
-                    <select className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E]" value={khachHang} onChange={e => setKhachHang(e.target.value)}>
-                      <option value="">-- Chọn Khách Hàng --</option>
-                      {khachHangs?.map((k: any) => <option key={k.ma_kh} value={k.ma_kh}>{k.ten_kh}</option>)}
-                    </select>
+                    <SearchableSelectKhachHang
+                      value={khachHang}
+                      onChange={(v) => setKhachHang(v)}
+                      options={khachHangs || []}
+                      placeholder="-- Chọn Khách Hàng --"
+                    />
                   </div>
                   <div className="lg:col-span-2">
                     <label className="text-sm font-bold text-slate-700 block mb-2">Ghi chú (chung)</label>
