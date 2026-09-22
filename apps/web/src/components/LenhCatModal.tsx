@@ -50,12 +50,16 @@ function formatValue(value: string | number) {
 function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: any[]; placeholder: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const filtered = options.filter((o) => o.ten_kh?.toLowerCase().includes(search.toLowerCase()) || o.ma_kh?.toLowerCase().includes(search.toLowerCase()));
-  const selected = options.find((o) => o.ma_kh === value);
+  
+  const getTen = (o: any) => o.ten || o.ten_kh || o.tenKH || "";
+  const getMa = (o: any) => o.maKh || o.ma_kh || o.maKH || "";
+
+  const filtered = options.filter((o) => getTen(o).toLowerCase().includes(search.toLowerCase()) || getMa(o).toLowerCase().includes(search.toLowerCase()));
+  const selected = options.find((o) => getMa(o) === value);
   return (
     <div className="relative z-20">
       <div className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] cursor-pointer flex items-center justify-between" onClick={() => setOpen(!open)}>
-        <span className={selected ? "text-slate-900" : "text-slate-500"}>{selected?.ten_kh || placeholder}</span>
+        <span className={selected ? "text-slate-900" : "text-slate-500"}>{selected ? getTen(selected) : placeholder}</span>
         <ChevronDown className="h-4 w-4 text-slate-400" />
       </div>
       {open && (
@@ -63,8 +67,8 @@ function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { 
           <input type="text" className="w-full px-3 py-2 mb-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] text-sm dark:bg-slate-800 dark:border-white/10 dark:text-white" placeholder="Tìm tên khách, mã khách..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
           <div className="max-h-60 overflow-y-auto">
             {filtered.length === 0 ? <div className="p-3 text-center text-sm text-slate-500">Không tìm thấy</div> : filtered.map((o) => (
-              <button key={o.ma_kh} type="button" onClick={() => { onChange(o.ma_kh); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-white ${o.ma_kh === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
-                {o.ten_kh}
+              <button key={getMa(o)} type="button" onClick={() => { onChange(getMa(o)); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-white ${getMa(o) === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : ""}`}>
+                {getTen(o)}
               </button>
             ))}
           </div>
