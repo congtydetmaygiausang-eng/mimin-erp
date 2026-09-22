@@ -63,7 +63,7 @@ function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { 
   const selected = options.find((o) => getMa(o) === value || getTen(o) === value);
   
   return (
-    <div className="relative z-20">
+    <div className={`relative ${open ? "z-50" : "z-20"}`}>
       <div className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] cursor-pointer flex items-center justify-between" onClick={() => setOpen(!open)}>
         <span className={selected ? "text-slate-900" : "text-slate-500"}>{selected ? getTen(selected) : placeholder}</span>
         <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
@@ -98,7 +98,7 @@ function SearchableSelectNhanSu({ value, onChange, options, placeholder }: { val
   const displayValue = selected ? `${selected.ma} - ${selected.ten}` : placeholder;
 
   return (
-    <div className="relative z-20">
+    <div className={`relative ${open ? "z-50" : "z-20"}`}>
       <div className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:ring-2 focus:ring-[#2B4C3E] cursor-pointer flex items-center justify-between text-sm" onClick={() => setOpen(!open)}>
         <span className={selected ? "text-slate-900 truncate" : "text-slate-500 truncate"}>{displayValue}</span>
         <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
