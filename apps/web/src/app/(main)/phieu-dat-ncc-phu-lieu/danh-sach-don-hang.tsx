@@ -18,6 +18,8 @@ const safe = (value: string) => value.replace(/[&<>'"]/g, (char) => ({ "&": "&am
 export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit?: (order: PhieuDatNccPhuLieu) => void }) {
   const { orders, loading, deleteOrder } = usePhieuDatNcc();
   const { workspaces } = useWorkspace();
+  const { list: nccList } = useNhaCungCap();
+  const { list: khachHangList } = useKhachHang();
   const [query, setQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<PhieuDatNccPhuLieu | null>(null);
 
@@ -80,10 +82,19 @@ export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit
                         <div className="text-xs text-slate-500 mt-1">{order.ngayDat}</div>
                       </td>
                       <td className="p-4">
-                        <div className="font-semibold">{order.maNcc}</div>
+                        {(() => {
+                          const ncc = nccList.find((n) => n.ma_ncc === order.maNcc);
+                          const tooltip = ncc ? `${ncc.ten_ncc}\nSĐT: ${ncc.sdt || "Trống"}\nĐịa chỉ: ${ncc.dia_chi || "Trống"}` : order.maNcc;
+                          return <div className="font-semibold cursor-help" title={tooltip}>{order.maNcc}</div>;
+                        })()}
                       </td>
                       <td className="p-4">
-                        <div className="font-semibold">{order.maKhachHang || "MIMIN (Nội bộ)"}</div>
+                        {(() => {
+                          if (!order.maKhachHang) return <div className="font-semibold">MIMIN (Nội bộ)</div>;
+                          const kh = khachHangList.find((k) => k.maKH === order.maKhachHang);
+                          const tooltip = kh ? `${kh.ten}\nSĐT: ${kh.sdt || "Trống"}\nĐịa chỉ: ${kh.diaChi || "Trống"}` : order.maKhachHang;
+                          return <div className="font-semibold cursor-help" title={tooltip}>{order.maKhachHang}</div>;
+                        })()}
                       </td>
                       <td className="p-4 text-center font-bold">
                         {(totalQty || 0).toLocaleString("vi-VN")}
