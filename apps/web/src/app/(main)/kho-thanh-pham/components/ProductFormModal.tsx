@@ -514,19 +514,23 @@ function ThemNhieuBienTheForm({ initialGroup, onClose, onSave }: { initialGroup?
                         
                         <div className="flex-1 space-y-4">
                           <div className="pr-8">
-                            <label className="text-xs font-bold text-slate-700 mb-1.5 block">{isNewProduct ? "Tên màu sắc *" : "Màu / SKU trong danh mục *"}</label>
-                            {isNewProduct ? (
-                              <input 
-                                value={bt.mau} 
-                                onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} 
-                                placeholder="VD: Đen, Trắng..." 
-                                className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium" 
-                              />
-                            ) : (
-                              <select value={bt.mau} onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} disabled={!selectedProduct} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
-                                <option value="">-- Chọn màu / SKU --</option>
-                                {selectedProduct?.dsMau.map((variant) => <option key={variant.maSKU || variant.ten} value={variant.ten}>{variant.ten}{variant.maSKU ? ` — ${variant.maSKU}` : ""}</option>)}
-                              </select>
+                            <label className="text-xs font-bold text-slate-700 mb-1.5 block">{isNewProduct ? "Tên màu sắc *" : "Màu / SKU trong danh mục (Hoặc nhập màu mới) *"}</label>
+                            <input 
+                              list={`color-list-${idx}`}
+                              value={bt.mau} 
+                              onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} 
+                              placeholder="VD: Đen, Trắng..." 
+                              disabled={!isNewProduct && !selectedProduct}
+                              className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100" 
+                            />
+                            {!isNewProduct && selectedProduct && (
+                              <datalist id={`color-list-${idx}`}>
+                                {selectedProduct.dsMau.map((variant) => (
+                                  <option key={variant.maSKU || variant.ten} value={variant.ten}>
+                                    {variant.maSKU ? `${variant.ten} — ${variant.maSKU}` : variant.ten}
+                                  </option>
+                                ))}
+                              </datalist>
                             )}
                           </div>
 
