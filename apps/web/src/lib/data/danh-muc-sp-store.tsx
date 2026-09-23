@@ -258,7 +258,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
               let newChiTietSize = item.chiTietSize;
 
               if (data.dsMau && Array.isArray(data.dsMau)) {
-                const matchedMau = data.dsMau.find(m => m.ten === item.mau);
+                const matchedMau = data.dsMau.find(m => m.ten?.trim().toLowerCase() === item.mau?.trim().toLowerCase());
                 if (matchedMau) {
                   if (matchedMau.img) {
                     newHinhAnh = [matchedMau.img, ...(matchedMau.hinhAnhChiTiet || [])];
@@ -317,7 +317,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
              // Xử lý thêm mới color variant vào localStorage nếu chưa có
              for (let i = 0; i < data.dsMau.length; i++) {
                 const m = data.dsMau[i];
-                const existingColor = khoData.find((x: any) => x.maSP === id && x.mau === m.ten);
+                const existingColor = khoData.find((x: any) => x.maSP === id && x.mau?.trim().toLowerCase() === m.ten?.trim().toLowerCase());
                 if (!existingColor && m.soLuongKho !== undefined) {
                    changed = true;
                    khoData.push({
@@ -387,12 +387,15 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                    variantUpdates.video = m.video;
                  }
                  
-                 const { data: existingRows } = await supabase.from('kho_thanh_pham')
+                 const { data: existingRows, error: existingErr } = await supabase.from('kho_thanh_pham')
                     .select('id, so_luong')
                     .eq('ma_sp', id)
                     .eq('mau', m.ten)
-                    .order('created_at', { ascending: false });
+                    .order('id', { ascending: false });
 
+                 if (existingErr) {
+                    console.error("Lỗi fetch existingRows:", existingErr);
+                 }
                  if (existingRows && existingRows.length > 0) {
                      const totalStock = existingRows.reduce((s: number, r: any) => s + (r.so_luong || 0), 0);
                      const firstRowId = existingRows[0].id;
