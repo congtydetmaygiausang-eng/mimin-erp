@@ -120,7 +120,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   );
 
   const themSP = useCallback(async (sp: SanPham) => {
-    let shouldDispatch = false;
     setDsSanPham((prev) => [...prev, sp]);
 
     // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
@@ -155,7 +154,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                    giaBanLe: sp.giaBanLe || 0,
                    giaBanSi: sp.giaBanSi || 0,
                    chiTietSize: sp.bangSize?.sizes?.map((size: string, index: number) => {
-                       const tongRatio = (sp.bangSize!.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+                       const tongRatio = sp.bangSize!.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
                        const ratio = sp.bangSize!.ratios[index] || 0;
                        return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
                    }) || [],
@@ -166,7 +165,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         
         if (changed) {
           localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
-          shouldDispatch = true;
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
+          }
         }
       }
     } catch (e) {
@@ -205,7 +206,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                     ...variantUpdates
                  };
                  if (sp.bangSize && sp.bangSize.sizes) {
-                    const tongRatio = (sp.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+                    const tongRatio = sp.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
                     let conLai = m.soLuongKho;
                     newRow.chi_tiet_size = sp.bangSize.sizes.map((size: string, index: number) => {
                        if (index === sp.bangSize.sizes.length - 1) return { size, sl: conLai };
@@ -223,33 +224,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         console.error("Lỗi đồng bộ kho_thanh_pham khi themSP:", e);
       }
     }
-
-    if (shouldDispatch && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
-    }
   }, [setDsSanPham]);
 
   const suaSP = useCallback(async (id: string, data: Partial<SanPham>) => {
-    let shouldDispatch = false;
-    if (data.dsMau && Array.isArray(data.dsMau)) {
-        const uniqueMap = new Map<string, any>();
-        for (const m of data.dsMau) {
-            const key = m.ten?.trim() || "Mặc định";
-            if (!uniqueMap.has(key)) {
-                uniqueMap.set(key, { ...m, ten: key, soLuongKho: Number(m.soLuongKho) || 0 });
-            } else {
-                const existing = uniqueMap.get(key);
-                if (m.soLuongKho !== undefined) {
-                    existing.soLuongKho += (Number(m.soLuongKho) || 0);
-                }
-                if (m.img && !existing.img) existing.img = m.img;
-                if (m.video && !existing.video) existing.video = m.video;
-                if (m.hinhAnhChiTiet && m.hinhAnhChiTiet.length > 0 && !existing.hinhAnhChiTiet?.length) existing.hinhAnhChiTiet = m.hinhAnhChiTiet;
-            }
-        }
-        data.dsMau = Array.from(uniqueMap.values());
-    }
-
     setDsSanPham((prev) => {
       const exists = prev.some((p) => p.id === id);
       if (exists) {
@@ -270,103 +247,112 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         if (raw) {
           let khoData = JSON.parse(raw);
           let changed = false;
+          khoData = khoData.map((item: any) => {
+            if (item.maSP === id) {
+              changed = true;
+              let newHinhAnh = item.hinhAnh;
+              let newImgQuan = item.imgQuan;
+              let newVideo = item.video;
+              let newMaSKU = item.maSKU;
+              let newSoLuong = item.soLuong;
+              let newChiTietSize = item.chiTietSize;
 
+              if (data.dsMau && Array.isArray(data.dsMau)) {
+                const matchedMau = data.dsMau.find(m => m.ten === item.mau);
+                if (matchedMau) {
+                  if (matchedMau.img) {
+                    newHinhAnh = [matchedMau.img, ...(matchedMau.hinhAnhChiTiet || [])];
+                  }
+                  if ((matchedMau as any).imgQuan) {
+                    newImgQuan = (matchedMau as any).imgQuan;
+                  }
+                  if (matchedMau.video !== undefined) {
+                    newVideo = matchedMau.video;
+                  }
+                  if (matchedMau.maSKU !== undefined) {
+                    newMaSKU = matchedMau.maSKU;
+                  }
+                  if (matchedMau.soLuongKho !== undefined && matchedMau.soLuongKho !== item.soLuong) {
+                    newSoLuong = matchedMau.soLuongKho;
+                    if (data.bangSize && data.bangSize.sizes) {
+                        const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                        let conLai = newSoLuong;
+                        
+                        newChiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
+                           if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                           const ratio = data.bangSize.ratios[index] || 0;
+                           const chia = Math.round((ratio / tongRatio) * newSoLuong);
+                           conLai -= chia;
+                           return { size, sl: Math.max(0, chia) };
+                        });
+                    }
+                  }
+                }
+              }
+
+              return {
+                ...item,
+                ...(data.loaiSP ? { phanLoai: data.loaiSP } : {}),
+                ...(data.tenSP ? { tenSP: data.tenSP } : {}),
+                ...(newHinhAnh ? { hinhAnh: newHinhAnh } : {}),
+                ...(newImgQuan ? { imgQuan: newImgQuan } : {}),
+                ...(newVideo !== undefined ? { video: newVideo } : {}),
+                ...(newMaSKU !== undefined ? { maSKU: newMaSKU } : {}),
+                ...(newSoLuong !== undefined ? { soLuong: newSoLuong, trangThai: newSoLuong > 0 ? "con" : "het" } : {}),
+                ...(newChiTietSize !== undefined ? { chiTietSize: newChiTietSize } : {})
+              };
+            }
+            return item;
+          });
+
+          // Xử lý xoá color variant khỏi localStorage nếu đã xoá trong modal
           if (data.dsMau && Array.isArray(data.dsMau)) {
-             // 1. Xóa các màu không còn tồn tại
-             const keepColors = data.dsMau.map(m => m.ten?.trim().toLowerCase());
+             const keepColors = data.dsMau.map(m => m.ten);
              const originalLength = khoData.length;
-             khoData = khoData.filter((x: any) => !((x.maSP === id || x.ma_sp === id) && !keepColors.includes(x.mau?.trim().toLowerCase())));
-             if (khoData.length !== originalLength) changed = true;
+             khoData = khoData.filter((x: any) => !(x.maSP === id && !keepColors.includes(x.mau)));
+             if (khoData.length !== originalLength) {
+                 changed = true;
+             }
 
-             // 2. Cập nhật và gom stock cho từng màu
+             // Xử lý thêm mới color variant vào localStorage nếu chưa có
              for (let i = 0; i < data.dsMau.length; i++) {
-                 const m = data.dsMau[i];
-                 const matchingRows = khoData.filter((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau?.trim().toLowerCase() === m.ten?.trim().toLowerCase());
-
-                 if (matchingRows.length > 0) {
-                     const firstRow = matchingRows[0];
-                     let newChiTietSize = firstRow.chiTietSize;
-                     
-                     if (m.soLuongKho !== undefined && m.soLuongKho !== firstRow.soLuong) {
-                         if (data.bangSize && data.bangSize.sizes) {
-                             const tongRatio = (data.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
-                             let conLai = m.soLuongKho;
-                             newChiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
-                                if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                                const ratio = data.bangSize.ratios[index] || 0;
-                                const chia = Math.round((ratio / tongRatio) * m.soLuongKho!);
-                                conLai -= chia;
-                                return { size, sl: Math.max(0, chia) };
-                             });
-                         }
-                     }
-
-                     // Update dòng đầu tiên
-                     if (data.loaiSP) firstRow.phanLoai = data.loaiSP;
-                     if (data.tenSP) firstRow.tenSP = data.tenSP;
-                     if (m.img) firstRow.hinhAnh = [m.img, ...(m.hinhAnhChiTiet || [])];
-                     if ((m as any).imgQuan) firstRow.imgQuan = (m as any).imgQuan;
-                     if (m.video !== undefined) firstRow.video = m.video;
-                     if (m.maSKU !== undefined) firstRow.maSKU = m.maSKU;
-                     if (m.soLuongKho !== undefined) {
-                         firstRow.soLuong = m.soLuongKho;
-                         firstRow.so_luong = m.soLuongKho; // VERY IMPORTANT: Also update snake_case to prevent old data from being used
-                         firstRow.trangThai = m.soLuongKho > 0 ? "con" : "het";
-                     }
-                     if (newChiTietSize) {
-                         firstRow.chiTietSize = newChiTietSize;
-                         firstRow.chi_tiet_size = newChiTietSize;
-                     }
-                     changed = true;
-
-                     // Đưa các dòng trùng lặp về 0 (gom stock)
-                     for (let j = 1; j < matchingRows.length; j++) {
-                         matchingRows[j].soLuong = 0;
-                         matchingRows[j].so_luong = 0; // Prevent local duplication
-                         matchingRows[j].trangThai = "het";
-                         if (data.loaiSP) matchingRows[j].phanLoai = data.loaiSP;
-                         if (data.tenSP) matchingRows[j].tenSP = data.tenSP;
-                         changed = true;
-                     }
-                 } else {
-                     // Thêm mới nếu chưa có
-                     if (m.soLuongKho !== undefined) {
-                         changed = true;
-                         const newId = `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`;
-                         (m as any)._newId = newId; // Save for Supabase block later
-                         
-                         khoData.push({
-                            id: newId,
-                            maSP: id,
-                            tenSP: data.tenSP || id,
-                            mau: m.ten,
-                            soLuong: m.soLuongKho,
-                            trangThai: m.soLuongKho > 0 ? "con" : "het",
-                            ngayNhap: new Date().toISOString().slice(0, 10),
-                            phanLoai: data.loaiSP || "BoTru",
-                            maSKU: m.maSKU,
-                            hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
-                            imgQuan: (m as any).imgQuan,
-                            video: m.video,
-                            viTri: "Khu A1",
-                            giaTri: m.soLuongKho * (data.giaVonDuKien || 0),
-                            donGia: data.giaVonDuKien || 0,
-                            giaBanLe: data.giaBanLe || 0,
-                            giaBanSi: data.giaBanSi || 0,
-                            chiTietSize: data.bangSize?.sizes?.map((size: string, index: number) => {
-                                const tongRatio = (data.bangSize!.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
-                                const ratio = data.bangSize!.ratios[index] || 0;
-                                return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
-                            }) || [],
-                         });
-                     }
-                 }
+                const m = data.dsMau[i];
+                const existingColor = khoData.find((x: any) => x.maSP === id && x.mau === m.ten);
+                if (!existingColor && m.soLuongKho !== undefined) {
+                   changed = true;
+                   khoData.push({
+                      id: `TP${Date.now().toString().slice(-6)}${i}`,
+                      maSP: id,
+                      tenSP: data.tenSP || id,
+                      mau: m.ten,
+                      soLuong: m.soLuongKho,
+                      trangThai: m.soLuongKho > 0 ? "con" : "het",
+                      ngayNhap: new Date().toISOString().slice(0, 10),
+                      phanLoai: data.loaiSP || "BoTru",
+                      maSKU: m.maSKU,
+                      hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
+                      imgQuan: (m as any).imgQuan,
+                      video: m.video,
+                      viTri: "Khu A1",
+                      giaTri: m.soLuongKho * (data.giaVonDuKien || 0),
+                      donGia: data.giaVonDuKien || 0,
+                      giaBanLe: data.giaBanLe || 0,
+                      giaBanSi: data.giaBanSi || 0,
+                      chiTietSize: data.bangSize?.sizes?.map((size: string, index: number) => {
+                          const tongRatio = data.bangSize!.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                          const ratio = data.bangSize!.ratios[index] || 0;
+                          return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
+                      }) || [],
+                   });
+                }
              }
           }
 
           if (changed) {
             localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
-            shouldDispatch = true;
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
+            }
           }
         }
       } catch (e) {
@@ -401,34 +387,33 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                    variantUpdates.video = m.video;
                  }
                  
-                 const { data: existingRows, error: existingErr } = await supabase.from('kho_thanh_pham')
+                 const { data: existingRows } = await supabase.from('kho_thanh_pham')
                     .select('id, so_luong')
                     .eq('ma_sp', id)
                     .eq('mau', m.ten)
-                    .order('id', { ascending: false });
+                    .order('created_at', { ascending: false });
 
-                 if (existingErr) {
-                    console.error("Lỗi fetch existingRows:", existingErr);
-                 }
                  if (existingRows && existingRows.length > 0) {
                      const totalStock = existingRows.reduce((s: number, r: any) => s + (r.so_luong || 0), 0);
                      const firstRowId = existingRows[0].id;
 
                      if (m.soLuongKho !== undefined) {
-                        // Always update if user explicitly provided a new value to ensure chi_tiet_size and so_luong are repaired
-                        variantUpdates.so_luong = m.soLuongKho; // Consolidate total stock into first row
-                        if (data.bangSize && data.bangSize.sizes) {
-                           const tongRatio = (data.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
-                           let conLai = variantUpdates.so_luong;
-                           variantUpdates.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
-                              if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                              const ratio = data.bangSize.ratios[index] || 0;
-                              const chia = Math.round((ratio / tongRatio) * variantUpdates.so_luong);
-                              conLai -= chia;
-                              return { size, sl: Math.max(0, chia) };
-                           });
+                        const diff = m.soLuongKho - totalStock;
+                        if (diff !== 0) {
+                           variantUpdates.so_luong = (existingRows[0].so_luong || 0) + diff;
+                           if (data.bangSize && data.bangSize.sizes) {
+                              const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                              let conLai = variantUpdates.so_luong;
+                              variantUpdates.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
+                                 if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                                 const ratio = data.bangSize.ratios[index] || 0;
+                                 const chia = Math.round((ratio / tongRatio) * variantUpdates.so_luong);
+                                 conLai -= chia;
+                                 return { size, sl: Math.max(0, chia) };
+                              });
+                           }
+                           variantUpdates.trang_thai = variantUpdates.so_luong > 0 ? "con" : "het";
                         }
-                        variantUpdates.trang_thai = variantUpdates.so_luong > 0 ? "con" : "het";
                      }
                      if (Object.keys(variantUpdates).length > 0) {
                         if (variantUpdates.so_luong !== undefined) {
@@ -437,39 +422,16 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                             delete imageUpdates.so_luong;
                             delete imageUpdates.chi_tiet_size;
                             delete imageUpdates.trang_thai;
-                            if (existingRows.length > 1) {
-                               // Zero out all other duplicate rows to complete consolidation
-                               await supabase.from("kho_thanh_pham").update({...imageUpdates, so_luong: 0, trang_thai: 'het'}).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
+                            if (Object.keys(imageUpdates).length > 0 && existingRows.length > 1) {
+                               await supabase.from("kho_thanh_pham").update(imageUpdates).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
                             }
                         } else {
-                             if (existingRows.length > 1) {
-                                await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
-                             }
-                             await supabase.from("kho_thanh_pham").update(variantUpdates).eq("id", firstRowId);
-                         }
-                         // Fix local ID to match Supabase ID to prevent duplication
-                         // AND clean up any duplicate local rows from previous bugs
-                         const rawLocal = localStorage.getItem("mimin_kho_thanh_pham_v2");
-                         if (rawLocal) {
-                             let localKho = JSON.parse(rawLocal);
-                             const matchingLocalRows = localKho.filter((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau === m.ten);
-                             if (matchingLocalRows.length > 0) {
-                                 const firstLocal = matchingLocalRows[0];
-                                 if (firstLocal.id !== firstRowId) {
-                                     firstLocal.id = firstRowId;
-                                 }
-                                 if (matchingLocalRows.length > 1) {
-                                     // Remove duplicate local rows to completely stop "cộng dồn"
-                                     const idsToRemove = matchingLocalRows.slice(1).map((r: any) => r.id);
-                                     localKho = localKho.filter((r: any) => !idsToRemove.includes(r.id));
-                                 }
-                                 localStorage.setItem("mimin_kho_thanh_pham_v2", JSON.stringify(localKho));
-                             }
-                         }
-                      }
+                            await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
+                        }
+                     }
                      } else if (m.soLuongKho !== undefined) {
                         const newRow: any = {
-                           id: (m as any)._newId || `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
+                           id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
                            ma_sp: id,
                            ten_sp: data.tenSP || id,
                            mau: m.ten,
@@ -487,7 +449,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                            ...variantUpdates
                         };
                         if (data.bangSize && data.bangSize.sizes) {
-                           const tongRatio = (data.bangSize.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+                           const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
                            let conLai = m.soLuongKho;
                            newRow.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
                               if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
@@ -500,17 +462,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                         const { error } = await supabase.from("kho_thanh_pham").insert([newRow]);
                         if (error) {
                             console.error("Lỗi insert kho_thanh_pham:", error);
-                        } else {
-                            // Fix local ID to match Supabase ID
-                            const rawLocal = localStorage.getItem("mimin_kho_thanh_pham_v2");
-                            if (rawLocal) {
-                                const localKho = JSON.parse(rawLocal);
-                                const localRow = localKho.find((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau === m.ten);
-                                if (localRow && localRow.id !== newRow.id) {
-                                    localRow.id = newRow.id;
-                                    localStorage.setItem("mimin_kho_thanh_pham_v2", JSON.stringify(localKho));
-                                }
-                            }
                         }
                      }
                  }
@@ -530,10 +481,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           console.error("Lỗi đồng bộ kho_thanh_pham khi suaSP:", e);
         }
-    }
-
-    if (shouldDispatch && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
     }
   }, [setDsSanPham]);
 
