@@ -272,8 +272,17 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                   if (matchedMau.maSKU !== undefined) {
                     newMaSKU = matchedMau.maSKU;
                   }
-                  if (matchedMau.soLuongKho !== undefined && matchedMau.soLuongKho !== item.soLuong) {
-                    newSoLuong = matchedMau.soLuongKho;
+                  if (matchedMau.soLuongKho !== undefined) {
+                    // Xử lý dồn dòng: Chỉ gán tổng số lượng cho dòng đầu tiên tìm thấy của màu này
+                    // Các dòng trùng lặp (do nhập nhiều lô) sẽ được gán về 0 để không bị cộng dồn
+                    if (!(matchedMau as any)._localProcessed) {
+                        newSoLuong = matchedMau.soLuongKho;
+                        // Đánh dấu là màu này đã được xử lý xong tổng tồn kho
+                        (matchedMau as any)._localProcessed = true;
+                    } else {
+                        newSoLuong = 0; // Đưa các lô trùng lặp về 0
+                    }
+                    
                     if (data.bangSize && data.bangSize.sizes) {
                         const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
                         let conLai = newSoLuong;
@@ -398,9 +407,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      const firstRowId = existingRows[0].id;
 
                      if (m.soLuongKho !== undefined) {
-                        const diff = m.soLuongKho - totalStock;
-                        if (diff !== 0) {
-                           variantUpdates.so_luong = (existingRows[0].so_luong || 0) + diff;
+                        // Consolidate rows: put ALL stock into the first row
+                        if (m.soLuongKho !== existingRows[0].so_luong || existingRows.length > 1) {
+                           variantUpdates.so_luong = m.soLuongKho;
                            if (data.bangSize && data.bangSize.sizes) {
                               const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
                               let conLai = variantUpdates.so_luong;
@@ -422,8 +431,13 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                             delete imageUpdates.so_luong;
                             delete imageUpdates.chi_tiet_size;
                             delete imageUpdates.trang_thai;
-                            if (Object.keys(imageUpdates).length > 0 && existingRows.length > 1) {
-                               await supabase.from("kho_thanh_pham").update(imageUpdates).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
+                            
+                            // Nếu có các dòng lô cũ trùng lặp, đưa số lượng của chúng về 0
+                            if (existingRows.length > 1) {
+                               await supabase.from("kho_thanh_pham").update({...imageUpdates, so_luong: 0, trang_thai: 'het'}).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
+                            } else if (Object.keys(imageUpdates).length > 0) {
+                               // No other rows, but we might still need to update images if there were other rows? 
+                               // Actually if existingRows.length == 1, there are no other rows to update images for.
                             }
                         } else {
                             await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
