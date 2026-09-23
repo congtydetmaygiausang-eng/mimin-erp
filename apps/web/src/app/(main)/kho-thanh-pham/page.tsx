@@ -946,6 +946,7 @@ export default function KhoThanhPhamPage() {
               filtered={filtered}
               productImages={mergedProductImages}
               productVariantImages={mergedVariantImages}
+              setShowAdd={setShowAdd}
               setEditing={setEditing}
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}
