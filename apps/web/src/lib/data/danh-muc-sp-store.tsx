@@ -273,15 +273,15 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
 
           if (data.dsMau && Array.isArray(data.dsMau)) {
              // 1. Xóa các màu không còn tồn tại
-             const keepColors = data.dsMau.map(m => m.ten);
+             const keepColors = data.dsMau.map(m => m.ten?.trim().toLowerCase());
              const originalLength = khoData.length;
-             khoData = khoData.filter((x: any) => !((x.maSP === id || x.ma_sp === id) && !keepColors.includes(x.mau)));
+             khoData = khoData.filter((x: any) => !((x.maSP === id || x.ma_sp === id) && !keepColors.includes(x.mau?.trim().toLowerCase())));
              if (khoData.length !== originalLength) changed = true;
 
              // 2. Cập nhật và gom stock cho từng màu
              for (let i = 0; i < data.dsMau.length; i++) {
                  const m = data.dsMau[i];
-                 const matchingRows = khoData.filter((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau === m.ten);
+                 const matchingRows = khoData.filter((x: any) => (x.maSP === id || x.ma_sp === id) && x.mau?.trim().toLowerCase() === m.ten?.trim().toLowerCase());
 
                  if (matchingRows.length > 0) {
                      const firstRow = matchingRows[0];
@@ -393,12 +393,19 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                    variantUpdates.video = m.video;
                  }
                  
-                 const { data: existingRows } = await supabase.from('kho_thanh_pham')
+                 const { data: existingRows, error: existingErr } = await supabase.from('kho_thanh_pham')
                     .select('id, so_luong')
                     .eq('ma_sp', id)
                     .eq('mau', m.ten)
+<<<<<<< HEAD
+                    .order('id', { ascending: false });
+=======
                     .order('ngay_nhap', { ascending: false });
+>>>>>>> origin/main
 
+                 if (existingErr) {
+                    console.error("Lỗi fetch existingRows:", existingErr);
+                 }
                  if (existingRows && existingRows.length > 0) {
                      const totalStock = existingRows.reduce((s: number, r: any) => s + (r.so_luong || 0), 0);
                      const firstRowId = existingRows[0].id;
@@ -433,6 +440,11 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                                await supabase.from("kho_thanh_pham").update({...imageUpdates, so_luong: 0, trang_thai: 'het'}).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
                             }
                         } else {
+<<<<<<< HEAD
+                            await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
+                        }
+                     }
+=======
                              if (existingRows.length > 1) {
                                 await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
                              }
@@ -450,6 +462,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                              }
                          }
                       }
+>>>>>>> origin/main
                      } else if (m.soLuongKho !== undefined) {
                         const newRow: any = {
                            id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
@@ -513,10 +526,13 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           console.error("Lỗi đồng bộ kho_thanh_pham khi suaSP:", e);
         }
+<<<<<<< HEAD
+=======
     }
 
     if (shouldDispatch && typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
+>>>>>>> origin/main
     }
   }, [setDsSanPham]);
 
