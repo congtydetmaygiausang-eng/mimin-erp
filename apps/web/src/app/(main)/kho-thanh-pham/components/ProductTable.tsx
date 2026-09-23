@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.2)
 
 import React, { useMemo } from "react";
-import { Edit, Truck, Trash2, Image as ImageIcon, Plus } from "lucide-react";
+import { Edit, Truck, Trash2, Image as ImageIcon } from "lucide-react";
 import { layMaLoTonKho, type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, type LoaiSP, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 
@@ -16,7 +16,6 @@ interface ProductTableProps {
   filtered: SanPhamTP[];
   productImages: Record<string, string>;
   productVariantImages?: Record<string, string>;
-  setShowAdd?: (v: boolean | { maSP?: string; tenSP?: string; phanLoai?: string }) => void;
   setEditing: (s: SanPhamTP | null) => void;
   handleXuatKho: (id: string) => void;
   handleDelete: (id: string) => void;
@@ -24,7 +23,7 @@ interface ProductTableProps {
   onXoaTong?: (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => void;
 }
 
-export function ProductTable({ filtered, productImages, productVariantImages = {}, setShowAdd, setEditing, handleXuatKho, handleDelete, onSuaTong, onXoaTong }: ProductTableProps) {
+export function ProductTable({ filtered, productImages, productVariantImages = {}, setEditing, handleXuatKho, handleDelete, onSuaTong, onXoaTong }: ProductTableProps) {
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
 
   // Nhóm sản phẩm theo Mã SP
@@ -68,11 +67,6 @@ export function ProductTable({ filtered, productImages, productVariantImages = {
           {/* Header / Main SP */}
           <div className="p-4 md:px-6 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex gap-4 relative">
              <div className="absolute top-4 right-4 md:right-6 flex items-center gap-2 z-10">
-               {setShowAdd && (
-                 <button onClick={() => setShowAdd({ maSP: group[0].maSP, tenSP: group[0].tenSP, phanLoai: group[0].phanLoai || "BoTru" })} className="p-2 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-colors bg-white/80 border border-emerald-200 shadow-sm flex items-center gap-1.5" title="Thêm biến thể mới">
-                    <Plus className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Thêm Biến Thể</span>
-                 </button>
-               )}
                {onSuaTong && (
                  <button onClick={() => onSuaTong({ maSP: group[0].maSP, tenSP: group[0].tenSP, items: group })} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-indigo-600 rounded-lg transition-colors bg-white/80 border border-slate-200 shadow-sm flex items-center gap-1.5" title="Sửa tổng thể sản phẩm">
                     <Edit className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Sửa Nhóm</span>

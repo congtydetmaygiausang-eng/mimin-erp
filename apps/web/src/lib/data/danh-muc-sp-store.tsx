@@ -397,11 +397,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                     .select('id, so_luong')
                     .eq('ma_sp', id)
                     .eq('mau', m.ten)
-<<<<<<< HEAD
                     .order('id', { ascending: false });
-=======
-                    .order('ngay_nhap', { ascending: false });
->>>>>>> origin/main
 
                  if (existingErr) {
                     console.error("Lỗi fetch existingRows:", existingErr);
@@ -440,11 +436,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                                await supabase.from("kho_thanh_pham").update({...imageUpdates, so_luong: 0, trang_thai: 'het'}).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
                             }
                         } else {
-<<<<<<< HEAD
-                            await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
-                        }
-                     }
-=======
                              if (existingRows.length > 1) {
                                 await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
                              }
@@ -462,7 +453,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                              }
                          }
                       }
->>>>>>> origin/main
                      } else if (m.soLuongKho !== undefined) {
                         const newRow: any = {
                            id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
@@ -526,13 +516,10 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           console.error("Lỗi đồng bộ kho_thanh_pham khi suaSP:", e);
         }
-<<<<<<< HEAD
-=======
     }
 
     if (shouldDispatch && typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
->>>>>>> origin/main
     }
   }, [setDsSanPham]);
 
