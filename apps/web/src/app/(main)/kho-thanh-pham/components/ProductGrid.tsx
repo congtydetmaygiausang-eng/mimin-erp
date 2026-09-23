@@ -21,7 +21,7 @@ interface ProductGridProps {
   setUploadType: (t: "image" | "video") => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   setViewingImage: (s: string | null) => void;
-  setShowAdd: (v: boolean) => void;
+  setShowAdd: (v: boolean | { maSP?: string; tenSP?: string; phanLoai?: string }) => void;
   setShowMasterDetails: (maSP: string | null) => void;
   setEditing: (s: SanPhamTP | null) => void;
   handleXuatKho: (id: string) => void;
@@ -104,8 +104,11 @@ export function ProductGrid({
               <button onClick={() => setShowMasterDetails(group.maSP || "NO_CODE")} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-all text-sm font-bold flex items-center gap-1.5" title="Xem chi tiết">
                 <Eye className="w-4 h-4" /> Chi tiết
               </button>
-              <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-all text-sm font-bold flex items-center gap-1.5" title="Thêm đơn hàng">
+              <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition-all text-sm font-bold flex items-center gap-1.5" title="Thêm đơn hàng mới hoàn toàn">
                 <Plus className="w-4 h-4" /> Thêm đơn
+              </button>
+              <button onClick={() => setShowAdd({ maSP: group.maSP, tenSP: group.tenSP, phanLoai: group.items[0]?.phanLoai || "BoTru" })} className="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 rounded-xl text-emerald-700 transition-all text-sm font-bold flex items-center gap-1.5 shadow-sm" title="Thêm màu/biến thể mới cho sản phẩm này">
+                <Plus className="w-4 h-4" /> Thêm biến thể
               </button>
               {canRebuild && (
                 <button
