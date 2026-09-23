@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.2)
 
 import React, { useMemo } from "react";
-import { Edit, Truck, Trash2, Image as ImageIcon } from "lucide-react";
+import { Edit, Truck, Trash2, Image as ImageIcon, Plus } from "lucide-react";
 import { layMaLoTonKho, type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, type LoaiSP, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 
