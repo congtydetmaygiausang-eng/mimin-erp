@@ -80,21 +80,21 @@ function detectLoaiSP(value: string): LoaiSP {
   return "AoCoTron";
 }
 
-export function ProductFormModal({ sp, initialImage, onClose, onSave }: { sp?: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
+export function ProductFormModal({ sp, initialGroup, initialImage, onClose, onSave }: { sp?: SanPhamTP; initialGroup?: { maSP?: string; tenSP?: string; phanLoai?: string }; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
   if (sp) {
     return <SuaBienTheForm sp={sp} initialImage={initialImage} onClose={onClose} onSave={onSave} />;
   }
-  return <ThemNhieuBienTheForm onClose={onClose} onSave={onSave} />;
+  return <ThemNhieuBienTheForm initialGroup={initialGroup} onClose={onClose} onSave={onSave} />;
 }
 
 // =================== THÊM MỚI - NHIỀU BIẾN THỂ ===================
-function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave: (data: any[]) => void }) {
+function ThemNhieuBienTheForm({ initialGroup, onClose, onSave }: { initialGroup?: { maSP?: string; tenSP?: string; phanLoai?: string }; onClose: () => void; onSave: (data: any[]) => void }) {
   const { dsSanPham: dsDanhMuc, loading: loadingDanhMuc } = useDanhMucSP();
   const { bangGia: dsBangGia, themChiTiet, layGia, loading: loadingBangGia } = useBangGia();
   // === Thông tin CHUNG cho cả lô (nhập 1 lần) ===
-  const [maSP, setMaSP] = useState("");
-  const [tenSP, setTenSP] = useState("");
-  const [phanLoai, setPhanLoai] = useState<string>("BoTru");
+  const [maSP, setMaSP] = useState(initialGroup?.maSP || "");
+  const [tenSP, setTenSP] = useState(initialGroup?.tenSP || "");
+  const [phanLoai, setPhanLoai] = useState<string>(initialGroup?.phanLoai || "BoTru");
   const [maLoKho] = useState(taoMaLoTonKho);
   const [ngayNhap, setNgayNhap] = useState(new Date().toISOString().slice(0, 10));
   const [presetId, setPresetId] = useState("");
@@ -152,6 +152,14 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       setBienThe([bienTheMoi([])]);
     }
   };
+
+  const hasInitRef = useRef(false);
+  useEffect(() => {
+    if (!hasInitRef.current && initialGroup?.maSP && dsDanhMuc.length > 0) {
+      hasInitRef.current = true;
+      chonSanPham(initialGroup.maSP);
+    }
+  }, [initialGroup?.maSP, dsDanhMuc]);
 
   const handleLuuBangSizeMoi = async (p: SizeRatioPreset) => {
     try {
