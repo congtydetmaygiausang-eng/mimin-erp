@@ -54,7 +54,7 @@ export default function KhoThanhPhamPage() {
   const [sortBy, setSortBy] = useState<"ngay" | "sl" | "gt">("ngay");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [editing, setEditing] = useState<SanPhamTP | null>(null);
-  const [showAdd, setShowAdd] = useState<{ maSP?: string; tenSP?: string; phanLoai?: string } | boolean>(false);
+  const [showAdd, setShowAdd] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
@@ -946,7 +946,6 @@ export default function KhoThanhPhamPage() {
               filtered={filtered}
               productImages={mergedProductImages}
               productVariantImages={mergedVariantImages}
-              setShowAdd={setShowAdd}
               setEditing={setEditing}
               handleXuatKho={handleXuatKho}
               handleDelete={handleDelete}
@@ -962,7 +961,7 @@ export default function KhoThanhPhamPage() {
 
       {/* Modals */}
       {showMasterDetails && <MasterDetailsModal maSP={showMasterDetails} groups={groupedProducts} productImages={mergedProductImages} onClose={() => setShowMasterDetails(null)} />}
-      {showAdd && <ProductFormModal initialGroup={typeof showAdd === "object" ? showAdd : undefined} onClose={() => setShowAdd(false)} onSave={handleAdd} />}
+      {showAdd && <ProductFormModal onClose={() => setShowAdd(false)} onSave={handleAdd} />}
       {editing && <ProductFormModal sp={editing} initialImage={editing.hinhAnh?.[0] || mergedVariantImages[`${editing.maSP}_${editing.mau}`] || mergedProductImages[editing.id] || mergedProductImages[editing.maSP]} onClose={() => setEditing(null)} onSave={handleEdit} />}
       {suaTongGroup && <SuaTongModal group={suaTongGroup} onClose={() => setSuaTongGroup(null)} onSave={handleSaveSuaTong} />}
       {dangBanGroup && (() => {
