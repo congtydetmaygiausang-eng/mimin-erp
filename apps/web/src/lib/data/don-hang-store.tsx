@@ -146,7 +146,7 @@ interface DonHangContextType {
 const DonHangContext = createContext<DonHangContextType | undefined>(undefined);
 
 // ─── Provider ──────────────────────────────────────────────────────────────────
-import { useSupabaseSync } from "@/lib/supabase/client";
+import { useSupabaseSync, camelToSnake } from "@/lib/supabase/client";
 import { useKhachHang } from "./khach-hang-store";
 import { toast } from "sonner";
 
@@ -154,7 +154,50 @@ import { toast } from "sonner";
 
 export function DonHangProvider({ children }: { children: ReactNode }) {
   // Replace useState & localStorage with useSupabaseSync
-  const { data: dsOrder, setData: setDsOrder, loading } = useSupabaseSync<Order>(STORAGE_KEY, "don_hang", SEED_ORDERS);
+  const { data: dsOrder, setData: setDsOrder, loading } = useSupabaseSync<Order>(STORAGE_KEY, "don_hang", SEED_ORDERS, {
+    mapIn: (row) => {
+      let shipping = row.shipping;
+      if (typeof shipping === 'string') {
+        try { shipping = JSON.parse(shipping); } catch(e) {}
+      }
+      let diaChi = row.diaChi;
+      let thueVAT = row.thueVAT;
+      
+      if (shipping && typeof shipping === 'object') {
+        if (shipping.xdiachi !== undefined) diaChi = shipping.xdiachi;
+        if (shipping.xthuevat !== undefined) thueVAT = shipping.xthuevat;
+        
+        delete shipping.xdiachi;
+        delete shipping.xthuevat;
+        if (Object.keys(shipping).length === 0) shipping = undefined;
+      }
+      
+      const mapped = {
+        ...row,
+        shipping,
+        diaChi,
+        thueVAT,
+        items: row.items ? (typeof row.items === 'string' ? JSON.parse(row.items) : row.items) : [],
+        payments: row.payments ? (typeof row.payments === 'string' ? JSON.parse(row.payments) : row.payments) : []
+      };
+      
+      // Fix acronyms that get mangled by snakeToCamel (e.g. ma_dh -> maDh -> maDH)
+      if (mapped.maDh !== undefined) { mapped.maDH = mapped.maDh; delete mapped.maDh; }
+      if (mapped.tongSl !== undefined) { mapped.tongSL = mapped.tongSl; delete mapped.tongSl; }
+      // Fallback for loaiDon
+      if (mapped.loaiDonHang === undefined && mapped.loaiDon !== undefined) mapped.loaiDonHang = mapped.loaiDon;
+      
+      return mapped;
+    },
+    mapOut: (row) => {
+      // Lọc bỏ các trường chưa có cột trên Supabase (vd: dia_chi, thue_vat)
+      // Nhét tạm vào cột shipping (cột JSON) để lưu trữ trên db.
+      // Dùng tên biến toàn chữ thường (xdiachi, xthuevat) để tránh bị hàm camelToSnake làm hỏng format
+      const { diaChi, thueVAT, shipping, ...rest } = row;
+      const modifiedShipping = shipping ? { ...shipping, xdiachi: diaChi, xthuevat: thueVAT } : { xdiachi: diaChi, xthuevat: thueVAT };
+      return camelToSnake({ ...rest, shipping: modifiedShipping });
+    }
+  });
   
   // Lấy dữ liệu khách hàng để đồng bộ công nợ
   const { list: khList, congTruCongNo } = useKhachHang();

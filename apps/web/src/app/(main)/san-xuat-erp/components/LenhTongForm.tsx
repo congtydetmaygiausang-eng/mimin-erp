@@ -21,6 +21,8 @@ import {
 } from "@/lib/inventory-engine";
 import { KHU_ME_NHUOM, type KhuMeNhuom } from "@/lib/data/fabric-dye-lots";
 import { Card, F, Modal } from "./ui-blocks";
+import PhieuNhapSoiPrint from "./PhieuNhapSoiPrint";
+import PhieuGiaoDetPrint from "./PhieuGiaoDetPrint";
 
 type MauNhuomInput = {
   maVai: string;
@@ -36,6 +38,8 @@ type SoiInput = {
   maLoSoi: string;
   soKg: number;
   donGia: number;
+  soThung?: number;
+  kgMoiThung?: number;
 };
 
 type PhieuSanXuatVai = {
@@ -92,6 +96,8 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [ke, setKe] = useState("C01");
   const [daTaoLenh, setDaTaoLenh] = useState(false);
   const [hienPhieu, setHienPhieu] = useState(false);
+  const [hienPhieuNhapSoi, setHienPhieuNhapSoi] = useState(false);
+  const [hienPhieuGiaoDet, setHienPhieuGiaoDet] = useState(false);
   const [dongDangChonVai, setDongDangChonVai] = useState<number | null>(null);
   const [phieuDaTao, setPhieuDaTao] = useState<PhieuSanXuatVai | null>(null);
 
@@ -182,6 +188,8 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         maLoSoi: `LSOI-${String(prev.length + 1).padStart(3, "0")}`,
         soKg: 0,
         donGia: 0,
+        soThung: 0,
+        kgMoiThung: 0,
       },
     ]);
   };
@@ -348,13 +356,22 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs text-white">1</span>
             SỢI + NCC
           </h3>
-          <button
-            type="button"
-            onClick={themDongSoi}
-            className="inline-flex items-center gap-1 rounded-lg bg-[#EA990C] px-3 py-2 text-xs font-black text-white shadow-md transition hover:bg-[#D98200]"
-          >
-            <Plus className="h-4 w-4" /> THÊM SỢI MỚI
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setHienPhieuNhapSoi(true)}
+              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-md transition hover:bg-blue-700"
+            >
+              <Printer className="h-4 w-4" /> IN PHIẾU
+            </button>
+            <button
+              type="button"
+              onClick={themDongSoi}
+              className="inline-flex items-center gap-1 rounded-lg bg-[#EA990C] px-3 py-2 text-xs font-black text-white shadow-md transition hover:bg-[#D98200]"
+            >
+              <Plus className="h-4 w-4" /> THÊM SỢI MỚI
+            </button>
+          </div>
         </div>
         <div className="space-y-2">
           <div>
@@ -379,9 +396,19 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
                   <F label="Loại sợi" v={soi.loaiSoi} on={(value) => capNhatSoi(soi.id, { loaiSoi: value })} />
                   <F label="Mã lô" v={soi.maLoSoi} on={(value) => capNhatSoi(soi.id, { maLoSoi: value })} />
+                  <F label="Số thùng" v={soi.soThung || 0} on={(value) => {
+                    const newSoThung = Number(value);
+                    const newKgMoiThung = soi.kgMoiThung || 0;
+                    capNhatSoi(soi.id, { soThung: newSoThung, soKg: newSoThung > 0 && newKgMoiThung > 0 ? newSoThung * newKgMoiThung : soi.soKg });
+                  }} type="number" />
+                  <F label="Kg/thùng" v={soi.kgMoiThung || 0} on={(value) => {
+                    const newKgMoiThung = Number(value);
+                    const newSoThung = soi.soThung || 0;
+                    capNhatSoi(soi.id, { kgMoiThung: newKgMoiThung, soKg: newSoThung > 0 && newKgMoiThung > 0 ? newSoThung * newKgMoiThung : soi.soKg });
+                  }} type="number" />
                   <F label="Số kg" v={soi.soKg} on={(value) => capNhatSoi(soi.id, { soKg: value })} type="number" />
                   <F label="Đơn giá (đ/kg)" v={soi.donGia} on={(value) => capNhatSoi(soi.id, { donGia: value })} type="number" />
                 </div>
@@ -408,10 +435,19 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
       </div>
 
       <div className="card p-3 bg-violet-50 dark:bg-violet-900/20 border-2 border-violet-300">
-        <h3 className="font-bold text-violet-700 flex items-center gap-2 mb-2">
-          <span className="w-5 h-5 rounded-full bg-violet-500 text-white text-xs flex items-center justify-center">2</span>
-          DỆT - GIA CÔNG
-        </h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-violet-700 flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-violet-500 text-white text-xs flex items-center justify-center">2</span>
+            DỆT - GIA CÔNG
+          </h3>
+          <button
+            type="button"
+            onClick={() => setHienPhieuGiaoDet(true)}
+            className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-2 text-xs font-black text-white shadow-md transition hover:bg-violet-700"
+          >
+            <Printer className="h-4 w-4" /> IN PHIẾU
+          </button>
+        </div>
         <div>
           <label className="text-xs font-semibold opacity-70">Xưởng dệt</label>
           <select value={xuongDetId} onChange={(e) => setXuongDetId(e.target.value)} disabled={loading || dsXuongDet.length === 0} className="w-full px-3 py-2 rounded-lg border text-sm font-semibold disabled:opacity-60">
@@ -712,6 +748,22 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             </button>
           </div>
         </Modal>
+      )}
+
+      {hienPhieuNhapSoi && (
+        <PhieuNhapSoiPrint
+          ncc={ncc}
+          danhSachSoi={danhSachSoi}
+          onClose={() => setHienPhieuNhapSoi(false)}
+        />
+      )}
+      
+      {hienPhieuGiaoDet && (
+        <PhieuGiaoDetPrint
+          xDet={xDet}
+          danhSachSoi={danhSachSoi}
+          onClose={() => setHienPhieuGiaoDet(false)}
+        />
       )}
     </div>
   );
