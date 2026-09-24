@@ -47,6 +47,16 @@ export function congDoanTruoc(lc: LenhCat, pc: any): CongDoanItem | undefined {
   const ds = lc?.phanCong || [];
   const idx = ds.findIndex((x: any) => x.id === pc?.id);
   if (idx <= 0) return undefined;
+  
+  const isMay = (p: any) => (p.id || "").toLowerCase().includes("may") || (p.tenCongDoan || "").toLowerCase().includes("may");
+  
+  if (isMay(pc)) {
+    for (let i = idx - 1; i >= 0; i--) {
+      if (!isMay(ds[i])) return ds[i];
+    }
+    return undefined;
+  }
+  
   return ds[idx - 1];
 }
 
@@ -116,8 +126,8 @@ export function ghepAoQuanTheoSize(
     return { ghepSizes: [], aoDuSizes: [], quanDuSizes: [], tongGhep: 0, chinhXacTheoSize: false };
   }
 
-  const aoMap = new Map((aoSizes || []).map((s) => [s.size, Number(s.sl) || 0]));
-  const quanMap = new Map((quanSizes || []).map((s) => [s.size, Number(s.sl) || 0]));
+  const aoMap = new Map((aoSizes || []).map((s) => [(s.size || "").trim().toUpperCase(), Number(s.sl) || 0]));
+  const quanMap = new Map((quanSizes || []).map((s) => [(s.size || "").trim().toUpperCase(), Number(s.sl) || 0]));
   const allSizes = Array.from(new Set([...aoMap.keys(), ...quanMap.keys()]));
 
   const ghepSizes: { size: string; sl: number }[] = [];
