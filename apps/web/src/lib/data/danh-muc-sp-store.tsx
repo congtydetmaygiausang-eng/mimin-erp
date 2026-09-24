@@ -240,6 +240,8 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     });
 
     // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
+    let localChanged = false;
+    let newKhoData: any = null;
     if (data.loaiSP || data.tenSP || data.dsMau || data.hinhAnh) {
       try {
         const KHO_KEY = "mimin_kho_thanh_pham_v2";
@@ -248,64 +250,67 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           let khoData = JSON.parse(raw);
           let changed = false;
           khoData = khoData.map((item: any) => {
-            if (item.maSP === id) {
-              changed = true;
-              let newHinhAnh = item.hinhAnh;
-              let newImgQuan = item.imgQuan;
-              let newVideo = item.video;
-              let newMaSKU = item.maSKU;
-              let newSoLuong = item.soLuong;
-              let newChiTietSize = item.chiTietSize;
-
-              if (data.dsMau && Array.isArray(data.dsMau)) {
-                const matchedMau = data.dsMau.find(m => m.ten === item.mau);
-                if (matchedMau) {
-                  if (matchedMau.img) {
-                    newHinhAnh = [matchedMau.img, ...(matchedMau.hinhAnhChiTiet || [])];
+              if (item.maSP === id) {
+                  let updated = { ...item };
+                  if (data.tenSP) updated.tenSP = data.tenSP;
+                  if (data.loaiSP) updated.phanLoai = data.loaiSP;
+                  if (data.giaVonDuKien !== undefined) {
+                      updated.donGia = data.giaVonDuKien;
+                      updated.giaTri = (updated.soLuong || 0) * data.giaVonDuKien;
                   }
-                  if ((matchedMau as any).imgQuan) {
-                    newImgQuan = (matchedMau as any).imgQuan;
+                  if (data.giaBanLe !== undefined) updated.giaBanLe = data.giaBanLe;
+                  if (data.giaBanSi !== undefined) updated.giaBanSi = data.giaBanSi;
+                  if (data.dsMau && Array.isArray(data.dsMau)) {
+                     const matchedMau = data.dsMau.find((m: any) => m.ten === item.mau);
+                     if (matchedMau) {
+                        if (matchedMau.img) {
+                           updated.hinhAnh = [matchedMau.img, ...(matchedMau.hinhAnhChiTiet || [])];
+                        }
+                        if (matchedMau.maSKU) {
+                           updated.maSKU = matchedMau.maSKU;
+                        }
+                        if ((matchedMau as any).imgQuan) {
+                           updated.imgQuan = (matchedMau as any).imgQuan;
+                        }
+                        if (matchedMau.video !== undefined) {
+                           updated.video = matchedMau.video;
+                        }
+                        if (matchedMau.soLuongKho !== undefined) {
+                            let newSoLuong = 0;
+                            if (!(matchedMau as any)._localProcessed) {
+                                newSoLuong = matchedMau.soLuongKho;
+                                (matchedMau as any)._localProcessed = true;
+                            } else {
+                                newSoLuong = 0;
+                            }
+                            if (updated.soLuong !== newSoLuong) {
+                                updated.soLuong = newSoLuong;
+                                updated.trangThai = newSoLuong > 0 ? "con" : "het";
+                                if (data.giaVonDuKien !== undefined) {
+                                    updated.giaTri = newSoLuong * data.giaVonDuKien;
+                                }
+                                if (data.bangSize && data.bangSize.sizes) {
+                                    const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
+                                    let conLai = newSoLuong;
+                                    updated.chiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
+                                        if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
+                                        const ratio = data.bangSize.ratios[index] || 0;
+                                        const chia = Math.round((ratio / tongRatio) * newSoLuong);
+                                        conLai -= chia;
+                                        return { size, sl: Math.max(0, chia) };
+                                    });
+                                }
+                            }
+                        }
+                     }
                   }
-                  if (matchedMau.video !== undefined) {
-                    newVideo = matchedMau.video;
-                  }
-                  if (matchedMau.maSKU !== undefined) {
-                    newMaSKU = matchedMau.maSKU;
-                  }
-                  if (matchedMau.soLuongKho !== undefined && matchedMau.soLuongKho !== item.soLuong) {
-                    newSoLuong = matchedMau.soLuongKho;
-                    if (data.bangSize && data.bangSize.sizes) {
-                        const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
-                        let conLai = newSoLuong;
-                        
-                        newChiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
-                           if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                           const ratio = data.bangSize.ratios[index] || 0;
-                           const chia = Math.round((ratio / tongRatio) * newSoLuong);
-                           conLai -= chia;
-                           return { size, sl: Math.max(0, chia) };
-                        });
-                    }
-                  }
-                }
+                  changed = true;
+                  return updated;
               }
-
-              return {
-                ...item,
-                ...(data.loaiSP ? { phanLoai: data.loaiSP } : {}),
-                ...(data.tenSP ? { tenSP: data.tenSP } : {}),
-                ...(newHinhAnh ? { hinhAnh: newHinhAnh } : {}),
-                ...(newImgQuan ? { imgQuan: newImgQuan } : {}),
-                ...(newVideo !== undefined ? { video: newVideo } : {}),
-                ...(newMaSKU !== undefined ? { maSKU: newMaSKU } : {}),
-                ...(newSoLuong !== undefined ? { soLuong: newSoLuong, trangThai: newSoLuong > 0 ? "con" : "het" } : {}),
-                ...(newChiTietSize !== undefined ? { chiTietSize: newChiTietSize } : {})
-              };
-            }
-            return item;
+              return item;
           });
 
-          // Xử lý xoá color variant khỏi localStorage nếu đã xoá trong modal
+          // Xử lý xóa biến thể
           if (data.dsMau && Array.isArray(data.dsMau)) {
              const keepColors = data.dsMau.map(m => m.ten);
              const originalLength = khoData.length;
@@ -314,7 +319,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                  changed = true;
              }
 
-             // Xử lý thêm mới color variant vào localStorage nếu chưa có
              for (let i = 0; i < data.dsMau.length; i++) {
                 const m = data.dsMau[i];
                 const existingColor = khoData.find((x: any) => x.maSP === id && x.mau === m.ten);
@@ -349,10 +353,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           }
 
           if (changed) {
+            localChanged = true;
+            newKhoData = khoData;
             localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
-            }
           }
         }
       } catch (e) {
@@ -364,10 +367,15 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       try {
         const { supabase } = await import("@/lib/supabase/client");
         if (supabase) {
-          // 1. Bulk update common fields
           const updates: any = {};
-          if (data.loaiSP) updates.phan_loai = data.loaiSP;
           if (data.tenSP) updates.ten_sp = data.tenSP;
+          if (data.loaiSP) updates.phan_loai = data.loaiSP;
+          if (data.giaVonDuKien !== undefined) {
+              updates.don_gia = data.giaVonDuKien;
+          }
+          if (data.giaBanLe !== undefined) updates.gia_ban_le = data.giaBanLe;
+          if (data.giaBanSi !== undefined) updates.gia_ban_si = data.giaBanSi;
+
           if (Object.keys(updates).length > 0) {
             await supabase.from("kho_thanh_pham").update(updates).eq("ma_sp", id);
           }
@@ -398,9 +406,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                      const firstRowId = existingRows[0].id;
 
                      if (m.soLuongKho !== undefined) {
-                        const diff = m.soLuongKho - totalStock;
-                        if (diff !== 0) {
-                           variantUpdates.so_luong = (existingRows[0].so_luong || 0) + diff;
+                        // Consolidate rows: put ALL stock into the first row
+                        if (m.soLuongKho !== existingRows[0].so_luong || existingRows.length > 1) {
+                           variantUpdates.so_luong = m.soLuongKho;
                            if (data.bangSize && data.bangSize.sizes) {
                               const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
                               let conLai = variantUpdates.so_luong;
@@ -422,8 +430,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                             delete imageUpdates.so_luong;
                             delete imageUpdates.chi_tiet_size;
                             delete imageUpdates.trang_thai;
-                            if (Object.keys(imageUpdates).length > 0 && existingRows.length > 1) {
-                               await supabase.from("kho_thanh_pham").update(imageUpdates).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
+                            
+                            if (existingRows.length > 1) {
+                               await supabase.from("kho_thanh_pham").update({...imageUpdates, so_luong: 0, trang_thai: 'het'}).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
                             }
                         } else {
                             await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
@@ -445,7 +454,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                            gia_tri: (m.soLuongKho || 0) * (data.giaVonDuKien || 0),
                            gia_ban_le: data.giaBanLe || 0,
                            gia_ban_si: data.giaBanSi || 0,
-                           gia_von: data.giaVonDuKien || 0,
                            ...variantUpdates
                         };
                         if (data.bangSize && data.bangSize.sizes) {
@@ -454,7 +462,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                            newRow.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
                               if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
                               const ratio = data.bangSize.ratios[index] || 0;
-                              const chia = Math.round((ratio / tongRatio) * m.soLuongKho);
+                              const chia = Math.round((ratio / tongRatio) * m.soLuongKho!);
                               conLai -= chia;
                               return { size, sl: Math.max(0, chia) };
                            });

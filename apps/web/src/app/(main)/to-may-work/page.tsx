@@ -255,7 +255,9 @@ export default function UiMayPage() {
                           )}
                           
                           {tt === "dang_lam" && (() => {
-                            const isEditing = editingPC === pc.id || pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            const isEditing = editingPC === pc.id;
+                            const hasEvidence = pc.bangChungURLs?.length > 0 || pc.chuKy;
+                            const isReSubmitting = isEditing || hasEvidence;
                             return (
                               <div className="flex-1 flex flex-col gap-2">
                                 {isEditing && (
@@ -268,24 +270,27 @@ export default function UiMayPage() {
                                   </div>
                                 )}
                                 <button onClick={() => {
-                                  if (isEditing) {
-                                    setEditingPC(null);
-                                    handleSuaXong(lc, pc);
+                                  if (isEditing) setEditingPC(null);
+                                  
+                                  if (isReSubmitting) {
+                                    // Đã có bằng chứng/chữ ký hoặc đang trong chế độ sửa -> Báo hoàn thành luôn không cần hỏi lại chữ ký
+                                    handleHoanThanh(lc, pc, pc.bangChungURLs, pc.chuKy);
                                   } else {
+                                    // Lần đầu hoàn thành -> Bật modal yêu cầu bằng chứng
                                     setUploadModal({ lc, pc });
                                   }
                                 }}
-                                  className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm ${isEditing ? "bg-rose-500 hover:bg-rose-600 shadow-rose-200" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"}`}>
+                                  className={`flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm ${isEditing ? "bg-amber-500 hover:bg-amber-600 shadow-amber-200" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"}`}>
                                   <CheckCircle2 className="w-5 h-5 relative z-10" /> 
-                                  <span className="relative z-10 tracking-wide uppercase text-sm">{isEditing ? "Lưu SL đã sửa & Đóng lại" : "Báo hoàn thành"}</span>
+                                  <span className="relative z-10 tracking-wide uppercase text-sm">{isEditing ? "Lưu SL đã sửa & Báo QC" : "Báo hoàn thành"}</span>
                                 </button>
                               </div>
                             );
                           })()}
                           {tt === "hoan_thanh" && (() => {
                             const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
-                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
-                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
+                            const nextNonMayStage = lc.phanCong?.slice(pcIdx + 1).find((p: any) => !p.tenCongDoan?.toLowerCase().includes("may"));
+                            const nextStageNotStarted = !nextNonMayStage || !nextNonMayStage.trangThaiCD || nextNonMayStage.trangThaiCD === "cho_giao";
 
                             return (
                               <div className="flex flex-col gap-1.5 w-full">
