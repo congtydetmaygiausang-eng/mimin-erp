@@ -3,8 +3,8 @@
 // ============ UI QC - KIỂM TRA CHẤT LƯỢNG (/to-qc-work) ============
 // Nhận hàng từ Tổ May, kiểm tra SL đạt/lỗi, vòng lặp sửa lỗi May ↔ QC
 
-import { useState } from "react";
-import { ShieldCheck, CheckCircle2, XCircle, ClipboardCheck, History, RotateCcw, AlertTriangle, Package } from "lucide-react";
+import React, { useState } from "react";
+import { ShieldCheck, CheckCircle2, XCircle, ClipboardCheck, History, RotateCcw, AlertTriangle, Package, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat, type LichSuQCItem, type MauVai } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
@@ -12,6 +12,7 @@ import { ghepAoQuanTheoSize } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import { applyStageColorEntries, type StageColorEntry } from "@/lib/stage-color-input";
 import { useSession } from "@/components/session-provider";
+import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 
 const LOAI_LOI_OPTIONS = [
   "Lỗi rập / kích thước", "Lỗi đường may", "Lỗi vải (lủng, rách)",
@@ -37,6 +38,7 @@ export default function UiQCPage() {
   const [khauGayLoi, setKhauGayLoi] = useState<Record<string, string>>({});
   const [ghiChu, setGhiChu] = useState<Record<string, string>>({});
   const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
+  const [uploadModal, setUploadModal] = useState<{ lc: LenhCat; pc: any } | null>(null);
 
   function getMayPC(lc: any) {
     return lc.phanCong?.filter((pc: any) =>
@@ -112,13 +114,24 @@ export default function UiQCPage() {
   };
 
   // Với hàng Bộ: mỗi màu cần đã nhập SL đạt theo từng size cho CẢ May áo lẫn
-  // May quần (qua modal bấm vào màu) mới ghép được đúng. Trả về null cho màu
-  // nào chưa đủ dữ liệu size - dùng để chặn xác nhận + gợi ý người dùng.
+  // với ID thực tế trong CSDL (ví dụ "mayAo" hoặc "may_ao").
   function tinhGhepBoLenhCat(lc: LenhCat) {
+    const mayPCs = getMayPC(lc);
+    let mayAoPC = mayPCs.find((pc: any) => (pc.id || "").toLowerCase().includes("ao") || (pc.tenCongDoan || "").toLowerCase().includes("áo"));
+    let mayQuanPC = mayPCs.find((pc: any) => (pc.id || "").toLowerCase().includes("quan") || (pc.tenCongDoan || "").toLowerCase().includes("quần"));
+
+    if (!mayAoPC && mayPCs.length > 0) mayAoPC = mayPCs[0];
+    if (!mayQuanPC && mayPCs.length > 1) {
+      mayQuanPC = mayPCs.find((pc: any) => pc.id !== mayAoPC?.id) || mayPCs[1];
+    }
+    
+    const idAo = mayAoPC ? mayAoPC.id : "may_ao";
+    const idQuan = mayQuanPC ? mayQuanPC.id : "may_quan";
+
     const ds = (lc.dsMau || []) as MauVai[];
     const perMau = ds.map((mau) => ({
       mau,
-      ket: ghepAoQuanTheoSize(mau.tyLeSizeChiTiet?.["may_ao"], mau.tyLeSizeChiTiet?.["may_quan"]),
+      ket: ghepAoQuanTheoSize(mau.tyLeSizeChiTiet?.[idAo], mau.tyLeSizeChiTiet?.[idQuan]),
     }));
     const chuaSanSang = perMau.filter((x) => !x.ket.chinhXacTheoSize).map((x) => x.mau.ten);
     const tongGhep = perMau.reduce((s, x) => s + x.ket.tongGhep, 0);
@@ -126,7 +139,7 @@ export default function UiQCPage() {
   }
 
   // Khi tất cả các khâu May đã được QC duyệt (hoan_thanh), nhấn nút này để chốt toàn bộ khâu QC
-  function handleHoanTatQC(lc: LenhCat) {
+  function handleHoanTatQC(lc: LenhCat, bangChungURLs?: string[], chuKy?: string) {
     const qcPC = lc.phanCong?.find((pc: any) => pc.id === "qc");
     if (!qcPC) return;
 
@@ -162,6 +175,8 @@ export default function UiQCPage() {
         soLuongHoanThanh: slQC,
         soLuongDatCuoi: slQC,
         chiTietMau: chiTietMauQC,
+        bangChungURLs: bangChungURLs || [],
+        chuKy: chuKy || "",
         lichSuNhapSL: [{ ngay: today, loai: "qc_dat", soLuong: slQC, nguoiNhap: user?.name, ghiChu: "QC hoàn tất toàn bộ" }],
       } as any);
       toast.success(`🎉 Lệnh cắt ${lc.id} đã hoàn tất QC. Chuyển sang Hoàn Thiện!`);
@@ -200,6 +215,8 @@ export default function UiQCPage() {
       soLuongHoanThanh: tongGhep,
       soLuongDatCuoi: tongGhep,
       chiTietMau: chiTietMauQC,
+      bangChungURLs: bangChungURLs || [],
+      chuKy: chuKy || "",
       lichSuNhapSL: [{ ngay: today, loai: "qc_dat", soLuong: tongGhep, nguoiNhap: user?.name, ghiChu: "QC xác nhận Ghép Bộ theo size thành công" }],
     } as any);
     toast.success(`🎉 Lệnh cắt ${lc.id} đã ghép Bộ xong (${tongGhep} bộ). Chuyển sang Hoàn Thiện!`);
@@ -413,8 +430,48 @@ export default function UiQCPage() {
         <div className="space-y-4">
           {lcChoQC.map(lc => {
             const mayPCs = getMayPC(lc);
+            const qcPC = lc.phanCong?.find((p: any) => p.id === "qc");
             return (
-              <LenhCatCardV2 key={lc.id} lc={lc} onColorClick={(mau) => setSelectedMau({ lc, mau })}>
+              <LenhCatCardV2 
+                key={lc.id} 
+                lc={lc} 
+                onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                bangChungSlot={
+                  (() => {
+                    if (!qcPC || (!qcPC.bangChungURLs?.length && !qcPC.chuKy)) return null;
+                    return (
+                      <div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
+                          <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Bằng chứng & Chữ ký</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-5">
+                          {qcPC.bangChungURLs?.map((url: string, i: number) => (
+                            <div key={`img-${i}`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                              <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-white relative">
+                                <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                  Ảnh QC
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {qcPC.chuKy && (
+                            <div key={`chuKy-qc`} className="flex flex-col w-[150px] sm:w-[140px] group cursor-pointer" onClick={() => window.open(qcPC.chuKy, '_blank')}>
+                              <div className="w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-sm border border-slate-200/60 border-dashed group-hover:border-sky-300 group-hover:shadow-md transition-all duration-300 bg-slate-50 relative p-4 flex flex-col items-center justify-center">
+                                <img src={qcPC.chuKy} className="w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-700" />
+                                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-[10px] border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
+                                  Chữ ký ({qcPC.nguoiTen || qcPC.nguoiMa || "QC"})
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
+              >
                 <div className="space-y-5">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="w-1.5 h-4 bg-teal-500 rounded-full"></span>
@@ -473,38 +530,39 @@ export default function UiQCPage() {
                         </div>
 
                         <div className="p-4 space-y-4">
-                          {isHoanThanh ? (() => {
-                            const pcIdx = lc.phanCong?.findIndex((p: any) => p.id === pc.id);
-                            const nextStage = pcIdx !== -1 ? lc.phanCong?.[pcIdx + 1] : undefined;
-                            
-                            const nextStageNotStarted = !nextStage || !nextStage.trangThaiCD || nextStage.trangThaiCD === "cho_giao";
-
-                            return (
-                              <div className="text-center py-6 flex flex-col items-center justify-center space-y-3 relative">
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                                <div>
-                                  <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
-                                  <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
-                                </div>
-                                {nextStageNotStarted && (
-                                  <button
-                                    onClick={() => {
-                                      capNhatCongDoan(lc.id, pc.id, { 
-                                        trangThaiCD: "dang_lam",
-                                        // Reset soLuongHoanThanh and soLuongDatCuoi so it can be re-entered
-                                        soLuongHoanThanh: slDatTam,
-                                        soLuongDatCuoi: slDatTam
-                                      } as any);
-                                      toast.info("Đã mở lại khâu QC. Bạn có thể nhập lại số lượng Đạt/Lỗi.");
-                                    }}
-                                    className="px-4 py-2 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-xl shadow-sm hover:bg-emerald-50 active:scale-95 transition-all text-xs flex items-center gap-1.5"
-                                  >
-                                    ✏️ Sửa SL
-                                  </button>
-                                )}
+                          {isHoanThanh ? (
+                            <div className="text-center py-6 flex flex-col items-center justify-center space-y-3 relative">
+                              <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                              <div>
+                                <div className="font-black text-emerald-700 text-lg">Đã kiểm tra đạt!</div>
+                                <div className="font-bold text-emerald-600">Tổng đạt: {pc.soLuongHoanThanh} SP</div>
                               </div>
-                            );
-                          })() : (
+                              <button
+                                onClick={() => {
+                                  capNhatCongDoan(lc.id, pc.id, { 
+                                    trangThaiCD: "cho_qc",
+                                    // Reset soLuongHoanThanh and soLuongDatCuoi so it can be re-entered
+                                    soLuongHoanThanh: slDatTam,
+                                    soLuongDatCuoi: slDatTam
+                                  } as any);
+                                  toast.info("Đã mở lại khâu QC. Bạn có thể nhập lại số lượng Đạt/Lỗi.");
+                                }}
+                                className="px-4 py-2 bg-white border border-emerald-200 text-emerald-600 font-bold rounded-xl shadow-sm hover:bg-emerald-50 active:scale-95 transition-all text-xs flex items-center gap-1.5"
+                              >
+                                ✏️ Sửa SL
+                              </button>
+                            </div>
+                          ) : (tt === "cho_giao" || tt === "dang_lam") ? (
+                            <div className="text-center py-8 flex flex-col items-center justify-center space-y-3">
+                              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-1">
+                                <Clock className="w-6 h-6 text-slate-400" />
+                              </div>
+                              <div>
+                                <div className="font-black text-slate-600 text-lg">Chờ Tổ May hoàn thành</div>
+                                <div className="text-sm font-bold text-slate-500 mt-1">Khâu này chưa được giao qua QC</div>
+                              </div>
+                            </div>
+                          ) : (
                             <>
                               {/* ===== PANEL SL ĐẠT TẠM (nổi bật khi đang co_loi) ===== */}
                               {isTraLai && slDatTam > 0 && (
@@ -793,7 +851,14 @@ export default function UiQCPage() {
                               </button>
                             ) : (
                               <button
-                                onClick={() => handleHoanTatQC(lc)}
+                                onClick={() => {
+                                  const qc = lc.phanCong?.find((p: any) => p.id === "qc");
+                                  if (qc && (qc.bangChungURLs?.length > 0 || qc.chuKy)) {
+                                    handleHoanTatQC(lc, qc.bangChungURLs, qc.chuKy);
+                                  } else {
+                                    setUploadModal({ lc, pc: qc });
+                                  }
+                                }}
                                 className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
                               >
                                 <Package className="w-5 h-5" />
@@ -823,7 +888,14 @@ export default function UiQCPage() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleHoanTatQC(lc)}
+                              onClick={() => {
+                                const qc = lc.phanCong?.find((p: any) => p.id === "qc");
+                                if (qc && (qc.bangChungURLs?.length > 0 || qc.chuKy)) {
+                                  handleHoanTatQC(lc, qc.bangChungURLs, qc.chuKy);
+                                } else {
+                                  setUploadModal({ lc, pc: qc });
+                                }
+                              }}
                               className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-sm transition-transform active:scale-95"
                             >
                               <Package className="w-5 h-5" />
@@ -848,13 +920,24 @@ export default function UiQCPage() {
           onClose={() => setSelectedMau(null)}
           lc={selectedMau.lc}
           mau={selectedMau.mau}
-          currentPCs={getMayPC(selectedMau.lc)}
+          currentPCs={getMayPC(selectedMau.lc).filter((pc: any) => pc.trangThaiCD === "cho_qc" || pc.trangThaiCD === "co_loi" || pc.trangThaiCD === "hoan_thanh")}
           onSave={(pcId, data) => { void handleSaveColorBatch([{ pcId, data }]); }}
           onSaveBatch={handleSaveColorBatch}
           historyStage="qc"
           onNextColor={(nextMau) => setSelectedMau(prev => prev ? {
             lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau,
           } : null)}
+        />
+      )}
+
+      {uploadModal && (
+        <UploadBangChungModal
+          isOpen={true}
+          onClose={() => setUploadModal(null)}
+          onSave={(urls, signature) => {
+            handleHoanTatQC(uploadModal.lc, urls, signature);
+            setUploadModal(null);
+          }}
         />
       )}
     </div>
