@@ -1,8 +1,10 @@
 // ============ FILTER BAR + SORT BAR ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.2)
 
-import { Search, Download, Sparkles, Plus, ChevronDown, ChevronUp, LayoutGrid, List } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Download, Sparkles, Plus, ChevronDown, ChevronUp, LayoutGrid, List, FileSpreadsheet } from "lucide-react";
 import { DS_TI_LE_SIZE, DS_KHU_KE_HANG, type SanPhamTP } from "../data";
+import { loadSharedSizeRatioPresets, type SizeRatioPreset } from "@/lib/size-ratio-presets";
 
 interface FilterBarProps {
   search: string;
@@ -15,9 +17,10 @@ interface FilterBarProps {
   exportCSV: () => void;
   handleAutoGenerate: () => void;
   setShowAdd: (v: boolean) => void;
+  setShowAddSizeRatio?: (v: boolean) => void;
 }
 
-export function FilterBar({ search, setSearch, filterTrangThai, setFilterTrangThai, filterLoai, setFilterLoai, dsLoai, exportCSV, handleAutoGenerate, setShowAdd }: FilterBarProps) {
+export function FilterBar({ search, setSearch, filterTrangThai, setFilterTrangThai, filterLoai, setFilterLoai, dsLoai, exportCSV, handleAutoGenerate, setShowAdd, setShowAddSizeRatio }: FilterBarProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-3">
@@ -31,6 +34,9 @@ export function FilterBar({ search, setSearch, filterTrangThai, setFilterTrangTh
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 outline-none transition-all"
           />
         </div>
+        <button onClick={() => setShowAddSizeRatio?.(true)} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm shadow-emerald-500/20 whitespace-nowrap">
+          <FileSpreadsheet className="w-4 h-4" /> <span className="hidden md:inline">Thêm bảng tỉ lệ size</span>
+        </button>
         <button onClick={() => setShowAdd(true)} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm shadow-indigo-500/20 whitespace-nowrap">
           <Plus className="w-4 h-4" /> <span className="hidden md:inline">Thêm mới</span>
         </button>
@@ -78,6 +84,22 @@ interface SortBarProps {
 }
 
 export function SortBar({ sortBy, setSortBy, sortDir, setSortDir, filterSize, setFilterSize, filterViTri, setFilterViTri, filteredCount, totalCount, viewMode, setViewMode }: SortBarProps) {
+  const [dynamicSizes, setDynamicSizes] = useState<string[]>(DS_TI_LE_SIZE);
+
+  useEffect(() => {
+    let active = true;
+    loadSharedSizeRatioPresets().then((customPresets) => {
+      if (active) {
+        // combine default sizes with custom sizes from DB
+        const customLabels = customPresets.map(p => p.label);
+        // remove duplicates if any
+        const allSizes = Array.from(new Set([...DS_TI_LE_SIZE, ...customLabels]));
+        setDynamicSizes(allSizes);
+      }
+    });
+    return () => { active = false; };
+  }, []);
+
   return (
     <div className="flex items-center flex-wrap gap-3 text-sm pt-3 border-t border-slate-100 mt-2">
       <div className="flex items-center gap-2">
@@ -103,7 +125,7 @@ export function SortBar({ sortBy, setSortBy, sortDir, setSortDir, filterSize, se
       <div className="flex items-center gap-2 md:border-l md:pl-3 border-slate-200">
         <select value={filterSize} onChange={(e) => setFilterSize(e.target.value)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-indigo-400 text-slate-700 cursor-pointer">
           <option value="all">Tỉ lệ size</option>
-          {DS_TI_LE_SIZE.map((s) => <option key={s} value={s}>{s}</option>)}
+          {dynamicSizes.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <select value={filterViTri} onChange={(e) => setFilterViTri(e.target.value)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-indigo-400 text-slate-700 cursor-pointer">
           <option value="all">Khu kệ hàng</option>

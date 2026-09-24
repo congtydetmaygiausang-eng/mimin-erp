@@ -188,15 +188,7 @@ export default function DanhMucSanPhamPage() {
       });
     }
     
-    // Đồng bộ triệt để: Nếu sản phẩm có trong Danh mục nhưng đã bị xoá SẠCH 
-    // bên Kho Thành Phẩm (không còn dòng nào trong danhMucKho),
-    // thì cũng phải xoá sạch danh sách màu của nó ở Danh mục sản phẩm.
     const result = Array.from(map.values());
-    result.forEach(sp => {
-       if (!danhMucKho[sp.id]) {
-          sp.dsMau = [];
-       }
-    });
     
     return result;
   }, [dsSanPham, danhMucKho]);

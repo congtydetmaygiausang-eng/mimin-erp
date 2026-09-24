@@ -108,10 +108,17 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   
   useEffect(() => {
     let active = true;
-    loadSharedSizeRatioPresets().then((items) => {
-      if (active) setCustomPresets(items);
-    });
-    return () => { active = false; };
+    const load = () => {
+      loadSharedSizeRatioPresets().then((items) => {
+        if (active) setCustomPresets(items);
+      });
+    };
+    load();
+    window.addEventListener("size-ratio-changed", load);
+    return () => { 
+      active = false; 
+      window.removeEventListener("size-ratio-changed", load);
+    };
   }, []);
 
   const selectedProduct = dsDanhMuc.find((product) => product.id === maSP);
@@ -299,6 +306,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       kenhBan: bt.kenhBan,
       viTri: bt.viTri.trim(),
       ghiChu: bt.ghiChu.trim(),
+      trangThai: "con",
       __tempImage: bt.img,
     }));
     onSave(rows);
@@ -420,22 +428,22 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
               
               <div>
                 <label className="text-xs font-bold text-slate-700 mb-1.5 block">Chọn bảng tỉ lệ áp dụng *</label>
-                <select value={presetId} onChange={(e) => doiPresetChung(e.target.value)} disabled={(!selectedProduct && !isNewProduct) || !!productSizePreset} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
+                <select value={presetId} onChange={(e) => doiPresetChung(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium">
                   <option value="">-- Chọn bảng tỷ lệ size --</option>
-                  {productSizePreset && <option value={productSizePreset.id}>{productSizePreset.label} (đúng theo danh mục)</option>}
+                  {productSizePreset && <option value={productSizePreset.id}>✅ {productSizePreset.label} (Đúng theo danh mục)</option>}
                   {SIZE_RATIO_PRESETS.length > 0 && (
                     <optgroup label="Bảng chuẩn">
                       {SIZE_RATIO_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                     </optgroup>
                   )}
                   {customPresets.length > 0 && (
-                    <optgroup label="Bảng tự tạo">
+                    <optgroup label="⭐ Bảng tự tạo">
                       {customPresets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                     </optgroup>
                   )}
                 </select>
               </div>
-              {productSizePreset && <p className="mt-2 text-xs font-semibold text-emerald-700">Đang dùng đúng bảng size đã thiết lập trong Danh mục sản phẩm; không thể thay đổi tại phiếu nhập.</p>}
+              {productSizePreset && presetId !== productSizePreset.id && <p className="mt-2 text-xs font-semibold text-amber-700">⚠️ Đang dùng bảng size khác với danh mục. Tỉ lệ trong danh mục: {productSizePreset.label}</p>}
               <div className="mt-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center gap-2 text-xs text-slate-600">
                 <span className="font-bold text-slate-800 shrink-0">Tỉ lệ:</span> 
                 <span className="tracking-widest">{preset ? `${preset.sizes.join(":")} = ${preset.ratios.join(":")}` : "Chưa chọn bảng size"}</span>

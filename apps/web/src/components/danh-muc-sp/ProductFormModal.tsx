@@ -4,7 +4,7 @@ import { X, Save, Plus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
-import { type SizeRatioPreset, SIZE_RATIO_PRESETS, loadCustomSizeRatioPresets, buildCustomSizeRatioPreset, saveCustomSizeRatioPreset } from "@/lib/size-ratio-presets";
+import { type SizeRatioPreset, SIZE_RATIO_PRESETS, loadSharedSizeRatioPresets, buildCustomSizeRatioPreset, saveSharedSizeRatioPreset } from "@/lib/size-ratio-presets";
 import { uploadProductFile } from "@/lib/product-upload";
 
 interface ProductFormModalProps {
@@ -24,19 +24,33 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
   const [presetId, setPresetId] = useState("1s-1-2-2-2-1");
 
   useEffect(() => {
+    let active = true;
     setMounted(true);
-    const loadedCustom = loadCustomSizeRatioPresets();
-    setCustomPresets(loadedCustom);
     
-    if (initialData?.bangSize && initialData.bangSize.sizes.length > 0) {
-      const sStr = initialData.bangSize.sizes.join(":");
-      const rStr = initialData.bangSize.ratios.join(":");
-      const all = [...SIZE_RATIO_PRESETS, ...loadedCustom];
-      const found = all.find(p => p.sizes.join(":") === sStr && p.value === rStr);
-      if (found) {
-        setPresetId(found.id);
-      }
-    }
+    const load = () => {
+      loadSharedSizeRatioPresets().then((loadedCustom) => {
+        if (!active) return;
+        setCustomPresets(loadedCustom);
+        
+        if (initialData?.bangSize && initialData.bangSize.sizes.length > 0) {
+          const sStr = initialData.bangSize.sizes.join(":");
+          const rStr = initialData.bangSize.ratios.join(":");
+          const all = [...SIZE_RATIO_PRESETS, ...loadedCustom];
+          const found = all.find(p => p.sizes.join(":") === sStr && p.value === rStr);
+          if (found) {
+            setPresetId(found.id);
+          }
+        }
+      });
+    };
+    
+    load();
+    window.addEventListener("size-ratio-changed", load);
+
+    return () => { 
+      active = false; 
+      window.removeEventListener("size-ratio-changed", load);
+    };
   }, [initialData]);
 
   const allPresets = [...SIZE_RATIO_PRESETS, ...customPresets];
@@ -51,11 +65,12 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
     }
     
     const newPreset = buildCustomSizeRatioPreset(sizes, ratios);
-    const updated = saveCustomSizeRatioPreset(newPreset);
-    setCustomPresets(updated);
-    setPresetId(newPreset.id);
-    setIsCreatingRatio(false);
-    toast.success("Đã lưu bảng size mới!");
+    saveSharedSizeRatioPreset(newPreset).then((updated) => {
+      setCustomPresets(updated);
+      setPresetId(newPreset.id);
+      setIsCreatingRatio(false);
+      toast.success("Đã lưu bảng size mới!");
+    });
   };
 
   const [maSP, setMaSP] = useState(initialData?.id || "");
@@ -141,7 +156,6 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
           soLuongKho: m.soLuongKho || 0
         };
       }),
-      hinhAnh: dsMau[0]?.img || "",
       bangSize,
       giaBanLe,
       giaBanSi,

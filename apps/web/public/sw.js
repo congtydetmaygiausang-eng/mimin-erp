@@ -2,7 +2,7 @@
 // Handles: caching, offline, push notifications
 
 <<<<<<< HEAD
-const CACHE_NAME = "mimin-erp-v1789998800111";
+const CACHE_NAME = "mimin-erp-v1790244436732";
 =======
 const CACHE_NAME = "mimin-erp-v1790073343715";
 >>>>>>> origin/main
