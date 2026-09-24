@@ -6,7 +6,7 @@
 
 import { useStageColorInput } from "@/lib/use-stage-color-input";
 import { useState } from "react";
-import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriangle, Eye, Ruler } from "lucide-react";
+import { Scissors, Package, Calendar, FileText, CheckCircle2, Clock, AlertTriangle, Eye, Ruler, ImageIcon, PenTool } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
@@ -20,6 +20,7 @@ import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
 import { localActiveAccount } from "@/lib/local-account-store";
 import { canAccessStage } from "@/lib/account-access";
 import { can } from "@/lib/permissions";
+import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 
 export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
@@ -29,6 +30,7 @@ export default function CongViecCatPage() {
 
   const [modalGiaCong, setModalGiaCong] = useState<{ id: string, type: "ao" | "quan" } | null>(null);
   const [modalTyLeMau, setModalTyLeMau] = useState<{ id: string, mauIdx: number } | null>(null);
+  const [uploadModal, setUploadModal] = useState<{lc: any, pc: any, totalThucTe?: number} | null>(null);
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
 
   function getPhanCongCat(lc: any) {
@@ -139,20 +141,30 @@ export default function CongViecCatPage() {
     }
   }
 
-  function handleHoanThanh(lc: any, newDsMau?: any[], totalThucTe?: number) {
+  function handleHoanThanh(lc: any, newDsMau?: any[], totalThucTe?: number, bangChungURLs?: string[], chuKy?: string) {
     const pc = getPhanCongCat(lc);
     if (!pc) return;
 
     if (newDsMau && typeof totalThucTe === 'number') {
       suaLenhCat(lc.id, { dsMau: newDsMau, tongSLThucTe: totalThucTe }, user as any)
         .then(() => {
-          capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: totalThucTe });
+          capNhatCongDoan(lc.id, pc.id, { 
+            trangThaiCD: "hoan_thanh", 
+            soLuongHoanThanh: totalThucTe,
+            ...(bangChungURLs?.length ? { bangChungURLs } : {}),
+            ...(chuKy ? { chuKy } : {})
+          });
           toast.success(`✅ Lưu thông số và hoàn thành: ${totalThucTe} SP`);
         })
         .catch(err => toast.error("Lỗi khi lưu Lệnh cắt: " + err.message));
     } else {
       const sl = totalThucTe || lc.tongSLThucTe || lc.tongSL;
-      capNhatCongDoan(lc.id, pc.id, { trangThaiCD: "hoan_thanh", soLuongHoanThanh: sl });
+      capNhatCongDoan(lc.id, pc.id, { 
+        trangThaiCD: "hoan_thanh", 
+        soLuongHoanThanh: sl,
+        ...(bangChungURLs?.length ? { bangChungURLs } : {}),
+        ...(chuKy ? { chuKy } : {})
+      });
       toast.success(`✅ Chuyển tiếp thành công: ${sl} SP`);
     }
   }
@@ -246,6 +258,32 @@ export default function CongViecCatPage() {
                 key={lc.id}
                 lc={lc}
                 onColorClick={(mau) => setSelectedMau({ lc, mau })}
+                bangChungSlot={
+                  (pc?.bangChungURLs?.length > 0 || pc?.chuKy) && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex gap-4">
+                      {pc.bangChungURLs?.length > 0 && (
+                        <div className="flex-1">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><ImageIcon className="w-3 h-3"/> Bằng chứng</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {pc.bangChungURLs.map((url: string, i: number) => (
+                              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block relative group rounded overflow-hidden shadow-sm border border-slate-200">
+                                <img src={url} alt="Bằng chứng" className="w-12 h-12 object-cover transition-transform group-hover:scale-110" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {pc.chuKy && (
+                        <div className="shrink-0 max-w-[120px]">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><PenTool className="w-3 h-3"/> Chữ ký</div>
+                          <div className="bg-white rounded p-1 border border-slate-200">
+                            <img src={pc.chuKy} alt="Chữ ký" className="max-h-12 w-auto" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
                 renderStatus={
                   <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${style.bg} ${style.text} border border-current/20 flex items-center gap-1`}>
                     <span className={`inline-block w-1.5 h-1.5 rounded-full ${style.dot}`} />
@@ -368,10 +406,13 @@ export default function CongViecCatPage() {
                           ) : (
                             <button
                               onClick={() => {
-                                // Ưu tiên tổng SL Đạt đã nhập theo màu (ChiTietMauHistoryModal),
-                                // nếu chưa nhập màu nào thì dùng SL thực tế / tổng SL của lệnh.
                                 const tongDat = (pc?.chiTietMau || []).reduce((s: number, m: any) => s + (m.soLuongDat || 0), 0);
-                                handleHoanThanh(lc, undefined, tongDat > 0 ? tongDat : undefined);
+                                const totalThucTe = tongDat > 0 ? tongDat : undefined;
+                                if (pc && (pc.bangChungURLs?.length > 0 || pc.chuKy)) {
+                                  handleHoanThanh(lc, undefined, totalThucTe, pc.bangChungURLs, pc.chuKy);
+                                } else {
+                                  setUploadModal({ lc, pc, totalThucTe });
+                                }
                               }}
                               className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
                             >
@@ -508,6 +549,17 @@ export default function CongViecCatPage() {
           onSaveBatch={handleSaveColorBatch}
           historyStage="cat"
           onNextColor={(nextMau) => setSelectedMau(prev => prev ? { lc: prev.lc, mau: prev.lc.dsMau?.find(mau => mau.ten === nextMau.ten) || nextMau } : null)}
+        />
+      )}
+
+      {uploadModal && (
+        <UploadBangChungModal
+          isOpen={true}
+          onClose={() => setUploadModal(null)}
+          onSave={(urls, signature) => {
+            handleHoanThanh(uploadModal.lc, undefined, uploadModal.totalThucTe, urls, signature);
+            setUploadModal(null);
+          }}
         />
       )}
     </div>
