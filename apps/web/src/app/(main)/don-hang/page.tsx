@@ -14,7 +14,7 @@ import InvoicePrint from "@/components/order-detail/InvoicePrint";
 import QuickPaymentModal from "@/components/order-detail/QuickPaymentModal";
 import ShippingModal from "@/components/order-detail/ShippingModal";
 import MeInvoicePublishModal from "@/components/order-detail/MeInvoicePublishModal";
-import type { Order, OrderPayment, OrderShipping } from "@/components/order-detail/types";
+import { type Order, type OrderPayment, type OrderShipping, LOAI_DON_HANG_LABELS } from "@/components/order-detail/types";
 
 type TrangThaiDH = Order["trangThai"];
 
@@ -195,6 +195,11 @@ export default function DonHangPage() {
                     <button onClick={() => handleAdvanceStatus(d)} className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${s.bg} ${s.color} hover:brightness-95 transition-all shadow-sm shrink-0`} title="Click để chuyển trạng thái">
                       <Icon className="w-3 h-3" /> {d.trangThai}
                     </button>
+                    {(d.loaiDonHang || d.loaiDon) && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shrink-0">
+                        {LOAI_DON_HANG_LABELS[d.loaiDonHang || d.loaiDon as keyof typeof LOAI_DON_HANG_LABELS] || d.loaiDonHang || d.loaiDon}
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1 truncate">
                     {d.khachHang} <span className="text-slate-500 font-normal ml-1">({d.sdt})</span>
