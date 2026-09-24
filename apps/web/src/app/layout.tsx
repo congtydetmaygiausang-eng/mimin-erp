@@ -120,7 +120,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <ServiceWorkerRegister />
-          <SpeedInsights />
+          {/* <SpeedInsights /> */}
           <Analytics />
         </Providers>
       </body>

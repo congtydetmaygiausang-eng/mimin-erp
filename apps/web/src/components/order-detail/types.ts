@@ -1,7 +1,7 @@
 export type OrderStatus = "Mới" | "Đã duyệt" | "Đang SX" | "Hoàn thành" | "Đã giao" | "Hủy";
 
 /** Loại đơn hàng - quyết định form render */
-export type LoaiDonHang = "ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee" | "ban-san";
+export type LoaiDonHang = "ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee" | "ban-san" | "dat-may";
 
 /** Phương thức thanh toán */
 export type PhuongThucThanhToan = "ngan-hang" | "tien-mat" | "cong-no";
@@ -54,6 +54,8 @@ export type OrderPayment = {
   nganHang?: string;
   /** Ghi chú */
   ghiChu?: string;
+  /** Hình ảnh bằng chứng chuyển khoản/thanh toán */
+  hinhAnh?: string;
 };
 
 /** Thông tin vận chuyển của đơn */
@@ -111,6 +113,8 @@ export type Order = import("@/lib/data/account-access").RecordAssignment & {
   shipping?: OrderShipping;
   /** Trạng thái thanh toán tổng */
   trangThaiThanhToan?: TrangThaiThanhToan;
+  /** Thuế VAT (%) */
+  thueVAT?: number;
   /**
    * Đã trừ tồn kho thành phẩm cho đơn này chưa. Đặt = true ngay khi đơn chuyển
    * sang "Đã giao" để không trừ kho lần thứ hai nếu đơn được sửa/đổi trạng thái lại.
@@ -133,6 +137,7 @@ export const LOAI_DON_HANG_LABELS: Record<LoaiDonHang, string> = {
   tiktok: "TikTok",
   shopee: "Shopee",
   "ban-san": "Bán sàn (cũ)",
+  "dat-may": "Đặt may / Đồng phục",
 };
 
 export const PHUONG_THUC_THANH_TOAN_LABELS: Record<PhuongThucThanhToan, string> = {

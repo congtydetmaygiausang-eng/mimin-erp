@@ -73,7 +73,27 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
         // mới mặc định = SL dự kiến; các khâu sau để 0, bắt nhập số thực tế -
         // tránh lặp lại lỗi từng xảy ra: Cắt chỉ ra 488 mà May áo/Ủi/Đóng gói
         // lại tự hiện 496 (cao hơn cả số cắt được).
-        const template = mau.phanBoSize || [];
+        const isQuan = pc.id.includes("quan") || pc.tenCongDoan?.toLowerCase().includes("quần");
+        let template = (isQuan ? mau.phanBoSizeQuan : mau.phanBoSize);
+        if (!template || template.length === 0) template = mau.phanBoSize || [];
+        
+        // Nếu template trống, thử lấy size từ các khâu trước để làm sườn
+        if (template.length === 0 && myIdx > 0) {
+          for (let i = myIdx - 1; i >= 0; i--) {
+            const pSizes = mau.tyLeSizeChiTiet?.[sortedPCs[i].id];
+            if (pSizes && pSizes.length > 0) {
+              template = pSizes;
+              break;
+            }
+          }
+        }
+        
+        // Nếu vẫn trống, lấy size từ bất kỳ khâu nào có dữ liệu
+        if (template.length === 0 && mau.tyLeSizeChiTiet) {
+           const someSizes = Object.values(mau.tyLeSizeChiTiet).find(s => s && s.length > 0);
+           if (someSizes) template = someSizes;
+        }
+
         newSizeInputs[pc.id] = template.map(s => ({ size: s.size, sl: myIdx === 0 ? (s.sl || 0) : 0 }));
         newNhanInputs[pc.id] = slNhan;
       });
@@ -116,9 +136,13 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
       window.alert("Số lượng phải không âm và tổng Đạt không được lớn hơn SL Nhận.");
       return false;
     }
-    if (entries.some(({ data }) => data.soLuongNhan > 0 && data.soLuongDat === 0)
-      && !window.confirm("Tổng Đạt đang bằng 0. Toàn bộ SL Nhận của khâu này sẽ được ghi là LỖI. Anh có chắc muốn lưu không?")) {
-      return false;
+    const zeroStages = entries.filter(({ data }) => data.soLuongNhan > 0 && data.soLuongDat === 0);
+    if (zeroStages.length > 0) {
+      const stageNames = zeroStages.map(e => currentPCs.find(p => p.id === e.pcId)?.tenCongDoan || "Khâu này").join(", ");
+      const msg = `Khâu [${stageNames}] có Tổng Đạt bằng 0. Toàn bộ SL Nhận của khâu này sẽ bị ghi là LỖI. Anh có chắc muốn lưu không?`;
+      if (!window.confirm(msg)) {
+        return false;
+      }
     }
     if (onSaveBatch) return onSaveBatch(entries);
     entries.forEach(({ pcId, data }) => onSave(pcId, data));
@@ -305,9 +329,25 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                   const tongDat = tongSizes(sizes);
                   const soLuongNhan = nhanInputs[pc.id] ?? tongDat;
                   const soLuongLoi = Math.max(0, soLuongNhan - tongDat);
+                  const isHoanThanh = pc.trangThaiCD === "hoan_thanh";
+                  
+                  // Phân biệt màu sắc Áo vs Quần
+                  const isQuan = pc.id.includes("quan") || pc.tenCongDoan?.toLowerCase().includes("quần");
+                  const isAo = pc.id.includes("ao") || pc.tenCongDoan?.toLowerCase().includes("áo");
+                  
+                  let themeClasses = "border-slate-200 bg-white";
+                  let headerIcon = null;
+                  
+                  if (isQuan) {
+                    themeClasses = "border-amber-200 bg-amber-50/20";
+                    headerIcon = "👖";
+                  } else if (isAo) {
+                    themeClasses = "border-sky-200 bg-sky-50/20";
+                    headerIcon = "👕";
+                  }
 
                   return (
-                    <div key={pc.id} className="bg-white border border-slate-200 rounded-3xl p-5 md:p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+                    <div key={pc.id} className={`border rounded-3xl p-5 md:p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-lg transition-all duration-300 relative overflow-hidden ${themeClasses}`}>
                       {/* Top Bar */}
                       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 border-b border-slate-100 pb-5">
                         <div 
@@ -337,12 +377,20 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                         </div>
                         
                         <div className="flex-1">
-                          <div className="text-xl font-black text-slate-800 leading-none mb-1.5">{pc.tenCongDoan}</div>
+                          <div className="text-xl font-black text-slate-800 leading-none mb-1.5 flex items-center gap-2">
+                            {headerIcon && <span>{headerIcon}</span>}
+                            {pc.tenCongDoan}
+                          </div>
                           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{pc.nguoiTen || "Chưa giao"}</div>
-                          <div className="mt-2 flex items-center">
+                          <div className="mt-2 flex items-center gap-2">
                             <span className="px-2.5 py-0.5 rounded border border-teal-200/60 bg-teal-50 text-teal-700 text-[10px] font-black uppercase tracking-widest shadow-sm">
                               Màu: {mau.ten}
                             </span>
+                            {isHoanThanh && (
+                              <span className="px-2.5 py-0.5 rounded border border-emerald-200 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" /> HOÀN THÀNH
+                              </span>
+                            )}
                           </div>
                         </div>
                         
@@ -352,7 +400,19 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                         </div>
                       </div>
 
-                      {/* Size grid */}
+                      {isHoanThanh && historyStage !== "qc" ? (
+                        <div className="flex flex-col items-center justify-center py-6 bg-emerald-50/50 rounded-2xl border border-emerald-100 border-dashed">
+                          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-3">
+                            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                          </div>
+                          <div className="text-emerald-800 font-black text-lg">Khâu này đã hoàn thành</div>
+                          <div className="text-emerald-600/80 text-sm font-bold mt-1">
+                            SL Nhận: {soLuongNhan.toLocaleString()} | SL Đạt: {tongDat.toLocaleString()} {soLuongLoi > 0 ? `| SL Lỗi: ${soLuongLoi.toLocaleString()}` : ""}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Size grid */}
                       {sizes.length > 0 ? (
                         <div className="flex flex-wrap gap-3 mb-6">
                           {sizes.map((sz, sIdx) => (
@@ -395,6 +455,8 @@ export function ChiTietMauHistoryModal({ isOpen, onClose, lc, mau, currentPCs, o
                           </div>
                         </div>
                       </div>
+                      </>
+                    )}
                     </div>
                   );
                 })}

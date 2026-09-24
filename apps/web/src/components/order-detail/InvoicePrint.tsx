@@ -57,8 +57,9 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
   const fmtDateTime = (d: Date) => d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   const tongTien = calcOrderTotal(order.items);
+  const tienVAT = (tongTien * (order.thueVAT || 0)) / 100;
   const phiVC = order.shipping?.phiVanChuyen || 0;
-  const tongThanhToan = tongTien + phiVC;
+  const tongThanhToan = tongTien + tienVAT + phiVC;
   const daThanhToan = calcPaidTotal(order.payments);
   const conLai = tongThanhToan - daThanhToan;
 
@@ -120,7 +121,7 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
 
           {/* Preview content */}
           <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
-            <div id="invoice-print" className="bg-white mx-auto shadow-lg" style={{ maxWidth: "210mm", minHeight: "297mm", padding: "20mm" }}>
+            <div id="invoice-print" className="bg-white mx-auto shadow-lg" style={{ maxWidth: "210mm", minHeight: "297mm", padding: "10mm 20mm" }}>
               {/* HEADER */}
               <div className="flex items-start justify-between border-b-2 border-cyan-600 pb-4 mb-4">
                 <div className="flex items-center gap-3">
@@ -132,7 +133,8 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
                     <div className="text-xs text-slate-600 mt-0.5">
                       CÔNG TY TNHH DỆT MAY GIÀU SANG<br />
                       MST: 0318507560 · Hotline: 0774480916<br />
-                      12/39 Xuân Thới Thượng 58C, Bà Điểm, HCM
+                      12/39 Xuân Thới Thượng 58C, Bà Điểm, HCM<br />
+                      STK: 7777369369369 - MB Bank - CÔNG TY TNHH DỆT MAY GIÀU SANG
                     </div>
                   </div>
                 </div>
@@ -154,7 +156,8 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
                   <div className="text-[10px] uppercase font-bold text-cyan-700 mb-1">Khách hàng</div>
                   <div className="font-bold text-base">{order.khachHang || "—"}</div>
                   {order.sdt && <div className="text-xs text-slate-600">SĐT: {order.sdt}</div>}
-                  {order.shipping?.diaChiGiao && <div className="text-xs text-slate-600 mt-1">📍 {order.shipping.diaChiGiao}</div>}
+                  {order.diaChi && <div className="text-xs text-slate-600 mt-0.5">Địa chỉ: {order.diaChi}</div>}
+                  {order.shipping?.diaChiGiao && <div className="text-xs text-slate-600 mt-1 pt-1 border-t border-cyan-200/50">📍 Giao đến: {order.shipping.diaChiGiao}</div>}
                 </div>
                 <div className="iv-info-block p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="text-[10px] uppercase font-bold text-slate-600 mb-1">Đơn hàng</div>
@@ -246,6 +249,12 @@ export default function InvoicePrint({ order, onClose, autoPrint = true }: Props
                     <span>Tổng SP:</span>
                     <span className="font-mono">{formatVND(tongTien)}</span>
                   </div>
+                  {order.thueVAT ? (
+                    <div className="flex justify-between py-1 text-xs">
+                      <span>Thuế VAT ({order.thueVAT}%):</span>
+                      <span className="font-mono">{formatVND(tienVAT)}</span>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between py-1 text-xs">
                     <span>Phí VC:</span>
                     <span className="font-mono">{formatVND(phiVC)}</span>

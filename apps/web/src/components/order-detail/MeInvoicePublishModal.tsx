@@ -72,15 +72,15 @@ export default function MeInvoicePublishModal({
   };
 
   const tongTien = calcOrderTotal(order.items);
+  const vatRate = order.thueVAT || 0;
+  const tienVAT = (tongTien * vatRate) / 100;
   const phiVC = order.shipping?.phiVanChuyen || 0;
-  const tongThanhToan = tongTien + phiVC;
+  const tongThanhToan = tongTien + tienVAT + phiVC;
   const daThanhToan = calcPaidTotal(order.payments);
   const conLai = tongThanhToan - daThanhToan;
 
-  // VAT mac dinh 8% (giam thue VAT 2025 theo NQ 110/2023/QH15)
-  const vatRate = 8;
-  const vatAmount = Math.round((tongThanhToan * vatRate) / 100);
-  const totalWithVat = tongThanhToan + vatAmount;
+  const vatAmount = Math.round(tienVAT);
+  const totalWithVat = tongThanhToan;
 
   // ============ PUBLISH ============
   const handlePublish = async () => {
@@ -326,13 +326,19 @@ export default function MeInvoicePublishModal({
                 </tbody>
                 <tfoot>
                   <tr className="border-t bg-slate-50 dark:bg-slate-800/50">
-                    <td colSpan={3} className="p-2 text-right font-semibold">Tổng:</td>
-                    <td className="p-2 text-right font-mono font-semibold">{formatVND(tongThanhToan)}</td>
+                    <td colSpan={3} className="p-2 text-right font-semibold">Tổng SP:</td>
+                    <td className="p-2 text-right font-mono font-semibold">{formatVND(tongTien)}</td>
                   </tr>
                   <tr>
-                    <td colSpan={3} className="p-2 text-right text-slate-600">VAT {vatRate}%:</td>
-                    <td className="p-2 text-right font-mono text-slate-600">{formatVND(vatAmount)}</td>
+                    <td colSpan={3} className="p-2 text-right text-slate-600">Phí VC:</td>
+                    <td className="p-2 text-right font-mono text-slate-600">{formatVND(phiVC)}</td>
                   </tr>
+                  {vatRate > 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-2 text-right text-slate-600">VAT {vatRate}%:</td>
+                      <td className="p-2 text-right font-mono text-slate-600">{formatVND(vatAmount)}</td>
+                    </tr>
+                  )}
                   <tr className="bg-cyan-50 dark:bg-cyan-900/20">
                     <td colSpan={3} className="p-2 text-right font-bold text-cyan-700">Tổng thanh toán:</td>
                     <td className="p-2 text-right font-mono font-bold text-cyan-700">{formatVND(totalWithVat)}</td>

@@ -131,12 +131,16 @@ export function calcOrderQty(items: OrderItem[]): number {
 
 /** Còn lại phải thanh toán */
 export function calcOrderRemain(order: Order): number {
-  return calcOrderTotal(order.items) + (order.shipping?.phiVanChuyen || 0) - calcPaidTotal(order.payments);
+  const tongTien = calcOrderTotal(order.items);
+  const tienVAT = (tongTien * (order.thueVAT || 0)) / 100;
+  return tongTien + tienVAT + (order.shipping?.phiVanChuyen || 0) - calcPaidTotal(order.payments);
 }
 
 /** Xác định trạng thái thanh toán dựa trên tổng tiền và đã trả */
 export function determinePaymentStatus(order: Order): TrangThaiThanhToan {
-  const total = calcOrderTotal(order.items) + (order.shipping?.phiVanChuyen || 0);
+  const tongTien = calcOrderTotal(order.items);
+  const tienVAT = (tongTien * (order.thueVAT || 0)) / 100;
+  const total = tongTien + tienVAT + (order.shipping?.phiVanChuyen || 0);
   const paid = calcPaidTotal(order.payments);
   if (paid <= 0) return "chua-thanh-toan";
   if (paid >= total) return "thanh-toan-du";
