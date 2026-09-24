@@ -40,6 +40,7 @@ import { SIZE_RATIO_5SIZE, SIZE_RATIO_4SIZE, SIZE_RATIO_PRESETS } from "@/lib/si
 import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
 import { getAllInventory, syncInventoryWithSupabase } from "@/lib/inventory-engine";
+import { loadSharedSizeRatioPresets, type SizeRatioPreset } from "@/lib/size-ratio-presets";
 
 type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string; sdt?: string };
 
@@ -762,9 +763,27 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
 
   // ============ Size Ratio & Màu sắc ============
   // 2 bang size: co 3XL (5 size) + bo 3XL (4 size)
+  const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      loadSharedSizeRatioPresets().then((items) => {
+        if (active) setCustomPresets(items);
+      });
+    };
+    load();
+    window.addEventListener("size-ratio-changed", load);
+    return () => { 
+      active = false; 
+      window.removeEventListener("size-ratio-changed", load);
+    };
+  }, []);
+
   const TI_LE_OPTIONS = [
     ...SIZE_RATIO_5SIZE.map((p) => ({ label: "📐 " + p.label, value: p.value, sizes: p.sizes })),
     ...SIZE_RATIO_4SIZE.map((p) => ({ label: "📏 " + p.label, value: p.value, sizes: p.sizes })),
+    ...customPresets.map((p) => ({ label: "⭐ " + p.label, value: p.value, sizes: p.sizes })),
   ];
   const [tiLeSize, setTiLeSize] = useState("1:2:2:1");
   const [soMau, setSoMau] = useState(4);

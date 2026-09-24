@@ -212,7 +212,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "gia-cong-ngoai": "rcu",
     "bao-cao": "r",
     "ai-tinh-gia": "r",
-    "khach-hang-tiem-nang": "ru",
+    "khach-hang-tiem-nang": "rcu",
     "so-do-chien-luoc": "rcu",
     "realtime": "r",
     "cai-dat": "",
@@ -235,9 +235,9 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "khach-hang": "",
     "ke-hoach-sx": "r",
     "nhan-su": "r",
-    "kho-vai": "rcud",
-    "kho-phu-lieu": "rcud",
-    "kho-thanh-pham": "rcud",
+    "kho-vai": "rcu",
+    "kho-phu-lieu": "rcu",
+    "kho-thanh-pham": "rcu",
     "don-hang": "r",
     "cong-no-cong-doan": "",
     "kiem-tra-chat-luong": "r",
@@ -261,7 +261,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
   // Sewing (tổ trưởng may): quản lý tổ may, chấm công, xem lệnh cắt
   sewing: {
     "dashboard": "r",
-    "lenh-cat": "ru",
+    "lenh-cat": "r",
     "khach-hang": "",
     "ke-hoach-sx": "r",
     "nhan-su": "r",
@@ -271,7 +271,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "don-hang": "r",
     "cong-no-cong-doan": "r",
     "kiem-tra-chat-luong": "r",
-    "to-may": "rcud",
+    "to-may": "rcu",
     "hoan-thien": "r",
     "giao-hang": "",
     "cham-cong": "rcu",
@@ -304,7 +304,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "kho-thanh-pham": "r",
     "don-hang": "r",
     "cong-no-cong-doan": "",
-    "kiem-tra-chat-luong": "rcud",
+    "kiem-tra-chat-luong": "rcu",
     "to-may": "r",
     "hoan-thien": "r",
     "giao-hang": "r",
@@ -340,7 +340,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "cong-no-cong-doan": "r",
     "kiem-tra-chat-luong": "r",
     "to-may": "r",
-    "hoan-thien": "rcud",
+    "hoan-thien": "rcu",
     "giao-hang": "rcu",
     "cham-cong": "r",
     "bang-luong": "",
@@ -364,27 +364,27 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
   cutting: {
     "dashboard": "r",
     "lenh-cat": "r",
-    "to-cat": "rcud",
+    "to-cat": "rcu",
   },
   printing: {
     "dashboard": "r",
     "lenh-cat": "r",
-    "to-in-theu": "rcud",
+    "to-in-theu": "rcu",
   },
   buttoning: {
     "dashboard": "r",
     "lenh-cat": "r",
-    "to-khuy-nut": "rcud",
+    "to-khuy-nut": "rcu",
   },
   ironing: {
     "dashboard": "r",
     "lenh-cat": "r",
-    "to-ui": "rcud",
+    "to-ui": "rcu",
   },
   packaging: {
     "dashboard": "r",
     "lenh-cat": "r",
-    "to-dong-goi": "rcud",
+    "to-dong-goi": "rcu",
   },
   // Accountant (kế toán): CRUD bảng lương, công nợ, NCC, xem báo cáo
   accountant: {
@@ -397,22 +397,22 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "kho-phu-lieu": "r",
     "kho-thanh-pham": "r",
     "don-hang": "r",
-    "cong-no-cong-doan": "rcud",
+    "cong-no-cong-doan": "rcu",
     "kiem-tra-chat-luong": "r",
     "to-may": "",
     "hoan-thien": "r",
     "giao-hang": "r",
     "cham-cong": "r",
-    "bang-luong": "rcud",
-    "nha-cung-cap": "rcud",
-    "gia-cong-ngoai": "ru",
+    "bang-luong": "rcu",
+    "nha-cung-cap": "rcu",
+    "gia-cong-ngoai": "rcu",
     "bao-cao": "r",
     "ai-tinh-gia": "r",
     "realtime": "r",
     "cai-dat": "",
     "trang-chu-gia-cong": "r",
     "bang-dieu-hanh-sx": "r",
-    "doi-soat-tien-cong": "rcud",
+    "doi-soat-tien-cong": "rcu",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "r",
@@ -442,8 +442,8 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "nha-cung-cap": "r",
     "gia-cong-ngoai": "",
     "bao-cao": "r",
-    "khach-hang-tiem-nang": "ru",
-    "so-do-chien-luoc": "ru",
+    "khach-hang-tiem-nang": "rcu",
+    "so-do-chien-luoc": "rcu",
     "realtime": "",
     "cai-dat": "",
     "trang-chu-gia-cong": "",
@@ -451,7 +451,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "doi-soat-tien-cong": "",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
-    "danh-muc-sp": "rcud",
+    "danh-muc-sp": "rcu",
     "cong-viec-gia-cong": "",
     "ban-giao-gia-cong": "",
     "san-luong-gia-cong": "",
@@ -460,7 +460,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
   // Partner (đối tác gia công may): CHỈ thấy phiếu giao cho mình - dùng cho 20 NCC
   partner: {
     "dashboard": "",
-    "lenh-cat": "rcu",
+    "lenh-cat": "r",
     "khach-hang": "",
     "ke-hoach-sx": "",
     "nhan-su": "",
@@ -476,18 +476,18 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "cham-cong": "",
     "bang-luong": "",
     "nha-cung-cap": "r",
-    "gia-cong-ngoai": "ru",
+    "gia-cong-ngoai": "r",
     "bao-cao": "",
     "realtime": "",
     "cai-dat": "",
-    "trang-chu-gia-cong": "rcud",
+    "trang-chu-gia-cong": "ru",
     "bang-dieu-hanh-sx": "",
     "doi-soat-tien-cong": "",
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "",
-    "cong-viec-gia-cong": "rcu",
-    "ban-giao-gia-cong": "rcu",
+    "cong-viec-gia-cong": "ru",
+    "ban-giao-gia-cong": "ru",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
   },
@@ -521,14 +521,14 @@ const ADDITIONAL_PERMISSIONS: Partial<Record<Role, Partial<Record<Module, string
   warehouse: { "van-chuyen": "rcu", "tin-nhan": "r", "workspace": "r" },
   sewing: { "tin-nhan": "r", "workspace": "r" },
   qc: { "tin-nhan": "r", "workspace": "r" },
-  finishing: { "van-chuyen": "ru", "tin-nhan": "r", "workspace": "r" },
-  accountant: { "hoa-don": "rcud", "van-chuyen": "r", "tin-nhan": "r", "workspace": "r" },
-  content: { "tin-nhan": "rcud", "workspace": "r" },
+  finishing: { "van-chuyen": "rcu", "tin-nhan": "r", "workspace": "r" },
+  accountant: { "hoa-don": "rcu", "van-chuyen": "r", "tin-nhan": "r", "workspace": "r" },
+  content: { "tin-nhan": "rcu", "workspace": "r" },
   partner: {
-    "dashboard": "r", "dat-ncc-phu-lieu": "ru", "cong-no-cong-doan": "r", "cham-cong": "rcu",
-    "bang-luong": "r", "hoa-don": "rcu", "tin-nhan": "rcu", "workspace": "r",
+    "dashboard": "r", "dat-ncc-phu-lieu": "ru", "cong-no-cong-doan": "r", "cham-cong": "ru",
+    "bang-luong": "r", "hoa-don": "r", "tin-nhan": "ru", "workspace": "r",
   },
-  supplier: { "hoa-don": "rcu", "tin-nhan": "rcu", "workspace": "r" },
+  supplier: { "hoa-don": "r", "tin-nhan": "ru", "workspace": "r" },
   workshop_customer: { "hoa-don": "r", "tin-nhan": "r", "workspace": "r" },
   buyer_customer: { "hoa-don": "r", "tin-nhan": "r", "workspace": "r" },
   cutting: { "tin-nhan": "r", "workspace": "r" },
@@ -629,12 +629,19 @@ export async function saveCustomMatrix(matrix: PermissionMatrix): Promise<void> 
   try {
     const normalized = cacheMatrix(matrix);
     if (isSupabaseEnabled && supabase) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        throw new Error("Phiên đăng nhập Supabase đã hết hạn, vui lòng Đăng xuất và Đăng nhập lại.");
+      }
+      
       const { error } = await supabase.from("permission_settings").upsert({ id: "global", matrix: normalized, updated_at: new Date().toISOString() });
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message || JSON.stringify(error));
+      }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error("[permissions] Không lưu được custom matrix:", err);
-    throw err;
+    throw new Error(err.message || "Lỗi không xác định");
   }
 }
 

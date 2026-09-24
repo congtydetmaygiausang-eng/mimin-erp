@@ -1,6 +1,7 @@
 // ============ MASTER DETAILS MODAL ============
 // Redesigned for Mobile-first & Desktop Responsive UI (2026-09-12)
 
+import { useState } from "react";
 import { Package, X, Star, Eye, ShoppingCart, Plus, ChevronRight, ShieldCheck, Box, MapPin } from "lucide-react";
 import type { SanPhamTP } from "../data";
 
@@ -11,6 +12,7 @@ interface ProductGroup {
 }
 
 export function MasterDetailsModal({ maSP, groups, productImages, onClose }: { maSP: string; groups: ProductGroup[]; productImages: Record<string, string>; onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<"overview" | "size">("overview");
   const group = groups.find(g => (g.maSP || "NO_CODE") === maSP);
   if (!group) return null;
 
@@ -98,106 +100,155 @@ export function MasterDetailsModal({ maSP, groups, productImages, onClose }: { m
             </div>
           </div>
 
-          {/* Pricing / Details Section */}
-          <div className="px-6 py-8">
-            <h3 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-4 ml-2">BẢNG GIÁ</h3>
-            <div className="bg-white rounded-[32px] p-6 shadow-sm space-y-6 border border-slate-100">
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">CHẤT LIỆU</div>
-                  <div className="text-slate-800 font-bold text-[17px]">Cotton</div>
-                </div>
-              </div>
-              <div className="w-full h-[1px] bg-slate-100"></div>
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
-                  <Box className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">KHO HÀNG</div>
-                  <div className="text-slate-800 font-bold text-[17px]">Sẵn sàng giao</div>
-                </div>
-              </div>
-              <div className="w-full h-[1px] bg-slate-100"></div>
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 shrink-0">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">NGUỒN GỐC</div>
-                  <div className="text-slate-800 font-bold text-[17px]">Sản xuất Nội bộ</div>
-                </div>
-              </div>
-            </div>
+          {/* Tabs Navigation */}
+          <div className="px-6 bg-slate-50/90 backdrop-blur-md sticky top-0 z-20 border-b border-slate-200 flex gap-8">
+            <button 
+              onClick={() => setActiveTab("overview")}
+              className={`py-4 text-xs md:text-sm font-black tracking-wide border-b-[3px] transition-all ${activeTab === "overview" ? "border-[#1e293b] text-[#1e293b]" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+            >
+              TỔNG QUAN
+            </button>
+            <button 
+              onClick={() => setActiveTab("size")}
+              className={`py-4 text-xs md:text-sm font-black tracking-wide border-b-[3px] transition-all ${activeTab === "size" ? "border-[#1e293b] text-[#1e293b]" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+            >
+              BẢNG TỈ LỆ SIZE
+            </button>
           </div>
 
-          {/* Size Info Section */}
-          <div className="px-6 pb-8">
-            <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-              <h3 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 text-center">THÔNG SỐ SIZE & TỈ LỆ</h3>
-              <div className="flex flex-wrap gap-4 justify-center">
-                {sizes.length > 0 ? sizes.map((s, i) => (
-                  <div key={i} className="flex flex-col items-center gap-3">
-                    <div className="w-[72px] h-[72px] rounded-3xl border-[2.5px] border-slate-100 flex items-center justify-center text-3xl font-black text-[#1e293b] shadow-sm">
-                      {s.size}
+          <div className="mt-4">
+            {activeTab === "overview" && (
+              <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                {/* Pricing / Details Section */}
+                <div className="px-6 py-4">
+                  <h3 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-4 ml-2">THÔNG TIN CHUNG</h3>
+                  <div className="bg-white rounded-[32px] p-6 shadow-sm space-y-6 border border-slate-100">
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0">
+                        <ShieldCheck className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">CHẤT LIỆU</div>
+                        <div className="text-slate-800 font-bold text-[17px]">Cotton</div>
+                      </div>
                     </div>
-                    <div className="bg-slate-100 text-slate-500 text-[11px] font-bold px-4 py-1.5 rounded-full">
-                      TL: {s.tl}
+                    <div className="w-full h-[1px] bg-slate-100"></div>
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
+                        <Box className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">KHO HÀNG</div>
+                        <div className="text-slate-800 font-bold text-[17px]">Sẵn sàng giao</div>
+                      </div>
+                    </div>
+                    <div className="w-full h-[1px] bg-slate-100"></div>
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 shrink-0">
+                        <MapPin className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">NGUỒN GỐC</div>
+                        <div className="text-slate-800 font-bold text-[17px]">Sản xuất Nội bộ</div>
+                      </div>
                     </div>
                   </div>
-                )) : (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-[72px] h-[72px] rounded-3xl border-[2.5px] border-slate-100 flex items-center justify-center text-xl font-black text-slate-400 shadow-sm">
-                      ?
-                    </div>
-                    <div className="bg-slate-100 text-slate-500 text-[11px] font-bold px-4 py-1.5 rounded-full">
-                      Chưa có
-                    </div>
+                </div>
+
+                {/* Colors Section */}
+                <div className="px-6 py-6 pb-12">
+                  <div className="flex items-center justify-between mb-5 ml-2">
+                    <h3 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase">MÀU SẮC & PHÂN LOẠI ({colors.length})</h3>
+                    <button className="flex items-center gap-1.5 text-cyan-600 font-bold text-sm bg-cyan-50 hover:bg-cyan-100 transition-colors px-4 py-2 rounded-full">
+                      <Plus className="w-4 h-4" /> Thêm màu
+                    </button>
                   </div>
-                )}
+
+                  <div className="space-y-4">
+                    {colors.map((c, i) => (
+                      <div key={i} className={`bg-white border-[2.5px] ${i === 0 ? 'border-cyan-400' : 'border-transparent'} rounded-[32px] p-4 shadow-sm flex gap-4 items-center relative overflow-hidden transition-all hover:border-cyan-200`}>
+                        <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100">
+                          {c.hinhAnh ? <img src={c.hinhAnh} className="w-full h-full object-cover" /> : <Package className="w-10 h-10 text-slate-300 m-auto mt-7 md:mt-9" />}
+                        </div>
+                        <div className="flex-1 py-1">
+                          <h4 className="text-[20px] md:text-[22px] font-black text-[#1e293b] mb-1.5">{c.mau}</h4>
+                          <div className="bg-slate-50 inline-block px-2.5 py-1.5 rounded-lg text-[12px] md:text-[13px] font-mono text-slate-400 mb-2.5 font-semibold">
+                            {c.maMau}
+                          </div>
+                          <div className="text-slate-500 text-sm font-medium">
+                            Định mức: <span className="font-bold text-cyan-700 text-[15px]">{c.dinhMuc} kg</span>
+                          </div>
+                        </div>
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500 shrink-0 mr-1 cursor-pointer hover:bg-cyan-100 transition-colors">
+                          <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {colors.length === 0 && (
+                      <div className="text-center py-10 bg-white rounded-[32px] border border-dashed border-slate-300">
+                         <p className="text-slate-500 font-medium">Chưa có thông tin màu sắc</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Colors Section */}
-          <div className="px-6 pb-12">
-            <div className="flex items-center justify-between mb-5 ml-2">
-              <h3 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase">MÀU SẮC & PHÂN LOẠI ({colors.length})</h3>
-              <button className="flex items-center gap-1.5 text-cyan-600 font-bold text-sm bg-cyan-50 hover:bg-cyan-100 transition-colors px-4 py-2 rounded-full">
-                <Plus className="w-4 h-4" /> Thêm màu
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {colors.map((c, i) => (
-                <div key={i} className={`bg-white border-[2.5px] ${i === 0 ? 'border-cyan-400' : 'border-transparent'} rounded-[32px] p-4 shadow-sm flex gap-4 items-center relative overflow-hidden transition-all hover:border-cyan-200`}>
-                  <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100">
-                    {c.hinhAnh ? <img src={c.hinhAnh} className="w-full h-full object-cover" /> : <Package className="w-10 h-10 text-slate-300 m-auto mt-7 md:mt-9" />}
-                  </div>
-                  <div className="flex-1 py-1">
-                    <h4 className="text-[20px] md:text-[22px] font-black text-[#1e293b] mb-1.5">{c.mau}</h4>
-                    <div className="bg-slate-50 inline-block px-2.5 py-1.5 rounded-lg text-[12px] md:text-[13px] font-mono text-slate-400 mb-2.5 font-semibold">
-                      {c.maMau}
-                    </div>
-                    <div className="text-slate-500 text-sm font-medium">
-                      Định mức: <span className="font-bold text-cyan-700 text-[15px]">{c.dinhMuc} kg</span>
-                    </div>
-                  </div>
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500 shrink-0 mr-1 cursor-pointer hover:bg-cyan-100 transition-colors">
-                    <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+            {activeTab === "size" && (
+              <div className="px-6 py-4 pb-12 animate-in fade-in slide-in-from-left-4 duration-300">
+                <h3 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-4 ml-2">THÔNG SỐ & TỈ LỆ</h3>
+                
+                {/* Visual blocks */}
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 mb-6">
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    {sizes.length > 0 ? sizes.map((s, i) => (
+                      <div key={i} className="flex flex-col items-center gap-3">
+                        <div className="w-[72px] h-[72px] rounded-3xl border-[2.5px] border-slate-100 flex items-center justify-center text-3xl font-black text-[#1e293b] shadow-sm">
+                          {s.size}
+                        </div>
+                        <div className="bg-slate-100 text-slate-500 text-[11px] font-bold px-4 py-1.5 rounded-full">
+                          TL: {s.tl}
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-[72px] h-[72px] rounded-3xl border-[2.5px] border-slate-100 flex items-center justify-center text-xl font-black text-slate-400 shadow-sm">
+                          ?
+                        </div>
+                        <div className="bg-slate-100 text-slate-500 text-[11px] font-bold px-4 py-1.5 rounded-full">
+                          Chưa có
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-              
-              {colors.length === 0 && (
-                <div className="text-center py-10 bg-white rounded-[32px] border border-dashed border-slate-300">
-                   <p className="text-slate-500 font-medium">Chưa có thông tin màu sắc</p>
+
+                {/* Table representation */}
+                <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-slate-50/50">
+                        <th className="py-4 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">Kích Cỡ (Size)</th>
+                        <th className="py-4 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 text-right">Tỉ lệ cắt</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {sizes.length > 0 ? sizes.map((s, i) => (
+                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 px-6 font-black text-[#1e293b] text-base">{s.size}</td>
+                          <td className="py-4 px-6 font-bold text-cyan-600 text-right">{s.tl}</td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={2} className="py-8 text-center text-slate-400 font-medium">Chưa có dữ liệu size</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -58,7 +58,7 @@ export default function ProductLibraryCard({
   // chưa có dữ liệu kho_thanh_pham cho mã SP này (chưa nhập kho, không phải lỗi).
   const tongTonKho = useMemo(() => {
     if (!tonKhoTheoMau) return 0;
-    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + tonMau.reduce((s, row) => s + (row.sl || 0), 0), 0);
+    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + (tonMau || []).reduce((s, row) => s + (row.sl || 0), 0), 0);
   }, [tonKhoTheoMau]);
 
   const displayPrice = useMemo(() => {
@@ -203,13 +203,11 @@ export default function ProductLibraryCard({
         {/* === TÓM TẮT: Tổng tồn kho + danh sách màu/SKU (bấm để xem chi tiết) === */}
         {sp.dsMau && sp.dsMau.length > 0 ? (
           <div className="mb-3">
-            {tonKhoTheoMau && (
-              <div className="flex items-center gap-1.5 mb-2 text-xs">
-                <Package className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-slate-500">Tổng tồn kho:</span>
-                <span className={`font-extrabold ${tongTonKho > 0 ? "text-emerald-600" : "text-slate-400"}`}>{tongTonKho}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 mb-2 text-xs">
+              <Package className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-slate-500">Tổng tồn kho:</span>
+              <span className={`font-extrabold ${tongTonKho > 0 ? "text-emerald-600" : "text-slate-400"}`}>{tongTonKho}</span>
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {sp.dsMau.map((mau, idx) => {
                 const dangMo = mauMoRong === mau.ten;
@@ -236,12 +234,10 @@ export default function ProductLibraryCard({
                         style={{ background: mau.ten === "Đen" ? "#1f2937" : mau.ten === "Trắng" ? "#f9fafb" : mau.ten?.toLowerCase().includes("xanh") ? "#0891b2" : mau.ten?.toLowerCase().includes("đỏ") || mau.ten?.toLowerCase().includes("hồng") ? "#ec4899" : mau.ten?.toLowerCase().includes("vàng") || mau.ten?.toLowerCase().includes("be") ? "#f59e0b" : "#9ca3af" }}
                       />
                     )}
-                    <span className="truncate max-w-[70px]">{mau.ten}</span>
-                    {tonKhoTheoMau && (
-                      <span className={`font-normal ${tongMau === 0 ? "text-rose-500" : "text-slate-400"}`}>
-                        · {tongMau === 0 ? "Hết hàng" : tongMau}
-                      </span>
-                    )}
+                    <span className="truncate max-w-[100px]">{mau.ten} {mau.maSKU ? `(${mau.maSKU})` : ""}</span>
+                    <span className={`font-normal ${tongMau === 0 ? "text-rose-500" : "text-slate-400"}`}>
+                      · {tongMau === 0 ? "Hết hàng" : tongMau}
+                    </span>
                     <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${dangMo ? "rotate-180" : ""}`} />
                   </button>
                 );
@@ -258,11 +254,10 @@ export default function ProductLibraryCard({
                 <div className="mt-2 p-2 rounded-lg border border-cyan-200 bg-cyan-50/50">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[10px] font-bold text-cyan-800 uppercase">{mau.ten}{mau.maSKU ? ` · ${mau.maSKU}` : ""}</span>
-                    {!tonKhoTheoMau && <span className="text-[10px] text-amber-600 font-semibold">Chưa có dữ liệu kho</span>}
                   </div>
                   <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
                     {sizes.map((s, i) => {
-                      const ratio = sp.bangSize?.ratios[i] || parseInt(sp.tiLeSize?.split(":")[i] || "0") || 0;
+                      const ratio = sp.bangSize?.ratios[i] || parseInt(sp.tiLeSize?.split(":")?.[i] || "0") || 0;
                       const sl = tonMau.find((x) => x.size === s)?.sl ?? 0;
                       return (
                         <div key={s} className="flex flex-col items-center shrink-0 min-w-[36px]" onClick={(e) => e.stopPropagation()}>
@@ -319,7 +314,7 @@ export default function ProductLibraryCard({
                     {s}
                   </span>
                   <span className="min-w-[32px] px-1 py-0.5 text-[11px] font-extrabold bg-cyan-50 text-cyan-600 border border-slate-200 text-center" title="Tỉ lệ">
-                    {sp.bangSize?.ratios[i] || sp.tiLeSize?.split(":")[i] || 0}
+                    {sp.bangSize?.ratios[i] || sp.tiLeSize?.split(":")?.[i] || 0}
                   </span>
                 </div>
               ))}

@@ -57,7 +57,7 @@ export default function PhanQuyenTuyChinhPage() {
   const [dirty, setDirty] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"matrix" | "users">("matrix");
+  const [view, setView] = useState<"matrix" | "users" | "accounts">("matrix");
   const [users, setUsers] = useState<PermissionUser[]>([]);
   const [savingUser, setSavingUser] = useState<string | null>(null);
   useEffect(() => {
@@ -389,6 +389,7 @@ export default function PhanQuyenTuyChinhPage() {
         {[
           { key: "matrix", label: "🛡️ Ma trận 9×30", count: 30 },
           { key: "users", label: "👥 Gán user cho role", count: users.length },
+          { key: "accounts", label: "📋 Bảng tài khoản", count: users.length },
         ].map((t: any) => (
           <button
             key={t.key}
@@ -408,6 +409,9 @@ export default function PhanQuyenTuyChinhPage() {
           savingUser={savingUser}
           setSavingUser={setSavingUser}
         />
+      )}
+      {view === "accounts" && (
+        <UserPermissionTable users={users} matrix={matrix} />
       )}
       {view === "matrix" && (
         <>
@@ -572,6 +576,213 @@ export default function PhanQuyenTuyChinhPage() {
     </div>
   );
 }
+// ============== USER PERMISSION TABLE ==============
+function UserPermissionTable({
+  users,
+  matrix,
+}: {
+  users: PermissionUser[];
+  matrix: Matrix;
+}) {
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [selectedUser, setSelectedUser] = useState<PermissionUser | null>(null);
+
+  const filtered = users.filter((u) => {
+    if (filterRole !== "all" && u.role !== filterRole) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      if (!u.name.toLowerCase().includes(s) && !u.email.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+
+  const getUserPerms = (u: PermissionUser) => matrix[u.role] || {};
+
+  // Chỉ hiện các module mà ít nhất 1 user trong danh sách có quyền
+  const activeModules = ALL_MODULES.filter((m) =>
+    filtered.some((u) => (getUserPerms(u)[m] || "") !== "")
+  );
+
+  if (selectedUser) {
+    const perms = getUserPerms(selectedUser);
+    return (
+      <div className="space-y-3">
+        <div className="card p-3 flex items-center gap-3">
+          <button
+            onClick={() => setSelectedUser(null)}
+            className="btn-secondary text-xs"
+          >
+            ← Quay lại
+          </button>
+          <div
+            className={`w-9 h-9 rounded-full bg-gradient-to-br ${ROLE_COLORS[selectedUser.role]} text-white flex items-center justify-center font-bold text-sm shrink-0`}
+          >
+            {selectedUser.name.charAt(0)}
+          </div>
+          <div>
+            <div className="font-bold text-sm">{selectedUser.name}</div>
+            <div className="text-[11px] opacity-60">{selectedUser.email} · <span className={`px-1.5 py-0.5 rounded text-white text-[10px] font-bold bg-gradient-to-r ${ROLE_COLORS[selectedUser.role]}`}>{ROLE_LABELS[selectedUser.role]}</span></div>
+          </div>
+        </div>
+        <div className="card p-0 overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="bg-slate-100 dark:bg-slate-800">
+                <th className="p-2 text-left sticky left-0 bg-slate-100 dark:bg-slate-800 min-w-[180px]">Module</th>
+                {ACTIONS.map((act) => (
+                  <th key={act} className="p-2 text-center w-16">
+                    <span className={`px-2 py-0.5 rounded text-white text-[10px] font-bold ${
+                      act === "r" ? "bg-blue-500" : act === "c" ? "bg-emerald-500" : act === "u" ? "bg-amber-500" : "bg-rose-500"
+                    }`}>{ACTION_META[act].label}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ALL_MODULES.map((mod) => {
+                const p = perms[mod] || "";
+                const hasAny = p.length > 0;
+                return (
+                  <tr key={mod} className={`border-t border-slate-200 dark:border-slate-700 ${
+                    hasAny ? "" : "opacity-30"
+                  }`}>
+                    <td className="p-2 font-medium sticky left-0 bg-white dark:bg-slate-900">{MODULE_LABELS[mod] || mod}</td>
+                    {ACTIONS.map((act) => (
+                      <td key={act} className="p-2 text-center">
+                        {p.includes(act) ? (
+                          <span className={`inline-flex w-5 h-5 rounded items-center justify-center text-white text-[10px] font-bold ${
+                            act === "r" ? "bg-blue-500" : act === "c" ? "bg-emerald-500" : act === "u" ? "bg-amber-500" : "bg-rose-500"
+                          }`}>✓</span>
+                        ) : (
+                          <span className="inline-flex w-5 h-5 rounded items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-300 text-[10px]">·</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Filter bar */}
+      <div className="card p-3">
+        <h3 className="font-bold text-sm mb-2">📋 Bảng phân quyền theo tài khoản</h3>
+        <p className="text-xs opacity-70 mb-3">Xem quyền thực tế của từng tài khoản (kế thừa từ vai trò). Click vào tên để xem chi tiết.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-medium mb-1">🔍 Tìm tên / email</label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm tên hoặc email..."
+              className="w-full px-3 py-1.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">🎭 Lọc vai trò</label>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="w-full px-3 py-1.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            >
+              <option value="all">Tất cả vai trò</option>
+              {ALL_ROLES.map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r]} ({users.filter((u) => u.role === r).length})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-2 text-[10px] opacity-60">Hiển thị: {filtered.length} / {users.length} tài khoản</div>
+      </div>
+
+      {/* Table */}
+      <div className="card p-0 overflow-x-auto">
+        <table className="w-full text-[11px]">
+          <thead>
+            <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
+              <th className="p-2 text-left sticky left-0 bg-slate-100 dark:bg-slate-800 z-20 min-w-[200px]">
+                Tài khoản
+              </th>
+              <th className="p-2 text-center min-w-[90px]">Vai trò</th>
+              {activeModules.map((m) => (
+                <th key={m} className="p-1 text-center min-w-[80px]">
+                  <div className="text-[9px] font-semibold leading-tight">{MODULE_LABELS[m] || m}</div>
+                  <div className="text-[8px] opacity-50 mt-0.5">X T S X</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((u) => {
+              const perms = getUserPerms(u);
+              return (
+                <tr
+                  key={u.id}
+                  className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer"
+                  onClick={() => setSelectedUser(u)}
+                >
+                  <td className="p-2 sticky left-0 bg-white dark:bg-slate-900 z-10">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${ROLE_COLORS[u.role]} text-white flex items-center justify-center font-bold text-[10px] shrink-0`}>
+                        {u.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-xs">{u.name}</div>
+                        <div className="text-[9px] opacity-50 truncate max-w-[130px]">{u.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-1 text-center">
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded text-white font-bold bg-gradient-to-r ${ROLE_COLORS[u.role]}`}>
+                      {ROLE_LABELS[u.role]}
+                    </span>
+                  </td>
+                  {activeModules.map((m) => {
+                    const p = perms[m] || "";
+                    return (
+                      <td key={m} className="p-1 text-center">
+                        <div className="flex gap-0.5 justify-center">
+                          {ACTIONS.map((act) => (
+                            <span
+                              key={act}
+                              className={`inline-flex w-4 h-4 rounded items-center justify-center text-[8px] font-bold ${
+                                p.includes(act)
+                                  ? act === "r" ? "bg-blue-500 text-white" : act === "c" ? "bg-emerald-500 text-white" : act === "u" ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-300"
+                              }`}
+                            >
+                              {p.includes(act) ? ACTION_META[act].letter : "·"}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div className="p-8 text-center opacity-60 text-sm">Không tìm thấy tài khoản nào</div>
+        )}
+      </div>
+
+      <div className="card p-3 bg-blue-500/5 border-blue-500/20 text-xs">
+        💡 <b>Lưu ý:</b> Quyền hiển thị ở đây kế thừa từ vai trò (role) của từng tài khoản. Để thay đổi quyền, hãy chỉnh ma trận ở tab <b>"Ma trận"</b> hoặc đổi vai trò ở tab <b>"Gán user cho role"</b>.
+      </div>
+    </div>
+  );
+}
+
 // ============== USER ROLE MANAGER ==============
 function UserRoleManager({
   users,

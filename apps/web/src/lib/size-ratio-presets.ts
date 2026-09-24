@@ -192,9 +192,19 @@ export async function loadSharedSizeRatioPresets(): Promise<SizeRatioPreset[]> {
   return shared;
 }
 
+export function notifySizeRatioChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("size-ratio-changed"));
+  }
+}
+
 /** Lưu Supabase trước để bảng size xuất hiện trên mọi máy, sau đó cập nhật cache. */
 export async function saveSharedSizeRatioPreset(preset: SizeRatioPreset): Promise<SizeRatioPreset[]> {
-  if (!supabase) return saveCustomSizeRatioPreset(preset);
+  if (!supabase) {
+    const res = saveCustomSizeRatioPreset(preset);
+    notifySizeRatioChanged();
+    return res;
+  }
 
   const { error } = await supabase.from("bang_size").insert({
     id: preset.id,
@@ -206,5 +216,7 @@ export async function saveSharedSizeRatioPreset(preset: SizeRatioPreset): Promis
     ghi_chu: preset.ghiChu || null,
   });
   if (error) throw new Error(error.message);
-  return saveCustomSizeRatioPreset(preset);
+  const res = saveCustomSizeRatioPreset(preset);
+  notifySizeRatioChanged();
+  return res;
 }

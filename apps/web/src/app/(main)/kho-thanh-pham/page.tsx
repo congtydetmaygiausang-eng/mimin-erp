@@ -13,7 +13,7 @@ import { FilterBar, SortBar } from "./components/FilterBar";
 import { ProductGrid } from "./components/ProductGrid";
 import { ProductTable } from "./components/ProductTable";
 import { ProductFormModal } from "./components/ProductFormModal";
-import { MasterDetailsModal } from "./components/MasterDetailsModal";
+import { AddSizeRatioModal } from "./components/AddSizeRatioModal";
 import { DangBanModal } from "./components/DangBanModal";
 import { VariantDetailModal } from "./components/VariantDetailModal";
 import { SuaTongModal } from "./components/SuaTongModal";
@@ -55,6 +55,7 @@ export default function KhoThanhPhamPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [editing, setEditing] = useState<SanPhamTP | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddSizeRatio, setShowAddSizeRatio] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
@@ -307,24 +308,38 @@ export default function KhoThanhPhamPage() {
       const existingDM = dsDanhMuc.find(d => d.id === groupMaSP || d.maSP === groupMaSP);
       const dsMauMoi = newRows.map((r) => {
         const oldMau = existingDM?.dsMau.find(old => old.ten === r.mau);
+        
+        // Tính tổng tồn kho của màu này từ tất cả các lô trong kho thành phẩm
+        const totalKho = dsSanPham.filter(sp => sp.maSP === groupMaSP && sp.mau === r.mau).reduce((sum, sp) => sum + (sp.soLuong || 0), 0) + (r.soLuong || 0);
+        
         return {
           ten: r.mau,
           maSKU: r.maSKU || oldMau?.maSKU || `${groupMaSP}-${r.mau}`,
           dinhMuc: oldMau ? oldMau.dinhMuc : 0,
           img: r.hinhAnh?.[0] || oldMau?.img || "",
           video: r.video || oldMau?.video || "",
+          soLuongKho: totalKho
         };
       });
 
       const anhDaiDien = dsMauMoi.find(m => m.img)?.img || "";
       const giaBanDuKien = newRows[0]?.giaBanLe || 0;
       const giaVonDuKien = newRows[0]?.giaVon || 0;
-
       if (existingDM) {
-         // Ghi đè dsMau bằng danh sách màu thực tế từ Kho Thành Phẩm (xóa các màu rác/mặc định cũ)
+         // Hợp nhất dsMau để không làm mất các màu cũ không nằm trong lô nhập lần này
+         const mergedDsMau = [...(existingDM.dsMau || [])];
+         dsMauMoi.forEach(newM => {
+            const idx = mergedDsMau.findIndex(m => m.ten === newM.ten);
+            if (idx === -1) {
+               mergedDsMau.push(newM);
+            } else {
+               mergedDsMau[idx] = { ...mergedDsMau[idx], ...newM };
+            }
+         });
+
          suaSP(existingDM.id, {
            giaBanDuKien: Math.max(existingDM.giaBanDuKien || 0, giaBanDuKien),
-           dsMau: dsMauMoi,
+           dsMau: mergedDsMau,
            hinhAnh: anhDaiDien || existingDM.hinhAnh,
            loaiSP: (newRows[0]?.phanLoai as any) || existingDM.loaiSP,
            tenSP: newRows[0]?.tenSP || existingDM.tenSP,
@@ -427,9 +442,13 @@ export default function KhoThanhPhamPage() {
                currentMau.img = __tempImage;
                changed = true;
             }
-            if (sp.soLuong !== undefined && currentMau.soLuongKho !== sp.soLuong) {
-               currentMau.soLuongKho = sp.soLuong;
-               changed = true;
+            if (sp.soLuong !== undefined) {
+               // Tính lại tổng tồn kho của màu này từ tất cả các lô
+               const totalKho = dsSanPham.filter(item => item.maSP === sp.maSP && item.mau === sp.mau && item.id !== sp.id).reduce((sum, item) => sum + (item.soLuong || 0), 0) + sp.soLuong;
+               if (currentMau.soLuongKho !== totalKho) {
+                 currentMau.soLuongKho = totalKho;
+                 changed = true;
+               }
             }
             newDsMau[mauIndex] = currentMau;
             newDM.dsMau = newDsMau;
@@ -899,6 +918,7 @@ export default function KhoThanhPhamPage() {
             exportCSV={exportCSV}
             handleAutoGenerate={handleAutoGenerate}
             setShowAdd={setShowAdd}
+            setShowAddSizeRatio={setShowAddSizeRatio}
           />
           <SortBar
             sortBy={sortBy} setSortBy={setSortBy}
@@ -1067,6 +1087,10 @@ export default function KhoThanhPhamPage() {
 
       {/* Hidden file input for upload (image + video) */}
       <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" onChange={handleFileChange} />
+
+      {showAddSizeRatio && (
+        <AddSizeRatioModal onClose={() => setShowAddSizeRatio(false)} />
+      )}
     </div>
   );
 }
