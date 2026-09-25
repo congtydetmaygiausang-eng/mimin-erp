@@ -149,6 +149,7 @@ export async function getMeInvoiceToken(
 async function fetchMeInvoiceToken(config: MeInvoiceConfig): Promise<string | null> {
   const url = `${BASE_URLS[config.env]}/auth/token`;
   try {
+    const pwd = config.password || (config as any).password_enc;
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -156,7 +157,7 @@ async function fetchMeInvoiceToken(config: MeInvoiceConfig): Promise<string | nu
         appid: config.app_id,
         taxcode: config.tax_code,
         username: config.username,
-        password: config.password,
+        password: pwd,
       }),
     });
     const json = (await r.json()) as MeInvoiceResponse<string>;
