@@ -160,9 +160,12 @@ async function fetchMeInvoiceToken(config: MeInvoiceConfig): Promise<string | nu
         password: pwd,
       }),
     });
-    const json = (await r.json()) as MeInvoiceResponse<string>;
-    if (json.Success && json.Data) {
-      return json.Data;
+    const json = (await r.json()) as any;
+    const isSuccess = json.Success !== undefined ? json.Success : json.success;
+    const data = json.Data !== undefined ? json.Data : json.data;
+    
+    if (isSuccess && data) {
+      return data;
     }
     console.error("[meinvoice] get token failed:", json);
     return null;
@@ -228,9 +231,12 @@ export async function createAndPublishInvoice(
       },
       body: JSON.stringify(body),
     });
-    const json = (await r.json()) as MeInvoiceResponse<CreateInvoiceResult[]>;
-    if (json.Success && json.Data && json.Data[0]) {
-      return json.Data[0];
+    const json = (await r.json()) as any;
+    const isSuccess = json.Success !== undefined ? json.Success : json.success;
+    const data = json.Data !== undefined ? json.Data : json.data;
+    
+    if (isSuccess && data && data[0]) {
+      return data[0];
     }
     console.error("[meinvoice] create invoice failed:", json);
     return null;
