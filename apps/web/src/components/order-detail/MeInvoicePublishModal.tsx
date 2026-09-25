@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatVND } from "@/lib/data/real-data";
 import type { Order } from "./types";
 import { calcOrderTotal, calcPaidTotal } from "./helpers";
+import { supabase } from "@/lib/supabase/client";
 
 interface Props {
   order: Order;
@@ -52,12 +53,15 @@ export default function MeInvoicePublishModal({
 
   // Load config
   useEffect(() => {
-    fetch("/api/meinvoice/config")
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.ok && j.config) {
-          setConfig(j.config);
-          if (j.config.default_template) setInvSeries(j.config.default_template);
+    supabase
+      .from("meinvoice_config")
+      .select("*")
+      .eq("id", "default")
+      .single()
+      .then(({ data, error }) => {
+        if (data) {
+          setConfig(data);
+          if (data.default_template) setInvSeries(data.default_template);
         }
       })
       .catch((e) => console.error("load config:", e));
