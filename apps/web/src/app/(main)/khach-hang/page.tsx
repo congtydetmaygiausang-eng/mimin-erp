@@ -164,7 +164,7 @@ export default function KhachHangPage() {
         vcfData += `N:;${name};;;\n`;
         vcfData += `FN:${name}\n`;
         vcfData += `TEL;TYPE=CELL:${phone}\n`;
-        vcfData += "END:VCARD\n";
+        vcfData += "END:VCARD\n\n";
       }
     });
 
@@ -174,7 +174,8 @@ export default function KhachHangPage() {
     }
 
     // Prepend UTF-8 BOM (\uFEFF) so iOS/Windows correctly interprets Vietnamese characters
-    const blob = new Blob(["\uFEFF" + vcfData], { type: "text/vcard;charset=utf-8" });
+    // Force application/octet-stream so iOS Safari downloads it instead of previewing the first contact
+    const blob = new Blob(["\uFEFF" + vcfData], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
