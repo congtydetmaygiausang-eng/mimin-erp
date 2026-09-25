@@ -18,6 +18,7 @@ import {
   Award,
   FileText,
   Bookmark,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -146,6 +147,43 @@ export default function KhachHangPage() {
     }
   };
 
+  const handleExportVCF = () => {
+    if (!list || list.length === 0) {
+      toast.error("Không có khách hàng nào để xuất");
+      return;
+    }
+    
+    let vcfData = "";
+    list.forEach(kh => {
+      const name = kh.ten || "Khách không tên";
+      const phone = kh.sdt ? kh.sdt.replace(/\D/g, "") : "";
+      if (phone) {
+        vcfData += "BEGIN:VCARD\n";
+        vcfData += "VERSION:3.0\n";
+        vcfData += `FN:${name}\n`;
+        vcfData += `TEL;TYPE=CELL:${phone}\n`;
+        vcfData += "END:VCARD\n";
+      }
+    });
+
+    if (!vcfData) {
+      toast.error("Không có khách hàng nào có số điện thoại hợp lệ");
+      return;
+    }
+
+    const blob = new Blob([vcfData], { type: "text/vcard;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `DanhBa_KhachHang_MIMIN_${new Date().getTime()}.vcf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Đã xuất danh bạ thành công! Hãy mở file trên điện thoại để đồng bộ.");
+  };
+
+
   return (
     <div className="space-y-5 animate-fade-in">
       <PageHeader
@@ -154,12 +192,21 @@ export default function KhachHangPage() {
         subtitle={`${filtered.length} khách hàng · ${filtered.filter(k => (k.rating || 0) >= 4.5).length} VIP`}
         icon={<Users className="w-5 h-5" />}
         actions={
-          <button
-            onClick={() => setShowForm({ mode: "add", initialLoai: activeTab === "Xưởng" ? "Khách hàng xưởng" : "Đại lý cấp 1" })}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition"
-          >
-            <Plus className="w-4 h-4" /> Thêm KH
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportVCF}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-indigo-500/20 hover:bg-indigo-500/40 text-white border border-indigo-500/30 backdrop-blur-sm transition"
+              title="Xuất file VCF để đồng bộ lên điện thoại/iPad/Zalo"
+            >
+              <Download className="w-4 h-4" /> Đồng bộ Danh bạ (Zalo)
+            </button>
+            <button
+              onClick={() => setShowForm({ mode: "add", initialLoai: activeTab === "Xưởng" ? "Khách hàng xưởng" : "Đại lý cấp 1" })}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition"
+            >
+              <Plus className="w-4 h-4" /> Thêm KH
+            </button>
+          </div>
         }
       />
 

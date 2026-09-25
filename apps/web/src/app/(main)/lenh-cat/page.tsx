@@ -264,7 +264,10 @@ export default function LenhCatPage() {
           customStepName={customStepName}
           setCustomStepName={setCustomStepName}
           onClose={() => setShowTaoMauCD(false)}
-          onSave={() => { themMauCongDoan(newMauCD); setShowTaoMauCD(false); }}
+          onSave={() => { 
+            themMauCongDoan({ ...newMauCD, id: newMauCD.id || "cd_" + Date.now() }); 
+            setShowTaoMauCD(false); 
+          }}
         />
       )}
 
@@ -276,7 +279,10 @@ export default function LenhCatPage() {
           customCostName={customCostName}
           setCustomCostName={setCustomCostName}
           onClose={() => setShowTaoMauCP(false)}
-          onSave={() => { themMauChiPhi(newMauCP); setShowTaoMauCP(false); }}
+          onSave={() => { 
+            themMauChiPhi({ ...newMauCP, id: newMauCP.id || "cp_" + Date.now() }); 
+            setShowTaoMauCP(false); 
+          }}
         />
       )}
 
