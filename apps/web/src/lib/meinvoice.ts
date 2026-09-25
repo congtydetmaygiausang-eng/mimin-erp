@@ -238,11 +238,12 @@ export async function createAndPublishInvoice(
     if (isSuccess && data && data[0]) {
       return data[0];
     }
+    const errorMsg = json.Errors || json.ErrorCode || json.errors || json.errorCode || "Unknown MeInvoice Error";
     console.error("[meinvoice] create invoice failed:", json);
-    return null;
-  } catch (err) {
+    throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+  } catch (err: any) {
     console.error("[meinvoice] create invoice exception:", err);
-    return null;
+    throw err;
   }
 }
 

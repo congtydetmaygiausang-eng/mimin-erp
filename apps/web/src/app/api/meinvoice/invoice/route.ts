@@ -1,7 +1,7 @@
 // MeInvoice Create Invoice API - tao + phat hanh hoa don
 // 2026-08-09 - Mavis
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createAndPublishInvoice, buildInvoiceFromDonHang, type DonHangForInvoice } from "@/lib/meinvoice";
 
 const DEFAULT_ID = "default";
@@ -9,7 +9,7 @@ const DEFAULT_ID = "default";
 export async function POST(req: NextRequest) {
   const start = Date.now();
   try {
-    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
+    if (!supabaseAdmin) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
     const body = await req.json();
     const { donHang, invSeries, invDate, refId, refIdDonHang, refIdKhachHang, nguoiTao } = body;
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Load config
-    const { data: config, error: cfgErr } = await supabase
+    const { data: config, error: cfgErr } = await supabaseAdmin
       .from("meinvoice_config")
       .select("*")
       .eq("id", DEFAULT_ID)
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     if (result.ErrorCode && result.ErrorCode !== "0") {
       // Save log + error
-      await supabase.from("hoa_don_log").insert({
+      await supabaseAdmin.from("hoa_don_log").insert({
         hoa_don_id: refId,
         action: "create",
         endpoint: "invoice",
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       nguoi_tao: nguoiTao,
       issued_at: new Date().toISOString(),
     };
-    const { data: saved, error: saveErr } = await supabase
+    const { data: saved, error: saveErr } = await supabaseAdmin
       .from("hoa_don_dien_tu")
       .upsert(hoaDon, { onConflict: "id" })
       .select()
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Audit log
-    await supabase.from("hoa_don_log").insert({
+    await supabaseAdmin.from("hoa_don_log").insert({
       hoa_don_id: saved?.id || refId,
       action: "create",
       endpoint: "invoice",
