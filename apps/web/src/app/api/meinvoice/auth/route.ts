@@ -75,7 +75,7 @@ export async function POST() {
 
       return NextResponse.json({
         ok: true,
-        token_preview: json.Data.substring(0, 20) + "...",
+        token_preview: (data && typeof data === 'string') ? data.substring(0, 20) + "..." : "...",
         expires_at: expiresAt,
         env: config.env,
         duration_ms: duration,
