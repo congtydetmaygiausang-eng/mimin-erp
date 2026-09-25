@@ -549,10 +549,10 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
             setDsMauCongDoan(parsed);
           }
         } catch {
-          setDsMauCongDoan([]);
+          setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
         }
       } else {
-        setDsMauCongDoan([]);
+        setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
         localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
       }
 
