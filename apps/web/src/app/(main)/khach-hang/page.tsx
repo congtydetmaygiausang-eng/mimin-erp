@@ -160,6 +160,8 @@ export default function KhachHangPage() {
       if (phone) {
         vcfData += "BEGIN:VCARD\n";
         vcfData += "VERSION:3.0\n";
+        // iOS requires the 'N' (Name) property alongside 'FN' to display names correctly
+        vcfData += `N:;${name};;;\n`;
         vcfData += `FN:${name}\n`;
         vcfData += `TEL;TYPE=CELL:${phone}\n`;
         vcfData += "END:VCARD\n";
@@ -171,7 +173,8 @@ export default function KhachHangPage() {
       return;
     }
 
-    const blob = new Blob([vcfData], { type: "text/vcard;charset=utf-8" });
+    // Prepend UTF-8 BOM (\uFEFF) so iOS/Windows correctly interprets Vietnamese characters
+    const blob = new Blob(["\uFEFF" + vcfData], { type: "text/vcard;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
