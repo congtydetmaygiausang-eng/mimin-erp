@@ -62,12 +62,9 @@ export default function HoaDonDienTuPage() {
   // ============ LOAD DATA ============
   const loadConfig = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from("meinvoice_config")
-        .select("*")
-        .eq("id", "default")
-        .single();
-      if (data) setConfig(data);
+      const r = await fetch("/api/meinvoice/config");
+      const json = await r.json();
+      if (json.ok) setConfig(json.config);
     } catch (err) {
       console.error("load config error:", err);
     }
@@ -457,29 +454,24 @@ function MeInvoiceSettingsModal({
     }
     setSaving(true);
     try {
-      const updateData: any = {
-        id: "default",
-        app_id: appId,
-        tax_code: taxCode,
-        username,
-        env,
-        sign_type: signType,
-        updated_at: new Date().toISOString(),
-      };
-      
-      if (password && password !== "******") {
-        updateData.password_enc = password;
-      }
-      
-      const { error } = await supabase
-        .from("meinvoice_config")
-        .upsert(updateData, { onConflict: "id" });
-        
-      if (!error) {
+      const r = await fetch("/api/meinvoice/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          app_id: appId,
+          tax_code: taxCode,
+          username,
+          password: password || "******",
+          env,
+          sign_type: signType,
+        }),
+      });
+      const json = await r.json();
+      if (json.ok) {
         toast.success("Đã lưu cấu hình MeInvoice!");
         onSaved();
       } else {
-        toast.error(error.message);
+        toast.error(json.error);
       }
     } catch (err: any) {
       toast.error("Lỗi: " + err.message);

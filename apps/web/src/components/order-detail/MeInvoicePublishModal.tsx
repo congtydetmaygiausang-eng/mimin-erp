@@ -53,15 +53,12 @@ export default function MeInvoicePublishModal({
 
   // Load config
   useEffect(() => {
-    supabase
-      .from("meinvoice_config")
-      .select("*")
-      .eq("id", "default")
-      .single()
-      .then(({ data, error }) => {
-        if (data) {
-          setConfig(data);
-          if (data.default_template) setInvSeries(data.default_template);
+    fetch("/api/meinvoice/config")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok && j.config) {
+          setConfig(j.config);
+          if (j.config.default_template) setInvSeries(j.config.default_template);
         }
       })
       .catch((e) => console.error("load config:", e));

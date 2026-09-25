@@ -1,14 +1,14 @@
 // MeInvoice Config API - GET/PUT credentials + cached token
 // 2026-08-09 - Mavis
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const DEFAULT_ID = "default";
 
 export async function GET() {
   try {
-    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
-    const { data, error } = await supabase
+    if (!supabaseAdmin) return NextResponse.json({ ok: false, error: "Supabase Admin chưa được cấu hình" }, { status: 500 });
+    const { data, error } = await supabaseAdmin
       .from("meinvoice_config")
       .select("*")
       .eq("id", DEFAULT_ID)
@@ -34,7 +34,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
-    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
+    if (!supabaseAdmin) return NextResponse.json({ ok: false, error: "Supabase Admin chưa được cấu hình" }, { status: 500 });
     const body = await req.json();
     const { app_id, tax_code, username, password, env, sign_type } = body;
     if (!app_id || !tax_code || !username || !password) {
@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest) {
       update.password_enc = password;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("meinvoice_config")
       .upsert(update, { onConflict: "id" })
       .select()
