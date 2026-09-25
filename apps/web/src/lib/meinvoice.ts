@@ -238,7 +238,7 @@ export async function createAndPublishInvoice(
     if (isSuccess && data && data[0]) {
       return data[0];
     }
-    const errorMsg = json.Errors || json.ErrorCode || json.errors || json.errorCode || "Unknown MeInvoice Error";
+    const errorMsg = json.Errors || json.ErrorCode || json.errors || json.errorCode || `Unknown MeInvoice Error: ${JSON.stringify(json)}`;
     console.error("[meinvoice] create invoice failed:", json);
     throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
   } catch (err: any) {
