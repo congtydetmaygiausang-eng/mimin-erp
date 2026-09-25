@@ -158,13 +158,13 @@ export default function KhachHangPage() {
       const name = kh.ten || "Khách không tên";
       const phone = kh.sdt ? kh.sdt.replace(/\D/g, "") : "";
       if (phone) {
-        vcfData += "BEGIN:VCARD\n";
-        vcfData += "VERSION:3.0\n";
+        vcfData += "BEGIN:VCARD\r\n";
+        vcfData += "VERSION:3.0\r\n";
         // iOS requires the 'N' (Name) property alongside 'FN' to display names correctly
-        vcfData += `N:;${name};;;\n`;
-        vcfData += `FN:${name}\n`;
-        vcfData += `TEL;TYPE=CELL:${phone}\n`;
-        vcfData += "END:VCARD\n\n";
+        vcfData += `N:;${name};;;\r\n`;
+        vcfData += `FN:${name}\r\n`;
+        vcfData += `TEL;TYPE=CELL:${phone}\r\n`;
+        vcfData += "END:VCARD\r\n";
       }
     });
 
