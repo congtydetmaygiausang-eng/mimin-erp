@@ -54,6 +54,8 @@ export interface MeInvoiceLineItem {
 export interface CreateInvoiceParams {
   // RefID noi bo (de tracking)
   RefID: string;
+  // Mau so (VD: 1, 2)
+  InvTemplateNo?: string;
   // Mau hoa don (lay tu API /invoice/templates)
   InvSeries: string;
   // Ngay hoa don (YYYY-MM-DD)
@@ -234,9 +236,23 @@ export async function createAndPublishInvoice(
     const json = (await r.json()) as any;
     const isSuccess = json.Success !== undefined ? json.Success : json.success;
     const data = json.Data !== undefined ? json.Data : json.data;
-    
-    if (isSuccess && data && data[0]) {
-      return data[0];
+    // parse publishInvoiceResult if it exists
+    let innerData = data;
+    if (json.publishInvoiceResult || json.createInvoiceResult) {
+      try {
+        const str = json.publishInvoiceResult || json.createInvoiceResult;
+        innerData = typeof str === "string" ? JSON.parse(str) : str;
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+
+    if (isSuccess && innerData && innerData[0]) {
+      const firstResult = innerData[0];
+      if (firstResult.ErrorCode && firstResult.ErrorCode !== "0") {
+        throw new Error(`${firstResult.DescriptionErrorCode || firstResult.ErrorCode}`);
+      }
+      return firstResult;
     }
     const errorMsg = json.Errors || json.ErrorCode || json.errors || json.errorCode || `Unknown MeInvoice Error: ${JSON.stringify(json)}`;
     console.error("[meinvoice] create invoice failed:", json);
@@ -389,6 +405,7 @@ export interface DonHangForInvoice {
  */
 export function buildInvoiceFromDonHang(
   donHang: DonHangForInvoice,
+  invTemplateNo: string,
   invSeries: string,
   invDate: string,
   refId: string
@@ -447,6 +464,7 @@ export function buildInvoiceFromDonHang(
 
   return {
     RefID: refId,
+    InvTemplateNo: invTemplateNo,
     InvSeries: invSeries,
     InvDate: invDate,
     CurrencyCode: "VND",

@@ -11,11 +11,11 @@ export async function POST(req: NextRequest) {
   try {
     if (!supabaseAdmin) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
     const body = await req.json();
-    const { donHang, invSeries, invDate, refId, refIdDonHang, refIdKhachHang, nguoiTao } = body;
+    const { donHang, invTemplateNo, invSeries, invDate, refId, refIdDonHang, refIdKhachHang, nguoiTao } = body;
 
-    if (!donHang || !invSeries || !invDate || !refId) {
+    if (!donHang || !invTemplateNo || !invSeries || !invDate || !refId) {
       return NextResponse.json(
-        { ok: false, error: "Missing: donHang, invSeries, invDate, refId" },
+        { ok: false, error: "Missing: donHang, invTemplateNo, invSeries, invDate, refId" },
         { status: 400 }
       );
     }
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     // Build invoice payload
     const invoiceData = buildInvoiceFromDonHang(
       donHang as DonHangForInvoice,
+      invTemplateNo,
       invSeries,
       invDate,
       refId

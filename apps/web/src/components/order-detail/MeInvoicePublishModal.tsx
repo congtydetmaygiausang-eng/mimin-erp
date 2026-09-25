@@ -45,7 +45,8 @@ export default function MeInvoicePublishModal({
   onOpenSettings,
 }: Props) {
   const [config, setConfig] = useState<MeInvoiceConfig | null>(null);
-  const [invSeries, setInvSeries] = useState("1C25MMA");
+  const [invSeries, setInvSeries] = useState("1C26MMA");
+  const [invTemplateNo, setInvTemplateNo] = useState("1");
   const [invDate, setInvDate] = useState(new Date().toISOString().split("T")[0]);
   const [publishing, setPublishing] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -114,6 +115,7 @@ export default function MeInvoicePublishModal({
         body: JSON.stringify({
           donHang,
           invSeries,
+          invTemplateNo,
           invDate,
           refId,
           refIdDonHang: order.maDH,
@@ -274,18 +276,27 @@ export default function MeInvoicePublishModal({
         {/* Form preview - chi hien khi chua publish */}
         {!result && config && config.app_id !== "PENDING_APP_ID" && (
           <div className="mt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ký hiệu mẫu *</label>
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mẫu số *</label>
                 <input
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
-                  value={invSeries}
-                  onChange={(e) => setInvSeries(e.target.value.toUpperCase())}
-                  placeholder="1C25MMA"
+                  className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-center"
+                  value={invTemplateNo}
+                  onChange={(e) => setInvTemplateNo(e.target.value)}
+                  placeholder="1"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày phát hành *</label>
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ký hiệu mẫu *</label>
+                <input
+                  className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-center"
+                  value={invSeries}
+                  onChange={(e) => setInvSeries(e.target.value.toUpperCase())}
+                  placeholder="C26MMA"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày phát hành *</label>
                 <input
                   type="date"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
