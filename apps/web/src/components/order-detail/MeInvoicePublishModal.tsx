@@ -245,30 +245,37 @@ export default function MeInvoicePublishModal({
               <CheckCircle2 className="w-6 h-6 text-emerald-600 mt-0.5" />
               <div className="flex-1">
                 <div className="font-bold text-emerald-900 dark:text-emerald-100">
-                  Phát hành thành công!
+                  {result.status === 'draft' ? "Lưu nháp thành công!" : "Phát hành thành công!"}
                 </div>
                 <div className="text-sm text-emerald-700 dark:text-emerald-200 mt-1">
-                  <div>Số HĐ: <span className="font-mono font-semibold">{result.inv_series}{result.inv_no}</span></div>
+                  <div>Số HĐ: <span className="font-mono font-semibold">{result.inv_series}{result.inv_no || " (Chưa cấp)"}</span></div>
                   <div>Ngày: {result.inv_date}</div>
                   <div>Mã giao dịch: <span className="font-mono text-xs">{result.transaction_id}</span></div>
                   <div>Tổng tiền: <span className="font-semibold">{formatVND(result.total_with_vat)}</span> (VAT {formatVND(result.vat_amount)})</div>
                 </div>
+                {result.status === 'draft' && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400 mt-2 italic">
+                    Hóa đơn nháp chưa được ký nên chưa có file PDF. Vui lòng vào MISA meInvoice Desktop để ký và phát hành.
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={downloadPDF}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-cyan-500 text-white text-sm font-semibold hover:bg-cyan-600"
-              >
-                <Download className="w-4 h-4" /> Tải PDF
-              </button>
-              <button
-                onClick={sendEmail}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600"
-              >
-                <Mail className="w-4 h-4" /> Gửi email
-              </button>
-            </div>
+            {result.status !== 'draft' && (
+              <div className="flex gap-2">
+                <button
+                  onClick={downloadPDF}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-cyan-500 text-white text-sm font-semibold hover:bg-cyan-600"
+                >
+                  <Download className="w-4 h-4" /> Tải PDF
+                </button>
+                <button
+                  onClick={sendEmail}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600"
+                >
+                  <Mail className="w-4 h-4" /> Gửi email
+                </button>
+              </div>
+            )}
           </div>
         )}
 

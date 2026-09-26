@@ -98,8 +98,8 @@ export async function POST(req: NextRequest) {
       einvoice_data: result,
       nguoi_tao: nguoiTao || null,
       nguoi_cap_nhat: nguoiTao || null,
-      ngay_tao: new Date().toISOString(),
-      ngay_cap_nhat: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     const { error: insertErr } = await supabaseAdmin.from("hoa_don_dien_tu").insert(hoaDon);
