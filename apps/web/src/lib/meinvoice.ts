@@ -54,6 +54,8 @@ export interface MeInvoiceLineItem {
 export interface CreateInvoiceParams {
   // RefID noi bo (de tracking)
   RefID: string;
+  // Mau so (VD: 1, 2)
+  InvTemplateNo?: string;
   // Mau hoa don (lay tu API /invoice/templates)
   InvSeries: string;
   // Ngay hoa don (YYYY-MM-DD)
@@ -149,6 +151,7 @@ export async function getMeInvoiceToken(
 async function fetchMeInvoiceToken(config: MeInvoiceConfig): Promise<string | null> {
   const url = `${BASE_URLS[config.env]}/auth/token`;
   try {
+    const pwd = config.password || (config as any).password_enc;
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -156,12 +159,15 @@ async function fetchMeInvoiceToken(config: MeInvoiceConfig): Promise<string | nu
         appid: config.app_id,
         taxcode: config.tax_code,
         username: config.username,
-        password: config.password,
+        password: pwd,
       }),
     });
-    const json = (await r.json()) as MeInvoiceResponse<string>;
-    if (json.Success && json.Data) {
-      return json.Data;
+    const json = (await r.json()) as any;
+    const isSuccess = json.Success !== undefined ? json.Success : json.success;
+    const data = json.Data !== undefined ? json.Data : json.data;
+    
+    if (isSuccess && data) {
+      return data;
     }
     console.error("[meinvoice] get token failed:", json);
     return null;
@@ -178,18 +184,31 @@ export async function getInvoiceTemplates(
 ): Promise<InvoiceTemplate[] | null> {
   const token = await getMeInvoiceToken(config);
   if (!token) return null;
-  const url = `${BASE_URLS[config.env]}/invoice/templates`;
+  const year = new Date().getFullYear();
+  const url = `https://developer.misa.vn/apis/itg/meinvoice/invoice/templates?invoiceWithCode=true&ticket=false&year=${year}`;
   try {
     const r = await fetch(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
-        CompanyTaxCode: config.tax_code,
+        "Content-Type": "application/json",
+        "ClientID": config.app_id || "", 
+        "TaxCode": config.tax_code || "",
       },
     });
-    const json = (await r.json()) as MeInvoiceResponse<InvoiceTemplate[]>;
-    if (json.Success) {
+    const json = (await r.json()) as any;
+    if (json.Success && json.Data) {
+      if (typeof json.Data === 'string') {
+        try { return JSON.parse(json.Data); } catch(e) { return []; }
+      }
       return json.Data || [];
+    }
+    // Neu json.success (chu thuong)
+    if (json.success === true && json.data) {
+      if (typeof json.data === 'string') {
+        try { return JSON.parse(json.data); } catch(e) { return []; }
+      }
+      return json.data;
     }
     console.error("[meinvoice] get templates failed:", json);
     return null;
@@ -207,13 +226,14 @@ export async function getInvoiceTemplates(
  */
 export async function createAndPublishInvoice(
   config: MeInvoiceConfig,
-  invoice: CreateInvoiceParams
+  invoice: CreateInvoiceParams,
+  overrideSignType?: number
 ): Promise<CreateInvoiceResult | null> {
   const token = await getMeInvoiceToken(config);
   if (!token) return null;
   const url = `${BASE_URLS[config.env]}/invoice`;
   const body = {
-    SignType: config.sign_type || 2,
+    SignType: overrideSignType !== undefined ? overrideSignType : (config.sign_type || 2),
     InvoiceData: [invoice],
     PublishInvoiceData: null,
   };
@@ -227,15 +247,46 @@ export async function createAndPublishInvoice(
       },
       body: JSON.stringify(body),
     });
-    const json = (await r.json()) as MeInvoiceResponse<CreateInvoiceResult[]>;
-    if (json.Success && json.Data && json.Data[0]) {
-      return json.Data[0];
+    const json = (await r.json()) as any;
+    const isSuccess = json.Success !== undefined ? json.Success : json.success;
+    const data = json.Data !== undefined ? json.Data : json.data;
+    let innerData = data;
+    for (const key of ['publishInvoiceResult', 'createInvoiceResult', 'descriptionErrorCode', 'DescriptionErrorCode']) {
+      if (json[key]) {
+        try {
+          const parsed = typeof json[key] === "string" ? JSON.parse(json[key]) : json[key];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            innerData = parsed;
+            break;
+          }
+        } catch (e) {
+          // not json array, ignore
+        }
+      }
     }
+
+    if (isSuccess && innerData && innerData[0]) {
+      const firstResult = innerData[0];
+      if (firstResult.ErrorCode && firstResult.ErrorCode !== "0") {
+        throw new Error(`${firstResult.DescriptionErrorCode || firstResult.ErrorCode}`);
+      }
+      return firstResult;
+    }
+    
+    // If we have an inner array with ErrorCode and Description, extract it!
+    if (!isSuccess && innerData && innerData[0]) {
+       const firstResult = innerData[0];
+       if (firstResult.ErrorCode || firstResult.Description) {
+         throw new Error(`${firstResult.Description || firstResult.DescriptionErrorCode || firstResult.ErrorCode}`);
+       }
+    }
+    
+    let errorMsg = json.Errors || json.descriptionErrorCode || json.DescriptionErrorCode || json.ErrorCode || json.errors || json.errorCode || `Unknown MeInvoice Error: ${JSON.stringify(json)}`;
     console.error("[meinvoice] create invoice failed:", json);
-    return null;
-  } catch (err) {
+    throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+  } catch (err: any) {
     console.error("[meinvoice] create invoice exception:", err);
-    return null;
+    throw err;
   }
 }
 
@@ -381,6 +432,7 @@ export interface DonHangForInvoice {
  */
 export function buildInvoiceFromDonHang(
   donHang: DonHangForInvoice,
+  invTemplateNo: string,
   invSeries: string,
   invDate: string,
   refId: string
@@ -439,6 +491,7 @@ export function buildInvoiceFromDonHang(
 
   return {
     RefID: refId,
+    InvTemplateNo: invTemplateNo,
     InvSeries: invSeries,
     InvDate: invDate,
     CurrencyCode: "VND",
@@ -464,4 +517,16 @@ export function buildInvoiceFromDonHang(
     OriginalInvoiceDetail: lineItems,
     TaxRateInfo: taxRateInfo,
   };
+}
+
+// ============ REMOVED WEB APP BUILDER ============
+// buildDraftInvoiceFromDonHang removed because we now use ERP api for draft too
+
+export async function saveDraftInvoice(
+  config: MeInvoiceConfig,
+  invoice: any
+): Promise<any | null> {
+  // Use the ERP integration API with SignType 1 (Create Draft)
+  // This bypasses the UnAuthorize error from the WebApp API (invoiceweb/insert)
+  return createAndPublishInvoice(config, invoice, 1);
 }

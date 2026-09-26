@@ -1,8 +1,7 @@
-// MeInvoice Create Invoice API - tao + phat hanh hoa don
-// 2026-08-09 - Mavis
+// MeInvoice Draft Invoice API
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { createAndPublishInvoice, buildInvoiceFromDonHang, type DonHangForInvoice } from "@/lib/meinvoice";
+import { saveDraftInvoice, buildInvoiceFromDonHang, getInvoiceTemplates, type DonHangForInvoice } from "@/lib/meinvoice";
 
 const DEFAULT_ID = "default";
 
@@ -11,7 +10,7 @@ export async function POST(req: NextRequest) {
   try {
     if (!supabaseAdmin) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
     const body = await req.json();
-    const { donHang, invTemplateNo, invSeries, invDate, refId, refIdDonHang, refIdKhachHang, nguoiTao } = body;
+    const { donHang, invTemplateNo, invSeries, invoiceTemplateId, invDate, refId, refIdDonHang, refIdKhachHang, nguoiTao } = body;
 
     if (!donHang || !invTemplateNo || !invSeries || !invDate || !refId) {
       return NextResponse.json(
@@ -39,17 +38,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let templateId = invoiceTemplateId || "00000000-0000-0000-0000-000000000000";
+    try {
+      const templates = await getInvoiceTemplates(config);
+      if (templates && templates.length > 0) {
+        console.log("[meinvoice] First template keys:", Object.keys(templates[0]));
+        const template = templates.find((t: any) => t.InvTemplateNo === invTemplateNo && t.InvSeries === invSeries);
+        if (template) {
+          templateId = template.InvoiceTemplateID || template.TemplateID || template.IPTemplateID || templateId;
+          console.log("[meinvoice] Found templateId:", templateId);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not get invoice templates, using default empty GUID");
+    }
+
+    // RefID MUST be a valid GUID for invoiceweb/insert
+    const randomRefId = crypto.randomUUID();
+
     // Build invoice payload
     const invoiceData = buildInvoiceFromDonHang(
       donHang as DonHangForInvoice,
       invTemplateNo,
       invSeries,
       invDate,
-      refId
+      randomRefId
     );
 
     // Call MeInvoice API
-    const result = await createAndPublishInvoice(config, invoiceData);
+    const result = await saveDraftInvoice(config, invoiceData);
     const duration = Date.now() - start;
 
     if (!result) {
@@ -59,31 +76,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (result.ErrorCode && result.ErrorCode !== "0") {
-      // Save log + error
-      await supabaseAdmin.from("hoa_don_log").insert({
-        hoa_don_id: refId,
-        action: "create",
-        endpoint: "invoice",
-        request_body: invoiceData,
-        response_status: 400,
-        response_body: result,
-        error_msg: result.ErrorMessage || result.ErrorCode,
-        duration_ms: duration,
-        user_email: nguoiTao,
-      });
-      return NextResponse.json(
-        { ok: false, error: result.ErrorMessage || result.ErrorCode, errorCode: result.ErrorCode },
-        { status: 400 }
-      );
-    }
-
     // Success - save to DB
     const hoaDon = {
-      id: result.TransactionID || refId,
-      transaction_id: result.TransactionID,
+      id: refId,
+      transaction_id: null,
       ref_id: refId,
-      inv_no: result.InvNo,
+      inv_no: null,
       inv_series: invSeries,
       inv_date: invDate,
       buyer_legal_name: donHang.tenKH,
@@ -91,50 +89,49 @@ export async function POST(req: NextRequest) {
       buyer_address: donHang.diaChiKH || "",
       buyer_phone: donHang.sdtKH || "",
       buyer_email: donHang.emailKH || "",
-      total_amount: invoiceData.TotalAmountWithoutVATOC,
+      total_amount: invoiceData.TotalSaleAmountOC,
       vat_amount: invoiceData.TotalVATAmountOC,
       total_with_vat: invoiceData.TotalAmountOC,
       currency: "VND",
-      status: "issued" as const,
-      publish_status: 1,
+      status: "draft" as const, // Draft state
+      publish_status: 0,
       einvoice_data: result,
-      original_invoice_detail: invoiceData.OriginalInvoiceDetail,
-      ref_id_don_hang: refIdDonHang,
-      ref_id_khach_hang: refIdKhachHang,
-      nguoi_tao: nguoiTao,
-      issued_at: new Date().toISOString(),
+      nguoi_tao: nguoiTao || null,
+      nguoi_cap_nhat: nguoiTao || null,
+      ngay_tao: new Date().toISOString(),
+      ngay_cap_nhat: new Date().toISOString()
     };
-    const { data: saved, error: saveErr } = await supabaseAdmin
-      .from("hoa_don_dien_tu")
-      .upsert(hoaDon, { onConflict: "id" })
-      .select()
-      .single();
-    if (saveErr) {
-      console.error("[meinvoice] save to DB error:", saveErr);
+
+    const { error: insertErr } = await supabaseAdmin.from("hoa_don").insert(hoaDon);
+    
+    // Save to don_hang as well
+    if (refIdDonHang) {
+       await supabaseAdmin
+         .from("don_hang")
+         .update({ invoice_id: refId, invoice_status: "draft" })
+         .eq("id", refIdDonHang);
+    }
+    
+    if (insertErr) {
+      console.error("[meinvoice] draft DB insert error:", insertErr);
     }
 
-    // Audit log
+    // Save log
     await supabaseAdmin.from("hoa_don_log").insert({
-      hoa_don_id: saved?.id || refId,
-      action: "create",
-      endpoint: "invoice",
+      hoa_don_id: refId,
+      action: "draft",
+      endpoint: "invoiceweb/insert",
       request_body: invoiceData,
       response_status: 200,
       response_body: result,
-      error_msg: null,
       duration_ms: duration,
       user_email: nguoiTao,
     });
 
-    return NextResponse.json({
-      ok: true,
-      hoaDon: saved,
-      invNo: result.InvNo,
-      invSeries: result.InvSeries,
-      transactionId: result.TransactionID,
-      duration_ms: duration,
-    });
+    return NextResponse.json({ ok: true, data: result });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    const errorMsg = err.message || err.toString();
+    console.error("[meinvoice] post draft exception:", errorMsg);
+    return NextResponse.json({ ok: false, error: errorMsg }, { status: 500 });
   }
 }

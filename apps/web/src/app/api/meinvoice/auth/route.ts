@@ -1,7 +1,7 @@
 // MeInvoice Auth API - test connection + get fresh token
 // 2026-08-09 - Mavis
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getMeInvoiceToken } from "@/lib/meinvoice";
 
 const DEFAULT_ID = "default";
@@ -9,8 +9,8 @@ const DEFAULT_ID = "default";
 export async function POST() {
   const start = Date.now();
   try {
-    if (!supabase) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
-    const { data: config, error: cfgErr } = await supabase
+    if (!supabaseAdmin) return NextResponse.json({ ok: false, error: "Supabase chưa được cấu hình" }, { status: 500 });
+    const { data: config, error: cfgErr } = await supabaseAdmin
       .from("meinvoice_config")
       .select("*")
       .eq("id", DEFAULT_ID)
@@ -47,30 +47,35 @@ export async function POST() {
     const json = await r.json();
     const duration = Date.now() - start;
 
+    const isSuccess = json.Success !== undefined ? json.Success : json.success;
+    const errorCode = json.ErrorCode !== undefined ? json.ErrorCode : json.errorCode;
+    const errors = json.Errors !== undefined ? json.Errors : json.errors;
+    const data = json.Data !== undefined ? json.Data : json.data;
+
     // Log to audit
-    await supabase.from("hoa_don_log").insert({
+    await supabaseAdmin.from("hoa_don_log").insert({
       hoa_don_id: null,
       action: "auth",
       endpoint: url,
       request_body: { appid: config.app_id, taxcode: config.tax_code, username: config.username },
       response_status: r.status,
       response_body: json,
-      error_msg: json.Success ? null : json.ErrorCode || json.Errors,
+      error_msg: isSuccess ? null : errorCode || errors,
       duration_ms: duration,
       user_email: "system",
     });
 
-    if (json.Success && json.Data) {
+    if (isSuccess && data) {
       // Cache token (14 days)
       const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-      await supabase
+      await supabaseAdmin
         .from("meinvoice_config")
-        .update({ last_token: json.Data, token_expires_at: expiresAt })
+        .update({ last_token: data, token_expires_at: expiresAt })
         .eq("id", DEFAULT_ID);
 
       return NextResponse.json({
         ok: true,
-        token_preview: json.Data.substring(0, 20) + "...",
+        token_preview: (data && typeof data === 'string') ? data.substring(0, 20) + "..." : "...",
         expires_at: expiresAt,
         env: config.env,
         duration_ms: duration,
@@ -80,8 +85,8 @@ export async function POST() {
     return NextResponse.json(
       {
         ok: false,
-        error: json.Errors || json.ErrorCode || "Auth failed",
-        errorCode: json.ErrorCode,
+        error: errors || errorCode || "Auth failed",
+        errorCode: errorCode,
         duration_ms: duration,
       },
       { status: 400 }

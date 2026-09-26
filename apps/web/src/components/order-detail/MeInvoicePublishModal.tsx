@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatVND } from "@/lib/data/real-data";
 import type { Order } from "./types";
 import { calcOrderTotal, calcPaidTotal } from "./helpers";
+import { supabase } from "@/lib/supabase/client";
 
 interface Props {
   order: Order;
@@ -44,9 +45,12 @@ export default function MeInvoicePublishModal({
   onOpenSettings,
 }: Props) {
   const [config, setConfig] = useState<MeInvoiceConfig | null>(null);
-  const [invSeries, setInvSeries] = useState("1C25MMA");
+  const [invSeries, setInvSeries] = useState("1C26MMA");
+  const [invTemplateNo, setInvTemplateNo] = useState("1");
+  const [invoiceTemplateId, setInvoiceTemplateId] = useState("");
   const [invDate, setInvDate] = useState(new Date().toISOString().split("T")[0]);
   const [publishing, setPublishing] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,8 +87,9 @@ export default function MeInvoicePublishModal({
   const totalWithVat = tongThanhToan;
 
   // ============ PUBLISH ============
-  const handlePublish = async () => {
-    setPublishing(true);
+  const handlePublish = async (isDraft: boolean = false) => {
+    if (isDraft) setDrafting(true);
+    else setPublishing(true);
     setError(null);
     try {
       const refId = `${order.maDH}-${Date.now()}`;
@@ -107,12 +112,14 @@ export default function MeInvoicePublishModal({
         })),
       };
 
-      const r = await fetch("/api/meinvoice/invoice", {
+      const r = await fetch(isDraft ? "/api/meinvoice/draft" : "/api/meinvoice/invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           donHang,
           invSeries,
+          invTemplateNo,
+          invoiceTemplateId: invoiceTemplateId.trim() || undefined,
           invDate,
           refId,
           refIdDonHang: order.maDH,
@@ -122,17 +129,22 @@ export default function MeInvoicePublishModal({
       });
       const json = await r.json();
       if (json.ok) {
-        setResult(json.hoaDon);
-        toast.success(`Đã phát hành HĐĐT ${json.invSeries}${json.invNo}!`);
-        onSuccess?.(json.hoaDon);
+        setResult(json.data || json.hoaDon);
+        if (isDraft) {
+          toast.success(`Đã lưu nháp hóa đơn lên MISA!`);
+        } else {
+          toast.success(`Đã phát hành HĐĐT ${json.invSeries}${json.invNo}!`);
+        }
+        onSuccess?.(json.data || json.hoaDon);
       } else {
-        setError(json.error || "Phát hành thất bại");
+        setError(json.error || (isDraft ? "Lưu nháp thất bại" : "Phát hành thất bại"));
         toast.error(json.error);
       }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setPublishing(false);
+      setDrafting(false);
     }
   };
 
@@ -275,16 +287,35 @@ export default function MeInvoicePublishModal({
           <div className="mt-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ký hiệu mẫu *</label>
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mẫu số *</label>
                 <input
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
-                  value={invSeries}
-                  onChange={(e) => setInvSeries(e.target.value.toUpperCase())}
-                  placeholder="1C25MMA"
+                  className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-center"
+                  value={invTemplateNo}
+                  onChange={(e) => setInvTemplateNo(e.target.value)}
+                  placeholder="1"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày phát hành *</label>
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ký hiệu mẫu *</label>
+                <input
+                  className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-center"
+                  value={invSeries}
+                  onChange={(e) => setInvSeries(e.target.value.toUpperCase())}
+                  placeholder="C26MMA"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã mẫu (InvoiceTemplateID) *</label>
+                <input
+                  className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
+                  value={invoiceTemplateId}
+                  onChange={(e) => setInvoiceTemplateId(e.target.value)}
+                  placeholder="Để trống nếu hệ thống tự tìm được"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Lấy ID mẫu (chuỗi GUID dài) từ meInvoice Web nếu bị lỗi "Invalid_InvoiceTemplateID".</p>
+              </div>
+              <div>
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày phát hành *</label>
                 <input
                   type="date"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
@@ -347,23 +378,43 @@ export default function MeInvoicePublishModal({
               </table>
             </div>
 
-            <button
-              onClick={handlePublish}
-              disabled={publishing}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50"
-            >
-              {publishing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Đang phát hành lên MeInvoice...
-                </>
-              ) : (
-                <>
-                  <FileText className="w-4 h-4" />
-                  Phát hành HĐĐT lên MeInvoice
-                </>
-              )}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePublish(true)}
+                disabled={publishing || drafting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+              >
+                {drafting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang lưu nháp...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4" />
+                    Lưu Nháp (Cần ký)
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={() => handlePublish(false)}
+                disabled={publishing || drafting}
+                className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50"
+              >
+                {publishing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang phát hành...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4" />
+                    Phát hành trực tiếp
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
