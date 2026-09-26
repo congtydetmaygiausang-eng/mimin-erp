@@ -160,18 +160,31 @@ export default function MeInvoicePublishModal({
     try {
       const apiPrefix = provider === "wininvoice" ? "/api/wininvoice" : "/api/meinvoice";
       const r = await fetch(`${apiPrefix}/invoice/${result.id}/download?format=pdf`);
+      
       if (!r.ok) {
         const err = await r.json();
         toast.error(err.error);
         return;
       }
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `HoaDon_${result.inv_no || result.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      
+      if (provider === "wininvoice") {
+        const json = await r.json();
+        if (json.url) {
+          window.open(json.url, "_blank");
+          toast.success("Đã mở PDF");
+        } else {
+          toast.error("Không tìm thấy URL tải PDF");
+        }
+      } else {
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `HoaDon_${result.inv_no || result.id}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Đã tải PDF");
+      }
     } catch (err: any) {
       toast.error(err.message);
     }
