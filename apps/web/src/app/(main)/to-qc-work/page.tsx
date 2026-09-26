@@ -135,7 +135,7 @@ export default function UiQCPage() {
     }));
     const chuaSanSang = perMau.filter((x) => !x.ket.chinhXacTheoSize).map((x) => x.mau.ten);
     const tongGhep = perMau.reduce((s, x) => s + x.ket.tongGhep, 0);
-    return { perMau, chuaSanSang, tongGhep, sanSang: chuaSanSang.length === 0 && perMau.length > 0 };
+    return { perMau, chuaSanSang, tongGhep, sanSang: chuaSanSang.length === 0 && perMau.length > 0, idAo, idQuan };
   }
 
   // Khi tất cả các khâu May đã được QC duyệt (hoan_thanh), nhấn nút này để chốt toàn bộ khâu QC
@@ -773,7 +773,7 @@ export default function UiQCPage() {
                     }
 
                     if (allMayDone && isBo) {
-                      const { perMau, chuaSanSang, tongGhep, sanSang } = tinhGhepBoLenhCat(lc);
+                      const { perMau, chuaSanSang, tongGhep, sanSang, idAo, idQuan } = tinhGhepBoLenhCat(lc);
 
                       if (!sanSang) {
                         return (
@@ -814,8 +814,8 @@ export default function UiQCPage() {
                                     </thead>
                                     <tbody>
                                       {ket.ghepSizes.map((g) => {
-                                        const ao = mau.tyLeSizeChiTiet?.["may_ao"]?.find((s) => s.size === g.size)?.sl || 0;
-                                        const quan = mau.tyLeSizeChiTiet?.["may_quan"]?.find((s) => s.size === g.size)?.sl || 0;
+                                        const ao = mau.tyLeSizeChiTiet?.[idAo]?.find((s) => s.size === g.size)?.sl || 0;
+                                        const quan = mau.tyLeSizeChiTiet?.[idQuan]?.find((s) => s.size === g.size)?.sl || 0;
                                         const aoDu = ket.aoDuSizes.find((s) => s.size === g.size)?.sl || 0;
                                         const quanDu = ket.quanDuSizes.find((s) => s.size === g.size)?.sl || 0;
                                         return (
