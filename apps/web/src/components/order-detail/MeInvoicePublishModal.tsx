@@ -48,7 +48,7 @@ export default function MeInvoicePublishModal({
 }: Props) {
   const [provider, setProvider] = useState<"misa" | "wininvoice">(defaultProvider || "wininvoice");
   const [config, setConfig] = useState<MeInvoiceConfig | null>(null);
-  const [invSeries, setInvSeries] = useState("1C26MMA");
+  const [invSeries, setInvSeries] = useState("C26TGT"); // WinInvoice default
   const [invTemplateNo, setInvTemplateNo] = useState("1");
   const [invoiceTemplateId, setInvoiceTemplateId] = useState("");
   const [invDate, setInvDate] = useState(new Date().toISOString().split("T")[0]);
@@ -65,7 +65,14 @@ export default function MeInvoicePublishModal({
       .then((j) => {
         if (j.ok && j.config) {
           setConfig(j.config);
-          if (j.config.default_template) setInvSeries(j.config.default_template);
+          if (j.config.default_template) {
+            // default_template for WinInvoice is invSerial format, for MISA is invSeries
+            setInvSeries(j.config.default_template);
+          } else if (provider === "wininvoice") {
+            setInvSeries("C26TGT"); // Fallback WinInvoice default
+          } else {
+            setInvSeries("1C26MMA"); // Fallback MISA default
+          }
         }
       })
       .catch((e) => console.error("load config:", e));
@@ -285,14 +292,15 @@ export default function MeInvoicePublishModal({
                   <div>Mã giao dịch: <span className="font-mono text-xs">{result.transaction_id}</span></div>
                   <div>Tổng tiền: <span className="font-semibold">{formatVND(result.total_with_vat)}</span> (VAT {formatVND(result.vat_amount)})</div>
                 </div>
-                {result.status === 'draft' && (
+                {result.status === 'draft' && provider !== "wininvoice" && (
                   <div className="text-xs text-amber-600 dark:text-amber-400 mt-2 italic">
                     Hóa đơn nháp chưa được ký nên chưa có file PDF. Vui lòng vào MISA meInvoice Desktop để ký và phát hành.
                   </div>
                 )}
               </div>
             </div>
-            {result.status !== 'draft' && (
+            {/* Show PDF/Email buttons: always for WinInvoice, only for non-draft for MISA */}
+            {(provider === "wininvoice" || result.status !== 'draft') && (
               <div className="flex gap-2">
                 <button
                   onClick={downloadPDF}
@@ -335,24 +343,33 @@ export default function MeInvoicePublishModal({
                 />
               </div>
               <div>
-                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ký hiệu mẫu *</label>
+                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  {provider === "wininvoice" ? "Ký hiệu mẫu (invSerial) *" : "Ký hiệu mẫu *"}
+                </label>
                 <input
                   className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-center"
                   value={invSeries}
                   onChange={(e) => setInvSeries(e.target.value.toUpperCase())}
-                  placeholder="C26MMA"
+                  placeholder={provider === "wininvoice" ? "C26TGT" : "C26MMA"}
                 />
+                {provider === "wininvoice" && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    WinInvoice: C26TGT (có mã) / K26TGT (không mã). Điền theo đúng mẫu đã đăng ký.
+                  </p>
+                )}
               </div>
-              <div className="col-span-2">
-                <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã mẫu (InvoiceTemplateID) *</label>
-                <input
-                  className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
-                  value={invoiceTemplateId}
-                  onChange={(e) => setInvoiceTemplateId(e.target.value)}
-                  placeholder="Để trống nếu hệ thống tự tìm được"
-                />
-                <p className="text-[10px] text-slate-500 mt-1">Lấy ID mẫu (chuỗi GUID dài) từ meInvoice Web nếu bị lỗi "Invalid_InvoiceTemplateID".</p>
-              </div>
+              {provider !== "wininvoice" && (
+                <div className="col-span-2">
+                  <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mã mẫu (InvoiceTemplateID) *</label>
+                  <input
+                    className="w-full px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
+                    value={invoiceTemplateId}
+                    onChange={(e) => setInvoiceTemplateId(e.target.value)}
+                    placeholder="Để trống nếu hệ thống tự tìm được"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Lấy ID mẫu (chuỗi GUID dài) từ meInvoice Web nếu bị lỗi "Invalid_InvoiceTemplateID".</p>
+                </div>
+              )}
               <div>
                 <label className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày phát hành *</label>
                 <input
