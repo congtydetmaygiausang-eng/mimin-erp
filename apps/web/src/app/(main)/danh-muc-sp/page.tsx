@@ -427,6 +427,7 @@ export default function DanhMucSanPhamPage() {
       ghiChu: `Tạo từ Danh mục sản phẩm bởi ${user?.name || "Người dùng"} lúc ${today.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${today.toLocaleDateString("vi-VN")} – vui lòng cập nhật số lượng kế hoạch`,
     }, user as any);
     toast.success(`Đã chuyển ${sp.id} vào kế hoạch`);
+    localStorage.setItem("mimin_auto_tao_lenh_cat_khsx_id", created.id);
     router.push("/ke-hoach-san-xuat");
   };
 
