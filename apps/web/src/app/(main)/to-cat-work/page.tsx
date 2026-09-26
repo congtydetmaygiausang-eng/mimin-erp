@@ -554,9 +554,9 @@ export default function CongViecCatPage() {
 
       {uploadModal && (
         <UploadBangChungModal
-          isOpen={true}
+          open={true}
           onClose={() => setUploadModal(null)}
-          onSave={(urls, signature) => {
+          onConfirm={(urls, signature) => {
             handleHoanThanh(uploadModal.lc, undefined, uploadModal.totalThucTe, urls, signature);
             setUploadModal(null);
           }}
