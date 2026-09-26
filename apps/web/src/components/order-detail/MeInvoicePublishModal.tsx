@@ -28,6 +28,7 @@ interface Props {
   onClose: () => void;
   onSuccess?: (hoaDon: any) => void;
   onOpenSettings?: () => void;
+  defaultProvider?: "misa" | "wininvoice";
 }
 
 interface MeInvoiceConfig {
@@ -43,8 +44,9 @@ export default function MeInvoicePublishModal({
   onClose,
   onSuccess,
   onOpenSettings,
+  defaultProvider,
 }: Props) {
-  const [provider, setProvider] = useState<"misa" | "wininvoice">("wininvoice");
+  const [provider, setProvider] = useState<"misa" | "wininvoice">(defaultProvider || "wininvoice");
   const [config, setConfig] = useState<MeInvoiceConfig | null>(null);
   const [invSeries, setInvSeries] = useState("1C26MMA");
   const [invTemplateNo, setInvTemplateNo] = useState("1");
