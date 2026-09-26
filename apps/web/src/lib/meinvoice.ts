@@ -329,7 +329,7 @@ export async function downloadInvoice(
 ): Promise<Blob | null> {
   const token = await getMeInvoiceToken(config);
   if (!token) return null;
-  const url = `${BASE_URLS[config.env]}/invoice/download`;
+  const url = `${BASE_URLS[config.env]}/invoice/download?transactionId=${transactionId}`;
   try {
     const r = await fetch(url, {
       method: "GET",
