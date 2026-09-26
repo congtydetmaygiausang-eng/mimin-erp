@@ -250,14 +250,18 @@ export async function createAndPublishInvoice(
     const json = (await r.json()) as any;
     const isSuccess = json.Success !== undefined ? json.Success : json.success;
     const data = json.Data !== undefined ? json.Data : json.data;
-    // parse publishInvoiceResult if it exists
     let innerData = data;
-    if (json.publishInvoiceResult || json.createInvoiceResult) {
-      try {
-        const str = json.publishInvoiceResult || json.createInvoiceResult;
-        innerData = typeof str === "string" ? JSON.parse(str) : str;
-      } catch (e) {
-        // ignore parse error
+    for (const key of ['publishInvoiceResult', 'createInvoiceResult', 'descriptionErrorCode', 'DescriptionErrorCode']) {
+      if (json[key]) {
+        try {
+          const parsed = typeof json[key] === "string" ? JSON.parse(json[key]) : json[key];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            innerData = parsed;
+            break;
+          }
+        } catch (e) {
+          // not json array, ignore
+        }
       }
     }
 
@@ -268,7 +272,16 @@ export async function createAndPublishInvoice(
       }
       return firstResult;
     }
-    const errorMsg = json.Errors || json.ErrorCode || json.errors || json.errorCode || `Unknown MeInvoice Error: ${JSON.stringify(json)}`;
+    
+    // If we have an inner array with ErrorCode and Description, extract it!
+    if (!isSuccess && innerData && innerData[0]) {
+       const firstResult = innerData[0];
+       if (firstResult.ErrorCode || firstResult.Description) {
+         throw new Error(`${firstResult.Description || firstResult.DescriptionErrorCode || firstResult.ErrorCode}`);
+       }
+    }
+    
+    let errorMsg = json.Errors || json.descriptionErrorCode || json.DescriptionErrorCode || json.ErrorCode || json.errors || json.errorCode || `Unknown MeInvoice Error: ${JSON.stringify(json)}`;
     console.error("[meinvoice] create invoice failed:", json);
     throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
   } catch (err: any) {
