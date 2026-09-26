@@ -128,7 +128,18 @@ export async function POST(req: NextRequest) {
       user_email: nguoiTao,
     });
 
-    return NextResponse.json({ ok: true, data: result });
+    return NextResponse.json({ 
+      ok: true, 
+      data: savedHoaDon || {
+        id: refId,
+        transaction_id: result.TransactionID,
+        inv_no: result.InvNo,
+        inv_series: result.InvSeries,
+        inv_date: invDate,
+        total_with_vat: invoiceData.TotalAmountOC,
+        vat_amount: invoiceData.TotalVATAmountOC
+      }
+    });
   } catch (err: any) {
     const errorMsg = err.message || err.toString();
     console.error("[meinvoice] post draft exception:", errorMsg);
