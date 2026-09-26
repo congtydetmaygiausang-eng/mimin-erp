@@ -28,6 +28,7 @@ interface Props {
   onClose: () => void;
   onSuccess?: (hoaDon: any) => void;
   onOpenSettings?: () => void;
+  defaultProvider?: "misa" | "wininvoice";
 }
 
 interface MeInvoiceConfig {
@@ -43,7 +44,9 @@ export default function MeInvoicePublishModal({
   onClose,
   onSuccess,
   onOpenSettings,
+  defaultProvider,
 }: Props) {
+  const [provider, setProvider] = useState<"misa" | "wininvoice">(defaultProvider || "wininvoice");
   const [config, setConfig] = useState<MeInvoiceConfig | null>(null);
   const [invSeries, setInvSeries] = useState("1C26MMA");
   const [invTemplateNo, setInvTemplateNo] = useState("1");
@@ -56,7 +59,8 @@ export default function MeInvoicePublishModal({
 
   // Load config
   useEffect(() => {
-    fetch("/api/meinvoice/config")
+    const apiPath = provider === "wininvoice" ? "/api/wininvoice/config" : "/api/meinvoice/config";
+    fetch(apiPath)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok && j.config) {
@@ -65,7 +69,7 @@ export default function MeInvoicePublishModal({
         }
       })
       .catch((e) => console.error("load config:", e));
-  }, []);
+  }, [provider]);
 
   // Build payload preview
   const buyer = {
@@ -112,7 +116,8 @@ export default function MeInvoicePublishModal({
         })),
       };
 
-      const r = await fetch(isDraft ? "/api/meinvoice/draft" : "/api/meinvoice/invoice", {
+      const apiPrefix = provider === "wininvoice" ? "/api/wininvoice" : "/api/meinvoice";
+      const r = await fetch(isDraft ? `${apiPrefix}/draft` : `${apiPrefix}/invoice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -130,10 +135,11 @@ export default function MeInvoicePublishModal({
       const json = await r.json();
       if (json.ok) {
         setResult(json.data || json.hoaDon);
+        const providerName = provider === "wininvoice" ? "WinInvoice" : "MISA";
         if (isDraft) {
-          toast.success(`Đã lưu nháp hóa đơn lên MISA!`);
+          toast.success(`Đã lưu nháp hóa đơn lên ${providerName}!`);
         } else {
-          toast.success(`Đã phát hành HĐĐT ${json.invSeries}${json.invNo}!`);
+          toast.success(`Đã phát hành HĐĐT ${json.invSeries}${json.invNo} (${providerName})!`);
         }
         onSuccess?.(json.data || json.hoaDon);
       } else {
@@ -152,7 +158,8 @@ export default function MeInvoicePublishModal({
   const downloadPDF = async () => {
     if (!result) return;
     try {
-      const r = await fetch(`/api/meinvoice/invoice/${result.id}/download?format=pdf`);
+      const apiPrefix = provider === "wininvoice" ? "/api/wininvoice" : "/api/meinvoice";
+      const r = await fetch(`${apiPrefix}/invoice/${result.id}/download?format=pdf`);
       if (!r.ok) {
         const err = await r.json();
         toast.error(err.error);
@@ -175,7 +182,8 @@ export default function MeInvoicePublishModal({
     const email = prompt("Email KH:", result.buyer_email || buyer.emailNguoiNhan || "");
     if (!email) return;
     try {
-      const r = await fetch(`/api/meinvoice/invoice/${result.id}/email`, {
+      const apiPrefix = provider === "wininvoice" ? "/api/wininvoice" : "/api/meinvoice";
+      const r = await fetch(`${apiPrefix}/invoice/${result.id}/email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -202,7 +210,18 @@ export default function MeInvoicePublishModal({
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 🧾 Phát hành Hóa đơn điện tử
               </h3>
-              <p className="text-xs text-slate-500">Misa meInvoice · {config?.env === "live" ? "🚀 LIVE" : "🧪 TEST"}</p>
+              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                <span>Nhà mạng:</span>
+                <select 
+                  value={provider} 
+                  onChange={(e) => setProvider(e.target.value as any)}
+                  className="bg-transparent font-semibold text-cyan-600 outline-none border-b border-cyan-200"
+                >
+                  <option value="wininvoice">WinInvoice 🚀</option>
+                  <option value="misa">MISA meInvoice 🚀</option>
+                </select>
+                <span>· {config?.env === "live" ? "🚀 LIVE" : "🧪 TEST"}</span>
+              </div>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">

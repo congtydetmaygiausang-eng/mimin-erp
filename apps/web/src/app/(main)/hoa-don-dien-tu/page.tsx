@@ -115,33 +115,49 @@ export default function HoaDonDienTuPage() {
   };
 
   // ============ DOWNLOAD PDF ============
-  const downloadPDF = async (id: string, invNo: string) => {
+  const downloadPDF = async (id: string, invNo: string, einvoiceData: any) => {
     try {
-      const r = await fetch(`/api/meinvoice/invoice/${id}/download?format=pdf`);
+      const isWin = einvoiceData?.invcCode !== undefined || einvoiceData?.invNumber !== undefined;
+      const apiPrefix = isWin ? "/api/wininvoice" : "/api/meinvoice";
+      const r = await fetch(`${apiPrefix}/invoice/${id}/download?format=pdf`);
+      
       if (!r.ok) {
         const err = await r.json();
         toast.error(err.error || "Tải PDF thất bại");
         return;
       }
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `HoaDon_${invNo || id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Đã tải PDF");
+      
+      if (isWin) {
+        const json = await r.json();
+        if (json.url) {
+          window.open(json.url, "_blank");
+          toast.success("Đã mở PDF");
+        } else {
+          toast.error("Không tìm thấy URL tải PDF");
+        }
+      } else {
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `HoaDon_${invNo || id}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Đã tải PDF");
+      }
     } catch (err: any) {
       toast.error("Lỗi: " + err.message);
     }
   };
 
   // ============ SEND EMAIL ============
-  const sendEmail = async (id: string, defaultEmail: string) => {
+  const sendEmail = async (id: string, defaultEmail: string, einvoiceData: any) => {
     const email = prompt("Nhập email KH để gửi HĐĐT:", defaultEmail);
     if (!email) return;
     try {
-      const r = await fetch(`/api/meinvoice/invoice/${id}/email`, {
+      const isWin = einvoiceData?.invcCode !== undefined || einvoiceData?.invNumber !== undefined;
+      const apiPrefix = isWin ? "/api/wininvoice" : "/api/meinvoice";
+      const r = await fetch(`${apiPrefix}/invoice/${id}/email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -367,7 +383,7 @@ export default function HoaDonDienTuPage() {
                     <td className="p-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => downloadPDF(hd.id, hd.inv_no)}
+                          onClick={() => downloadPDF(hd.id, hd.inv_no, hd.einvoice_data)}
                           title="Tải PDF"
                           className="p-1.5 rounded text-cyan-600 hover:bg-cyan-50"
                           disabled={!hd.transaction_id}
@@ -375,7 +391,7 @@ export default function HoaDonDienTuPage() {
                           <Download className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => sendEmail(hd.id, hd.buyer_email)}
+                          onClick={() => sendEmail(hd.id, hd.buyer_email, hd.einvoice_data)}
                           title="Gửi email"
                           className="p-1.5 rounded text-amber-600 hover:bg-amber-50"
                           disabled={!hd.transaction_id}

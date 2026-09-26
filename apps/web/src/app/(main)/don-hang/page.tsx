@@ -37,7 +37,7 @@ export default function DonHangPage() {
   const [showPayment, setShowPayment] = useState<Order | null>(null);
   const [showShipping, setShowShipping] = useState<Order | null>(null);
   const [showInvoice, setShowInvoice] = useState<Order | null>(null);
-  const [showMeInvoice, setShowMeInvoice] = useState<Order | null>(null);
+  const [showMeInvoice, setShowMeInvoice] = useState<{order: Order, provider: "misa" | "wininvoice"} | null>(null);
 
   // KPIs
   const tongDH = dsOrder.length;
@@ -241,7 +241,10 @@ export default function DonHangPage() {
                   <button onClick={() => setShowShipping(d)} className="p-2 text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors" title="Vận chuyển">
                     <Truck className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setShowMeInvoice(d)} className="p-2 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-lg transition-colors" title="Phát hành HĐĐT MeInvoice">
+                  <button onClick={() => setShowMeInvoice({order: d, provider: "misa"})} className="p-2 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-lg transition-colors" title="Phát hành HĐĐT MeInvoice">
+                    <FileText className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setShowMeInvoice({order: d, provider: "wininvoice"})} className="p-2 text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="Phát hành HĐĐT WinInvoice">
                     <FileText className="w-4 h-4" />
                   </button>
                   <button onClick={() => setShowForm({ mode: "edit", dh: d })} className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-colors" title="Sửa đơn">
@@ -307,7 +310,8 @@ export default function DonHangPage() {
 
       {showMeInvoice && (
         <MeInvoicePublishModal
-          order={showMeInvoice}
+          order={showMeInvoice.order}
+          defaultProvider={showMeInvoice.provider}
           onClose={() => setShowMeInvoice(null)}
           onSuccess={() => {
             // Optional: refresh data
