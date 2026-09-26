@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       ngay_cap_nhat: new Date().toISOString()
     };
 
-    const { error: insertErr } = await supabaseAdmin.from("hoa_don").insert(hoaDon);
+    const { error: insertErr } = await supabaseAdmin.from("hoa_don_dien_tu").insert(hoaDon);
     
     // Save to don_hang as well
     if (refIdDonHang) {
