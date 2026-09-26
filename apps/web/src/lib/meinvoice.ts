@@ -184,18 +184,31 @@ export async function getInvoiceTemplates(
 ): Promise<InvoiceTemplate[] | null> {
   const token = await getMeInvoiceToken(config);
   if (!token) return null;
-  const url = `${BASE_URLS[config.env]}/invoice/templates`;
+  const year = new Date().getFullYear();
+  const url = `https://developer.misa.vn/apis/itg/meinvoice/invoice/templates?invoiceWithCode=true&ticket=false&year=${year}`;
   try {
     const r = await fetch(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
-        CompanyTaxCode: config.tax_code,
+        "Content-Type": "application/json",
+        "ClientID": config.app_id || "", 
+        "TaxCode": config.tax_code || "",
       },
     });
-    const json = (await r.json()) as MeInvoiceResponse<InvoiceTemplate[]>;
-    if (json.Success) {
+    const json = (await r.json()) as any;
+    if (json.Success && json.Data) {
+      if (typeof json.Data === 'string') {
+        try { return JSON.parse(json.Data); } catch(e) { return []; }
+      }
       return json.Data || [];
+    }
+    // Neu json.success (chu thuong)
+    if (json.success === true && json.data) {
+      if (typeof json.data === 'string') {
+        try { return JSON.parse(json.data); } catch(e) { return []; }
+      }
+      return json.data;
     }
     console.error("[meinvoice] get templates failed:", json);
     return null;
@@ -490,4 +503,134 @@ export function buildInvoiceFromDonHang(
     OriginalInvoiceDetail: lineItems,
     TaxRateInfo: taxRateInfo,
   };
+}
+
+// ============ WEB APP (HOA DON NHAP) ============
+
+/**
+ * Tu dong build WebApp Draft Invoice (cho /invoiceweb/insert) tu DonHang
+ */
+export function buildDraftInvoiceFromDonHang(
+  donHang: DonHangForInvoice,
+  invTemplateId: string,
+  invTemplateNo: string,
+  invSeries: string,
+  invDate: string,
+  refId: string
+): any {
+  const vatGroups = new Map<number, { totalOC: number; vatOC: number }>();
+  for (const item of donHang.items) {
+    const vatRate = item.vat ?? 8;
+    const amount = item.thanhTien;
+    const vatAmount = Math.round((amount * vatRate) / 100);
+    const group = vatGroups.get(vatRate) || { totalOC: 0, vatOC: 0 };
+    group.totalOC += amount;
+    group.vatOC += vatAmount;
+    vatGroups.set(vatRate, group);
+  }
+
+  const invoiceDetails = donHang.items.map((item, idx) => {
+    const vatRate = item.vat ?? 8;
+    const amount = item.thanhTien;
+    const vatAmount = Math.round((amount * vatRate) / 100);
+    return {
+      Description: item.tenSP,
+      UnitName: item.dvt,
+      Quantity: item.soLuong,
+      UnitPrice: item.donGia,
+      AmountOC: amount,
+      Amount: amount,
+      DiscountRate: 0,
+      DiscountAmountOC: 0,
+      DiscountAmount: 0,
+      VATRate: vatRate,
+      VATAmountOC: vatAmount,
+      VATAmount: vatAmount,
+      SortOrder: idx + 1,
+      InventoryItemType: 0,
+      SortOrderView: idx + 1
+    };
+  });
+
+  let totalWithoutVAT = 0;
+  let totalVAT = 0;
+  for (const g of vatGroups.values()) {
+    totalWithoutVAT += g.totalOC;
+    totalVAT += g.vatOC;
+  }
+  const total = totalWithoutVAT + totalVAT;
+
+  return {
+    RefID: refId,
+    InvTemplateNo: invTemplateNo || "1",
+    InvSeries: invSeries,
+    InvDate: invDate.includes('T') ? invDate : `${invDate}T00:00:00+07:00`,
+    InvNo: "<Chưa cấp số>",
+    AccountObjectAddress: donHang.diaChiKH || donHang.tenKH || "Khách lẻ",
+    ContactName: donHang.tenKH || "Khách lẻ",
+    PaymentMethod: "TM/CK",
+    CurrencyCode: "VND",
+    CurrencyID: "VND",
+    DiscountRate: 0,
+    ExchangeRate: 1,
+    VATRate: donHang.items[0]?.vat ?? 8,
+    TotalSaleAmountOC: totalWithoutVAT,
+    TotalSaleAmount: totalWithoutVAT,
+    TotalDiscountAmountOC: 0,
+    TotalDiscountAmount: 0,
+    TotalVATAmountOC: totalVAT,
+    TotalVATAmount: totalVAT,
+    TotalAmountOC: total,
+    TotalAmount: total,
+    CreatedDate: invDate.includes('T') ? invDate : `${invDate}T00:00:00+07:00`,
+    ModifiedDate: invDate.includes('T') ? invDate : `${invDate}T00:00:00+07:00`,
+    InvoiceDetails: invoiceDetails,
+    ...(invTemplateId && invTemplateId !== "00000000-0000-0000-0000-000000000000" ? { InvoiceTemplateID: invTemplateId } : {})
+  };
+}
+
+export async function saveDraftInvoice(
+  config: MeInvoiceConfig,
+  invoice: any
+): Promise<any | null> {
+  const token = await getMeInvoiceToken(config);
+  if (!token) return null;
+
+  // Endpoint Developer MISA WebApp API: https://developer.misa.vn/apis/itg/meinvoice/invoiceweb/insert
+  const url = 'https://developer.misa.vn/apis/itg/meinvoice/invoiceweb/insert';
+  
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "ClientID": config.app_id || "", 
+        "TaxCode": config.tax_code
+      },
+      body: JSON.stringify([invoice]),
+    });
+    
+    const json = await r.json() as any;
+    console.log("[meinvoice] save draft response:", json);
+    if (json.success === true || (Array.isArray(json) && json[0]?.Success === true)) {
+       return json;
+    }
+    
+    let errorObj = json;
+    if (Array.isArray(json) && json.length > 0) {
+      errorObj = json[0];
+    }
+    
+    // MISA might return `ErrorCode: []` which is truthy in JS, causing us to swallow the actual error.
+    let errorMsg = errorObj.ErrorDescription || errorObj.errorDescription || errorObj.Error || errorObj.error || errorObj.descriptionErrorCode || errorObj.DescriptionErrorCode;
+    if (!errorMsg) {
+       errorMsg = (typeof errorObj.ErrorCode === 'string' && errorObj.ErrorCode) ? errorObj.ErrorCode : JSON.stringify(errorObj);
+    }
+    
+    throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+  } catch (err: any) {
+    console.error("[meinvoice] save draft exception:", err);
+    throw err;
+  }
 }
