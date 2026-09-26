@@ -278,7 +278,7 @@ const isQuanStage = (tenCongDoan: string) => {
   return cd.includes("quần") || cd.includes("quan");
 };
 const getVisibleStages = (stages: PhanCongGiaCong, loaiSP: LoaiSP, congDoanInTheu: string = "") => {
-  const isBo = loaiSP?.toLowerCase().includes("bo") || false;
+  const isBo = loaiSP?.toLowerCase().includes("bo") || loaiSP?.toLowerCase().includes("bộ") || false;
   return stages.filter(stage => {
     if (!congDoanInTheu && isInTheuStage(stage.tenCongDoan)) return false;
     return isBo || !isQuanStage(stage.tenCongDoan);
@@ -1399,7 +1399,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   const validTongSL = (tongSL || 1) as number;
   
   let tongTienVai = 0;
-  const isBo = loaiSP?.toLowerCase().includes("bo");
+  const isBo = loaiSP?.toLowerCase().includes("bo") || loaiSP?.toLowerCase().includes("bộ");
 
   // ============ IN PHIẾU GIA CÔNG (không hiển thị giá) ============
   const handleInPhieuGiaCong = () => {
@@ -2265,7 +2265,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
             {/* THÔNG TIN GIA CÔNG IN/THÊU */}
             <div className="mt-4 pt-4 border-t border-orange-200/50">
               <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-                {loaiSP?.toLowerCase().includes("bo") && (
+                {loaiSP?.toLowerCase().match(/bo|bộ/) && (
                   <div className="flex items-center gap-4 bg-white px-3 py-1.5 rounded-md border border-orange-200 shrink-0">
                     <span className="text-sm font-bold text-orange-800">In/Thêu cho:</span>
                     <label className="flex items-center gap-1.5 text-sm cursor-pointer font-medium"><input type="radio" name="loaiInTheu" checked={loaiInTheu === "bo"} onChange={() => {
@@ -2309,7 +2309,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                 
                 <div className="flex-1 bg-orange-50 border-2 border-orange-300 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm w-full min-w-0">
                   <span className="text-sm font-black text-orange-800 whitespace-nowrap shrink-0">
-                    GIA CÔNG IN/THÊU{loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
+                    GIA CÔNG IN/THÊU{loaiSP?.toLowerCase().match(/bo|bộ/) ? (loaiInTheu === "ao" ? " ÁO:" : loaiInTheu === "quan" ? " QUẦN:" : ":") : ":"}
                   </span>
                   <select 
                     className="w-full flex-1 min-w-0 px-2 py-1.5 border border-orange-300 rounded text-sm focus:outline-none bg-white font-semibold text-orange-900"
@@ -2328,8 +2328,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                         } else {
                           // Thêm mới nếu chưa có
                           next.push({
-                            id: loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? "in_theu_ao" : loaiInTheu === "quan" ? "in_theu_quan" : "in_theu") : "in_theu",
-                            tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? (loaiInTheu === "ao" ? "In/Thêu Áo" : loaiInTheu === "quan" ? "In/Thêu Quần" : "In/Thêu") : "In/Thêu",
+                            id: loaiSP?.toLowerCase().match(/bo|bộ/) ? (loaiInTheu === "ao" ? "in_theu_ao" : loaiInTheu === "quan" ? "in_theu_quan" : "in_theu") : "in_theu",
+                            tenCongDoan: loaiSP?.toLowerCase().match(/bo|bộ/) ? (loaiInTheu === "ao" ? "In/Thêu Áo" : loaiInTheu === "quan" ? "In/Thêu Quần" : "In/Thêu") : "In/Thêu",
                             loaiNguoi: "xuong_ngoai",
                             nguoiMa: selectedVal,
                             nguoiTen: selectedTen,
@@ -2396,8 +2396,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                         next[idx] = { ...next[idx], nguoiMa: e.target.value, nguoiTen: ten };
                       } else {
                         next.push({
-                          id: loaiSP?.toLowerCase().includes("bo") ? "may_ao" : "may",
-                          tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
+                          id: loaiSP?.toLowerCase().match(/bo|bộ/) ? "may_ao" : "may",
+                          tenCongDoan: loaiSP?.toLowerCase().match(/bo|bộ/) ? "May Áo" : "May",
                           nguoiMa: e.target.value,
                           nguoiTen: ten,
                           donGia: 0,
@@ -2427,8 +2427,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                           next[idx] = { ...next[idx], donGia: val };
                         } else {
                           next.push({
-                            id: loaiSP?.toLowerCase().includes("bo") ? "may_ao" : "may",
-                            tenCongDoan: loaiSP?.toLowerCase().includes("bo") ? "May Áo" : "May",
+                            id: loaiSP?.toLowerCase().match(/bo|bộ/) ? "may_ao" : "may",
+                            tenCongDoan: loaiSP?.toLowerCase().match(/bo|bộ/) ? "May Áo" : "May",
                             donGia: val,
                             nguoiMa: "",
                             nguoiTen: "",
@@ -2444,7 +2444,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
               </div>
 
               {/* Box Quần (Chỉ hiện nếu là hàng Bộ) */}
-              {loaiSP?.toLowerCase().includes("bo") && (
+              {loaiSP?.toLowerCase().match(/bo|bộ/) && (
                 <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-400 p-3 rounded-lg grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-start md:items-center gap-3 shadow-sm min-w-0">
                   <span className="text-sm font-black text-emerald-800 whitespace-nowrap shrink-0">GIA CÔNG QUẦN:</span>
                   <select 
@@ -2513,7 +2513,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
             {/* Grid Thẻ Màu Sắc */}
             <div className="grid grid-cols-1 gap-4 md:gap-6 mb-6">
               {dsMau.map((mau, idx) => {
-                const isBo = loaiSP?.toLowerCase().includes("bo");
+                const isBo = loaiSP?.toLowerCase().includes("bo") || loaiSP?.toLowerCase().includes("bộ");
                 const accent = MAU_CARD_ACCENT[idx % MAU_CARD_ACCENT.length];
                 return (
                 <div key={idx} className={`bg-[#D7ECE7] ${accent.ring} w-full min-w-0 rounded-lg shadow-md p-3 md:p-5 grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-4 md:gap-5 border border-[#A6CEC3] border-l-4 border-l-[#2B4C3E] focus-within:ring-2 transition-shadow`}>
