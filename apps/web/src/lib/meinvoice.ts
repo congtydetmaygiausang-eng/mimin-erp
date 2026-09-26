@@ -226,13 +226,14 @@ export async function getInvoiceTemplates(
  */
 export async function createAndPublishInvoice(
   config: MeInvoiceConfig,
-  invoice: CreateInvoiceParams
+  invoice: CreateInvoiceParams,
+  overrideSignType?: number
 ): Promise<CreateInvoiceResult | null> {
   const token = await getMeInvoiceToken(config);
   if (!token) return null;
   const url = `${BASE_URLS[config.env]}/invoice`;
   const body = {
-    SignType: config.sign_type || 2,
+    SignType: overrideSignType !== undefined ? overrideSignType : (config.sign_type || 2),
     InvoiceData: [invoice],
     PublishInvoiceData: null,
   };
@@ -505,132 +506,14 @@ export function buildInvoiceFromDonHang(
   };
 }
 
-// ============ WEB APP (HOA DON NHAP) ============
-
-/**
- * Tu dong build WebApp Draft Invoice (cho /invoiceweb/insert) tu DonHang
- */
-export function buildDraftInvoiceFromDonHang(
-  donHang: DonHangForInvoice,
-  invTemplateId: string,
-  invTemplateNo: string,
-  invSeries: string,
-  invDate: string,
-  refId: string
-): any {
-  const vatGroups = new Map<number, { totalOC: number; vatOC: number }>();
-  for (const item of donHang.items) {
-    const vatRate = item.vat ?? 8;
-    const amount = item.thanhTien;
-    const vatAmount = Math.round((amount * vatRate) / 100);
-    const group = vatGroups.get(vatRate) || { totalOC: 0, vatOC: 0 };
-    group.totalOC += amount;
-    group.vatOC += vatAmount;
-    vatGroups.set(vatRate, group);
-  }
-
-  const invoiceDetails = donHang.items.map((item, idx) => {
-    const vatRate = item.vat ?? 8;
-    const amount = item.thanhTien;
-    const vatAmount = Math.round((amount * vatRate) / 100);
-    return {
-      Description: item.tenSP,
-      UnitName: item.dvt,
-      Quantity: item.soLuong,
-      UnitPrice: item.donGia,
-      AmountOC: amount,
-      Amount: amount,
-      DiscountRate: 0,
-      DiscountAmountOC: 0,
-      DiscountAmount: 0,
-      VATRate: vatRate,
-      VATAmountOC: vatAmount,
-      VATAmount: vatAmount,
-      SortOrder: idx + 1,
-      InventoryItemType: 0,
-      SortOrderView: idx + 1
-    };
-  });
-
-  let totalWithoutVAT = 0;
-  let totalVAT = 0;
-  for (const g of vatGroups.values()) {
-    totalWithoutVAT += g.totalOC;
-    totalVAT += g.vatOC;
-  }
-  const total = totalWithoutVAT + totalVAT;
-
-  return {
-    RefID: refId,
-    InvTemplateNo: invTemplateNo || "1",
-    InvSeries: invSeries,
-    InvDate: invDate.includes('T') ? invDate : `${invDate}T00:00:00+07:00`,
-    InvNo: "<Chưa cấp số>",
-    AccountObjectAddress: donHang.diaChiKH || donHang.tenKH || "Khách lẻ",
-    ContactName: donHang.tenKH || "Khách lẻ",
-    PaymentMethod: "TM/CK",
-    CurrencyCode: "VND",
-    CurrencyID: "VND",
-    DiscountRate: 0,
-    ExchangeRate: 1,
-    VATRate: donHang.items[0]?.vat ?? 8,
-    TotalSaleAmountOC: totalWithoutVAT,
-    TotalSaleAmount: totalWithoutVAT,
-    TotalDiscountAmountOC: 0,
-    TotalDiscountAmount: 0,
-    TotalVATAmountOC: totalVAT,
-    TotalVATAmount: totalVAT,
-    TotalAmountOC: total,
-    TotalAmount: total,
-    CreatedDate: invDate.includes('T') ? invDate : `${invDate}T00:00:00+07:00`,
-    ModifiedDate: invDate.includes('T') ? invDate : `${invDate}T00:00:00+07:00`,
-    InvoiceDetails: invoiceDetails,
-    ...(invTemplateId && invTemplateId !== "00000000-0000-0000-0000-000000000000" ? { InvoiceTemplateID: invTemplateId } : {})
-  };
-}
+// ============ REMOVED WEB APP BUILDER ============
+// buildDraftInvoiceFromDonHang removed because we now use ERP api for draft too
 
 export async function saveDraftInvoice(
   config: MeInvoiceConfig,
   invoice: any
 ): Promise<any | null> {
-  const token = await getMeInvoiceToken(config);
-  if (!token) return null;
-
-  // Endpoint Developer MISA WebApp API: https://developer.misa.vn/apis/itg/meinvoice/invoiceweb/insert
-  const url = 'https://developer.misa.vn/apis/itg/meinvoice/invoiceweb/insert';
-  
-  try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "ClientID": config.app_id || "", 
-        "TaxCode": config.tax_code
-      },
-      body: JSON.stringify([invoice]),
-    });
-    
-    const json = await r.json() as any;
-    console.log("[meinvoice] save draft response:", json);
-    if (json.success === true || (Array.isArray(json) && json[0]?.Success === true)) {
-       return json;
-    }
-    
-    let errorObj = json;
-    if (Array.isArray(json) && json.length > 0) {
-      errorObj = json[0];
-    }
-    
-    // MISA might return `ErrorCode: []` which is truthy in JS, causing us to swallow the actual error.
-    let errorMsg = errorObj.ErrorDescription || errorObj.errorDescription || errorObj.Error || errorObj.error || errorObj.descriptionErrorCode || errorObj.DescriptionErrorCode;
-    if (!errorMsg) {
-       errorMsg = (typeof errorObj.ErrorCode === 'string' && errorObj.ErrorCode) ? errorObj.ErrorCode : JSON.stringify(errorObj);
-    }
-    
-    throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
-  } catch (err: any) {
-    console.error("[meinvoice] save draft exception:", err);
-    throw err;
-  }
+  // Use the ERP integration API with SignType 1 (Create Draft)
+  // This bypasses the UnAuthorize error from the WebApp API (invoiceweb/insert)
+  return createAndPublishInvoice(config, invoice, 1);
 }
