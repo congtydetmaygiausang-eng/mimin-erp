@@ -15,9 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const { data: hoaDon } = await supabaseAdmin.from("hoa_don_dien_tu").select("*").eq("id", id).single();
     if (!hoaDon) throw new Error("Không tìm thấy hóa đơn");
 
-    if (hoaDon.status === "draft") {
-      throw new Error("Hóa đơn nháp chưa được ký nên không có file PDF hợp lệ.");
-    }
+    // Removed draft check to see if WinInvoice supports draft PDF downloading
 
     const payload = {
       invRef: hoaDon.ref_id,
