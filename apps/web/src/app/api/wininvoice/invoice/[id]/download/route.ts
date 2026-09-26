@@ -39,8 +39,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // Debug log to see actual response structure
     console.log("[wininvoice/download] API response:", JSON.stringify(resData));
     
-    if (!resData || resData.status === "ERROR") {
-      throw new Error(resData?.message || "Lấy link PDF thất bại");
+    // WinInvoice dung 'isSuccess' chu khong phai 'status'
+    if (!resData || resData.isSuccess === false) {
+      const errMsg = resData?.errorMessage || resData?.message || "Lấy link PDF thất bại";
+      throw new Error(errMsg);
     }
 
     // WinInvoice get_link_byref trả về field 'link' hoặc 'data'
