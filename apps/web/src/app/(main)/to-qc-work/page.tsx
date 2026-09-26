@@ -146,7 +146,7 @@ export default function UiQCPage() {
     const mayPCs = getMayPC(lc);
     if (mayPCs.length === 0) return;
 
-    const isBo = (lc.loaiSP || "").toLowerCase().match(/bo|bộ/) || (lc.loaiLenh || "").toLowerCase().includes("bo") || mayPCs.length > 1;
+    const isBo = lc.loaiLenh?.toLowerCase().includes("bo") || mayPCs.length > 1;
     const today = new Date().toISOString().slice(0, 10);
 
     if (!isBo) {
@@ -264,7 +264,7 @@ export default function UiQCPage() {
     } as any);
 
     const mayPCs = lc.phanCong?.filter((p: any) => p.tenCongDoan?.toLowerCase().includes("may")) || [];
-    const isBo = (lc.loaiSP || "").toLowerCase().match(/bo|bộ/) || (lc.loaiLenh || "").toLowerCase().includes("bo") || mayPCs.length > 1;
+    const isBo = lc.loaiLenh?.toLowerCase().includes("bo") || mayPCs.length > 1;
     const qcPC = lc.phanCong?.find((p: any) => p.id === "qc");
     
     // Nếu không phải hàng bộ, copy bảng size sang QC luôn khi duyệt Đạt
@@ -755,7 +755,7 @@ export default function UiQCPage() {
                   
                   {(() => {
                     const allMayDone = mayPCs.length > 0 && mayPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
-                    const isBo = (lc.loaiSP || "").toLowerCase().match(/bo|bộ/) || (lc.loaiLenh || "").toLowerCase().includes("bo") || (mayPCs?.length || 0) > 1;
+                    const isBo = (lc.loaiLenh || "").toLowerCase().includes("bo");
                     
                     if (isBo && mayPCs.length < 2 && allMayDone) {
                       return (
@@ -932,9 +932,9 @@ export default function UiQCPage() {
 
       {uploadModal && (
         <UploadBangChungModal
-          open={true}
+          isOpen={true}
           onClose={() => setUploadModal(null)}
-          onConfirm={(urls, signature) => {
+          onSave={(urls, signature) => {
             handleHoanTatQC(uploadModal.lc, urls, signature);
             setUploadModal(null);
           }}
