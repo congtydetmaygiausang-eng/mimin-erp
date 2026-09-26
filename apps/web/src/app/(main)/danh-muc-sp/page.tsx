@@ -18,6 +18,7 @@ import ProductDetailModal from "@/components/danh-muc-sp/ProductDetailModal";
 import ProductFormModal from "@/components/danh-muc-sp/ProductFormModal";
 import AddToCartModal from "@/components/danh-muc-sp/AddToCartModal";
 import { GioHangDrawer } from "@/components/danh-muc-sp/GioHangDrawer";
+import { LenhCatModal } from "@/components/LenhCatModal";
 import OrderFormModal from "@/components/order-detail/OrderFormModal";
 import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, generateMaDH, calcOrderTotal, calcOrderQty } from "@/components/order-detail/helpers";
 import { generateVariants } from "@/lib/data/product-variants";
@@ -69,6 +70,7 @@ export default function DanhMucSanPhamPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [productToEdit, setProductToEdit] = useState<SanPham | null>(null);
   const [productForCart, setProductForCart] = useState<SanPham | null>(null);
+  const [productForLenhCat, setProductForLenhCat] = useState<SanPham | null>(null);
   const [showGioHang, setShowGioHang] = useState(false);
   const [orderFormInitial, setOrderFormInitial] = useState<Order | null>(null);
   const [orderFromCart, setOrderFromCart] = useState(false);
@@ -395,39 +397,8 @@ export default function DanhMucSanPhamPage() {
     setProductForCart(sp);
   };
   const handleProduceOrder = (sp: SanPham) => {
-    const today = new Date();
-    const deadline = new Date(today);
-    deadline.setDate(deadline.getDate() + 14);
-    const created = themKHSX({
-      maKHSX: `KHSX-${today.getFullYear()}-${String(Date.now()).slice(-6)}`,
-      maSP: sp.id,
-      tenSP: sp.tenSP,
-      loaiSP: sp.loaiSP,
-      tiLeSize: sp.tiLeSize,
-      dsMau: (sp.dsMau || []).map((mau) => ({
-        ten: mau.ten,
-        maSKU: mau.maSKU,
-        maVai: "",
-        dinhMuc: mau.dinhMuc || 0,
-        slDuKien: 0,
-        ghiChu: "",
-        img: mau.img || "",
-        imgQuan: (mau as any).imgQuan || "",
-        phanBoSize: (sp.bangSize?.sizes || []).map((size: string) => ({ size, sl: 0 })),
-      })),
-      tuan: "",
-      tuNgay: today.toISOString().slice(0, 10),
-      denNgay: deadline.toISOString().slice(0, 10),
-      sanPham: sp.tenSP,
-      loai: sp.loaiSP.startsWith("Ao") ? "Áo" : sp.loaiSP === "PhuKien" ? "Phụ kiện" : "Bộ",
-      soLuong: sp.dsMau?.length || 1,
-      daHoanThanh: 0,
-      xuongPhuTrach: "Tổ cắt",
-      trangThai: "Lên kế hoạch",
-      ghiChu: `Tạo từ Danh mục sản phẩm bởi ${user?.name || "Người dùng"} lúc ${today.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${today.toLocaleDateString("vi-VN")} – vui lòng cập nhật số lượng kế hoạch`,
-    }, user as any);
-    toast.success(`Đã chuyển ${sp.id} vào kế hoạch`);
-    router.push("/ke-hoach-san-xuat");
+    // Mở thẳng popup Lệnh Cắt (theo yêu cầu) thay vì đẩy vào Kế hoạch sản xuất
+    setProductForLenhCat(sp);
   };
 
   const handleFavorite = async (sp: SanPham) => {
@@ -729,6 +700,14 @@ export default function DanhMucSanPhamPage() {
         }}
         onSave={handleSaveOrderForm}
       />
+
+      {productForLenhCat && (
+        <LenhCatModal
+          isOpen={true}
+          onClose={() => setProductForLenhCat(null)}
+          initialSP={productForLenhCat}
+        />
+      )}
 
       {/* CUSTOMER (B2C) MODALS */}
       {showCustomerAddToCart && (
