@@ -48,7 +48,9 @@ export default function MeInvoicePublishModal({
 }: Props) {
   const [provider, setProvider] = useState<"misa" | "wininvoice">(defaultProvider || "wininvoice");
   const [config, setConfig] = useState<MeInvoiceConfig | null>(null);
-  const [invSeries, setInvSeries] = useState("C26TGT"); // WinInvoice default
+  // WinInvoice: invSerial = phần Ký hiệu (không gồm Mẫu số đầu)
+  // VD: 1C26MTS → invTemplateNo="1", invSeries="C26MTS"
+  const [invSeries, setInvSeries] = useState((defaultProvider || "wininvoice") === "wininvoice" ? "C26MTS" : "1C26MMA");
   const [invTemplateNo, setInvTemplateNo] = useState("1");
   const [invoiceTemplateId, setInvoiceTemplateId] = useState("");
   const [invDate, setInvDate] = useState(new Date().toISOString().split("T")[0]);
@@ -66,13 +68,15 @@ export default function MeInvoicePublishModal({
         if (j.ok && j.config) {
           setConfig(j.config);
           if (j.config.default_template) {
-            // default_template for WinInvoice is invSerial format, for MISA is invSeries
             setInvSeries(j.config.default_template);
           } else if (provider === "wininvoice") {
-            setInvSeries("C26TGT"); // Fallback WinInvoice default
+            setInvSeries("C26MTS"); // Ký hiệu mẫu đã đăng ký của Công ty Dệt May Giàu Sang
           } else {
             setInvSeries("1C26MMA"); // Fallback MISA default
           }
+        } else if (provider === "wininvoice") {
+          // Config not loaded but we know the correct serial
+          setInvSeries("C26MTS");
         }
       })
       .catch((e) => console.error("load config:", e));
