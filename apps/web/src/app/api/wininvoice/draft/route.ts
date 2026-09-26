@@ -43,9 +43,10 @@ export async function POST(req: NextRequest) {
     const result = await saveWinDraftInvoice(config, invoiceData);
     const duration = Date.now() - start;
 
-    if (!result || result.status === 'ERROR') {
+    if (!result || result.isSuccess === false) {
+      const errMsg = result?.errorMessage || result?.message || "WinInvoice API lỗi.";
       return NextResponse.json(
-        { ok: false, error: result?.message || "WinInvoice API lỗi." },
+        { ok: false, error: errMsg },
         { status: 500 }
       );
     }

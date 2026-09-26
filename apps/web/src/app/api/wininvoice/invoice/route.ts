@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
     const result = await saveWinDraftInvoice(config, invoiceData);
     const duration = Date.now() - start;
 
-    if (!result || result.status === 'ERROR') {
+    // WinInvoice dung isSuccess, errorMessage thay vi status=ERROR
+    if (!result || result.isSuccess === false) {
+      const errMsg = result?.errorMessage || result?.message || "Lỗi WinInvoice";
       await supabaseAdmin.from("hoa_don_log").insert({
         hoa_don_id: refId,
         action: "create",
@@ -47,11 +49,11 @@ export async function POST(req: NextRequest) {
         request_body: invoiceData,
         response_status: 400,
         response_body: result,
-        error_msg: result?.message || "Lỗi WinInvoice",
+        error_msg: errMsg,
         duration_ms: duration,
         user_email: nguoiTao,
       });
-      return NextResponse.json({ ok: false, error: result?.message || "WinInvoice API lỗi" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: errMsg }, { status: 400 });
     }
 
     // Success - save to DB
