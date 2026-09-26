@@ -115,7 +115,8 @@ export default function MeInvoicePublishModal({
         sdtKH: order.sdt,
         emailKH: order.email,
         diaChiKH: buyer.diaChiGiao,
-        mstKH: "",
+        mstKH: order.mstKH || "",
+        thueVAT: vatRate, // ← QUAN TRỌNG: buildWininvoicePayload dùng donHang.thueVAT
         items: order.items.map((it) => ({
           maSP: it.spId,
           tenSP: it.spTen,
