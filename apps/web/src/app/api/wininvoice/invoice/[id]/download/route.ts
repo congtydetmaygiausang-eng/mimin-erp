@@ -35,12 +35,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     });
 
     const resData = await r.json();
+    
+    // Debug log to see actual response structure
+    console.log("[wininvoice/download] API response:", JSON.stringify(resData));
+    
     if (!resData || resData.status === "ERROR") {
       throw new Error(resData?.message || "Lấy link PDF thất bại");
     }
 
-    // resData.link is expected to contain the download link
-    const pdfUrl = resData.link || resData.data?.link || resData;
+    // WinInvoice get_link_byref trả về field 'link' hoặc 'data'
+    const pdfUrl: string | null =
+      typeof resData === "string" ? resData :
+      typeof resData.link === "string" ? resData.link :
+      typeof resData.data === "string" ? resData.data :
+      typeof resData.data?.link === "string" ? resData.data.link :
+      typeof resData.result === "string" ? resData.result : null;
+
+    if (!pdfUrl) {
+      throw new Error(`Không tìm thấy URL PDF trong response: ${JSON.stringify(resData)}`);
+    }
 
     return NextResponse.json({ ok: true, url: pdfUrl });
 
