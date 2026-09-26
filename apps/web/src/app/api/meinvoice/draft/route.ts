@@ -78,11 +78,11 @@ export async function POST(req: NextRequest) {
 
     // Success - save to DB
     const hoaDon = {
-      id: refId,
-      transaction_id: null,
+      id: result.TransactionID || refId,
+      transaction_id: result.TransactionID || null,
       ref_id: refId,
-      inv_no: null,
-      inv_series: invSeries,
+      inv_no: result.InvNo || null,
+      inv_series: result.InvSeries || invSeries,
       inv_date: invDate,
       buyer_legal_name: donHang.tenKH,
       buyer_tax_code: donHang.mstKH || "",
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     if (refIdDonHang) {
        await supabaseAdmin
          .from("don_hang")
-         .update({ invoice_id: refId, invoice_status: "draft" })
+         .update({ invoice_id: hoaDon.id, invoice_status: "draft" })
          .eq("id", refIdDonHang);
     }
     
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     // Save log
     await supabaseAdmin.from("hoa_don_log").insert({
-      hoa_don_id: refId,
+      hoa_don_id: hoaDon.id,
       action: "draft",
       endpoint: "invoiceweb/insert",
       request_body: invoiceData,
@@ -130,15 +130,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       ok: true, 
-      data: savedHoaDon || {
-        id: refId,
-        transaction_id: result.TransactionID,
-        inv_no: result.InvNo,
-        inv_series: result.InvSeries,
-        inv_date: invDate,
-        total_with_vat: invoiceData.TotalAmountOC,
-        vat_amount: invoiceData.TotalVATAmountOC
-      }
+      data: hoaDon
     });
   } catch (err: any) {
     const errorMsg = err.message || err.toString();
