@@ -18,6 +18,7 @@ import ProductDetailModal from "@/components/danh-muc-sp/ProductDetailModal";
 import ProductFormModal from "@/components/danh-muc-sp/ProductFormModal";
 import AddToCartModal from "@/components/danh-muc-sp/AddToCartModal";
 import { GioHangDrawer } from "@/components/danh-muc-sp/GioHangDrawer";
+import { LenhCatModal } from "@/components/LenhCatModal";
 import OrderFormModal from "@/components/order-detail/OrderFormModal";
 import { createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, generateMaDH, calcOrderTotal, calcOrderQty } from "@/components/order-detail/helpers";
 import { generateVariants } from "@/lib/data/product-variants";
@@ -69,6 +70,7 @@ export default function DanhMucSanPhamPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [productToEdit, setProductToEdit] = useState<SanPham | null>(null);
   const [productForCart, setProductForCart] = useState<SanPham | null>(null);
+  const [productForLenhCat, setProductForLenhCat] = useState<SanPham | null>(null);
   const [showGioHang, setShowGioHang] = useState(false);
   const [orderFormInitial, setOrderFormInitial] = useState<Order | null>(null);
   const [orderFromCart, setOrderFromCart] = useState(false);
@@ -730,6 +732,14 @@ export default function DanhMucSanPhamPage() {
         }}
         onSave={handleSaveOrderForm}
       />
+
+      {productForLenhCat && (
+        <LenhCatModal
+          isOpen={true}
+          onClose={() => setProductForLenhCat(null)}
+          initialSP={productForLenhCat}
+        />
+      )}
 
       {/* CUSTOMER (B2C) MODALS */}
       {showCustomerAddToCart && (
