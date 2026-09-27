@@ -60,6 +60,23 @@ export default function KeHoachSXPage() {
     };
   }, []);
 
+  // Auto trigger "Tạo Lệnh Cắt" if navigated from Danh Muc SP with "Sản Xuất"
+  useEffect(() => {
+    if (khsx.length > 0) {
+      const autoId = localStorage.getItem("mimin_auto_tao_lenh_cat_khsx_id");
+      if (autoId) {
+        const item = khsx.find((x) => x.id === autoId);
+        if (item && !item.lenhCatId) {
+          localStorage.removeItem("mimin_auto_tao_lenh_cat_khsx_id");
+          // setTimeout to let UI render KHSX first before navigating away
+          setTimeout(() => {
+            taoLenhCat(item);
+          }, 300);
+        }
+      }
+    }
+  }, [khsx]);
+
   const visible = filter === "Tất cả" ? khsx : khsx.filter((item) => item.trangThai === filter);
   const tongSL = khsx.reduce((sum, item) => sum + item.soLuong, 0);
   const tongXong = khsx.reduce((sum, item) => sum + item.daHoanThanh, 0);
