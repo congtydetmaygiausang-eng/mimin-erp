@@ -9,6 +9,7 @@ import { useNhanSu } from "@/lib/data/nhan-su-store";
 import { DateDisplay } from "./DateDisplay";
 import { useKho } from "@/lib/data/kho-store";
 import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
+import { LenhCatSummaryModal } from "@/app/(main)/lenh-cat/components/LenhCatSummaryModal";
 
 interface Props {
   lc: LenhCat;
@@ -22,6 +23,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
   const [zoomLogo, setZoomLogo] = useState<string | null>(null);
   const { list: dsNhanSu } = useNhanSu();
   const { giaoDich } = useKho();
+  const [summaryView, setSummaryView] = useState<"owners" | "cost" | null>(null);
   const mainImg = lc.dsMau?.[0]?.img || "";
   const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
   const giaVon1SP = ketQuaGiaVon.giaVon1SP;
@@ -30,6 +32,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
   const ptCode = lc.phuTrachSX || "";
   const ptInfo = dsNhanSu.find(nv => nv.maNV === ptCode || nv.hoTen === ptCode);
   const ptDisplayName = ptInfo?.hoTen || ptCode || "Chưa phân công";
+  const tongNguoiPhuTrach = new Set((lc.phanCong || []).filter((pc) => pc.nguoiMa || pc.nguoiTen).map((pc) => pc.nguoiMa || pc.nguoiTen)).size;
   const ptPhone = ptInfo?.sdt;
 
   return (
@@ -58,18 +61,16 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
               {renderStatus}
             </div>
             
-            <div className="flex items-center gap-2.5 py-1.5 px-3.5 bg-slate-50 border border-slate-200/60 rounded-full shadow-sm hover:shadow transition-shadow">
-              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200/50">
-                {ptInfo?.avatar ? <img src={ptInfo.avatar} className="w-full h-full object-cover" /> : <Users className="w-3.5 h-3.5" />}
+            <button
+              onClick={() => setSummaryView("owners")}
+              className="flex items-center gap-2.5 py-1.5 px-3.5 bg-slate-50 border border-slate-200/60 rounded-full shadow-sm hover:shadow hover:bg-white hover:border-indigo-200 transition-all cursor-pointer group"
+            >
+              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200/50 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                <Users className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phụ trách:</span>
-              <span className="font-black text-slate-800 text-xs">{ptDisplayName}</span>
-              {ptPhone && (
-                <a href={`https://zalo.me/${ptPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="ml-1 w-5 h-5 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" alt="Zalo" className="w-full h-full" />
-                </a>
-              )}
-            </div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-indigo-500 transition-colors">Phụ trách:</span>
+              <span className="font-black text-slate-800 text-xs group-hover:text-indigo-700 transition-colors">{tongNguoiPhuTrach > 0 ? `${tongNguoiPhuTrach} người` : "Chưa phân công"}</span>
+            </button>
           </div>
 
           {/* Title and Stats Row */}
@@ -280,6 +281,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
       {zoomLogo && (
         <ImageLightbox src={zoomLogo} onClose={() => setZoomLogo(null)} />
       )}
+      {summaryView && <LenhCatSummaryModal lc={lc} view={summaryView} onClose={() => setSummaryView(null)} />}
     </div>
   );
 }
