@@ -129,13 +129,46 @@ export default function UiQCPage() {
     const idQuan = mayQuanPC ? mayQuanPC.id : "may_quan";
 
     const ds = (lc.dsMau || []) as MauVai[];
-    const perMau = ds.map((mau) => ({
-      mau,
-      ket: ghepAoQuanTheoSize(mau.tyLeSizeChiTiet?.[idAo], mau.tyLeSizeChiTiet?.[idQuan]),
-    }));
+    let hasAnySizeInput = false;
+
+    const perMau = ds.map((mau) => {
+      let aoSizes = mau.tyLeSizeChiTiet?.[idAo];
+      let quanSizes = mau.tyLeSizeChiTiet?.[idQuan];
+      
+      // Auto-Cascade fallback: If QC/May didn't enter sizes, fallback to 'cat'
+      if (!aoSizes || aoSizes.length === 0) aoSizes = mau.tyLeSizeChiTiet?.["cat"] || [];
+      if (!quanSizes || quanSizes.length === 0) quanSizes = mau.tyLeSizeChiTiet?.["cat"] || [];
+
+      if ((aoSizes && aoSizes.length > 0) || (quanSizes && quanSizes.length > 0)) {
+        hasAnySizeInput = true;
+      }
+
+      return {
+        mau,
+        ket: ghepAoQuanTheoSize(aoSizes, quanSizes),
+      };
+    });
+
     const chuaSanSang = perMau.filter((x) => !x.ket.chinhXacTheoSize).map((x) => x.mau.ten);
-    const tongGhep = perMau.reduce((s, x) => s + x.ket.tongGhep, 0);
-    return { perMau, chuaSanSang, tongGhep, sanSang: chuaSanSang.length === 0 && perMau.length > 0 };
+    
+    // Nếu có DỮ LIỆU SIZE (từ Cắt, May, hoặc QC) thì mới tính Ghép theo size
+    if (hasAnySizeInput) {
+      const tongGhep = perMau.reduce((s, x) => s + x.ket.tongGhep, 0);
+      return { perMau, chuaSanSang, tongGhep, sanSang: chuaSanSang.length === 0 && perMau.length > 0 };
+    }
+
+    // NẾU KHÔNG CÓ BẤT KỲ DỮ LIỆU SIZE NÀO (Lệnh cũ, hoặc không dùng chi tiết màu)
+    // -> Bỏ qua validation size, cho phép ghép theo TỔNG ĐẠT
+    const slAo = mayAoPC?.soLuongHoanThanh || 0;
+    const slQuan = mayQuanPC?.soLuongHoanThanh || 0;
+    const tongGhep = Math.min(slAo, slQuan);
+    
+    return { 
+      perMau, 
+      chuaSanSang: [], // Xoá danh sách chưa sẵn sàng để cho qua validation
+      tongGhep, 
+      sanSang: true    // Luôn sẵn sàng nếu dùng mode tổng hợp
+    };
   }
 
   // Khi tất cả các khâu May đã được QC duyệt (hoan_thanh), nhấn nút này để chốt toàn bộ khâu QC
@@ -932,12 +965,14 @@ export default function UiQCPage() {
 
       {uploadModal && (
         <UploadBangChungModal
-          isOpen={true}
+          open={true}
           onClose={() => setUploadModal(null)}
-          onSave={(urls, signature) => {
+          onConfirm={(urls, signature) => {
             handleHoanTatQC(uploadModal.lc, urls, signature);
             setUploadModal(null);
           }}
+          existingUrls={uploadModal?.lc?.qcBangChungURLs}
+          existingChuKy={uploadModal?.lc?.qcChuKy}
         />
       )}
     </div>

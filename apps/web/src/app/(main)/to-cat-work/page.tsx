@@ -12,7 +12,7 @@ import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCo
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAI, KHO_VAT_TU } from "@/lib/data/real-data";
-import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList } from "@/components/ui";
 import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useSession } from "@/components/session-provider";
@@ -20,7 +20,6 @@ import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
 import { localActiveAccount } from "@/lib/local-account-store";
 import { canAccessStage } from "@/lib/account-access";
 import { can } from "@/lib/permissions";
-import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 
 export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
@@ -30,7 +29,6 @@ export default function CongViecCatPage() {
 
   const [modalGiaCong, setModalGiaCong] = useState<{ id: string, type: "ao" | "quan" } | null>(null);
   const [modalTyLeMau, setModalTyLeMau] = useState<{ id: string, mauIdx: number } | null>(null);
-  const [uploadModal, setUploadModal] = useState<{lc: any, pc: any, totalThucTe?: number} | null>(null);
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
 
   function getPhanCongCat(lc: any) {
@@ -62,10 +60,26 @@ export default function CongViecCatPage() {
     return pcCat;
   }
 
-  // Lọc LC có công đoạn cắt CỦA TÔI, đang cần xử lý
-  const lcCoCat = dsLenhCat.filter(lc =>
-    lc.trangThai === "DangCat" || lc.trangThai === "DaTao" || lc.trangThai === "Nhap"
-  ).filter(lc => getPhanCongCat(lc) !== undefined);
+  // Define filter for this specific stage (used by KPI and StageWorkList)
+  const isPhanCongCatAccessible = (pc: any) => {
+    const isCat = pc.id === "cat" || pc.tenCongDoan?.toLowerCase().includes("cắt");
+    if (LOCAL_ACCOUNT_MODE) return isCat && canAccessStage(localActiveAccount(), pc, "view", can);
+    if (user?.laCongNhan && isCat) {
+      if (pc.nguoiMa && pc.nguoiMa !== user.id && pc.nguoiMa !== user.maNV && !pc.nguoiTen?.includes(user.name)) {
+        return false;
+      }
+      return true;
+    }
+    return isCat;
+  };
+
+  const lcCoCat = dsLenhCat.filter(lc => {
+    const pcCat = lc.phanCong?.find(isPhanCongCatAccessible) || (
+      // Fallback for missing pcCat if legacy order
+      (LOCAL_ACCOUNT_MODE ? undefined : (user?.laCongNhan && lc.phuTrachCat && lc.phuTrachCat !== user.id && lc.phuTrachCat !== user.maNV) ? undefined : true)
+    );
+    return pcCat !== undefined;
+  });
 
   const tongSLChuaCat = lcCoCat.reduce((s, lc) => {
     const pc = getPhanCongCat(lc);
@@ -225,81 +239,79 @@ export default function CongViecCatPage() {
         </div>
       </div>
 
-      {/* Danh sách lệnh cắt */}
-      {lcCoCat.length === 0 ? (
-        <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
-          <Scissors className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Chưa có lệnh cắt nào được giao</div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {lcCoCat.map(lc => {
-            const pc = getPhanCongCat(lc) as any;
-            const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
-            const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
-            const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && tt !== "hoan_thanh";
+      {/* Bảng danh sách và Tab trạng thái */}
+      <StageWorkList 
+        data={lcCoCat}
+        stageKeyword="cat"
+        isStageAccessible={isPhanCongCatAccessible}
+        emptyMessage="Chưa có lệnh cắt nào được giao"
+        renderCard={(lc) => {
+          const pc = getPhanCongCat(lc) as any;
+          const tt = (pc.trangThaiCD as TrangThaiCongDoan) || "cho_giao";
+          const style = TRANG_THAI_CD_STYLE[tt] || TRANG_THAI_CD_STYLE["cho_giao"];
+          const isLate = lc.hanHoanThanh < new Date().toISOString().split("T")[0] && tt !== "hoan_thanh";
 
-            const isBo = lc.loaiSP?.toLowerCase().includes("bo");
-            const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
-            const isQuan = lc.loaiSP?.toLowerCase().includes("quan") || isBo;
+          const isBo = lc.loaiSP?.toLowerCase().includes("bo");
+          const isAo = lc.loaiSP?.toLowerCase().includes("ao") || isBo;
+          const isQuan = lc.loaiSP?.toLowerCase().includes("quan") || isBo;
 
-            const catChiTiet = pc?.catChiTiet || { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" };
-            const steps = [
-              { key: "nhanLieu", label: "Nhận liệu" },
-              { key: "traiVai", label: "Trải vải" },
-              { key: "catHang", label: "Cắt hàng" },
-              { key: "epNhan", label: "Ép nhãn" },
-              { key: "epKeo", label: "Ép keo" },
-            ] as const;
-            const isAllDone = Object.values(catChiTiet).every((val: any) => val === "hoan_thanh" || val === "khong_can");
+          const catChiTiet = pc?.catChiTiet || { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" };
+          const steps = [
+            { key: "nhanLieu", label: "Nhận liệu" },
+            { key: "traiVai", label: "Trải vải" },
+            { key: "catHang", label: "Cắt hàng" },
+            { key: "epNhan", label: "Ép nhãn" },
+            { key: "epKeo", label: "Ép keo" },
+          ] as const;
+          const isAllDone = Object.values(catChiTiet).every((val: any) => val === "hoan_thanh" || val === "khong_can");
 
-            return (
-              <LenhCatCardV2
-                key={lc.id}
-                lc={lc}
-                onColorClick={(mau) => setSelectedMau({ lc, mau })}
-                bangChungSlot={
-                  (pc?.bangChungURLs?.length > 0 || pc?.chuKy) && (
-                    <div className="mt-3 pt-3 border-t border-slate-100 flex gap-4">
-                      {pc.bangChungURLs?.length > 0 && (
-                        <div className="flex-1">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><ImageIcon className="w-3 h-3"/> Bằng chứng</div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {pc.bangChungURLs.map((url: string, i: number) => (
-                              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block relative group rounded overflow-hidden shadow-sm border border-slate-200">
-                                <img src={url} alt="Bằng chứng" className="w-12 h-12 object-cover transition-transform group-hover:scale-110" />
-                              </a>
-                            ))}
-                          </div>
+          return (
+            <LenhCatCardV2
+              key={lc.id}
+              lc={lc}
+              onColorClick={(mau) => setSelectedMau({ lc, mau })}
+              bangChungSlot={
+                (pc?.bangChungURLs?.length > 0 || pc?.chuKy) && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 flex gap-4">
+                    {pc.bangChungURLs?.length > 0 && (
+                      <div className="flex-1">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><ImageIcon className="w-3 h-3"/> Bằng chứng</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {pc.bangChungURLs.map((url: string, i: number) => (
+                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block relative group rounded overflow-hidden shadow-sm border border-slate-200">
+                              <img src={url} alt="Bằng chứng" className="w-12 h-12 object-cover transition-transform group-hover:scale-110" />
+                            </a>
+                          ))}
                         </div>
-                      )}
-                      {pc.chuKy && (
-                        <div className="shrink-0 max-w-[120px]">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><PenTool className="w-3 h-3"/> Chữ ký</div>
-                          <div className="bg-white rounded p-1 border border-slate-200">
-                            <img src={pc.chuKy} alt="Chữ ký" className="max-h-12 w-auto" />
-                          </div>
+                      </div>
+                    )}
+                    {pc.chuKy && (
+                      <div className="shrink-0 max-w-[120px]">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><PenTool className="w-3 h-3"/> Chữ ký</div>
+                        <div className="bg-white rounded p-1 border border-slate-200">
+                          <img src={pc.chuKy} alt="Chữ ký" className="max-h-12 w-auto" />
                         </div>
-                      )}
-                    </div>
-                  )
-                }
-                renderStatus={
-                  <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${style.bg} ${style.text} border border-current/20 flex items-center gap-1`}>
-                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                    {TRANG_THAI_CD_LABELS[tt]}
-                    {isLate && <AlertTriangle className="w-3.5 h-3.5 ml-0.5" />}
-                  </span>
-                }
-              >
-                <div className="space-y-4 pt-1">
-                  {/* Gia công áo/quần + thợ cắt + hạn */}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {isAo && (
-                        <button
-                          onClick={() => setModalGiaCong({ id: lc.id, type: "ao" })}
-                          className="px-4 py-1.5 bg-violet-50 border border-violet-200 text-violet-700 rounded-full text-xs font-bold hover:bg-violet-100 hover:border-violet-300 transition-colors shadow-sm"
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+              renderStatus={
+                <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${style.bg} ${style.text} border border-current/20 flex items-center gap-1`}>
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                  {TRANG_THAI_CD_LABELS[tt]}
+                  {isLate && <AlertTriangle className="w-3.5 h-3.5 ml-0.5" />}
+                </span>
+              }
+            >
+              <div className="space-y-4 pt-1">
+                {/* Gia công áo/quần + thợ cắt + hạn */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isAo && (
+                      <button
+                        onClick={() => setModalGiaCong({ id: lc.id, type: "ao" })}
+                        className="px-4 py-1.5 bg-violet-50 border border-violet-200 text-violet-700 rounded-full text-xs font-bold hover:bg-violet-100 hover:border-violet-300 transition-colors shadow-sm"
                         >
                           Gia công áo
                         </button>
@@ -408,11 +420,7 @@ export default function CongViecCatPage() {
                               onClick={() => {
                                 const tongDat = (pc?.chiTietMau || []).reduce((s: number, m: any) => s + (m.soLuongDat || 0), 0);
                                 const totalThucTe = tongDat > 0 ? tongDat : undefined;
-                                if (pc && (pc.bangChungURLs?.length > 0 || pc.chuKy)) {
-                                  handleHoanThanh(lc, undefined, totalThucTe, pc.bangChungURLs, pc.chuKy);
-                                } else {
-                                  setUploadModal({ lc, pc, totalThucTe });
-                                }
+                                handleHoanThanh(lc, undefined, totalThucTe, pc?.bangChungURLs, pc?.chuKy);
                               }}
                               className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
                             >
@@ -552,16 +560,6 @@ export default function CongViecCatPage() {
         />
       )}
 
-      {uploadModal && (
-        <UploadBangChungModal
-          isOpen={true}
-          onClose={() => setUploadModal(null)}
-          onSave={(urls, signature) => {
-            handleHoanThanh(uploadModal.lc, undefined, uploadModal.totalThucTe, urls, signature);
-            setUploadModal(null);
-          }}
-        />
-      )}
     </div>
   );
 }
