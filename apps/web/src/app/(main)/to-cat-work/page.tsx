@@ -20,7 +20,6 @@ import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
 import { localActiveAccount } from "@/lib/local-account-store";
 import { canAccessStage } from "@/lib/account-access";
 import { can } from "@/lib/permissions";
-import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 
 export default function CongViecCatPage() {
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
@@ -30,7 +29,6 @@ export default function CongViecCatPage() {
 
   const [modalGiaCong, setModalGiaCong] = useState<{ id: string, type: "ao" | "quan" } | null>(null);
   const [modalTyLeMau, setModalTyLeMau] = useState<{ id: string, mauIdx: number } | null>(null);
-  const [uploadModal, setUploadModal] = useState<{lc: any, pc: any, totalThucTe?: number} | null>(null);
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
 
   function getPhanCongCat(lc: any) {
@@ -408,11 +406,7 @@ export default function CongViecCatPage() {
                               onClick={() => {
                                 const tongDat = (pc?.chiTietMau || []).reduce((s: number, m: any) => s + (m.soLuongDat || 0), 0);
                                 const totalThucTe = tongDat > 0 ? tongDat : undefined;
-                                if (pc && (pc.bangChungURLs?.length > 0 || pc.chuKy)) {
-                                  handleHoanThanh(lc, undefined, totalThucTe, pc.bangChungURLs, pc.chuKy);
-                                } else {
-                                  setUploadModal({ lc, pc, totalThucTe });
-                                }
+                                handleHoanThanh(lc, undefined, totalThucTe, pc?.bangChungURLs, pc?.chuKy);
                               }}
                               className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-200"
                             >
@@ -552,16 +546,6 @@ export default function CongViecCatPage() {
         />
       )}
 
-      {uploadModal && (
-        <UploadBangChungModal
-          isOpen={true}
-          onClose={() => setUploadModal(null)}
-          onSave={(urls, signature) => {
-            handleHoanThanh(uploadModal.lc, undefined, uploadModal.totalThucTe, urls, signature);
-            setUploadModal(null);
-          }}
-        />
-      )}
     </div>
   );
 }

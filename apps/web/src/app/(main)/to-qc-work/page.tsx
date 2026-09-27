@@ -932,12 +932,14 @@ export default function UiQCPage() {
 
       {uploadModal && (
         <UploadBangChungModal
-          isOpen={true}
+          open={true}
           onClose={() => setUploadModal(null)}
-          onSave={(urls, signature) => {
+          onConfirm={(urls, signature) => {
             handleHoanTatQC(uploadModal.lc, urls, signature);
             setUploadModal(null);
           }}
+          existingUrls={uploadModal?.lc?.qcBangChungURLs}
+          existingChuKy={uploadModal?.lc?.qcChuKy}
         />
       )}
     </div>
