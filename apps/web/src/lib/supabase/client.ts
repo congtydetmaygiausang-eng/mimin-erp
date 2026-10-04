@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { LOCAL_ACCOUNT_MODE } from "../local-account-mode";
 import type { AccountDirectoryEntry, AccountDisplayProfile } from "../data/account-access";
+import { DOI_TAC_GIA_CONG } from "../doi-tac-gia-cong";
 
 // Supabase config
 // Đọc từ env vars (xem apps/web/.env.example)
@@ -53,23 +54,94 @@ export async function fetchAccountDirectory(): Promise<AccountDirectoryEntry[]> 
   const client = supabase || (directoryClient ??= createClient(supabaseUrl, supabaseAnonKey));
   async function readPages(table: string, columns: string): Promise<Record<string, unknown>[]> {
     const rows: Record<string, unknown>[] = [];
-    for (let offset = 0; ; offset += 500) {
-      const { data, error } = await client.from(table).select(columns).order("id").range(offset, offset + 499);
-      if (error) throw new Error(`Không tải được ${table}: ${error.message}`);
-      const page = (data || []) as unknown as Record<string, unknown>[];
-      rows.push(...page);
-      if (page.length < 500) return rows;
+    try {
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await client.from(table).select(columns).order("id").range(offset, offset + 499);
+        if (error) {
+          console.warn(`[Supabase] Không tải được bảng ${table}: ${error.message}`);
+          return rows;
+        }
+        const page = (data || []) as unknown as Record<string, unknown>[];
+        rows.push(...page);
+        if (page.length < 500) return rows;
+      }
+    } catch (e) {
+      console.warn(`[Supabase] Lỗi đọc bảng ${table}:`, e);
+      return rows;
     }
+    return rows;
   }
-  const [employees, companies] = await Promise.all([
+
+  const [employees, xgc, companies] = await Promise.all([
     readPages("nhan_su", "id,ma_nv,ho_ten,email,bo_phan"),
+    readPages("xuong_gia_cong", "id,ma_xuong,ten_xuong,email,loai,sdt"),
     readPages("nha_cung_cap", "id,ma_ncc,ten_ncc,email,loai"),
   ]);
-  const value = (row: Record<string, unknown>, key: string) => typeof row[key] === "string" ? row[key].trim() : "";
-  return [
-    ...employees.map(row => ({ kind: "employee" as const, code: value(row, "ma_nv"), name: value(row, "ho_ten"), email: value(row, "email"), department: value(row, "bo_phan") })),
-    ...companies.map(row => ({ kind: value(row, "loai") === "doi_tac_gia_cong" ? "partner" as const : "supplier" as const, code: value(row, "ma_ncc"), name: value(row, "ten_ncc"), email: value(row, "email"), department: "" })),
-  ].filter(row => row.code).sort((a, b) => a.name.localeCompare(b.name, "vi"));
+
+  const value = (row: Record<string, unknown>, key: string) => typeof row[key] === "string" ? (row[key] as string).trim() : "";
+
+  // 1. Nhân sự
+  const employeeEntries: AccountDirectoryEntry[] = employees.map(row => ({
+    kind: "employee" as const,
+    code: value(row, "ma_nv"),
+    name: value(row, "ho_ten"),
+    email: value(row, "email"),
+    department: value(row, "bo_phan")
+  })).filter(row => row.code);
+
+  // 2. Đối tác gia công từ bảng xuong_gia_cong
+  let partnerEntries: AccountDirectoryEntry[] = xgc.map(row => ({
+    kind: "partner" as const,
+    code: value(row, "ma_xuong"),
+    name: value(row, "ten_xuong"),
+    email: value(row, "email"),
+    department: value(row, "loai") || "Gia công"
+  })).filter(row => row.code);
+
+  // Fallback: nếu bảng xuong_gia_cong chưa có trên Supabase, lấy từ danh mục 35 xưởng thật
+  if (partnerEntries.length === 0) {
+    partnerEntries = DOI_TAC_GIA_CONG.map(dt => ({
+      kind: "partner" as const,
+      code: dt.ma,
+      name: dt.tenDonVi,
+      email: dt.email || "",
+      department: dt.chuyenMon || "Gia công"
+    }));
+  }
+
+  const partnerCodes = new Set(partnerEntries.map(p => p.code));
+
+  // 3. Nhà cung cấp & Đối tác còn lại từ nha_cung_cap
+  const supplierEntries: AccountDirectoryEntry[] = [];
+  for (const row of companies) {
+    const code = value(row, "ma_ncc");
+    if (!code) continue;
+    const loai = value(row, "loai").toLowerCase();
+    const isPartner = code.startsWith("GC-") || loai === "doi_tac_gia_cong" || loai.includes("gia_cong") || loai.includes("in_") || loai.includes("may_") || loai.includes("thêu");
+
+    if (isPartner) {
+      if (!partnerCodes.has(code)) {
+        partnerEntries.push({
+          kind: "partner" as const,
+          code,
+          name: value(row, "ten_ncc"),
+          email: value(row, "email"),
+          department: value(row, "loai") || "Gia công"
+        });
+        partnerCodes.add(code);
+      }
+    } else {
+      supplierEntries.push({
+        kind: "supplier" as const,
+        code,
+        name: value(row, "ten_ncc"),
+        email: value(row, "email"),
+        department: ""
+      });
+    }
+  }
+
+  return [...employeeEntries, ...partnerEntries, ...supplierEntries].sort((a, b) => a.name.localeCompare(b.name, "vi"));
 }
 
 // Service role key - chỉ dùng server-side (API routes, scripts)
