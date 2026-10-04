@@ -10,7 +10,15 @@ import { formatVNDShort } from "@/lib/data/real-data";
 import { CONG_DOAN_OPTIONS, STATUS_STYLE } from "../data";
 
 // ============ MODAL THANH TOAN ============
-export function ModalThanhToan({ pc, onClose, onSubmit }: { pc: PhanCongCongDoan; onClose: () => void; onSubmit: (soTien: number, ghiChu?: string) => void }) {
+export function ModalThanhToan({
+  pc,
+  onClose,
+  onSubmit
+}: {
+  pc: PhanCongCongDoan;
+  onClose: () => void;
+  onSubmit: (soTien: number, ghiChu?: string, taoPhieuChi?: boolean, hinhThuc?: "Chuyển khoản" | "Tiền mặt") => void;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -19,6 +27,8 @@ export function ModalThanhToan({ pc, onClose, onSubmit }: { pc: PhanCongCongDoan
 
   const [soTien, setSoTien] = useState("");
   const [ghiChu, setGhiChu] = useState("");
+  const [taoPhieuChi, setTaoPhieuChi] = useState(true);
+  const [hinhThuc, setHinhThuc] = useState<"Chuyển khoản" | "Tiền mặt">("Chuyển khoản");
 
   const thanhTien = pc.donGiaGiao * pc.soLuongGiao;
   const conNo = thanhTien - pc.daThanhToan;
@@ -34,7 +44,7 @@ export function ModalThanhToan({ pc, onClose, onSubmit }: { pc: PhanCongCongDoan
       toast.error(`Số tiền vượt quá công nợ (${conNo.toLocaleString()}đ)`);
       return;
     }
-    onSubmit(tien, ghiChu);
+    onSubmit(tien, ghiChu, taoPhieuChi, hinhThuc);
   };
 
   const quickAmounts = [Math.round(conNo / 2), conNo, 1000000, 5000000, 10000000].filter((x) => x > 0 && x <= conNo);
@@ -110,6 +120,32 @@ export function ModalThanhToan({ pc, onClose, onSubmit }: { pc: PhanCongCongDoan
               onChange={(e) => setGhiChu(e.target.value)}
             />
           </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={taoPhieuChi}
+                onChange={(e) => setTaoPhieuChi(e.target.checked)}
+                className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"
+              />
+              <span>Tự động tạo phiếu Chi trong Sổ Quỹ Thu Chi</span>
+            </label>
+            {taoPhieuChi && (
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-xs">
+                <span className="opacity-70">Hình thức thanh toán:</span>
+                <select
+                  value={hinhThuc}
+                  onChange={(e) => setHinhThuc(e.target.value as any)}
+                  className="px-2 py-1 rounded-lg border border-slate-300 text-xs font-medium bg-white"
+                >
+                  <option value="Chuyển khoản">Chuyển khoản</option>
+                  <option value="Tiền mặt">Tiền mặt</option>
+                </select>
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
             <button type="submit" className="btn-primary flex-1">Xác nhận thanh toán</button>

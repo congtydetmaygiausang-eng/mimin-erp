@@ -476,7 +476,7 @@ const mapLenhCatFromDB = (item: any): LenhCat => ({
 } as LenhCat);
 
 export function LenhCatProvider({ children }: { children: ReactNode }) {
-  const { upsertTuLenhCat } = usePhanCong();
+  const { upsertTuLenhCat, dongBoToanBoCongNoTuLenhCat } = usePhanCong();
   const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>([]);
   const [dsMauCongDoan, setDsMauCongDoan] = useState<MauCongDoanItem[]>([]);
   const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
@@ -722,6 +722,11 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
+    // Khi Lệnh cắt hoàn thành: Tự động chốt và chuyển công nợ toàn bộ công đoạn vào sổ công nợ
+    if (tt === "HoanThanh" && lenhHienTai) {
+      dongBoToanBoCongNoTuLenhCat(lenhHienTai);
+    }
+
     // ĐÃ BỎ auto-xuất-kho ở đây (trước gọi xuatKhoChoLenhCat của inventory-engine).
     // Lý do: có 2 luồng trừ kho chạy song song cho cùng 1 lần bắt đầu cắt ->
     //   (1) handleNhanViec ở to-cat-work/page.tsx: ghi qua useKho().themGiaoDich
@@ -737,7 +742,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       const { supabase } = await import("@/lib/supabase/client");
       if (supabase) await supabase!.from("lenh_cat").update({ trang_thai: tt }).eq("id", id);
     } catch(e) { console.error(e); }
-  }, []);
+  }, [dongBoToanBoCongNoTuLenhCat]);
   const capNhatCongDoan = useCallback((lenhId: string, congDoanId: string, data: {
     trangThaiCD?: TrangThaiCongDoan;
     soLuongHoanThanh?: number;
