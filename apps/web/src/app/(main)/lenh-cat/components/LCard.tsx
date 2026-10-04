@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
 import React, { ReactNode } from "react";
-import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight, UsersRound, Image as ImageIcon } from "lucide-react";
+import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight, UsersRound, Image as ImageIcon, Wallet } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE, LOAI_SP_LABELS, type LenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
@@ -247,6 +247,9 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
           </button>
           <button type="button" onClick={() => setSummaryView("cost")} className="flex-1 sm:flex-none justify-center px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 font-bold flex items-center gap-2 transition-all text-xs shadow-sm">
             <Calculator className="w-4 h-4" /> Giá vốn
+          </button>
+          <button type="button" onClick={() => setSummaryView("debt")} className="flex-1 sm:flex-none justify-center px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 font-bold flex items-center gap-2 transition-all text-xs shadow-sm">
+            <Wallet className="w-4 h-4" /> Công nợ
           </button>
         </div>
         

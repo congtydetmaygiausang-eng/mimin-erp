@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Wallet, AlertCircle, AlertTriangle, Plus, Download } from "lucide-react";
 import { toast } from "sonner";
 import { usePhanCong, exportCongNoExcel } from "@/lib/data/cong-no-store";
@@ -18,6 +18,14 @@ export default function CongNoPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "Chờ giao" | "Đang làm" | "Hoàn thành" | "Đã thanh toán">("all");
   const [nguoiFilter, setNguoiFilter] = useState<"all" | "Đối tác gia công" | "Nhân viên nội bộ">("all");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get("search") || params.get("lenhCat");
+      if (q) setSearch(q);
+    }
+  }, []);
   const [selectedLenh, setSelectedLenh] = useState<string | null>(null);
   const [showModalTT, setShowModalTT] = useState<any | null>(null);
   const [showModalPC, setShowModalPC] = useState(false);
@@ -186,9 +194,32 @@ export default function CongNoPage() {
         <ModalThanhToan
           pc={showModalTT}
           onClose={() => setShowModalTT(null)}
-          onSubmit={(soTien: number, ghiChu?: string) => {
+          onSubmit={async (soTien: number, ghiChu?: string, taoPhieuChi?: boolean, hinhThuc?: "Chuyển khoản" | "Tiền mặt") => {
             themThanhToan(showModalTT.id, soTien, ghiChu);
-            toast.success(`Đã trả ${soTien.toLocaleString()}đ cho ${showModalTT.nguoiPhuTrach.ten.split(" (")[0]}`);
+            if (taoPhieuChi) {
+              try {
+                const { themGiaoDich } = await import("@/lib/data/thu-chi");
+                await themGiaoDich({
+                  loai: "chi",
+                  danhMuc: "tam_ung",
+                  soTien,
+                  hinhThuc: (hinhThuc === "Tiền mặt" ? "tien_mat" : "chuyen_khoan"),
+                  ngay: new Date().toISOString().slice(0, 10),
+                  nguoiThucHien: "Kế toán xưởng",
+                  nguoiNhan: showModalTT.nguoiPhuTrach.ten,
+                  noiDung: `Chi tiền công ${showModalTT.congDoan} - Lệnh ${showModalTT.lenhCatId} (${showModalTT.id})${ghiChu ? " - " + ghiChu : ""}`,
+                  hinhAnh: [],
+                  nguoiNhap: "Kế toán xưởng",
+                  roleNguoiNhap: "ketoan",
+                });
+                toast.success(`Đã trả ${soTien.toLocaleString()}đ và tạo phiếu Chi vào Sổ Quỹ!`);
+              } catch (e) {
+                console.error(e);
+                toast.success(`Đã trả ${soTien.toLocaleString()}đ cho ${showModalTT.nguoiPhuTrach.ten.split(" (")[0]}`);
+              }
+            } else {
+              toast.success(`Đã trả ${soTien.toLocaleString()}đ cho ${showModalTT.nguoiPhuTrach.ten.split(" (")[0]}`);
+            }
             setShowModalTT(null);
           }}
         />

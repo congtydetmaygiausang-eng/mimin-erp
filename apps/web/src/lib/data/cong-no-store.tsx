@@ -40,6 +40,15 @@ type StoreContext = {
     ngayGiao?: string;
     daThanhToan?: number;
   }) => void;
+  dongBoToanBoCongNoTuLenhCat: (
+    lc: {
+      id: string;
+      tongSL?: number;
+      tongSLThucTe?: number;
+      phanCong?: any[];
+    },
+    options?: { soLuongChot?: number; ngayGiao?: string }
+  ) => number;
   reset: () => void;
   layTheoLenh: (lenhCatId: string) => PhanCongCongDoan[];
   isLate: (pc: PhanCongCongDoan) => boolean;
@@ -158,6 +167,91 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
     });
   }, [setPhanCong]);
 
+  const dongBoToanBoCongNoTuLenhCat = useCallback(
+    (
+      lc: {
+        id: string;
+        tongSL?: number;
+        tongSLThucTe?: number;
+        phanCong?: any[];
+      },
+      options?: { soLuongChot?: number; ngayGiao?: string }
+    ) => {
+      if (!lc || !Array.isArray(lc.phanCong) || lc.phanCong.length === 0) return 0;
+
+      const slChotMacDinh = options?.soLuongChot ?? (lc.tongSLThucTe || lc.tongSL || 0);
+      let count = 0;
+
+      setPhanCong((prev) => {
+        const currentList = [...prev];
+
+        for (const pc of lc.phanCong!) {
+          const hasWorker = !!(pc.nguoiMa || pc.nguoiTen);
+          const hasPrice = (pc.donGia || 0) > 0;
+          if (!hasWorker && !hasPrice) continue;
+
+          const tenCD = (pc.tenCongDoan || "").toLowerCase();
+          if (tenCD.includes("nhập kho") && !hasPrice) continue;
+
+          const maNguoi = pc.nguoiMa || (pc.nguoiTen ? `GC-${pc.id}` : `THO-${pc.id}`);
+          const tenNguoi = pc.nguoiTen || "Chưa rõ";
+          const donGia = pc.donGia || 0;
+          const slGiao = pc.soLuongDatCuoi ?? pc.soLuongHoanThanh ?? (pc.soLuong && pc.soLuong > 0 ? pc.soLuong : slChotMacDinh);
+          const ngayGiao = options?.ngayGiao || pc.ngayNhanViec || new Date().toISOString().slice(0, 10);
+
+          const idx = currentList.findIndex(
+            (c) =>
+              c.lenhCatId === lc.id &&
+              (c.congDoan === (pc.tenCongDoan || "Gia công") || c.id.endsWith(pc.id)) &&
+              (c.nguoiPhuTrach?.ma === maNguoi || c.nguoiPhuTrach?.ten === tenNguoi)
+          );
+
+          if (idx >= 0) {
+            currentList[idx] = {
+              ...currentList[idx],
+              trangThai: currentList[idx].trangThai === "Đã thanh toán" ? "Đã thanh toán" : "Hoàn thành",
+              donGiaGiao: donGia > 0 ? donGia : currentList[idx].donGiaGiao,
+              soLuongGiao: slGiao > 0 ? slGiao : currentList[idx].soLuongGiao,
+              nguoiPhuTrach: {
+                ...currentList[idx].nguoiPhuTrach,
+                ma: maNguoi,
+                ten: tenNguoi,
+              },
+            };
+          } else {
+            const nextNum = currentList.length + 1;
+            const newId = `PC-${lc.id.replace("LC-", "")}-${String(nextNum).padStart(2, "0")}`;
+            const newPc: PhanCongCongDoan = {
+              id: newId,
+              lenhCatId: lc.id,
+              congDoan: pc.tenCongDoan || "Gia công",
+              nguoiPhuTrach: {
+                loai: (maNguoi.startsWith("GC") || maNguoi.startsWith("DT")) ? "Đối tác gia công" : "Nhân viên nội bộ",
+                ma: maNguoi,
+                ten: tenNguoi,
+              },
+              donGiaGiao: donGia,
+              soLuongGiao: slGiao,
+              donVi: "SP",
+              ngayGiao,
+              ngayXongDuKien: new Date().toISOString().slice(0, 10),
+              trangThai: pc.daThanhToan && pc.daThanhToan >= (donGia * slGiao) && (donGia * slGiao) > 0 ? "Đã thanh toán" : "Hoàn thành",
+              daThanhToan: pc.daThanhToan || 0,
+              ghiChu: `Tự động chốt từ Lệnh cắt ${lc.id}`,
+            };
+            currentList.push(newPc);
+          }
+          count++;
+        }
+
+        return currentList;
+      });
+
+      return count;
+    },
+    [setPhanCong]
+  );
+
   const reset = useCallback(() => {
     setPhanCong([]);
   }, [setPhanCong]);
@@ -175,7 +269,7 @@ export function PhanCongProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ phanCong, themThanhToan, themPhanCong, capNhatPhanCong, xoaPhanCong, upsertTuLenhCat, reset, layTheoLenh, isLate }}
+      value={{ phanCong, themThanhToan, themPhanCong, capNhatPhanCong, xoaPhanCong, upsertTuLenhCat, dongBoToanBoCongNoTuLenhCat, reset, layTheoLenh, isLate }}
     >
       {children}
     </Ctx.Provider>

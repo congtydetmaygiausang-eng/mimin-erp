@@ -14,6 +14,7 @@ import { useState } from "react";
 import { ClipboardList, CheckCircle2, Package, Shirt, Clock, Box, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
+import { usePhanCong } from "@/lib/data/cong-no-store";
 import { kiemTraTruocHoanThanh, thongKeLoiLenhCat } from "@/lib/data/cong-doan-helper";
 import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
@@ -26,6 +27,7 @@ export default function UiHoanThienPage() {
   const { selectedMau, setSelectedMau, handleSaveColorBatch } = useStageColorInput();
   const [selectedDoiSoatLc, setSelectedDoiSoatLc] = useState<LenhCat | null>(null);
   const { dsLenhCat, capNhatCongDoan, capNhatTrangThai, suaLenhCat } = useLenhCat();
+  const { dongBoToanBoCongNoTuLenhCat } = usePhanCong();
   const { dsSanPham, themSP } = useDanhMucSP();
 
   const { user } = useSession();
@@ -67,6 +69,8 @@ export default function UiHoanThienPage() {
   const handleNhapKho = async (lc: LenhCat, tongDat: number) => {
     try {
       capNhatTrangThai(lc.id, "HoanThanh", null);
+      // Tự động chốt và chuyển công nợ toàn bộ công đoạn vào sổ công nợ theo SL thực tế
+      dongBoToanBoCongNoTuLenhCat(lc, { soLuongChot: tongDat });
 
       const dongGoiPCs = getHTPC(lc);
       
