@@ -64,9 +64,11 @@ export default function NhanSuPage() {
   const luongSPTheoNV = useMemo(() => {
     const map: Record<string, number> = {};
     for (const pc of phanCong) {
-      const maNV = pc.nguoiPhuTrach.ma;
-      if (!map[maNV]) map[maNV] = 0;
-      map[maNV] += pc.donGiaGiao * pc.soLuongGiao;
+      const maNV = typeof pc.nguoiPhuTrach === "object" ? pc.nguoiPhuTrach?.ma : pc.nguoiPhuTrach;
+      if (maNV) {
+        if (!map[maNV]) map[maNV] = 0;
+        map[maNV] += (pc.donGiaGiao || 0) * (pc.soLuongGiao || 0);
+      }
     }
     return map;
   }, [phanCong]);

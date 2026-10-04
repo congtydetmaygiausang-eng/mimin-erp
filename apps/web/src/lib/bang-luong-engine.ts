@@ -46,17 +46,29 @@ const LUONG_CUNG_DEFAULT: Record<string, number> = {
   "Media": 10_000_000,
 };
 
+export interface NhanSuLuongInput {
+  ma: string;
+  ten: string;
+  boPhan: string;
+  chucVu?: string;
+  donGia?: number;
+  luongCung?: number;
+  ghiChu?: string;
+}
+
 /**
  * Tính bảng lương cho tất cả NV trong 1 tháng
  * @param thang 1-12
  * @param nam yyyy
  * @param allPhieu PhieuWorkflow[] (mặc định ALL_REAL_PHIEU - có thể truyền task từ localStorage)
- * @returns BangLuongNV[] - 17 NV
+ * @param customEmployees NhanSuLuongInput[] (danh sách nhân sự hiện tại từ Supabase / Store)
+ * @returns BangLuongNV[]
  */
 export function tinhBangLuongThang(
   thang: number,
   nam: number,
-  allPhieu: any[] = []
+  allPhieu: any[] = [],
+  customEmployees?: NhanSuLuongInput[]
 ): BangLuongNV[] {
   // Lấy tasks trong tháng
   const startDate = new Date(nam, thang - 1, 1);
@@ -69,19 +81,28 @@ export function tinhBangLuongThang(
     return taskDate && taskDate >= startDate && taskDate <= endDate;
   });
 
+  const empList: NhanSuLuongInput[] = (customEmployees && customEmployees.length > 0)
+    ? customEmployees
+    : REAL_NHAN_VIEN;
+
   // Tính cho từng NV
   const result: BangLuongNV[] = [];
 
-  for (const nv of REAL_NHAN_VIEN) {
-    // Lấy đơn giá từ NV info (REAL_NHAN_VIEN.donGia)
+  for (const nv of empList) {
+    // Lấy đơn giá từ NV info
     const donGia = nv.donGia || 0;
 
     // Lấy lương cứng
-    const luongCung = LUONG_CUNG_DEFAULT[nv.boPhan] || 0;
+    const luongCung = nv.luongCung !== undefined
+      ? nv.luongCung
+      : (LUONG_CUNG_DEFAULT[nv.boPhan] || 0);
     const isLuongSP = luongCung === 0;
 
     // Lấy tasks của NV trong tháng
-    const myTasks = tasksTrongThang.filter((t) => t.nguoiNhan === nv.ma);
+    const myTasks = tasksTrongThang.filter((t) =>
+      t.nguoiNhan === nv.ma ||
+      (t.tenNguoiNhan && t.tenNguoiNhan.toLowerCase() === nv.ten.toLowerCase())
+    );
     const tasksMa = myTasks.map((t) => t.id);
 
     const soLuongGiao = myTasks.reduce((s, t) => s + (t.soLuongGiao || 0), 0);

@@ -9,8 +9,8 @@
 // 3. Convert từng schema row thành format chuẩn cho tinhBangLuongThang
 
 import { useEffect, useState, useMemo } from "react";
-import { tinhBangLuongThang, tongKetBangLuong, type BangLuongNV, type TongKetBangLuong } from "./bang-luong-engine";
-import { supabaseFetchAll, isSupabaseEnabled } from "@/lib/supabase/client";
+import { tinhBangLuongThang, tongKetBangLuong, type BangLuongNV, type TongKetBangLuong, type NhanSuLuongInput } from "./bang-luong-engine";
+import { supabaseFetchAll, isSupabaseEnabled, supabase } from "@/lib/supabase/client";
 
 // ============ TYPES ============
 type WorkflowRow = {
@@ -139,6 +139,7 @@ function hoanThienToWorkflow(r: HoanThienRow): WorkflowRow | null {
 // ============ MAIN HOOK ============
 export function useBangLuongData(thang: number, nam: number) {
   const [allPhieu, setAllPhieu] = useState<WorkflowRow[]>([]);
+  const [employees, setEmployees] = useState<NhanSuLuongInput[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<"supabase" | "localStorage" | "empty">("empty");
 
@@ -147,6 +148,54 @@ export function useBangLuongData(thang: number, nam: number) {
     (async () => {
       setLoading(true);
       try {
+        // 0. Load danh sách nhân sự hiện tại từ Supabase / localStorage
+        try {
+          let rawEmployees: any[] = [];
+          if (isSupabaseEnabled && supabase) {
+            const { data, error } = await supabase.from("nhan_su").select("*").order("stt", { ascending: true });
+            if (!error && data && data.length > 0) {
+              rawEmployees = data;
+            }
+          }
+          if (rawEmployees.length === 0) {
+            const cached = typeof window !== "undefined" ? localStorage.getItem("mimin_nhan_su_v1") : null;
+            if (cached) {
+              try {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed) && parsed.length > 0) rawEmployees = parsed;
+              } catch {}
+            }
+          }
+          if (rawEmployees.length > 0) {
+            const parsedEmployees: NhanSuLuongInput[] = rawEmployees.map((r) => {
+              const chucVu = r.chuc_vu || r.chucVu || "";
+              const boPhan = r.bo_phan || r.boPhan || "Sản xuất";
+              let lc = Number(r.luong_cung || r.luong_cb || r.luongCung || r.luongCB || 0);
+              if (lc === 0) {
+                if (/giám đốc/i.test(chucVu)) lc = 25_000_000;
+                else if (/trưởng|quản lý/i.test(chucVu)) lc = 12_000_000;
+                else if (/kho/i.test(boPhan)) lc = 8_000_000;
+                else if (/kế toán/i.test(boPhan)) lc = 10_000_000;
+                else if (/kinh doanh/i.test(boPhan)) lc = 10_000_000;
+                else if (/media|marketing/i.test(boPhan)) lc = 10_000_000;
+                else if (/sản xuất/i.test(boPhan)) lc = 7_000_000;
+              }
+              return {
+                ma: r.ma_nv || r.maNV || "",
+                ten: r.ho_ten || r.hoTen || "",
+                boPhan,
+                chucVu,
+                luongCung: lc,
+                donGia: Number(r.don_gia || r.don_gia_sp || 0),
+                ghiChu: r.ghi_chu || r.ghiChu || `${chucVu} - ${boPhan}`,
+              };
+            });
+            if (!cancelled) setEmployees(parsedEmployees);
+          }
+        } catch (err) {
+          console.warn("[useBangLuongData] Fetch nhan_su error:", err);
+        }
+
         const allRows: WorkflowRow[] = [];
 
         // 1. Thử fetch từ Supabase
@@ -249,8 +298,8 @@ export function useBangLuongData(thang: number, nam: number) {
 
   // Tính bảng lương
   const bangLuong = useMemo(
-    () => tinhBangLuongThang(thang, nam, allPhieu),
-    [thang, nam, allPhieu]
+    () => tinhBangLuongThang(thang, nam, allPhieu, employees.length > 0 ? employees : undefined),
+    [thang, nam, allPhieu, employees]
   );
   const tongKet = useMemo(() => tongKetBangLuong(bangLuong), [bangLuong]);
 

@@ -14,9 +14,12 @@ export function BangLuongNV({ nv, luongSP, onClose }: { nv: NhanSuExt; luongSP: 
   }, []);
 
   const { phanCong } = usePhanCong();
-  const pcNV = phanCong.filter((p) => p.nguoiPhuTrach.ma === nv.maNV);
-  const tongCongDoan = pcNV.reduce((s, p) => s + p.donGiaGiao * p.soLuongGiao, 0);
-  const daThanhToan = pcNV.reduce((s, p) => s + p.daThanhToan, 0);
+  const pcNV = phanCong.filter((p) => {
+    const ma = typeof p.nguoiPhuTrach === "object" ? p.nguoiPhuTrach?.ma : p.nguoiPhuTrach;
+    return ma === nv.maNV;
+  });
+  const tongCongDoan = pcNV.reduce((s, p) => s + (p.donGiaGiao || 0) * (p.soLuongGiao || 0), 0);
+  const daThanhToan = pcNV.reduce((s, p) => s + (p.daThanhToan || 0), 0);
   const conNo = tongCongDoan - daThanhToan;
   const baoHiem = (nv.luongCung || 0) * 0.105;
   const thucNhan = (nv.luongCung || 0) - baoHiem + (luongSP || 0);
