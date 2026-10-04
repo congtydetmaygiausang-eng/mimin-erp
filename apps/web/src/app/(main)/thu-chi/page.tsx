@@ -31,9 +31,12 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Sparkles,
+  RefreshCw,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
+import { useSession } from "@/components/session-provider";
 import {
   type GiaoDichThuChi,
   type LoaiThuChi,
@@ -50,6 +53,7 @@ import {
   tinhTonQuy,
   thongKeTheoDanhMuc,
   xuatExcelThuChi,
+  syncFromSupabase,
 } from "@/lib/data/thu-chi";
 import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
 
@@ -82,8 +86,12 @@ function getCategoryIcon(danhMuc: DanhMucThuChi, className = "w-4 h-4") {
 const PRESET_AMOUNTS = [50000, 100000, 200000, 500000, 1000000, 2000000];
 
 export default function ThuChiPage() {
+  const { user } = useSession();
   const [danhSach, setDanhSach] = useState<GiaoDichThuChi[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Bộ lọc
   const [loaiFilter, setLoaiFilter] = useState<"all" | "chi" | "thu">("all");
@@ -106,15 +114,25 @@ export default function ThuChiPage() {
   const [formSoTien, setFormSoTien] = useState<number | string>("");
   const [formHinhThuc, setFormHinhThuc] = useState<HinhThucThanhToan>("tien_mat");
   const [formNgay, setFormNgay] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [formNguoiThucHien, setFormNguoiThucHien] = useState("Anh Cường");
+  const [formNguoiThucHien, setFormNguoiThucHien] = useState("");
   const [formNguoiNhan, setFormNguoiNhan] = useState("");
   const [formNoiDung, setFormNoiDung] = useState("");
   const [formUploadedFiles, setFormUploadedFiles] = useState<UploadedFile[]>([]);
 
-  // Tải dữ liệu ban đầu
+  // Tải dữ liệu: localStorage tức thì + đồng bộ ngầm Supabase
   useEffect(() => {
-    setDanhSach(getDanhSachThuChi());
+    // 1. Tải nhanh từ localStorage
+    const local = getDanhSachThuChi();
+    setDanhSach(local);
     setIsLoaded(true);
+
+    // 2. Đồng bộ ngầm từ Supabase
+    void (async () => {
+      const res = await syncFromSupabase();
+      if (res.data && res.data.length > 0) {
+        setDanhSach(res.data);
+      }
+    })();
   }, []);
 
   // Tính toán thời gian filter
@@ -157,6 +175,8 @@ export default function ThuChiPage() {
           item.noiDung.toLowerCase().includes(q) ||
           item.nguoiThucHien.toLowerCase().includes(q) ||
           (item.nguoiNhan && item.nguoiNhan.toLowerCase().includes(q)) ||
+          (item.nguoiNhap && item.nguoiNhap.toLowerCase().includes(q)) ||
+          (item.emailNguoiNhap && item.emailNguoiNhap.toLowerCase().includes(q)) ||
           (dmConfig && dmConfig.label.toLowerCase().includes(q));
         if (!match) return false;
       }
@@ -181,7 +201,7 @@ export default function ThuChiPage() {
     setFormSoTien("");
     setFormHinhThuc("tien_mat");
     setFormNgay(new Date().toISOString().slice(0, 10));
-    setFormNguoiThucHien("Anh Cường");
+    setFormNguoiThucHien(user?.name || "Anh Cường");
     setFormNguoiNhan("");
     setFormNoiDung("");
     setFormUploadedFiles([]);
@@ -213,7 +233,7 @@ export default function ThuChiPage() {
   };
 
   // Lưu giao dịch (Thêm hoặc Sửa)
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = Number(formSoTien);
     if (!parsedAmount || parsedAmount <= 0) {
@@ -225,63 +245,120 @@ export default function ThuChiPage() {
       return;
     }
 
+    setIsSubmitting(true);
     const hinhAnhBase64 = formUploadedFiles.map((f) => f.dataUrl);
 
-    if (editingItem) {
-      const updated = capNhatGiaoDich(editingItem.id, {
-        loai: formLoai,
-        danhMuc: formDanhMuc,
-        soTien: parsedAmount,
-        hinhThuc: formHinhThuc,
-        ngay: formNgay,
-        nguoiThucHien: formNguoiThucHien.trim(),
-        nguoiNhan: formNguoiNhan.trim() || undefined,
-        noiDung: formNoiDung.trim(),
-        hinhAnh: hinhAnhBase64,
-      });
-      if (updated) {
-        setDanhSach(getDanhSachThuChi());
-        toast.success(`Đã cập nhật phiếu ${editingItem.id}`);
-        setShowModal(false);
+    try {
+      if (editingItem) {
+        const res = await capNhatGiaoDich(editingItem.id, {
+          loai: formLoai,
+          danhMuc: formDanhMuc,
+          soTien: parsedAmount,
+          hinhThuc: formHinhThuc,
+          ngay: formNgay,
+          nguoiThucHien: formNguoiThucHien.trim() || user?.name || "Người dùng",
+          nguoiNhan: formNguoiNhan.trim() || undefined,
+          noiDung: formNoiDung.trim(),
+          hinhAnh: hinhAnhBase64,
+        });
+
+        if (res.item) {
+          const updatedItem = res.item;
+          setDanhSach((prev) => prev.map((x) => (x.id === editingItem.id ? updatedItem : x)));
+          if (res.supabaseError) {
+            toast.warning(`Đã cập nhật trên máy. Cloud báo lỗi: ${res.supabaseError}`);
+          } else {
+            toast.success(`Đã cập nhật phiếu ${editingItem.id} thành công!`);
+          }
+          setShowModal(false);
+        } else {
+          toast.error(res.supabaseError || "Không thể cập nhật phiếu");
+        }
+      } else {
+        const res = await themGiaoDich({
+          loai: formLoai,
+          danhMuc: formDanhMuc,
+          soTien: parsedAmount,
+          hinhThuc: formHinhThuc,
+          ngay: formNgay,
+          nguoiThucHien: formNguoiThucHien.trim() || user?.name || "Thủ quỹ",
+          nguoiNhan: formNguoiNhan.trim() || undefined,
+          noiDung: formNoiDung.trim(),
+          hinhAnh: hinhAnhBase64,
+          nguoiNhap: user?.name || "Người dùng",
+          emailNguoiNhap: user?.email || "",
+          roleNguoiNhap: user?.role || "",
+        });
+
+        if (res.item) {
+          setDanhSach((prev) => [res.item, ...prev]);
+          if (res.supabaseError) {
+            toast.warning(`Đã lưu phiếu trên máy. Cloud báo lỗi: ${res.supabaseError}`);
+          } else {
+            toast.success(
+              formLoai === "thu"
+                ? `Đã ghi nhận khoản thu +${formatVND(parsedAmount)} (lưu bởi ${user?.name || "bạn"})`
+                : `Đã ghi nhận khoản chi -${formatVND(parsedAmount)} (lưu bởi ${user?.name || "bạn"})`
+            );
+          }
+          setShowModal(false);
+        }
       }
-    } else {
-      const created = themGiaoDich({
-        loai: formLoai,
-        danhMuc: formDanhMuc,
-        soTien: parsedAmount,
-        hinhThuc: formHinhThuc,
-        ngay: formNgay,
-        nguoiThucHien: formNguoiThucHien.trim() || "Thủ quỹ",
-        nguoiNhan: formNguoiNhan.trim() || undefined,
-        noiDung: formNoiDung.trim(),
-        hinhAnh: hinhAnhBase64,
-      });
-      setDanhSach(getDanhSachThuChi());
-      toast.success(
-        formLoai === "thu"
-          ? `Đã ghi nhận khoản thu +${formatVND(parsedAmount)}`
-          : `Đã ghi nhận khoản chi -${formatVND(parsedAmount)}`
-      );
-      setShowModal(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Lỗi khi lưu phiếu");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Đồng bộ thủ công với Supabase
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    toast.info("Đang đồng bộ dữ liệu với Supabase...");
+    try {
+      const res = await syncFromSupabase();
+      if (res.error) {
+        toast.error(`Lỗi Supabase: ${res.error}. Đang dùng dữ liệu cục bộ.`);
+      } else {
+        setDanhSach(res.data);
+        toast.success(`Đồng bộ thành công! Hiện có ${res.data.length} phiếu.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Không thể kết nối Supabase");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
   // Xác nhận xoá
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deletingId) return;
-    const ok = xoaGiaoDich(deletingId);
-    if (ok) {
-      setDanhSach(getDanhSachThuChi());
-      toast.success("Đã xoá phiếu thu chi thành công");
+    setIsDeleting(true);
+    try {
+      const res = await xoaGiaoDich(deletingId);
+      if (res.success) {
+        setDanhSach((prev) => prev.filter((x) => x.id !== deletingId));
+        if (res.supabaseError) {
+          toast.warning(`Đã xoá trên máy. Cloud báo: ${res.supabaseError}`);
+        } else {
+          toast.success("Đã xoá phiếu thu chi thành công");
+        }
+      } else {
+        toast.error(res.supabaseError || "Không thể xoá phiếu");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Không thể xoá phiếu");
+    } finally {
+      setIsDeleting(false);
+      setDeletingId(null);
     }
-    setDeletingId(null);
   };
 
   // Xuất file Excel
   const handleExportExcel = () => {
     try {
       xuatExcelThuChi(filteredList, "SoQuy_ThuChi_MIMIN");
-      toast.success("Đã xuất file Excel sổ quỹ thu chi!");
+      toast.success("Đã xuất file Excel sổ quỹ thu chi (kèm thông tin người nhập)!");
     } catch (err) {
       console.error(err);
       toast.error("Không thể xuất file Excel");
@@ -313,13 +390,24 @@ export default function ThuChiPage() {
                 Sổ Quỹ Thu Chi Nội Bộ
               </h1>
               <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                Quản lý tiền cơm trưa, điện nước, vật dụng xưởng, bảo trì máy may và dòng tiền sinh hoạt
+                Quản lý tiền cơm trưa, điện nước, vật dụng xưởng, bảo trì máy may và lưu vết người nhập
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Nút đồng bộ Supabase */}
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-sm transition disabled:opacity-50"
+            title="Đồng bộ dữ liệu Supabase"
+          >
+            <RefreshCw className={`w-4 h-4 text-sky-500 ${isSyncing ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Đồng bộ Cloud</span>
+          </button>
+
           <button
             onClick={handleExportExcel}
             className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-sm transition"
@@ -618,7 +706,7 @@ export default function ThuChiPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm theo nội dung, người chi, người nhận, mã phiếu..."
+              placeholder="Tìm theo nội dung, người chi, người nhận, người nhập, mã phiếu..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-xl text-xs md:text-sm border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
@@ -702,7 +790,7 @@ export default function ThuChiPage() {
                   <th className="py-3 px-4 text-right">Số Tiền</th>
                   <th className="py-3 px-4">Hình Thức</th>
                   <th className="py-3 px-4">Nội Dung / Diễn Giải</th>
-                  <th className="py-3 px-4">Người Chi / Nhận</th>
+                  <th className="py-3 px-4">Người Chi & Người Nhập</th>
                   <th className="py-3 px-4 text-center">Chứng Từ</th>
                   <th className="py-3 px-4 text-right">Thao Tác</th>
                 </tr>
@@ -773,13 +861,19 @@ export default function ThuChiPage() {
                         </p>
                       </td>
 
-                      {/* Người chi / nhận */}
+                      {/* Người chi / nhận & Người nhập */}
                       <td className="py-3 px-4 whitespace-nowrap text-xs">
-                        <div className="text-slate-800 dark:text-slate-200 font-medium">
+                        <div className="text-slate-800 dark:text-slate-200 font-bold">
                           {item.nguoiThucHien}
                         </div>
                         {item.nguoiNhan && (
-                          <div className="text-[11px] text-slate-400">Đến: {item.nguoiNhan}</div>
+                          <div className="text-[11px] text-slate-500">Đến: {item.nguoiNhan}</div>
+                        )}
+                        {item.nguoiNhap && (
+                          <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                            <UserCheck className="w-3 h-3 text-slate-400" />
+                            <span>Nhập: {item.nguoiNhap}</span>
+                          </div>
                         )}
                       </td>
 
@@ -859,7 +953,7 @@ export default function ThuChiPage() {
                       : "Lập Phiếu Chi Tiền Mới"}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Ghi nhận các khoản ăn uống, điện nước, vật dụng, bảo trì sinh hoạt xưởng
+                    Tài khoản nhập: <b className="text-slate-700 dark:text-slate-300">{user?.name || "Người dùng"}</b> ({user?.email || "Local"})
                   </p>
                 </div>
               </div>
@@ -1021,17 +1115,17 @@ export default function ThuChiPage() {
                 </div>
               </div>
 
-              {/* 2 cột: Người chi & Người nhận */}
+              {/* 2 cột: Người chi/thu thực tế & Người nhận/trả */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                    {formLoai === "chi" ? "Người chi tiền" : "Người thu tiền"}
+                    {formLoai === "chi" ? "Người chi tiền thực tế" : "Người thu tiền thực tế"}
                   </label>
                   <input
                     type="text"
                     value={formNguoiThucHien}
                     onChange={(e) => setFormNguoiThucHien(e.target.value)}
-                    placeholder="VD: Anh Cường, Anh Sang, Thủ quỹ..."
+                    placeholder="VD: Anh Cường, Anh Sang, Chị Hoa, Thợ may..."
                     className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
@@ -1088,13 +1182,15 @@ export default function ThuChiPage() {
                 </button>
                 <button
                   type="submit"
-                  className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold text-white shadow-md transition ${
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold text-white shadow-md transition disabled:opacity-50 ${
                     formLoai === "thu"
                       ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
                       : "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/25"
                   }`}
                 >
-                  {editingItem ? "Cập Nhật Phiếu" : formLoai === "thu" ? "Lưu Khoản Thu" : "Lưu Khoản Chi"}
+                  {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
+                  <span>{editingItem ? "Cập Nhật Phiếu" : formLoai === "thu" ? "Lưu Khoản Thu" : "Lưu Khoản Chi"}</span>
                 </button>
               </div>
             </form>
@@ -1141,6 +1237,31 @@ export default function ThuChiPage() {
                 </div>
               </div>
 
+              {/* Thông tin người nhập hệ thống (Audit trail) */}
+              <div className="rounded-xl border border-sky-100 dark:border-sky-900/40 bg-sky-50/60 dark:bg-sky-950/30 p-3.5 text-xs">
+                <span className="text-sky-800 dark:text-sky-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Dữ liệu người nhập hệ thống</span>
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-slate-700 dark:text-slate-300">
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Tài khoản nhập:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {viewingItem.nguoiNhap || viewingItem.nguoiThucHien}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Email / Vai trò:</span>
+                    <span className="font-mono text-slate-600 dark:text-slate-300">
+                      {viewingItem.emailNguoiNhap || "Hệ thống"} ({viewingItem.roleNguoiNhap || "admin"})
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-[11px] text-slate-400 border-t border-sky-100 dark:border-sky-900/30 pt-1.5 mt-0.5">
+                    Thời gian tạo phiếu: {new Date(viewingItem.ngayTao).toLocaleString("vi-VN")}
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3 text-xs md:text-sm">
                 <div className="rounded-xl border border-slate-100 dark:border-white/5 p-3">
                   <span className="text-slate-400 text-xs block">Danh mục:</span>
@@ -1164,7 +1285,7 @@ export default function ThuChiPage() {
                 </div>
 
                 <div className="rounded-xl border border-slate-100 dark:border-white/5 p-3">
-                  <span className="text-slate-400 text-xs block">Người thực hiện:</span>
+                  <span className="text-slate-400 text-xs block">Người chi/thu thực tế:</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5 block">
                     {viewingItem.nguoiThucHien}
                   </span>
@@ -1270,9 +1391,11 @@ export default function ThuChiPage() {
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition"
+                disabled={isDeleting}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition disabled:opacity-50"
               >
-                Xác nhận xoá
+                {isDeleting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>{isDeleting ? "Đang xoá..." : "Xác nhận xoá"}</span>
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@
 // MIMIN ERP - Quản lý xưởng may
 
 import * as XLSX from "xlsx";
+import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type LoaiThuChi = "chi" | "thu";
 
@@ -26,10 +27,16 @@ export interface GiaoDichThuChi {
   soTien: number;
   hinhThuc: HinhThucThanhToan;
   ngay: string; // YYYY-MM-DD
-  nguoiThucHien: string; // Người chi hoặc thu (VD: Anh Sang, Anh Cường, Chị Hoa...)
+  nguoiThucHien: string; // Người chi hoặc thu tiền thực tế (VD: Anh Sang, Anh Cường, Chị Hoa...)
   nguoiNhan?: string; // Bên nhận tiền hoặc bên trả tiền
   noiDung: string; // Diễn giải chi tiết
   hinhAnh?: string[]; // Danh sách base64 hoặc URL ảnh bill, chứng từ
+  
+  // Thông tin tài khoản người đăng nhập nhập phiếu vào hệ thống
+  nguoiNhap?: string; // Tên hiển thị tài khoản lúc tạo (VD: Hồ Minh Sang)
+  emailNguoiNhap?: string; // Email tài khoản đăng nhập (VD: sang@mimin.vn)
+  roleNguoiNhap?: string; // Vai trò tài khoản lúc tạo (VD: admin, accountant...)
+  
   ngayTao: string; // ISO string
 }
 
@@ -152,6 +159,9 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Anh Sang",
     nguoiNhan: "Quán cơm cô Ba",
     noiDung: "Cơm trưa tổ May + tổ Cắt (20 phần)",
+    nguoiNhap: "Hồ Minh Sang",
+    emailNguoiNhap: "sang@mimin.vn",
+    roleNguoiNhap: "admin",
     ngayTao: "2026-10-04T04:30:00.000Z",
   },
   {
@@ -164,6 +174,9 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Anh Cường",
     nguoiNhan: "Văn phòng phẩm Tân Bình",
     noiDung: "Mua 6 cuộn băng keo dán thùng 5cm và 3 dao rọc giấy xưởng cắt",
+    nguoiNhap: "Hồ Minh Sang",
+    emailNguoiNhap: "sang@mimin.vn",
+    roleNguoiNhap: "admin",
     ngayTao: "2026-10-03T09:15:00.000Z",
   },
   {
@@ -176,6 +189,9 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Anh Sang",
     nguoiNhan: "Ve chai thu mua vải",
     noiDung: "Bán 180kg vải vụn tổ cắt + 45kg thùng carton đóng gói cũ",
+    nguoiNhap: "Hồ Minh Sang",
+    emailNguoiNhap: "sang@mimin.vn",
+    roleNguoiNhap: "admin",
     ngayTao: "2026-10-03T08:00:00.000Z",
   },
   {
@@ -188,6 +204,9 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Anh Cường",
     nguoiNhan: "Thợ máy anh Hùng",
     noiDung: "Thay ổ chao máy 1 kim Juki bàn 2 + tra dầu bảo dưỡng máy vắt sổ",
+    nguoiNhap: "Bùi Thị Thanh",
+    emailNguoiNhap: "thanh@mimin.vn",
+    roleNguoiNhap: "accountant",
     ngayTao: "2026-10-02T03:20:00.000Z",
   },
   {
@@ -200,6 +219,9 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Anh Cường",
     nguoiNhan: "Điện lực EVN Hóc Môn",
     noiDung: "Tiền điện sản xuất 3 pha xưởng may tháng 09/2026",
+    nguoiNhap: "Bùi Thị Thanh",
+    emailNguoiNhap: "thanh@mimin.vn",
+    roleNguoiNhap: "accountant",
     ngayTao: "2026-10-01T02:00:00.000Z",
   },
   {
@@ -212,6 +234,9 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Anh Sang",
     nguoiNhan: "Đại lý nước khoáng",
     noiDung: "Đổi 4 bình nước uống Lavie 19L cho xưởng",
+    nguoiNhap: "Hồ Minh Sang",
+    emailNguoiNhap: "sang@mimin.vn",
+    roleNguoiNhap: "admin",
     ngayTao: "2026-10-01T01:30:00.000Z",
   },
   {
@@ -224,6 +249,9 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Bảo (giao nhận)",
     nguoiNhan: "Cây xăng Petrolimex",
     noiDung: "Đổ xăng xe máy đi lấy mẫu bo cổ từ nhà dệt về duyệt gấp",
+    nguoiNhap: "Quốc Hậu",
+    emailNguoiNhap: "hau@mimin.vn",
+    roleNguoiNhap: "warehouse",
     ngayTao: "2026-09-29T07:10:00.000Z",
   },
   {
@@ -236,11 +264,56 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
     nguoiThucHien: "Anh Cường",
     nguoiNhan: "Highlands Coffee",
     noiDung: "Cà phê trao đổi mẫu áo mới với khách hàng sỉ",
+    nguoiNhap: "Hồ Minh Sang",
+    emailNguoiNhap: "sang@mimin.vn",
+    roleNguoiNhap: "admin",
     ngayTao: "2026-09-28T09:40:00.000Z",
   },
 ];
 
 const STORAGE_KEY = "mimin_thu_chi_noi_bo";
+const SUPABASE_TABLE = "thu_chi_noi_bo";
+
+/** Helper ánh xạ từ DB row (snake_case) sang GiaoDichThuChi (camelCase) */
+function mapFromDbRow(row: any): GiaoDichThuChi {
+  return {
+    id: row.id,
+    loai: row.loai,
+    danhMuc: row.danh_muc,
+    soTien: Number(row.so_tien) || 0,
+    hinhThuc: row.hinh_thuc,
+    ngay: row.ngay,
+    nguoiThucHien: row.nguoi_thuc_hien,
+    nguoiNhan: row.nguoi_nhan || undefined,
+    noiDung: row.noi_dung,
+    hinhAnh: Array.isArray(row.hinh_anh) ? row.hinh_anh : [],
+    nguoiNhap: row.nguoi_nhap || undefined,
+    emailNguoiNhap: row.email_nguoi_nhap || undefined,
+    roleNguoiNhap: row.role_nguoi_nhap || undefined,
+    ngayTao: row.ngay_tao || row.created_at || new Date().toISOString(),
+  };
+}
+
+/** Helper ánh xạ từ GiaoDichThuChi sang DB row (snake_case) */
+function mapToDbRow(item: GiaoDichThuChi): Record<string, any> {
+  return {
+    id: item.id,
+    loai: item.loai,
+    danh_muc: item.danhMuc,
+    so_tien: item.soTien,
+    hinh_thuc: item.hinhThuc,
+    ngay: item.ngay,
+    nguoi_thuc_hien: item.nguoiThucHien,
+    nguoi_nhan: item.nguoiNhan || null,
+    noi_dung: item.noiDung,
+    hinh_anh: item.hinhAnh || [],
+    nguoi_nhap: item.nguoiNhap || null,
+    email_nguoi_nhap: item.emailNguoiNhap || null,
+    role_nguoi_nhap: item.roleNguoiNhap || null,
+    ngay_tao: item.ngayTao,
+    updated_at: new Date().toISOString(),
+  };
+}
 
 /** Lấy danh sách giao dịch từ localStorage (hoặc nạp mock nếu chưa có) */
 export function getDanhSachThuChi(): GiaoDichThuChi[] {
@@ -272,10 +345,61 @@ export function luuDanhSachThuChi(danhSach: GiaoDichThuChi[]): void {
   }
 }
 
-/** Thêm giao dịch mới */
-export function themGiaoDich(
+/** Tải dữ liệu từ Supabase và merge vào localStorage */
+export async function syncFromSupabase(): Promise<{ data: GiaoDichThuChi[]; error?: string }> {
+  const localData = getDanhSachThuChi();
+  if (!isSupabaseEnabled || !supabase) return { data: localData };
+
+  try {
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select("*")
+      .order("ngay", { ascending: false });
+
+    if (error) {
+      console.warn(`[Supabase] Chưa đồng bộ được bảng ${SUPABASE_TABLE}:`, error.message);
+      return { data: localData, error: error.message };
+    }
+
+    if (Array.isArray(data) && data.length > 0) {
+      const remoteMapped = data.map(mapFromDbRow);
+      luuDanhSachThuChi(remoteMapped);
+      return { data: remoteMapped };
+    }
+
+    // Nếu bảng trên Supabase rỗng mà local có dữ liệu, tự động đẩy dữ liệu mẫu lên Supabase
+    if (Array.isArray(data) && data.length === 0 && localData.length > 0) {
+      void syncAllToSupabase(localData);
+    }
+
+    return { data: localData };
+  } catch (err: any) {
+    console.warn("[Supabase] Lỗi kết nối Supabase:", err);
+    return { data: localData, error: err?.message || "Lỗi kết nối Supabase" };
+  }
+}
+
+/** Đẩy toàn bộ danh sách lên Supabase (phục vụ seed ban đầu hoặc backup) */
+export async function syncAllToSupabase(ds: GiaoDichThuChi[]): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseEnabled || !supabase || ds.length === 0) return { success: true };
+  try {
+    const rows = ds.map(mapToDbRow);
+    const { error } = await supabase.from(SUPABASE_TABLE).upsert(rows, { onConflict: "id" });
+    if (error) {
+      console.warn(`[Supabase] Lỗi đẩy toàn bộ lên ${SUPABASE_TABLE}:`, error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.warn("[Supabase] Lỗi syncAllToSupabase:", err);
+    return { success: false, error: err?.message || "Lỗi mạng" };
+  }
+}
+
+/** Thêm giao dịch mới (Lưu localStorage + đẩy trực tiếp lên Supabase) */
+export async function themGiaoDich(
   item: Omit<GiaoDichThuChi, "id" | "ngayTao">
-): GiaoDichThuChi {
+): Promise<{ item: GiaoDichThuChi; supabaseError?: string }> {
   const ds = getDanhSachThuChi();
   const dateStr = item.ngay.replace(/-/g, "");
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -289,31 +413,84 @@ export function themGiaoDich(
 
   const capNhat = [moi, ...ds];
   luuDanhSachThuChi(capNhat);
-  return moi;
+
+  let supabaseError: string | undefined;
+
+  // Đẩy lên Supabase
+  if (isSupabaseEnabled && supabase) {
+    try {
+      const payload = mapToDbRow(moi);
+      const { error } = await supabase.from(SUPABASE_TABLE).upsert(payload, { onConflict: "id" });
+      if (error) {
+        console.warn(`[Supabase] Không thể lưu phiếu ${newId} lên Supabase:`, error.message);
+        supabaseError = error.message;
+      }
+    } catch (err: any) {
+      console.warn("[Supabase] Lỗi đẩy phiếu mới lên Supabase:", err);
+      supabaseError = err?.message || "Lỗi mạng";
+    }
+  }
+
+  return { item: moi, supabaseError };
 }
 
 /** Cập nhật giao dịch */
-export function capNhatGiaoDich(
+export async function capNhatGiaoDich(
   id: string,
   updates: Partial<GiaoDichThuChi>
-): GiaoDichThuChi | null {
+): Promise<{ item: GiaoDichThuChi | null; supabaseError?: string }> {
   const ds = getDanhSachThuChi();
   const idx = ds.findIndex((x) => x.id === id);
-  if (idx === -1) return null;
+  if (idx === -1) return { item: null, supabaseError: "Không tìm thấy phiếu" };
 
   const updated: GiaoDichThuChi = { ...ds[idx], ...updates };
   ds[idx] = updated;
   luuDanhSachThuChi(ds);
-  return updated;
+
+  let supabaseError: string | undefined;
+
+  // Cập nhật lên Supabase
+  if (isSupabaseEnabled && supabase) {
+    try {
+      const payload = mapToDbRow(updated);
+      const { error } = await supabase.from(SUPABASE_TABLE).upsert(payload, { onConflict: "id" });
+      if (error) {
+        console.warn(`[Supabase] Không thể cập nhật phiếu ${id} lên Supabase:`, error.message);
+        supabaseError = error.message;
+      }
+    } catch (err: any) {
+      console.warn("[Supabase] Lỗi cập nhật lên Supabase:", err);
+      supabaseError = err?.message || "Lỗi mạng";
+    }
+  }
+
+  return { item: updated, supabaseError };
 }
 
 /** Xoá giao dịch */
-export function xoaGiaoDich(id: string): boolean {
+export async function xoaGiaoDich(id: string): Promise<{ success: boolean; supabaseError?: string }> {
   const ds = getDanhSachThuChi();
   const filtered = ds.filter((x) => x.id !== id);
-  if (filtered.length === ds.length) return false;
+  if (filtered.length === ds.length) return { success: false, supabaseError: "Không tìm thấy phiếu để xoá" };
   luuDanhSachThuChi(filtered);
-  return true;
+
+  let supabaseError: string | undefined;
+
+  // Xoá trên Supabase
+  if (isSupabaseEnabled && supabase) {
+    try {
+      const { error } = await supabase.from(SUPABASE_TABLE).delete().eq("id", id);
+      if (error) {
+        console.warn(`[Supabase] Không thể xoá phiếu ${id} trên Supabase:`, error.message);
+        supabaseError = error.message;
+      }
+    } catch (err: any) {
+      console.warn("[Supabase] Lỗi xoá trên Supabase:", err);
+      supabaseError = err?.message || "Lỗi mạng";
+    }
+  }
+
+  return { success: true, supabaseError };
 }
 
 /** Tính tổng số tiền thu */
@@ -380,9 +557,12 @@ export function xuatExcelThuChi(ds: GiaoDichThuChi[], tenFile = "ThuChiNoiBo_MIM
       "Danh mục": dmConfig?.label || item.danhMuc,
       "Số tiền (VNĐ)": item.soTien,
       "Hình thức": item.hinhThuc === "tien_mat" ? "Tiền mặt" : "Chuyển khoản",
-      "Người thực hiện": item.nguoiThucHien,
+      "Người chi / thu thực tế": item.nguoiThucHien,
       "Bên nhận / chi": item.nguoiNhan || "",
       "Nội dung / Diễn giải": item.noiDung,
+      "Người nhập hệ thống": item.nguoiNhap || "",
+      "Email tài khoản nhập": item.emailNguoiNhap || "",
+      "Vai trò tài khoản": item.roleNguoiNhap || "",
       "Có ảnh chứng từ": item.hinhAnh && item.hinhAnh.length > 0 ? "Có" : "Không",
     };
   });

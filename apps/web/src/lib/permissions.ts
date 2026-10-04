@@ -230,7 +230,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "r",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
-    "thu-chi": "rc",
+    "thu-chi": "rcud",
   },
   // Warehouse (quản lý kho): CRUD kho, xem các phần liên quan
   warehouse: {
@@ -261,7 +261,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "r",
-    "thu-chi": "rc",
+    "thu-chi": "rcud",
   },
   // Sewing (tổ trưởng may): quản lý tổ may, chấm công, xem lệnh cắt
   sewing: {
@@ -296,6 +296,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "rcu",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
+    "thu-chi": "rcud",
   },
   // QC (kiểm tra chất lượng): CRUD QC, xem các phần liên quan SX
   qc: {
@@ -330,6 +331,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "r",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
+    "thu-chi": "rcud",
   },
   // Finishing (tổ trưởng hoàn thiện): CRUD hoàn thiện, giao hàng
   finishing: {
@@ -364,33 +366,38 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "rcu",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
-    "thu-chi": "r",
+    "thu-chi": "rcud",
   },
   // Các role sản xuất chi tiết mới thêm
   cutting: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-cat": "rcu",
+    "thu-chi": "rcud",
   },
   printing: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-in-theu": "rcu",
+    "thu-chi": "rcud",
   },
   buttoning: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-khuy-nut": "rcu",
+    "thu-chi": "rcud",
   },
   ironing: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-ui": "rcu",
+    "thu-chi": "rcud",
   },
   packaging: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-dong-goi": "rcu",
+    "thu-chi": "rcud",
   },
   // Accountant (kế toán): CRUD bảng lương, công nợ, NCC, xem báo cáo
   accountant: {
@@ -463,6 +470,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "",
     "san-luong-gia-cong": "",
     "tien-cong-gia-cong": "",
+    "thu-chi": "rcud",
   },
   // Partner (đối tác gia công may): CHỈ thấy phiếu giao cho mình - dùng cho 20 NCC
   partner: {
