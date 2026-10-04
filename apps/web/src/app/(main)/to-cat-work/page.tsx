@@ -538,9 +538,8 @@ export default function CongViecCatPage() {
                 )}
               </LenhCatCardV2>
             );
-          })}
-        </div>
-      )}
+          }}
+        />
 
       {/* Modal nhập nhận/đạt/lỗi theo màu cho khâu Cắt */}
       {selectedMau && (

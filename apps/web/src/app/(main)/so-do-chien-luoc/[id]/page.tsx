@@ -2,11 +2,11 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge, useNodesState, useEdgesState, Connection, Edge } from "@xyflow/react";
+import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge, useNodesState, useEdgesState, Connection, Edge, useReactFlow } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { MiminNode, MiminImageNode, MiminCommentNode } from "@/components/mindmap/CustomNodes";
 import { MOCK_PROJECTS, MAU_KHOI, DS_MAU_KHOI, type MauKhoi } from "@/lib/data/so-do-chien-luoc-data";
-import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Undo2, Copy, Trash2, Pencil, DownloadCloud, MessageSquareText } from "lucide-react";
+import { ArrowLeft, Save, Image as ImageIcon, Type, Link2, Palette, Keyboard, Undo2, Copy, Trash2, Pencil, DownloadCloud, MessageSquareText, LayoutGrid, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { toPng } from "html-to-image";
@@ -68,7 +68,10 @@ function SoDoCanvasInner() {
   const [projName, setProjName] = useState("Sơ đồ không tên");
   const [isReady, setIsReady] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [hienPhimTat, setHienPhimTat] = useState(false);
+  const [dangKeoTha, setDangKeoTha] = useState(false);
+  const { screenToFlowPosition } = useReactFlow();
   // Lịch sử để Hoàn tác (Ctrl+Z). Dùng ref chứ không dùng state: chỉ cần đọc/ghi
   // khi có thao tác, không cần render lại mỗi lần đẩy snapshot.
   const lichSuRef = useRef<{ nodes: any[]; edges: any[] }[]>([]);
@@ -175,6 +178,93 @@ function SoDoCanvasInner() {
     }
     setNodes((nds) => [...nds, ...nodesMoi]);
     toast.success(`Đã thêm ${nodesMoi.length} ảnh vào sơ đồ`);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    const hasImage = Array.from(e.dataTransfer.items || []).some(
+      (item) => item.kind === "file" && item.type.startsWith("image/")
+    );
+    if (!hasImage) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDangKeoTha(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!canvasRef.current?.contains(e.relatedTarget as Node)) {
+      setDangKeoTha(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDangKeoTha(false);
+    const files = Array.from(e.dataTransfer.files || []).filter((f) =>
+      f.type.startsWith("image/")
+    );
+    if (files.length === 0) return;
+
+    // Dùng screenToFlowPosition để tính đúng toạ độ trong canvas (kể cả zoom và pan)
+    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+
+    luuLichSu();
+    const nodesMoi: any[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const goc = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(f);
+      });
+      const src = await nenAnh(goc);
+      nodesMoi.push({
+        id: `img_${Date.now()}_${i}`,
+        position: { x: flowPos.x + (i % 3) * 220, y: flowPos.y + Math.floor(i / 3) * 240 },
+        data: { label: f.name.replace(/\.[^.]+$/, ""), imageSrc: src },
+        type: "miminImageNode",
+      });
+    }
+    setNodes((nds) => [...nds, ...nodesMoi]);
+    toast.success(`Đã thêm ${nodesMoi.length} ảnh vào sơ đồ ✨`);
+  };
+
+  /** Gộp tất cả image node thành lưới gọn nhàng */
+  const gomAnh = () => {
+    const anhNodes = nodes.filter((n: any) => n.type === "miminImageNode");
+    if (anhNodes.length === 0) { toast.error("Không có ảnh nào trong sơ đồ"); return; }
+    luuLichSu();
+    const COLS = Math.ceil(Math.sqrt(anhNodes.length));
+    const W = 200; const H = 220; const GAP = 16;
+    // Tìm vị trí trung tâm của các nút hiện tại để gộm vào gần đó
+    const cx = anhNodes.reduce((s: number, n: any) => s + n.position.x, 0) / anhNodes.length;
+    const cy = anhNodes.reduce((s: number, n: any) => s + n.position.y, 0) / anhNodes.length;
+    const startX = cx - (Math.min(anhNodes.length, COLS) * (W + GAP)) / 2;
+    const startY = cy - (Math.ceil(anhNodes.length / COLS) * (H + GAP)) / 2;
+    const idSet = new Set(anhNodes.map((n: any) => n.id));
+    setNodes((nds: any[]) =>
+      nds.map((n) => {
+        if (!idSet.has(n.id)) return n;
+        const idx = anhNodes.findIndex((a: any) => a.id === n.id);
+        const col = idx % COLS;
+        const row = Math.floor(idx / COLS);
+        return { ...n, position: { x: startX + col * (W + GAP), y: startY + row * (H + GAP) } };
+      })
+    );
+    toast.success(`Đã gộm ${anhNodes.length} ảnh thành lưới`);
+  };
+
+  /** Thu nhỏ tất cả image node về kích thước chuẩn 180x180 */
+  const thuNhoAnh = () => {
+    const anhNodes = nodes.filter((n: any) => n.type === "miminImageNode");
+    if (anhNodes.length === 0) { toast.error("Không có ảnh nào trong sơ đồ"); return; }
+    luuLichSu();
+    const idSet = new Set(anhNodes.map((n: any) => n.id));
+    setNodes((nds: any[]) =>
+      nds.map((n) =>
+        idSet.has(n.id) ? { ...n, width: 180, height: 200, style: { ...n.style, width: 180, height: 200 } } : n
+      )
+    );
+    toast.success(`Đã thu nhỏ ${anhNodes.length} ảnh về kích thước chuẩn`);
   };
 
   /** Thêm ảnh bằng đường link (giữ lại cách cũ cho ai cần) */
@@ -528,6 +618,20 @@ function SoDoCanvasInner() {
           >
             <Link2 className="w-4 h-4" />
           </button>
+          <button
+            onClick={gomAnh}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-violet-100 hover:bg-violet-200 dark:bg-violet-900/40 dark:hover:bg-violet-800/60 text-violet-700 dark:text-violet-200 text-sm font-medium transition"
+            title="Gộm tất cả ảnh về một chỗ (xếp lưới)"
+          >
+            <LayoutGrid className="w-4 h-4" /> <span className="hidden xl:inline">Gộm Ảnh</span>
+          </button>
+          <button
+            onClick={thuNhoAnh}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-violet-100 hover:bg-violet-200 dark:bg-violet-900/40 dark:hover:bg-violet-800/60 text-violet-700 dark:text-violet-200 text-sm font-medium transition"
+            title="Thu nhỏ tất cả ảnh về kích thước chuẩn 180x180"
+          >
+            <Minimize2 className="w-4 h-4" /> <span className="hidden xl:inline">Thu Nhỏ</span>
+          </button>
 
           <div className="w-px h-6 bg-black/10 dark:bg-white/10 mx-2"></div>
 
@@ -620,8 +724,25 @@ function SoDoCanvasInner() {
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="flex-1 w-full h-full bg-slate-50 dark:bg-slate-950/50">
+      {/* Canvas — hỗ trợ kéo thả ảnh từ máy */}
+      <div
+        ref={canvasRef}
+        className="flex-1 w-full h-full bg-slate-50 dark:bg-slate-950/50 relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {/* Overlay hướng dẫn khi đang kéo ảnh vào */}
+        {dangKeoTha && (
+          <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-3 rounded-2xl border-4 border-dashed border-sky-400 bg-sky-50/70 dark:bg-sky-900/40 transition-all" />
+            <div className="relative flex flex-col items-center gap-3 text-sky-600 dark:text-sky-300">
+              <ImageIcon className="w-14 h-14 animate-bounce" />
+              <span className="text-xl font-bold drop-shadow">Thả ảnh vào đây để thêm vào sơ đồ</span>
+              <span className="text-sm opacity-70">Hỗ trợ nhiều ảnh cùng lúc</span>
+            </div>
+          </div>
+        )}
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -630,10 +751,10 @@ function SoDoCanvasInner() {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           fitView
-          // Tự xử lý phím Delete ở trên để còn lưu lịch sử cho Ctrl+Z và xoá
-          // kèm dây nối mồ côi; tắt cơ chế xoá mặc định để không chạy 2 lần.
           deleteKeyCode={null}
           onNodeDragStart={luuLichSu}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
           className="touch-none"
         >
           <Background color="#ccc" gap={16} />
