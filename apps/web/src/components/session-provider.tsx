@@ -167,12 +167,39 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
           const appMeta = (session.user.app_metadata as Record<string, unknown>) || {};
           const userMeta = (session.user.user_metadata as Record<string, unknown>) || {};
-          const role = String(appMeta.role || "user");
-          const name = String(userMeta.full_name || session.user.email?.split("@")[0] || "User");
+          let role = String(appMeta.role || userMeta.role || "");
+          let name = String(userMeta.full_name || session.user.email?.split("@")[0] || "User");
+          let maNV = userMeta.maNV as string | undefined;
+          let phongBan = userMeta.phongBan as string | undefined;
+          let title = "";
+
+          // Tự động đồng bộ quyền và hồ sơ từ bảng public.users để mọi máy luôn có đúng quyền admin
+          try {
+            const cleanEmail = (session.user.email || "").trim().toLowerCase();
+            if (cleanEmail) {
+              const { data: dbUser } = await supabase
+                .from("users")
+                .select('name, role, "chucVu", "phongBan", "maNV"')
+                .eq("email", cleanEmail)
+                .maybeSingle();
+              if (dbUser) {
+                if (dbUser.role) role = dbUser.role;
+                if (dbUser.name) name = dbUser.name;
+                if (dbUser.chucVu) title = dbUser.chucVu;
+                if (dbUser.phongBan) phongBan = dbUser.phongBan;
+                if (dbUser.maNV) maNV = dbUser.maNV;
+              }
+            }
+          } catch {
+            // ignore network error
+          }
+
+          if (!role) role = "user";
+
           const titles: Record<string, string> = {
             admin: "Quản trị viên",
             planner: "Chuyên viên kế hoạch",
@@ -187,10 +214,10 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
             email: session.user.email || "",
             name,
             role,
-            title: titles[role] || role,
+            title: title || titles[role] || role,
             source: "supabase",
-            maNV: userMeta.maNV as string | undefined,
-            phongBan: userMeta.phongBan as string | undefined,
+            maNV,
+            phongBan,
             donGia: userMeta.donGia as number | undefined,
             laCongNhan: userMeta.laCongNhan as boolean | undefined,
             organizationId: userMeta.organization_id as string | undefined,
@@ -263,8 +290,32 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
         if (!error && data.user) {
           const appMeta = (data.user.app_metadata as Record<string, unknown>) || {};
           const userMeta = (data.user.user_metadata as Record<string, unknown>) || {};
-          const role = String(appMeta.role || "user");
-          const name = String(userMeta.full_name || data.user.email?.split("@")[0] || "User");
+          let role = String(appMeta.role || userMeta.role || "");
+          let name = String(userMeta.full_name || data.user.email?.split("@")[0] || "User");
+          let maNV = userMeta.maNV as string | undefined;
+          let phongBan = userMeta.phongBan as string | undefined;
+          let title = "";
+
+          try {
+            const cleanEmail = (data.user.email || email).trim().toLowerCase();
+            const { data: dbUser } = await supabase
+              .from("users")
+              .select('name, role, "chucVu", "phongBan", "maNV"')
+              .eq("email", cleanEmail)
+              .maybeSingle();
+            if (dbUser) {
+              if (dbUser.role) role = dbUser.role;
+              if (dbUser.name) name = dbUser.name;
+              if (dbUser.chucVu) title = dbUser.chucVu;
+              if (dbUser.phongBan) phongBan = dbUser.phongBan;
+              if (dbUser.maNV) maNV = dbUser.maNV;
+            }
+          } catch {
+            // ignore network error
+          }
+
+          if (!role) role = "user";
+
           const titles: Record<string, string> = {
             admin: "Quản trị viên",
             planner: "Chuyên viên kế hoạch",
@@ -279,10 +330,10 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
             email: data.user.email || email,
             name,
             role,
-            title: titles[role] || role,
+            title: title || titles[role] || role,
             source: "supabase",
-            maNV: userMeta.maNV as string | undefined,
-            phongBan: userMeta.phongBan as string | undefined,
+            maNV,
+            phongBan,
             donGia: userMeta.donGia as number | undefined,
             laCongNhan: userMeta.laCongNhan as boolean | undefined,
           };
