@@ -59,6 +59,7 @@ const ROUTE_TO_MODULE: { match: string; module: Module }[] = [
   { match: "/gia-cong-ngoai",  module: "gia-cong-ngoai" },
   // Tài chính
   { match: "/cong-no",         module: "cong-no-cong-doan" },
+  { match: "/thu-chi",         module: "thu-chi" },
   { match: "/bang-luong",      module: "bang-luong" },
   { match: "/bang-luong-auto", module: "bang-luong" },
   { match: "/cham-cong",       module: "cham-cong" },

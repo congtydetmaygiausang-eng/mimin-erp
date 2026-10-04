@@ -54,7 +54,8 @@ export type Module =
   | "to-in-theu"
   | "to-khuy-nut"
   | "to-ui"
-  | "to-dong-goi";
+  | "to-dong-goi"
+  | "thu-chi";
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Quản trị viên",
@@ -141,6 +142,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   "to-khuy-nut": "Tổ Khuy Nút",
   "to-ui": "Tổ Ủi",
   "to-dong-goi": "Tổ Đóng Gói",
+  "thu-chi": "Thu chi nội bộ",
 };
 
 // Permission Matrix: 7 role × 21 module × 4 action
@@ -189,6 +191,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "to-khuy-nut": "rcud",
     "to-ui": "rcud",
     "to-dong-goi": "rcud",
+    "thu-chi": "rcud",
   },
   // Planner (chuyên viên kế hoạch): tạo lệnh cắt, KH, đơn hàng, KHSX. Xem các phần liên quan
   planner: {
@@ -227,6 +230,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "r",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
+    "thu-chi": "rc",
   },
   // Warehouse (quản lý kho): CRUD kho, xem các phần liên quan
   warehouse: {
@@ -257,6 +261,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "audit-log": "",
     "phan-quyen-tuy-chinh": "",
     "danh-muc-sp": "r",
+    "thu-chi": "rc",
   },
   // Sewing (tổ trưởng may): quản lý tổ may, chấm công, xem lệnh cắt
   sewing: {
@@ -359,6 +364,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "rcu",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
+    "thu-chi": "r",
   },
   // Các role sản xuất chi tiết mới thêm
   cutting: {
@@ -420,6 +426,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "ban-giao-gia-cong": "r",
     "san-luong-gia-cong": "r",
     "tien-cong-gia-cong": "r",
+    "thu-chi": "rcud",
   },
   // Content (Content / Media): CRUD danh mục SP, xem đơn hàng + sản xuất để chụp ảnh, báo cáo marketing
   content: {
@@ -584,7 +591,7 @@ function getAdminOnlyMatrix(): PermissionMatrix {
   return Object.fromEntries(
     (Object.keys(PERMISSIONS) as Role[]).map((role) => [
       role,
-      Object.fromEntries(modules.map((module) => [module, role === "admin" ? "rcud" : ""])),
+      Object.fromEntries(modules.map((module) => [module, role === "admin" ? "rcud" : (PERMISSIONS[role]?.[module] || "")])),
     ]),
   ) as PermissionMatrix;
 }
@@ -595,7 +602,7 @@ function normalizeMatrix(matrix?: PermissionMatrix): PermissionMatrix {
   (Object.keys(base) as Role[]).forEach((role) => {
     if (role === "admin") return;
     (Object.keys(MODULE_LABELS) as Module[]).forEach((module) => {
-      base[role][module] = matrix[role]?.[module] || "";
+      base[role][module] = matrix[role]?.[module] ?? (PERMISSIONS[role]?.[module] || "");
     });
   });
   return base;
@@ -721,5 +728,5 @@ export const ALL_MODULES: Module[] = [
   "audit-log", "phan-quyen-tuy-chinh", "danh-muc-sp", "dat-ncc-phu-lieu",
   "hoa-don", "van-chuyen", "tin-nhan", "workspace",
   "cong-viec-gia-cong", "ban-giao-gia-cong", "san-luong-gia-cong", "tien-cong-gia-cong",
-  "to-cat", "to-in-theu", "to-khuy-nut", "to-ui", "to-dong-goi"
+  "to-cat", "to-in-theu", "to-khuy-nut", "to-ui", "to-dong-goi", "thu-chi"
 ];

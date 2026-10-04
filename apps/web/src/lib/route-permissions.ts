@@ -12,7 +12,7 @@ export const ROUTE_MODULES: ReadonlyArray<readonly [string, Module]> = [
   ["/ke-hoach-san-xuat", "ke-hoach-sx"], ["/lenh-tong", "ke-hoach-sx"], ["/san-xuat-erp", "ke-hoach-sx"], ["/lsx-m758-demo", "ke-hoach-sx"],
   ["/kho-vai-tinhmann", "kho-vai"], ["/kho-soi-day-chuyen", "kho-vai"], ["/so-det-nhuom", "kho-vai"], ["/soi-det-nhuom-erp", "kho-vai"], ["/mini-soi-det", "kho-vai"], ["/det-nhuom-flow", "kho-vai"], ["/flow-tong-quan", "kho-vai"],
   ["/kho-thanh-pham", "kho-thanh-pham"], ["/kiem-ke-mobile", "kho-thanh-pham"], ["/lo-hang-mobile", "kho-thanh-pham"], ["/nhap-kho-mobile", "kho-thanh-pham"], ["/xuat-kho-mobile", "kho-thanh-pham"], ["/trang-chu-kho", "kho-thanh-pham"],
-  ["/kho-phu-lieu", "kho-phu-lieu"], ["/kho-mau", "kho-phu-lieu"], ["/bang-luong-auto", "bang-luong"], ["/bang-luong", "bang-luong"], ["/cham-cong", "cham-cong"], ["/cong-no", "cong-no-cong-doan"],
+  ["/kho-phu-lieu", "kho-phu-lieu"], ["/kho-mau", "kho-phu-lieu"], ["/bang-luong-auto", "bang-luong"], ["/bang-luong", "bang-luong"], ["/cham-cong", "cham-cong"], ["/cong-no", "cong-no-cong-doan"], ["/thu-chi", "thu-chi"],
   ["/bang-gia", "don-hang"], ["/don-hang", "don-hang"], ["/khach-hang", "khach-hang"], ["/giao-hang", "giao-hang"], ["/van-chuyen", "van-chuyen"], ["/danh-muc-sp", "danh-muc-sp"],
   ["/lenh-cat", "lenh-cat"], ["/workflow", "lenh-cat"], ["/cong-thuc-dinh-muc", "lenh-cat"], ["/may", "to-may"], ["/to-may-work", "to-may"], ["/to-cat-work", "to-cat"],
   ["/ui-intd", "to-in-theu"], ["/ui-khuy-nut", "to-khuy-nut"], ["/ui-ui", "to-ui"], ["/ui-dong-goi", "to-dong-goi"],
