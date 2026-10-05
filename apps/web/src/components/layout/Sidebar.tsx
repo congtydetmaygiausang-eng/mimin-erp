@@ -145,8 +145,6 @@ const NAV: NavItem[] = [
       { href: "/ui-ui", label: "Tổ Ủi – Việc của tôi", icon: Wind, iconColor: "text-orange-400", permModule: "to-ui" },
       { href: "/ui-dong-goi", label: "Đóng gói nhập kho – Việc của tôi", icon: Package, iconColor: "text-pink-400", permModule: "to-dong-goi" },
       { href: "/to-ht-work", label: "Hoàn Thiện (Tổng hợp)", icon: CheckCircle2, iconColor: "text-teal-300", permModule: "hoan-thien" },
-      { href: "/gia-cong-ngoai", label: "Gia công ngoài", icon: Hammer, iconColor: "text-rose-400", permModule: "gia-cong-ngoai" },
-      { href: "/trang-chu-gia-cong", label: "Trang chủ gia công", icon: Shirt, iconColor: "text-indigo-400", permModule: "trang-chu-gia-cong" },
     ]
   },
   {

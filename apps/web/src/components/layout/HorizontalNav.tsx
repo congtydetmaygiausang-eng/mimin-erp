@@ -57,8 +57,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/ke-hoach-san-xuat", label: "Kế hoạch SX" },
       { href: "/lenh-cat", label: "Lệnh cắt" },
       { href: "/hoan-thien", label: "Hoàn thiện" },
-      { href: "/gia-cong-ngoai", label: "Gia công ngoài" },
-      { href: "/trang-chu-gia-cong", label: "Trang chủ gia công" },
     ],
   },
   {
