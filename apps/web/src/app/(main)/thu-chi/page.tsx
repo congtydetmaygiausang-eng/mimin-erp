@@ -208,6 +208,16 @@ export default function ThuChiPage() {
     setShowModal(true);
   };
 
+  // Đóng modal và reset trạng thái form
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingItem(null);
+    setFormUploadedFiles([]);
+    setFormSoTien("");
+    setFormNoiDung("");
+    setFormNguoiNhan("");
+  };
+
   // Mở modal chỉnh sửa
   const handleOpenEdit = (item: GiaoDichThuChi) => {
     setEditingItem(item);
@@ -220,7 +230,7 @@ export default function ThuChiPage() {
     setFormNguoiNhan(item.nguoiNhan || "");
     setFormNoiDung(item.noiDung);
     const existingFiles: UploadedFile[] = (item.hinhAnh || []).map((img, i) => ({
-      id: `img-${i}`,
+      id: `img-${item.id}-${i}-${Date.now()}`,
       name: `Chứng từ ${i + 1}`,
       type: "image/jpeg",
       size: 100000,
@@ -246,7 +256,7 @@ export default function ThuChiPage() {
     }
 
     setIsSubmitting(true);
-    const hinhAnhBase64 = formUploadedFiles.map((f) => f.dataUrl);
+    const hinhAnhBase64 = formUploadedFiles.map((f) => f.dataUrl).filter(Boolean);
 
     try {
       if (editingItem) {
@@ -270,7 +280,7 @@ export default function ThuChiPage() {
           } else {
             toast.success(`Đã cập nhật phiếu ${editingItem.id} thành công!`);
           }
-          setShowModal(false);
+          handleCloseModal();
         } else {
           toast.error(res.supabaseError || "Không thể cập nhật phiếu");
         }
@@ -301,7 +311,7 @@ export default function ThuChiPage() {
                 : `Đã ghi nhận khoản chi -${formatVND(parsedAmount)} (lưu bởi ${user?.name || "bạn"})`
             );
           }
-          setShowModal(false);
+          handleCloseModal();
         }
       }
     } catch (err: any) {
@@ -378,19 +388,25 @@ export default function ThuChiPage() {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      {/* Tiêu đề trang & Nút hành động chính */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Tiêu đề trang & Nút hành động chính - Solid white hero card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-white/10 shadow-sm p-4 md:p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-md shadow-emerald-500/20">
               <ReceiptText className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Sổ Quỹ Thu Chi Nội Bộ
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  Sổ Quỹ Thu Chi Nội Bộ
+                </h1>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Realtime Cloud
+                </span>
+              </div>
               <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                Quản lý tiền cơm trưa, điện nước, vật dụng xưởng, bảo trì máy may và lưu vết người nhập
+                Quản lý chi phí xưởng may, đính kèm ảnh bill hóa đơn, kiểm soát người lập và tự động đối soát quỹ
               </p>
             </div>
           </div>
@@ -401,7 +417,7 @@ export default function ThuChiPage() {
           <button
             onClick={handleManualSync}
             disabled={isSyncing}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-sm transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-white/10 rounded-xl shadow-sm transition disabled:opacity-50"
             title="Đồng bộ dữ liệu Supabase"
           >
             <RefreshCw className={`w-4 h-4 text-sky-500 ${isSyncing ? "animate-spin" : ""}`} />
@@ -410,7 +426,7 @@ export default function ThuChiPage() {
 
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-sm transition"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-sm transition"
           >
             <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Xuất Excel</span>
@@ -781,157 +797,273 @@ export default function ThuChiPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs md:text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-white/5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-50/70 dark:bg-slate-800/50">
-                  <th className="py-3 px-4">Ngày / Mã</th>
-                  <th className="py-3 px-4">Loại & Danh Mục</th>
-                  <th className="py-3 px-4 text-right">Số Tiền</th>
-                  <th className="py-3 px-4">Hình Thức</th>
-                  <th className="py-3 px-4">Nội Dung / Diễn Giải</th>
-                  <th className="py-3 px-4">Người Chi & Người Nhập</th>
-                  <th className="py-3 px-4 text-center">Chứng Từ</th>
-                  <th className="py-3 px-4 text-right">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-normal">
-                {filteredList.map((item) => {
-                  const dmConfig = DANH_MUC_MAP.get(item.danhMuc);
-                  const isThu = item.loai === "thu";
+          <>
+            {/* Mobile Card View (hiển thị tối ưu trên điện thoại) */}
+            <div className="block md:hidden divide-y divide-slate-100 dark:divide-white/5">
+              {filteredList.map((item) => {
+                const dmConfig = DANH_MUC_MAP.get(item.danhMuc);
+                const isThu = item.loai === "thu";
 
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
-                    >
-                      {/* Ngày / Mã */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{item.ngay}</span>
-                        </div>
-                        <div className="text-[11px] font-mono text-slate-400 mt-0.5">{item.id}</div>
-                      </td>
-
-                      {/* Loại & Danh mục */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
+                return (
+                  <div key={item.id} className="p-4 space-y-3 bg-white dark:bg-slate-900">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${
                               dmConfig?.badgeBg || "bg-slate-100 text-slate-700"
                             }`}
                           >
                             {getCategoryIcon(item.danhMuc, "w-3.5 h-3.5")}
                             <span>{dmConfig?.label || item.danhMuc}</span>
                           </span>
+                          <span className="text-[11px] font-mono text-slate-400">{item.id}</span>
                         </div>
-                      </td>
-
-                      {/* Số tiền */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div
-                          className={`text-sm md:text-base font-extrabold ${
-                            isThu ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                          }`}
-                        >
-                          {isThu ? `+${formatVND(item.soTien)}` : `-${formatVND(item.soTien)}`}
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{item.ngay}</span>
+                          <span>·</span>
+                          <span>{item.hinhThuc === "tien_mat" ? "💵 Tiền mặt" : "💳 Chuyển khoản"}</span>
                         </div>
-                      </td>
+                      </div>
 
-                      {/* Hình thức */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {item.hinhThuc === "tien_mat" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                            <Banknote className="w-3 h-3 text-emerald-600" />
-                            <span>Tiền mặt</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
-                            <CreditCard className="w-3 h-3 text-blue-600" />
-                            <span>Chuyển khoản</span>
-                          </span>
-                        )}
-                      </td>
+                      <div
+                        className={`text-base font-black shrink-0 ${
+                          isThu ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        {isThu ? `+${formatVND(item.soTien)}` : `-${formatVND(item.soTien)}`}
+                      </div>
+                    </div>
 
-                      {/* Nội dung */}
-                      <td className="py-3 px-4">
-                        <p className="text-slate-800 dark:text-slate-200 line-clamp-2 font-medium">
-                          {item.noiDung}
-                        </p>
-                      </td>
+                    <p className="text-xs text-slate-800 dark:text-slate-200 line-clamp-2 font-medium">
+                      {item.noiDung}
+                    </p>
 
-                      {/* Người chi / nhận & Người nhập */}
-                      <td className="py-3 px-4 whitespace-nowrap text-xs">
-                        <div className="text-slate-800 dark:text-slate-200 font-bold">
-                          {item.nguoiThucHien}
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                      <div>
+                        <span>Người chi: </span>
+                        <b className="text-slate-700 dark:text-slate-300">{item.nguoiThucHien}</b>
+                        {item.nguoiNhan && <span> ➔ {item.nguoiNhan}</span>}
+                      </div>
+                      {item.nguoiNhap && (
+                        <div className="text-[10px] text-slate-400">
+                          Nhập: {item.nguoiNhap}
                         </div>
-                        {item.nguoiNhan && (
-                          <div className="text-[11px] text-slate-500">Đến: {item.nguoiNhan}</div>
-                        )}
-                        {item.nguoiNhap && (
-                          <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                            <UserCheck className="w-3 h-3 text-slate-400" />
-                            <span>Nhập: {item.nguoiNhap}</span>
+                      )}
+                    </div>
+
+                    {/* Ảnh chứng từ nếu có */}
+                    {item.hinhAnh && item.hinhAnh.length > 0 && (
+                      <div className="flex items-center gap-2 pt-1 overflow-x-auto pb-1">
+                        {item.hinhAnh.map((imgSrc, imgIdx) => (
+                          <button
+                            key={imgIdx}
+                            type="button"
+                            onClick={() => setViewingItem(item)}
+                            className="relative h-14 w-20 shrink-0 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 hover:opacity-80 transition"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={imgSrc} alt="Bill" className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                        <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">
+                          ({item.hinhAnh.length} ảnh)
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Nút hành động Mobile */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
+                      <button
+                        type="button"
+                        onClick={() => setViewingItem(item)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 transition"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Chi tiết</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(item)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 transition"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Sửa</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingId(item.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs md:text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-white/5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-50/70 dark:bg-slate-800/50">
+                    <th className="py-3 px-4">Ngày / Mã</th>
+                    <th className="py-3 px-4">Loại & Danh Mục</th>
+                    <th className="py-3 px-4 text-right">Số Tiền</th>
+                    <th className="py-3 px-4">Hình Thức</th>
+                    <th className="py-3 px-4">Nội Dung / Diễn Giải</th>
+                    <th className="py-3 px-4">Người Chi & Người Nhập</th>
+                    <th className="py-3 px-4 text-center">Chứng Từ</th>
+                    <th className="py-3 px-4 text-right">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-normal">
+                  {filteredList.map((item) => {
+                    const dmConfig = DANH_MUC_MAP.get(item.danhMuc);
+                    const isThu = item.loai === "thu";
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
+                      >
+                        {/* Ngày / Mã */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{item.ngay}</span>
                           </div>
-                        )}
-                      </td>
+                          <div className="text-[11px] font-mono text-slate-400 mt-0.5">{item.id}</div>
+                        </td>
 
-                      {/* Chứng từ / Ảnh */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        {item.hinhAnh && item.hinhAnh.length > 0 ? (
-                          <button
-                            onClick={() => setViewingItem(item)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 transition"
-                            title="Bấm để xem ảnh hóa đơn / bill"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>{item.hinhAnh.length} ảnh</span>
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">Không có</span>
-                        )}
-                      </td>
+                        {/* Loại & Danh mục */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                                dmConfig?.badgeBg || "bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {getCategoryIcon(item.danhMuc, "w-3.5 h-3.5")}
+                              <span>{dmConfig?.label || item.danhMuc}</span>
+                            </span>
+                          </div>
+                        </td>
 
-                      {/* Thao tác */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5 opacity-90 group-hover:opacity-100 transition">
-                          <button
-                            onClick={() => setViewingItem(item)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-sky-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                            title="Xem chi tiết"
+                        {/* Số tiền */}
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <div
+                            className={`text-sm md:text-base font-extrabold ${
+                              isThu ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                            }`}
                           >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(item)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                            title="Chỉnh sửa"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeletingId(item.id)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                            title="Xóa phiếu"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            {isThu ? `+${formatVND(item.soTien)}` : `-${formatVND(item.soTien)}`}
+                          </div>
+                        </td>
+
+                        {/* Hình thức */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {item.hinhThuc === "tien_mat" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                              <Banknote className="w-3 h-3 text-emerald-600" />
+                              <span>Tiền mặt</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
+                              <CreditCard className="w-3 h-3 text-blue-600" />
+                              <span>Chuyển khoản</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Nội dung */}
+                        <td className="py-3 px-4">
+                          <p className="text-slate-800 dark:text-slate-200 line-clamp-2 font-medium">
+                            {item.noiDung}
+                          </p>
+                        </td>
+
+                        {/* Người chi / nhận & Người nhập */}
+                        <td className="py-3 px-4 whitespace-nowrap text-xs">
+                          <div className="text-slate-800 dark:text-slate-200 font-bold">
+                            {item.nguoiThucHien}
+                          </div>
+                          {item.nguoiNhan && (
+                            <div className="text-[11px] text-slate-500">Đến: {item.nguoiNhan}</div>
+                          )}
+                          {item.nguoiNhap && (
+                            <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                              <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Nhập: {item.nguoiNhap}</span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Chứng từ / Ảnh */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          {item.hinhAnh && item.hinhAnh.length > 0 ? (
+                            <button
+                              onClick={() => setViewingItem(item)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 transition"
+                              title="Bấm để xem ảnh hóa đơn / bill"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>{item.hinhAnh.length} ảnh</span>
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">Không có</span>
+                          )}
+                        </td>
+
+                        {/* Thao tác */}
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setViewingItem(item)}
+                              className="p-1.5 rounded-lg text-slate-600 hover:text-sky-600 bg-slate-100 hover:bg-sky-50 dark:bg-slate-800 dark:hover:bg-slate-700 transition"
+                              title="Xem chi tiết"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenEdit(item)}
+                              className="p-1.5 rounded-lg text-slate-600 hover:text-amber-600 bg-slate-100 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-slate-700 transition"
+                              title="Chỉnh sửa phiếu"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(item.id)}
+                              className="p-1.5 rounded-lg text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-slate-700 transition"
+                              title="Xóa phiếu"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* ==================== MODAL THÊM / CHỈNH SỬA PHIẾU THU CHI ==================== */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={handleCloseModal}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header modal */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/10">
               <div className="flex items-center gap-2.5">
@@ -945,20 +1077,28 @@ export default function ThuChiPage() {
                   {formLoai === "thu" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    {editingItem
-                      ? `Sửa Phiếu: ${editingItem.id}`
-                      : formLoai === "thu"
-                      ? "Lập Phiếu Thu Tiền Mới"
-                      : "Lập Phiếu Chi Tiền Mới"}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                      {editingItem
+                        ? `Sửa Phiếu: ${editingItem.id}`
+                        : formLoai === "thu"
+                        ? "Lập Phiếu Thu Tiền Mới"
+                        : "Lập Phiếu Chi Tiền Mới"}
+                    </h3>
+                    {editingItem && (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
+                        Chế độ chỉnh sửa
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-500">
                     Tài khoản nhập: <b className="text-slate-700 dark:text-slate-300">{user?.name || "Người dùng"}</b> ({user?.email || "Local"})
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setShowModal(false)}
+                type="button"
+                onClick={handleCloseModal}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 <X className="w-5 h-5" />
@@ -1172,26 +1312,45 @@ export default function ThuChiPage() {
               </div>
 
               {/* Nút hành động */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold text-white shadow-md transition disabled:opacity-50 ${
-                    formLoai === "thu"
-                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
-                      : "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/25"
-                  }`}
-                >
-                  {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  <span>{editingItem ? "Cập Nhật Phiếu" : formLoai === "thu" ? "Lưu Khoản Thu" : "Lưu Khoản Chi"}</span>
-                </button>
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-white/10">
+                {editingItem ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = editingItem.id;
+                      handleCloseModal();
+                      setDeletingId(id);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa phiếu này</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-4 py-2.5 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold text-white shadow-md transition disabled:opacity-50 ${
+                      formLoai === "thu"
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
+                        : "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/25"
+                    }`}
+                  >
+                    {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
+                    <span>{editingItem ? "Cập Nhật Phiếu" : formLoai === "thu" ? "Lưu Khoản Thu" : "Lưu Khoản Chi"}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1347,23 +1506,41 @@ export default function ThuChiPage() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-white/10">
                 <button
+                  type="button"
                   onClick={() => {
-                    const item = viewingItem;
+                    const id = viewingItem.id;
                     setViewingItem(null);
-                    handleOpenEdit(item);
+                    setDeletingId(id);
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 transition"
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 transition inline-flex items-center gap-1.5"
                 >
-                  Sửa Phiếu Này
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa Phiếu</span>
                 </button>
-                <button
-                  onClick={() => setViewingItem(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
-                >
-                  Đóng
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const item = viewingItem;
+                      setViewingItem(null);
+                      handleOpenEdit(item);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 transition inline-flex items-center gap-1.5"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Sửa Phiếu</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingItem(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition"
+                  >
+                    Đóng
+                  </button>
+                </div>
               </div>
             </div>
           </div>

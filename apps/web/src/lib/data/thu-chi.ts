@@ -272,7 +272,52 @@ export const MOCK_THU_CHI: GiaoDichThuChi[] = [
 ];
 
 const STORAGE_KEY = "mimin_thu_chi_noi_bo";
+const DELETED_KEY = "mimin_thu_chi_deleted_ids";
 const SUPABASE_TABLE = "thu_chi_noi_bo";
+
+/** Quản lý danh sách ID phiếu đã xóa để ngăn Supabase sync lại */
+function getDeletedIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addDeletedId(id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const ids = getDeletedIds();
+    if (!ids.includes(id)) {
+      localStorage.setItem(DELETED_KEY, JSON.stringify([...ids, id]));
+    }
+  } catch {}
+}
+
+function removeDeletedId(id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const ids = getDeletedIds().filter((x) => x !== id);
+    localStorage.setItem(DELETED_KEY, JSON.stringify(ids));
+  } catch {}
+}
+
+/** Helper phân tích an toàn danh sách ảnh từ DB (tránh lỗi nếu DB trả về JSON string) */
+function parseHinhAnh(raw: any): string[] {
+  if (Array.isArray(raw)) return raw.filter((x) => typeof x === "string");
+  if (typeof raw === "string") {
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return p.filter((x) => typeof x === "string");
+      if (raw.trim()) return [raw.trim()];
+    } catch {
+      if (raw.trim()) return [raw.trim()];
+    }
+  }
+  return [];
+}
 
 /** Helper ánh xạ từ DB row (snake_case) sang GiaoDichThuChi (camelCase) */
 function mapFromDbRow(row: any): GiaoDichThuChi {
@@ -286,7 +331,7 @@ function mapFromDbRow(row: any): GiaoDichThuChi {
     nguoiThucHien: row.nguoi_thuc_hien,
     nguoiNhan: row.nguoi_nhan || undefined,
     noiDung: row.noi_dung,
-    hinhAnh: Array.isArray(row.hinh_anh) ? row.hinh_anh : [],
+    hinhAnh: parseHinhAnh(row.hinh_anh),
     nguoiNhap: row.nguoi_nhap || undefined,
     emailNguoiNhap: row.email_nguoi_nhap || undefined,
     roleNguoiNhap: row.role_nguoi_nhap || undefined,
@@ -315,42 +360,66 @@ function mapToDbRow(item: GiaoDichThuChi): Record<string, any> {
   };
 }
 
-/** Lấy danh sách giao dịch từ localStorage (hoặc nạp mock nếu chưa có) */
+/** Lấy danh sách giao dịch từ localStorage (hoặc nạp mock nếu chưa từng tạo) */
 export function getDanhSachThuChi(): GiaoDichThuChi[] {
   if (typeof window === "undefined") return MOCK_THU_CHI;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
+    // Chỉ nạp MOCK_THU_CHI lần đầu tiên khi chưa có key trong storage
+    if (raw === null) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_THU_CHI));
       return MOCK_THU_CHI;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+    if (Array.isArray(parsed)) {
+      const deleted = new Set(getDeletedIds());
+      return parsed.filter((x) => !deleted.has(x.id));
     }
-    return MOCK_THU_CHI;
+    return [];
   } catch (err) {
     console.warn("Lỗi đọc danh sách thu chi từ localStorage:", err);
     return MOCK_THU_CHI;
   }
 }
 
-/** Lưu toàn bộ danh sách giao dịch vào localStorage */
+/** Lưu toàn bộ danh sách giao dịch vào localStorage (có bảo vệ chống tràn Quota) */
 export function luuDanhSachThuChi(danhSach: GiaoDichThuChi[]): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(danhSach));
-  } catch (err) {
+  } catch (err: any) {
     console.error("Lỗi ghi danh sách thu chi vào localStorage:", err);
+    // Nếu gặp QuotaExceededError, tự động dọn dẹp các tệp ảnh quá cũ để lưu được
+    if (err?.name === "QuotaExceededError" || err?.code === 22) {
+      try {
+        const pruned = danhSach.map((item, index) => {
+          if (index >= 15 && item.hinhAnh && item.hinhAnh.length > 0) {
+            // Với các phiếu cũ hơn 15 giao dịch, rút gọn bớt ảnh phụ
+            return { ...item, hinhAnh: [item.hinhAnh[0]] };
+          }
+          return item;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
+      } catch (retryErr) {
+        console.warn("Không thể lưu localStorage cả sau khi prune ảnh:", retryErr);
+      }
+    }
   }
 }
 
-/** Tải dữ liệu từ Supabase và merge vào localStorage */
+/** Tải dữ liệu từ Supabase và merge hai chiều vào localStorage */
 export async function syncFromSupabase(): Promise<{ data: GiaoDichThuChi[]; error?: string }> {
   const localData = getDanhSachThuChi();
   if (!isSupabaseEnabled || !supabase) return { data: localData };
 
+  const deletedIds = getDeletedIds();
+
   try {
+    // 1. Nếu có ID đã xoá cục bộ, dọn dẹp trên Supabase
+    if (deletedIds.length > 0) {
+      void supabase.from(SUPABASE_TABLE).delete().in("id", deletedIds);
+    }
+
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
       .select("*")
@@ -362,9 +431,24 @@ export async function syncFromSupabase(): Promise<{ data: GiaoDichThuChi[]; erro
     }
 
     if (Array.isArray(data) && data.length > 0) {
-      const remoteMapped = data.map(mapFromDbRow);
-      luuDanhSachThuChi(remoteMapped);
-      return { data: remoteMapped };
+      const deletedSet = new Set(deletedIds);
+      const remoteMapped = data
+        .map(mapFromDbRow)
+        .filter((x) => !deletedSet.has(x.id));
+
+      // Hợp nhất dữ liệu: lấy remote + bổ sung các phiếu local mới tạo chưa kịp đẩy
+      const remoteIdSet = new Set(remoteMapped.map((x) => x.id));
+      const localOnly = localData.filter((x) => !remoteIdSet.has(x.id) && !deletedSet.has(x.id));
+      
+      const merged = [...localOnly, ...remoteMapped].sort((a, b) => b.ngay.localeCompare(a.ngay));
+      luuDanhSachThuChi(merged);
+
+      // Nếu có phiếu local chưa có trên remote, tự động sync lên
+      if (localOnly.length > 0) {
+        void syncAllToSupabase(localOnly);
+      }
+
+      return { data: merged };
     }
 
     // Nếu bảng trên Supabase rỗng mà local có dữ liệu, tự động đẩy dữ liệu mẫu lên Supabase
@@ -472,17 +556,24 @@ export async function xoaGiaoDich(id: string): Promise<{ success: boolean; supab
   const ds = getDanhSachThuChi();
   const filtered = ds.filter((x) => x.id !== id);
   if (filtered.length === ds.length) return { success: false, supabaseError: "Không tìm thấy phiếu để xoá" };
+  
+  // 1. Lưu lại vào localStorage
   luuDanhSachThuChi(filtered);
+  // 2. Ghi nhận ID đã xóa để chống Supabase sync kéo lại
+  addDeletedId(id);
 
   let supabaseError: string | undefined;
 
-  // Xoá trên Supabase
+  // 3. Xoá trên Supabase
   if (isSupabaseEnabled && supabase) {
     try {
       const { error } = await supabase.from(SUPABASE_TABLE).delete().eq("id", id);
       if (error) {
         console.warn(`[Supabase] Không thể xoá phiếu ${id} trên Supabase:`, error.message);
         supabaseError = error.message;
+      } else {
+        // Đã xóa thành công trên cloud
+        removeDeletedId(id);
       }
     } catch (err: any) {
       console.warn("[Supabase] Lỗi xoá trên Supabase:", err);

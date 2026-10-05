@@ -29,6 +29,64 @@ type Props = {
 const ACCEPT_DEFAULT = "image/*,.pdf,.ai,.psd,.svg";
 const MAX_SIZE_DEFAULT = 5 * 1024 * 1024; // 5MB
 
+/** Nén ảnh client-side tự động trước khi lưu dataUrl (tiết kiệm 90% dung lượng, chống đầy localStorage) */
+function compressImageFile(
+  file: File,
+  maxWidth = 1280,
+  maxHeight = 1280,
+  quality = 0.8
+): Promise<{ dataUrl: string; size: number }> {
+  return new Promise((resolve) => {
+    // Nếu không phải ảnh (PDF, AI, SVG...), giữ nguyên file
+    if (!file.type.startsWith("image/") || file.type.includes("svg")) {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ dataUrl: reader.result as string, size: file.size });
+      reader.onerror = () => resolve({ dataUrl: "", size: 0 });
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        if (width / height > maxWidth / maxHeight) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(width, 1);
+      canvas.height = Math.max(height, 1);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ dataUrl: reader.result as string, size: file.size });
+        reader.readAsDataURL(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+      // Ước lượng dung lượng sau nén từ độ dài base64
+      const compressedSize = Math.round((compressedDataUrl.length * 3) / 4);
+      resolve({ dataUrl: compressedDataUrl, size: compressedSize });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      const reader = new FileReader();
+      reader.onload = () => resolve({ dataUrl: reader.result as string, size: file.size });
+      reader.onerror = () => resolve({ dataUrl: "", size: 0 });
+      reader.readAsDataURL(file);
+    };
+    img.src = url;
+  });
+}
+
 export function ImageUploader({
   files,
   onChange,
@@ -56,32 +114,31 @@ export function ImageUploader({
         toast.error(`${file.name} quá lớn (max ${(maxSize / 1024 / 1024).toFixed(0)}MB)`);
         continue;
       }
-      let dataUrl: string;
+
       try {
-        dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("Không đọc được ảnh"));
-          reader.readAsDataURL(file);
+        const { dataUrl, size } = await compressImageFile(file);
+        if (!dataUrl) {
+          toast.error(`Không thể đọc tệp ${file.name}`);
+          continue;
+        }
+        newFiles.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: file.name || "image.jpg",
+          type: file.type.startsWith("image/") ? "image/jpeg" : file.type,
+          size,
+          dataUrl,
+          category,
+          uploadedAt: new Date().toISOString(),
         });
       } catch {
-        toast.error("Không đọc được ảnh, vui lòng chọn lại");
+        toast.error(`Lỗi xử lý tệp ${file.name}`);
         continue;
       }
-      newFiles.push({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name: file.name || 'image.png',
-        type: file.type,
-        size: file.size,
-        dataUrl,
-        category,
-        uploadedAt: new Date().toISOString(),
-      });
     }
     if (!newFiles.length) return;
     onChange(multiple ? [...files, ...newFiles] : [...files.filter((file) => file.category !== category), ...newFiles]);
     if (inputRef.current) inputRef.current.value = "";
-    toast.success(`Đã chọn ${newFiles.length} tệp`);
+    toast.success(`Đã đính kèm ${newFiles.length} ảnh/tệp chứng từ`);
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -179,11 +236,14 @@ export function ImageUploader({
               </a>
               <button
                 type="button"
-                onClick={() => remove(f.id)}
-                className="p-1.5 rounded hover:bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition"
-                title="Xóa"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  remove(f.id);
+                }}
+                className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/50 dark:hover:bg-red-900/60 dark:text-red-400 transition opacity-90 hover:opacity-100"
+                title="Xóa tệp chứng từ này"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           ))}
