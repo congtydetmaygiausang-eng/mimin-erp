@@ -14,6 +14,16 @@ let migrated = false;
 
 export function migrateLegacyKeys(): void {
   if (typeof window === "undefined" || migrated) return;
+  // Tự động dọn dẹp các cache dữ liệu nhân sự cũ (38 NV) và khách hàng cũ (2 KH mock)
+  const PURGE_KEYS = [
+    "mimin_nhan_su_v1",
+    "polomimin_nhan_su_v1",
+    "mimin_khach_hang_v1",
+    "polomimin_khach_hang_v1"
+  ];
+  for (const k of PURGE_KEYS) {
+    try { localStorage.removeItem(k); } catch {}
+  }
   for (const [oldKey, newKey] of Object.entries(LEGACY_TO_CANONICAL)) {
     const oldData = localStorage.getItem(oldKey);
     if (oldData) {

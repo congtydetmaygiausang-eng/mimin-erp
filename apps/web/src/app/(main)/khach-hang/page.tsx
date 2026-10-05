@@ -28,23 +28,20 @@ import { useKhachHang, type KhachHangUI } from "@/lib/data/khach-hang-store";
 import { useEffect } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 
-// Tính từ đơn hàng (mock data)
-const DOANH_THU_KH: Record<string, number> = {
-  "Cty May Hà Nội": 145000000,
-  "Shop Thời Trang Sài Gòn": 57000000,
-  "Xưởng may Minh Tâm": 33000000,
-  "Cty Dệt Phong Phú": 65000000,
-  "Xưởng may Hoàng Long": 46500000,
-  "Cty May Việt Hưng": 29000000,
-  "Shop Đồng Phục Sài Gòn": 28000000,
-  "Cty Thời Trang Bảo Long": 35000000,
-};
+// Tính doanh thu và số đơn động từ ghi chú dữ liệu thật Supabase
+function getDoanhThu(k: KhachHangUI): number {
+  if (!k.ghiChu) return 0;
+  const match = k.ghiChu.match(/doanh thu tích lũy:\s*([\d\.]+)/i);
+  if (match) return Number(match[1].replace(/\./g, "")) || 0;
+  return 0;
+}
 
-const SO_DON_KH: Record<string, number> = {
-  "Cty May Hà Nội": 5, "Shop Thời Trang Sài Gòn": 3, "Xưởng may Minh Tâm": 1,
-  "Cty Dệt Phong Phú": 1, "Xưởng may Hoàng Long": 1, "Cty May Việt Hưng": 1,
-  "Shop Đồng Phục Sài Gòn": 2, "Cty Thời Trang Bảo Long": 2,
-};
+function getSoDon(k: KhachHangUI): number {
+  if (!k.ghiChu) return 0;
+  const match = k.ghiChu.match(/tổng số đơn:\s*(\d+)/i);
+  if (match) return Number(match[1]) || 0;
+  return 0;
+}
 
 export default function KhachHangPage() {
   const { list, themKhachHang, suaKhachHang, xoaKhachHang, loading } = useKhachHang();
@@ -52,7 +49,7 @@ export default function KhachHangPage() {
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; kh?: KhachHangUI; initialLoai?: string } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [showGhiNhoOnly, setShowGhiNhoOnly] = useState(false);
-  const [activeTab, setActiveTab] = useState<"Sỉ" | "Xưởng">("Sỉ");
+  const [activeTab, setActiveTab] = useState<"Tất cả" | "Sỉ" | "Xưởng">("Tất cả");
 
   const filtered = useMemo(() => {
     return list.filter((k: KhachHangUI) => {
@@ -72,12 +69,12 @@ export default function KhachHangPage() {
 
   const tongKH = filtered.length;
   const dsVIP = filtered.filter((k) => (k.rating || 0) >= 4.5);
-  const tongDoanhThu = filtered.reduce((sum, k) => sum + (DOANH_THU_KH[k.ten] || 0), 0);
-  const tongSoDon = filtered.reduce((sum, k) => sum + (SO_DON_KH[k.ten] || 0), 0);
+  const tongDoanhThu = filtered.reduce((sum, k) => sum + getDoanhThu(k), 0);
+  const tongSoDon = filtered.reduce((sum, k) => sum + getSoDon(k), 0);
 
   // Top 3 KH
   const topKH = useMemo(() => {
-    return [...filtered].sort((a, b) => (DOANH_THU_KH[b.ten] || 0) - (DOANH_THU_KH[a.ten] || 0)).slice(0, 3);
+    return [...filtered].sort((a, b) => getDoanhThu(b) - getDoanhThu(a)).slice(0, 3);
   }, [filtered]);
 
   const toggleGhiNho = async (kh: KhachHangUI, e: React.MouseEvent) => {
@@ -150,7 +147,7 @@ export default function KhachHangPage() {
     <div className="space-y-5 animate-fade-in">
       <PageHeader
         moduleLabel="MIMIN ERP — Danh mục dữ liệu"
-        title={activeTab === "Sỉ" ? "Khách hàng sỉ" : "Khách hàng xưởng"}
+        title={activeTab === "Tất cả" ? "Tất cả khách hàng" : activeTab === "Sỉ" ? "Khách hàng sỉ" : "Khách hàng xưởng"}
         subtitle={`${filtered.length} khách hàng · ${filtered.filter(k => (k.rating || 0) >= 4.5).length} VIP`}
         icon={<Users className="w-5 h-5" />}
         actions={
@@ -167,7 +164,7 @@ export default function KhachHangPage() {
 
       {/* Tabs */}
       <div className="flex p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl w-max">
-        {(["Sỉ", "Xưởng"] as const).map((tab) => (
+        {(["Tất cả", "Sỉ", "Xưởng"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -177,7 +174,7 @@ export default function KhachHangPage() {
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            Khách hàng {tab.toLowerCase()}
+            {tab === "Tất cả" ? "Tất cả khách hàng" : `Khách hàng ${tab.toLowerCase()}`}
           </button>
         ))}
       </div>
@@ -220,7 +217,7 @@ export default function KhachHangPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm truncate">{k.ten}</div>
-                <div className="text-[10px] opacity-70">{formatVNDShort(DOANH_THU_KH[k.ten] || 0)} · {SO_DON_KH[k.ten] || 0} đơn</div>
+                <div className="text-[10px] opacity-70">{formatVNDShort(getDoanhThu(k))} · {getSoDon(k)} đơn</div>
               </div>
               <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -274,8 +271,8 @@ export default function KhachHangPage() {
               </thead>
               <tbody>
                 {filtered.map((k) => {
-                  const dt = DOANH_THU_KH[k.ten] || 0;
-                  const soDon = SO_DON_KH[k.ten] || 0;
+                  const dt = getDoanhThu(k);
+                  const soDon = getSoDon(k);
                   return (
                     <tr key={k.maKH} className="border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
                       <td className="p-3 font-mono text-xs opacity-70">{k.maKH}</td>
@@ -348,8 +345,8 @@ export default function KhachHangPage() {
       {viewMode === "card" && (
         <EntityCardGrid cols={4}>
           {filtered.map((k) => {
-            const dt = DOANH_THU_KH[k.ten] || 0;
-            const soDon = SO_DON_KH[k.ten] || 0;
+            const dt = getDoanhThu(k);
+            const soDon = getSoDon(k);
             return (
               <EntityCard
                 key={k.maKH}
@@ -385,8 +382,8 @@ export default function KhachHangPage() {
       {viewMode === "list" && (
         <EntityCardList>
           {filtered.map((k) => {
-            const dt = DOANH_THU_KH[k.ten] || 0;
-            const soDon = SO_DON_KH[k.ten] || 0;
+            const dt = getDoanhThu(k);
+            const soDon = getSoDon(k);
             return (
               <div key={k.maKH} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => setShowForm({ mode: "edit", kh: k })}>
                 <Avatar name={k.ten} src={k.avatar} size="md" />

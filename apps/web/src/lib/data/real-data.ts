@@ -126,15 +126,8 @@ export type KhachHang = {
   rating?: number;
   ghiChu?: string;
 };
-export const KHACH_HANG_DATA: KhachHang[] = [
-  { stt: 1, maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0912345678", email: "info@mayhanoi.vn", diaChi: "Hà Nội", mst: "0123456789", congNo: 0, rating: 4.8, ghiChu: "KH VIP, đặt hàng định kỳ mỗi tháng" },
-  { stt: 2, maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0987654321", email: "shop@ttgsaigon.vn", diaChi: "Quận 1, TP.HCM", mst: "0234567890", congNo: 0, rating: 4.5, ghiChu: "Đặt hàng theo mùa" },
-  { stt: 4, maKH: "KH-004", ten: "Cty Dệt Phong Phú", sdt: "0934567890", email: "phongphu@det.vn", diaChi: "Đồng Nai", mst: "0345678901", congNo: 0, rating: 4.0, ghiChu: "Đối tác cũ" },
-  { stt: 5, maKH: "KH-005", ten: "Xưởng may Hoàng Long", sdt: "0945678901", email: "hoanglong@xmg.vn", diaChi: "Long An", congNo: 0, rating: 4.3 },
-  { stt: 6, maKH: "KH-006", ten: "Cty May Việt Hưng", sdt: "0923456789", email: "viethung@may.vn", diaChi: "TP.HCM", mst: "0456789012", congNo: 0, rating: 3.8 },
-  { stt: 7, maKH: "KH-007", ten: "Shop Đồng Phục Sài Gòn", sdt: "0938765432", email: "dongphuc@sg.vn", diaChi: "Quận 3, TP.HCM", congNo: 0, rating: 4.6 },
-  { stt: 8, maKH: "KH-008", ten: "Cty Thời Trang Bảo Long", sdt: "0941234567", email: "baolong@tt.vn", diaChi: "Hải Phòng", congNo: 0, rating: 4.1 },
-];
+// Dữ liệu khách hàng lấy trực tiếp từ Supabase (902 khách hàng)
+export const KHACH_HANG_DATA: KhachHang[] = [];
 // ========== 1. NHÂN SỰ HIỆN TẠI (5 NV) - từ Supabase ==========
 export const NHAN_SU: NhanSu[] = [
   { stt: 1, maNV: "NV01", hoTen: "Hồ Minh Sang", boPhan: "Quản lý", chucVu: "Giám Đốc", ngaySinh: "1994-06-27", gioiTinh: "Nam", cccd: "051094015433", ngayCap: "", noiCap: "", sdt: "0774480916", email: "sang@mimin.vn", diaChiTT: "Thôn Bàu Chuốc, Bình Chánh, Bình Sơn, Quảng Ngãi", diaChiTamTru: "", viTri: "Giám Đốc", ngayVaoLam: "2020-01-01", loaiHD: "HĐ không xác định thời hạn", tinhTrangHN: "Đã đóng BHXH", soTK: "", nganHang: "", mst: "", bhxh: "7910000001", trangThai: "dang_lam", luongCB: 25000000, loaiLuong: "Thời gian" },
