@@ -378,7 +378,7 @@ export function NotificationBell() {
 
       {/* DROPDOWN DANH SÁCH THÔNG BÁO */}
       {open && (
-        <div className="absolute right-0 mt-2 w-[360px] sm:w-[440px] max-w-[calc(100vw-20px)] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-2xl overflow-hidden z-50 animate-fade-in text-slate-800 dark:text-slate-100">
+        <div className="absolute right-0 mt-2 w-[360px] sm:w-[440px] max-w-[calc(100vw-20px)] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-2xl overflow-hidden z-[100] animate-fade-in text-slate-800 dark:text-slate-100">
           {/* Header Panel */}
           <div className="px-4 py-3.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/70 dark:bg-slate-800/40">
             <div className="flex items-center justify-between">
