@@ -16,7 +16,7 @@ import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-rea
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList } from "@/components/ui";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
@@ -126,16 +126,16 @@ export default function UiInTheuPage() {
         </div>
       </div>
 
-      {/* Danh sách lệnh cắt */}
-      {lcCoIntd.length === 0 ? (
-        <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
-          <Palette className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Tuyệt vời! Bạn đã hoàn thành tất cả công việc</div>
-          <div className="text-sm mt-1">Đang chờ nhận thêm hàng từ Cắt...</div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {lcCoIntd.map(lc => {
+            {/* Bảng danh sách và Tab trạng thái */}
+      <StageWorkList
+        data={lcCoIntd}
+        stage="in-theu"
+        stageKeyword="in"
+        getStagePC={(lc) => getIntdPC(lc)?.[0]}
+        onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
+        emptyMessage="Tuyệt vời! Bạn đã hoàn thành tất cả công việc In / Thêu"
+        renderCard={(lc) => {
+
             const intdPCs = getIntdPC(lc);
             const catTT = getCatTT(lc);
             const catDone = catTT === "hoan_thanh";
@@ -307,11 +307,10 @@ export default function UiInTheuPage() {
                 </div>
               </LenhCatCardV2>
             );
-          })}
-        </div>
-      )}
-
-      {/* Modal nhập liệu cho màu */}
+        }}
+      />
+      
+{/* Modal nhập liệu cho màu */}
       {selectedMau && (
         <ChiTietMauHistoryModal
           isOpen={!!selectedMau}

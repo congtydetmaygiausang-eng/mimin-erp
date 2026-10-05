@@ -16,7 +16,7 @@ import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateC
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal, type ChiTietMauInput } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList, type ChiTietMauInput } from "@/components/ui";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
@@ -154,14 +154,15 @@ export default function UiMayPage() {
         </div>
       </div>
 
-      {lcCoMay.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
-          <Shirt className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Chưa có việc may nào</div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {lcCoMay.map(lc => {
+            <StageWorkList
+        data={lcCoMay}
+        stage="may"
+        stageKeyword="may"
+        getStagePC={(lc) => getMayPC(lc)?.[0]}
+        onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
+        emptyMessage="Chưa có việc may nào được giao"
+        renderCard={(lc) => {
+
             const catTT = getCatTT(lc);
             const mayPCs = getMayPC(lc);
             const catDone = catTT === "hoan_thanh";
@@ -348,11 +349,10 @@ export default function UiMayPage() {
                 </div>
               </LenhCatCardV2>
             );
-          })}
-        </div>
-      )}
-
-      {/* Modal nhập liệu cho màu */}
+        }}
+      />
+      
+{/* Modal nhập liệu cho màu */}
       {selectedMau && (
         <ChiTietMauHistoryModal 
           isOpen={!!selectedMau}

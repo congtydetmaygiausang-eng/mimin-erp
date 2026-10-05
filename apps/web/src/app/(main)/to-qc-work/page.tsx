@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat, type LichSuQCItem, type MauVai } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { ghepAoQuanTheoSize } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList } from "@/components/ui";
 import { applyStageColorEntries, type StageColorEntry } from "@/lib/stage-color-input";
 import { useSession } from "@/components/session-provider";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
@@ -453,15 +453,15 @@ export default function UiQCPage() {
         )}
       </div>
 
-      {lcChoQC.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
-          <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Chưa có lô nào cần kiểm tra</div>
-          <div className="text-sm mt-1">Khi Tổ May hoàn thành sẽ xuất hiện ở đây</div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {lcChoQC.map(lc => {
+            <StageWorkList
+        data={lcChoQC}
+        stage="qc"
+        stageKeyword="qc"
+        getStagePC={(lc) => lc.phanCong?.find((p: any) => p.id === "qc")}
+        onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
+        emptyMessage="Chưa có lô nào cần kiểm tra QC"
+        renderCard={(lc) => {
+
             const mayPCs = getMayPC(lc);
             const qcPC = lc.phanCong?.find((p: any) => p.id === "qc");
             return (
@@ -943,11 +943,10 @@ export default function UiQCPage() {
                 </div>
               </LenhCatCardV2>
             );
-          })}
-        </div>
-      )}
-
-      {selectedMau && (
+        }}
+      />
+      
+{selectedMau && (
         <ChiTietMauHistoryModal
           isOpen={!!selectedMau}
           onClose={() => setSelectedMau(null)}

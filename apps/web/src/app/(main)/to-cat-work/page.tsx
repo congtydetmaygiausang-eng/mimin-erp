@@ -242,8 +242,11 @@ export default function CongViecCatPage() {
       {/* Bảng danh sách và Tab trạng thái */}
       <StageWorkList 
         data={lcCoCat}
+        stage="cat"
         stageKeyword="cat"
         isStageAccessible={isPhanCongCatAccessible}
+        onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
+        onGiaCongClick={(lc, type) => setModalGiaCong({ id: lc.id, type: type || "ao" })}
         emptyMessage="Chưa có lệnh cắt nào được giao"
         renderCard={(lc) => {
           const pc = getPhanCongCat(lc) as any;

@@ -15,7 +15,7 @@ import { CheckCircle2, Package, Box } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList } from "@/components/ui";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
@@ -140,15 +140,15 @@ export default function UiDongGoiPage() {
         </div>
       </div>
 
-      {lcHT.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
-          <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Không có việc Đóng Gói nào</div>
-          <div className="text-sm mt-1">Chờ Tổ Ủi hoàn thành sẽ xuất hiện ở đây để đóng gói & nhập kho</div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {lcHT.map(lc => {
+            <StageWorkList
+        data={lcHT}
+        stage="dong-goi"
+        stageKeyword="dong_goi"
+        getStagePC={(lc) => getHTPC(lc)?.[0]}
+        onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
+        emptyMessage="Không có việc Đóng Gói nào"
+        renderCard={(lc) => {
+
             const htPCs = getHTPC(lc);
             const isAllDone = htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
             const isLCDone = lc.trangThai === "HoanThanh";
@@ -496,11 +496,10 @@ export default function UiDongGoiPage() {
                 </div>
               </LenhCatCardV2>
             );
-          })}
-        </div>
-      )}
-
-      {/* Modal nhập liệu cho màu */}
+        }}
+      />
+      
+{/* Modal nhập liệu cho màu */}
       {selectedMau && (
         <ChiTietMauHistoryModal
           isOpen={!!selectedMau}
