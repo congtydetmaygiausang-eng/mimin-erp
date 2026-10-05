@@ -41,10 +41,10 @@ const NAV_GROUPS: NavGroup[] = [
     color: "from-cyan-500 to-blue-600",
     iconColor: "text-blue-400",
     items: [
-      { href: "/dashboard", label: "Dashboard" },
+      { href: "/dashboard", label: "Bàn làm việc" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX" },
-      { href: "/realtime", label: "Real-time" },
-      { href: "/canh-bao", label: "Cảnh báo" },
+      { href: "/realtime", label: "Báo cáo tổng hợp (BI)" },
+      { href: "/canh-bao", label: "Trung tâm cảnh báo" },
     ],
   },
   {

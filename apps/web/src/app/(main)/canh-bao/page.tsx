@@ -6,12 +6,15 @@ import {
   Calendar, ArrowRight, Activity, BarChart3,
 } from "lucide-react";
 import { tinhTatCaCanhBao, thongKeCanhBao, type CanhBao, type LoaiCanhBao, type MucDoCanhBao } from "@/lib/canh-bao-engine";
+import { useLenhCat } from "@/lib/data/lenh-cat-store";
+import { useKho } from "@/lib/data/kho-store";
+import { usePhanCong } from "@/lib/data/cong-no-store";
 
 const LOAI_INFO: Record<LoaiCanhBao, { ten: string; icon: any; mau: string; bg: string }> = {
   "kho-sap-het":      { ten: "Kho sắp hết",      icon: Package,     mau: "#f59e0b", bg: "from-amber-500 to-orange-500" },
   "lsx-qua-han":      { ten: "LSX quá hạn",      icon: Clock,       mau: "#dc2626", bg: "from-rose-500 to-red-500" },
   "cong-no-qua-han":  { ten: "Công nợ quá hạn",  icon: Wallet,      mau: "#7c3aed", bg: "from-violet-500 to-purple-500" },
-  "cn-tre-sl":        { ten: "CN trễ cập nhật",   icon: Users,       mau: "#0284c7", bg: "from-sky-500 to-cyan-500" },
+  "cn-tre-sl":        { ten: "Lỗi SX / Trễ SL",  icon: Users,       mau: "#0284c7", bg: "from-sky-500 to-cyan-500" },
   "ncc-vuot-han-muc": { ten: "NCC vượt hạn mức", icon: AlertCircle, mau: "#db2777", bg: "from-pink-500 to-rose-500" },
 };
 
@@ -22,12 +25,32 @@ const MUCDO_INFO: Record<MucDoCanhBao, { ten: string; mau: string; icon: any }> 
 };
 
 export default function CanhBaoPage() {
+  const { dsLenhCat } = useLenhCat();
+  const { danhSachTrangThai } = useKho();
+  const { phanCong } = usePhanCong();
   const [filterLoai, setFilterLoai] = useState<LoaiCanhBao | "all">("all");
   const [filterMucDo, setFilterMucDo] = useState<MucDoCanhBao | "all">("all");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastCheck, setLastCheck] = useState(new Date());
 
-  const canhBaos = useMemo(() => tinhTatCaCanhBao(), []);
+  const canhBaos = useMemo(() => {
+    const dsKhoVai = danhSachTrangThai("vai").map(v => ({
+      sku: v.maVT,
+      ten: v.maVT,
+      sl: v.tonKho,
+      donVi: "m",
+      tonThap: v.tonToiThieu || 500,
+    }));
+    const dsKhoPL = danhSachTrangThai("phu-lieu").map(p => ({
+      sku: p.maVT,
+      ten: p.maVT,
+      sl: p.tonKho,
+      donVi: "cái",
+      tonThap: p.tonToiThieu || 1000,
+    }));
+    const dsKho = [...dsKhoVai, ...dsKhoPL];
+    return tinhTatCaCanhBao(undefined, dsKho.length > 0 ? dsKho : undefined, undefined, dsLenhCat);
+  }, [dsLenhCat, danhSachTrangThai, lastCheck]);
   const thongKe = useMemo(() => thongKeCanhBao(canhBaos), [canhBaos]);
 
   // Auto refresh mỗi 30s (giả lập real-time)
@@ -53,9 +76,9 @@ export default function CanhBaoPage() {
         {/* Header */}
         <div className="rounded-2xl bg-gradient-to-br from-rose-600 via-amber-600 to-orange-700 text-white p-5 md:p-7 shadow-xl">
           <div className="text-xs font-medium opacity-90 mb-1 flex items-center gap-2">
-            <Bell className="w-3.5 h-3.5" /> MIMIN OS · Cảnh báo real-time
+            <Bell className="w-3.5 h-3.5" /> MIMIN ERP · Radar quét rủi ro vận hành real-time
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold">🔔 Trung tâm cảnh báo</h1>
+          <h1 className="text-2xl md:text-3xl font-black">🚨 Trung tâm cảnh báo</h1>
           <p className="text-sm opacity-95 mt-1 max-w-3xl">
             Tự động phát hiện <b>{thongKe.tong} vấn đề</b>: 
             <b className="text-rose-200"> {thongKe.cao} cao</b> · 

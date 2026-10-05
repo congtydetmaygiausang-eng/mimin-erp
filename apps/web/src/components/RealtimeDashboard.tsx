@@ -9,6 +9,7 @@ import {
 import { DoanhThuChart, LoiNhuanChart, TopSanPhamChart, CongNoPieChart, TienDoChart, CongDoanChart, NhanSuPieChart, Sparkline } from "./charts/Charts";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { useKho } from "@/lib/data/kho-store";
+import { useLenhCat } from "@/lib/data/lenh-cat-store";
 import { NHAN_SU, KHO_VAI, KHO_VAT_TU, formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { useSupabaseSync } from "@/lib/supabase/client";
 import { tinhCongNo } from "@/lib/data/cong-no";
@@ -23,7 +24,7 @@ const DON_HANG = [
   { thang: "T7", doanhThu: 199_000_000, chiPhi: 130_000_000 },
 ].map((d) => ({ ...d, loiNhuan: d.doanhThu - d.chiPhi }));
 
-const TOP_SP = [
+const TOP_SP_DEFAULT = [
   { ten: "Bộ trụ trơn", doanhThu: 73_000_000, soLuong: 500 },
   { ten: "Áo thun cotton", doanhThu: 65_000_000, soLuong: 1000 },
   { ten: "Bộ đồng phục", doanhThu: 50_000_000, soLuong: 320 },
@@ -35,6 +36,7 @@ export function RealtimeDashboard() {
   const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
   const { phanCong } = usePhanCong();
   const { giaoDich, danhSachTrangThai } = useKho();
+  const { dsLenhCat } = useLenhCat();
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [countdown, setCountdown] = useState(30);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -131,14 +133,46 @@ export function RealtimeDashboard() {
     return Object.values(map).sort((a, b) => b.value - a.value).slice(0, 5);
   }, [phanCong]);
 
-  // Tiến độ KHSX (mock)
-  const khsxData = [
-    { ten: "M758 Bộ trụ (W28)", tienDo: 100, sanPham: "Bộ trụ trơn 500 bộ" },
-    { ten: "M873 Áo trụ (W29)", tienDo: 100, sanPham: "Áo trụ 546 áo" },
-    { ten: "M775 Bộ Polo (W30)", tienDo: 45, sanPham: "Bộ Polo 400 bộ" },
-    { ten: "M790 Áo sơ mi (W31)", tienDo: 0, sanPham: "Áo sơ mi 800 cái" },
-    { ten: "M800 Bộ đồng phục (W32)", tienDo: 0, sanPham: "Bộ đồng phục 600 bộ" },
-  ];
+  // Top sản phẩm tính từ Lệnh Cắt thực tế (kèm fallback mẫu)
+  const topSanPhamData = useMemo(() => {
+    if (!dsLenhCat || dsLenhCat.length === 0) return TOP_SP_DEFAULT;
+    const map: Record<string, { ten: string; soLuong: number; doanhThu: number }> = {};
+    for (const lc of dsLenhCat) {
+      const key = lc.tenSP || lc.maSP || "Sản phẩm";
+      const sl = lc.tongSLThucTe || lc.tongSL || 0;
+      const gia = lc.bangCOGS?.giaVonBinhQuan || 120_000;
+      if (!map[key]) {
+        map[key] = { ten: key, soLuong: 0, doanhThu: 0 };
+      }
+      map[key].soLuong += sl;
+      map[key].doanhThu += sl * gia;
+    }
+    const list = Object.values(map).sort((a, b) => b.doanhThu - a.doanhThu).slice(0, 5);
+    return list.length > 0 ? list : TOP_SP_DEFAULT;
+  }, [dsLenhCat]);
+
+  // Tiến độ Lệnh Cắt thực tế
+  const tienDoData = useMemo(() => {
+    if (!dsLenhCat || dsLenhCat.length === 0) {
+      return [
+        { ten: "M758 Bộ trụ (W28)", tienDo: 100, sanPham: "Bộ trụ trơn 500 bộ" },
+        { ten: "M873 Áo trụ (W29)", tienDo: 100, sanPham: "Áo trụ 546 áo" },
+        { ten: "M775 Bộ Polo (W30)", tienDo: 45, sanPham: "Bộ Polo 400 bộ" },
+        { ten: "M790 Áo sơ mi (W31)", tienDo: 0, sanPham: "Áo sơ mi 800 cái" },
+        { ten: "M800 Bộ đồng phục (W32)", tienDo: 0, sanPham: "Bộ đồng phục 600 bộ" },
+      ];
+    }
+    return dsLenhCat.slice(0, 6).map((lc) => {
+      const sl = lc.tongSL || 0;
+      const slDat = lc.tongSLThucTe || (lc.trangThai === "HoanThanh" ? sl : Math.round(sl * 0.65));
+      const pct = sl > 0 ? Math.min(100, Math.round((slDat / sl) * 100)) : 0;
+      return {
+        ten: `${lc.id} ${lc.tenSP}`,
+        tienDo: pct,
+        sanPham: `${lc.tenSP} (${sl.toLocaleString()} SP)`,
+      };
+    });
+  }, [dsLenhCat]);
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -229,8 +263,8 @@ export function RealtimeDashboard() {
 
       {/* Row 3: Top SP + Phân bổ */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <ChartCard title="🏆 Top sản phẩm theo doanh thu" subtitle="Real-time">
-          <TopSanPhamChart data={TOP_SP} />
+        <ChartCard title="🏆 Top sản phẩm theo sản lượng & doanh thu" subtitle="Tính theo Lệnh Cắt thực tế">
+          <TopSanPhamChart data={topSanPhamData} />
         </ChartCard>
         <ChartCard title="👥 Nhân sự theo bộ phận" subtitle={`${kpis.nhanSu} nhân viên`}>
           <NhanSuPieChart data={nhanSuData} />
@@ -239,8 +273,8 @@ export function RealtimeDashboard() {
 
       {/* Row 4: Tiến độ + Công nợ + Công đoạn */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <ChartCard title="📋 Tiến độ kế hoạch sản xuất" subtitle="Theo tuần">
-          <TienDoChart data={khsxData} />
+        <ChartCard title="📋 Tiến độ các Lệnh Cắt đang chạy" subtitle="Tỷ lệ hoàn thành %">
+          <TienDoChart data={tienDoData} />
         </ChartCard>
         <ChartCard title="💳 Phân bổ công nợ" subtitle="Top 5 người nợ">
           <CongNoPieChart data={congNoData} />
