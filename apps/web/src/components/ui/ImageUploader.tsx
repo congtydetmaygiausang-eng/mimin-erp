@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Upload, X, Image as ImageIcon, FileText, Eye, Download } from "lucide-react";
 import { toast } from "sonner";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 
 export type UploadedFile = {
   id: string;
@@ -250,19 +250,18 @@ export function ImageUploader({
         </div>
       )}
 
-      {/* Image preview modal */}
-      {previewIdx !== null && files[previewIdx] && createPortal(
-        <div className="fixed inset-0 z-[140] flex cursor-zoom-out items-center justify-center bg-black/85 p-3 animate-fade-in md:p-6" onClick={() => setPreviewIdx(null)}>
-          <div className="relative flex h-full w-full items-center justify-center" onClick={(event) => event.stopPropagation()}>
-            <img src={files[previewIdx].dataUrl} alt={files[previewIdx].name} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
-            <div className="absolute left-3 top-3 max-w-[70%] truncate rounded bg-black/70 px-3 py-1.5 text-xs text-white">
-              {files[previewIdx].name}
-            </div>
-            <button type="button" onClick={() => setPreviewIdx(null)} className="absolute right-3 top-3 rounded-full bg-black/70 p-2 text-white transition hover:bg-black" aria-label="Đóng ảnh phóng to">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>, document.body
+      {/* Image preview lightbox */}
+      {previewIdx !== null && files[previewIdx] && (
+        <ImageLightbox
+          src={files[previewIdx].dataUrl}
+          alt={files[previewIdx].name}
+          gallery={files.filter((f) => f.type.startsWith("image/")).map((f) => f.dataUrl)}
+          onChange={(newSrc) => {
+            const idx = files.findIndex((f) => f.dataUrl === newSrc);
+            if (idx !== -1) setPreviewIdx(idx);
+          }}
+          onClose={() => setPreviewIdx(null)}
+        />
       )}
     </div>
   );

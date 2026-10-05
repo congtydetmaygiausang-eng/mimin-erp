@@ -20,7 +20,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ZoomIn, ZoomOut, RotateCcw, RotateCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Props {
   /** URL anh dang zoom. null = dong. */
@@ -42,6 +42,7 @@ const SCALE_STEP = 0.5;
 export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: Props) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [rotation, setRotation] = useState(0);
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +51,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
   useEffect(() => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
+    setRotation(0);
   }, [src]);
 
   // ESC de dong
@@ -60,6 +62,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
       else if (e.key === "+" || e.key === "=") zoomIn();
       else if (e.key === "-") zoomOut();
       else if (e.key === "0") reset();
+      else if (e.key === "r" || e.key === "R") rotate();
       else if (e.key === "ArrowLeft" && gallery && onChange) prev();
       else if (e.key === "ArrowRight" && gallery && onChange) next();
     };
@@ -86,6 +89,24 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
   const reset = () => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
+    setRotation(0);
+  };
+  const rotate = () => setRotation((r) => (r + 90) % 360);
+
+  const handleDownload = () => {
+    if (!src) return;
+    try {
+      const link = document.createElement("a");
+      link.href = src;
+      const safeName = (alt ? alt.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9-]/g, "_") : "chung-tu");
+      link.download = `${safeName}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      // Fallback
+      window.open(src, "_blank");
+    }
   };
 
   const currentIndex = gallery ? gallery.indexOf(src) : -1;
@@ -149,6 +170,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
       {/* Top toolbar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-2 rounded-full bg-black/50 backdrop-blur text-white text-xs z-10">
         <span>{(scale * 100).toFixed(0)}%</span>
+        {rotation > 0 && <span>({rotation}°)</span>}
         <span className="opacity-50">·</span>
         <span className="max-w-[200px] truncate">{alt || "Ảnh"}</span>
         {gallery && gallery.length > 1 && (
@@ -166,7 +188,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
         <button
           onClick={zoomIn}
           disabled={scale >= MAX_SCALE}
-          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 disabled:opacity-30 text-white flex items-center justify-center transition"
+          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 disabled:opacity-30 text-white flex items-center justify-center transition shadow-lg"
           title="Phóng to (+)"
         >
           <ZoomIn className="w-5 h-5" />
@@ -174,21 +196,35 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
         <button
           onClick={zoomOut}
           disabled={scale <= MIN_SCALE}
-          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 disabled:opacity-30 text-white flex items-center justify-center transition"
+          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 disabled:opacity-30 text-white flex items-center justify-center transition shadow-lg"
           title="Thu nhỏ (-)"
         >
           <ZoomOut className="w-5 h-5" />
         </button>
         <button
+          onClick={rotate}
+          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow-lg"
+          title="Xoay 90° (R)"
+        >
+          <RotateCw className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleDownload}
+          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow-lg"
+          title="Tải ảnh về máy"
+        >
+          <Download className="w-5 h-5" />
+        </button>
+        <button
           onClick={reset}
-          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition"
-          title="Reset (0)"
+          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow-lg"
+          title="Reset vị trí (0)"
         >
           <RotateCcw className="w-5 h-5" />
         </button>
         <button
           onClick={onClose}
-          className="w-10 h-10 rounded-full bg-rose-600/80 hover:bg-rose-700 text-white flex items-center justify-center transition mt-2"
+          className="w-10 h-10 rounded-full bg-rose-600/90 hover:bg-rose-700 text-white flex items-center justify-center transition mt-1 shadow-lg"
           title="Đóng (ESC)"
         >
           <X className="w-5 h-5" />
@@ -200,14 +236,14 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
         <>
           <button
             onClick={prev}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition z-10"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition z-10 shadow-lg"
             title="Ảnh trước (←)"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
             onClick={next}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition z-10"
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition z-10 shadow-lg"
             title="Ảnh sau (→)"
           >
             <ChevronRight className="w-6 h-6" />
@@ -228,16 +264,16 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
           draggable={false}
           className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl bg-white"
           style={{
-            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px) rotate(${rotation}deg)`,
             transition: dragging ? "none" : "transform 0.2s ease",
           }}
         />
       </div>
 
       {/* Hint footer */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-[11px] text-center">
-        <div>Click overlay hoặc ESC để đóng · Scroll + Ctrl để zoom · Kéo ảnh khi phóng to</div>
-        {gallery && gallery.length > 1 && <div>← → để chuyển ảnh</div>}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-[11px] text-center bg-black/40 px-4 py-1.5 rounded-full backdrop-blur">
+        <div>Click overlay hoặc ESC để đóng · Phím R để xoay · Scroll + Ctrl để zoom · Kéo ảnh khi phóng to</div>
+        {gallery && gallery.length > 1 && <div className="mt-0.5 text-white/50">Phím ← → để chuyển giữa các ảnh chứng từ</div>}
       </div>
     </div>,
     document.body
