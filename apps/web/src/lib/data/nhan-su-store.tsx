@@ -67,7 +67,7 @@ type NhanSuContextType = {
 
 const Ctx = createContext<NhanSuContextType | null>(null);
 
-const STORAGE_KEY = "mimin_nhan_su_v1";
+const STORAGE_KEY = "mimin_nhan_su_v2";
 
 export function NhanSuProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<NhanSuExt[]>([]);

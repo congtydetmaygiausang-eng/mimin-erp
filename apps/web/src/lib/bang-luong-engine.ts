@@ -179,6 +179,10 @@ export interface TongKetBangLuong {
 }
 
 const BO_PHAN_INFO: Record<string, { ten: string; mau: string }> = {
+  "Quản lý": { ten: "Quản lý", mau: "#2563eb" },
+  "Kho vận": { ten: "Kho vận", mau: "#ea580c" },
+  "Sản xuất": { ten: "Sản xuất", mau: "#059669" },
+  "Kinh doanh": { ten: "Kinh doanh", mau: "#7c3aed" },
   "cắt": { ten: "Cắt", mau: "#0284c7" },
   "Cắt": { ten: "Cắt", mau: "#0284c7" },
   "Gấp xếp": { ten: "Gấp xếp", mau: "#7c3aed" },

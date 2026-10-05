@@ -166,6 +166,12 @@ export function useBangLuongData(thang: number, nam: number) {
               } catch {}
             }
           }
+          // Lọc danh sách: chỉ nhận các nhân sự chính thức NV01-NV05 (loại bỏ toàn bộ nhân viên test cũ như GS002..GS018 nếu còn sót trong cache)
+          const officialCodes = new Set(["NV01", "NV02", "NV03", "NV04", "NV05"]);
+          if (rawEmployees.some(r => officialCodes.has((r.ma_nv || r.maNV || "").toUpperCase().trim()))) {
+            rawEmployees = rawEmployees.filter(r => officialCodes.has((r.ma_nv || r.maNV || "").toUpperCase().trim()));
+          }
+
           if (rawEmployees.length > 0) {
             const parsedEmployees: NhanSuLuongInput[] = rawEmployees.map((r) => {
               const chucVu = r.chuc_vu || r.chucVu || "";
