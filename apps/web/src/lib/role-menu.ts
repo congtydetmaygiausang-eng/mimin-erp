@@ -59,7 +59,7 @@ export type MenuItem = {
 
 export const MENU_ITEMS: MenuItem[] = [
   // === Core ===
-  { href: "/dashboard", label: "Dashboard", iconName: "LayoutDashboard", module: "dashboard" },
+  { href: "/dashboard", label: "🏠 Bàn làm việc", iconName: "LayoutDashboard", module: "dashboard" },
 
   // === Sản xuất ===
   { href: "/lenh-cat", label: "Lệnh cắt", iconName: "Scissors", module: "lenh-cat" },
@@ -125,7 +125,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { href: "/backup-restore", label: "💾 Backup & Restore", iconName: "Database", module: "cai-dat", allowedRoles: ["GIAM_DOC", "QUAN_TRI_HE_THONG"] },
   { href: "/supabase-status", label: "☁️ Supabase Status", iconName: "Database", module: "cai-dat", allowedRoles: ["GIAM_DOC", "QUAN_TRI_HE_THONG"] },
   { href: "/bang-luong-auto", label: "💰 Bảng lương tự động", iconName: "Wallet", module: "bang-luong" },
-  { href: "/canh-bao", label: "🔔 Cảnh báo real-time", iconName: "Bell", module: "bao-cao" },
+  { href: "/canh-bao", label: "🚨 Trung tâm cảnh báo", iconName: "Bell", module: "bao-cao" },
   { href: "/kien-truc-phan-quyen", label: "🏗️ Kiến trúc phân quyền", iconName: "ShieldCheck", module: "cai-dat", allowedRoles: ["GIAM_DOC", "QUAN_TRI_HE_THONG"] },
   { href: "/mohinh-phan-quyen-chuan", label: "🎯 Mô hình chuẩn MIMIN OS", iconName: "Palette", module: "cai-dat", allowedRoles: ["GIAM_DOC", "QUAN_TRI_HE_THONG"] },
   { href: "/doi-tac-gia-cong", label: "🤝 Đối tác gia công (35)", iconName: "Users", module: "nha-cung-cap" },

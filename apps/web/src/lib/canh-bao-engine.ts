@@ -35,18 +35,75 @@ const THREE_DAYS_AGO = new Date(TODAY.getTime() - 3 * 24 * 60 * 60 * 1000);
 /**
  * Tính tất cả cảnh báo
  */
-export function tinhTatCaCanhBao(tasks?: any[], kho?: any[], congNo?: any[]): CanhBao[] {
+export function tinhTatCaCanhBao(
+  tasks?: any[],
+  kho?: any[],
+  congNo?: any[],
+  lenhCat?: any[],
+  khachHang?: any[]
+): CanhBao[] {
   const dsKho = kho || DEMO_KHO;
   const dsCongNo = congNo || DEMO_CONG_NO;
   const dsTasks = tasks || ALL_REAL_PHIEU;
+  const dsLenhCat = lenhCat || [];
 
   const canhBaos: CanhBao[] = [];
 
-  // 1. Kho sắp hết
+  // 1. Quét Lệnh Cắt thực tế (quá hạn giao / có lỗi công đoạn)
+  if (dsLenhCat.length > 0) {
+    for (const lc of dsLenhCat) {
+      // 1.1 Quá hạn giao
+      const han = lc.hanHoanThanh || lc.hanGiao;
+      if (han && lc.trangThai !== "HoanThanh") {
+        const hanDate = new Date(han);
+        const soNgayTre = Math.floor((TODAY.getTime() - hanDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (soNgayTre > 0) {
+          const mucDo: MucDoCanhBao = soNgayTre > 5 ? "cao" : soNgayTre > 2 ? "trung-binh" : "thap";
+          const sl = lc.tongSL || lc.soLuong || 0;
+          canhBaos.push({
+            id: `lc-qua-han-${lc.id}`,
+            loai: "lsx-qua-han",
+            mucDo,
+            tieuDe: `Lệnh cắt quá hạn giao: ${lc.id}`,
+            noiDung: `Trễ ${soNgayTre} ngày so với hạn (${han}). Sản phẩm: ${lc.tenSP} (${sl.toLocaleString()} SP).`,
+            doiTuong: lc.tenSP,
+            thoiGian: new Date().toISOString(),
+            giaTri: soNgayTre,
+            donVi: "ngày",
+            lienKet: "/lenh-cat",
+          });
+        }
+      }
+
+      // 1.2 Công đoạn có lỗi / hao hụt
+      if (Array.isArray(lc.phanCong)) {
+        for (const pc of lc.phanCong) {
+          const soLuongLoi = pc.soLuongLoi || 0;
+          if (soLuongLoi > 0 || pc.trangThaiCD === "co_loi") {
+            canhBaos.push({
+              id: `lc-loi-${lc.id}-${pc.id}`,
+              loai: "cn-tre-sl",
+              mucDo: "cao",
+              tieuDe: `Sản phẩm lỗi tại ${lc.id}: ${pc.tenCongDoan || "Công đoạn"}`,
+              noiDung: `Phát hiện ${soLuongLoi} SP lỗi cần khắc phục sửa lại (${lc.tenSP}). Người nhận: ${pc.nguoiNhan || "Chưa giao"}.`,
+              doiTuong: pc.nguoiNhan || pc.tenCongDoan || "Xưởng may",
+              thoiGian: new Date().toISOString(),
+              giaTri: soLuongLoi,
+              donVi: "SP",
+              lienKet: "/to-may-work",
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Kho sắp hết
   for (const k of dsKho) {
     if (k.sl < k.tonThap) {
       const ratio = k.sl / k.tonThap;
       const mucDo: MucDoCanhBao = ratio < 0.3 ? "cao" : ratio < 0.6 ? "trung-binh" : "thap";
+      const isVai = (k.sku || "").toLowerCase().includes("vai") || (k.ten || "").toLowerCase().includes("vải");
       canhBaos.push({
         id: `kho-${k.sku}`,
         loai: "kho-sap-het",
@@ -57,12 +114,12 @@ export function tinhTatCaCanhBao(tasks?: any[], kho?: any[], congNo?: any[]): Ca
         thoiGian: new Date().toISOString(),
         giaTri: k.sl,
         donVi: k.donVi,
-        lienKet: `/kho-vai-tinhmann`,
+        lienKet: isVai ? `/kho-vai-tinhmann` : `/kho-phu-lieu`,
       });
     }
   }
 
-  // 2. LSX quá hạn
+  // 3. LSX quá hạn (từ dsTasks nếu có)
   for (const t of dsTasks) {
     if (t.hanHoanThanh && t.trangThai !== "Hoàn thành") {
       const hanDate = new Date(t.hanHoanThanh);
@@ -79,13 +136,13 @@ export function tinhTatCaCanhBao(tasks?: any[], kho?: any[], congNo?: any[]): Ca
           thoiGian: new Date().toISOString(),
           giaTri: soNgayTre,
           donVi: "ngày",
-          lienKet: `/lsx-m758-demo`,
+          lienKet: `/lenh-cat`,
         });
       }
     }
   }
 
-  // 3. Công nợ KH quá hạn
+  // 4. Công nợ KH quá hạn
   for (const c of dsCongNo) {
     if (c.han && c.status !== "da-thu") {
       const hanDate = new Date(c.han);
@@ -108,7 +165,7 @@ export function tinhTatCaCanhBao(tasks?: any[], kho?: any[], congNo?: any[]): Ca
     }
   }
 
-  // 4. NV không update SL trong 3 ngày (chỉ check CN có tasks đang làm)
+  // 5. NV không update SL trong 3 ngày (chỉ check CN có tasks đang làm)
   for (const cn of CONG_NHAN_13) {
     const lastTask = dsTasks
       .filter((t) => t.nguoiNhan === cn.maNV)
@@ -128,14 +185,13 @@ export function tinhTatCaCanhBao(tasks?: any[], kho?: any[], congNo?: any[]): Ca
           thoiGian: new Date().toISOString(),
           giaTri: soNgay,
           donVi: "ngày",
-          lienKet: `/test-phan-quyen`,
+          lienKet: `/to-may-work`,
         });
       }
     }
   }
 
-  // 5. NCC có công nợ vượt hạn mức tín dụng
-  // Mỗi NCC có hanMucTinDung (mặc định = 500 triệu); nếu congNo > hanMuc → cảnh báo
+  // 6. NCC có công nợ vượt hạn mức tín dụng
   for (const ncc of DEMO_NCC) {
     if (ncc.congNo > ncc.hanMuc) {
       const vuot = ncc.congNo - ncc.hanMuc;
@@ -150,7 +206,7 @@ export function tinhTatCaCanhBao(tasks?: any[], kho?: any[], congNo?: any[]): Ca
         thoiGian: new Date().toISOString(),
         giaTri: vuot,
         donVi: "VND",
-        lienKet: "/master-data/",
+        lienKet: "/phieu-dat-ncc-phu-lieu",
       });
     }
   }
