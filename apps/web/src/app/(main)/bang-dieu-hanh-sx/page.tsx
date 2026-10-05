@@ -266,28 +266,71 @@ function BangDieuHanhContent() {
         </div>
       </div>
 
-      {/* 8 THẺ KPI SẢN XUẤT REAL-TIME */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-        <KPICard icon={<Factory className="w-4 h-4" />} label="Tổng Lệnh Cắt" value={kpi.tongLC} color="brand" />
-        <KPICard icon={<TrendingUp className="w-4 h-4" />} label="Đang sản xuất" value={kpi.dangSX} color="amber" />
-        <KPICard icon={<CheckCircle2 className="w-4 h-4" />} label="Đã hoàn thành" value={kpi.hoanThanh} color="emerald" />
+      {/* 8 THẺ KPI SẢN XUẤT REAL-TIME (BỐ CỤC 4 CỘT RÕ RÀNG, CHỮ RÕ NÉT) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5">
+        <KPICard
+          icon={<Factory className="w-4 h-4" />}
+          label="Tổng Lệnh Cắt"
+          value={kpi.tongLC}
+          subtext="Tất cả đơn đặt & hàng nhà"
+          color="brand"
+        />
+        <KPICard
+          icon={<TrendingUp className="w-4 h-4" />}
+          label="Đang sản xuất"
+          value={kpi.dangSX}
+          subtext="Đang vận hành trên chuyền"
+          color="amber"
+        />
+        <KPICard
+          icon={<CheckCircle2 className="w-4 h-4" />}
+          label="Đã hoàn thành"
+          value={kpi.hoanThanh}
+          subtext="Đã xuất xưởng / kho"
+          color="emerald"
+        />
         <KPICard
           icon={<AlertTriangle className="w-4 h-4" />}
           label="Trễ hạn giao"
           value={kpi.treHan}
+          subtext={kpi.treHan > 0 ? "⚠️ Cần ưu tiên xử lý gấp" : "✓ 100% đúng tiến độ"}
           color="rose"
           highlight={kpi.treHan > 0}
         />
-        <KPICard icon={<Package className="w-4 h-4" />} label="SL Kế hoạch" value={kpi.tongSLKeHoach.toLocaleString()} color="slate" />
-        <KPICard icon={<Scissors className="w-4 h-4" />} label="SL Cắt thực tế" value={kpi.tongSLCatThucTe.toLocaleString()} color="sky" />
-        <KPICard icon={<Clock className="w-4 h-4" />} label="CĐ đang làm" value={kpi.phieuDangLam} color="violet" />
-        <KPICard icon={<Wallet className="w-4 h-4" />} label="Tiền gia công" value={formatVNDShort(kpi.tongTienGiaCong)} color="amber" />
+        <KPICard
+          icon={<Package className="w-4 h-4" />}
+          label="SL Kế hoạch"
+          value={`${kpi.tongSLKeHoach.toLocaleString()} SP`}
+          subtext="Định mức sản xuất ban đầu"
+          color="slate"
+        />
+        <KPICard
+          icon={<Scissors className="w-4 h-4" />}
+          label="SL Cắt thực tế"
+          value={`${kpi.tongSLCatThucTe.toLocaleString()} SP`}
+          subtext="Chốt theo Single Source of Truth"
+          color="sky"
+        />
+        <KPICard
+          icon={<Clock className="w-4 h-4" />}
+          label="CĐ đang vận hành"
+          value={`${kpi.phieuDangLam} khâu`}
+          subtext={kpi.phieuCoLoi > 0 ? `⚠️ Có ${kpi.phieuCoLoi} khâu báo lỗi` : "Không có cảnh báo lỗi"}
+          color="violet"
+        />
+        <KPICard
+          icon={<Wallet className="w-4 h-4" />}
+          label="Tổng tiền gia công"
+          value={formatVNDShort(kpi.tongTienGiaCong)}
+          subtext="Chi phí ước tính toàn bộ khâu"
+          color="amber"
+        />
       </div>
 
       {/* VIEW SELECTOR & FILTER BAR */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-2.5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Chế độ xem */}
-        <div className="card p-1 inline-flex bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+        <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl overflow-x-auto">
           {[
             { k: "lenh-cat-flow" as ViewMode, l: "🔀 Luồng 10 Công Đoạn" },
             { k: "lenh-cat-table" as ViewMode, l: "📋 Bảng Lệnh Cắt" },
@@ -298,7 +341,7 @@ function BangDieuHanhContent() {
               key={v.k}
               type="button"
               onClick={() => setView(v.k)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                 view === v.k
                   ? "bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
@@ -310,19 +353,19 @@ function BangDieuHanhContent() {
         </div>
 
         {/* Trạng thái filter */}
-        <div className="flex items-center gap-1 overflow-x-auto text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
           {[
-            { k: "all" as StatusFilter, l: "Tất cả" },
-            { k: "dang-sx" as StatusFilter, l: "Đang SX" },
-            { k: "tre-han" as StatusFilter, l: "Trễ hạn", danger: true },
-            { k: "co-loi" as StatusFilter, l: "Có lỗi", danger: true },
-            { k: "hoan-thanh" as StatusFilter, l: "Hoàn thành" },
+            { k: "all" as StatusFilter, l: `Tất cả (${kpi.tongLC})` },
+            { k: "dang-sx" as StatusFilter, l: `Đang SX (${kpi.dangSX})` },
+            { k: "tre-han" as StatusFilter, l: `Trễ hạn (${kpi.treHan})`, danger: true },
+            { k: "co-loi" as StatusFilter, l: `Có lỗi (${kpi.phieuCoLoi})`, danger: true },
+            { k: "hoan-thanh" as StatusFilter, l: `Hoàn thành (${kpi.hoanThanh})` },
           ].map((f) => (
             <button
               key={f.k}
               type="button"
               onClick={() => setFilter(f.k)}
-              className={`px-2.5 py-1.5 rounded-lg font-medium whitespace-nowrap transition ${
+              className={`px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition ${
                 filter === f.k
                   ? f.danger
                     ? "bg-rose-500 text-white shadow-sm"
@@ -679,36 +722,53 @@ function KPICard({
   icon,
   label,
   value,
+  subtext,
   color,
   highlight = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
+  subtext?: string;
   color: "slate" | "amber" | "rose" | "sky" | "violet" | "emerald" | "brand";
   highlight?: boolean;
 }) {
-  const colorMap: Record<string, string> = {
-    slate: "from-slate-500/10 to-slate-500/5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800",
-    amber: "from-amber-500/10 to-amber-500/5 text-amber-700 dark:text-amber-400 border-amber-200/60 dark:border-amber-900/40",
-    rose: "from-rose-500/10 to-rose-500/5 text-rose-700 dark:text-rose-400 border-rose-200/60 dark:border-rose-900/40",
-    sky: "from-sky-500/10 to-sky-500/5 text-sky-700 dark:text-sky-400 border-sky-200/60 dark:border-sky-900/40",
-    violet: "from-violet-500/10 to-violet-500/5 text-violet-700 dark:text-violet-400 border-violet-200/60 dark:border-violet-900/40",
-    emerald: "from-emerald-500/10 to-emerald-500/5 text-emerald-700 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-900/40",
-    brand: "from-brand-500/10 to-brand-500/5 text-brand-700 dark:text-brand-400 border-brand-200/60 dark:border-brand-900/40",
+  const iconColorMap = {
+    slate: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/80",
+    amber: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200/60",
+    rose: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200/60",
+    sky: "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border-sky-200/60",
+    violet: "bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200/60",
+    emerald: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/60",
+    brand: "bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border-teal-200/60",
   };
 
   return (
     <div
-      className={`p-2.5 rounded-xl border bg-gradient-to-br transition ${colorMap[color]} ${
-        highlight ? "ring-2 ring-rose-500/40 animate-pulse" : ""
+      className={`bg-white dark:bg-slate-900 rounded-2xl border p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
+        highlight
+          ? "border-rose-400 dark:border-rose-800 ring-2 ring-rose-500/20 shadow-rose-100 dark:shadow-none"
+          : "border-slate-200/90 dark:border-slate-800"
       }`}
     >
-      <div className="flex items-center gap-1.5 text-[11px] opacity-80 mb-1">
-        {icon}
-        <span className="truncate">{label}</span>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+          {label}
+        </span>
+        <div className={`w-8 h-8 rounded-xl border flex items-center justify-center flex-shrink-0 ${iconColorMap[color]}`}>
+          {icon}
+        </div>
       </div>
-      <div className="text-base sm:text-lg font-black tabular-nums truncate">{value}</div>
+      <div className="space-y-0.5">
+        <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight tabular-nums truncate">
+          {value}
+        </div>
+        {subtext && (
+          <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate">
+            {subtext}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
