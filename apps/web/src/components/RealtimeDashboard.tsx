@@ -140,7 +140,7 @@ export function RealtimeDashboard() {
     for (const lc of dsLenhCat) {
       const key = lc.tenSP || lc.maSP || "Sản phẩm";
       const sl = lc.tongSLThucTe || lc.tongSL || 0;
-      const gia = lc.bangCOGS?.giaVonBinhQuan || lc.giaVon1SP || 120_000;
+      const gia = lc.bangCOGS?.giaVonBinhQuan || 120_000;
       if (!map[key]) {
         map[key] = { ten: key, soLuong: 0, doanhThu: 0 };
       }

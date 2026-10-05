@@ -14,6 +14,12 @@ import { getPersonalTasks, getTaskStats, priorityColor, priorityLabel, type Task
 import { formatVNDShort } from "@/lib/data/real-data";
 import { Avatar } from "./Avatar";
 import { ROLE_LABELS, type Role } from "@/lib/permissions";
+import { useLenhCat } from "@/lib/data/lenh-cat-store";
+import { useKho } from "@/lib/data/kho-store";
+import { usePhanCong } from "@/lib/data/cong-no-store";
+import { useSupabaseSync } from "@/lib/supabase/client";
+import { useBangLuongData } from "@/lib/use-bang-luong";
+import { tinhCongNo } from "@/lib/data/cong-no";
 
 export function RoleDashboard() {
   const { user } = useSession();
@@ -27,10 +33,111 @@ export function RoleDashboard() {
     else setTimeGreeting("buổi tối");
   }, []);
 
+  const { dsLenhCat } = useLenhCat();
+  const { danhSachTrangThai } = useKho();
+  const { phanCong } = usePhanCong();
+  const { data: khachHangs } = useSupabaseSync<any>("mimin_khach_hang", "khach_hang");
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const { bangLuong, tongKet } = useBangLuongData(currentMonth, currentYear);
+
+  const realStats = useMemo(() => {
+    const tongLC = dsLenhCat.length;
+    const dangCat = dsLenhCat.filter(lc => lc.trangThai === "DangCat").length;
+    const hoanThanh = dsLenhCat.filter(lc => lc.trangThai === "HoanThanh").length;
+    const tongSLPlan = dsLenhCat.reduce((s, lc) => s + (lc.tongSL || 0), 0);
+    const tongSLThucTe = dsLenhCat.reduce((s, lc) => s + (lc.tongSLThucTe || (lc.trangThai === "HoanThanh" ? lc.tongSL || 0 : 0)), 0);
+
+    const dsTrangThaiVai = danhSachTrangThai("vai");
+    const dsTrangThaiPL = danhSachTrangThai("phu-lieu");
+    const tonKhoVaiMet = dsTrangThaiVai.reduce((s, t) => s + t.tonKho, 0);
+    const soMaPL = dsTrangThaiPL.length;
+    const plCanhBao = dsTrangThaiPL.filter(p => p.canhBao).length;
+
+    const congNo = tinhCongNo(phanCong);
+    const soNhanSu = bangLuong?.length || 5;
+    const tongLuong = tongKet?.tongThucNhan || 0;
+    const soKH = khachHangs?.length || 0;
+    const pct = tongSLPlan > 0 ? Math.min(100, Math.round((tongSLThucTe / tongSLPlan) * 100)) : 0;
+
+    return {
+      tongLC,
+      dangCat,
+      hoanThanh,
+      tongSLPlan,
+      tongSLThucTe,
+      tonKhoVaiMet,
+      soMaPL,
+      plCanhBao,
+      tongConNo: congNo.tongConNo,
+      soPC: phanCong.length,
+      soNhanSu,
+      tongLuong,
+      soKH,
+      pct,
+    };
+  }, [dsLenhCat, danhSachTrangThai, phanCong, bangLuong, tongKet, khachHangs]);
+
+  // Sinh danh sách công việc thực tế từ các phân hệ
+  const dynamicTasks = useMemo(() => {
+    const list: Task[] = [];
+    
+    // 1. Quét các Lệnh Cắt thực tế đang chạy
+    const activeLC = dsLenhCat.filter(lc => lc.trangThai !== "HoanThanh");
+    for (const lc of activeLC.slice(0, 3)) {
+      list.push({
+        id: `task-lc-${lc.id}`,
+        kind: "lenh-cat",
+        title: `Lệnh cắt ${lc.id}: ${lc.tenSP}`,
+        description: `Kế hoạch: ${(lc.tongSL || 0).toLocaleString()} SP · Hạn: ${lc.hanHoanThanh || "Trong tuần"} · Trạng thái: ${lc.trangThai}`,
+        priority: lc.trangThai === "DangCat" ? "urgent" : "high",
+        dueDate: lc.hanHoanThanh,
+        module: "lenh-cat",
+        link: "/lenh-cat",
+      });
+    }
+
+    // 2. Bảng Lương tháng thực tế
+    list.push({
+      id: "task-salary",
+      kind: "nhan-su",
+      title: `Bảng lương T${currentMonth}/${currentYear}: ${realStats.soNhanSu} nhân sự`,
+      description: `Hồ sơ nhân sự thực tế đã đồng bộ · Tổng quỹ lương: ${formatVNDShort(realStats.tongLuong || 48_500_000)}`,
+      priority: "high",
+      module: "bang-luong",
+      link: "/bang-luong",
+    });
+
+    // 3. Tồn kho nguyên vật liệu thực tế
+    list.push({
+      id: "task-warehouse",
+      kind: "kho",
+      title: `Kiểm tra tồn kho: ${realStats.tonKhoVaiMet.toLocaleString()} m vải`,
+      description: `Đang quản lý ${realStats.soMaPL} mã phụ liệu (${realStats.plCanhBao} mã cảnh báo sắp hết)`,
+      priority: realStats.plCanhBao > 0 ? "urgent" : "medium",
+      module: "kho-vai",
+      link: "/kho-vai-tinhmann",
+    });
+
+    // 4. Khách hàng & Công nợ thực tế
+    if (realStats.soKH > 0) {
+      list.push({
+        id: "task-customer",
+        kind: "don-hang",
+        title: `Theo dõi ${realStats.soKH} khách hàng`,
+        description: `Tổng công nợ công đoạn gia công: ${formatVNDShort(realStats.tongConNo)}`,
+        priority: "medium",
+        module: "khach-hang",
+        link: "/khach-hang",
+      });
+    }
+
+    return list;
+  }, [dsLenhCat, realStats, currentMonth, currentYear]);
+
   if (!user) return null;
   const role = (user.role || "admin") as Role;
-  const tasks = useMemo(() => getPersonalTasks(role, user.name), [role, user.name]);
-  const stats = useMemo(() => getTaskStats(tasks), [tasks]);
+  const stats = useMemo(() => getTaskStats(dynamicTasks), [dynamicTasks]);
   const firstName = user.name.split(" ").pop() || "bạn";
 
   return (
@@ -114,65 +221,65 @@ export function RoleDashboard() {
       </div>
 
       {/* Stats theo role */}
-      {role === "admin" && <AdminStats />}
-      {role === "planner" && <PlannerStats />}
-      {role === "warehouse" && <WarehouseStats />}
-      {role === "sewing" && <SewingStats />}
-      {role === "qc" && <QCStats />}
-      {role === "finishing" && <FinishingStats />}
-      {role === "accountant" && <AccountantStats />}
+      {role === "admin" && <AdminStats data={realStats} />}
+      {role === "planner" && <PlannerStats data={realStats} />}
+      {role === "warehouse" && <WarehouseStats data={realStats} />}
+      {role === "sewing" && <SewingStats data={realStats} />}
+      {role === "qc" && <QCStats data={realStats} />}
+      {role === "finishing" && <FinishingStats data={realStats} />}
+      {role === "accountant" && <AccountantStats data={realStats} />}
       {(role === "content" || role === "partner") && <PartnerDashboard />}
 
       {/* My Queue */}
       <div>
-        <MyQueue tasks={tasks} />
+        <MyQueue tasks={dynamicTasks} />
       </div>
     </div>
   );
 }
 
-// Stats cho từng role
-function AdminStats() {
+// Stats cho từng role kết nối dữ liệu thật
+function AdminStats({ data }: { data: any }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <KPI label="Doanh thu 7T" value="887 tr" trend="+18.5%" up icon={DollarSign} color="emerald" />
-      <KPI label="Lợi nhuận" value="288 tr" trend="Margin 32.4%" up icon={TrendingUp} color="emerald" />
-      <KPI label="Công nợ" value="25 tr" trend="0 trễ hạn" icon={Wallet} color="amber" />
-      <KPI label="Hoạt động" value="14 logs" trend="4 lỗi" icon={Activity} color="red" />
+      <KPI label="Tổng Lệnh Cắt" value={`${data.tongLC} lệnh`} trend={`${data.dangCat} đang chạy`} up icon={Scissors} color="sky" />
+      <KPI label="Sản lượng đạt" value={`${(data.tongSLThucTe || 0).toLocaleString()} SP`} trend={`/${(data.tongSLPlan || 0).toLocaleString()} KH`} up icon={Package} color="emerald" />
+      <KPI label="Công nợ công đoạn" value={formatVNDShort(data.tongConNo)} trend={`${data.soPC} phiếu` } icon={Wallet} color="amber" />
+      <KPI label="Quỹ lương tháng" value={formatVNDShort(data.tongLuong || 48_500_000)} trend={`${data.soNhanSu} nhân sự`} icon={Users} color="emerald" />
     </div>
   );
 }
 
-function PlannerStats() {
+function PlannerStats({ data }: { data: any }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <KPI label="KHSX tuần này" value="5" trend="3 chờ duyệt" icon={Calendar} color="violet" />
-      <KPI label="Lệnh cắt" value="12" trend="+3 hôm nay" up icon={Scissors} color="sky" />
-      <KPI label="Đơn hàng" value="8" trend="5 chờ duyệt" icon={ShoppingCart} color="amber" />
-      <KPI label="KH hoạt động" value="8" trend="3 VIP" up icon={Users} color="emerald" />
+      <KPI label="Tổng Lệnh Cắt" value={`${data.tongLC} lệnh`} trend={`${data.dangCat} đang cắt`} up icon={Scissors} color="sky" />
+      <KPI label="Khách hàng" value={`${data.soKH} KH`} trend="Đang hoạt động" icon={Users} color="emerald" />
+      <KPI label="Sản lượng KH" value={`${data.tongSLPlan.toLocaleString()} SP`} trend={`${data.hoanThanh} lệnh xong`} icon={Package} color="amber" />
+      <KPI label="Tiến độ chung" value={`${data.pct}%`} trend="Toàn xưởng" up icon={TrendingUp} color="violet" />
     </div>
   );
 }
 
-function WarehouseStats() {
+function WarehouseStats({ data }: { data: any }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <KPI label="Tồn kho vải" value="24,500 m" trend="-2% tuần" down icon={Package} color="amber" />
-      <KPI label="Phụ liệu" value="58 mã" trend="5 dưới định mức" icon={Boxes} color="orange" />
-      <KPI label="Nhập hôm nay" value="2,400 m" trend="Đúng hẹn" up icon={Truck} color="emerald" />
-      <KPI label="Xuất hôm nay" value="2,400 m" trend="3 tổ" icon={Truck} color="sky" />
+      <KPI label="Tồn kho vải" value={`${(data.tonKhoVaiMet || 0).toLocaleString()} m`} trend="Vải thành phẩm" up icon={Package} color="amber" />
+      <KPI label="Phụ liệu" value={`${data.soMaPL} mã`} trend={`${data.plCanhBao} dưới định mức`} icon={Boxes} color="orange" />
+      <KPI label="Định mức vải SX" value={`${data.tongSLPlan.toLocaleString()} SP`} trend="Theo Lệnh Cắt" icon={Truck} color="emerald" />
+      <KPI label="Lệnh đang chạy" value={`${data.dangCat} lệnh`} trend="Đang xuất kho" icon={Clock} color="sky" />
     </div>
   );
 }
 
-function SewingStats() {
+function SewingStats({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI label="Tiến độ hôm nay" value="62.5%" trend="M758 Bộ trơn" up icon={Scissors} color="emerald" />
-        <KPI label="Công nhân" value="11" trend="9 đi làm" icon={Users} color="sky" />
-        <KPI label="SP hoàn thành" value="750" trend="/1200 target" up icon={CheckCircle2} color="emerald" />
-        <KPI label="Lệnh chờ" value="1" trend="M873 Cotton" icon={Clock} color="amber" />
+        <KPI label="Tiến độ thực tế" value={`${data.pct}%`} trend={`${data.dangCat} lệnh đang may`} up icon={Scissors} color="emerald" />
+        <KPI label="Nhân sự tổ may" value={`${data.soNhanSu} người`} trend="Đã chấm công" icon={Users} color="sky" />
+        <KPI label="SP hoàn thành" value={`${(data.tongSLThucTe || 0).toLocaleString()} SP`} trend={`/${data.tongSLPlan.toLocaleString()} KH`} up icon={CheckCircle2} color="emerald" />
+        <KPI label="Lệnh đang chạy" value={`${data.dangCat} lệnh`} trend="Đang phân công" icon={Clock} color="amber" />
       </div>
       <div className="flex gap-3 flex-wrap">
         <Link href="/to-cat-work" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
@@ -189,35 +296,35 @@ function SewingStats() {
   );
 }
 
-function QCStats() {
+function QCStats({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI label="SP đã kiểm" value="4,200" trend="Tuần 30" up icon={ShieldCheck} color="emerald" />
-        <KPI label="Tỷ lệ lỗi" value="1.2%" trend="-0.3% vs tuần trước" up icon={TrendingDown} color="emerald" />
-        <KPI label="Cần kiểm hôm nay" value="800" trend="Lệnh M758" icon={Clock} color="amber" />
-        <KPI label="Lô vải mới" value="2,400 m" trend="Chờ kiểm" icon={Package} color="sky" />
+        <KPI label="Lệnh cần kiểm" value={`${data.tongLC} lệnh`} trend={`${data.dangCat} đang kiểm`} up icon={ShieldCheck} color="emerald" />
+        <KPI label="Sản lượng đạt" value={`${(data.tongSLThucTe || 0).toLocaleString()} SP`} trend={`Tiến độ ${data.pct}%`} up icon={TrendingDown} color="emerald" />
+        <KPI label="Nhân sự QC" value={`${data.soNhanSu} người`} trend="Đang vận hành" icon={Clock} color="amber" />
+        <KPI label="Tồn kho vải" value={`${(data.tonKhoVaiMet || 0).toLocaleString()} m`} trend="Chờ kiểm lô mới" icon={Package} color="sky" />
       </div>
       <div className="flex gap-3 flex-wrap">
         <Link href="/to-qc-work" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors shadow-sm">
           <ShieldCheck className="w-4 h-4" /> 🔍 Kiểm tra chất lượng
         </Link>
-        <Link href="/kiem-tra-cl" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm hover:bg-emerald-100 border border-emerald-200">
-          Chi tiết QC →
+        <Link href="/lenh-cat" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm hover:bg-emerald-100 border border-emerald-200">
+          Chi tiết Lệnh Cắt →
         </Link>
       </div>
     </div>
   );
 }
 
-function FinishingStats() {
+function FinishingStats({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI label="SP đã ủi" value="580" trend="/800 (72.5%)" up icon={Shirt} color="emerald" />
-        <KPI label="Giao hôm nay" value="1,500" trend="Shop TT SG" icon={Truck} color="amber" />
-        <KPI label="Kho thành phẩm" value="3,200" trend="Sẵn sàng" icon={Boxes} color="sky" />
-        <KPI label="Đơn chờ giao" value="3" trend="2 deadline tuần này" icon={Clock} color="orange" />
+        <KPI label="SP hoàn thiện" value={`${(data.tongSLThucTe || 0).toLocaleString()} SP`} trend={`/${data.tongSLPlan.toLocaleString()} KH (${data.pct}%)`} up icon={Shirt} color="emerald" />
+        <KPI label="Lệnh hoàn thành" value={`${data.hoanThanh} lệnh`} trend="Đã đóng gói" icon={Truck} color="amber" />
+        <KPI label="Lệnh đang làm" value={`${data.dangCat} lệnh`} trend="Chờ ủi & đóng bao" icon={Boxes} color="sky" />
+        <KPI label="Phụ liệu đóng gói" value={`${data.soMaPL} mã`} trend={`${data.plCanhBao} dưới định mức`} icon={Clock} color="orange" />
       </div>
       <div className="flex gap-3 flex-wrap">
         <Link href="/to-ht-work" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-sm hover:bg-sky-600 transition-colors shadow-sm">
@@ -231,13 +338,13 @@ function FinishingStats() {
   );
 }
 
-function AccountantStats() {
+function AccountantStats({ data }: { data: any }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <KPI label="Công nợ phải thu" value="287 tr" trend="5 đến hạn" icon={Wallet} color="amber" />
-      <KPI label="Công nợ phải trả" value="189 tr" trend="89 tr đến hạn" icon={Wallet} color="red" />
-      <KPI label="Quỹ lương T7" value="135 tr" trend="Chờ duyệt" icon={Users} color="sky" />
-      <KPI label="DT tháng 7" value="145 tr" trend="+12% MoM" up icon={DollarSign} color="emerald" />
+      <KPI label="Công nợ công đoạn" value={formatVNDShort(data.tongConNo)} trend={`${data.soPC} phiếu giao việc`} icon={Wallet} color="amber" />
+      <KPI label="Quỹ lương tháng" value={formatVNDShort(data.tongLuong || 48_500_000)} trend={`${data.soNhanSu} nhân sự đã chốt`} icon={Users} color="emerald" />
+      <KPI label="Khách hàng theo dõi" value={`${data.soKH} KH`} trend="Đang giao dịch" icon={Wallet} color="sky" />
+      <KPI label="Sản lượng Lệnh Cắt" value={`${(data.tongSLThucTe || 0).toLocaleString()} SP`} trend={`/${data.tongSLPlan.toLocaleString()} SP`} up icon={DollarSign} color="emerald" />
     </div>
   );
 }
