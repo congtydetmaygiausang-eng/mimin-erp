@@ -24,16 +24,116 @@ import { useSession } from "@/components/session-provider";
 
 // 10 Bước quy trình sản xuất chuẩn mực MIMIN ERP (AGENTS.md 3.1)
 export const QUY_TRINH_10_BUOC = [
-  { step: 1,  name: "Kế hoạch SX",     desc: "Kế hoạch & vật tư",          route: "/ke-hoach-san-xuat", icon: FileText,          color: "slate",   key: "khsx" },
-  { step: 2,  name: "Lệnh cắt",        desc: "Sơ đồ cắt & chỉ định vải",    route: "/lenh-cat",          icon: SlidersHorizontal, color: "blue",    key: "lc" },
-  { step: 3,  name: "Tổ Cắt",          desc: "Chốt SL thực tế (Size)",      route: "/to-cat-work",       icon: Scissors,          color: "sky",     key: "cat" },
-  { step: 4,  name: "In / Thêu",       desc: "Auto-Cascade & đối chiếu",   route: "/ui-intd",           icon: Layers,            color: "purple",  key: "in_theu" },
-  { step: 5,  name: "Tổ May",          desc: "May Áo & Quần bộ",           route: "/to-may-work",       icon: Shirt,             color: "violet",  key: "may" },
-  { step: 6,  name: "QC Kiểm hàng",    desc: "Kiểm tra chất lượng Đạt/Lỗi", route: "/to-qc-work",        icon: ShieldCheck,       color: "rose",    key: "qc" },
-  { step: 7,  name: "Khuy nút",        desc: "Đơm khuy, đóng nút",         route: "/ui-khuy-nut",       icon: CircleDot,         color: "amber",   key: "khuy_nut" },
-  { step: 8,  name: "Tổ Ủi",           desc: "Ủi phẳng & hao hụt",         route: "/ui-ui",             icon: Wind,              color: "teal",    key: "ui" },
-  { step: 9,  name: "Đóng gói",        desc: "Gấp bao bì theo size",       route: "/ui-dong-goi",       icon: Package,           color: "emerald", key: "dong_goi" },
-  { step: 10, name: "Hoàn thiện / Kho",desc: "Nhập kho & chốt lương",      route: "/to-ht-work",        icon: Warehouse,         color: "emerald", key: "nhap_kho" },
+  {
+    step: 1,
+    name: "Kế hoạch SX",
+    desc: "Kế hoạch & vật tư",
+    route: "/ke-hoach-san-xuat",
+    icon: FileText,
+    key: "khsx",
+    bgClass: "bg-blue-50/80 hover:bg-blue-100/90 dark:bg-blue-950/20 border-blue-200/90 hover:border-blue-400",
+    iconBgClass: "bg-blue-600 text-white shadow-xs shadow-blue-300",
+    badgeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
+  },
+  {
+    step: 2,
+    name: "Lệnh cắt",
+    desc: "Sơ đồ cắt & định mức",
+    route: "/lenh-cat",
+    icon: SlidersHorizontal,
+    key: "lc",
+    bgClass: "bg-cyan-50/80 hover:bg-cyan-100/90 dark:bg-cyan-950/20 border-cyan-200/90 hover:border-cyan-400",
+    iconBgClass: "bg-cyan-600 text-white shadow-xs shadow-cyan-300",
+    badgeClass: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-300",
+  },
+  {
+    step: 3,
+    name: "Tổ Cắt",
+    desc: "Chốt SL thực tế (Size)",
+    route: "/to-cat-work",
+    icon: Scissors,
+    key: "cat",
+    bgClass: "bg-sky-50/80 hover:bg-sky-100/90 dark:bg-sky-950/20 border-sky-200/90 hover:border-sky-400",
+    iconBgClass: "bg-sky-600 text-white shadow-xs shadow-sky-300",
+    badgeClass: "bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300",
+  },
+  {
+    step: 4,
+    name: "In / Thêu",
+    desc: "Auto-Cascade & lỗi",
+    route: "/ui-intd",
+    icon: Layers,
+    key: "in_theu",
+    bgClass: "bg-purple-50/80 hover:bg-purple-100/90 dark:bg-purple-950/20 border-purple-200/90 hover:border-purple-400",
+    iconBgClass: "bg-purple-600 text-white shadow-xs shadow-purple-300",
+    badgeClass: "bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300",
+  },
+  {
+    step: 5,
+    name: "Tổ May",
+    desc: "May Áo & Quần bộ",
+    route: "/to-may-work",
+    icon: Shirt,
+    key: "may",
+    bgClass: "bg-violet-50/80 hover:bg-violet-100/90 dark:bg-violet-950/20 border-violet-200/90 hover:border-violet-400",
+    iconBgClass: "bg-violet-600 text-white shadow-xs shadow-violet-300",
+    badgeClass: "bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-300",
+  },
+  {
+    step: 6,
+    name: "QC Kiểm hàng",
+    desc: "Kiểm tra Đạt / Lỗi",
+    route: "/to-qc-work",
+    icon: ShieldCheck,
+    key: "qc",
+    bgClass: "bg-rose-50/80 hover:bg-rose-100/90 dark:bg-rose-950/20 border-rose-200/90 hover:border-rose-400",
+    iconBgClass: "bg-rose-600 text-white shadow-xs shadow-rose-300",
+    badgeClass: "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300",
+  },
+  {
+    step: 7,
+    name: "Khuy nút",
+    desc: "Đơm khuy, đóng nút",
+    route: "/ui-khuy-nut",
+    icon: CircleDot,
+    key: "khuy_nut",
+    bgClass: "bg-amber-50/80 hover:bg-amber-100/90 dark:bg-amber-950/20 border-amber-200/90 hover:border-amber-400",
+    iconBgClass: "bg-amber-600 text-white shadow-xs shadow-amber-300",
+    badgeClass: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
+  },
+  {
+    step: 8,
+    name: "Tổ Ủi",
+    desc: "Ủi phẳng & hao hụt",
+    route: "/ui-ui",
+    icon: Wind,
+    key: "ui",
+    bgClass: "bg-teal-50/80 hover:bg-teal-100/90 dark:bg-teal-950/20 border-teal-200/90 hover:border-teal-400",
+    iconBgClass: "bg-teal-600 text-white shadow-xs shadow-teal-300",
+    badgeClass: "bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300",
+  },
+  {
+    step: 9,
+    name: "Đóng gói",
+    desc: "Gấp bao bì theo size",
+    route: "/ui-dong-goi",
+    icon: Package,
+    key: "dong_goi",
+    bgClass: "bg-emerald-50/80 hover:bg-emerald-100/90 dark:bg-emerald-950/20 border-emerald-200/90 hover:border-emerald-400",
+    iconBgClass: "bg-emerald-600 text-white shadow-xs shadow-emerald-300",
+    badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
+  },
+  {
+    step: 10,
+    name: "Hoàn thiện / Kho",
+    desc: "Nhập kho & chốt lương",
+    route: "/to-ht-work",
+    icon: Warehouse,
+    key: "nhap_kho",
+    bgClass: "bg-green-50/80 hover:bg-green-100/90 dark:bg-green-950/20 border-green-200/90 hover:border-green-400",
+    iconBgClass: "bg-green-600 text-white shadow-xs shadow-green-300",
+    badgeClass: "bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-300",
+  },
 ] as const;
 
 // Các công đoạn chạy trong xưởng hiển thị ở bảng điều phối
@@ -245,7 +345,7 @@ export function LenhCatFlowBoard() {
           </span>
         </div>
 
-        {/* 10 BƯỚC DÂY CHUYỀN: 5 CỘT X 2 HÀNG */}
+        {/* 10 BƯỚC DÂY CHUYỀN: 5 CỘT X 2 HÀNG RỘNG RÃI, NỀN MÀU NHẸ & ICON NỔI BẬT */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
           {QUY_TRINH_10_BUOC.map((step) => {
             const Icon = step.icon;
@@ -255,52 +355,52 @@ export function LenhCatFlowBoard() {
             return (
               <div
                 key={step.step}
-                className={`relative group rounded-xl p-3 border transition-all text-left flex flex-col justify-between ${
+                className={`relative group rounded-2xl p-3.5 border transition-all text-left flex flex-col justify-between shadow-2xs hover:shadow-md ${step.bgClass} ${
                   isFilterActive
-                    ? "bg-brand-50/90 border-brand-500 ring-2 ring-brand-500/20 dark:bg-brand-950/40 shadow-sm"
-                    : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/60 hover:border-brand-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm"
+                    ? "ring-2 ring-brand-500 shadow-md scale-[1.02]"
+                    : ""
                 }`}
               >
                 {/* Header card: Step number + Status badge + Link */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-700 text-[10px] font-black font-mono text-slate-700 dark:text-slate-200">
+                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black font-mono shadow-2xs ${step.badgeClass}`}>
                     #{step.step < 10 ? `0${step.step}` : step.step}
                   </span>
 
                   <div className="flex items-center gap-1.5">
                     {activeCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 animate-pulse">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300/60 animate-pulse">
                         ⚡ {activeCount} lệnh
                       </span>
                     ) : (
-                      <span className="text-[9px] text-slate-400 font-medium">Sẵn sàng</span>
+                      <span className="text-[10px] text-slate-400 font-medium">Sẵn sàng</span>
                     )}
 
                     <Link
                       href={step.route}
-                      className="text-slate-400 hover:text-brand-600 transition-colors p-1 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700"
-                      title={`Mở trang ${step.name}`}
+                      className="text-slate-400 hover:text-brand-600 transition-colors p-1 rounded-lg hover:bg-white/80 dark:hover:bg-slate-700"
+                      title={`Mở bàn làm việc ${step.name}`}
                     >
-                      <ExternalLink className="w-3 h-3" />
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>
 
-                {/* Body card: Icon + Full Name + Description */}
+                {/* Body card: Icon container nổi bật + Full Name + Description */}
                 <button
                   type="button"
                   onClick={() => setStageFilter(isFilterActive ? "all" : step.key)}
                   className="w-full text-left"
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-200/80 dark:border-slate-600 flex items-center justify-center flex-shrink-0 text-brand-600 shadow-2xs">
-                      <Icon className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2.5 mb-1.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${step.iconBgClass}`}>
+                      <Icon className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                    <span className="text-xs font-black text-slate-900 dark:text-white whitespace-nowrap">
                       {step.name}
                     </span>
                   </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                  <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300 line-clamp-1 pl-0.5">
                     {step.desc}
                   </div>
                 </button>

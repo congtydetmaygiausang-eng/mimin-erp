@@ -236,32 +236,38 @@ function BangDieuHanhContent() {
 
   return (
     <div className="space-y-4 animate-fade-in pb-12">
-      {/* HEADER TRANG */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+      {/* HEADER TRANG (CHỮ TRẮNG NỔI BẬT RÕ NÉT TRÊN NỀN CYAN/TEAL) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/20">
         <div>
-          <h1 className="text-xl md:text-2xl font-black flex items-center gap-2 text-slate-800 dark:text-slate-100">
-            <Factory className="w-6 h-6 text-brand-600" />
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-3 text-white drop-shadow-sm tracking-tight">
+            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shadow-md">
+              <Factory className="w-5 h-5 text-white" />
+            </div>
             Bảng Điều Hành Sản Xuất
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Điều phối quy trình 10 bước · Kế thừa dữ liệu Lệnh Cắt thật · Giám sát tiến độ & tỷ lệ size
+          <p className="text-xs md:text-sm font-semibold text-white/95 mt-1.5 flex flex-wrap items-center gap-2 drop-shadow-xs">
+            <span>⚡ Điều phối quy trình 10 bước</span>
+            <span className="text-white/40">·</span>
+            <span>Kế thừa dữ liệu Lệnh Cắt thật</span>
+            <span className="text-white/40">·</span>
+            <span>Giám sát tiến độ & tỷ lệ size</span>
           </p>
         </div>
 
         {/* Nút hành động nhanh */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Link
             href="/lenh-cat"
-            className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-900 text-xs font-black transition flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <SlidersHorizontal className="w-4 h-4 text-brand-600" />
             Quản lý Lệnh Cắt
           </Link>
           <Link
             href="/ke-hoach-san-xuat"
-            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition"
+            className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/40 text-white text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95"
           >
-            Kế Hoạch SX
+            Kế Hoạch SX →
           </Link>
         </div>
       </div>
