@@ -75,12 +75,12 @@ export function TopSanPhamChart({ data }: { data: { ten: string; doanhThu: numbe
   if (!mounted) return <div className="h-72 flex items-center justify-center opacity-50 text-sm">Đang tải...</div>;
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} margin={{ top: 10, right: 20, bottom: 0, left: 0 }} layout="vertical">
+      <BarChart data={data} margin={{ top: 10, right: 20, bottom: 0, left: 10 }} layout="vertical">
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}tr`} />
-        <YAxis type="category" dataKey="ten" tick={{ fontSize: 10 }} width={130} />
+        <YAxis type="category" dataKey="ten" tick={{ fontSize: 11 }} width={160} />
         <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: any) => `${Number(v).toLocaleString()}đ`} />
-        <Bar dataKey="doanhThu" fill={COLORS[0]} radius={[0, 4, 4, 0]} name="Doanh thu" />
+        <Bar dataKey="doanhThu" fill={COLORS[0]} radius={[0, 6, 6, 0]} name="Doanh thu" />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -108,15 +108,15 @@ export function TienDoChart({ data }: { data: { ten: string; tienDo: number; san
   const mounted = useMounted();
   if (!mounted) return <div className="h-72 flex items-center justify-center opacity-50 text-sm">Đang tải...</div>;
   return (
-    <ResponsiveContainer width="100%" height={Math.max(200, data.length * 40 + 60)}>
-      <BarChart data={data} margin={{ top: 10, right: 20, bottom: 0, left: 0 }} layout="vertical">
+    <ResponsiveContainer width="100%" height={Math.max(220, data.length * 44 + 60)}>
+      <BarChart data={data} margin={{ top: 10, right: 25, bottom: 0, left: 10 }} layout="vertical">
         <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis type="number" tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" />
-        <YAxis type="category" dataKey="ten" tick={{ fontSize: 10 }} width={140} />
+        <YAxis type="category" dataKey="ten" tick={{ fontSize: 11 }} width={160} />
         <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: any) => `${v}%`} />
-        <Bar dataKey="tienDo" radius={[0, 4, 4, 0]} name="Tiến độ %">
+        <Bar dataKey="tienDo" radius={[0, 6, 6, 0]} name="Tiến độ %">
           {data.map((entry, i) => (
-            <Cell key={i} fill={entry.tienDo === 100 ? COLORS[5] : entry.tienDo > 50 ? COLORS[3] : COLORS[0]} />
+            <Cell key={i} fill={entry.tienDo === 100 ? COLORS[5] : entry.tienDo > 50 ? COLORS[1] : COLORS[3]} />
           ))}
         </Bar>
       </BarChart>
