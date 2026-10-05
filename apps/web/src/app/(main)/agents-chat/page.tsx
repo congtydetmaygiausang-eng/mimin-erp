@@ -168,6 +168,10 @@ export default function AgentsChatPage() {
   useEffect(() => {
     if (autoSelected) return;
     const agentIdFromUrl = searchParams.get("agent");
+    const promptFromUrl = searchParams.get("prompt");
+    if (promptFromUrl) {
+      setInput(promptFromUrl);
+    }
     if (agentIdFromUrl) {
       const match = agentsList.find((a) => a.agent_id === agentIdFromUrl);
       if (match) {
@@ -182,7 +186,7 @@ export default function AgentsChatPage() {
     if (match) setSelectedAgent(match);
     setAutoSelected(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, autoSelected]);
+  }, [user, autoSelected, searchParams]);
 
   const [messages, setMessages] = useState<Record<string, Message[]>>(() => {
     const stored = loadStoredMessages();
