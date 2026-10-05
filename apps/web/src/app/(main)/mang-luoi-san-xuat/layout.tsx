@@ -27,7 +27,7 @@ export default function MiminGroupLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="card p-1.5 sticky top-0 z-30">
+      <div className="card p-1.5 sticky top-0 z-10">
         <nav className="flex gap-1 overflow-x-auto">
           {TABS.map((tab) => {
             const isActive = tab.href === "/mang-luoi-san-xuat"

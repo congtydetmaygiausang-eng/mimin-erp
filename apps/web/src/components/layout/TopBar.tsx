@@ -21,7 +21,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="sticky top-0 z-30 bg-[#0B4D5D] text-white border-b border-white/10 shadow-sm">
+    <header className="sticky top-0 z-50 bg-[#0B4D5D] text-white border-b border-white/10 shadow-sm">
       <DemoBanner user={user} />
       <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 h-14">
         {onMenuClick && (

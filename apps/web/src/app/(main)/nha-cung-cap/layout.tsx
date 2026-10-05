@@ -18,7 +18,7 @@ export default function NhaCungCapLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <nav className="card p-1.5 sticky top-0 z-30 overflow-x-auto">
+      <nav className="card p-1.5 sticky top-0 z-10 overflow-x-auto">
         <div className="flex min-w-max gap-1">
           {TABS.map(({ href, label, icon: Icon }) => {
             const active = href === "/nha-cung-cap" ? pathname === href : pathname.startsWith(href);
