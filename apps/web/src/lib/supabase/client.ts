@@ -15,7 +15,7 @@ export { supabaseUpsert, supabaseDelete, supabaseFetchAll, supabaseFetchAllRaw, 
 
 // Tạo client chỉ khi có config thật
 // 2026-08-03: BẬT lại sau khi sếp Sang apply schema (commit 9ae0b4b)
-export const isSupabaseEnabled = !LOCAL_ACCOUNT_MODE;
+export const isSupabaseEnabled = Boolean(supabaseUrl && supabaseAnonKey);
 
 export const supabase: SupabaseClient | null = isSupabaseEnabled
   ? createClient(supabaseUrl, supabaseAnonKey, {

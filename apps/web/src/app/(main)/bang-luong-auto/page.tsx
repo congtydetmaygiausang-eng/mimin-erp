@@ -60,8 +60,8 @@ export default function BangLuongAutoPage() {
           <div className="text-xs font-medium opacity-90 mb-1">💰 MIMIN OS · Tính lương tự động</div>
           <h1 className="text-2xl md:text-3xl font-bold">Bảng lương tháng {thang}/{nam}</h1>
           <p className="text-sm opacity-95 mt-1 max-w-3xl">
-            Tính lương tự động cho <b>13 công nhân</b> dựa trên <b>SL đạt × đơn giá</b> từ workflow thật. 
-            Áp dụng: <b>Phạt lỗi 30%</b>, <b>Thưởng vượt 20%</b>, <b>Phạt trễ hạn 50K/task</b>.
+            Tính lương tự động cho <b>{tongKet.tongNV} nhân sự</b> đồng bộ từ cơ sở dữ liệu Supabase. 
+            Áp dụng: <b>Lương cứng / Sản phẩm</b>, <b>Phạt lỗi 30%</b>, <b>Thưởng vượt 20%</b>, <b>Phạt trễ hạn 50K/task</b>.
           </p>
           <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
             <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{tongKet.tongNV}</div><div className="opacity-90">CN</div></div>

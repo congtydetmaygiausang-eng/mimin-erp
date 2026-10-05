@@ -52,7 +52,7 @@ function inferLuongCung(phongBan: string, chucVu: string): number {
 const realUsers = USERS.filter((u) => !u.isMock && u.id !== "admin" && u.id !== "gs018" && u.id !== "gs019");
 
 export const NHAN_SU_KHOI_DAU: NhanSuExt[] = realUsers.map((nv, i) => {
-  const chucVu = inferChucVu(nv.phongBan, nv.chucVu);
+  const chucVu = nv.chucVu || inferChucVu(nv.phongBan, "");
   const luongCung = inferLuongCung(nv.phongBan, chucVu);
   
   // Convert phongBan code (to-may, kho, marketing) to readable Bo Phan
@@ -61,23 +61,23 @@ export const NHAN_SU_KHOI_DAU: NhanSuExt[] = realUsers.map((nv, i) => {
   if (nv.phongBan === "ke-toan") bpName = "Kế toán";
   if (nv.phongBan === "marketing") bpName = "Media";
   if (nv.phongBan === "kinh-doanh") bpName = "Kinh doanh";
-  if (nv.phongBan === "ban-giam-doc") bpName = "Điều hành";
+  if (nv.phongBan === "ban-giam-doc") bpName = "Quản lý";
 
   return {
     stt: i + 1,
     maNV: nv.maNV,
     hoTen: nv.name,
     boPhan: bpName,
-    chucVu: nv.chucVu || chucVu, // uu tien chucVu text neu co
-    ngaySinh: "1990-01-01",
-    gioiTinh: "Nữ", // random default
+    chucVu: chucVu,
+    ngaySinh: "1994-01-01",
+    gioiTinh: "Nam",
     cccd: "",
     sdt: nv.sdt || "",
     email: nv.email || "",
     diaChiTT: "",
     diaChiTamTru: "",
-    viTri: nv.chucVu,
-    ngayVaoLam: `2020-${String((i % 12) + 1).padStart(2, "0")}-01`,
+    viTri: chucVu,
+    ngayVaoLam: `2020-0${i + 1}-01`,
     loaiHD: "HĐ không xác định thời hạn",
     tinhTrangHN: "Đã đóng BHXH",
     soTK: "",
@@ -87,8 +87,8 @@ export const NHAN_SU_KHOI_DAU: NhanSuExt[] = realUsers.map((nv, i) => {
     trangThai: nv.isActive === false ? "nghi_viec" : "dang_lam",
     luongCB: luongCung,
     loaiLuong: nv.laCongNhan ? "Thời gian + Sản phẩm" : "Thời gian",
-    rating: 3.5 + (i % 3) * 0.5,
-    ngayVao: `2020-${String((i % 12) + 1).padStart(2, "0")}-01`,
+    rating: 4.0,
+    ngayVao: `2020-0${i + 1}-01`,
     luongCung,
     taiKhoan: nv.id,
   } as NhanSuExt;

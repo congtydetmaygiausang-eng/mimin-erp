@@ -76,9 +76,9 @@ export default function BangLuongPage() {
                 <Wallet className="w-7 h-7" /> Bảng Lương Tự Động
               </h1>
               <p className="text-sm opacity-95 mt-1">
-                Tính lương cho {REAL_NHAN_VIEN.length} NV mới từ Excel (1 admin + 17 NV)
-                {loading && <span className="ml-2 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Đang tải workflow...</span>}
-                {!loading && allPhieuCount > 0 && <span className="ml-2 opacity-80">· {allPhieuCount} workflow</span>}
+                Bảng lương cho {bangLuong.length} nhân sự hiện tại (Đồng bộ trực tiếp từ Supabase)
+                {loading && <span className="ml-2 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Đang tải...</span>}
+                {!loading && allPhieuCount > 0 && <span className="ml-2 opacity-80">· {allPhieuCount} phiếu công đoạn</span>}
               </p>
             </div>
             <button

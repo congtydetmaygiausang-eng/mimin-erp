@@ -1,1 +1,119 @@
-﻿// SERVER-ONLY: nguá»“n dá»¯ liá»‡u Ä‘áº§y Ä‘á»§ (kÃ¨m máº­t kháº©u) cho luá»“ng Ä‘Äƒng nháº­p demo/fallback.// Import "server-only" khiáº¿n build Lá»–I NGAY náº¿u file nÃ y lá»¡ bá»‹ kÃ©o vÃ o báº¥t ká»³// client component nÃ o - trÆ°á»›c Ä‘Ã¢y lib/users.ts (khÃ´ng cÃ³ guard) chá»©a cÃ¹ng dá»¯// liá»‡u vÃ  bá»‹ bundle tháº³ng xuá»‘ng trÃ¬nh duyá»‡t, lá»™ máº­t kháº©u tháº­t cá»§a 18+ nhÃ¢n viÃªn.// Chá»‰ import file nÃ y tá»« API route (route.ts) hoáº·c code server khÃ¡c.import "server-only";import type { ModuleSX, Role } from "./users";export interface UserAccountFull {  id: string;  maNV: string;  email: string;  password: string;       // plain text - dÃ¹ng cho login  passwordHash?: string;  // SHA-256 - dÃ¹ng cho verify  name: string;  role: Role;  chucVu: string;  phongBan: string;  nhom: string;  laCongNhan: boolean;  module?: ModuleSX;  donGia?: number;  donVi?: string;  sdt?: string;  isMock?: boolean;  isActive?: boolean;  lastLogin?: string;  lastActiveAt?: string;  loginCount?: number;}// 18 user: 1 admin (sang) + 17 user tá»« Excelexport const USERS_FULL: UserAccountFull[] = [  // ============ ADMIN ============  {    id: "sang", maNV: "NV035", email: "sang@mimin.vn", password: "sang123", passwordHash: "",    name: "Há»“ Minh Sang", role: "admin", chucVu: "Quáº£n trá»‹ há»‡ thá»‘ng",    phongBan: "ban-giam-doc", nhom: "quan-tri", laCongNhan: false,    sdt: "0774480916",  },  {    id: "de", maNV: "NV007", email: "de7481039@gmail.com", password: "de123", passwordHash: "",    name: "Pháº¡m VÄƒn Äá»‡", role: "sewing", chucVu: "cáº¯t - Ão trá»¥: 1.400Ä‘, Ão trÃ²n: 1.200Ä‘, Quáº§n: 900Ä‘",    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",    donGia: 1400, donVi: "cÃ¡i", sdt: "0834033992",  },  {    id: "phuong", maNV: "NV010", email: "vop61089@gmail.com", password: "phuong123", passwordHash: "",    name: "VÃ• THá»Š PHÆ¯á»œNG", role: "finishing", chucVu: "Gáº¥p xáº¿p - Bá»™ ThÆ°á»ng: 1.300Ä‘, Ão ThÆ°á»ng: 800Ä‘, Bá»™ Tráº¯ng: 1.500Ä‘, Ão Tráº¯ng: 1.000Ä‘",    phongBan: "to-may", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",    donGia: 1300, donVi: "cÃ¡i", sdt: "0702501456",  },  {    id: "vy", maNV: "NV004", email: "nvy967300@gmail.com", password: "vy123", passwordHash: "",    name: "NGUYá»„N NGá»ŒC Cáº¨M VY", role: "admin", chucVu: "Content - Media - LÆ°Æ¡ng CB: 8,000,000Ä‘",    phongBan: "marketing", nhom: "content", laCongNhan: false, module: "cat",    donGia: 0, donVi: "cÃ¡i", sdt: "0779182053",  },  {    id: "huyen", maNV: "NV003", email: "dohuyencpr81@gmail.com", password: "huyen123", passwordHash: "",    name: "Äá»– THá»Š HUYá»€N", role: "planner", chucVu: "QL KhÃ¡ch hÃ ng Sá»‰ - LÆ°Æ¡ng CB: 7,000,000Ä‘",    phongBan: "kinh-doanh", nhom: "ban-si", laCongNhan: false, module: "cat",    donGia: 0, donVi: "cÃ¡i", sdt: "0376327699",  },  {    id: "thanh", maNV: "NV002", email: "buithanh151199@gmail.com", password: "thanh123", passwordHash: "",    name: "BÃ™I THá»Š THANH", role: "accountant", chucVu: "Káº¿ toÃ¡n Ä‘iá»u phá»‘i SX - LÆ°Æ¡ng CB: 8,000,000Ä‘",    phongBan: "ke-toan", nhom: "ke-toan", laCongNhan: false, module: "cat",    donGia: 0, donVi: "cÃ¡i", sdt: "0911546004",  },  {    id: "be", maNV: "NV019", email: "beekhuong1505@gmail.com", password: "be123", passwordHash: "",    name: "NGUYá»„N THá»Š BÃ‰", role: "finishing", chucVu: "Gáº¥p xáº¿p - Bá»™ ThÆ°á»ng: 1.300Ä‘, Ão ThÆ°á»ng: 800Ä‘, Bá»™ Tráº¯ng: 1.500Ä‘, Ão Tráº¯ng: 1.000Ä‘",    phongBan: "to-may", nhom: "dong-goi", laCongNhan: true, module: "dong-goi",    donGia: 1300, donVi: "cÃ¡i", sdt: "0363073998",  },  {    id: "hoa", maNV: "NV020", email: "xhoa14052004@gmail.com", password: "hoa123", passwordHash: "",    name: "HUá»²NH XUÃ‚N HÃ’A", role: "admin", chucVu: "Media - LÆ°Æ¡ng CB: 10,000,000Ä‘",    phongBan: "marketing", nhom: "content", laCongNhan: false, module: "cat",    donGia: 0, donVi: "cÃ¡i", sdt: "0334536752",  },  {    id: "duc1", maNV: "NV021", email: "nguyenminhduc199024@gmail.com", password: "duc1123", passwordHash: "",    name: "NGUYá»„N MINH Äá»¨C", role: "finishing", chucVu: "á»¦i - Ão trá»¥: 800Ä‘, Ão trÃ²n: 700Ä‘, Quáº§n: 600Ä‘",    phongBan: "to-may", nhom: "ui", laCongNhan: true, module: "ui",    donGia: 800, donVi: "cÃ¡i", sdt: "0365052474",  },  {    id: "dinh", maNV: "NV023", email: "nan499229@gmail.com", password: "dinh123", passwordHash: "",    name: "LÃŠ Äá»ŠNH", role: "finishing", chucVu: "á»¦i - Ão trá»¥: 800Ä‘, Ão trÃ²n: 700Ä‘, Quáº§n: 600Ä‘",    phongBan: "to-may", nhom: "ui", laCongNhan: true, module: "ui",    donGia: 800, donVi: "cÃ¡i", sdt: "334047628",  },  {    id: "vinh", maNV: "NV024", email: "duongvinh3102005@gmail.com", password: "vinh123", passwordHash: "",    name: "DÆ¯Æ NG Táº¤N VÄ¨NH", role: "sewing", chucVu: "Cáº¯t - Ão trá»¥: 1.400Ä‘, Ão trÃ²n: 1.200Ä‘, Quáº§n: 900Ä‘",    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",    donGia: 1400, donVi: "cÃ¡i", sdt: "0392123831",  },  {    id: "minh1", maNV: "NV025", email: "gs013@mimin-erp.local", password: "minh1123", passwordHash: "",    name: "NGUYá»„N QUá»C MINH", role: "sewing", chucVu: "Cáº¯t - Ão trá»¥: 1.400Ä‘, Ão trÃ²n: 1.200Ä‘, Quáº§n: 900Ä‘",    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",    donGia: 1400, donVi: "cÃ¡i", sdt: "0332026731",  },  {    id: "hau", maNV: "NV005", email: "beo26032019@gmail.com", password: "hau123", passwordHash: "",    name: "NGUYá»„N QUá»C Háº¬U", role: "warehouse", chucVu: "NhÃ¢n viÃªn Kho - LÆ°Æ¡ng CB: 7,000,000Ä‘",    phongBan: "kho", nhom: "kho", laCongNhan: false, module: "cat",    donGia: 0, donVi: "cÃ¡i", sdt: "0386231456",  },  {    id: "phi", maNV: "NV027", email: "fizxnm2251994@mail.com", password: "phi123", passwordHash: "",    name: "LÆ¯Æ NG HOÃ€NG PHI", role: "admin", chucVu: "Media",    phongBan: "marketing", nhom: "content", laCongNhan: false, module: "cat",    donGia: 0, donVi: "cÃ¡i", sdt: "0938625594",  },  {    id: "ruong", maNV: "NV017", email: "nguyenvanruong14@gmail.com", password: "ruong123", passwordHash: "",    name: "NGUYá»„N VÄ‚N RUá»˜NG", role: "sewing", chucVu: "Khuy nÃºt - Chung: 750Ä‘",    phongBan: "to-may", nhom: "khuy-nut", laCongNhan: true, module: "khuy-nut",    donGia: 750, donVi: "cÃ¡i", sdt: "0339724459",  },  // CÃ¡c tÃ i khoáº£n áº£o/admin trÃªn Supabase  {    id: "hung", maNV: "NV029", email: "hung@mimin.vn", password: "hung123", passwordHash: "",    name: "HUNG", role: "admin", chucVu: "Quan tri vien",    phongBan: "ban-giam-doc", nhom: "quan-tri", laCongNhan: false,  },  {    id: "admin", maNV: "ADMIN", email: "admin@mimin.com", password: "admin", passwordHash: "",    name: "Administrator", role: "admin", chucVu: "Administrator",    phongBan: "ban-giam-doc", nhom: "quan-tri", laCongNhan: false,  },  {    id: "gs018", maNV: "NV018", email: "gs018@mimin-erp.local", password: "123", passwordHash: "",    name: "MIMIN USER 18", role: "sewing", chucVu: "CÃ´ng nhÃ¢n",    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",  },  {    id: "gs019", maNV: "NV019-2", email: "gs019@mimin-erp.local", password: "123", passwordHash: "",    name: "MIMIN USER 19", role: "sewing", chucVu: "CÃ´ng nhÃ¢n",    phongBan: "to-may", nhom: "cat", laCongNhan: true, module: "cat",  },];export function findUserByEmailFull(email: string): UserAccountFull | undefined {  return USERS_FULL.find((u) => u.email.toLowerCase() === email.toLowerCase());}
+// SERVER-ONLY: nguồn dữ liệu đầy đủ cho luồng đăng nhập fallback.
+// Chỉ dùng cho các tài khoản nội bộ chính thức của MIMIN.
+import "server-only";
+import type { ModuleSX, Role } from "./users";
+
+export interface UserAccountFull {
+  id: string;
+  maNV: string;
+  email: string;
+  password: string;
+  passwordHash?: string;
+  name: string;
+  role: Role;
+  chucVu: string;
+  phongBan: string;
+  nhom: string;
+  laCongNhan: boolean;
+  module?: ModuleSX;
+  donGia?: number;
+  donVi?: string;
+  sdt?: string;
+  isMock?: boolean;
+  isActive?: boolean;
+  lastLogin?: string;
+  lastActiveAt?: string;
+  loginCount?: number;
+}
+
+// 5 nhân sự chính thức của MIMIN + tài khoản admin dự phòng
+export const USERS_FULL: UserAccountFull[] = [
+  {
+    id: "sang",
+    maNV: "NV01",
+    email: "sang@mimin.vn",
+    password: "sang123",
+    name: "Hồ Minh Sang",
+    role: "admin",
+    chucVu: "Giám Đốc",
+    phongBan: "ban-giam-doc",
+    nhom: "quan-tri",
+    laCongNhan: false,
+    sdt: "0774480916",
+    isActive: true,
+  },
+  {
+    id: "dinh",
+    maNV: "NV02",
+    email: "dinh@mimin.vn",
+    password: "dinh123",
+    name: "Lê Định",
+    role: "warehouse",
+    chucVu: "Nhân viên Kho",
+    phongBan: "kho",
+    nhom: "kho",
+    laCongNhan: false,
+    sdt: "0334047628",
+    isActive: true,
+  },
+  {
+    id: "khang",
+    maNV: "NV03",
+    email: "khang@mimin.vn",
+    password: "khang123",
+    name: "Nguyễn Triết Khang",
+    role: "sewing",
+    chucVu: "Nhân Viên Sản Xuất",
+    phongBan: "to-may",
+    nhom: "cat",
+    laCongNhan: true,
+    sdt: "0354370534",
+    isActive: true,
+  },
+  {
+    id: "phi",
+    maNV: "NV04",
+    email: "phi@mimin.vn",
+    password: "phi123",
+    name: "Lương Hoàng Phi",
+    role: "admin",
+    chucVu: "Quản Lý",
+    phongBan: "ban-giam-doc",
+    nhom: "quan-tri",
+    laCongNhan: false,
+    sdt: "0938625594",
+    isActive: true,
+  },
+  {
+    id: "hung",
+    maNV: "NV05",
+    email: "hung@mimin.vn",
+    password: "hung123",
+    name: "Trần Lương Hùng",
+    role: "planner",
+    chucVu: "Trưởng Phòng KD",
+    phongBan: "kinh-doanh",
+    nhom: "ban-si",
+    laCongNhan: false,
+    sdt: "0835228999",
+    isActive: true,
+  },
+  {
+    id: "admin",
+    maNV: "ADMIN",
+    email: "admin@mimin.com",
+    password: "admin",
+    name: "Administrator",
+    role: "admin",
+    chucVu: "Administrator",
+    phongBan: "ban-giam-doc",
+    nhom: "quan-tri",
+    laCongNhan: false,
+    isMock: true,
+    isActive: true,
+  },
+];
+
+export function findUserByEmailFull(email: string): UserAccountFull | undefined {
+  return USERS_FULL.find((u) => u.email.toLowerCase() === email.toLowerCase());
+}

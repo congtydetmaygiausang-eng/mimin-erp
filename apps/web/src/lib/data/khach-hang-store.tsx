@@ -129,12 +129,9 @@ type KhachHangContextType = {
 };
 
 const Ctx = createContext<KhachHangContextType | null>(null);
-const STORAGE_KEY = "mimin_khach_hang_v1";
+const STORAGE_KEY = "mimin_khach_hang_v2";
 
-const KHACH_HANG_MOCK: KhachHangUI[] = [
-  { maKH: "KH-002", ten: "Shop Thời Trang Sài Gòn", sdt: "0901234568", email: "saigon@shop.vn", diaChi: "TPHCM", congNo: 0, rating: 4, ghiChu: "Khách lẻ", loai: "Shop", nhuCauChinh: [], ghiNho: false },
-  { maKH: "KH-001", ten: "Cty May Hà Nội", sdt: "0901234567", email: "hanoi@may.vn", diaChi: "Hà Nội", congNo: 15000000, rating: 5, ghiChu: "Khách VIP", loai: "Công ty", nhuCauChinh: [], ghiNho: true },
-];
+const KHACH_HANG_MOCK: KhachHangUI[] = [];
 
 export function KhachHangProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<KhachHangUI[]>([]);
@@ -146,7 +143,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const fetchSupabase = async () => {
       if (!isSupabaseEnabled) {
-        if (list.length === 0) setList(KHACH_HANG_MOCK);
+        if (list.length === 0) setList([]);
         setLoading(false);
         return;
       }
@@ -156,21 +153,17 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
         
         if (mounted) {
           if (data && data.length > 0) {
-            // Sort by maKH descending so new customers appear first
+            // Sắp xếp mã KH giảm dần để khách hàng mới lên đầu
             data.sort((a: any, b: any) => (b.ma_kh || "").localeCompare(a.ma_kh || ""));
             const mapped = data.map((d: any) => mapToUI(d));
             setList(mapped);
-            // Không lưu localStorage - 700+ rows quá lớn
           } else {
-            setList(KHACH_HANG_MOCK);
-            Promise.all(KHACH_HANG_MOCK.map(kh => 
-              supabaseUpsert("khach_hang", mapToDB(kh))
-            )).catch(() => {});
+            setList([]);
           }
         }
       } catch (err) {
         console.error("Lỗi fetch khách hàng Supabase:", err);
-        if (mounted && list.length === 0) setList(KHACH_HANG_MOCK);
+        if (mounted && list.length === 0) setList([]);
       } finally {
         if (mounted) setLoading(false);
       }
