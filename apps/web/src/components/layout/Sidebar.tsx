@@ -119,10 +119,10 @@ const NAV: NavItem[] = [
     color: "border-cyan-400", iconColor: "text-cyan-300",
     ...cardStyle("from-cyan-500", "to-blue-600", "from-cyan-50", "to-blue-50", "text-cyan-900"),
     subItems: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, iconColor: "text-cyan-400", permModule: "dashboard" },
+      { href: "/dashboard", label: "Bàn làm việc", icon: LayoutDashboard, iconColor: "text-cyan-400", permModule: "dashboard" },
       { href: "/bang-dieu-hanh-sx", label: "Bảng điều hành SX", icon: Factory, iconColor: "text-sky-400", permModule: "bang-dieu-hanh-sx" },
-      { href: "/realtime", label: "Real-time Dashboard", icon: BarChart3, iconColor: "text-blue-400", permModule: "realtime" },
-      { href: "/canh-bao", label: "Cảnh báo real-time", icon: Bell, iconColor: "text-amber-400", permModule: "bao-cao" },
+      { href: "/realtime", label: "Báo cáo tổng hợp (BI)", icon: BarChart3, iconColor: "text-blue-400", permModule: "realtime" },
+      { href: "/canh-bao", label: "Trung tâm cảnh báo", icon: Bell, iconColor: "text-amber-400", permModule: "bao-cao" },
     ]
   },
   {
