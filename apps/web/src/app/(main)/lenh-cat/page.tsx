@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { LenhCatModal } from "@/components/LenhCatModal";
 import { useLenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
 import { useSession } from "@/components/session-provider";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, LenhCatTableView } from "@/components/ui";
+import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { PremiumHeader } from "./components/Header";
 import { FilterBar, MauSection } from "./components/FilterBar";
 import { LenhCatCard } from "./components/LCard";
@@ -42,6 +43,7 @@ export default function LenhCatPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [draftData, setDraftData] = useState<any>(null);
   const [filterTrangThai, setFilterTrangThai] = useState<"ALL" | TrangThaiLenhCat>("ALL");
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [expandedMauCD, setExpandedMauCD] = useState<string | null>(null);
   const [expandedMauCP, setExpandedMauCP] = useState<string | null>(null);
   const [showDanhSachMau, setShowDanhSachMau] = useState(false);
@@ -156,6 +158,10 @@ export default function LenhCatPage() {
         onDeleteCP={(id) => { xoaMauChiPhi(id); toast.success("Đã xoá bảng giá"); }}
       />
 
+      <div className="flex justify-end items-center mb-2">
+        <DataViewToggle onChange={setViewMode} />
+      </div>
+
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white/50 rounded-2xl border border-white/20 shadow-sm backdrop-blur-sm">
           <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin mb-4"></div>
@@ -167,7 +173,7 @@ export default function LenhCatPage() {
           title="Chưa có lệnh cắt nào"
           description="Bấm 'Tạo lệnh cắt' để bắt đầu"
         />
-      ) : (
+      ) : viewMode === "card" ? (
         <div className="flex flex-col gap-3">
           {filteredLC.map((lc) => (
             <LenhCatCard
@@ -198,8 +204,8 @@ export default function LenhCatPage() {
                   // = data khâu Cắt. Đây là nguồn fallback tin cậy sau F5.
                   const catKeySync = Object.keys(newTyLe).find(k =>
                     k.toLowerCase().includes("cat") ||
-                    (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
-                    (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                    (fixedPhanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                    (lc.phanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
                   );
                   if (catKeySync && newTyLe[catKeySync]) {
                     newDsMau[mauIdx].phanBoSize = newTyLe[catKeySync].map((sz: any) => ({
@@ -214,8 +220,8 @@ export default function LenhCatPage() {
                     if (mau.tyLeSizeChiTiet) {
                       const catKey = Object.keys(mau.tyLeSizeChiTiet).find(k =>
                         k.toLowerCase().includes("cat") ||
-                        (lc.phanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
-                        (fixedPhanCong?.find(p => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
+                        (lc.phanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt") ||
+                        (fixedPhanCong?.find((p: any) => p.id === k)?.tenCongDoan || "").toLowerCase().includes("cắt")
                       );
                       if (catKey && mau.tyLeSizeChiTiet[catKey]) {
                         totalThucTe += mau.tyLeSizeChiTiet[catKey].reduce((sum: number, sz: any) => sum + (sz.sl || 0), 0);
@@ -254,6 +260,13 @@ export default function LenhCatPage() {
             />
           ))}
         </div>
+      ) : (
+        <LenhCatTableView
+          stage="lenh-cat"
+          list={filteredLC}
+          onActionClick={(lc) => handleEdit(lc)}
+          onTyLeClick={(lc) => handleEdit(lc)}
+        />
       )}
 
       {showTaoMauCD && (

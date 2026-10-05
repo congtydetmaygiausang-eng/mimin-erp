@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { usePhanCong } from "@/lib/data/cong-no-store";
 import { kiemTraTruocHoanThanh, thongKeLoiLenhCat } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
 import { DoiSoatModal } from "@/components/DoiSoatModal";
 import { supabaseUpsertRaw } from "@/lib/supabase/sync-helper";
@@ -301,15 +301,15 @@ export default function UiHoanThienPage() {
         </div>
       )}
 
-      {lcHT.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
-          <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Chưa có lô nào cần hoàn thiện</div>
-          <div className="text-sm mt-1">Hàng QC đạt sẽ chuyển sang đây</div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {lcHT.map(lc => {
+            <StageWorkList
+        data={lcHT}
+        stage="hoan-thien"
+        stageKeyword="ui"
+        getStagePC={(lc) => getHTPC(lc)?.[0]}
+        onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
+        emptyMessage="Chưa có lô nào cần hoàn thiện"
+        renderCard={(lc) => {
+
             const htPCs = getHTPC(lc);
             const isAllDone = htPCs.every((pc: any) => pc.trangThaiCD === "hoan_thanh");
             const isLCDone = lc.trangThai === "HoanThanh";
@@ -377,11 +377,10 @@ export default function UiHoanThienPage() {
                 </div>
               </LenhCatCardV2>
             );
-          })}
-        </div>
-      )}
-
-      {/* Modal nhập liệu cho màu */}
+        }}
+      />
+      
+{/* Modal nhập liệu cho màu */}
       {selectedMau && (
         <ChiTietMauHistoryModal
           isOpen={!!selectedMau}

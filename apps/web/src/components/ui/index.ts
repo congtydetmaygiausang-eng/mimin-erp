@@ -14,6 +14,7 @@ export { CrudModal, type FieldDef } from "./CrudModal";
 export { ImageUploader, type UploadedFile } from "./ImageUploader";
 export { LenhCatColorCards } from "./LenhCatColorCards";
 export { LenhCatCardV2 } from "./LenhCatCardV2";
+export { LenhCatTableView, type StageKey } from "./LenhCatTableView";
 export { ChiTietMauHistoryModal } from "./ChiTietMauHistoryModal";
 export { KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "./KhaiBaoSoLuongTheoMau";
 

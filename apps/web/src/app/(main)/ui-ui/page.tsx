@@ -15,7 +15,7 @@ import { CheckCircle2, Wind, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
-import { LenhCatCardV2, ChiTietMauHistoryModal } from "@/components/ui";
+import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList } from "@/components/ui";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
@@ -135,15 +135,15 @@ export default function UiUiPage() {
         </div>
       </div>
 
-      {lcHT.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 text-slate-400">
-          <Wind className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <div className="font-bold">Không có việc Ủi nào</div>
-          <div className="text-sm mt-1">Chờ các tổ trước hoàn thành công đoạn sẽ xuất hiện ở đây</div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {lcHT.map(lc => {
+            <StageWorkList
+        data={lcHT}
+        stage="ui"
+        stageKeyword="ui"
+        getStagePC={(lc) => getHTPC(lc)?.[0]}
+        onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
+        emptyMessage="Không có việc Ủi nào"
+        renderCard={(lc) => {
+
             const htPCs = getHTPC(lc);
             const isLCDone = lc.trangThai === "HoanThanh";
 
@@ -299,11 +299,10 @@ export default function UiUiPage() {
                 </div>
               </LenhCatCardV2>
             );
-          })}
-        </div>
-      )}
-
-      {/* Modal nhập liệu cho màu */}
+        }}
+      />
+      
+{/* Modal nhập liệu cho màu */}
       {selectedMau && (
         <ChiTietMauHistoryModal
           isOpen={!!selectedMau}
