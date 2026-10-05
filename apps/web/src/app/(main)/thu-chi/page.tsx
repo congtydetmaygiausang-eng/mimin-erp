@@ -56,6 +56,7 @@ import {
   syncFromSupabase,
 } from "@/lib/data/thu-chi";
 import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 
 // Helper lấy icon theo danh mục
 function getCategoryIcon(danhMuc: DanhMucThuChi, className = "w-4 h-4") {
@@ -107,6 +108,17 @@ export default function ThuChiPage() {
   const [editingItem, setEditingItem] = useState<GiaoDichThuChi | null>(null);
   const [viewingItem, setViewingItem] = useState<GiaoDichThuChi | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // State Lightbox phóng to ảnh chứng từ (hóa đơn / bill)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxAlt, setLightboxAlt] = useState<string>("");
+  const [lightboxGallery, setLightboxGallery] = useState<string[]>([]);
+
+  const handleOpenLightbox = (src: string, gallery: string[] = [], alt = "Chứng từ thu chi") => {
+    setLightboxSrc(src);
+    setLightboxGallery(gallery && gallery.length > 0 ? gallery : [src]);
+    setLightboxAlt(alt);
+  };
 
   // Form state
   const [formLoai, setFormLoai] = useState<LoaiThuChi>("chi");
@@ -855,21 +867,42 @@ export default function ThuChiPage() {
 
                     {/* Ảnh chứng từ nếu có */}
                     {item.hinhAnh && item.hinhAnh.length > 0 && (
-                      <div className="flex items-center gap-2 pt-1 overflow-x-auto pb-1">
-                        {item.hinhAnh.map((imgSrc, imgIdx) => (
-                          <button
-                            key={imgIdx}
-                            type="button"
-                            onClick={() => setViewingItem(item)}
-                            className="relative h-14 w-20 shrink-0 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 hover:opacity-80 transition"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={imgSrc} alt="Bill" className="h-full w-full object-cover" />
-                          </button>
-                        ))}
-                        <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">
-                          ({item.hinhAnh.length} ảnh)
-                        </span>
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                            <FileText className="w-3.5 h-3.5 text-sky-500" />
+                            <span>Chứng từ ({item.hinhAnh.length} ảnh)</span>
+                          </span>
+                          <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">
+                            Chạm để phóng to
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                          {item.hinhAnh.map((imgSrc, imgIdx) => (
+                            <button
+                              key={imgIdx}
+                              type="button"
+                              onClick={() =>
+                                handleOpenLightbox(
+                                  imgSrc,
+                                  item.hinhAnh,
+                                  `${item.id} - ${item.noiDung} (Ảnh ${imgIdx + 1}/${item.hinhAnh!.length})`
+                                )
+                              }
+                              className="group relative h-16 w-20 shrink-0 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 shadow-xs hover:ring-2 hover:ring-sky-500 transition cursor-zoom-in text-left"
+                              title={`Chạm xem ảnh ${imgIdx + 1}`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={imgSrc} alt={`Chứng từ ${imgIdx + 1}`} className="h-full w-full object-cover group-hover:scale-105 transition" />
+                              <div className="absolute inset-0 bg-black/25 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                <Eye className="w-4 h-4 text-white" />
+                              </div>
+                              <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center font-medium py-0.5">
+                                {imgIdx + 1}/{item.hinhAnh?.length || 1}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -1005,14 +1038,48 @@ export default function ThuChiPage() {
                         {/* Chứng từ / Ảnh */}
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           {item.hinhAnh && item.hinhAnh.length > 0 ? (
-                            <button
-                              onClick={() => setViewingItem(item)}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 transition"
-                              title="Bấm để xem ảnh hóa đơn / bill"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                              <span>{item.hinhAnh.length} ảnh</span>
-                            </button>
+                            <div className="inline-flex items-center justify-center gap-2">
+                              {/* Thumbnail ảnh đầu tiên */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleOpenLightbox(
+                                    item.hinhAnh![0],
+                                    item.hinhAnh,
+                                    `${item.id} - ${item.noiDung} (1/${item.hinhAnh!.length})`
+                                  )
+                                }
+                                className="group relative h-9 w-9 shrink-0 rounded-lg overflow-hidden border border-sky-200 dark:border-sky-800 bg-slate-100 shadow-xs hover:ring-2 hover:ring-sky-500 transition cursor-zoom-in"
+                                title="Bấm để phóng to xem chứng từ"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={item.hinhAnh[0]}
+                                  alt={item.noiDung}
+                                  className="h-full w-full object-cover group-hover:scale-110 transition"
+                                />
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                  <Eye className="w-3.5 h-3.5 text-white" />
+                                </div>
+                              </button>
+
+                              {/* Nút đếm số ảnh */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleOpenLightbox(
+                                    item.hinhAnh![0],
+                                    item.hinhAnh,
+                                    `${item.id} - ${item.noiDung} (1/${item.hinhAnh!.length})`
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200/60 dark:border-sky-800/60 transition shadow-xs"
+                                title="Bấm để xem toàn bộ ảnh chứng từ"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                                <span>{item.hinhAnh.length} ảnh</span>
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-[11px] text-slate-400 italic">Không có</span>
                           )}
@@ -1472,30 +1539,41 @@ export default function ThuChiPage() {
               {/* Danh sách ảnh đính kèm */}
               {viewingItem.hinhAnh && viewingItem.hinhAnh.length > 0 ? (
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-2">
-                    Ảnh Chứng Từ / Hóa Đơn ({viewingItem.hinhAnh.length})
-                  </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-sky-500" />
+                      <span>Ảnh Chứng Từ / Hóa Đơn ({viewingItem.hinhAnh.length})</span>
+                    </span>
+                    <span className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
+                      Bấm vào ảnh để phóng to & xoay
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {viewingItem.hinhAnh.map((imgSrc, idx) => (
                       <div
                         key={idx}
-                        className="group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-video flex items-center justify-center"
+                        onClick={() =>
+                          handleOpenLightbox(
+                            imgSrc,
+                            viewingItem.hinhAnh,
+                            `${viewingItem.id} - ${viewingItem.noiDung} (Ảnh ${idx + 1}/${viewingItem.hinhAnh!.length})`
+                          )
+                        }
+                        className="group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-video flex items-center justify-center cursor-zoom-in shadow-sm hover:border-sky-400 dark:hover:border-sky-500 transition"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={imgSrc}
                           alt={`Chứng từ ${idx + 1}`}
-                          className="h-full w-full object-cover transition group-hover:scale-105"
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                         />
-                        <a
-                          href={imgSrc}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition font-medium text-xs gap-1.5"
-                        >
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-white opacity-0 group-hover:opacity-100 transition font-medium text-xs gap-1.5 backdrop-blur-[2px]">
                           <Eye className="w-4 h-4" />
-                          <span>Xem ảnh gốc</span>
-                        </a>
+                          <span>Bấm để phóng to & xoay ảnh</span>
+                        </div>
+                        <span className="absolute top-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
+                          Ảnh {idx + 1}/{viewingItem.hinhAnh?.length || 1}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1578,6 +1656,15 @@ export default function ThuChiPage() {
           </div>
         </div>
       )}
+
+      {/* ==================== LIGHTBOX PHÓNG TO & XOAY ẢNH CHỨNG TỪ ==================== */}
+      <ImageLightbox
+        src={lightboxSrc}
+        alt={lightboxAlt}
+        gallery={lightboxGallery}
+        onChange={(newSrc) => setLightboxSrc(newSrc)}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   );
 }
