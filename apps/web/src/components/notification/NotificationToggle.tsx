@@ -15,7 +15,14 @@ export function NotificationToggle() {
 
   useEffect(() => {
     checkSubscriptionStatus();
-  }, []);
+
+    const onToggle = () => {
+      if (isSubscribed) unsubscribeFromPush();
+      else subscribeToPush();
+    };
+    window.addEventListener("mimin_trigger_push_toggle", onToggle);
+    return () => window.removeEventListener("mimin_trigger_push_toggle", onToggle);
+  }, [isSubscribed]);
 
   const checkSubscriptionStatus = async () => {
     try {
@@ -29,7 +36,9 @@ export function NotificationToggle() {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       const isEnabledLocal = localStorage.getItem("mimin_notifications_enabled") === "true";
-      setIsSubscribed(!!subscription || isEnabledLocal);
+      const active = !!subscription || isEnabledLocal;
+      setIsSubscribed(active);
+      window.dispatchEvent(new CustomEvent("mimin_push_state_changed", { detail: { isSubscribed: active } }));
     } catch (err) {
       console.error("Lỗi khi kiểm tra thông báo:", err);
     } finally {
@@ -92,17 +101,20 @@ export function NotificationToggle() {
         }
       } catch (e) {}
 
-      const { error } = await supabase.from('push_subscriptions').upsert({
-        user_name: userName,
-        endpoint: subscriptionJson.endpoint,
-        auth_key: subscriptionJson.keys?.auth,
-        p256dh_key: subscriptionJson.keys?.p256dh,
-      }, { onConflict: 'endpoint' });
+      if (supabase) {
+        const { error } = await supabase.from('push_subscriptions').upsert({
+          user_name: userName,
+          endpoint: subscriptionJson.endpoint,
+          auth_key: subscriptionJson.keys?.auth,
+          p256dh_key: subscriptionJson.keys?.p256dh,
+        }, { onConflict: 'endpoint' });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       localStorage.setItem("mimin_notifications_enabled", "true");
       setIsSubscribed(true);
+      window.dispatchEvent(new CustomEvent("mimin_push_state_changed", { detail: { isSubscribed: true } }));
       toast.success("Đã bật thông báo thành công!");
     } catch (err: any) {
       console.error("Lỗi đăng ký:", err);
@@ -120,8 +132,10 @@ export function NotificationToggle() {
       
       if (subscription) {
         // 1. XOÁ TRÊN SUPABASE ĐỂ SERVER QUÊN MÁY NÀY
-        const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint);
-        if (error) console.error("Lỗi xoá trên DB:", error);
+        if (supabase) {
+          const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint);
+          if (error) console.error("Lỗi xoá trên DB:", error);
+        }
         
         // 2. XOÁ ĐĂNG KÝ NGẦM CỦA TRÌNH DUYỆT
         await subscription.unsubscribe();
@@ -129,6 +143,7 @@ export function NotificationToggle() {
       
       localStorage.setItem("mimin_notifications_enabled", "false");
       setIsSubscribed(false);
+      window.dispatchEvent(new CustomEvent("mimin_push_state_changed", { detail: { isSubscribed: false } }));
       toast.success("Đã tắt thông báo.");
     } catch (err) {
       console.error("Lỗi huỷ đăng ký:", err);
@@ -143,22 +158,28 @@ export function NotificationToggle() {
     <button
       onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
       disabled={isLoading}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md border transition-all shadow-xs ${
         isSubscribed 
-          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" 
-          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+          ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/30 hover:bg-emerald-500/30" 
+          : "bg-white/10 text-white/90 border-white/20 hover:bg-white/20"
       }`}
-      title={isSubscribed ? "Đang bật thông báo công việc" : "Bật thông báo công việc"}
+      title={isSubscribed ? "Đang bật thông báo đẩy về thiết bị" : "Bật thông báo đẩy về thiết bị"}
     >
       {isLoading ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
       ) : isSubscribed ? (
-        <Bell className="w-4 h-4" />
+        <>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+          </span>
+          <Bell className="w-3.5 h-3.5 text-emerald-300" />
+        </>
       ) : (
-        <BellOff className="w-4 h-4" />
+        <BellOff className="w-3.5 h-3.5 text-white/70" />
       )}
-      <span className="hidden md:inline">
-        {isSubscribed ? "Đã bật thông báo" : "Bật thông báo"}
+      <span className="hidden sm:inline">
+        {isSubscribed ? "Thông báo: Bật" : "Bật thông báo"}
       </span>
     </button>
   );
