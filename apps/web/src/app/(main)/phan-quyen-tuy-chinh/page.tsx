@@ -49,6 +49,19 @@ const ACTION_META = {
   d: { label: "Xóa", icon: Trash2, color: "rose", letter: "X" },
 } as const;
 const ACTIONS: ("r" | "c" | "u" | "d")[] = ["r", "c", "u", "d"];
+
+const getActionActiveClass = (act: "r" | "c" | "u" | "d") => {
+  switch (act) {
+    case "r":
+      return "bg-blue-500 hover:bg-blue-600 text-white shadow-sm";
+    case "c":
+      return "bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm";
+    case "u":
+      return "bg-amber-500 hover:bg-amber-600 text-white shadow-sm";
+    case "d":
+      return "bg-rose-500 hover:bg-rose-600 text-white shadow-sm";
+  }
+};
 export default function PhanQuyenTuyChinhPage() {
   const { user } = useSession();
   const perm = usePermission();
@@ -153,6 +166,23 @@ export default function PhanQuyenTuyChinhPage() {
           })
         ) as Record<Module, string>,
       };
+    });
+    setDirty(true);
+  };
+  // Toggle 1 action cho tất cả non-admin roles của 1 module (cột theo module)
+  const toggleModuleAction = (mod: Module, action: "r" | "c" | "u" | "d") => {
+    setMatrix((prev) => {
+      const nonAdminRoles = ALL_ROLES.filter((r) => r !== "admin");
+      const allHave = nonAdminRoles.every((r) => (prev[r]?.[mod] || "").includes(action));
+      const next = { ...prev };
+      for (const r of nonAdminRoles) {
+        const cur = prev[r]?.[mod] || "";
+        const updated = allHave
+          ? cur.replace(action, "")
+          : (cur + action).split("").sort().join("");
+        next[r] = { ...prev[r], [mod]: updated };
+      }
+      return next;
     });
     setDirty(true);
   };
@@ -437,7 +467,15 @@ export default function PhanQuyenTuyChinhPage() {
         />
       )}
       {view === "accounts" && (
-        <UserPermissionTable users={users} matrix={matrix} />
+        <UserPermissionTable
+          users={users}
+          matrix={matrix}
+          onToggle={toggle}
+          onToggleAll={toggleAll}
+          onToggleModuleAction={toggleModuleAction}
+          dirty={dirty}
+          onSave={handleSave}
+        />
       )}
       {view === "matrix" && (
         <>
@@ -525,7 +563,7 @@ export default function PhanQuyenTuyChinhPage() {
                                   onClick={() => toggle(role, mod, act)}
                                   className={`w-5 h-5 rounded text-[9px] font-bold transition-all ${
                                     has
-                                      ? `bg-${meta.color}-500 text-white shadow-sm`
+                                      ? getActionActiveClass(act)
                                       : `bg-slate-100 dark:bg-slate-800 text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700`
                                   }`}
                                   title={`${meta.label} (${act})`}
@@ -606,12 +644,23 @@ export default function PhanQuyenTuyChinhPage() {
 function UserPermissionTable({
   users,
   matrix,
+  onToggle,
+  onToggleAll,
+  onToggleModuleAction,
+  dirty,
+  onSave,
 }: {
   users: PermissionUser[];
   matrix: Matrix;
+  onToggle: (role: Role, mod: Module, action: "r" | "c" | "u" | "d") => void;
+  onToggleAll: (role: Role, mod: Module) => void;
+  onToggleModuleAction: (mod: Module, action: "r" | "c" | "u" | "d") => void;
+  dirty?: boolean;
+  onSave?: () => Promise<void>;
 }) {
   const [filterRole, setFilterRole] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [showAllModules, setShowAllModules] = useState(false);
   const [selectedUser, setSelectedUser] = useState<PermissionUser | null>(null);
 
   const filtered = users.filter((u) => {
@@ -625,44 +674,73 @@ function UserPermissionTable({
 
   const getUserPerms = (u: PermissionUser) => matrix[u.role] || {};
 
-  // Chỉ hiện các module mà ít nhất 1 user trong danh sách có quyền
-  const activeModules = ALL_MODULES.filter((m) =>
-    filtered.some((u) => (getUserPerms(u)[m] || "") !== "")
-  );
+  // Mặc định hiện các module mà ít nhất 1 user trong danh sách có quyền, hoặc toàn bộ nếu chọn showAllModules
+  const activeModules = useMemo(() => {
+    if (showAllModules) return ALL_MODULES;
+    const active = ALL_MODULES.filter((m) =>
+      filtered.some((u) => (getUserPerms(u)[m] || "") !== "")
+    );
+    return active.length > 0 ? active : ALL_MODULES;
+  }, [showAllModules, filtered, matrix]);
 
   if (selectedUser) {
     const perms = getUserPerms(selectedUser);
+    const isAdmin = selectedUser.role === "admin";
+
     return (
       <div className="space-y-3">
-        <div className="card p-3 flex items-center gap-3">
-          <button
-            onClick={() => setSelectedUser(null)}
-            className="btn-secondary text-xs"
-          >
-            ← Quay lại
-          </button>
-          <div
-            className={`w-9 h-9 rounded-full bg-gradient-to-br ${ROLE_COLORS[selectedUser.role]} text-white flex items-center justify-center font-bold text-sm shrink-0`}
-          >
-            {selectedUser.name.charAt(0)}
+        <div className="card p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="btn-secondary text-xs"
+            >
+              ← Quay lại
+            </button>
+            <div
+              className={`w-9 h-9 rounded-full bg-gradient-to-br ${ROLE_COLORS[selectedUser.role]} text-white flex items-center justify-center font-bold text-sm shrink-0`}
+            >
+              {selectedUser.name.charAt(0)}
+            </div>
+            <div>
+              <div className="font-bold text-sm flex items-center gap-2">
+                <span>{selectedUser.name}</span>
+                <span className={`px-2 py-0.5 rounded text-white text-[10px] font-bold bg-gradient-to-r ${ROLE_COLORS[selectedUser.role]}`}>
+                  {ROLE_LABELS[selectedUser.role]}
+                </span>
+              </div>
+              <div className="text-[11px] opacity-60">
+                {selectedUser.email} · Phân quyền được áp dụng trực tiếp cho vai trò <b>{ROLE_LABELS[selectedUser.role]}</b>
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="font-bold text-sm">{selectedUser.name}</div>
-            <div className="text-[11px] opacity-60">{selectedUser.email} · <span className={`px-1.5 py-0.5 rounded text-white text-[10px] font-bold bg-gradient-to-r ${ROLE_COLORS[selectedUser.role]}`}>{ROLE_LABELS[selectedUser.role]}</span></div>
-          </div>
+          {dirty && onSave && (
+            <button
+              onClick={onSave}
+              className="btn-primary text-xs flex items-center gap-1.5 shadow"
+            >
+              <Save className="w-3.5 h-3.5" /> Lưu phân quyền ngay
+            </button>
+          )}
         </div>
+
         <div className="card p-0 overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-800">
-                <th className="p-2 text-left sticky left-0 bg-slate-100 dark:bg-slate-800 min-w-[180px]">Module</th>
+                <th className="p-2 text-left sticky left-0 bg-slate-100 dark:bg-slate-800 min-w-[200px]">
+                  Module ({ALL_MODULES.length})
+                </th>
                 {ACTIONS.map((act) => (
-                  <th key={act} className="p-2 text-center w-16">
+                  <th key={act} className="p-2 text-center w-20">
                     <span className={`px-2 py-0.5 rounded text-white text-[10px] font-bold ${
                       act === "r" ? "bg-blue-500" : act === "c" ? "bg-emerald-500" : act === "u" ? "bg-amber-500" : "bg-rose-500"
-                    }`}>{ACTION_META[act].label}</span>
+                    }`}>
+                      {ACTION_META[act].label} ({ACTION_META[act].letter})
+                    </span>
                   </th>
                 ))}
+                <th className="p-2 text-center w-28">Thao tác nhanh</th>
               </tr>
             </thead>
             <tbody>
@@ -670,21 +748,57 @@ function UserPermissionTable({
                 const p = perms[mod] || "";
                 const hasAny = p.length > 0;
                 return (
-                  <tr key={mod} className={`border-t border-slate-200 dark:border-slate-700 ${
-                    hasAny ? "" : "opacity-30"
-                  }`}>
-                    <td className="p-2 font-medium sticky left-0 bg-white dark:bg-slate-900">{MODULE_LABELS[mod] || mod}</td>
-                    {ACTIONS.map((act) => (
-                      <td key={act} className="p-2 text-center">
-                        {p.includes(act) ? (
-                          <span className={`inline-flex w-5 h-5 rounded items-center justify-center text-white text-[10px] font-bold ${
-                            act === "r" ? "bg-blue-500" : act === "c" ? "bg-emerald-500" : act === "u" ? "bg-amber-500" : "bg-rose-500"
-                          }`}>✓</span>
-                        ) : (
-                          <span className="inline-flex w-5 h-5 rounded items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-300 text-[10px]">·</span>
-                        )}
-                      </td>
-                    ))}
+                  <tr
+                    key={mod}
+                    className={`border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30 ${
+                      hasAny ? "" : "opacity-40 hover:opacity-100"
+                    }`}
+                  >
+                    <td className="p-2 font-medium sticky left-0 bg-white dark:bg-slate-900">
+                      <div className="font-semibold text-xs">{MODULE_LABELS[mod] || mod}</div>
+                    </td>
+                    {ACTIONS.map((act) => {
+                      const has = p.includes(act);
+                      const meta = ACTION_META[act];
+                      return (
+                        <td key={act} className="p-2 text-center">
+                          <button
+                            type="button"
+                            disabled={isAdmin}
+                            onClick={() => onToggle(selectedUser.role, mod, act)}
+                            className={`inline-flex w-7 h-7 rounded items-center justify-center text-xs font-bold transition-all ${
+                              isAdmin
+                                ? getActionActiveClass(act) + " opacity-80 cursor-default"
+                                : has
+                                  ? `${getActionActiveClass(act)} shadow hover:scale-105 active:scale-95`
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600"
+                            }`}
+                            title={
+                              isAdmin
+                                ? "Admin luôn có đầy đủ quyền"
+                                : `${has ? "Bỏ" : "Cấp"} quyền ${meta.label} cho vai trò ${ROLE_LABELS[selectedUser.role]}`
+                            }
+                          >
+                            {has ? meta.letter : "·"}
+                          </button>
+                        </td>
+                      );
+                    })}
+                    <td className="p-2 text-center">
+                      {!isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleAll(selectedUser.role, mod)}
+                          className={`text-[10px] px-2 py-1 rounded font-bold transition-all ${
+                            p === "rcud"
+                              ? "bg-violet-500 text-white shadow"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-violet-500/20 hover:text-violet-600"
+                          }`}
+                        >
+                          {p === "rcud" ? "✓ Đủ 4 quyền" : "✦ Bật tất cả"}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -697,10 +811,44 @@ function UserPermissionTable({
 
   return (
     <div className="space-y-3">
+      {/* Save banner khi dirty */}
+      {dirty && (
+        <div className="flex items-center justify-between p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs animate-fade-in shadow-sm">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-medium">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>Có quyền vừa được thay đổi cho vai trò. Bấm <b>Lưu phân quyền</b> để áp dụng và đồng bộ ngay!</span>
+          </div>
+          {onSave && (
+            <button
+              onClick={onSave}
+              className="btn-primary text-xs flex items-center gap-1.5 shadow"
+            >
+              <Save className="w-3.5 h-3.5" /> Lưu phân quyền ngay
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Filter bar */}
       <div className="card p-3">
-        <h3 className="font-bold text-sm mb-2">📋 Bảng phân quyền theo tài khoản</h3>
-        <p className="text-xs opacity-70 mb-3">Xem quyền thực tế của từng tài khoản (kế thừa từ vai trò). Click vào tên để xem chi tiết.</p>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div>
+            <h3 className="font-bold text-sm">📋 Bảng phân quyền theo tài khoản & vai trò</h3>
+            <p className="text-xs opacity-70">
+              Bấm trực tiếp vào các nút <b>X</b> (Xem), <b>T</b> (Thêm), <b>S</b> (Sửa), <b>X</b> (Xóa) để cấp hoặc thu hồi quyền cho từng vai trò.
+            </p>
+          </div>
+          <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
+            <input
+              type="checkbox"
+              checked={showAllModules}
+              onChange={(e) => setShowAllModules(e.target.checked)}
+              className="rounded text-blue-600"
+            />
+            <span>Hiện tất cả {ALL_MODULES.length} module</span>
+          </label>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div>
             <label className="block text-xs font-medium mb-1">🔍 Tìm tên / email</label>
@@ -721,27 +869,55 @@ function UserPermissionTable({
             >
               <option value="all">Tất cả vai trò</option>
               {ALL_ROLES.map((r) => (
-                <option key={r} value={r}>{ROLE_LABELS[r]} ({users.filter((u) => u.role === r).length})</option>
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]} ({users.filter((u) => u.role === r).length})
+                </option>
               ))}
             </select>
           </div>
         </div>
-        <div className="mt-2 text-[10px] opacity-60">Hiển thị: {filtered.length} / {users.length} tài khoản</div>
+        <div className="mt-2 text-[10px] opacity-60 flex items-center justify-between">
+          <span>Hiển thị: <b>{filtered.length}</b> / {users.length} tài khoản · Cột module: <b>{activeModules.length}</b> / {ALL_MODULES.length} module</span>
+          <span className="italic">💡 Click vào tên tài khoản để xem chi tiết đầy đủ</span>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="card p-0 overflow-x-auto">
+      <div className="card p-0 overflow-x-auto shadow-sm">
         <table className="w-full text-[11px]">
           <thead>
-            <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
+            <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
               <th className="p-2 text-left sticky left-0 bg-slate-100 dark:bg-slate-800 z-20 min-w-[200px]">
                 Tài khoản
               </th>
               <th className="p-2 text-center min-w-[90px]">Vai trò</th>
               {activeModules.map((m) => (
-                <th key={m} className="p-1 text-center min-w-[80px]">
-                  <div className="text-[9px] font-semibold leading-tight">{MODULE_LABELS[m] || m}</div>
-                  <div className="text-[8px] opacity-50 mt-0.5">X T S X</div>
+                <th key={m} className="p-1 text-center min-w-[84px] bg-slate-100 dark:bg-slate-800">
+                  <div className="text-[9px] font-semibold leading-tight truncate max-w-[90px] mx-auto" title={MODULE_LABELS[m] || m}>
+                    {MODULE_LABELS[m] || m}
+                  </div>
+                  {/* Quick toggle headers cho module */}
+                  <div className="flex gap-0.5 justify-center mt-1">
+                    {ACTIONS.map((act) => (
+                      <button
+                        key={act}
+                        type="button"
+                        onClick={() => onToggleModuleAction(m, act)}
+                        className={`w-3.5 h-3.5 rounded text-[7px] font-bold transition-transform hover:scale-110 active:scale-95 ${
+                          act === "r"
+                            ? "bg-blue-500/20 text-blue-700 dark:text-blue-300 hover:bg-blue-500/40"
+                            : act === "c"
+                              ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/40"
+                              : act === "u"
+                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/40"
+                                : "bg-rose-500/20 text-rose-700 dark:text-rose-300 hover:bg-rose-500/40"
+                        }`}
+                        title={`Bật/Tắt quyền ${ACTION_META[act].label} (${ACTION_META[act].letter}) cho tất cả vai trò ở module ${MODULE_LABELS[m] || m}`}
+                      >
+                        {ACTION_META[act].letter}
+                      </button>
+                    ))}
+                  </div>
                 </th>
               ))}
             </tr>
@@ -749,25 +925,31 @@ function UserPermissionTable({
           <tbody>
             {filtered.map((u) => {
               const perms = getUserPerms(u);
+              const isAdmin = u.role === "admin";
               return (
                 <tr
                   key={u.id}
-                  className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer"
-                  onClick={() => setSelectedUser(u)}
+                  className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50/80 dark:hover:bg-slate-800/30"
                 >
-                  <td className="p-2 sticky left-0 bg-white dark:bg-slate-900 z-10">
+                  <td
+                    className="p-2 sticky left-0 bg-white dark:bg-slate-900 z-10 cursor-pointer group"
+                    onClick={() => setSelectedUser(u)}
+                    title={`Click để mở chi tiết quyền của ${u.name}`}
+                  >
                     <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${ROLE_COLORS[u.role]} text-white flex items-center justify-center font-bold text-[10px] shrink-0`}>
+                      <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${ROLE_COLORS[u.role] || "from-slate-500 to-slate-700"} text-white flex items-center justify-center font-bold text-[10px] shrink-0 group-hover:scale-105 transition-transform`}>
                         {u.name.charAt(0)}
                       </div>
                       <div>
-                        <div className="font-semibold text-xs">{u.name}</div>
+                        <div className="font-semibold text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {u.name}
+                        </div>
                         <div className="text-[9px] opacity-50 truncate max-w-[130px]">{u.email}</div>
                       </div>
                     </div>
                   </td>
                   <td className="p-1 text-center">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded text-white font-bold bg-gradient-to-r ${ROLE_COLORS[u.role]}`}>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded text-white font-bold bg-gradient-to-r ${ROLE_COLORS[u.role] || "from-slate-500 to-slate-700"} shadow-xs`}>
                       {ROLE_LABELS[u.role]}
                     </span>
                   </td>
@@ -775,19 +957,54 @@ function UserPermissionTable({
                     const p = perms[m] || "";
                     return (
                       <td key={m} className="p-1 text-center">
-                        <div className="flex gap-0.5 justify-center">
-                          {ACTIONS.map((act) => (
-                            <span
-                              key={act}
-                              className={`inline-flex w-4 h-4 rounded items-center justify-center text-[8px] font-bold ${
-                                p.includes(act)
-                                  ? act === "r" ? "bg-blue-500 text-white" : act === "c" ? "bg-emerald-500 text-white" : act === "u" ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-300"
+                        <div className="flex gap-0.5 justify-center items-center">
+                          {ACTIONS.map((act) => {
+                            const has = p.includes(act);
+                            const meta = ACTION_META[act];
+                            return (
+                              <button
+                                key={act}
+                                type="button"
+                                disabled={isAdmin}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggle(u.role, m, act);
+                                }}
+                                className={`inline-flex w-4 h-4 rounded items-center justify-center text-[8px] font-bold transition-all ${
+                                  isAdmin
+                                    ? getActionActiveClass(act) + " opacity-85 cursor-default"
+                                    : has
+                                      ? `${getActionActiveClass(act)} shadow-sm hover:scale-110 active:scale-95`
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 hover:scale-105"
+                                }`}
+                                title={
+                                  isAdmin
+                                    ? "Admin luôn có đầy đủ quyền"
+                                    : `${has ? "Bỏ" : "Cấp"} quyền ${meta.label} (${meta.letter}) cho vai trò ${ROLE_LABELS[u.role]}`
+                                }
+                              >
+                                {has ? meta.letter : "·"}
+                              </button>
+                            );
+                          })}
+                          {/* Quick toggle 4 quyền */}
+                          {!isAdmin && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleAll(u.role, m);
+                              }}
+                              className={`inline-flex w-3.5 h-4 rounded items-center justify-center text-[7px] font-bold transition-all ${
+                                p === "rcud"
+                                  ? "bg-violet-500 text-white shadow-sm hover:bg-violet-600 hover:scale-110"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-violet-500/20 hover:text-violet-600 hover:scale-105"
                               }`}
+                              title={`Bật/Tắt tất cả 4 quyền (X-T-S-X) cho vai trò ${ROLE_LABELS[u.role]}`}
                             >
-                              {p.includes(act) ? ACTION_META[act].letter : "·"}
-                            </span>
-                          ))}
+                              {p === "rcud" ? "✓" : "✦"}
+                            </button>
+                          )}
                         </div>
                       </td>
                     );
@@ -798,12 +1015,22 @@ function UserPermissionTable({
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <div className="p-8 text-center opacity-60 text-sm">Không tìm thấy tài khoản nào</div>
+          <div className="p-8 text-center opacity-60 text-sm">Không tìm thấy tài khoản nào phù hợp</div>
         )}
       </div>
 
-      <div className="card p-3 bg-blue-500/5 border-blue-500/20 text-xs">
-        💡 <b>Lưu ý:</b> Quyền hiển thị ở đây kế thừa từ vai trò (role) của từng tài khoản. Để thay đổi quyền, hãy chỉnh ma trận ở tab <b>"Ma trận"</b> hoặc đổi vai trò ở tab <b>"Gán user cho role"</b>.
+      <div className="card p-3 bg-blue-500/5 border-blue-500/20 text-xs flex items-center justify-between flex-wrap gap-2">
+        <div>
+          💡 <b>Hướng dẫn sử dụng:</b> Bạn có thể click trực tiếp vào từng nút <b>[X] (Xem)</b>, <b>[T] (Thêm)</b>, <b>[S] (Sửa)</b>, <b>[X] (Xoá)</b> hoặc <b>[✦/✓]</b> trên bảng để phân quyền cho vai trò tương ứng. Khi chỉnh xong, đừng quên bấm nút <b>"Lưu"</b> để áp dụng lên toàn hệ thống.
+        </div>
+        {dirty && onSave && (
+          <button
+            onClick={onSave}
+            className="btn-primary text-xs flex items-center gap-1.5 shadow shrink-0"
+          >
+            <Save className="w-3.5 h-3.5" /> Lưu phân quyền ngay
+          </button>
+        )}
       </div>
     </div>
   );
