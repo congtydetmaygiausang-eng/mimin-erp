@@ -38,6 +38,7 @@ export interface SanPhamTP {
   maSP: string;
   tenSP: string;
   phanLoai: string;
+  loaiSP?: string;
   mau: string;
   size: string;
   /** Mã lô tồn kho, luôn dùng prefix LTK-. Giữ tên lsx để tương thích dữ liệu cũ. */

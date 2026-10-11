@@ -17,7 +17,7 @@ export function MasterDetailsModal({ maSP, groups, productImages, onClose }: { m
   if (!group) return null;
 
   // Extract common fields for the display
-  const loaiSP = group.items[0]?.loaiSP === "BoTru" ? "BỘ TRỤ" : (group.items[0]?.loaiSP || "BỘ TRỤ").toUpperCase();
+  const loaiSP = group.items[0]?.loaiSP === "BoTru" ? "BỘ TRỤ" : (group.items[0]?.loaiSP || group.items[0]?.phanLoai || "BỘ TRỤ").toUpperCase();
   const rating = 5.0;
   const views = 0;
   const sold = 0;
