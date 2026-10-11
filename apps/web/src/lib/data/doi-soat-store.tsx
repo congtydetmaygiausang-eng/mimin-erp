@@ -177,8 +177,8 @@ function saveData(d: BanGhiDoiSoat[]) {
 }
 
 export function DoiSoatProvider({ children }: { children: ReactNode }) {
-  const [doiSoat, setDoiSoat] = useState<BanGhiDoiSoat[]>(buildDefault);
-  const [hydrated, setHydrated] = useState(false);
+  const [doiSoat, setDoiSoat] = useState<BanGhiDoiSoat[]>(loadData);
+  const [hydrated, setHydrated] = useState(true);
 
   useEffect(() => {
     setDoiSoat(loadData());

@@ -168,8 +168,8 @@ function saveData(d: BanGhiHoanThien[]) {
 }
 
 export function HoanThienProvider({ children }: { children: ReactNode }) {
-  const [banGhi, setBanGhi] = useState<BanGhiHoanThien[]>(buildDefault);
-  const [hydrated, setHydrated] = useState(false);
+  const [banGhi, setBanGhi] = useState<BanGhiHoanThien[]>(loadData);
+  const [hydrated, setHydrated] = useState(true);
 
   useEffect(() => {
     setBanGhi(loadData());

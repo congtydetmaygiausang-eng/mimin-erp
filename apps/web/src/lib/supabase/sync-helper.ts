@@ -235,11 +235,6 @@ export function useSupabaseSync<T extends { id: string }>(
     (row: T) => (mapOut ? supabaseUpsertRaw(table, mapOut(row), onConflict) : supabaseUpsert(table, row, onConflict)),
     [table, mapOut, onConflict]
   );
-  const [data, setDataState] = useState<T[]>(initialData);
-  const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState<"local" | "supabase" | "merged">("local");
-  const [error, setError] = useState<string | null>(null);
-
   // Helper: lưu localStorage
   const saveLocal = useCallback((rows: T[]) => {
     try {
@@ -251,16 +246,59 @@ export function useSupabaseSync<T extends { id: string }>(
 
   // Helper: đọc localStorage
   const loadLocal = useCallback((): T[] => {
+    if (typeof window === "undefined") return [];
     try {
       const raw = localStorage.getItem(localStorageKey);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch {}
     return [];
   }, [localStorageKey]);
 
-  // Init: thử Supabase trước → fallback localStorage
+  // Instant Load: Khởi tạo ngay lập tức từ localStorage để render 0 giây
+  const [data, setDataState] = useState<T[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(localStorageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return initialData;
+  });
+
+  // Nếu local đã có dữ liệu thì không chặn giao diện bằng loading spinner
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(localStorageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        }
+      } catch {}
+    }
+    return true;
+  });
+
+  const [source, setSource] = useState<"local" | "supabase" | "merged">("local");
+  const [error, setError] = useState<string | null>(null);
+
+  // Init: Instant Load cache trước (SWR), âm thầm revalidate từ Supabase ở background
   useEffect(() => {
     let cancelled = false;
+
+    // Đảm bảo nạp local cache nếu lúc khởi tạo SSR chưa đọc được
+    const local = loadLocal();
+    if (local.length > 0) {
+      setDataState((prev) => (prev.length === 0 ? local : prev));
+      setLoading(false);
+    }
+
     (async () => {
       try {
         if (checkSupabase()) {
@@ -269,16 +307,14 @@ export function useSupabaseSync<T extends { id: string }>(
             remote = remote.map(options.mapIn);
           }
           if (!cancelled) {
-            // Nguồn Supabase luôn là chân lý khi fetch thành công (kể cả khi rỗng).
+            // Nguồn Supabase luôn là chân lý: cập nhật êm dịu và sync xuống local
             setDataState(remote);
-            saveLocal(remote); // sync xuống local
+            saveLocal(remote);
             setSource("supabase");
-            console.log(`[useSupabaseSync] ${table}: ${remote.length} rows from Supabase`);
           }
         } else {
           // Supabase tắt → chỉ dùng localStorage
-          if (!cancelled) {
-            const local = loadLocal();
+          if (!cancelled && local.length > 0) {
             setDataState(local);
             setSource("local");
           }
@@ -287,8 +323,9 @@ export function useSupabaseSync<T extends { id: string }>(
         if (!cancelled) {
           setError(err?.message || String(err));
           // Fallback localStorage
-          const local = loadLocal();
-          setDataState(local);
+          if (local.length > 0) {
+            setDataState(local);
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);

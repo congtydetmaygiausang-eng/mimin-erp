@@ -130,9 +130,12 @@ function detailRow(item: BangGiaChiTiet): BangGiaChiTietRow {
 }
 
 export function useBangGia() {
-  const [bangGia, setBangGia] = useState<BangGia[]>([]);
-  const [chiTiet, setChiTiet] = useState<BangGiaChiTiet[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bangGia, setBangGia] = useState<BangGia[]>(() => load<BangGia>(LIST_KEY));
+  const [chiTiet, setChiTiet] = useState<BangGiaChiTiet[]>(() => load<BangGiaChiTiet>(DETAIL_KEY));
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return load<BangGia>(LIST_KEY).length === 0;
+  });
 
   const refresh = useCallback(async () => {
     const localLists = load<BangGia>(LIST_KEY);

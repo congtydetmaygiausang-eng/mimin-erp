@@ -132,8 +132,8 @@ function saveData(d: StoredData) {
 }
 
 export function GiaCongProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<StoredData>(DEFAULT);
-  const [hydrated, setHydrated] = useState(false);
+  const [data, setData] = useState<StoredData>(loadData);
+  const [hydrated, setHydrated] = useState(true);
 
   useEffect(() => {
     setData(loadData());
