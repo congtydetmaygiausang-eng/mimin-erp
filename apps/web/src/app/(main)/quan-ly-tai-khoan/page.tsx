@@ -5,7 +5,7 @@ import {
   Users, Plus, Edit, Trash2, Lock, Unlock, Search, X,
   Shield, Key, Mail, Phone, Building2, UserCheck, UserX,
   Eye, EyeOff, RefreshCw, AlertCircle, Building, Hammer, Filter,
-  Briefcase,
+  Briefcase, KeyRound, Copy, Check, Sparkles, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
@@ -16,6 +16,7 @@ import type { NhanSuExt } from "@/app/(main)/nhan-su/data";
 import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
 import { LocalAccountManager } from "@/components/local-account-manager";
 import { AccountLinkReview } from "@/components/account-link-review";
+import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,17 @@ const PHONG_BAN_TO_BO_PHAN: Record<string, string> = {
   "khac": "Hành chính",
 };
 
+// Quy đổi ngược từ Bộ phận (Nhân sự) sang Phòng ban (Tài khoản)
+const BO_PHAN_TO_PHONG_BAN: Record<string, string> = {
+  "Quản lý": "ban-dieu-hanh",
+  "Kế toán": "ke-toan",
+  "Kinh doanh": "ban-content",
+  "Kho vận": "ban-kho",
+  "Sản xuất": "to-may",
+  "QC": "ban-qc",
+  "Hành chính": "khac",
+};
+
 type UserRow = {
   id: string;
   email: string;
@@ -107,7 +119,9 @@ function LiveAccountManager() {
   const [filterRole, setFilterRole] = useState<string>("Tất cả");
   const [filterPhongBan, setFilterPhongBan] = useState<string>("Tất cả");
   const [filterType, setFilterType] = useState<UserType>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "disabled">("all");
   const [editing, setEditing] = useState<UserRow | null>(null);
+  const [resettingPw, setResettingPw] = useState<UserRow | null>(null);
   const [creating, setCreating] = useState(false);
 
   const fetchUsers = async () => {
@@ -120,10 +134,23 @@ function LiveAccountManager() {
       }
       setList(json.users || []);
     } catch (e) {
-      // Không còn fallback về mock data khi lỗi - trước đây fallback này che
-      // giấu lỗi permission/token thật (vd "permission denied for table
-      // users"), khiến trang trông như đang chạy bình thường với dữ liệu giả
-      // cho tới khi bấm "Tạo TK" mới lộ ra lỗi thật.
+      // Fallback: nếu gọi API admin thất bại (ví dụ token chập chờn), truy vấn trực tiếp Supabase users table
+      if (isSupabaseEnabled && supabase) {
+        try {
+          const { data: directData, error: directErr } = await supabase
+            .from("users")
+            .select('id, email, name, role, "chucVu", "phongBan", "isActive", "maNV", created_at, updated_at')
+            .order("role", { ascending: true })
+            .order("email", { ascending: true });
+          if (!directErr && directData && directData.length > 0) {
+            setList(directData as UserRow[]);
+            toast.warning("Đã tải dữ liệu qua kết nối trực tiếp Supabase");
+            return;
+          }
+        } catch {
+          // Bỏ qua lỗi fallback
+        }
+      }
       toast.error("Không tải được danh sách tài khoản: " + (e as Error).message);
       setList([]);
     } finally {
@@ -144,6 +171,7 @@ function LiveAccountManager() {
         (u) =>
           u.name.toLowerCase().includes(s) ||
           u.email.toLowerCase().includes(s) ||
+          (u.maNV || "").toLowerCase().includes(s) ||
           (u.chucVu || "").toLowerCase().includes(s)
       );
     }
@@ -151,8 +179,10 @@ function LiveAccountManager() {
     if (filterPhongBan !== "Tất cả") f = f.filter((u) => u.phongBan === filterPhongBan);
     if (filterType === "noi-bo") f = f.filter((u) => u.role !== "partner");
     if (filterType === "ncc") f = f.filter((u) => u.role === "partner");
+    if (filterStatus === "active") f = f.filter((u) => u.isActive);
+    if (filterStatus === "disabled") f = f.filter((u) => !u.isActive);
     return f;
-  }, [list, search, filterRole, filterPhongBan, filterType]);
+  }, [list, search, filterRole, filterPhongBan, filterType, filterStatus]);
 
   // Stats
   const stats = useMemo(() => {
@@ -186,7 +216,7 @@ function LiveAccountManager() {
               <Users className="w-7 h-7 text-blue-500" /> Quản lý tài khoản
             </h1>
             <p className="opacity-70 text-sm">
-              Phân quyền theo Role + Phòng ban · Tạo tài khoản từ hồ sơ nhân sự
+              Phân quyền theo Role + Phòng ban · Đổi mật khẩu · Tạo tài khoản từ hồ sơ nhân sự
             </p>
           </div>
           <button
@@ -247,26 +277,31 @@ function LiveAccountManager() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm tên, email, chức vụ..."
+            placeholder="Tìm tên, email, mã NV, chức vụ..."
             className="w-full pl-7 pr-2 py-1.5 rounded border text-xs"
           />
         </div>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="text-xs px-2 py-1.5 rounded border" title="Trạng thái">
+          <option value="all">Tất cả trạng thái</option>
+          <option value="active">🟢 Đang hoạt động</option>
+          <option value="disabled">🔒 Bị khóa</option>
+        </select>
         <select value={filterType} onChange={(e) => setFilterType(e.target.value as UserType)} className="text-xs px-2 py-1.5 rounded border" title="Loại user">
           <option value="all">Tất cả loại</option>
           <option value="noi-bo">👔 Nội bộ</option>
           <option value="ncc">🤝 NCC gia công</option>
         </select>
         <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="text-xs px-2 py-1.5 rounded border" title="Lọc theo role">
-          <option>Tất cả</option>
+          <option>Tất cả vai trò</option>
           {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
         <select value={filterPhongBan} onChange={(e) => setFilterPhongBan(e.target.value)} className="text-xs px-2 py-1.5 rounded border" title="Lọc theo phòng ban">
-          <option>Tất cả</option>
+          <option>Tất cả phòng ban</option>
           {PHONG_BAN_OPTIONS.map((p) => <option key={p} value={p}>{PHONG_BAN_LABELS[p]}</option>)}
         </select>
         <button
           onClick={() => setCreating(true)}
-          className="text-xs px-3 py-1.5 rounded bg-blue-500 hover:bg-blue-600 text-white font-bold flex items-center gap-1"
+          className="text-xs px-3 py-1.5 rounded bg-blue-500 hover:bg-blue-600 text-white font-bold flex items-center gap-1 shadow-sm"
         >
           <Plus className="w-3.5 h-3.5" /> Tạo TK
         </button>
@@ -288,12 +323,22 @@ function LiveAccountManager() {
               key={u.id}
               u={u}
               onEdit={() => setEditing(u)}
+              onResetPassword={() => setResettingPw(u)}
               onDeleted={fetchUsers}
               onToggled={fetchUsers}
             />
           ))
         )}
       </div>
+
+      {/* Reset Password Modal */}
+      {resettingPw && (
+        <ResetPasswordModal
+          user={resettingPw}
+          onClose={() => setResettingPw(null)}
+          onSuccess={() => { setResettingPw(null); fetchUsers(); }}
+        />
+      )}
 
       {/* Edit modal */}
       {editing && (
@@ -307,6 +352,7 @@ function LiveAccountManager() {
       {/* Create modal */}
       {creating && (
         <CreateUserModal
+          existingAccounts={list}
           onClose={() => setCreating(false)}
           onCreated={() => { setCreating(false); fetchUsers(); }}
         />
@@ -316,14 +362,22 @@ function LiveAccountManager() {
 }
 
 // =================== USER CARD ===================
-function UserCard({ u, onEdit, onDeleted, onToggled }: {
+function UserCard({ u, onEdit, onResetPassword, onDeleted, onToggled }: {
   u: UserRow;
   onEdit: () => void;
+  onResetPassword: () => void;
   onDeleted: () => void;
   onToggled: () => void;
 }) {
-  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
+
+  const handleCopyEmail = () => {
+    navigator.clipboard.writeText(u.email);
+    setCopiedEmail(true);
+    toast.success(`Đã sao chép email: ${u.email}`);
+    setTimeout(() => setCopiedEmail(false), 2000);
+  };
 
   const handleToggle = async () => {
     setBusy(true);
@@ -359,47 +413,208 @@ function UserCard({ u, onEdit, onDeleted, onToggled }: {
   };
 
   return (
-    <div className="card p-3">
+    <div className="card p-3 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
       <div className="flex items-start gap-3">
-        <div className={`w-10 h-10 rounded-full ${PHONG_BAN_COLORS[u.phongBan || "khac"] || "bg-slate-500"} text-white flex items-center justify-center font-bold shrink-0`}>
+        <div className={`w-10 h-10 rounded-full ${PHONG_BAN_COLORS[u.phongBan || "khac"] || "bg-slate-500"} text-white flex items-center justify-center font-bold shrink-0 shadow-sm`}>
           {u.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-sm">{u.name}</span>
-            {u.maNV && <span className="text-[10px] font-mono opacity-60">{u.maNV}</span>}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded text-white ${ROLE_COLORS[u.role as keyof typeof ROLE_COLORS] || "bg-slate-500"}`}>
+            {u.maNV && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono font-semibold border">
+                {u.maNV}
+              </span>
+            )}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded text-white font-medium ${ROLE_COLORS[u.role as keyof typeof ROLE_COLORS] || "bg-slate-500"}`}>
               {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] || u.role}
             </span>
             {u.phongBan && (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded text-white ${PHONG_BAN_COLORS[u.phongBan] || "bg-slate-500"}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded text-white font-medium ${PHONG_BAN_COLORS[u.phongBan] || "bg-slate-500"}`}>
                 {PHONG_BAN_LABELS[u.phongBan] || u.phongBan}
               </span>
             )}
             {!u.isActive && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded text-white bg-slate-500">🔒 BỊ KHÓA</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded text-white bg-rose-500 font-medium">
+                🔒 BỊ KHÓA
+              </span>
             )}
           </div>
-          <div className="text-xs opacity-70 mt-1 flex items-center gap-3 flex-wrap">
-            <span className="flex items-center gap-1"><Mail className="w-2.5 h-2.5" /> {u.email}</span>
+          <div className="text-xs opacity-75 mt-1 flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1 font-mono">
+              <Mail className="w-3 h-3 opacity-60" /> {u.email}
+            </span>
+            <button
+              onClick={handleCopyEmail}
+              className="text-[10px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              title="Sao chép email"
+            >
+              {copiedEmail ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+            </button>
           </div>
-          <div className="text-[10px] opacity-60 mt-1">
-            Chức vụ: {u.chucVu || "—"} · Tạo: {new Date(u.created_at).toLocaleDateString("vi-VN")}
+          <div className="text-[10px] opacity-60 mt-1 flex items-center gap-2">
+            <span>Chức vụ: <b>{u.chucVu || "—"}</b></span>
+            <span>·</span>
+            <span>Tạo ngày: {new Date(u.created_at).toLocaleDateString("vi-VN")}</span>
           </div>
         </div>
-        <div className="flex flex-col gap-1 shrink-0">
-          <button onClick={onEdit} disabled={busy} className="text-xs px-2 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50" title="Sửa">
-            <Edit className="w-3 h-3" />
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onResetPassword}
+            disabled={busy}
+            className="text-xs px-2.5 py-1.5 rounded bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1 font-medium disabled:opacity-50 shadow-sm"
+            title="Đổi / Đặt lại mật khẩu"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Đổi MK</span>
           </button>
-          <button onClick={handleToggle} disabled={busy} className={`text-xs px-2 py-1 rounded text-white ${u.isActive ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-500 hover:bg-emerald-600"} disabled:opacity-50`} title={u.isActive ? "Khóa" : "Mở"}>
-            {u.isActive ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+          <button
+            onClick={onEdit}
+            disabled={busy}
+            className="text-xs p-1.5 rounded bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50"
+            title="Sửa thông tin"
+          >
+            <Edit className="w-3.5 h-3.5" />
           </button>
-          <button onClick={handleDelete} disabled={busy} className="text-xs px-2 py-1 rounded bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50" title="Xóa">
-            <Trash2 className="w-3 h-3" />
+          <button
+            onClick={handleToggle}
+            disabled={busy}
+            className={`text-xs p-1.5 rounded text-white ${u.isActive ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-500 hover:bg-emerald-600"} disabled:opacity-50`}
+            title={u.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+          >
+            {u.isActive ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={busy}
+            className="text-xs p-1.5 rounded bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50"
+            title="Xóa tài khoản"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+// =================== RESET PASSWORD MODAL ===================
+function ResetPasswordModal({ user, onClose, onSuccess }: {
+  user: UserRow;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [password, setPassword] = useState("Mimin@" + Math.floor(1000 + Math.random() * 9000));
+  const [showPw, setShowPw] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleGenerateRandom = () => {
+    const randomCode = Math.floor(100000 + Math.random() * 900000);
+    const newPass = `Mimin@${randomCode}`;
+    setPassword(newPass);
+    setCopied(false);
+    toast.info("Đã tạo mật khẩu ngẫu nhiên mới: " + newPass);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(password);
+    setCopied(true);
+    toast.success("Đã sao chép mật khẩu vào clipboard!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSave = async () => {
+    if (!password || password.length < 6) {
+      toast.error("Mật khẩu phải từ 6 ký tự trở lên");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await authFetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        toast.error("Lỗi đổi mật khẩu: " + (json.error || `Lỗi ${res.status}`));
+        return;
+      }
+      navigator.clipboard.writeText(password);
+      toast.success(`Đã đổi mật khẩu cho ${user.email} thành công! Mật khẩu đã được tự động copy.`);
+      onSuccess();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title={`Đặt lại mật khẩu: ${user.name}`}>
+      <div className="space-y-3">
+        <div className="p-2.5 rounded bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 text-xs text-violet-800 dark:text-violet-300">
+          <p className="font-semibold flex items-center gap-1 mb-1">
+            <KeyRound className="w-3.5 h-3.5" /> Tài khoản: {user.email}
+          </p>
+          <p className="opacity-80">
+            Mật khẩu mới sẽ được cập nhật trực tiếp vào Supabase Auth. Bạn có thể copy để gửi ngay cho nhân viên.
+          </p>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold opacity-70 block mb-1">Mật khẩu mới *</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Nhập mật khẩu mới..."
+                className="w-full px-3 py-2 pr-9 rounded border font-mono text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerateRandom}
+              className="px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium flex items-center gap-1 border shrink-0"
+              title="Sinh mật khẩu ngẫu nhiên"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Ngẫu nhiên
+            </button>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium flex items-center gap-1 border shrink-0"
+              title="Sao chép mật khẩu"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? "Đã chép" : "Chép"}
+            </button>
+          </div>
+          <span className="text-[11px] opacity-60 mt-1 block">Tối thiểu 6 ký tự. Gợi ý: Chữ hoa, thường và số.</span>
+        </div>
+
+        <div className="flex gap-2 pt-3 border-t">
+          <button onClick={onClose} className="btn-secondary flex-1">Hủy</button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary flex-1 bg-violet-600 hover:bg-violet-700 text-white font-medium disabled:opacity-50"
+          >
+            {saving ? "Đang cập nhật..." : "💾 Lưu mật khẩu mới"}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -410,25 +625,38 @@ function EditUserModal({ user, onClose, onSaved }: {
   onSaved: () => void;
 }) {
   const [data, setData] = useState({ ...user });
+  const [newPassword, setNewPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (newPassword && newPassword.length < 6) {
+      toast.error("Mật khẩu mới phải từ 6 ký tự trở lên");
+      return;
+    }
     setSaving(true);
     try {
+      const payload: any = {
+        name: data.name,
+        role: data.role,
+        chucVu: data.chucVu,
+        phongBan: data.phongBan,
+        isActive: data.isActive,
+      };
+      if (newPassword && newPassword.length >= 6) {
+        payload.password = newPassword;
+      }
       const res = await authFetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          role: data.role,
-          chucVu: data.chucVu,
-          phongBan: data.phongBan,
-          isActive: data.isActive,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (json.error) toast.error("Lỗi: " + json.error);
-      else { toast.success("Đã cập nhật"); onSaved(); }
+      else {
+        toast.success("Đã cập nhật thông tin tài khoản" + (newPassword ? " và mật khẩu mới" : ""));
+        onSaved();
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -440,7 +668,13 @@ function EditUserModal({ user, onClose, onSaved }: {
     <Modal onClose={onClose} title={`Sửa tài khoản: ${user.email}`}>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} />
-        <div className="text-sm">Mã NV: {data.maNV || "Chưa liên kết"}<p className="text-xs opacity-60">Đổi tại bảng liên kết hồ sơ phía trên.</p></div>
+        <div className="text-sm">
+          <label className="text-xs font-semibold opacity-70 block">Mã NV</label>
+          <div className="font-mono text-xs px-2 py-1.5 rounded border bg-slate-50 dark:bg-slate-800">
+            {data.maNV || "Chưa liên kết"}
+          </div>
+          <p className="text-[10px] opacity-60 mt-0.5">Sửa mã tại bảng liên kết hồ sơ phía trên.</p>
+        </div>
         <Field label="Chức vụ" value={data.chucVu || ""} onChange={(v) => setData({ ...data, chucVu: v })} />
         <SelectField label="Role *" value={data.role} options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => setData({ ...data, role: v })} />
         <SelectField label="Phòng ban" value={data.phongBan || "khac"} options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))} onChange={(v) => setData({ ...data, phongBan: v })} />
@@ -454,6 +688,29 @@ function EditUserModal({ user, onClose, onSaved }: {
           onChange={(v) => setData({ ...data, isActive: v === "active" })}
         />
       </div>
+
+      <div className="mt-3 p-2.5 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+        <label className="text-xs font-semibold opacity-70 block mb-1">
+          Đổi mật khẩu mới (bỏ trống nếu không thay đổi)
+        </label>
+        <div className="relative">
+          <input
+            type={showPw ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Để trống nếu giữ mật khẩu cũ"
+            className="w-full px-2 py-1.5 pr-8 rounded border text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPw(!showPw)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+          >
+            {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </div>
+
       <div className="p-2 rounded bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-700 dark:text-amber-300 mt-2">
         <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
         Thay đổi Role sẽ đồng bộ sang <code>auth.users.app_metadata</code>. User cần <b>đăng xuất + đăng nhập lại</b> để áp dụng.
@@ -469,14 +726,15 @@ function EditUserModal({ user, onClose, onSaved }: {
 }
 
 // =================== CREATE MODAL ===================
-function CreateUserModal({ onClose, onCreated }: {
+function CreateUserModal({ existingAccounts, onClose, onCreated }: {
+  existingAccounts: UserRow[];
   onClose: () => void;
   onCreated: () => void;
 }) {
   const { list: nhanSuList, themNhanSu } = useNhanSu();
   const [data, setData] = useState({
     email: "",
-    password: "",
+    password: "Mimin@" + Math.floor(1000 + Math.random() * 9000),
     name: "",
     role: "planner" as string,
     chucVu: "",
@@ -484,10 +742,47 @@ function CreateUserModal({ onClose, onCreated }: {
     maNV: "",
     sdt: "",
   });
+  const [selectedNvMa, setSelectedNvMa] = useState("");
   const [taoHoSoNhanSu, setTaoHoSoNhanSu] = useState(true);
   const [ngayVaoLam, setNgayVaoLam] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [showPw, setShowPw] = useState(false);
+
+  // Danh sách nhân sự chưa có tài khoản (đối chiếu theo maNV và email)
+  const unregisteredEmployees = useMemo(() => {
+    return nhanSuList.filter((nv) => {
+      const matchMa = nv.maNV && existingAccounts.some(
+        (u) => u.maNV && u.maNV.trim().toLowerCase() === nv.maNV.trim().toLowerCase()
+      );
+      const matchEmail = nv.email && existingAccounts.some(
+        (u) => u.email && u.email.trim().toLowerCase() === nv.email.trim().toLowerCase()
+      );
+      return !matchMa && !matchEmail;
+    });
+  }, [nhanSuList, existingAccounts]);
+
+  // Khi chọn một nhân viên từ danh sách nhân sự có sẵn
+  const handleSelectEmployee = (maNV: string) => {
+    setSelectedNvMa(maNV);
+    if (!maNV) return;
+
+    const nv = nhanSuList.find((item) => item.maNV === maNV);
+    if (!nv) return;
+
+    const mappedPhongBan = BO_PHAN_TO_PHONG_BAN[nv.boPhan] || "khac";
+    setData((prev) => ({
+      ...prev,
+      name: nv.hoTen || prev.name,
+      maNV: nv.maNV,
+      email: nv.email || (nv.maNV ? `${nv.maNV.toLowerCase()}@mimin.vn` : prev.email),
+      sdt: nv.sdt || prev.sdt,
+      chucVu: nv.chucVu || nv.viTri || prev.chucVu,
+      phongBan: mappedPhongBan,
+    }));
+    // Đã có sẵn hồ sơ nhân sự nên không cần tạo mới hồ sơ
+    setTaoHoSoNhanSu(false);
+    toast.info(`Đã tự động điền thông tin nhân viên ${nv.hoTen} (${nv.maNV})`);
+  };
 
   const handleCreate = async () => {
     if (!data.email || !data.password || !data.name) {
@@ -509,9 +804,7 @@ function CreateUserModal({ onClose, onCreated }: {
       if (json.error) { toast.error("Lỗi: " + json.error); return; }
       toast.success("Đã tạo tài khoản: " + data.email);
 
-      // Tạo kèm hồ sơ Nhân sự (bộ phận/lương/CCCD... để trống, HR bổ sung sau ở
-      // trang Nhân sự) - tránh phải nhập trùng thông tin ở 2 nơi khi onboard 1
-      // người mới. maNV rỗng sẽ tự sinh mã theo đúng quy ước của trang Nhân sự.
+      // Tạo kèm hồ sơ Nhân sự (nếu được chọn)
       if (taoHoSoNhanSu) {
         const maNV = data.maNV.trim() || `NV${(nhanSuList.length + 19).toString().padStart(3, "0")}`;
         const nv: NhanSuExt = {
@@ -546,8 +839,8 @@ function CreateUserModal({ onClose, onCreated }: {
           taiKhoan: data.email,
         };
         const okNv = await themNhanSu(nv);
-        if (okNv) toast.success(`Đã tạo hồ sơ Nhân sự cho ${data.name} (${maNV}) - vào trang Nhân sự để bổ sung CCCD, lương...`);
-        else toast.error("Tạo tài khoản thành công nhưng lỗi khi tạo hồ sơ Nhân sự - vào trang Nhân sự thêm thủ công");
+        if (okNv) toast.success(`Đã tạo hồ sơ Nhân sự cho ${data.name} (${maNV})`);
+        else toast.error("Tạo tài khoản thành công nhưng lỗi khi tạo hồ sơ Nhân sự");
       }
       onCreated();
     } catch (e) {
@@ -559,9 +852,31 @@ function CreateUserModal({ onClose, onCreated }: {
 
   return (
     <Modal onClose={onClose} title="Tạo tài khoản mới">
-      <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-2 rounded mb-2">
-        Tạo user thật trong <code>auth.users</code> + bảng <code>users</code> (Supabase). Có thể login ngay.
+      <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-2 rounded mb-2 flex items-center justify-between">
+        <span>Tạo user thật trong <code>auth.users</code> + bảng <code>users</code> (Supabase). Có thể login ngay.</span>
       </div>
+
+      {/* Gợi ý chọn nhân viên có sẵn */}
+      {unregisteredEmployees.length > 0 && (
+        <div className="mb-3 p-2.5 rounded border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
+          <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1.5 mb-1">
+            <UserPlus className="w-3.5 h-3.5" /> Chọn nhanh nhân viên chưa có tài khoản ({unregisteredEmployees.length})
+          </label>
+          <select
+            value={selectedNvMa}
+            onChange={(e) => handleSelectEmployee(e.target.value)}
+            className="w-full text-xs px-2 py-1.5 rounded border bg-white dark:bg-slate-900"
+          >
+            <option value="">-- Chọn nhân sự để tự động điền form --</option>
+            {unregisteredEmployees.map((nv) => (
+              <option key={nv.maNV} value={nv.maNV}>
+                {nv.maNV} - {nv.hoTen} ({nv.boPhan || "Chưa rõ phòng ban"})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2">
         <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} placeholder="Nguyễn Văn A" />
         <Field label="Mã NV" value={data.maNV} onChange={(v) => setData({ ...data, maNV: v })} placeholder="NV001 (để trống sẽ tự sinh)" />
@@ -574,7 +889,7 @@ function CreateUserModal({ onClose, onCreated }: {
               value={data.password}
               onChange={(e) => setData({ ...data, password: e.target.value })}
               placeholder="Mimin@123 (mặc định)"
-              className="w-full mt-0.5 px-2 py-1.5 pr-8 rounded border text-sm"
+              className="w-full mt-0.5 px-2 py-1.5 pr-8 rounded border text-sm font-mono"
             />
             <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
               {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -590,7 +905,7 @@ function CreateUserModal({ onClose, onCreated }: {
       <div className="mt-3 p-2.5 rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
         <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
           <input type="checkbox" checked={taoHoSoNhanSu} onChange={(e) => setTaoHoSoNhanSu(e.target.checked)} className="w-4 h-4" />
-          Đồng thời tạo hồ sơ Nhân sự (trang Nhân sự)
+          Đồng thời tạo mới hồ sơ Nhân sự (trang Nhân sự)
         </label>
         {taoHoSoNhanSu && (
           <div className="mt-2 flex items-center gap-2">
