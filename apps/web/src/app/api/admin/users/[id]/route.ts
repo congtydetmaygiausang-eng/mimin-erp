@@ -34,11 +34,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Dong bo role vao auth.users.app_metadata
+    // Dong bo role, ten va mat khau (neu co) vao auth.users
+    const authUpdate: any = {};
     if (body.role !== undefined) {
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
-        app_metadata: { role: body.role, provider: "email", providers: ["email"] },
-      });
+      authUpdate.app_metadata = { role: body.role, provider: "email", providers: ["email"] };
+    }
+    if (body.name !== undefined) {
+      authUpdate.user_metadata = { full_name: body.name };
+    }
+    if (body.password && typeof body.password === "string" && body.password.length >= 6) {
+      authUpdate.password = body.password;
+    }
+
+    if (Object.keys(authUpdate).length > 0) {
+      const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(userId, authUpdate);
+      if (authErr) {
+        return NextResponse.json({ error: "Cập nhật tài khoản auth thất bại: " + authErr.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ ok: true });
