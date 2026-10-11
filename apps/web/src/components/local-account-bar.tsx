@@ -1,13 +1,17 @@
 "use client";
 import Link from "next/link";
-import { readLocalAccounts, localActiveAccount, selectLocalAccount, useLocalAccountRevision } from "@/lib/local-account-store";
+import { readLocalAccounts, localActiveAccount, selectLocalAccount, useLocalAccountRevision, syncAccountLinksFromSupabase } from "@/lib/local-account-store";
 import { useEffect, useState } from "react";
 
 export function LocalAccountBar({ activeName }: { activeName?: string }) {
   useLocalAccountRevision();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    async function syncRealNames() {
+    async function init() {
+      // Bước 1: Sync cấu hình phân quyền từ Supabase (nguồn chân lý)
+      await syncAccountLinksFromSupabase();
+
+      // Bước 2: Cập nhật tên thật từ bảng nhan_su
       try {
         const { isSupabaseEnabled, supabase } = await import("@/lib/supabase/client");
         if (!isSupabaseEnabled || !supabase) return;
@@ -16,8 +20,8 @@ export function LocalAccountBar({ activeName }: { activeName?: string }) {
           const raw = localStorage.getItem("mimin_local_account_links_v1");
           let accounts = raw ? JSON.parse(raw) : readLocalAccounts();
           let changed = false;
-          data.forEach(dbUser => {
-            const acc = accounts.find((a: any) => a.employeeCode === dbUser.ma_nv);
+          data.forEach((dbUser: { ma_nv: string; ho_ten: string }) => {
+            const acc = accounts.find((a: { employeeCode: string; name: string }) => a.employeeCode === dbUser.ma_nv);
             if (acc && acc.name !== dbUser.ho_ten) {
               acc.name = dbUser.ho_ten;
               changed = true;
@@ -32,7 +36,7 @@ export function LocalAccountBar({ activeName }: { activeName?: string }) {
         console.error("Failed to sync local account names from Supabase", e);
       }
     }
-    syncRealNames().finally(() => setMounted(true));
+    init().finally(() => setMounted(true));
   }, []);
   if (!mounted) return null;
   const account = localActiveAccount();
