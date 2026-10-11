@@ -134,8 +134,28 @@ const STORAGE_KEY = "mimin_khach_hang_v2";
 const KHACH_HANG_MOCK: KhachHangUI[] = [];
 
 export function KhachHangProvider({ children }: { children: ReactNode }) {
-  const [list, setList] = useState<KhachHangUI[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [list, setList] = useState<KhachHangUI[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return false;
+      }
+    } catch {}
+    return true;
+  });
 
   // Bỏ load localStorage - khách hàng 700+ rows quá lớn, dùng Supabase trực tiếp
 
@@ -157,6 +177,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
             data.sort((a: any, b: any) => (b.ma_kh || "").localeCompare(a.ma_kh || ""));
             const mapped = data.map((d: any) => mapToUI(d));
             setList(mapped);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped)); } catch {}
           } else {
             setList([]);
           }

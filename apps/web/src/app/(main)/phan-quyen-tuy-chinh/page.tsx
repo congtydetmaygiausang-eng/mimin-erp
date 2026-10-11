@@ -189,16 +189,20 @@ export default function PhanQuyenTuyChinhPage() {
   // Save matrix — auto-refresh session nếu token expired
   const handleSave = async () => {
     const trySave = async () => {
-      await saveCustomMatrix(matrix);
+      const result = await saveCustomMatrix(matrix);
       setDirty(false);
       logAudit({
         user,
         action: "update",
         module: "phan-quyen-tuy-chinh",
-        description: `Cập nhật permission matrix (7 role × ${ALL_MODULES.length} module)`,
+        description: `Cập nhật permission matrix (${ALL_ROLES.length} role × ${ALL_MODULES.length} module)`,
         success: true,
       });
-      toast.success("✅ Đã lưu và đồng bộ ma trận phân quyền");
+      if (result && !result.synced && result.warning) {
+        toast.warning(result.warning, { duration: 6000 });
+      } else {
+        toast.success("✅ Đã lưu và đồng bộ ma trận phân quyền");
+      }
     };
 
     try {

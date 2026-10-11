@@ -70,8 +70,28 @@ const Ctx = createContext<NhanSuContextType | null>(null);
 const STORAGE_KEY = "mimin_nhan_su_v2";
 
 export function NhanSuProvider({ children }: { children: ReactNode }) {
-  const [list, setList] = useState<NhanSuExt[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [list, setList] = useState<NhanSuExt[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return false;
+      }
+    } catch {}
+    return true;
+  });
   const currentList = useRef(list);
   currentList.current = list;
 

@@ -477,49 +477,90 @@ const mapLenhCatFromDB = (item: any): LenhCat => ({
 
 export function LenhCatProvider({ children }: { children: ReactNode }) {
   const { upsertTuLenhCat, dongBoToanBoCongNoTuLenhCat } = usePhanCong();
-  const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>([]);
+  // Instant Load: nạp ngay từ local cache để render 0 giây
+  const [dsLenhCat, setDsLenhCat] = useState<LenhCat[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored) as LenhCat[];
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [dsMauCongDoan, setDsMauCongDoan] = useState<MauCongDoanItem[]>([]);
   const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const [loading, setLoading] = useState(true);
-  // isSupabaseReady: set true sau khi Supabase fetch xong (thành công hoặc thất bại)
-  // Dùng để đồng bộ với isLoaded (localStorage) trước khi render Provider
+  // Không chặn loading spinner nếu máy đã có cache sẵn
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        }
+      } catch {}
+    }
+    return true;
+  });
+
   const [isSupabaseDone, setIsSupabaseDone] = useState(false);
 
+  // Nạp lại cache local nếu lúc SSR chưa đọc được
   useEffect(() => {
-    if (!LOCAL_ACCOUNT_MODE) return;
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setDsLenhCat(JSON.parse(stored) as LenhCat[]);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as LenhCat[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDsLenhCat((prev) => (prev.length === 0 ? parsed : prev));
+          setLoading(false);
+        }
+      }
+    } catch {}
   }, []);
-  useEffect(() => {
-    if (LOCAL_ACCOUNT_MODE && isLoaded && isSupabaseDone) localStorage.setItem(STORAGE_KEY, JSON.stringify(dsLenhCat));
-  }, [dsLenhCat, isLoaded, isSupabaseDone]);
 
-  // Load Lệnh Cắt từ Supabase
+  // Luôn đồng bộ dữ liệu Lệnh cắt xuống localStorage cache để lần sau mở trang có ngay
+  useEffect(() => {
+    if (dsLenhCat.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dsLenhCat));
+      } catch {}
+    }
+  }, [dsLenhCat]);
+
+  // Âm thầm fetch Lệnh Cắt từ Supabase ở background (Revalidate)
   useEffect(() => {
     let mounted = true;
     const loadData = async () => {
       try {
         const { supabase } = await import("@/lib/supabase/client");
         if (supabase) {
-          const { data, error } = await supabase!.from("lenh_cat").select("*").order("created_at", { ascending: false });
+          const { data, error } = await supabase.from("lenh_cat").select("*").order("created_at", { ascending: false });
           if (error) throw error;
           
           if (data && mounted) {
             const mapped = data.map(mapLenhCatFromDB);
-            // Merge thay vì ghi đè: ưu tiên bản ghi Supabase (nguồn sự thật),
-            // nhưng GIỮ lại lệnh cắt chỉ có ở local (tạo lúc mất mạng) - trước
-            // đây setDsLenhCat(mapped) thay sạch state nên các lệnh này bị xoá.
+            // Merge: ưu tiên bản ghi Supabase (nguồn sự thật), giữ lại lệnh chỉ có ở local
             const remoteIds = new Set(mapped.map((r) => r.id));
-            setDsLenhCat((prev) => [
-              ...(mapped as LenhCat[]),
-              ...prev.filter((x) => !remoteIds.has(x.id)),
-            ]);
+            setDsLenhCat((prev) => {
+              const combined = [
+                ...(mapped as LenhCat[]),
+                ...prev.filter((x) => !remoteIds.has(x.id)),
+              ];
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+              } catch {}
+              return combined;
+            });
           }
         }
       } catch (err) {
-        console.error("Lỗi fetch Lệnh cắt", err);
+        console.error("Lỗi fetch Lệnh cắt từ Supabase:", err);
       } finally {
         if (mounted) {
           setLoading(false);

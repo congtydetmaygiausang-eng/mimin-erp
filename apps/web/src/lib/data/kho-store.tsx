@@ -103,8 +103,18 @@ function toSupabaseRow(g: GiaoDichKho) {
 
 
 export function KhoProvider({ children }: { children: ReactNode }) {
-  const [giaoDich, setGiaoDich] = useState<GiaoDichKho[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [giaoDich, setGiaoDich] = useState<GiaoDichKho[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as GiaoDichKho[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [hydrated, setHydrated] = useState(true);
 
   // Load từ localStorage
   useEffect(() => {

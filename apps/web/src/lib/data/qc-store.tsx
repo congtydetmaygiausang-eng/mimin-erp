@@ -137,8 +137,8 @@ function saveData(d: BanGhiQC[]) {
 }
 
 export function QCProvider({ children }: { children: ReactNode }) {
-  const [banGhi, setBanGhi] = useState<BanGhiQC[]>(buildDefault);
-  const [hydrated, setHydrated] = useState(false);
+  const [banGhi, setBanGhi] = useState<BanGhiQC[]>(loadData);
+  const [hydrated, setHydrated] = useState(true);
 
   useEffect(() => {
     setBanGhi(loadData());

@@ -123,8 +123,28 @@ const DEFAULT_SEED: NhaCungCapModel[] = NCCS.map((n, i) => ({
 }));
 
 export function NhaCungCapProvider({ children }: { children: ReactNode }) {
-  const [list, setList] = useState<NhaCungCapModel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [list, setList] = useState<NhaCungCapModel[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return false;
+      }
+    } catch {}
+    return true;
+  });
 
   useEffect(() => {
     try {

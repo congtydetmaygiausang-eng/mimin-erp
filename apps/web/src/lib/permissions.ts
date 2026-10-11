@@ -639,21 +639,38 @@ export function getEffectivePermissions(): PermissionMatrix {
 }
 
 /** Lưu cache ngay để UI phản hồi nhanh, sau đó đồng bộ dùng chung lên Supabase. */
-export async function saveCustomMatrix(matrix: PermissionMatrix): Promise<void> {
-  if (typeof window === "undefined") return;
+export async function saveCustomMatrix(matrix: PermissionMatrix): Promise<{ synced: boolean; warning?: string }> {
+  if (typeof window === "undefined") return { synced: false };
   try {
     const normalized = cacheMatrix(matrix);
     if (isSupabaseEnabled && supabase) {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        throw new Error("Phiên đăng nhập Supabase đã hết hạn, vui lòng Đăng xuất và Đăng nhập lại.");
+        return {
+          synced: false,
+          warning: "Đã lưu ma trận vào máy này. Phiên Supabase đã hết hạn nên chưa đồng bộ lên mây.",
+        };
       }
       
-      const { error } = await supabase.from("permission_settings").upsert({ id: "global", matrix: normalized, updated_at: new Date().toISOString() });
+      const { error } = await supabase.from("permission_settings").upsert({
+        id: "global",
+        matrix: normalized,
+        updated_at: new Date().toISOString(),
+      });
+
       if (error) {
+        // Nếu lỗi phân quyền bảng permission_settings (mã 42501 hoặc permission denied)
+        if (error.code === "42501" || error.message?.toLowerCase().includes("permission denied")) {
+          console.warn("[permissions] Supabase thiếu GRANT cho bảng permission_settings:", error);
+          return {
+            synced: false,
+            warning: "Đã lưu ma trận trên máy này! Để đồng bộ đa máy, hãy chạy script SQL cấp quyền bảng permission_settings trên Supabase.",
+          };
+        }
         throw new Error(error.message || JSON.stringify(error));
       }
     }
+    return { synced: true };
   } catch (err: any) {
     console.error("[permissions] Không lưu được custom matrix:", err);
     throw new Error(err.message || "Lỗi không xác định");

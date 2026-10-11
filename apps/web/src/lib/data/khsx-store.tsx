@@ -86,7 +86,7 @@ function persist(item: KHSX) {
 }
 
 export function KHSXProvider({ children }: { children: ReactNode }) {
-  const [khsx, setKHSX] = useState<KHSX[]>([]);
+  const [khsx, setKHSX] = useState<KHSX[]>(loadData);
 
   useEffect(() => {
     const localData = loadData();
