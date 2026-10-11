@@ -25,7 +25,7 @@ import {
   createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, generateMaDH,
   calcOrderTotal, calcPaidTotal, calcOrderRemain, calcOrderQty, recalcItem,
 } from "./helpers";
-import { generateVariants, type ProductVariant } from "@/lib/data/product-variants";
+import { generateVariants, mauToCode, type ProductVariant } from "@/lib/data/product-variants";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 
 interface Props {
@@ -104,6 +104,10 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
     setOrder((o) => ({ ...o, items: o.items.filter((it) => it.id !== id) }));
   };
 
+  const clearProductItems = (sp: SanPham) => {
+    setOrder((o) => ({ ...o, items: o.items.filter((it) => it.spId !== sp.id) }));
+  };
+
   /** Mở picker chọn SP + variant - flow bán lẻ */
   const addItemFromCatalog = (sp: SanPham) => {
     // Bán lẻ: thêm 1 dòng với variant mặc định (màu đầu, size đầu)
@@ -139,41 +143,60 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
   };
 
   /** Cập nhật matrix bán sỉ (size × màu) → đồng bộ items[] */
-  const updateSiMatrixCell = (sp: SanPham, mauCode: string, size: string, soLuong: number) => {
-    const variantId = `${sp.id}-${mauCode}-${size}`;
+  const updateSiMatrixCell = (sp: SanPham, rawMauCode: string, size: string, soLuong: number) => {
+    const targetMauCode = mauToCode(rawMauCode);
+    const targetSize = (size || "").trim().toUpperCase();
+    const variantId = `${sp.id}-${targetMauCode}-${targetSize}`;
+
     setOrder((o) => {
-      const existing = o.items.find((it) => it.sku === variantId);
-      const sp2: ProductVariant | undefined = generateVariants(sp.id, sp.dsMau, sp.bangSize).find(
-        (v) => v.mauCode === mauCode && v.size === size
+      const variants = generateVariants(sp.id, sp.dsMau, sp.bangSize);
+      const sp2 = variants.find(
+        (v) => (v.mauCode === targetMauCode || mauToCode(v.mauTen) === targetMauCode) &&
+               v.size.trim().toUpperCase() === targetSize
       );
-      if (!sp2) return o;
+
+      // Match item thuộc về đúng sản phẩm + màu + size này
+      const isMatch = (it: OrderItem) => {
+        if (it.spId !== sp.id) return false;
+        const itSize = (it.size || "").trim().toUpperCase();
+        if (itSize !== targetSize) return false;
+        const itMau = mauToCode(it.mauCode || it.mauTen || "");
+        return itMau === targetMauCode || it.sku === variantId || (sp2 && it.sku === sp2.maSKU);
+      };
 
       if (soLuong <= 0) {
-        // Xoá
-        return { ...o, items: o.items.filter((it) => it.sku !== variantId) };
+        // Xoá tất cả item trùng cell này
+        return { ...o, items: o.items.filter((it) => !isMatch(it)) };
       }
-      if (existing) {
-        return {
-          ...o,
-          items: o.items.map((it) =>
-            it.sku === variantId
-              ? recalcItem({ ...it, soLuong })
-              : it
-          ),
-        };
+
+      const existingIndex = o.items.findIndex(isMatch);
+      if (existingIndex >= 0) {
+        // Cập nhật số lượng của item đầu tiên, dọn sạch các item trùng lặp khác nếu có
+        const updatedItems = o.items.filter((it, idx) => idx === existingIndex || !isMatch(it));
+        updatedItems[existingIndex] = recalcItem({
+          ...updatedItems[existingIndex],
+          sku: variantId,
+          mauCode: targetMauCode,
+          mauTen: sp2?.mauTen || updatedItems[existingIndex].mauTen || rawMauCode,
+          size: targetSize,
+          soLuong,
+        });
+        return { ...o, items: updatedItems };
       }
-      // Thêm moi
+
+      // Thêm mới
+      const donGia = sp.giaBanSi || sp.giaBanDuKien || 0;
       const newItem = createOrderItemFromVariant({
         spId: sp.id,
         spTen: sp.tenSP,
-        mauCode: sp2.mauCode,
-        mauTen: sp2.mauTen,
-        size: sp2.size,
-        sku: sp2.maSKU,
-        donGia: sp.giaBanDuKien,
+        mauCode: targetMauCode,
+        mauTen: sp2?.mauTen || rawMauCode,
+        size: targetSize,
+        sku: variantId,
+        donGia,
       });
       newItem.soLuong = soLuong;
-      newItem.thanhTien = soLuong * sp.giaBanDuKien;
+      newItem.thanhTien = soLuong * donGia;
       return { ...o, items: [...o.items, newItem] };
     });
   };
@@ -338,6 +361,7 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
               onRemoveItem={removeItem}
               onAddFromCatalog={addItemFromCatalog}
               onUpdateSiCell={updateSiMatrixCell}
+              onClearProduct={clearProductItems}
               onAddCustomItem={() => {
                 const newItem: OrderItem = {
                   id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -569,11 +593,12 @@ interface ItemsTabProps {
   onRemoveItem: (id: string) => void;
   onAddFromCatalog: (sp: SanPham) => void;
   onUpdateSiCell: (sp: SanPham, mauCode: string, size: string, soLuong: number) => void;
+  onClearProduct?: (sp: SanPham) => void;
   onAddCustomItem: () => void;
   onChange: (p: Partial<Order>) => void;
 }
 
-function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatalog, onUpdateSiCell, onAddCustomItem, onChange }: ItemsTabProps) {
+function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatalog, onUpdateSiCell, onClearProduct, onAddCustomItem, onChange }: ItemsTabProps) {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerSP, setPickerSP] = useState<SanPham | null>(null); // bán sỉ mode
@@ -791,6 +816,7 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
               onClose={() => setShowPicker(false)}
               orderItems={order.items}
               onUpdateCell={onUpdateSiCell}
+              onClearProduct={onClearProduct}
               isSi={isSi}
               isLo={isLo}
               orderType={order.loaiDonHang}
@@ -803,7 +829,7 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
 
 // Picker chọn SP đa năng (Hiển thị list, click mở rộng bảng Size x Màu)
 function CatalogPicker({
-  dsSanPham, search, onSearch, onClose, orderItems, onUpdateCell, isSi, isLo, orderType
+  dsSanPham, search, onSearch, onClose, orderItems, onUpdateCell, onClearProduct, isSi, isLo, orderType
 }: {
   dsSanPham: SanPham[];
   search: string;
@@ -811,6 +837,7 @@ function CatalogPicker({
   onClose: () => void;
   orderItems: OrderItem[];
   onUpdateCell: (sp: SanPham, mauCode: string, size: string, soLuong: number) => void;
+  onClearProduct?: (sp: SanPham) => void;
   isSi: boolean;
   isLo: boolean;
   orderType?: Order["loaiDonHang"];
@@ -880,7 +907,7 @@ function CatalogPicker({
                   </div>
                   {isExpanded && (
                     <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 overflow-x-auto">
-                      <ProductMatrixTable sp={sp} orderItems={orderItems} onUpdateCell={onUpdateCell} isSi={isSi} isLo={isLo} />
+                      <ProductMatrixTable sp={sp} orderItems={orderItems} onUpdateCell={onUpdateCell} onClearProduct={onClearProduct} isSi={isSi} isLo={isLo} />
                     </div>
                   )}
                 </div>
@@ -896,55 +923,203 @@ function CatalogPicker({
   );
 }
 
-function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi, isLo }: { sp: SanPham, orderItems: OrderItem[], onUpdateCell: any, isSi?: boolean, isLo?: boolean }) {
-  const sizes = sp.bangSize?.sizes.filter((_, i) => (sp.bangSize?.ratios[i] || 0) > 0) || [];
-  const mauList = sp.dsMau;
-  const itemsByKey = new Map<string, number>();
-  orderItems.forEach((it) => {
-    if (it.spId === sp.id && it.sku) {
-      const parts = it.sku.split("-");
-      if (parts.length >= 3) {
-        const mau = parts[parts.length - 2];
-        const size = parts[parts.length - 1];
-        itemsByKey.set(`${mau}-${size}`, it.soLuong);
+function ProductMatrixTable({ sp, orderItems, onUpdateCell, onClearProduct, isSi, isLo }: { sp: SanPham, orderItems: OrderItem[], onUpdateCell: any, onClearProduct?: (sp: SanPham) => void, isSi?: boolean, isLo?: boolean }) {
+  const mauList = sp.dsMau || [];
+
+  // 1. Phân tích tỉ lệ size chuẩn
+  // Tách tiLeSize dạng "1:2:2:2:1" hoặc "1:1:1:1"
+  const tiLeParts = useMemo(() => {
+    return (sp.tiLeSize || "")
+      .split(":")
+      .map(Number)
+      .filter((n) => Number.isFinite(n) && n >= 0);
+  }, [sp.tiLeSize]);
+
+  // Ghép size với tỉ lệ tương ứng
+  const sizeConfigs = useMemo(() => {
+    const rawSizes = (sp.bangSize?.sizes && sp.bangSize.sizes.length > 0)
+      ? sp.bangSize.sizes
+      : ["M", "L", "XL", "2XL"];
+
+    const configs = rawSizes.map((size, idx) => {
+      let ratio = 1;
+      if (sp.bangSize?.ratios && sp.bangSize.ratios[idx] !== undefined && sp.bangSize.ratios[idx] > 0) {
+        ratio = sp.bangSize.ratios[idx];
+      } else if (tiLeParts[idx] !== undefined && tiLeParts[idx] > 0) {
+        ratio = tiLeParts[idx];
       }
+      return { size, ratio };
+    });
+
+    const activeConfigs = configs.filter((c) => c.ratio > 0);
+    return activeConfigs.length > 0 ? activeConfigs : configs;
+  }, [sp.bangSize, tiLeParts]);
+
+  // 2. Map itemsByKey: key dạng `${mauCode}-${size}`
+  const itemsByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    orderItems.forEach((it) => {
+      if (it.spId === sp.id) {
+        let itemMau = mauToCode(it.mauCode || it.mauTen || "");
+        let itemSize = (it.size || "").trim().toUpperCase();
+
+        // Fallback tách từ sku nếu thiếu
+        if (!itemMau || !itemSize) {
+          const parts = (it.sku || "").split("-");
+          if (parts.length >= 2) {
+            itemSize = itemSize || parts[parts.length - 1].toUpperCase();
+            itemMau = itemMau || mauToCode(parts[parts.length - 2]);
+          }
+        }
+
+        // Nếu vẫn không có màu, gán vào màu đầu tiên của SP
+        if (!itemMau && mauList[0]) {
+          itemMau = mauToCode(mauList[0].ten);
+        }
+        // Nếu vẫn không có size, gán vào size đầu tiên
+        if (!itemSize && sizeConfigs[0]) {
+          itemSize = sizeConfigs[0].size.toUpperCase();
+        }
+
+        if (itemMau && itemSize) {
+          const key = `${itemMau}-${itemSize}`;
+          map.set(key, (map.get(key) || 0) + (it.soLuong || 0));
+        }
+      }
+    });
+    return map;
+  }, [orderItems, sp.id, mauList, sizeConfigs]);
+
+  // 3. Tổng SL toàn bộ matrix của sản phẩm này
+  const tongSL = useMemo(() => {
+    return Array.from(itemsByKey.values()).reduce((s, n) => s + n, 0);
+  }, [itemsByKey]);
+
+  // Tổng tỉ lệ 1 Ri cho 1 màu
+  const sumRatioPerColor = useMemo(() => {
+    return sizeConfigs.reduce((s, c) => s + c.ratio, 0);
+  }, [sizeConfigs]);
+
+  // Tổng số SP của 1 Ri trên tất cả các màu
+  const totalRatioAllColors = useMemo(() => {
+    return sumRatioPerColor * (mauList.length || 1);
+  }, [sumRatioPerColor, mauList]);
+
+  // Tính số Ri hiện tại dựa trên tổng SL
+  const currentRi = useMemo(() => {
+    if (totalRatioAllColors > 0 && tongSL > 0 && tongSL % totalRatioAllColors === 0) {
+      return Math.round(tongSL / totalRatioAllColors);
     }
-  });
+    return 0;
+  }, [totalRatioAllColors, tongSL]);
 
-  const tongSL = Array.from(itemsByKey.values()).reduce((s, n) => s + n, 0);
+  const [slRiInput, setSlRiInput] = useState<string>("");
 
-  const chiaTheoRi = (mauCode: string, slRi: number) => {
-    const ratios = sp.bangSize?.ratios || [];
-    sizes.forEach((size, index) => onUpdateCell(sp, mauCode, size, slRi * (ratios[index] || 0)));
-  };
+  // Tự động đồng bộ ô Số Ri khi tổng SL thay đổi
+  useEffect(() => {
+    if (currentRi > 0) {
+      setSlRiInput(String(currentRi));
+    } else if (tongSL === 0) {
+      setSlRiInput("");
+    }
+  }, [currentRi, tongSL]);
 
+  // Chia theo Ri cho TẤT CẢ các màu
   const handleRiChange = (slRi: number) => {
-    const ratios = sp.bangSize?.ratios || [];
-    mauList.forEach(mau => {
-      const mauCode = (mau.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
-      sizes.forEach((s, idx) => {
-        const val = slRi * (ratios[idx] || 0);
-        onUpdateCell(sp, mauCode, s, val);
+    setSlRiInput(slRi > 0 ? String(slRi) : "");
+    mauList.forEach((mau) => {
+      const mauCode = mauToCode(mau.ten);
+      sizeConfigs.forEach((sc) => {
+        const val = slRi * sc.ratio;
+        onUpdateCell(sp, mauCode, sc.size, val);
       });
     });
+  };
+
+  // Chia theo Ri cho 1 màu cụ thể (bán lô)
+  const chiaTheoRiMotMau = (mauCode: string, slRi: number) => {
+    sizeConfigs.forEach((sc) => {
+      onUpdateCell(sp, mauCode, sc.size, slRi * sc.ratio);
+    });
+  };
+
+  // Chia theo Tổng SL của 1 màu (Tự chia theo tỉ lệ size)
+  const handleTotalChange = (mauCode: string, newTotal: number) => {
+    if (sumRatioPerColor === 0 || newTotal <= 0) {
+      sizeConfigs.forEach((sc) => onUpdateCell(sp, mauCode, sc.size, 0));
+      return;
+    }
+
+    const result = sizeConfigs.map((sc) =>
+      Math.floor((newTotal * sc.ratio) / sumRatioPerColor)
+    );
+    let currentTotal = result.reduce((a, b) => a + b, 0);
+    let remainder = newTotal - currentTotal;
+
+    // Phân bổ phần dư vào các size có tỉ lệ lớn nhất
+    const indices = sizeConfigs
+      .map((_, i) => i)
+      .sort((a, b) => sizeConfigs[b].ratio - sizeConfigs[a].ratio);
+
+    let i = 0;
+    while (remainder > 0 && i < indices.length) {
+      result[indices[i]]++;
+      remainder--;
+      i++;
+    }
+
+    sizeConfigs.forEach((sc, idx) => {
+      onUpdateCell(sp, mauCode, sc.size, result[idx]);
+    });
+  };
+
+  // Xóa toàn bộ sản phẩm này về 0
+  const handleClearAll = () => {
+    setSlRiInput("");
+    if (onClearProduct) {
+      onClearProduct(sp);
+    } else {
+      mauList.forEach((mau) => {
+        const mauCode = mauToCode(mau.ten);
+        sizeConfigs.forEach((sc) => {
+          onUpdateCell(sp, mauCode, sc.size, 0);
+        });
+      });
+    }
   };
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
       {isSi && !isLo && (
-        <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 border-b border-cyan-100 dark:border-cyan-800 flex items-center justify-between">
-          <span className="text-sm font-bold text-cyan-800 dark:text-cyan-300">
-            ⚡ Bán theo Ri (Áp dụng cho TẤT CẢ màu)
-          </span>
+        <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 border-b border-cyan-100 dark:border-cyan-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-cyan-800 dark:text-cyan-300">
+              ⚡ Bán theo Ri (Áp dụng cho TẤT CẢ màu)
+            </span>
+            <span className="text-[11px] px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-800/40 text-cyan-700 dark:text-cyan-300">
+              1 Ri = {totalRatioAllColors} SP ({mauList.length} màu × {sumRatioPerColor} SP/màu)
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-400">Số Ri:</span>
             <input
               type="number"
               min={0}
-              placeholder="0"
+              placeholder={currentRi > 0 ? String(currentRi) : "0"}
+              value={slRiInput}
               onChange={(e) => handleRiChange(Math.max(0, +e.target.value || 0))}
               className="w-20 px-2 py-1.5 rounded-lg border border-cyan-300 dark:border-cyan-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white dark:bg-slate-800 text-center font-bold text-cyan-800 dark:text-cyan-300 shadow-inner"
             />
+            {tongSL > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-xs px-2.5 py-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold"
+                title="Xóa tất cả số lượng của sản phẩm này"
+              >
+                Xóa về 0
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -953,11 +1128,13 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi, isLo }: { sp: 
           <tr>
             <th className="p-2 border-b border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-left text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
               Màu \ Size <br/>
-              <span className="text-[10px] text-cyan-600 font-normal">Tỉ lệ: {sp.tiLeSize}</span>
+              <span className="text-[10px] text-cyan-600 font-semibold">
+                Tỉ lệ: {sizeConfigs.map(c => c.ratio).join(":")}
+              </span>
             </th>
-            {sizes.map((s, i) => (
-              <th key={s} className="p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
-                {s} <br/> <span className="text-[10px] font-normal text-slate-500">({sp.bangSize?.ratios[i]})</span>
+            {sizeConfigs.map((sc) => (
+              <th key={sc.size} className="p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
+                {sc.size} <br/> <span className="text-[10px] font-normal text-slate-500">({sc.ratio})</span>
               </th>
             ))}
             <th className="p-2 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-900/20 text-center text-xs font-bold text-cyan-800 dark:text-cyan-400">
@@ -967,56 +1144,50 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi, isLo }: { sp: 
         </thead>
         <tbody>
           {mauList.map((mau) => {
-            const mauCode = (mau.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
-            const rowTotal = sizes.reduce((sum, s) => sum + (itemsByKey.get(`${mauCode}-${s}`) || 0), 0);
-            
-            const handleTotalChange = (newTotal: number) => {
-              const ratios = sp.bangSize?.ratios || [];
-              const sumRatio = ratios.reduce((a, b) => a + b, 0);
-              if (sumRatio === 0 || newTotal <= 0) {
-                sizes.forEach(s => onUpdateCell(sp, mauCode, s, 0));
-                return;
-              }
-              
-              const result = ratios.map(r => Math.floor((newTotal * r) / sumRatio));
-              let currentTotal = result.reduce((a, b) => a + b, 0);
-              let remainder = newTotal - currentTotal;
-              
-              const indices = ratios.map((r, i) => i).sort((a, b) => ratios[b] - ratios[a]);
-              let i = 0;
-              while (remainder > 0 && i < indices.length) {
-                result[indices[i]]++;
-                remainder--;
-                i++;
-              }
-              
-              sizes.forEach((s, idx) => {
-                if (result[idx] !== (itemsByKey.get(`${mauCode}-${s}`) || 0)) {
-                  onUpdateCell(sp, mauCode, s, result[idx]);
-                }
-              });
-            };
-
-            const ratioTotal = (sp.bangSize?.ratios || []).reduce((sum, ratio) => sum + ratio, 0);
-            const rowRi = ratioTotal > 0 && rowTotal > 0 ? Math.round(rowTotal / ratioTotal) : 0;
+            const mauCode = mauToCode(mau.ten);
+            const rowTotal = sizeConfigs.reduce(
+              (sum, sc) => sum + (itemsByKey.get(`${mauCode}-${sc.size.toUpperCase()}`) || 0),
+              0
+            );
+            const rowRi = sumRatioPerColor > 0 && rowTotal > 0 ? Math.round(rowTotal / sumRatioPerColor) : 0;
 
             return (
               <tr key={mau.ten} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <td className="p-2 border-b border-r border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 whitespace-nowrap">
-                  {mau.img ? <img src={mau.img} className="w-6 h-6 rounded object-cover shadow-sm" /> : <div className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-700"></div>}
+                  {mau.img ? (
+                    <img src={mau.img} alt={mau.ten} className="w-6 h-6 rounded object-cover shadow-sm" />
+                  ) : (
+                    <div className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  )}
                   {mau.ten}
-                  {isLo && <label className="ml-1 flex flex-col items-center gap-0.5 text-[10px] font-bold text-amber-700"><span>Số Ri</span><input type="number" min={0} value={rowRi || ""} placeholder="0" onChange={(e) => chiaTheoRi(mauCode, Math.max(0, +e.target.value || 0))} className="h-11 w-20 rounded-lg border-2 border-amber-400 bg-amber-50 px-1 text-center text-lg font-black text-amber-700 outline-none focus:ring-2 focus:ring-amber-500" title="Số Ri của màu này" /></label>}
+                  {isLo && (
+                    <label className="ml-1 flex flex-col items-center gap-0.5 text-[10px] font-bold text-amber-700">
+                      <span>Số Ri</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={rowRi || ""}
+                        placeholder="0"
+                        onChange={(e) => chiaTheoRiMotMau(mauCode, Math.max(0, +e.target.value || 0))}
+                        className="h-11 w-20 rounded-lg border-2 border-amber-400 bg-amber-50 px-1 text-center text-lg font-black text-amber-700 outline-none focus:ring-2 focus:ring-amber-500"
+                        title="Số Ri của màu này"
+                      />
+                    </label>
+                  )}
                 </td>
-                {sizes.map((s) => {
-                  const val = itemsByKey.get(`${mauCode}-${s}`) || 0;
+                {sizeConfigs.map((sc) => {
+                  const val = itemsByKey.get(`${mauCode}-${sc.size.toUpperCase()}`) || 0;
                   return (
-                    <td key={s} className={`p-1 border-b border-slate-200 dark:border-slate-700 text-center ${val > 0 ? "bg-cyan-50/50 dark:bg-cyan-900/10" : ""}`}>
+                    <td
+                      key={sc.size}
+                      className={`p-1 border-b border-slate-200 dark:border-slate-700 text-center ${val > 0 ? "bg-cyan-50/50 dark:bg-cyan-900/10" : ""}`}
+                    >
                       <input
                         type="number"
                         min={0}
                         value={val || ""}
                         placeholder="0"
-                        onChange={(e) => onUpdateCell(sp, mauCode, s, Math.max(0, +e.target.value || 0))}
+                        onChange={(e) => onUpdateCell(sp, mauCode, sc.size, Math.max(0, +e.target.value || 0))}
                         className="h-11 w-20 rounded-lg border-2 border-slate-300 bg-white px-1 text-center text-lg font-black text-slate-800 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                       />
                     </td>
@@ -1028,7 +1199,7 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi, isLo }: { sp: 
                     min={0}
                     value={rowTotal || ""}
                     placeholder="0"
-                    onChange={(e) => handleTotalChange(Math.max(0, +e.target.value || 0))}
+                    onChange={(e) => handleTotalChange(mauCode, Math.max(0, +e.target.value || 0))}
                     className="h-11 w-28 rounded-lg border-2 border-cyan-400 bg-cyan-50 px-1 text-center text-lg font-black text-cyan-700 outline-none transition-all focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500 dark:border-cyan-700 dark:bg-slate-800 dark:text-cyan-300"
                   />
                 </td>
@@ -1039,13 +1210,13 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, isSi, isLo }: { sp: 
             <td className="p-2 border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 text-right">
               Tổng cộng
             </td>
-            {sizes.map((s) => {
+            {sizeConfigs.map((sc) => {
               const colTotal = mauList.reduce((sum, m) => {
-                const mauCode = (m.ten || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "D").replace(/[^A-Z0-9]/g, "");
-                return sum + (itemsByKey.get(`${mauCode}-${s}`) || 0);
+                const mauCode = mauToCode(m.ten);
+                return sum + (itemsByKey.get(`${mauCode}-${sc.size.toUpperCase()}`) || 0);
               }, 0);
               return (
-                <td key={s} className="p-2 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
+                <td key={sc.size} className="p-2 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
                   {colTotal}
                 </td>
               );
