@@ -159,15 +159,27 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
     
     // Lắng nghe thay đổi trạng thái từ Supabase (đặc biệt quan trọng cho OAuth/Google Login)
     if (isSupabaseEnabled && supabase) {
-      // Tạm thời vô hiệu hoá tính năng force logout vì gây ra lỗi vòng lặp đăng nhập
-      // (user vừa login xong thì data.session = null, dẫn tới bị đá văng ra liên tục).
-      supabase.auth.getSession().then(({ data, error }) => {
+      const client = supabase;
+      // Verify session hiện tại với Supabase — auto-refresh nếu token gần hết hạn
+      client.auth.getSession().then(async ({ data, error }) => {
         if (error || !data.session) {
-          console.warn("[session] Supabase session is null on mount. Token might be missing.");
+          // Thử refresh trước khi kết luận hết hạn
+          const { data: refreshed, error: refreshErr } = await client.auth.refreshSession();
+          if (refreshErr || !refreshed.session) {
+            // Token thực sự đã hết hạn và không thể refresh — xóa cache stale
+            console.warn("[session] Token expired và không refresh được — xóa localStorage cache");
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem("mimin_erp_session_ttl");
+            // Không redirect tự động — chỉ xóa cache, để UI hiển thị đang xuất
+            setUser(null);
+            setAuthSource("none");
+          } else {
+            console.log("[session] Token được refresh thành công tự động");
+          }
         }
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
           const appMeta = (session.user.app_metadata as Record<string, unknown>) || {};
           const userMeta = (session.user.user_metadata as Record<string, unknown>) || {};
@@ -181,7 +193,7 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
           try {
             const cleanEmail = (session.user.email || "").trim().toLowerCase();
             if (cleanEmail) {
-              const { data: dbUser } = await supabase
+              const { data: dbUser } = await client
                 .from("users")
                 .select('name, role, "chucVu", "phongBan", "maNV"')
                 .eq("email", cleanEmail)

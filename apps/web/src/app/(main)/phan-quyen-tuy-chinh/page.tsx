@@ -156,23 +156,49 @@ export default function PhanQuyenTuyChinhPage() {
     });
     setDirty(true);
   };
-  // Save matrix
+  // Save matrix — auto-refresh session nếu token expired
   const handleSave = async () => {
-    try {
+    const trySave = async () => {
       await saveCustomMatrix(matrix);
       setDirty(false);
-    logAudit({
-      user,
-      action: "update",
-      module: "phan-quyen-tuy-chinh",
-      description: `Cập nhật permission matrix (7 role × ${ALL_MODULES.length} module)`,
-      success: true,
-    });
+      logAudit({
+        user,
+        action: "update",
+        module: "phan-quyen-tuy-chinh",
+        description: `Cập nhật permission matrix (7 role × ${ALL_MODULES.length} module)`,
+        success: true,
+      });
       toast.success("✅ Đã lưu và đồng bộ ma trận phân quyền");
+    };
+
+    try {
+      await trySave();
     } catch (error) {
-      toast.error(`Không đồng bộ được phân quyền: ${error instanceof Error ? error.message : "Lỗi không xác định"}`);
+      const msg = error instanceof Error ? error.message : "Lỗi không xác định";
+      const isExpired = msg.toLowerCase().includes("hết hạn") || msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("session");
+
+      if (isExpired) {
+        // Tự động refresh token và retry 1 lần
+        try {
+          toast.loading("🔄 Đang làm mới phiên đăng nhập...", { id: "session-refresh" });
+          const { supabase: sb } = await import("@/lib/supabase/client");
+          if (sb) {
+            const { error: refreshErr } = await sb.auth.refreshSession();
+            if (refreshErr) throw refreshErr;
+          }
+          toast.dismiss("session-refresh");
+          await trySave(); // retry sau khi refresh
+        } catch {
+          toast.dismiss("session-refresh");
+          toast.error("Phiên đăng nhập đã hết hạn. Đang chuyển về trang đăng nhập...", { duration: 3000 });
+          setTimeout(() => { window.location.href = "/login"; }, 3000);
+        }
+      } else {
+        toast.error(`Không đồng bộ được phân quyền: ${msg}`);
+      }
     }
   };
+
   const handleRestoreLegacy = () => {
     try {
       const previous = getLegacyPermissionMatrix();
