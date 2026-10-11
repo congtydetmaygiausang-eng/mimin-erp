@@ -17,6 +17,7 @@ import { AddSizeRatioModal } from "./components/AddSizeRatioModal";
 import { DangBanModal } from "./components/DangBanModal";
 import { VariantDetailModal } from "./components/VariantDetailModal";
 import { SuaTongModal } from "./components/SuaTongModal";
+import { MasterDetailsModal } from "./components/MasterDetailsModal";
 import { useKho } from "@/lib/data/kho-store";
 import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 import { useBangGia, type KenhBan as KenhBanBangGia } from "@/lib/data/bang-gia-store";
@@ -810,7 +811,8 @@ export default function KhoThanhPhamPage() {
     const dongGoiPCs = lc.phanCong?.filter((pc: any) => pc.id === "dongGoi" || pc.id === "dong_goi" || pc.tenCongDoan?.toLowerCase().includes("đóng gói")) || [];
     const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
     const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
-    const giaVon1SP = Math.round(lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || 0);
+    const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
+    const giaVon1SP = Math.round(ketQuaGiaVon.giaVon1SP || lc.bangCOGS?.giaVonBinhQuan || lc.bangCOGS?.giaVon1SP || (lc as any).giaVonDuKien || (lc as any).donGia || 0);
     const ngayNhap = new Date().toISOString().slice(0, 10);
     if (kenhBan.length === 0) {
       toast.error("Vui lòng chọn ít nhất một loại giá bán");
@@ -822,8 +824,7 @@ export default function KhoThanhPhamPage() {
       return kenhBan.filter((kenh) => layGia(kenh as KenhBanBangGia, lc.maSP, m.maSKU, Math.max(1, sl)) == null).map((kenh) => `${m.ten} · ${DS_KENH_BAN.find((item) => item.value === kenh)?.label || kenh}`);
     });
     if (thieuGia.length > 0) {
-      toast.error(`Chưa thiết lập bảng giá bán cho: ${thieuGia.join(", ")}`, { duration: 7000 });
-      return;
+      toast.info(`Lưu ý: Chưa thiết lập bảng giá bán cho: ${thieuGia.join(", ")}. Hệ thống sẽ ghi nhận giá tạm để cập nhật sau.`, { duration: 5000 });
     }
 
     const newSps: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
@@ -1032,8 +1033,10 @@ export default function KhoThanhPhamPage() {
                   <div className="mt-1 font-mono font-black text-blue-900">{lenhDangNhap.id}</div>
                 </div>
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                  <div className="text-[11px] font-bold uppercase text-emerald-600">Giá vốn bắt buộc</div>
-                  <div className="mt-1 font-black text-emerald-900">{ketQuaGiaVon.giaVon1SP.toLocaleString("vi-VN")}đ/SP</div>
+                  <div className="text-[11px] font-bold uppercase text-emerald-600">Giá vốn ước tính</div>
+                  <div className="mt-1 font-black text-emerald-900">
+                    {(ketQuaGiaVon.giaVon1SP || lenhDangNhap.bangCOGS?.giaVonBinhQuan || lenhDangNhap.bangCOGS?.giaVon1SP || (lenhDangNhap as any).giaVonDuKien || (lenhDangNhap as any).donGia || 0).toLocaleString("vi-VN")}đ/SP
+                  </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="text-[11px] font-bold uppercase text-slate-500">Số lượng nhập</div>
@@ -1042,7 +1045,7 @@ export default function KhoThanhPhamPage() {
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-black text-slate-800">Chọn loại giá bán đã thiết lập</h3>
+                <h3 className="mb-2 text-sm font-black text-slate-800">Chọn loại giá bán áp dụng</h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {DS_KENH_BAN.map((kenh) => {
                     const giaCacMau = dsMau.map((m) => layGia(kenh.value as KenhBanBangGia, lenhDangNhap.maSP, m.maSKU, Math.max(1, m.slDuKien || m.slThucTe || 1))).filter((gia): gia is number => gia != null);
@@ -1054,13 +1057,12 @@ export default function KhoThanhPhamPage() {
                       <button
                         key={kenh.value}
                         type="button"
-                        disabled={!coDuGia}
                         onClick={() => setKenhNhapKho((current) => selected ? current.filter((item) => item !== kenh.value) : [...current, kenh.value])}
-                        className={`rounded-xl border-2 p-3 text-left transition ${selected ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white"} disabled:cursor-not-allowed disabled:opacity-50`}
+                        className={`rounded-xl border-2 p-3 text-left transition ${selected ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white"}`}
                       >
                         <div className="text-xs font-bold text-slate-700">{selected ? "✓ " : ""}{kenh.label}</div>
-                        <div className={`mt-1 text-sm font-black ${coDuGia ? "text-emerald-700" : "text-rose-600"}`}>
-                          {coDuGia ? `${min.toLocaleString("vi-VN")}${max !== min ? ` – ${max.toLocaleString("vi-VN")}` : ""}đ` : "Chưa có bảng giá"}
+                        <div className={`mt-1 text-sm font-black ${coDuGia ? "text-emerald-700" : "text-amber-600"}`}>
+                          {coDuGia ? `${min.toLocaleString("vi-VN")}${max !== min ? ` – ${max.toLocaleString("vi-VN")}` : ""}đ` : "Mặc định (cập nhật sau)"}
                         </div>
                       </button>
                     );
@@ -1073,7 +1075,7 @@ export default function KhoThanhPhamPage() {
                 <button type="button" onClick={() => setLenhDangNhap(null)} className="rounded-xl border-2 border-slate-200 px-5 py-2.5 font-bold text-slate-600">Đóng</button>
                 <button
                   type="button"
-                  disabled={loadingBangGia || ketQuaGiaVon.giaVon1SP <= 0 || kenhNhapKho.length === 0}
+                  disabled={loadingBangGia || kenhNhapKho.length === 0}
                   onClick={() => handleNhapKhoFromLC(lenhDangNhap, kenhNhapKho)}
                   className="rounded-xl bg-[#2B4C3E] px-6 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
