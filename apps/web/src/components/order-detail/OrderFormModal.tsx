@@ -606,6 +606,97 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
   const isSi = order.loaiDonHang === "ban-si" || order.loaiDonHang === "ban-lo";
   const isLo = order.loaiDonHang === "ban-lo";
 
+  // Nhóm các items theo: Sản phẩm + Màu sắc (1 màu hiển thị trên 1 hàng duy nhất)
+  const groupedItems = useMemo(() => {
+    const groups: {
+      key: string;
+      isCustom: boolean;
+      customItem?: OrderItem;
+      spId: string;
+      spTen: string;
+      mauTen?: string;
+      mauCode?: string;
+      mauImg?: string;
+      sp?: SanPham;
+      items: OrderItem[];
+      sizeConfigs: { size: string; ratio: number }[];
+    }[] = [];
+
+    const groupMap = new Map<string, typeof groups[0]>();
+
+    order.items.forEach((it) => {
+      if (it.spId === "CUSTOM") {
+        groups.push({
+          key: it.id,
+          isCustom: true,
+          customItem: it,
+          spId: "CUSTOM",
+          spTen: it.spTen || "Sản phẩm ngoài",
+          items: [it],
+          sizeConfigs: [],
+        });
+        return;
+      }
+
+      const sp = dsSanPham.find((s) => s.id === it.spId);
+      const mauCode = mauToCode(it.mauCode || it.mauTen || "");
+      const groupKey = `${it.spId}_${mauCode || "NO_COLOR"}`;
+
+      let grp = groupMap.get(groupKey);
+      if (!grp) {
+        // Tìm ảnh màu từ sp.dsMau nếu có
+        const matchedMau = sp?.dsMau?.find((m) => mauToCode(m.ten) === mauCode);
+        const mauImg = matchedMau?.img || it.mauImg;
+
+        // Tách tỉ lệ size từ sp
+        const tiLeParts = (sp?.tiLeSize || "")
+          .split(":")
+          .map(Number)
+          .filter((n) => Number.isFinite(n) && n >= 0);
+
+        const configs: { size: string; ratio: number }[] = [];
+        if (sp?.bangSize?.sizes && sp.bangSize.sizes.length > 0) {
+          sp.bangSize.sizes.forEach((sz, idx) => {
+            let ratio = 1;
+            if (sp.bangSize?.ratios && sp.bangSize.ratios[idx] !== undefined && sp.bangSize.ratios[idx] > 0) {
+              ratio = sp.bangSize.ratios[idx];
+            } else if (tiLeParts[idx] !== undefined && tiLeParts[idx] > 0) {
+              ratio = tiLeParts[idx];
+            }
+            configs.push({ size: sz, ratio });
+          });
+        }
+
+        grp = {
+          key: groupKey,
+          isCustom: false,
+          spId: it.spId,
+          spTen: it.spTen || sp?.tenSP || "Sản phẩm",
+          mauTen: it.mauTen || matchedMau?.ten,
+          mauCode,
+          mauImg,
+          sp,
+          items: [],
+          sizeConfigs: configs,
+        };
+        groupMap.set(groupKey, grp);
+        groups.push(grp);
+      }
+
+      grp.items.push(it);
+
+      // Bổ sung size nếu item có size ngoài sp.bangSize
+      const itSize = (it.size || "").trim().toUpperCase();
+      if (itSize && !grp.sizeConfigs.some((c) => c.size.toUpperCase() === itSize)) {
+        grp.sizeConfigs.push({ size: it.size || itSize, ratio: 1 });
+      }
+    });
+
+    return groups;
+  }, [order.items, dsSanPham]);
+
+  const tongSLDon = calcOrderQty(order.items);
+
   return (
     <div className="space-y-4">
       <>
@@ -633,134 +724,266 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-700 dark:text-slate-200">Sản phẩm trong đơn ({order.items.length})</h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                    Sản phẩm trong đơn ({groupedItems.length} màu · {tongSLDon} cái)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    1 màu = 1 hàng · Chỉnh số lượng từng size trực tiếp trên các ô
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={onAddCustomItem}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     SP ngoài
                   </button>
                   <button
                     onClick={() => setShowPicker(true)}
-                    className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Thêm SP
                   </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="flex-1 min-w-0">
-                      {item.spId === "CUSTOM" ? (
-                        <div className="flex flex-col sm:flex-row gap-4 w-full bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-dashed border-cyan-300 dark:border-cyan-700">
-                          {/* Image Upload Area */}
-                          <div className="w-full sm:w-24 h-24 shrink-0 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition overflow-hidden relative cursor-pointer group">
-                            {item.mauImg ? (
-                              <>
-                                <img src={item.mauImg} alt="SP Ngoài" className="w-full h-full object-cover" />
-                                <div 
-                                  className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onUpdateItem(item.id, { mauImg: "" });
-                                  }}
-                                >
-                                  <Trash2 className="w-5 h-5 text-white" />
-                                </div>
-                              </>
-                            ) : (
-                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer p-2 text-center">
-                                <ImagePlus className="w-6 h-6 mb-1 text-cyan-500/70" />
-                                <span className="text-[10px] font-semibold text-slate-500">Tải ảnh lên</span>
-                                <input 
-                                  type="file" 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const reader = new FileReader();
-                                      reader.onload = (ev) => onUpdateItem(item.id, { mauImg: ev.target?.result as string });
-                                      reader.readAsDataURL(file);
-                                    }
-                                  }} 
-                                />
-                              </label>
-                            )}
-                          </div>
-                          
-                          {/* Info Area */}
-                          <div className="flex-1 flex flex-col gap-2">
-                            <input 
-                              type="text" 
-                              value={item.spTen || ""} 
-                              onChange={(e) => onUpdateItem(item.id, { spTen: e.target.value })}
-                              placeholder="Nhập tên sản phẩm"
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
-                            />
-                            <div className="flex gap-2">
+
+              <div className="space-y-2.5">
+                {groupedItems.map((grp) => {
+                  if (grp.isCustom && grp.customItem) {
+                    const item = grp.customItem;
+                    return (
+                      <div key={grp.key} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row gap-4 w-full bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-dashed border-cyan-300 dark:border-cyan-700">
+                            {/* Image Upload Area */}
+                            <div className="w-full sm:w-24 h-24 shrink-0 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition overflow-hidden relative cursor-pointer group">
+                              {item.mauImg ? (
+                                <>
+                                  <img src={item.mauImg} alt="SP Ngoài" className="w-full h-full object-cover" />
+                                  <div 
+                                    className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      onUpdateItem(item.id, { mauImg: "" });
+                                    }}
+                                  >
+                                    <Trash2 className="w-5 h-5 text-white" />
+                                  </div>
+                                </>
+                              ) : (
+                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer p-2 text-center">
+                                  <ImagePlus className="w-6 h-6 mb-1 text-cyan-500/70" />
+                                  <span className="text-[10px] font-semibold text-slate-500">Tải ảnh lên</span>
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => onUpdateItem(item.id, { mauImg: ev.target?.result as string });
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }} 
+                                  />
+                                </label>
+                              )}
+                            </div>
+                            
+                            {/* Info Area */}
+                            <div className="flex-1 flex flex-col gap-2">
                               <input 
                                 type="text" 
-                                value={item.sku || ""} 
-                                onChange={(e) => onUpdateItem(item.id, { sku: e.target.value })}
-                                placeholder="Mã SP (không bắt buộc)"
-                                className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                                value={item.spTen || ""} 
+                                onChange={(e) => onUpdateItem(item.id, { spTen: e.target.value })}
+                                placeholder="Nhập tên sản phẩm ngoài"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
                               />
+                              <div className="flex gap-2">
+                                <input 
+                                  type="text" 
+                                  value={item.sku || ""} 
+                                  onChange={(e) => onUpdateItem(item.id, { sku: e.target.value })}
+                                  placeholder="Mã SP (không bắt buộc)"
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
-                      ) : (
-                        <>
-                          <div className="font-semibold text-sm truncate">{item.spTen}</div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap mt-0.5">
-                            {item.mauTen && <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded">🎨 {item.mauTen}</span>}
-                            {item.size && <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded">📏 {item.size}</span>}
-                            {item.sku && <span className="text-slate-400">SKU: {item.sku}</span>}
+
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 self-end sm:self-auto mt-2 sm:mt-0">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-500">Số lượng</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={item.soLuong}
+                              onChange={(e) => onUpdateItem(item.id, { soLuong: Math.max(1, +e.target.value || 1) })}
+                              className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-center focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                            />
                           </div>
-                        </>
-                      )}
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-500">Đơn giá</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={item.donGia}
+                              onChange={(e) => onUpdateItem(item.id, { donGia: Math.max(0, +e.target.value || 0) })}
+                              className="w-28 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-right focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                            />
+                          </div>
+                          <div className="font-bold text-base text-emerald-600 dark:text-emerald-400 w-28 text-right bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1.5 rounded-lg">
+                            {formatVND(item.thanhTien)}
+                          </div>
+                          <button
+                            onClick={() => onRemoveItem(item.id)}
+                            className="p-2 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition shadow-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                            title="Xóa sản phẩm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 1 MÀU = 1 HÀNG (CÁC Ô NHẬP SIZE & TỈ LỆ NẰM NGANG)
+                  const grpQty = grp.items.reduce((s, it) => s + (it.soLuong || 0), 0);
+                  const grpTotal = grp.items.reduce((s, it) => s + (it.thanhTien || 0), 0);
+                  const grpDonGia = grp.items.find((i) => (i.donGia || 0) > 0)?.donGia ?? grp.items[0]?.donGia ?? (grp.sp?.giaBanSi || grp.sp?.giaBanDuKien || 0);
+
+                  return (
+                    <div
+                      key={grp.key}
+                      className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-800/90 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-cyan-400 dark:hover:border-cyan-600 transition"
+                    >
+                      {/* CỘT 1: TÊN SẢN PHẨM & MÀU SẮC GỌN GÀNG */}
+                      <div className="min-w-[150px] xl:max-w-[210px] shrink-0">
+                        <div className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate" title={grp.spTen}>
+                          {grp.spTen}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {grp.mauImg ? (
+                            <img src={grp.mauImg} alt={grp.mauTen || ""} className="w-5 h-5 rounded object-cover shadow-sm border border-slate-200 dark:border-slate-700" />
+                          ) : (
+                            <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px]">🎨</div>
+                          )}
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                            {grp.mauTen || "Màu mặc định"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* CỘT 2: CÁC Ô NHẬP SIZE & TỈ LỆ NẰM NGANG */}
+                      <div className="flex-1 flex items-center gap-1.5 flex-wrap py-1">
+                        {grp.sizeConfigs.map((sc) => {
+                          const itOfSize = grp.items.find(
+                            (it) => (it.size || "").trim().toUpperCase() === sc.size.toUpperCase()
+                          );
+                          const val = itOfSize?.soLuong || 0;
+
+                          return (
+                            <div
+                              key={sc.size}
+                              className={`flex flex-col items-center rounded-lg border overflow-hidden transition shadow-sm ${
+                                val > 0
+                                  ? "border-cyan-400 bg-cyan-50/50 dark:border-cyan-600 dark:bg-cyan-950/20 ring-1 ring-cyan-400/40"
+                                  : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                              }`}
+                            >
+                              {/* Tên Size + Tỉ lệ */}
+                              <div
+                                className={`w-full py-0.5 px-2 text-center text-[11px] font-bold border-b ${
+                                  val > 0
+                                    ? "bg-cyan-100/80 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700"
+                                    : "bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                }`}
+                              >
+                                {sc.size}
+                                {sc.ratio > 0 && <span className="text-[9px] font-normal opacity-75"> ({sc.ratio})</span>}
+                              </div>
+
+                              {/* Ô input số lượng của size */}
+                              <input
+                                type="number"
+                                min={0}
+                                value={val || ""}
+                                placeholder="0"
+                                onChange={(e) => {
+                                  const newQty = Math.max(0, +e.target.value || 0);
+                                  if (grp.sp) {
+                                    onUpdateSiCell(grp.sp, grp.mauCode || grp.mauTen || "", sc.size, newQty);
+                                  } else if (itOfSize) {
+                                    if (newQty <= 0) {
+                                      onRemoveItem(itOfSize.id);
+                                    } else {
+                                      onUpdateItem(itOfSize.id, { soLuong: newQty });
+                                    }
+                                  }
+                                }}
+                                className="w-14 sm:w-16 h-8 bg-white dark:bg-slate-900 text-center font-black text-sm text-slate-800 dark:text-white outline-none focus:bg-cyan-50 dark:focus:bg-cyan-950/40"
+                                title={`Size ${sc.size} (Tỉ lệ ${sc.ratio})`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* CỘT 3: TỔNG SỐ LƯỢNG - ĐƠN GIÁ - THÀNH TIỀN - XÓA MÀU */}
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 self-end xl:self-auto">
+                        {/* Tổng SL của màu */}
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] uppercase font-bold text-slate-400">SL</span>
+                          <div className="h-8 px-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-800 flex items-center justify-center font-black text-sm text-cyan-800 dark:text-cyan-300 shadow-inner min-w-[42px]">
+                            {grpQty}
+                          </div>
+                        </div>
+
+                        {/* Đơn giá */}
+                        <div className="flex flex-col items-start">
+                          <span className="text-[9px] uppercase font-bold text-slate-400">Đơn giá</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={grpDonGia || ""}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const newPrice = Math.max(0, +e.target.value || 0);
+                              grp.items.forEach((it) => onUpdateItem(it.id, { donGia: newPrice }));
+                            }}
+                            className="w-24 sm:w-28 h-8 px-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-semibold text-right focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none shadow-sm"
+                          />
+                        </div>
+
+                        {/* Thành tiền */}
+                        <div className="flex flex-col items-end">
+                          <span className="text-[9px] uppercase font-bold text-slate-400">Thành tiền</span>
+                          <div className="h-8 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-end font-extrabold text-sm text-emerald-600 dark:text-emerald-400 min-w-[85px] sm:min-w-[100px]">
+                            {formatVND(grpTotal)}
+                          </div>
+                        </div>
+
+                        {/* Xóa toàn bộ màu này */}
+                        <button
+                          onClick={() => {
+                            grp.items.forEach((it) => onRemoveItem(it.id));
+                          }}
+                          className="p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-rose-200 dark:border-rose-800/60 hover:border-rose-300 transition shadow-sm bg-white dark:bg-slate-800 mt-3 sm:mt-3.5"
+                          title="Xóa tất cả size của màu này"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 self-end sm:self-auto mt-2 sm:mt-0">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-500">Số lượng</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={item.soLuong}
-                          onChange={(e) => onUpdateItem(item.id, { soLuong: Math.max(1, +e.target.value || 1) })}
-                          className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-center focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
-                        />
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-500">Đơn giá</span>
-                        <input
-                          type="number"
-                          min={0}
-                          value={item.donGia}
-                          onChange={(e) => onUpdateItem(item.id, { donGia: Math.max(0, +e.target.value || 0) })}
-                          className="w-28 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-right focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
-                        />
-                      </div>
-                      <div className="font-bold text-base text-emerald-600 dark:text-emerald-400 w-28 text-right bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1.5 rounded-lg">
-                        {formatVND(item.thanhTien)}
-                      </div>
-                      <button
-                        onClick={() => onRemoveItem(item.id)}
-                        className="p-2 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition shadow-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                        title="Xóa sản phẩm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
                   <div className="flex justify-between items-center text-sm">
                     <span className="font-semibold text-slate-600 dark:text-slate-400">Tạm tính:</span>
