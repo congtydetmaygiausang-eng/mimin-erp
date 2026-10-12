@@ -862,27 +862,27 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
                   return (
                     <div
                       key={grp.key}
-                      className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-800/90 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-cyan-400 dark:hover:border-cyan-600 transition"
+                      className="flex items-center justify-between gap-2.5 p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-cyan-400 dark:hover:border-cyan-600 transition min-w-0 overflow-x-auto"
                     >
-                      {/* CỘT 1: TÊN SẢN PHẨM & MÀU SẮC GỌN GÀNG */}
-                      <div className="min-w-[150px] xl:max-w-[210px] shrink-0">
-                        <div className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate" title={grp.spTen}>
-                          {grp.spTen}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          {grp.mauImg ? (
-                            <img src={grp.mauImg} alt={grp.mauTen || ""} className="w-5 h-5 rounded object-cover shadow-sm border border-slate-200 dark:border-slate-700" />
-                          ) : (
-                            <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px]">🎨</div>
-                          )}
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                      {/* CỘT 1: TÊN SẢN PHẨM & MÀU SẮC GỌN GÀNG TRÊN CÙNG DÒNG */}
+                      <div className="flex items-center gap-2 min-w-[130px] max-w-[180px] shrink-0">
+                        {grp.mauImg ? (
+                          <img src={grp.mauImg} alt={grp.mauTen || ""} className="w-7 h-7 rounded object-cover border border-slate-200 dark:border-slate-700 shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs shrink-0">🎨</div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate" title={grp.spTen}>
+                            {grp.spTen}
+                          </div>
+                          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
                             {grp.mauTen || "Màu mặc định"}
-                          </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* CỘT 2: CÁC Ô NHẬP SIZE & TỈ LỆ NẰM NGANG */}
-                      <div className="flex-1 flex items-center gap-1.5 flex-wrap py-1">
+                      {/* CỘT 2: CÁC Ô NHẬP SIZE & TỈ LỆ NẰM NGANG TRÊN CÙNG DÒNG */}
+                      <div className="flex items-center gap-1.5 shrink-0 px-1">
                         {grp.sizeConfigs.map((sc) => {
                           const itOfSize = grp.items.find(
                             (it) => (it.size || "").trim().toUpperCase() === sc.size.toUpperCase()
@@ -892,23 +892,23 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
                           return (
                             <div
                               key={sc.size}
-                              className={`flex flex-col items-center rounded-lg border overflow-hidden transition shadow-sm ${
+                              className={`flex items-center rounded-lg border overflow-hidden transition shrink-0 ${
                                 val > 0
-                                  ? "border-cyan-400 bg-cyan-50/50 dark:border-cyan-600 dark:bg-cyan-950/20 ring-1 ring-cyan-400/40"
-                                  : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                  ? "border-cyan-400 bg-white dark:border-cyan-600 dark:bg-slate-900 ring-1 ring-cyan-400/40"
+                                  : "border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"
                               }`}
                             >
                               {/* Tên Size + Tỉ lệ */}
-                              <div
-                                className={`w-full py-0.5 px-2 text-center text-[11px] font-bold border-b ${
+                              <span
+                                className={`px-1.5 py-1 text-[11px] font-bold border-r select-none ${
                                   val > 0
-                                    ? "bg-cyan-100/80 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700"
-                                    : "bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                                    ? "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700"
+                                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                                 }`}
                               >
                                 {sc.size}
-                                {sc.ratio > 0 && <span className="text-[9px] font-normal opacity-75"> ({sc.ratio})</span>}
-                              </div>
+                                {sc.ratio > 0 && <span className="text-[9px] font-normal opacity-70">:{sc.ratio}</span>}
+                              </span>
 
                               {/* Ô input số lượng của size */}
                               <input
@@ -928,27 +928,27 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
                                     }
                                   }
                                 }}
-                                className="w-14 sm:w-16 h-8 bg-white dark:bg-slate-900 text-center font-black text-sm text-slate-800 dark:text-white outline-none focus:bg-cyan-50 dark:focus:bg-cyan-950/40"
-                                title={`Size ${sc.size} (Tỉ lệ ${sc.ratio})`}
+                                className="w-12 h-7 text-center font-bold text-xs text-slate-800 dark:text-white outline-none focus:bg-cyan-50 dark:focus:bg-cyan-950/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                title={`Size ${sc.size}`}
                               />
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* CỘT 3: TỔNG SỐ LƯỢNG - ĐƠN GIÁ - THÀNH TIỀN - XÓA MÀU */}
-                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 self-end xl:self-auto">
-                        {/* Tổng SL của màu */}
-                        <div className="flex flex-col items-center">
-                          <span className="text-[9px] uppercase font-bold text-slate-400">SL</span>
-                          <div className="h-8 px-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-800 flex items-center justify-center font-black text-sm text-cyan-800 dark:text-cyan-300 shadow-inner min-w-[42px]">
+                      {/* CỘT 3: TỔNG SL - ĐƠN GIÁ - THÀNH TIỀN - XÓA TRÊN CÙNG DÒNG */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Tổng SL */}
+                        <div className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 hidden sm:inline">Tổng:</span>
+                          <span className="h-7 px-2 rounded-md bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-800 flex items-center justify-center font-extrabold text-xs text-cyan-800 dark:text-cyan-300">
                             {grpQty}
-                          </div>
+                          </span>
                         </div>
 
                         {/* Đơn giá */}
-                        <div className="flex flex-col items-start">
-                          <span className="text-[9px] uppercase font-bold text-slate-400">Đơn giá</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 hidden sm:inline">Giá:</span>
                           <input
                             type="number"
                             min={0}
@@ -958,16 +958,13 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
                               const newPrice = Math.max(0, +e.target.value || 0);
                               grp.items.forEach((it) => onUpdateItem(it.id, { donGia: newPrice }));
                             }}
-                            className="w-24 sm:w-28 h-8 px-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-semibold text-right focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none shadow-sm"
+                            className="w-20 sm:w-24 h-7 px-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold text-right focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </div>
 
                         {/* Thành tiền */}
-                        <div className="flex flex-col items-end">
-                          <span className="text-[9px] uppercase font-bold text-slate-400">Thành tiền</span>
-                          <div className="h-8 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-end font-extrabold text-sm text-emerald-600 dark:text-emerald-400 min-w-[85px] sm:min-w-[100px]">
-                            {formatVND(grpTotal)}
-                          </div>
+                        <div className="h-7 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-end font-bold text-xs text-emerald-600 dark:text-emerald-400 min-w-[75px]">
+                          {formatVND(grpTotal)}
                         </div>
 
                         {/* Xóa toàn bộ màu này */}
@@ -975,10 +972,10 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
                           onClick={() => {
                             grp.items.forEach((it) => onRemoveItem(it.id));
                           }}
-                          className="p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-rose-200 dark:border-rose-800/60 hover:border-rose-300 transition shadow-sm bg-white dark:bg-slate-800 mt-3 sm:mt-3.5"
+                          className="p-1.5 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-rose-200 dark:border-rose-800/60 transition"
                           title="Xóa tất cả size của màu này"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
