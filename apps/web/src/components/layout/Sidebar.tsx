@@ -309,39 +309,64 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
     return filtered;
   }, [role, user, permissionRevision]);
 
+  // Quản lý nhóm đang active popover khi ở chế độ Dock (hỗ trợ cả click iPad/touch)
+  const [activePopover, setActivePopover] = useState<string | null>(null);
+
+  // Đóng popover khi click ra ngoài
+  useEffect(() => {
+    if (!isCollapsed) return;
+    const handleDocClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-dock-item]")) {
+        setActivePopover(null);
+      }
+    };
+    document.addEventListener("mousedown", handleDocClick);
+    return () => document.removeEventListener("mousedown", handleDocClick);
+  }, [isCollapsed]);
+
   return (
     <>
-      <div className={clsx("p-4 border-b border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
+      {/* Header Sidebar / Dock */}
+      <div className={clsx("p-3 border-b border-white/10 flex items-center transition-all duration-200", isCollapsed ? "justify-center" : "justify-between")}>
         {!isCollapsed ? (
           <>
-            <Link href="/dashboard" className="flex items-center gap-3 min-w-0 flex-1" onClick={onItemClick}>
-              <div className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20 shadow-lg shadow-white/5">
+            <Link href="/dashboard" className="flex items-center gap-3 min-w-0 flex-1 group" onClick={onItemClick}>
+              <div className="w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20 shadow-lg shadow-black/20 group-hover:scale-105 transition-transform">
                 <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
               </div>
               <div className="min-w-0">
-                <div className="font-black text-xl truncate text-white tracking-wider drop-shadow-md">MIMIN ERP</div>
-                <div className="text-sm truncate text-cyan-200 font-medium">Quản lý may mặc</div>
+                <div className="font-black text-lg truncate text-white tracking-wider drop-shadow-md">MIMIN ERP</div>
+                <div className="text-xs truncate text-cyan-200 font-medium">Quản lý may mặc</div>
               </div>
             </Link>
             {toggleCollapse && (
               <button 
                 onClick={(e) => { e.stopPropagation(); toggleCollapse(); }}
-                className="hidden md:flex p-1.5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0"
-                title="Thu gọn menu"
+                className="hidden md:flex p-2 hover:bg-white/15 rounded-xl text-slate-300 hover:text-white transition-all shrink-0 hover:scale-105 active:scale-95"
+                title="Thu gọn menu (Chế độ Icon Dock)"
+                aria-label="Thu gọn menu"
               >
                 <PanelLeftClose className="w-5 h-5" />
               </button>
             )}
           </>
         ) : (
-          <button 
-            onClick={(e) => { e.stopPropagation(); toggleCollapse && toggleCollapse(); }}
-            className="p-2 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-colors bg-white/5"
-            title="Mở menu"
-          >
-            <PanelLeftOpen className="w-6 h-6" />
-          </button>
-        )}        {onItemClick && (
+          <div className="relative group">
+            <Link 
+              href="/dashboard" 
+              className="w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden bg-white/15 border border-white/25 shadow-md hover:scale-105 transition-transform"
+              title="Về Bàn làm việc"
+            >
+              <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
+            </Link>
+            {/* Tooltip logo khi hover */}
+            <div className="absolute left-[52px] top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900/95 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl text-xs font-semibold text-white whitespace-nowrap invisible opacity-0 -translate-x-1.5 group-hover:visible group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-50 pointer-events-none">
+              MIMIN ERP • Trang chủ
+            </div>
+          </div>
+        )}
+        {onItemClick && (
           <button
             onClick={onItemClick}
             className="md:hidden p-1.5 rounded-lg hover:bg-white/20 text-white"
@@ -351,7 +376,12 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
           </button>
         )}
       </div>
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1.5">
+
+      {/* Nav Content */}
+      <nav className={clsx(
+        "flex-1 p-2 space-y-1.5 transition-all duration-200",
+        isCollapsed ? "overflow-visible flex flex-col items-center py-3" : "overflow-y-auto"
+      )}>
         {visibleNav.length === 0 ? (
           <div className="p-4 text-center text-xs opacity-60">
             <Lock className="w-6 h-6 mx-auto mb-2 opacity-40" />
@@ -366,16 +396,102 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
             const activeSubBg = item.activeSubBg || "bg-white/15 text-white";
             const activeBg = item.activeBg || "bg-white/8";
             const activeText = item.activeText || "text-white";
-            // Group tông sáng khai báo idleBg -> giữ viền + nền sáng cả khi đóng.
             const idleHeaderClasses = item.idleBg
               ? `${groupBorderColor} ${item.idleBg} ${item.idleText || "text-slate-800"}`
               : "border-transparent hover:bg-white/5 text-slate-200 hover:text-white";
             
-            // Render group
+            // XỬ LÝ NHÓM CÓ SUB-ITEMS
             if (item.isGroup && item.subItems) {
               const isOpen = openGroups[item.label] || false;
               const isGroupActive = item.subItems.some((s) => pathname?.startsWith(s.href));
+              const isPopoverOpen = activePopover === item.label;
               
+              // Chế độ Icon Dock (Thu gọn - iPad / macOS style)
+              if (isCollapsed) {
+                return (
+                  <div key={item.label} className="relative group" data-dock-item>
+                    {/* Chấm chỉ báo trạng thái Active (Active dot indicator) */}
+                    {isGroupActive && (
+                      <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-cyan-400 shadow-[0_0_10px_#22d3ee] z-20 pointer-events-none" />
+                    )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivePopover((prev) => (prev === item.label ? null : item.label));
+                      }}
+                      className={clsx(
+                        "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 relative shadow-sm",
+                        isGroupActive
+                          ? "bg-white/25 ring-2 ring-cyan-400/80 text-white shadow-lg shadow-cyan-950/40 scale-105"
+                          : "bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white hover:scale-105 hover:shadow-md"
+                      )}
+                      aria-label={item.label}
+                    >
+                      {item.iconChip ? (
+                        <span className={clsx("w-7 h-7 rounded-xl flex items-center justify-center shadow-inner", item.iconChip)}>
+                          <Icon className="w-4 h-4" />
+                        </span>
+                      ) : (
+                        <Icon className={clsx("w-5 h-5", isGroupActive ? "text-cyan-300 drop-shadow" : groupIconColor)} />
+                      )}
+                    </button>
+
+                    {/* Flyout Popover Menu nổi bên phải (Glassmorphism macOS App Menu) */}
+                    <div
+                      className={clsx(
+                        "absolute left-[48px] top-0 ml-3 w-64 bg-slate-900/95 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl p-2.5 z-50 text-white transition-all duration-150 origin-top-left",
+                        isPopoverOpen
+                          ? "visible opacity-100 translate-x-0 pointer-events-auto"
+                          : "invisible opacity-0 -translate-x-2 pointer-events-none group-hover:visible group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto"
+                      )}
+                    >
+                      {/* Tiêu đề nhóm trong Popover */}
+                      <div className="flex items-center justify-between px-2.5 py-1.5 mb-1">
+                        <div className="flex items-center gap-2">
+                          <Icon className={clsx("w-4 h-4", groupIconColor)} />
+                          <span className="font-bold text-xs tracking-wide text-white">{item.label}</span>
+                        </div>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-cyan-300 border border-white/10">
+                          {item.subItems.length}
+                        </span>
+                      </div>
+
+                      <div className="border-t border-white/10 my-1" />
+
+                      {/* Danh sách module con */}
+                      <div className="space-y-0.5 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                        {item.subItems.map((sub) => {
+                          const SubIcon = sub.icon;
+                          const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
+                          return (
+                            <Link
+                              key={sub.href}
+                              href={sub.href}
+                              onClick={() => {
+                                setActivePopover(null);
+                                onItemClick?.();
+                              }}
+                              className={clsx(
+                                "flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 group/sub",
+                                subActive
+                                  ? "bg-cyan-500/30 text-cyan-200 border border-cyan-400/40 font-semibold shadow-sm"
+                                  : "text-slate-200 hover:bg-white/15 hover:text-white"
+                              )}
+                            >
+                              <SubIcon className={clsx("w-4 h-4 shrink-0 transition-transform group-hover/sub:scale-110", sub.iconColor || "text-slate-400")} />
+                              <span className="flex-1 truncate leading-tight">{sub.label}</span>
+                              {subActive && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee] shrink-0" />}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Chế độ Full Sidebar (Bung to)
               return (
                 <div key={item.label} className="mb-1">
                   <button
@@ -386,10 +502,8 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                       !item.noAccentBar && "border-l-2",
                       isGroupActive || isOpen
                         ? `${groupBorderColor} ${activeBg} ${activeText}`
-                        : idleHeaderClasses,
-                      isCollapsed && "justify-center px-2"
+                        : idleHeaderClasses
                     )}
-                    title={isCollapsed ? item.label : undefined}
                   >
                     {item.iconChip ? (
                       <span className={clsx("shrink-0 flex items-center justify-center rounded-lg transition-transform duration-150", item.iconChip)}>
@@ -398,56 +512,86 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     ) : (
                       <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", isGroupActive || isOpen ? groupIconColor : (item.idleIcon || "text-slate-400"))} />
                     )}
-                    {!isCollapsed && (
-                      <>
-                        <span className="flex-1 text-left tracking-wide">{item.label}</span>
-                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
-                      </>
-                    )}
+                    <span className="flex-1 text-left tracking-wide">{item.label}</span>
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
                   </button>
                   
-                  {!isCollapsed && (
-                    <div
-                      className={clsx(
-                        "overflow-hidden transition-all duration-200",
-                        isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
-                      )}
-                    >
-                      {/* Card container for sub-items - mặc định nền tối, group tông sáng ghi đè bằng subBg */}
-                      <div className={clsx("mt-1 mx-1 rounded-xl px-2 py-1.5 space-y-0.5", item.subBg || "bg-black/20")}>
-                        {item.subItems.map((sub) => {
-                          const SubIcon = sub.icon;
-                          const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
-                          return (
-                            <Link
-                              key={sub.href}
-                              href={sub.href}
-                              onClick={onItemClick}
-                              className={clsx(
-                                "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
-                                subActive
-                                  ? activeSubBg + " shadow-sm font-semibold"
-                                  : (item.subIdleText || "hover:bg-white/8 text-slate-200 hover:text-white")
-                              )}
-                            >
-                              <SubIcon className={clsx("w-4 h-4 shrink-0", sub.iconColor || "text-slate-400")} />
-                              <span className="flex-1 leading-tight">{sub.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
+                  <div
+                    className={clsx(
+                      "overflow-hidden transition-all duration-200",
+                      isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+                    )}
+                  >
+                    <div className={clsx("mt-1 mx-1 rounded-xl px-2 py-1.5 space-y-0.5", item.subBg || "bg-black/20")}>
+                      {item.subItems.map((sub) => {
+                        const SubIcon = sub.icon;
+                        const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={onItemClick}
+                            className={clsx(
+                              "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
+                              subActive
+                                ? activeSubBg + " shadow-sm font-semibold"
+                                : (item.subIdleText || "hover:bg-white/8 text-slate-200 hover:text-white")
+                            )}
+                          >
+                            <SubIcon className={clsx("w-4 h-4 shrink-0", sub.iconColor || "text-slate-400")} />
+                            <span className="flex-1 leading-tight">{sub.label}</span>
+                          </Link>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             }
             
-            // Render item đơn lẻ
+            // XỬ LÝ ITEM ĐƠN LẺ (KHÔNG CÓ SUB-ITEMS)
             const active = pathname === item.href || pathname?.startsWith(item.href + "/");
             const singleIdleClasses = item.idleBg
               ? `${groupBorderColor} ${item.idleBg} ${item.idleText || "text-slate-800"}`
               : "border-transparent hover:bg-white/5 text-slate-200 hover:text-white";
               
+            // Chế độ Icon Dock cho Item đơn lẻ
+            if (isCollapsed) {
+              return (
+                <div key={item.label} className="relative group" data-dock-item>
+                  {active && (
+                    <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-cyan-400 shadow-[0_0_10px_#22d3ee] z-20 pointer-events-none" />
+                  )}
+
+                  <Link
+                    href={item.href || "#"}
+                    onClick={onItemClick}
+                    className={clsx(
+                      "w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 relative shadow-sm",
+                      active
+                        ? "bg-white/25 ring-2 ring-cyan-400/80 text-white shadow-lg shadow-cyan-950/40 scale-105"
+                        : "bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white hover:scale-105 hover:shadow-md"
+                    )}
+                    aria-label={item.label}
+                  >
+                    {item.iconChip ? (
+                      <span className={clsx("w-7 h-7 rounded-xl flex items-center justify-center shadow-inner", item.iconChip)}>
+                        <Icon className="w-4 h-4" />
+                      </span>
+                    ) : (
+                      <Icon className={clsx("w-5 h-5", active ? "text-cyan-300 drop-shadow" : groupIconColor)} />
+                    )}
+                  </Link>
+
+                  {/* Tooltip nổi khi hover */}
+                  <div className="absolute left-[48px] top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900/95 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl text-xs font-semibold text-white whitespace-nowrap invisible opacity-0 -translate-x-2 group-hover:visible group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-50 pointer-events-none">
+                    {item.label}
+                  </div>
+                </div>
+              );
+            }
+
+            // Chế độ Full Sidebar cho Item đơn lẻ
             return (
               <div key={item.label} className="mb-1">
                 <Link
@@ -458,10 +602,8 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     !item.noAccentBar && "border-l-2",
                     active
                       ? `${groupBorderColor} ${activeBg} ${activeText}`
-                      : singleIdleClasses,
-                    isCollapsed && "justify-center px-2"
+                      : singleIdleClasses
                   )}
-                  title={isCollapsed ? item.label : undefined}
                 >
                   {item.iconChip ? (
                     <span className={clsx("shrink-0 flex items-center justify-center rounded-lg transition-transform duration-150", item.iconChip)}>
@@ -470,18 +612,40 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                   ) : (
                     <Icon className={clsx("w-[18px] h-[18px] shrink-0 transition-colors", active ? groupIconColor : (item.idleIcon || "text-slate-400"))} />
                   )}
-                  {!isCollapsed && <span className="flex-1 tracking-wide">{item.label}</span>}
+                  <span className="flex-1 tracking-wide">{item.label}</span>
                 </Link>
               </div>
             );
           })
         )}
       </nav>
-      <div className={clsx("p-4 border-t border-white/10 text-xs text-slate-500 flex items-center justify-center")}>
+
+      {/* Footer Sidebar / Dock */}
+      <div className={clsx("p-2 border-t border-white/10 flex items-center", isCollapsed ? "justify-center" : "justify-between px-3 py-2.5")}>
         {!isCollapsed ? (
-          <span>© 2026 Polo Mimin</span>
+          <>
+            <span className="text-[11px] font-medium text-slate-300">© 2026 Polo Mimin</span>
+            {toggleCollapse && (
+              <button
+                onClick={toggleCollapse}
+                className="hidden md:flex p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                title="Thu gọn Sidebar"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
+          </>
         ) : (
-          <span className="font-bold">M</span>
+          toggleCollapse && (
+            <button
+              onClick={toggleCollapse}
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm"
+              title="Mở rộng Sidebar (Chế độ đầy đủ)"
+              aria-label="Mở rộng Sidebar"
+            >
+              <PanelLeftOpen className="w-5 h-5 text-cyan-300" />
+            </button>
+          )
         )}
       </div>
     </>
@@ -530,14 +694,9 @@ export function Sidebar() {
   return (
     <aside 
       className={clsx(
-        "hidden md:flex flex-col h-screen sticky top-0 bg-[#0B4D5D] text-white border-r border-white/10 z-40 shadow-sm transition-all duration-300",
-        isCollapsed ? "w-20 cursor-pointer" : "w-64"
+        "hidden md:flex flex-col h-screen sticky top-0 bg-[#0B4D5D] text-white border-r border-white/10 z-40 shadow-sm transition-all duration-300 select-none",
+        isCollapsed ? "w-[68px]" : "w-64"
       )}
-      onClick={() => {
-        if (isCollapsed) {
-          setIsCollapsed(false);
-        }
-      }}
     >
       <NavContent 
         pathname={pathname || ""} 

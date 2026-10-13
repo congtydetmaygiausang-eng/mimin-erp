@@ -606,6 +606,97 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
   const isSi = order.loaiDonHang === "ban-si" || order.loaiDonHang === "ban-lo";
   const isLo = order.loaiDonHang === "ban-lo";
 
+  // Nhóm các items theo: Sản phẩm + Màu sắc (1 màu hiển thị trên 1 hàng duy nhất)
+  const groupedItems = useMemo(() => {
+    const groups: {
+      key: string;
+      isCustom: boolean;
+      customItem?: OrderItem;
+      spId: string;
+      spTen: string;
+      mauTen?: string;
+      mauCode?: string;
+      mauImg?: string;
+      sp?: SanPham;
+      items: OrderItem[];
+      sizeConfigs: { size: string; ratio: number }[];
+    }[] = [];
+
+    const groupMap = new Map<string, typeof groups[0]>();
+
+    order.items.forEach((it) => {
+      if (it.spId === "CUSTOM") {
+        groups.push({
+          key: it.id,
+          isCustom: true,
+          customItem: it,
+          spId: "CUSTOM",
+          spTen: it.spTen || "Sản phẩm ngoài",
+          items: [it],
+          sizeConfigs: [],
+        });
+        return;
+      }
+
+      const sp = dsSanPham.find((s) => s.id === it.spId);
+      const mauCode = mauToCode(it.mauCode || it.mauTen || "");
+      const groupKey = `${it.spId}_${mauCode || "NO_COLOR"}`;
+
+      let grp = groupMap.get(groupKey);
+      if (!grp) {
+        // Tìm ảnh màu từ sp.dsMau nếu có
+        const matchedMau = sp?.dsMau?.find((m) => mauToCode(m.ten) === mauCode);
+        const mauImg = matchedMau?.img || it.mauImg;
+
+        // Tách tỉ lệ size từ sp
+        const tiLeParts = (sp?.tiLeSize || "")
+          .split(":")
+          .map(Number)
+          .filter((n) => Number.isFinite(n) && n >= 0);
+
+        const configs: { size: string; ratio: number }[] = [];
+        if (sp?.bangSize?.sizes && sp.bangSize.sizes.length > 0) {
+          sp.bangSize.sizes.forEach((sz, idx) => {
+            let ratio = 1;
+            if (sp.bangSize?.ratios && sp.bangSize.ratios[idx] !== undefined && sp.bangSize.ratios[idx] > 0) {
+              ratio = sp.bangSize.ratios[idx];
+            } else if (tiLeParts[idx] !== undefined && tiLeParts[idx] > 0) {
+              ratio = tiLeParts[idx];
+            }
+            configs.push({ size: sz, ratio });
+          });
+        }
+
+        grp = {
+          key: groupKey,
+          isCustom: false,
+          spId: it.spId,
+          spTen: it.spTen || sp?.tenSP || "Sản phẩm",
+          mauTen: it.mauTen || matchedMau?.ten,
+          mauCode,
+          mauImg,
+          sp,
+          items: [],
+          sizeConfigs: configs,
+        };
+        groupMap.set(groupKey, grp);
+        groups.push(grp);
+      }
+
+      grp.items.push(it);
+
+      // Bổ sung size nếu item có size ngoài sp.bangSize
+      const itSize = (it.size || "").trim().toUpperCase();
+      if (itSize && !grp.sizeConfigs.some((c) => c.size.toUpperCase() === itSize)) {
+        grp.sizeConfigs.push({ size: it.size || itSize, ratio: 1 });
+      }
+    });
+
+    return groups;
+  }, [order.items, dsSanPham]);
+
+  const tongSLDon = calcOrderQty(order.items);
+
   return (
     <div className="space-y-4">
       <>
@@ -633,134 +724,263 @@ function ItemsTab({ order, dsSanPham, onUpdateItem, onRemoveItem, onAddFromCatal
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-700 dark:text-slate-200">Sản phẩm trong đơn ({order.items.length})</h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                    Sản phẩm trong đơn ({groupedItems.length} màu · {tongSLDon} cái)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    1 màu = 1 hàng · Chỉnh số lượng từng size trực tiếp trên các ô
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={onAddCustomItem}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     SP ngoài
                   </button>
                   <button
                     onClick={() => setShowPicker(true)}
-                    className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Thêm SP
                   </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="flex-1 min-w-0">
-                      {item.spId === "CUSTOM" ? (
-                        <div className="flex flex-col sm:flex-row gap-4 w-full bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-dashed border-cyan-300 dark:border-cyan-700">
-                          {/* Image Upload Area */}
-                          <div className="w-full sm:w-24 h-24 shrink-0 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition overflow-hidden relative cursor-pointer group">
-                            {item.mauImg ? (
-                              <>
-                                <img src={item.mauImg} alt="SP Ngoài" className="w-full h-full object-cover" />
-                                <div 
-                                  className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onUpdateItem(item.id, { mauImg: "" });
-                                  }}
-                                >
-                                  <Trash2 className="w-5 h-5 text-white" />
-                                </div>
-                              </>
-                            ) : (
-                              <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer p-2 text-center">
-                                <ImagePlus className="w-6 h-6 mb-1 text-cyan-500/70" />
-                                <span className="text-[10px] font-semibold text-slate-500">Tải ảnh lên</span>
-                                <input 
-                                  type="file" 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const reader = new FileReader();
-                                      reader.onload = (ev) => onUpdateItem(item.id, { mauImg: ev.target?.result as string });
-                                      reader.readAsDataURL(file);
-                                    }
-                                  }} 
-                                />
-                              </label>
-                            )}
-                          </div>
-                          
-                          {/* Info Area */}
-                          <div className="flex-1 flex flex-col gap-2">
-                            <input 
-                              type="text" 
-                              value={item.spTen || ""} 
-                              onChange={(e) => onUpdateItem(item.id, { spTen: e.target.value })}
-                              placeholder="Nhập tên sản phẩm"
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
-                            />
-                            <div className="flex gap-2">
+
+              <div className="space-y-2.5">
+                {groupedItems.map((grp) => {
+                  if (grp.isCustom && grp.customItem) {
+                    const item = grp.customItem;
+                    return (
+                      <div key={grp.key} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row gap-4 w-full bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-dashed border-cyan-300 dark:border-cyan-700">
+                            {/* Image Upload Area */}
+                            <div className="w-full sm:w-24 h-24 shrink-0 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition overflow-hidden relative cursor-pointer group">
+                              {item.mauImg ? (
+                                <>
+                                  <img src={item.mauImg} alt="SP Ngoài" className="w-full h-full object-cover" />
+                                  <div 
+                                    className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      onUpdateItem(item.id, { mauImg: "" });
+                                    }}
+                                  >
+                                    <Trash2 className="w-5 h-5 text-white" />
+                                  </div>
+                                </>
+                              ) : (
+                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer p-2 text-center">
+                                  <ImagePlus className="w-6 h-6 mb-1 text-cyan-500/70" />
+                                  <span className="text-[10px] font-semibold text-slate-500">Tải ảnh lên</span>
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => onUpdateItem(item.id, { mauImg: ev.target?.result as string });
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }} 
+                                  />
+                                </label>
+                              )}
+                            </div>
+                            
+                            {/* Info Area */}
+                            <div className="flex-1 flex flex-col gap-2">
                               <input 
                                 type="text" 
-                                value={item.sku || ""} 
-                                onChange={(e) => onUpdateItem(item.id, { sku: e.target.value })}
-                                placeholder="Mã SP (không bắt buộc)"
-                                className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                                value={item.spTen || ""} 
+                                onChange={(e) => onUpdateItem(item.id, { spTen: e.target.value })}
+                                placeholder="Nhập tên sản phẩm ngoài"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
                               />
+                              <div className="flex gap-2">
+                                <input 
+                                  type="text" 
+                                  value={item.sku || ""} 
+                                  onChange={(e) => onUpdateItem(item.id, { sku: e.target.value })}
+                                  placeholder="Mã SP (không bắt buộc)"
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
-                      ) : (
-                        <>
-                          <div className="font-semibold text-sm truncate">{item.spTen}</div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap mt-0.5">
-                            {item.mauTen && <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded">🎨 {item.mauTen}</span>}
-                            {item.size && <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded">📏 {item.size}</span>}
-                            {item.sku && <span className="text-slate-400">SKU: {item.sku}</span>}
+
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 self-end sm:self-auto mt-2 sm:mt-0">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-500">Số lượng</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={item.soLuong}
+                              onChange={(e) => onUpdateItem(item.id, { soLuong: Math.max(1, +e.target.value || 1) })}
+                              className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-center focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                            />
                           </div>
-                        </>
-                      )}
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-500">Đơn giá</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={item.donGia}
+                              onChange={(e) => onUpdateItem(item.id, { donGia: Math.max(0, +e.target.value || 0) })}
+                              className="w-28 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-right focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
+                            />
+                          </div>
+                          <div className="font-bold text-base text-emerald-600 dark:text-emerald-400 w-28 text-right bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1.5 rounded-lg">
+                            {formatVND(item.thanhTien)}
+                          </div>
+                          <button
+                            onClick={() => onRemoveItem(item.id)}
+                            className="p-2 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition shadow-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                            title="Xóa sản phẩm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 1 MÀU = 1 HÀNG (CÁC Ô NHẬP SIZE & TỈ LỆ NẰM NGANG)
+                  const grpQty = grp.items.reduce((s, it) => s + (it.soLuong || 0), 0);
+                  const grpTotal = grp.items.reduce((s, it) => s + (it.thanhTien || 0), 0);
+                  const grpDonGia = grp.items.find((i) => (i.donGia || 0) > 0)?.donGia ?? grp.items[0]?.donGia ?? (grp.sp?.giaBanSi || grp.sp?.giaBanDuKien || 0);
+
+                  return (
+                    <div
+                      key={grp.key}
+                      className="flex items-center justify-between gap-2.5 p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-cyan-400 dark:hover:border-cyan-600 transition min-w-0 overflow-x-auto"
+                    >
+                      {/* CỘT 1: TÊN SẢN PHẨM & MÀU SẮC GỌN GÀNG TRÊN CÙNG DÒNG */}
+                      <div className="flex items-center gap-2 min-w-[130px] max-w-[180px] shrink-0">
+                        {grp.mauImg ? (
+                          <img src={grp.mauImg} alt={grp.mauTen || ""} className="w-7 h-7 rounded object-cover border border-slate-200 dark:border-slate-700 shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs shrink-0">🎨</div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate" title={grp.spTen}>
+                            {grp.spTen}
+                          </div>
+                          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                            {grp.mauTen || "Màu mặc định"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CỘT 2: CÁC Ô NHẬP SIZE & TỈ LỆ NẰM NGANG TRÊN CÙNG DÒNG */}
+                      <div className="flex items-center gap-1.5 shrink-0 px-1">
+                        {grp.sizeConfigs.map((sc) => {
+                          const itOfSize = grp.items.find(
+                            (it) => (it.size || "").trim().toUpperCase() === sc.size.toUpperCase()
+                          );
+                          const val = itOfSize?.soLuong || 0;
+
+                          return (
+                            <div
+                              key={sc.size}
+                              className={`flex items-center rounded-lg border overflow-hidden transition shrink-0 ${
+                                val > 0
+                                  ? "border-cyan-400 bg-white dark:border-cyan-600 dark:bg-slate-900 ring-1 ring-cyan-400/40"
+                                  : "border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"
+                              }`}
+                            >
+                              {/* Tên Size + Tỉ lệ */}
+                              <span
+                                className={`px-1.5 py-1 text-[11px] font-bold border-r select-none ${
+                                  val > 0
+                                    ? "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-200 border-cyan-300 dark:border-cyan-700"
+                                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                                }`}
+                              >
+                                {sc.size}
+                                {sc.ratio > 0 && <span className="text-[9px] font-normal opacity-70">:{sc.ratio}</span>}
+                              </span>
+
+                              {/* Ô input số lượng của size */}
+                              <input
+                                type="number"
+                                min={0}
+                                value={val || ""}
+                                placeholder="0"
+                                onChange={(e) => {
+                                  const newQty = Math.max(0, +e.target.value || 0);
+                                  if (grp.sp) {
+                                    onUpdateSiCell(grp.sp, grp.mauCode || grp.mauTen || "", sc.size, newQty);
+                                  } else if (itOfSize) {
+                                    if (newQty <= 0) {
+                                      onRemoveItem(itOfSize.id);
+                                    } else {
+                                      onUpdateItem(itOfSize.id, { soLuong: newQty });
+                                    }
+                                  }
+                                }}
+                                className="w-12 h-7 text-center font-bold text-xs text-slate-800 dark:text-white outline-none focus:bg-cyan-50 dark:focus:bg-cyan-950/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                title={`Size ${sc.size}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* CỘT 3: TỔNG SL - ĐƠN GIÁ - THÀNH TIỀN - XÓA TRÊN CÙNG DÒNG */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Tổng SL */}
+                        <div className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 hidden sm:inline">Tổng:</span>
+                          <span className="h-7 px-2 rounded-md bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-800 flex items-center justify-center font-extrabold text-xs text-cyan-800 dark:text-cyan-300">
+                            {grpQty}
+                          </span>
+                        </div>
+
+                        {/* Đơn giá */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 hidden sm:inline">Giá:</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={grpDonGia || ""}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const newPrice = Math.max(0, +e.target.value || 0);
+                              grp.items.forEach((it) => onUpdateItem(it.id, { donGia: newPrice }));
+                            }}
+                            className="w-20 sm:w-24 h-7 px-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold text-right focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+
+                        {/* Thành tiền */}
+                        <div className="h-7 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-end font-bold text-xs text-emerald-600 dark:text-emerald-400 min-w-[75px]">
+                          {formatVND(grpTotal)}
+                        </div>
+
+                        {/* Xóa toàn bộ màu này */}
+                        <button
+                          onClick={() => {
+                            grp.items.forEach((it) => onRemoveItem(it.id));
+                          }}
+                          className="p-1.5 rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-rose-200 dark:border-rose-800/60 transition"
+                          title="Xóa tất cả size của màu này"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 self-end sm:self-auto mt-2 sm:mt-0">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-500">Số lượng</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={item.soLuong}
-                          onChange={(e) => onUpdateItem(item.id, { soLuong: Math.max(1, +e.target.value || 1) })}
-                          className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-center focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
-                        />
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1">
-                        <span className="text-[10px] uppercase font-bold text-slate-500">Đơn giá</span>
-                        <input
-                          type="number"
-                          min={0}
-                          value={item.donGia}
-                          onChange={(e) => onUpdateItem(item.id, { donGia: Math.max(0, +e.target.value || 0) })}
-                          className="w-28 px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-right focus:ring-2 focus:ring-cyan-500 outline-none shadow-sm transition"
-                        />
-                      </div>
-                      <div className="font-bold text-base text-emerald-600 dark:text-emerald-400 w-28 text-right bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1.5 rounded-lg">
-                        {formatVND(item.thanhTien)}
-                      </div>
-                      <button
-                        onClick={() => onRemoveItem(item.id)}
-                        className="p-2 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition shadow-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                        title="Xóa sản phẩm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-lg border border-cyan-200 dark:border-cyan-800">
                   <div className="flex justify-between items-center text-sm">
                     <span className="font-semibold text-slate-600 dark:text-slate-400">Tạm tính:</span>
@@ -1102,105 +1322,85 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, onClearProduct, isSi
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
-      {/* CÁCH 1: TOOLBAR BÁN THEO RI TỔNG */}
+      {/* TOOLBAR NHẬP THEO RI TỔNG - TINH GỌN */}
       {(isSi || isLo) && (
-        <div className="p-3 bg-gradient-to-r from-cyan-50 via-sky-50 to-amber-50 dark:from-cyan-950/30 dark:via-slate-900 dark:to-amber-950/20 border-b border-cyan-100 dark:border-cyan-800/60 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 font-bold text-sm text-cyan-900 dark:text-cyan-200">
-              <span className="px-1.5 py-0.5 rounded bg-cyan-600 text-white text-[11px] font-black shadow-sm">
-                Cách 1
-              </span>
-              <span>Bán theo Ri tổng (Tất cả {mauList.length} màu)</span>
-            </div>
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-100/80 dark:bg-cyan-800/40 text-cyan-800 dark:text-cyan-300 font-semibold border border-cyan-200 dark:border-cyan-700">
-              1 Ri = {totalRatioAllColors} SP ({mauList.length} màu × {sumRatioPerColor} SP/màu)
+        <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              ⚡ Đặt theo Ri:
             </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Số Ri:</span>
             <input
               type="number"
               min={0}
-              placeholder={currentRi > 0 ? String(currentRi) : "0"}
+              placeholder="0"
               value={slRiInput}
               onChange={(e) => handleRiChange(Math.max(0, +e.target.value || 0))}
-              className="w-20 px-2 py-1.5 rounded-lg border-2 border-cyan-400 dark:border-cyan-600 focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500 outline-none bg-white dark:bg-slate-800 text-center font-black text-cyan-800 dark:text-cyan-300 text-base shadow-sm"
+              className="w-16 h-8 px-2 rounded-lg border border-cyan-400 dark:border-cyan-600 bg-white dark:bg-slate-900 text-center font-bold text-cyan-800 dark:text-cyan-300 text-sm outline-none focus:ring-1 focus:ring-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
-            {/* Cụm nút preset cộng nhanh */}
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-cyan-200 dark:border-cyan-700 shadow-sm">
+            <div className="flex items-center gap-0.5 bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
               {[1, 5, 10, 20].map((num) => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => handleQuickAddRi(num)}
-                  className="px-2 py-1 text-xs font-bold rounded hover:bg-cyan-100 dark:hover:bg-cyan-900 text-cyan-700 dark:text-cyan-300 transition-colors"
-                  title={`Cộng thêm ${num} Ri cho tất cả các màu`}
+                  className="px-1.5 py-0.5 text-xs font-semibold rounded hover:bg-cyan-50 dark:hover:bg-cyan-950/50 text-cyan-700 dark:text-cyan-300 transition"
+                  title={`Cộng thêm ${num} Ri`}
                 >
                   +{num}
                 </button>
               ))}
             </div>
-            {tongSL > 0 && (
-              <button
-                type="button"
-                onClick={handleClearAll}
-                className="text-xs px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold transition-colors shadow-sm"
-                title="Xóa tất cả số lượng của sản phẩm này về 0"
-              >
-                Xóa về 0
-              </button>
-            )}
+            <span className="text-[11px] text-slate-500 hidden sm:inline">
+              (1 Ri = {totalRatioAllColors} SP)
+            </span>
           </div>
+
+          {tongSL > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-xs px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-medium transition"
+            >
+              Xóa về 0
+            </button>
+          )}
         </div>
       )}
 
-      {/* MATRIX TABLE: CÁCH 2, 3, 4 */}
+      {/* MATRIX TABLE: GỌN GÀNG, SẠCH SẼ */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-xs">
           <thead>
-            <tr>
-              <th className="p-2.5 border-b border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-left text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap min-w-[130px]">
-                Màu sắc <br/>
-                <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold">
-                  Tỉ lệ: {sizeConfigs.map(c => c.ratio).join(":")}
-                </span>
+            <tr className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              <th className="p-2 border-b border-r border-slate-200 dark:border-slate-700 text-left font-bold whitespace-nowrap min-w-[110px]">
+                Màu
+                {sizeConfigs.length > 0 && (
+                  <span className="ml-1.5 text-[10px] font-normal text-slate-400">
+                    ({sizeConfigs.map((c) => c.ratio).join(":")})
+                  </span>
+                )}
               </th>
 
-              {/* CỘT CÁCH 2: SỐ RI TỪNG MÀU */}
+              {/* CỘT SỐ RI / MÀU */}
               {(isSi || isLo) && (
-                <th className="p-2.5 border-b border-r border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-950/20 text-center text-xs font-bold text-amber-800 dark:text-amber-300 whitespace-nowrap min-w-[100px]">
-                  <span className="inline-block px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900/60 text-[10px] font-black text-amber-900 dark:text-amber-200 mr-1 shadow-sm">
-                    Cách 2
-                  </span>
-                  Số Ri / màu <br/>
-                  <span className="text-[10px] font-normal text-amber-700 dark:text-amber-400">
-                    (1 Ri = {sumRatioPerColor} SP)
-                  </span>
+                <th className="p-2 border-b border-r border-slate-200 dark:border-slate-700 bg-amber-50/50 dark:bg-amber-950/20 text-center font-bold text-amber-800 dark:text-amber-300 whitespace-nowrap w-20">
+                  Số Ri
                 </th>
               )}
 
-              {/* CỘT CÁCH 4: NHẬT LẺ TỪNG SIZE */}
-              {sizeConfigs.map((sc, idx) => (
-                <th key={sc.size} className="p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {idx === 0 && (
-                    <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-                      Cách 4: Lẻ
-                    </span>
+              {/* CÁC CỘT SIZE */}
+              {sizeConfigs.map((sc) => (
+                <th key={sc.size} className="p-2 border-b border-slate-200 dark:border-slate-700 text-center font-bold">
+                  {sc.size}
+                  {sc.ratio > 0 && (
+                    <span className="text-[10px] font-normal text-slate-400 ml-0.5">({sc.ratio})</span>
                   )}
-                  {sc.size} <br/> <span className="text-[10px] font-normal text-slate-500">({sc.ratio})</span>
                 </th>
               ))}
 
-              {/* CỘT CÁCH 3: TỔNG SỐ LƯỢNG MÀU TỰ CHIA THEO TỈ LỆ SIZE */}
-              <th className="p-2.5 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-900/20 text-center text-xs font-bold text-cyan-800 dark:text-cyan-300 whitespace-nowrap min-w-[120px]">
-                <span className="inline-block px-1.5 py-0.5 rounded bg-cyan-200 dark:bg-cyan-800 text-[10px] font-black text-cyan-900 dark:text-cyan-200 mr-1 shadow-sm">
-                  Cách 3
-                </span>
-                Tổng SL / màu <br/>
-                <span className="text-[10px] font-normal text-cyan-700 dark:text-cyan-400">
-                  (Tự rải theo size)
-                </span>
+              {/* CỘT TỔNG SL */}
+              <th className="p-2 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50/50 dark:bg-cyan-900/20 text-center font-bold text-cyan-800 dark:text-cyan-300 whitespace-nowrap w-24">
+                Tổng SL
               </th>
             </tr>
           </thead>
@@ -1216,39 +1416,38 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, onClearProduct, isSi
               return (
                 <tr key={mau.ten} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   {/* Màu */}
-                  <td className="p-2.5 border-b border-r border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
+                  <td className="p-2 border-b border-r border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
                       {mau.img ? (
-                        <img src={mau.img} alt={mau.ten} className="w-7 h-7 rounded-md object-cover shadow-sm border border-slate-200 dark:border-slate-700" />
+                        <img src={mau.img} alt={mau.ten} className="w-5 h-5 rounded object-cover border border-slate-200 dark:border-slate-700" />
                       ) : (
-                        <div className="w-7 h-7 rounded-md bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-400">🎨</div>
+                        <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px]">🎨</div>
                       )}
                       <span>{mau.ten}</span>
                     </div>
                   </td>
 
-                  {/* CÁCH 2: Input Số Ri riêng cho màu này */}
+                  {/* Số Ri riêng cho màu này */}
                   {(isSi || isLo) && (
-                    <td className="p-1.5 border-b border-r border-slate-200 dark:border-slate-700 bg-amber-50/40 dark:bg-amber-950/10 text-center">
+                    <td className="p-1.5 border-b border-r border-slate-200 dark:border-slate-700 bg-amber-50/30 dark:bg-amber-950/10 text-center">
                       <input
                         type="number"
                         min={0}
                         value={rowRi || ""}
                         placeholder="0"
                         onChange={(e) => chiaTheoRiMotMau(mauCode, Math.max(0, +e.target.value || 0))}
-                        className="h-11 w-20 rounded-lg border-2 border-amber-300 bg-amber-50/80 px-1 text-center text-lg font-black text-amber-800 outline-none transition-all focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-400 dark:border-amber-600 dark:bg-slate-800 dark:text-amber-300"
-                        title={`Nhập số Ri riêng cho màu ${mau.ten} (1 Ri = ${sumRatioPerColor} cái)`}
+                        className="h-8 w-14 rounded-lg border border-amber-300 bg-white dark:border-amber-700 dark:bg-slate-900 text-center font-bold text-amber-800 dark:text-amber-300 text-sm outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </td>
                   )}
 
-                  {/* CÁCH 4: Input lẻ từng size */}
+                  {/* Input từng size */}
                   {sizeConfigs.map((sc) => {
                     const val = itemsByKey.get(`${mauCode}-${sc.size.toUpperCase()}`) || 0;
                     return (
                       <td
                         key={sc.size}
-                        className={`p-1 border-b border-slate-200 dark:border-slate-700 text-center ${val > 0 ? "bg-cyan-50/50 dark:bg-cyan-900/10" : ""}`}
+                        className={`p-1.5 border-b border-slate-200 dark:border-slate-700 text-center ${val > 0 ? "bg-cyan-50/40 dark:bg-cyan-950/20" : ""}`}
                       >
                         <input
                           type="number"
@@ -1256,22 +1455,25 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, onClearProduct, isSi
                           value={val || ""}
                           placeholder="0"
                           onChange={(e) => onUpdateCell(sp, mauCode, sc.size, Math.max(0, +e.target.value || 0))}
-                          className="h-11 w-20 rounded-lg border-2 border-slate-300 bg-white px-1 text-center text-lg font-black text-slate-800 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className={`h-8 w-14 rounded-lg border text-center font-bold text-sm outline-none transition focus:ring-1 focus:ring-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            val > 0
+                              ? "border-cyan-400 bg-white dark:border-cyan-600 dark:bg-slate-900 text-cyan-800 dark:text-cyan-200"
+                              : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                          }`}
                         />
                       </td>
                     );
                   })}
 
-                  {/* CÁCH 3: Input Tổng số lượng tự rải đều theo size */}
-                  <td className="p-1 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50/50 dark:bg-cyan-900/10 text-center">
+                  {/* Tổng SL tự rải đều theo size */}
+                  <td className="p-1.5 border-b border-l border-slate-200 dark:border-slate-700 bg-cyan-50/30 dark:bg-cyan-900/10 text-center">
                     <input
                       type="number"
                       min={0}
                       value={rowTotal || ""}
                       placeholder="0"
                       onChange={(e) => handleTotalChange(mauCode, Math.max(0, +e.target.value || 0))}
-                      className="h-11 w-24 rounded-lg border-2 border-cyan-400 bg-cyan-50 px-1 text-center text-lg font-black text-cyan-700 outline-none transition-all focus:border-cyan-600 focus:bg-white focus:ring-2 focus:ring-cyan-500 dark:border-cyan-700 dark:bg-slate-800 dark:text-cyan-300"
-                      title={`Nhập tổng số cái của màu ${mau.ten}, hệ thống sẽ tự chia theo tỉ lệ size`}
+                      className="h-8 w-16 rounded-lg border border-cyan-400 bg-white dark:border-cyan-700 dark:bg-slate-900 text-center font-bold text-cyan-800 dark:text-cyan-300 text-sm outline-none focus:ring-1 focus:ring-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </td>
                 </tr>
@@ -1279,12 +1481,12 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, onClearProduct, isSi
             })}
 
             {/* Hàng Tổng cộng */}
-            <tr className="bg-slate-100 dark:bg-slate-800/80 font-bold">
-              <td className="p-2.5 border-r border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 text-right">
+            <tr className="bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-600 dark:text-slate-300">
+              <td className="p-2 border-r border-slate-200 dark:border-slate-700 text-right">
                 Tổng cộng
               </td>
               {(isSi || isLo) && (
-                <td className="p-2 border-r border-slate-200 dark:border-slate-700 text-center text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-950/30">
+                <td className="p-2 border-r border-slate-200 dark:border-slate-700 text-center text-amber-700 dark:text-amber-400 font-bold bg-amber-50/50 dark:bg-amber-950/20">
                   {sumRatioPerColor > 0 ? (
                     <span>
                       {Math.floor(tongSL / sumRatioPerColor)} Ri{tongSL % sumRatioPerColor > 0 ? ` +${tongSL % sumRatioPerColor}` : ""}
@@ -1298,12 +1500,12 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, onClearProduct, isSi
                   return sum + (itemsByKey.get(`${mauCode}-${sc.size.toUpperCase()}`) || 0);
                 }, 0);
                 return (
-                  <td key={sc.size} className="p-2 text-center text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <td key={sc.size} className="p-2 text-center">
                     {colTotal}
                   </td>
                 );
               })}
-              <td className="p-2 border-l border-slate-200 dark:border-slate-700 bg-cyan-100 dark:bg-cyan-900/40 text-center text-base font-black text-cyan-800 dark:text-cyan-300">
+              <td className="p-2 border-l border-slate-200 dark:border-slate-700 bg-cyan-100/60 dark:bg-cyan-900/30 text-center font-bold text-cyan-800 dark:text-cyan-300">
                 {tongSL}
               </td>
             </tr>
@@ -1311,43 +1513,32 @@ function ProductMatrixTable({ sp, orderItems, onUpdateCell, onClearProduct, isSi
         </table>
       </div>
 
-      {/* SUMMARY FOOTER BAR: THỐNG KÊ QUY ĐỔI THỜI GIAN THỰC */}
-      <div className="p-3 bg-slate-50 dark:bg-slate-800/70 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-            <span className="text-slate-500 font-medium">📦 Tổng SL:</span>
-            <span className="font-extrabold text-cyan-700 dark:text-cyan-400 text-sm">{tongSL} cái</span>
-          </div>
-
+      {/* FOOTER SUMMARY GỌN GÀNG, KHÔNG RỐI MẮT */}
+      <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-bold text-slate-700 dark:text-slate-300">
+            Tổng: <span className="text-cyan-700 dark:text-cyan-400 font-black">{tongSL} cái</span>
+          </span>
           {totalRatioAllColors > 0 && (
-            <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60 shadow-sm">
-              <span className="text-amber-700 dark:text-amber-400 font-medium">⚡ Quy đổi:</span>
-              <span className="font-bold text-amber-900 dark:text-amber-200">
-                {Math.floor(tongSL / totalRatioAllColors)} Ri {tongSL % totalRatioAllColors > 0 ? `(lẻ ${tongSL % totalRatioAllColors} cái)` : "(đủ Ri)"}
-              </span>
-            </div>
+            <span className="text-slate-400">·</span>
           )}
-
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-            <span className="text-slate-500 font-medium">🏷️ Giá {isLo ? "lô" : "sỉ"}:</span>
-            <span className="font-bold text-slate-800 dark:text-slate-200">{formatVND(donGiaSi)}/SP</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">💰 Tạm tính:</span>
-            <span className="font-black text-emerald-800 dark:text-emerald-300 text-sm">
-              {formatVND(tongSL * donGiaSi)}
+          {totalRatioAllColors > 0 && (
+            <span className="text-amber-700 dark:text-amber-300 font-semibold">
+              Quy đổi: {Math.floor(tongSL / totalRatioAllColors)} Ri{tongSL % totalRatioAllColors > 0 ? ` (+${tongSL % totalRatioAllColors} lẻ)` : ""}
             </span>
-          </div>
+          )}
+          {donGiaSi > 0 && (
+            <span className="text-slate-400">·</span>
+          )}
+          {donGiaSi > 0 && (
+            <span className="text-slate-600 dark:text-slate-400">
+              Giá: {formatVND(donGiaSi)}
+            </span>
+          )}
         </div>
 
-        {/* Hướng dẫn 4 cách nhập */}
-        <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
-          <span className="font-semibold text-slate-600 dark:text-slate-400">4 cách:</span>
-          <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 font-medium">1. Ri tổng</span>
-          <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">2. Ri từng màu</span>
-          <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium">3. Tổng tự chia</span>
-          <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-medium">4. Nhặt lẻ</span>
+        <div className="font-bold text-slate-700 dark:text-slate-300">
+          Tạm tính: <span className="text-emerald-600 dark:text-emerald-400 font-black">{formatVND(tongSL * donGiaSi)}</span>
         </div>
       </div>
     </div>
