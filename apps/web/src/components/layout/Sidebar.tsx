@@ -58,6 +58,7 @@ import {
   Wind,
   Tag,
   History,
+  GitBranch,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -126,9 +127,17 @@ const NAV: NavItem[] = [
     ]
   },
   {
-    href: "/san-xuat-erp", label: "Sản Xuất Sợi - Dệt - Nhuộm", icon: Factory,
-    color: "border-orange-400", iconColor: "text-orange-300", permModule: "bang-dieu-hanh-sx",
+    label: "Sản Xuất Sợi · Dệt · Nhuộm", icon: Factory, isGroup: true,
+    color: "border-orange-400", iconColor: "text-orange-300",
     ...cardStyle("from-orange-500", "to-amber-600", "from-orange-50", "to-amber-50", "text-orange-900"),
+    subItems: [
+      { href: "/san-xuat-erp?tab=dashboard", label: "Tổng quan điều hành", icon: BarChart3, iconColor: "text-blue-400", permModule: "bang-dieu-hanh-sx" },
+      { href: "/san-xuat-erp?tab=lenhtong", label: "Lệnh SX vải (Mộc/Màu)", icon: FileText, iconColor: "text-emerald-400", permModule: "bang-dieu-hanh-sx" },
+      { href: "/san-xuat-erp?tab=flow", label: "Quy trình Sợi - Dệt - Nhuộm", icon: GitBranch, iconColor: "text-violet-400", permModule: "bang-dieu-hanh-sx" },
+      { href: "/san-xuat-erp?tab=congno", label: "Công nợ gia công vải", icon: CreditCard, iconColor: "text-rose-400", permModule: "bang-dieu-hanh-sx" },
+      { href: "/san-xuat-erp?tab=baocao", label: "Báo cáo sản lượng & lỗi", icon: BarChart3, iconColor: "text-amber-400", permModule: "bang-dieu-hanh-sx" },
+      { href: "/san-xuat-erp?tab=master", label: "Danh bạ NCC & xưởng", icon: Users, iconColor: "text-slate-400", permModule: "bang-dieu-hanh-sx" },
+    ]
   },
   {
     label: "Sản Xuất & Kế hoạch", icon: Factory, isGroup: true,
@@ -248,13 +257,39 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
   const permissionRevision = usePermissionRevision();
   
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [currentSearch, setCurrentSearch] = useState("");
+
+  useEffect(() => {
+    const updateSearch = () => {
+      if (typeof window !== "undefined") {
+        setCurrentSearch(window.location.search.replace(/^\?/, ""));
+      }
+    };
+    updateSearch();
+    window.addEventListener("popstate", updateSearch);
+    return () => window.removeEventListener("popstate", updateSearch);
+  }, [pathname]);
+
+  const isMatchHref = (targetHref: string) => {
+    if (targetHref.includes("?")) {
+      const full = currentSearch ? `${pathname}?${currentSearch}` : pathname;
+      return full === targetHref;
+    }
+    return pathname === targetHref || pathname?.startsWith(targetHref + "/");
+  };
 
   useEffect(() => {
     setOpenGroups((prev) => {
       const nextOpenGroups = { ...prev };
       NAV.forEach((group) => {
         if (group.isGroup && group.subItems) {
-          const shouldOpen = group.subItems.some((sub) => pathname?.startsWith(sub.href));
+          const shouldOpen = group.subItems.some((sub) => {
+            if (sub.href.includes("?")) {
+              const full = currentSearch ? `${pathname}?${currentSearch}` : pathname;
+              return full === sub.href;
+            }
+            return pathname?.startsWith(sub.href);
+          });
           if (shouldOpen) {
             nextOpenGroups[group.label] = true;
           }
@@ -262,7 +297,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
       });
       return nextOpenGroups;
     });
-  }, [pathname]);
+  }, [pathname, currentSearch]);
 
   const toggleGroup = (label: string) => {
     setOpenGroups(prev => {
@@ -403,7 +438,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
             // XỬ LÝ NHÓM CÓ SUB-ITEMS
             if (item.isGroup && item.subItems) {
               const isOpen = openGroups[item.label] || false;
-              const isGroupActive = item.subItems.some((s) => pathname?.startsWith(s.href));
+              const isGroupActive = item.subItems.some((s) => isMatchHref(s.href));
               const isPopoverOpen = activePopover === item.label;
               
               // Chế độ Icon Dock (Thu gọn - iPad / macOS style)
@@ -463,7 +498,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                       <div className="space-y-0.5 max-h-[70vh] overflow-y-auto custom-scrollbar">
                         {item.subItems.map((sub) => {
                           const SubIcon = sub.icon;
-                          const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
+                          const subActive = isMatchHref(sub.href);
                           return (
                             <Link
                               key={sub.href}
@@ -525,7 +560,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     <div className={clsx("mt-1 mx-1 rounded-xl px-2 py-1.5 space-y-0.5", item.subBg || "bg-black/20")}>
                       {item.subItems.map((sub) => {
                         const SubIcon = sub.icon;
-                        const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
+                        const subActive = isMatchHref(sub.href);
                         return (
                           <Link
                             key={sub.href}
