@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Factory } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { TABS, type Tab } from "./data";
@@ -10,9 +11,27 @@ import { LenhTongForm } from "./components/LenhTongForm";
 import { FlowQuick } from "./components/FlowQuick";
 import { CongNoView, BaoCaoView } from "./components/Views";
 
-export default function SanXuatERPPage() {
+function SanXuatERPContent() {
   const { user } = useSession();
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const tabParam = searchParams.get("tab") as Tab | null;
+  const validTabs: Tab[] = ["dashboard", "master", "lenhtong", "flow", "congno", "baocao"];
+  const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : "dashboard";
+
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  useEffect(() => {
+    if (tabParam && validTabs.includes(tabParam)) {
+      setTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const handleSelectTab = (selectedTab: Tab) => {
+    setTab(selectedTab);
+    router.replace(`/san-xuat-erp?tab=${selectedTab}`);
+  };
 
   return (
     <div className="min-h-screen bg-[#ECE7DC] pb-20 animate-fade-in">
@@ -41,7 +60,7 @@ export default function SanXuatERPPage() {
               return (
                 <button
                   key={t.key}
-                  onClick={() => setTab(t.key)}
+                  onClick={() => handleSelectTab(t.key)}
                   className={`flex flex-col items-center py-1.5 px-1 rounded-xl transition-all min-w-0 ${
                     isActive
                     ? "bg-[#EA990C] text-white shadow-sm scale-105 ring-1 ring-white/30"
@@ -60,12 +79,20 @@ export default function SanXuatERPPage() {
         <div className="pt-2 text-[#173F49]">
           {tab === "dashboard" && <Dashboard />}
           {tab === "master" && <MasterData />}
-          {tab === "lenhtong" && <LenhTongForm user={user} onChuyenTiep={() => setTab("flow")} />}
+          {tab === "lenhtong" && <LenhTongForm user={user} onChuyenTiep={() => handleSelectTab("flow")} />}
           {tab === "flow" && <FlowQuick user={user} />}
           {tab === "congno" && <CongNoView />}
           {tab === "baocao" && <BaoCaoView />}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SanXuatERPPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Đang tải phân hệ Sợi - Dệt - Nhuộm...</div>}>
+      <SanXuatERPContent />
+    </Suspense>
   );
 }
