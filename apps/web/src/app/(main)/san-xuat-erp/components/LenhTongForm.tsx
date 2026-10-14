@@ -350,11 +350,11 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         </div>
       )}
 
-      <div className="card p-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="flex items-center gap-2 font-bold text-blue-700">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs text-white">1</span>
-            SỢI + NCC
+      <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 md:p-5 shadow-sm backdrop-blur-md">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <h3 className="flex items-center gap-2.5 font-bold text-slate-800 text-sm">
+            <span className="flex h-6 w-6 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white shadow-sm">1</span>
+            SỢI + NHÀ CUNG CẤP
           </h3>
           <div className="flex gap-2">
             <button
@@ -434,11 +434,11 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         </div>
       </div>
 
-      <div className="card p-3 bg-violet-50 dark:bg-violet-900/20 border-2 border-violet-300">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-bold text-violet-700 flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-violet-500 text-white text-xs flex items-center justify-center">2</span>
-            DỆT - GIA CÔNG
+      <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 md:p-5 shadow-sm backdrop-blur-md">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <h3 className="flex items-center gap-2.5 font-bold text-slate-800 text-sm">
+            <span className="flex h-6 w-6 items-center justify-center rounded-xl bg-violet-600 text-xs font-bold text-white shadow-sm">2</span>
+            DỆT VẢI MỘC (GIA CÔNG)
           </h3>
           <button
             type="button"
@@ -456,17 +456,17 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           </select>
         </div>
         <F label="Đơn giá dệt (đ/kg)" v={donGiaDet} on={setDonGiaDet} type="number" />
-        <div className="mt-2 rounded-lg bg-violet-600 px-3 py-2 text-white">
-          <div className="text-[10px] font-medium text-white/80">Tổng giao xưởng dệt</div>
+        <div className="mt-2 rounded-xl bg-violet-600 px-3.5 py-2.5 text-white shadow-sm">
+          <div className="text-[10px] font-medium text-white/80 uppercase tracking-wider">Tổng giao xưởng dệt</div>
           <div className="text-xl font-black">{tongKgSoi.toLocaleString("vi-VN")} kg · {danhSachSoi.length} loại sợi</div>
         </div>
       </div>
 
-      <div className="card p-3 bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-300">
-        <h3 className="font-bold text-rose-700 flex items-center gap-2 mb-2">
-          <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center">3</span>
-          NHUỘM
-        </h3>
+      <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 md:p-5 shadow-sm backdrop-blur-md">
+        <div className="mb-3 flex items-center gap-2.5 border-b border-slate-100 pb-3">
+          <span className="flex h-6 w-6 items-center justify-center rounded-xl bg-rose-600 text-xs font-bold text-white shadow-sm">3</span>
+          <h3 className="font-bold text-slate-800 text-sm">NHUỘM MÀU HOÀN TẤT</h3>
+        </div>
         <div>
           <label className="text-xs font-semibold opacity-70">Xưởng nhuộm</label>
           <select value={xuongNhuomId} onChange={(e) => setXuongNhuomId(e.target.value)} disabled={loading || dsXuongNhuom.length === 0} className="w-full px-3 py-2 rounded-lg border text-sm font-semibold disabled:opacity-60">
@@ -536,11 +536,11 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         </button>
       </div>
 
-      <div className="card p-3 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300">
-        <h3 className="font-bold text-emerald-700 flex items-center gap-2 mb-2">
-          <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center">4</span>
-          KHO VẢI TP
-        </h3>
+      <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 md:p-5 shadow-sm backdrop-blur-md">
+        <div className="mb-3 flex items-center gap-2.5 border-b border-slate-100 pb-3">
+          <span className="flex h-6 w-6 items-center justify-center rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-sm">4</span>
+          <h3 className="font-bold text-slate-800 text-sm">NHẬP KHO VẢI THÀNH PHẨM</h3>
+        </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <div>
             <label className="text-xs font-semibold opacity-70">Kho</label>
@@ -573,39 +573,47 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         </p>
       </div>
 
-      <div className="card p-3 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border-2 border-amber-500">
-        <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-sm backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-3">
+          <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            Bảng Tính Giá Vốn & Dự Toán Chi Phí
+          </div>
+          <div className="text-right">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Tổng chi phí dự toán</span>
+            <span className="text-2xl font-black text-amber-600 drop-shadow-sm">{tongCong.toLocaleString("vi-VN")}đ</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
           <Card label="Chi sợi" v={chiSoi} c="blue" sub={ncc?.ten_ncc} />
           <Card label="Chi dệt" v={chiDet} c="violet" sub={xDet?.ten_ncc} />
           <Card label="Chi nhuộm" v={chiNhuom + chiHoaChat} c="rose" sub={xNhuom?.ten_ncc} />
-          <Card label="Tổng" v={tongCong} c="amber" />
-        </div>
-        <div className="mt-2 text-center text-2xl font-bold text-amber-600">
-          {tongCong.toLocaleString()}đ
+          <Card label="Tổng cộng" v={tongCong} c="amber" />
         </div>
 
-        <div className="mt-3 border-t border-amber-300 pt-3">
-          <h4 className="mb-2 text-sm font-bold text-amber-800">Tổng chi phí giá vốn theo từng màu vải</h4>
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <h4 className="mb-2 text-xs font-bold text-slate-700 uppercase tracking-wide">Giá vốn phân bổ theo từng màu vải</h4>
           <div className="space-y-2">
             {giaVonTheoMau.map((item, index) => {
               const vai = danhSachVaiKho.find((record) => record.maVT === item.maVai);
               return (
-                <div key={`${item.maVai}-${index}-gia-von`} className="rounded-xl border border-amber-200 bg-white/80 p-3">
+                <div key={`${item.maVai}-${index}-gia-von`} className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 hover:bg-slate-50 transition-colors">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <div className="font-bold text-slate-800">{vai?.maMoi || item.maVai} - {item.mau}</div>
+                      <div className="font-bold text-slate-900">{vai?.maMoi || item.maVai} - {item.mau}</div>
                       <div className="text-[11px] text-slate-500">{vai?.tenChuan || vai?.tenVT || "Mã vải thành phẩm"} · {item.soKg.toLocaleString("vi-VN")} kg</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-black text-amber-700">{lamTronTheo100Dong(item.tongGiaVon).toLocaleString("vi-VN")}đ</div>
+                      <div className="text-base font-black text-amber-700">{lamTronTheo100Dong(item.tongGiaVon).toLocaleString("vi-VN")}đ</div>
                       <div className="text-xs font-semibold text-emerald-700">{lamTronTheo100Dong(item.giaVonMoiKg).toLocaleString("vi-VN")}đ/kg</div>
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-slate-600 md:grid-cols-4">
-                    <div className="rounded bg-blue-50 px-2 py-1">Sợi: <b>{lamTronTheo100Dong(item.chiSoiPhanBo).toLocaleString("vi-VN")}đ</b></div>
-                    <div className="rounded bg-violet-50 px-2 py-1">Dệt: <b>{lamTronTheo100Dong(item.chiDetPhanBo).toLocaleString("vi-VN")}đ</b></div>
-                    <div className="rounded bg-rose-50 px-2 py-1">Nhuộm: <b>{lamTronTheo100Dong(item.tienNhuom).toLocaleString("vi-VN")}đ</b></div>
-                    <div className="rounded bg-orange-50 px-2 py-1">Hóa chất: <b>{lamTronTheo100Dong(item.chiPhiHoaChat).toLocaleString("vi-VN")}đ</b></div>
+                    <div className="rounded-lg bg-blue-50/80 border border-blue-100 px-2.5 py-1">Sợi: <b>{lamTronTheo100Dong(item.chiSoiPhanBo).toLocaleString("vi-VN")}đ</b></div>
+                    <div className="rounded-lg bg-violet-50/80 border border-violet-100 px-2.5 py-1">Dệt: <b>{lamTronTheo100Dong(item.chiDetPhanBo).toLocaleString("vi-VN")}đ</b></div>
+                    <div className="rounded-lg bg-rose-50/80 border border-rose-100 px-2.5 py-1">Nhuộm: <b>{lamTronTheo100Dong(item.tienNhuom).toLocaleString("vi-VN")}đ</b></div>
+                    <div className="rounded-lg bg-orange-50/80 border border-orange-100 px-2.5 py-1">Hóa chất: <b>{lamTronTheo100Dong(item.chiPhiHoaChat).toLocaleString("vi-VN")}đ</b></div>
                   </div>
                 </div>
               );
@@ -614,25 +622,25 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 print:hidden md:grid-cols-3">
-        <button onClick={handleTao} className="btn-primary w-full bg-gradient-to-r from-[#307082] to-[#6CA3A2] py-3 text-base font-black">
-          <Sparkles className="mr-1 inline h-4 w-4" /> LƯU & TẠO LỆNH
+      <div className="grid grid-cols-1 gap-2.5 print:hidden md:grid-cols-3 pt-2">
+        <button onClick={handleTao} className="w-full rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 py-3.5 text-base font-black text-white shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2">
+          <Sparkles className="h-5 w-5" /> LƯU & TẠO LỆNH
         </button>
         <button
           type="button"
           onClick={() => setHienPhieu(true)}
           disabled={!daTaoLenh}
-          className="w-full rounded-xl bg-[#EA990C] py-3 text-base font-black text-white shadow-md transition hover:bg-[#D98200] disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-2xl bg-amber-500 hover:bg-amber-600 py-3.5 text-base font-black text-white shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          <Printer className="mr-1 inline h-4 w-4" /> IN PHIẾU
+          <Printer className="h-5 w-5" /> IN PHIẾU
         </button>
         <button
           type="button"
           onClick={onChuyenTiep}
           disabled={!daTaoLenh}
-          className="w-full rounded-xl bg-[#307082] py-3 text-base font-black text-white shadow-md transition hover:bg-[#286575] disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-2xl bg-slate-800 hover:bg-slate-900 py-3.5 text-base font-black text-white shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          CHUYỂN TIẾP <ArrowRight className="ml-1 inline h-4 w-4" />
+          CHUYỂN TIẾP <ArrowRight className="h-5 w-5" />
         </button>
       </div>
       {daTaoLenh && (
@@ -715,7 +723,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             <h3 className="mt-4 rounded bg-[#307082] px-3 py-2 font-bold text-white">1. DANH SÁCH SỢI – TỔNG {phieuDaTao.tongKgSoi.toLocaleString("vi-VN")} KG</h3>
             <div className="mt-2 overflow-x-auto">
               <table className="w-full border-collapse text-sm">
-                <thead><tr className="bg-[#ECE7DC]"><th className="border p-2 text-left">Loại sợi</th><th className="border p-2">Mã lô</th><th className="border p-2 text-right">Số kg</th><th className="border p-2 text-right">Đơn giá</th><th className="border p-2 text-right">Thành tiền</th></tr></thead>
+                <thead><tr className="bg-slate-100"><th className="border p-2 text-left">Loại sợi</th><th className="border p-2">Mã lô</th><th className="border p-2 text-right">Số kg</th><th className="border p-2 text-right">Đơn giá</th><th className="border p-2 text-right">Thành tiền</th></tr></thead>
                 <tbody>{phieuDaTao.danhSachSoi.map((item) => (
                   <tr key={item.id}><td className="border p-2">{item.loaiSoi}</td><td className="border p-2 text-center">{item.maLoSoi}</td><td className="border p-2 text-right">{item.soKg.toLocaleString("vi-VN")}</td><td className="border p-2 text-right">{item.donGia.toLocaleString("vi-VN")}đ</td><td className="border p-2 text-right font-bold">{(item.soKg * item.donGia).toLocaleString("vi-VN")}đ</td></tr>
                 ))}</tbody>
@@ -725,14 +733,14 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             <h3 className="mt-4 rounded bg-[#EA990C] px-3 py-2 font-bold text-white">2. DANH SÁCH MÀU NHUỘM</h3>
             <div className="mt-2 overflow-x-auto">
               <table className="w-full border-collapse text-sm">
-                <thead><tr className="bg-[#ECE7DC]"><th className="border p-2 text-left">Mã vải</th><th className="border p-2">Màu</th><th className="border p-2 text-right">Số kg</th><th className="border p-2 text-right">Đơn giá nhuộm</th><th className="border p-2 text-right">Hóa chất</th></tr></thead>
+                <thead><tr className="bg-slate-100"><th className="border p-2 text-left">Mã vải</th><th className="border p-2">Màu</th><th className="border p-2 text-right">Số kg</th><th className="border p-2 text-right">Đơn giá nhuộm</th><th className="border p-2 text-right">Hóa chất</th></tr></thead>
                 <tbody>{phieuDaTao.danhSachMau.map((item, index) => (
                   <tr key={`${item.maVai}-${index}`}><td className="border p-2">{item.maVai}</td><td className="border p-2 text-center">{item.mau}</td><td className="border p-2 text-right">{item.soKg.toLocaleString("vi-VN")}</td><td className="border p-2 text-right">{item.donGiaNhuom.toLocaleString("vi-VN")}đ</td><td className="border p-2 text-right">{item.chiPhiHoaChat.toLocaleString("vi-VN")}đ</td></tr>
                 ))}</tbody>
               </table>
             </div>
 
-            <div className="mt-4 flex justify-between rounded-xl border-2 border-[#EA990C] bg-[#ECE7DC] p-3 text-lg font-black">
+            <div className="mt-4 flex justify-between rounded-xl border border-amber-300 bg-amber-50 p-3 text-lg font-black">
               <span>TỔNG CHI PHÍ</span><span>{phieuDaTao.tongCong.toLocaleString("vi-VN")}đ</span>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-8 text-center text-sm font-bold">
