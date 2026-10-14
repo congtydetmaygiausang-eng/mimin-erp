@@ -44,7 +44,7 @@ export function Dashboard() {
           {[
             { l: "1.Sợi", style: "bg-[#307082] text-white" },
             { l: "2.Dệt", style: "bg-[#6CA3A2] text-white" },
-            { l: "3.Mộc", style: "bg-[#ECE7DC] text-[#307082] border border-[#D6CFC0]" },
+            { l: "3.Mộc", style: "bg-slate-100 text-slate-800 border border-slate-300" },
             { l: "4.Nhuộm", style: "bg-[#EA990C] text-white" },
             { l: "5.Màu", style: "bg-[#307082]/85 text-white" },
             { l: "6.TP", style: "bg-[#6CA3A2]/80 text-white" },
