@@ -103,6 +103,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [khu, setKhu] = useState<KhuMeNhuom>("C");
   const [ke, setKe] = useState("C01");
   const [nhapKhoNgay, setNhapKhoNgay] = useState(true);
+  const [vatRate, setVatRate] = useState(8); // % VAT đầu vào, mặc định 8%
   const [daTaoLenh, setDaTaoLenh] = useState(false);
   const [hienPhieu, setHienPhieu] = useState(false);
   const [hienPhieuNhapSoi, setHienPhieuNhapSoi] = useState(false);
@@ -121,6 +122,16 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const tongCayVaiTP = danhSachMau.reduce((sum, item) => sum + (item.soCay || (item.soKg > 0 ? Math.max(1, Math.ceil(item.soKg / 20)) : 0)), 0);
   const haoHutTongKg = tongKgSoi - tongKgVaiTP;
   const haoHutTongPt = tongKgSoi > 0 ? (haoHutTongKg / tongKgSoi) * 100 : 0;
+
+  // ===== TÍNH GIÁ VỐN 1 KG VẢI THÀNH PHẨM (có trừ hao hụt + VAT) =====
+  // Chi phí không VAT (đã tính theo vải TP nhận về, hao hụt đã ngầm định)
+  const chiVAT = tongCong * vatRate / 100;
+  const tongChiPhiCoVAT = tongCong + chiVAT;
+  // Giá vốn 1 kg vải TP = Tổng chi phí / số kg TP thực nhận (hao hụt đã hấp thụ)
+  const giaVon1KgTP_chuaVAT = tongKgVaiTP > 0 ? tongCong / tongKgVaiTP : 0;
+  const giaVon1KgTP_coVAT = tongKgVaiTP > 0 ? tongChiPhiCoVAT / tongKgVaiTP : 0;
+  // Hệ số hao hụt (sợi gốc → vải TP): dùng để quy đổi giá gốc sang giá sau hao hụt
+  const heSoHaoHut = tongKgVaiTP > 0 ? tongKgSoi / tongKgVaiTP : 1;
 
   const giaVonTheoMau = useMemo(() => {
     const tongKg = danhSachMau.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
@@ -805,7 +816,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             Bảng Tính Giá Vốn & Dự Toán Chi Phí
           </div>
           <div className="text-right">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Tổng chi phí dự toán</span>
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Tổng chi phí dự toán (chưa VAT)</span>
             <span className="text-2xl font-black text-amber-600 drop-shadow-sm">{tongCong.toLocaleString("vi-VN")}đ</span>
           </div>
         </div>
@@ -824,17 +835,77 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             }`}>
               {haoHutTongPt.toFixed(1)}% {haoHutTongPt >= 7 && haoHutTongPt <= 13 ? "(Đạt chuẩn 7-13%)" : haoHutTongPt > 13 ? "(Cảnh báo hao hụt cao)" : ""}
             </span>
+            {tongKgSoi > 0 && tongKgVaiTP > 0 && (
+              <span className="text-[10px] text-slate-500 font-medium">Hệ số hao hụt: ×{heSoHaoHut.toFixed(3)}</span>
+            )}
           </div>
           <div className="text-xs font-semibold text-slate-600">
             Tổng vải TP nhận: <b className="text-emerald-700 font-black">{tongKgVaiTP.toLocaleString("vi-VN")} kg</b> · <b className="text-emerald-700 font-black">{tongCayVaiTP} cây</b>
           </div>
         </div>
 
+        {/* ===== GIÁ VỐN 1 KG VẢI TP ===== */}
+        <div className="mb-4 rounded-2xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="font-black text-amber-900 text-sm uppercase tracking-wide">🧮 Giá Vốn 1 kg Vải Thành Phẩm</div>
+            {/* Nhập % VAT đầu vào */}
+            <label className="flex items-center gap-2">
+              <span className="text-xs font-bold text-amber-800">% VAT đầu vào:</span>
+              <select
+                value={vatRate}
+                onChange={(e) => setVatRate(Number(e.target.value))}
+                className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-sm font-black text-amber-900 focus:ring-2 focus:ring-amber-400"
+              >
+                <option value={0}>0% (Không VAT)</option>
+                <option value={5}>5%</option>
+                <option value={8}>8%</option>
+                <option value={10}>10%</option>
+              </select>
+            </label>
+          </div>
+
+          {/* Công thức hiển thị */}
+          <div className="mb-3 rounded-xl bg-white/80 border border-amber-200 px-3 py-2 text-[11px] font-mono text-slate-700 leading-relaxed">
+            <div className="font-bold text-amber-800 mb-1 font-sans text-xs not-italic">📐 Công thức tính:</div>
+            <div>Giá vốn/kg <span className="text-slate-400">(chưa VAT)</span> = <span className="font-bold text-blue-700">Chi sợi</span> + <span className="font-bold text-violet-700">Chi dệt</span> + <span className="font-bold text-rose-700">Chi nhuộm+HC</span> ÷ <span className="font-bold text-emerald-700">Số kg vải TP nhận về</span></div>
+            <div className="mt-0.5 text-slate-500">= {tongCong.toLocaleString("vi-VN")}đ ÷ {tongKgVaiTP.toLocaleString("vi-VN")} kg = <b className="text-amber-700">{Math.round(giaVon1KgTP_chuaVAT).toLocaleString("vi-VN")}đ/kg</b></div>
+            {vatRate > 0 && (
+              <>
+                <div className="mt-0.5">Tiền VAT {vatRate}% = {Math.round(chiVAT).toLocaleString("vi-VN")}đ → Tổng có VAT = {Math.round(tongChiPhiCoVAT).toLocaleString("vi-VN")}đ</div>
+                <div>Giá vốn/kg <span className="text-slate-400">(có VAT {vatRate}%)</span> = {Math.round(tongChiPhiCoVAT).toLocaleString("vi-VN")}đ ÷ {tongKgVaiTP.toLocaleString("vi-VN")} kg = <b className="text-orange-700">{Math.round(giaVon1KgTP_coVAT).toLocaleString("vi-VN")}đ/kg</b></div>
+              </>
+            )}
+            <div className="mt-1 text-[10px] text-slate-400 font-sans italic">Lưu ý: Số kg TP nhận về đã thấp hơn kg sợi giao (hao hụt {haoHutTongPt.toFixed(1)}% = {haoHutTongKg.toFixed(1)} kg), nên giá vốn/kg đã bao gồm hao hụt.</div>
+          </div>
+
+          {/* Kết quả lớn */}
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="rounded-xl bg-amber-100/80 border border-amber-300 p-3">
+              <div className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">Giá vốn 1 kg vải TP (Chưa VAT)</div>
+              <div className="text-2xl font-black text-amber-800 mt-1">
+                {tongKgVaiTP > 0 ? Math.round(giaVon1KgTP_chuaVAT).toLocaleString("vi-VN") : "—"}
+                <span className="text-sm font-bold text-amber-600"> đ/kg</span>
+              </div>
+              <div className="text-[10px] text-amber-600 mt-0.5">Tổng chi phí: {tongCong.toLocaleString("vi-VN")}đ ÷ {tongKgVaiTP.toLocaleString("vi-VN")} kg</div>
+            </div>
+            <div className={`rounded-xl border p-3 ${vatRate > 0 ? "bg-orange-100/80 border-orange-300" : "bg-slate-50 border-slate-200 opacity-50"}`}>
+              <div className="text-[10px] font-semibold text-orange-700 uppercase tracking-wider">Giá vốn 1 kg vải TP (Có VAT {vatRate}%)</div>
+              <div className="text-2xl font-black text-orange-800 mt-1">
+                {tongKgVaiTP > 0 && vatRate > 0 ? Math.round(giaVon1KgTP_coVAT).toLocaleString("vi-VN") : "—"}
+                <span className="text-sm font-bold text-orange-600"> đ/kg</span>
+              </div>
+              <div className="text-[10px] text-orange-600 mt-0.5">
+                {vatRate > 0 ? `+${vatRate}% VAT = +${Math.round(chiVAT).toLocaleString("vi-VN")}đ | Tổng có VAT: ${Math.round(tongChiPhiCoVAT).toLocaleString("vi-VN")}đ` : "Chọn % VAT để tính"}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
           <Card label="Chi sợi" v={chiSoi} c="blue" sub={ncc?.ten_ncc} />
           <Card label="Chi dệt" v={chiDet} c="violet" sub={xDet?.ten_ncc} />
-          <Card label="Chi nhuộm" v={chiNhuom + chiHoaChat} c="rose" sub={xNhuom?.ten_ncc} />
-          <Card label="Tổng cộng" v={tongCong} c="amber" />
+          <Card label="Chi nhuộm+HC" v={chiNhuom + chiHoaChat} c="rose" sub={xNhuom?.ten_ncc} />
+          <Card label="VAT đầu vào" v={chiVAT} c="amber" sub={`${vatRate}%`} />
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-3">
