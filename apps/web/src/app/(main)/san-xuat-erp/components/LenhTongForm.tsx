@@ -8,6 +8,9 @@ import {
   nhapKhoSoi_V2,
   taoLenhDet,
   taoMeNhuom,
+  nghiemThuDet_V2,
+  nghiemThuMau_V2,
+  nhapKhoVaiTP,
   type LoVaiTP,
 } from "@/lib/yarn-production-chain";
 import { themCongNo } from "@/lib/master-data";
@@ -15,11 +18,15 @@ import { thuocNhomSanXuatVai, useNhaCungCap } from "@/lib/data/nha-cung-cap-stor
 import { type KhoVai } from "@/lib/data/real-data";
 import {
   getAllInventory,
+  getInventoryByMaVT,
   getVaiImages,
+  nhapKho,
   subscribeInventoryChanges,
   syncInventoryWithSupabase,
+  updateVaiInfo,
+  upsertInventoryItem,
 } from "@/lib/inventory-engine";
-import { KHU_ME_NHUOM, type KhuMeNhuom } from "@/lib/data/fabric-dye-lots";
+import { KHU_ME_NHUOM, createFabricDyeLot, type KhuMeNhuom } from "@/lib/data/fabric-dye-lots";
 import { Card, F, Modal } from "./ui-blocks";
 import PhieuNhapSoiPrint from "./PhieuNhapSoiPrint";
 import PhieuGiaoDetPrint from "./PhieuGiaoDetPrint";
@@ -28,6 +35,7 @@ type MauNhuomInput = {
   maVai: string;
   mau: string;
   soKg: number;
+  soCay?: number;
   donGiaNhuom: number;
   chiPhiHoaChat: number;
 };
@@ -94,6 +102,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const kho = "Kho vải thành phẩm";
   const [khu, setKhu] = useState<KhuMeNhuom>("C");
   const [ke, setKe] = useState("C01");
+  const [nhapKhoNgay, setNhapKhoNgay] = useState(true);
   const [daTaoLenh, setDaTaoLenh] = useState(false);
   const [hienPhieu, setHienPhieu] = useState(false);
   const [hienPhieuNhapSoi, setHienPhieuNhapSoi] = useState(false);
@@ -104,9 +113,15 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const tongKgSoi = danhSachSoi.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
   const chiSoi = danhSachSoi.reduce((sum, item) => sum + Math.max(item.soKg, 0) * Math.max(item.donGia, 0), 0);
   const chiDet = tongKgSoi * donGiaDet;
-  const chiNhuom = 0;
-  const chiHoaChat = 0;
+  const chiNhuom = danhSachMau.reduce((sum, item) => sum + Math.max(item.soKg, 0) * Math.max(item.donGiaNhuom, 0), 0);
+  const chiHoaChat = danhSachMau.reduce((sum, item) => sum + Math.max(item.chiPhiHoaChat, 0), 0);
   const tongCong = chiSoi + chiDet + chiNhuom + chiHoaChat;
+
+  const tongKgVaiTP = danhSachMau.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
+  const tongCayVaiTP = danhSachMau.reduce((sum, item) => sum + (item.soCay || (item.soKg > 0 ? Math.max(1, Math.ceil(item.soKg / 20)) : 0)), 0);
+  const haoHutTongKg = tongKgSoi - tongKgVaiTP;
+  const haoHutTongPt = tongKgSoi > 0 ? (haoHutTongKg / tongKgSoi) * 100 : 0;
+
   const giaVonTheoMau = useMemo(() => {
     const tongKg = danhSachMau.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
     let chiSoiDaPhanBo = 0;
@@ -202,7 +217,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
     });
   };
 
-  const handleTao = () => {
+  const handleTao = async () => {
     setDaTaoLenh(false);
     if (!ncc || !xDet || !xNhuom) {
       toast.error("Vui lòng cập nhật danh bạ NCC sợi, dệt, nhuộm trước");
@@ -213,6 +228,12 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
       toast.error("Vui lòng nhập đầy đủ loại sợi, mã lô, số kg và đơn giá");
       return;
     }
+
+    if (nhapKhoNgay && danhSachMau.length === 0) {
+      toast.error("Vui lòng thêm ít nhất một mã màu nhuộm để nhập kho thành phẩm");
+      return;
+    }
+
     const ketQuaNhapSoi = danhSachSoi.map((soi) => {
       const ketQua = nhapKhoSoi_V2({
         ngayNhap: new Date().toISOString().slice(0, 10),
@@ -241,7 +262,6 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           phatSinh: soi.soKg * soi.donGia,
           thanhToan: 0,
         });
-
       }
       return ketQua;
     });
@@ -251,95 +271,228 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
       return;
     }
 
-    if (ketQuaNhapSoi.every((ketQua) => ketQua.ok)) {
-      const danhSachLoaiSoi = danhSachSoi.map((item) => item.loaiSoi).join(" + ");
-      const danhSachMaLo = danhSachSoi.map((item) => item.maLoSoi).join(" + ");
-      const r2 = taoLenhDet({
+    const danhSachLoaiSoi = danhSachSoi.map((item) => item.loaiSoi).join(" + ");
+    const danhSachMaLo = danhSachSoi.map((item) => item.maLoSoi).join(" + ");
+    const r2 = taoLenhDet({
+      ngayGiao: new Date().toISOString().slice(0, 10),
+      ngayDuKienNhan: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
+      xuongDet: xDet.ten_ncc,
+      maLoSoi: danhSachMaLo,
+      loaiSoi: danhSachLoaiSoi,
+      soKgGiao: tongKgSoi,
+      donGiaDet,
+      tienDuKien: tongKgSoi * donGiaDet,
+      soMetDuKien: tongKgSoi * 4,
+      nguoiPhuTrach: user?.name || "Admin",
+      ghiChu: `${danhSachSoi.length} loại sợi: ${danhSachSoi.map((item) => `${item.loaiSoi} ${item.soKg}kg`).join(", ")}`,
+    }, user);
+
+    if (!r2.ok) {
+      toast.error(r2.message || "Chưa tạo được lệnh dệt gia công");
+      return;
+    }
+
+    themCongNo({
+      ngayPhatSinh: new Date().toISOString().slice(0, 10),
+      doiTuongId: xDet.id,
+      tenDoiTuong: xDet.ten_ncc,
+      loai: "Xưởng dệt",
+      maPhieuGoc: r2.lenh?.id || "",
+      moTa: `Dệt ${tongKgSoi}kg từ ${danhSachSoi.length} loại sợi → ${xDet.ten_ncc}`,
+      phatSinh: chiDet,
+      thanhToan: 0,
+    });
+
+    let r3MeNhuom: any = null;
+
+    if (danhSachMau.length > 0) {
+      const r3 = taoMeNhuom({
         ngayGiao: new Date().toISOString().slice(0, 10),
-        ngayDuKienNhan: new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10),
-        xuongDet: xDet.ten_ncc,
-        maLoSoi: danhSachMaLo,
-        loaiSoi: danhSachLoaiSoi,
-        soKgGiao: tongKgSoi,
-        donGiaDet,
-        tienDuKien: tongKgSoi * donGiaDet,
-        soMetDuKien: tongKgSoi * 4,
+        ngayDuKienNhan: new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
+        xuongNhuom: xNhuom.ten_ncc,
+        maLoMoc: `LM-${r2.lenh?.id}`,
+        danhSachMau: danhSachMau.map((m, index) => ({
+          maMau: danhSachVaiKho.find((vai) => vai.maVT === m.maVai)?.maMoi || m.maVai,
+          mau: m.mau,
+          soKg: m.soKg,
+          soCay: m.soCay || (m.soKg > 0 ? Math.max(1, Math.ceil(m.soKg / 20)) : 1),
+          donGiaNhuom: m.donGiaNhuom,
+          giaVonDuKien: giaVonTheoMau[index]?.giaVonMoiKg || 0,
+        })),
         nguoiPhuTrach: user?.name || "Admin",
-        ghiChu: `${danhSachSoi.length} loại sợi: ${danhSachSoi.map((item) => `${item.loaiSoi} ${item.soKg}kg`).join(", ")}`,
+        ghiChu: [
+          `Mã vải TP: ${danhSachMau.map((m) => `${m.maVai}-${m.mau}`).join(", ")}`,
+          `Vị trí dự kiến: ${kho} · Khu ${khu} - ${KHU_ME_NHUOM[khu].ten} · Kệ ${ke || "chưa xếp"}`,
+        ].join(" | "),
       }, user);
 
-      if (!r2.ok) {
-        toast.error(r2.message || "Chưa tạo được lệnh dệt gia công");
+      if (!r3.ok) {
+        toast.error(r3.message || "Chưa tạo được mẻ nhuộm");
         return;
       }
 
+      r3MeNhuom = r3;
+
       themCongNo({
         ngayPhatSinh: new Date().toISOString().slice(0, 10),
-        doiTuongId: xDet.id,
-        tenDoiTuong: xDet.ten_ncc,
-        loai: "Xưởng dệt",
-        maPhieuGoc: r2.lenh?.id || "",
-        moTa: `Dệt ${tongKgSoi}kg từ ${danhSachSoi.length} loại sợi → ${xDet.ten_ncc}`,
-        phatSinh: chiDet,
+        doiTuongId: xNhuom.id,
+        tenDoiTuong: xNhuom.ten_ncc,
+        loai: "Xưởng nhuộm",
+        maPhieuGoc: r3.me?.id || "",
+        moTa: `Nhuộm ${danhSachMau.length} màu → ${xNhuom.ten_ncc}`,
+        phatSinh: chiNhuom + chiHoaChat,
         thanhToan: 0,
       });
 
-      if (danhSachMau.length > 0) {
-        const r3 = taoMeNhuom({
-          ngayGiao: new Date().toISOString().slice(0, 10),
-          ngayDuKienNhan: new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
-          xuongNhuom: xNhuom.ten_ncc,
-          maLoMoc: `LM-${r2.lenh?.id}`,
-          danhSachMau: danhSachMau.map((m, index) => ({
-            maMau: danhSachVaiKho.find((vai) => vai.maVT === m.maVai)?.maMoi || m.maVai,
-            mau: m.mau,
-            soKg: m.soKg,
-            donGiaNhuom: m.donGiaNhuom,
-            giaVonDuKien: giaVonTheoMau[index]?.giaVonMoiKg || 0,
-          })),
-          nguoiPhuTrach: user?.name || "Admin",
-          ghiChu: [
-            `Mã vải TP: ${danhSachMau.map((m) => `${m.maVai}-${m.mau}`).join(", ")}`,
-            `Vị trí dự kiến: ${kho} · Khu ${khu} - ${KHU_ME_NHUOM[khu].ten} · Kệ ${ke || "chưa xếp"}`,
-          ].join(" | "),
+      // ============ TỰ ĐỘNG NGHIỆM THU & NHẬP KHO THÀNH PHẨM (GIAI ĐOẠN 1) ============
+      if (nhapKhoNgay && r2.lenh && r3.me) {
+        // 1. Tự động nghiệm thu lệnh dệt vải mộc
+        const tongKgMoc = tongKgSoi;
+        const soCayMoc = Math.max(1, Math.ceil(tongKgMoc / 20));
+        const danhSachCayMoc = Array.from({ length: soCayMoc }, (_, idx) => ({
+          maCay: `MOC-${r2.lenh!.id}-${String(idx + 1).padStart(2, "0")}`,
+          kg: Number((tongKgMoc / soCayMoc).toFixed(2)),
+        }));
+
+        nghiemThuDet_V2(r2.lenh.id, {
+          soKgMocNhan: tongKgMoc,
+          soCayMoc,
+          danhSachCayMoc,
+          soKgLoi: 0,
+          chiPhiPhatSinh: 0,
+          daThanhToan: 0,
+          khoMocNhap: "Kho Vải Mộc",
+          ketQuaKiemTra: "Đạt chuẩn",
         }, user);
 
-        if (!r3.ok) {
-          toast.error(r3.message || "Chưa tạo được mẻ nhuộm");
-          return;
+        // 2. Tự động nghiệm thu vải màu cho mẻ nhuộm
+        const nghiemThuData = danhSachMau.map((m) => {
+          const soCay = m.soCay || (m.soKg > 0 ? Math.max(1, Math.ceil(m.soKg / 20)) : 1);
+          return {
+            mau: m.mau,
+            soKgMocGiao: m.soKg,
+            soKgMauNhan: m.soKg,
+            soCayNhan: soCay,
+            soKgLoi: 0,
+            donGiaNhuom: m.donGiaNhuom,
+            chiPhiHoaChat: m.chiPhiHoaChat,
+            chiPhiHoanThien: 0,
+            chiPhiPhatSinh: 0,
+            daThanhToan: 0,
+          };
+        });
+
+        const rNghiemThu = nghiemThuMau_V2(
+          r3.me.id,
+          nghiemThuData,
+          user?.name || "Admin",
+          user
+        );
+
+        // 3. Tự động nhập kho thành phẩm chi tiết và đồng bộ tồn kho
+        for (let idx = 0; idx < danhSachMau.length; idx++) {
+          const m = danhSachMau[idx];
+          const vaiKho = danhSachVaiKho.find((vai) => vai.maVT === m.maVai);
+          if (!vaiKho) continue;
+
+          const soCay = m.soCay || (m.soKg > 0 ? Math.max(1, Math.ceil(m.soKg / 20)) : 1);
+          const kgMoiCay = Number((m.soKg / soCay).toFixed(2));
+          const giaVon = Math.round(giaVonTheoMau[idx]?.giaVonMoiKg || m.donGiaNhuom);
+
+          // Tạo Dye Lot chờ kiểm hoặc lưu trữ ở Khu C / khu được chọn
+          try {
+            await createFabricDyeLot({
+              maMe: `${r3.me.id}-${m.maVai || idx + 1}`,
+              sku: vaiKho.maVT,
+              mauSac: m.mau,
+              ngayNhap: new Date().toISOString().slice(0, 10),
+              xuongNhuom: xNhuom.ten_ncc,
+              donGia: giaVon,
+              soKgNhap: m.soKg,
+              tonKg: m.soKg,
+              soCay,
+              khu,
+              ke: ke || "C01",
+              tang: "",
+              o: "",
+              trangThai: "CHO_KIEM",
+              ghiChu: `Tự động nhập từ Lệnh tổng SX ${r2.lenh.id} / Mẻ ${r3.me.id}`,
+            });
+          } catch (err) {
+            console.warn("[LenhTongForm] createFabricDyeLot skipped/fallback:", err);
+          }
+
+          // Tạo lô vải thành phẩm cây chi tiết
+          nhapKhoVaiTP({
+            ngayNhap: new Date().toISOString().slice(0, 10),
+            meNhuomId: r3.me.id,
+            nghiemThuMauId: rNghiemThu.phieu?.id || `NTM_${r3.me.id}`,
+            loaiVai: "Vải thành phẩm",
+            mau: m.mau,
+            maMau: vaiKho.maMoi || m.maVai,
+            maLo: `${r3.me.id}-${idx + 1}`,
+            danhSachCay: Array.from({ length: soCay }, (_, cIdx) => ({
+              stt: cIdx + 1,
+              kg: kgMoiCay,
+            })),
+            giaVonPerKg: giaVon,
+            kho: "Kho Vải TP",
+            khu: `Khu ${khu}`,
+            ke: ke || "Chưa xếp",
+            tang: "",
+            viTri: `Khu ${khu} - Kệ ${ke || "C01"}`,
+            trangThaiChatLuong: "Chờ kiểm",
+            nguoiPhuTrach: user?.name || "Admin",
+            ghiChu: `Nhập từ Lệnh tổng SX (Sợi ➔ Dệt ➔ Nhuộm ${m.mau})`,
+          }, user);
+
+          // Cập nhật tồn kho và số cây
+          nhapKho(vaiKho.maVT, m.soKg, user, `Nhập từ Lệnh tổng SX Vải (Mẻ ${r3.me.id})`, {
+            ngay: new Date().toISOString().slice(0, 10),
+            donGia: giaVon,
+            nguonNhap: xNhuom.ten_ncc,
+            nguoiThucHien: user?.name || "Admin",
+          });
+
+          const tonKhoHienTai = getInventoryByMaVT(vaiKho.maVT);
+          updateVaiInfo(vaiKho.maVT, {
+            tonCay: (tonKhoHienTai?.tonCay || 0) + soCay,
+            soCayNhap: (tonKhoHienTai?.soCayNhap || 0) + soCay,
+            donGia: giaVon,
+          });
+
+          const vaiDaCapNhat = getInventoryByMaVT(vaiKho.maVT);
+          if (vaiDaCapNhat) {
+            await upsertInventoryItem(vaiDaCapNhat);
+          }
         }
-
-        themCongNo({
-          ngayPhatSinh: new Date().toISOString().slice(0, 10),
-          doiTuongId: xNhuom.id,
-          tenDoiTuong: xNhuom.ten_ncc,
-          loai: "Xưởng nhuộm",
-          maPhieuGoc: r3.me?.id || "",
-          moTa: `Nhuộm ${danhSachMau.length} màu → ${xNhuom.ten_ncc}`,
-          phatSinh: chiNhuom + chiHoaChat,
-          thanhToan: 0,
-        });
-
-        setPhieuDaTao({
-          maLenhDet: r2.lenh?.id || "",
-          maMeNhuom: r3.me?.id || "",
-          ngayTao: new Date().toISOString().slice(0, 10),
-          tenNccSoi: ncc.ten_ncc,
-          tenXuongDet: xDet.ten_ncc,
-          tenXuongNhuom: xNhuom.ten_ncc,
-          danhSachSoi: danhSachSoi.map((item) => ({ ...item })),
-          danhSachMau: danhSachMau.map((item) => ({ ...item })),
-          tongKgSoi,
-          donGiaDet,
-          tongCong,
-          khu,
-          ke,
-        });
       }
+
+      setPhieuDaTao({
+        maLenhDet: r2.lenh?.id || "",
+        maMeNhuom: r3.me?.id || "",
+        ngayTao: new Date().toISOString().slice(0, 10),
+        tenNccSoi: ncc.ten_ncc,
+        tenXuongDet: xDet.ten_ncc,
+        tenXuongNhuom: xNhuom.ten_ncc,
+        danhSachSoi: danhSachSoi.map((item) => ({ ...item })),
+        danhSachMau: danhSachMau.map((item) => ({ ...item })),
+        tongKgSoi,
+        donGiaDet,
+        tongCong,
+        khu,
+        ke,
+      });
     }
 
     setDaTaoLenh(true);
-    toast.success(`Đã lưu và tạo lệnh thành công. Tổng: ${tongCong.toLocaleString()}đ | ${danhSachSoi.length + 2} công nợ đã tạo`);
+    if (nhapKhoNgay) {
+      toast.success(
+        `Đã tạo lệnh & tự động nhập kho TP: ${tongKgVaiTP.toLocaleString()}kg (${tongCayVaiTP} cây) vào Khu ${khu}! Tổ Cắt có thể lấy vải cắt ngay.`
+      );
+    } else {
+      toast.success(`Đã lưu và tạo lệnh thành công. Tổng: ${tongCong.toLocaleString()}đ | ${danhSachSoi.length + 2} công nợ đã tạo`);
+    }
   };
 
   return (
@@ -476,34 +629,72 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         </div>
 
         <div className="grid grid-cols-12 gap-1 text-[10px] font-semibold opacity-70 mt-2 mb-1">
-          <div className="col-span-4">Mã màu kho TP</div>
+          <div className="col-span-3">Mã màu kho TP</div>
           <div className="col-span-2">Màu</div>
-          <div className="col-span-2 text-right">Số kg</div>
-          <div className="col-span-2 text-right">Đơn giá</div>
+          <div className="col-span-2 text-right">Số kg TP</div>
+          <div className="col-span-1 text-right">Số cây</div>
+          <div className="col-span-2 text-right">Đơn giá nhuộm</div>
           <div className="col-span-1 text-right">Hóa chất</div>
+          <div className="col-span-1 text-center">Xóa</div>
         </div>
         {danhSachMau.map((m, i) => (
           <div key={`${m.maVai}-${i}`} className="mb-2 rounded-lg border border-rose-200 bg-white/50 p-1.5 text-xs">
-            <div className="grid grid-cols-12 gap-1">
-              <div className="col-span-4">
+            <div className="grid grid-cols-12 gap-1 items-center">
+              <div className="col-span-3">
                 <button
                   type="button"
                   onClick={() => setDongDangChonVai(i)}
-                  className="w-full rounded border bg-white px-2 py-1 text-left font-semibold hover:border-rose-400 hover:bg-rose-50"
+                  className="w-full rounded border bg-white px-2 py-1 text-left font-semibold truncate hover:border-rose-400 hover:bg-rose-50"
+                  title="Chọn mã màu từ Kho vải thành phẩm"
                 >
                   {m.maVai
                     ? `${danhSachVaiKho.find((vai) => vai.maVT === m.maVai)?.maMoi || m.maVai} - ${danhSachVaiKho.find((vai) => vai.maVT === m.maVai)?.tenChuan || danhSachVaiKho.find((vai) => vai.maVT === m.maVai)?.tenVT || m.mau}`
-                    : "Chọn mã màu từ Kho vải thành phẩm"}
+                    : "Chọn mã màu"}
                 </button>
               </div>
-              <div className="col-span-2 flex items-center rounded border bg-slate-50 px-2 py-1 font-medium">
+              <div className="col-span-2 flex items-center rounded border bg-slate-50 px-2 py-1 font-medium truncate">
                 {m.mau || "Chưa có màu"}
               </div>
-              <input type="number" value={m.soKg} onChange={(e) => capNhatMau(i, { soKg: Number(e.target.value) })} className="col-span-2 px-2 py-1 rounded border text-right" />
-              <input type="number" value={m.donGiaNhuom} onChange={(e) => capNhatMau(i, { donGiaNhuom: Number(e.target.value) })} className="col-span-2 px-2 py-1 rounded border text-right" />
-              <input type="number" value={m.chiPhiHoaChat} onChange={(e) => capNhatMau(i, { chiPhiHoaChat: Number(e.target.value) })} className="col-span-1 px-2 py-1 rounded border text-right" />
-              <button onClick={() => setDanhSachMau(danhSachMau.filter((_, idx) => idx !== i))} className="col-span-1 text-rose-600 p-1">
-                <Trash2 className="w-3 h-3" />
+              <input
+                type="number"
+                value={m.soKg}
+                onChange={(e) => {
+                  const newKg = Number(e.target.value);
+                  capNhatMau(i, {
+                    soKg: newKg,
+                    soCay: m.soCay && m.soCay > 0 ? m.soCay : (newKg > 0 ? Math.max(1, Math.ceil(newKg / 20)) : 0),
+                  });
+                }}
+                className="col-span-2 px-2 py-1 rounded border text-right font-bold text-slate-800"
+                placeholder="Số kg"
+              />
+              <input
+                type="number"
+                value={m.soCay ?? (m.soKg > 0 ? Math.max(1, Math.ceil(m.soKg / 20)) : "")}
+                onChange={(e) => capNhatMau(i, { soCay: Number(e.target.value) })}
+                className="col-span-1 px-1 py-1 rounded border text-right font-black text-emerald-700 bg-emerald-50/50"
+                placeholder="Cây"
+                title="Số cây thành phẩm thực nhận"
+              />
+              <input
+                type="number"
+                value={m.donGiaNhuom}
+                onChange={(e) => capNhatMau(i, { donGiaNhuom: Number(e.target.value) })}
+                className="col-span-2 px-2 py-1 rounded border text-right"
+              />
+              <input
+                type="number"
+                value={m.chiPhiHoaChat}
+                onChange={(e) => capNhatMau(i, { chiPhiHoaChat: Number(e.target.value) })}
+                className="col-span-1 px-1 py-1 rounded border text-right text-[11px]"
+              />
+              <button
+                type="button"
+                onClick={() => setDanhSachMau(danhSachMau.filter((_, idx) => idx !== i))}
+                className="col-span-1 flex items-center justify-center text-rose-600 hover:bg-rose-50 rounded p-1"
+                aria-label="Xóa màu"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
             {(() => {
@@ -520,7 +711,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                   </div>
                   <div className="min-w-0">
                     <div className="truncate font-semibold">{vai?.tenChuan || vai?.tenVT || m.maVai}</div>
-                    <div className="text-[11px] text-slate-500">Màu: {tenMauTuVai(vai)} · Tồn kho: {(vai?.tonKho || 0).toLocaleString("vi-VN")} {vai?.dvt || "kg"}</div>
+                    <div className="text-[11px] text-slate-500">Màu: {tenMauTuVai(vai)} · Tồn kho hiện tại: {(vai?.tonKho || 0).toLocaleString("vi-VN")} {vai?.dvt || "kg"} ({vai?.tonCay || 0} cây)</div>
                     <div className="text-[10px] text-slate-400">Mã màu lấy trực tiếp từ Kho vải thành phẩm</div>
                   </div>
                 </div>
@@ -528,11 +719,25 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             })()}
           </div>
         ))}
-        <button onClick={() => {
-          const vai = danhSachVaiKho[0];
-          setDanhSachMau([...danhSachMau, { maVai: vai?.maVT || "", mau: tenMauTuVai(vai), soKg: 0, donGiaNhuom: 12000, chiPhiHoaChat: 1000000 }]);
-        }} className="text-xs text-blue-600 mt-1">
-          <Plus className="w-3 h-3 inline" /> Thêm mã màu nhuộm
+        <button
+          type="button"
+          onClick={() => {
+            const vai = danhSachVaiKho[0];
+            setDanhSachMau([
+              ...danhSachMau,
+              {
+                maVai: vai?.maVT || "",
+                mau: tenMauTuVai(vai),
+                soKg: 0,
+                soCay: 0,
+                donGiaNhuom: 12000,
+                chiPhiHoaChat: 1000000,
+              },
+            ]);
+          }}
+          className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 mt-1"
+        >
+          <Plus className="w-3.5 h-3.5 inline" /> Thêm mã màu nhuộm
         </button>
       </div>
 
@@ -568,9 +773,29 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           </div>
           <F label="Kệ" v={ke} on={setKe} />
         </div>
-        <p className="mt-2 text-[11px] text-emerald-700">
-          Mẻ nhuộm mới mặc định vào Khu C để chờ kiểm màu và chất lượng; dữ liệu tồn kho hiện tại không bị thay đổi.
-        </p>
+
+        {/* Tùy chọn Vận hành Giai đoạn 1 */}
+        <div className="mt-3 rounded-xl border border-emerald-300 bg-emerald-50/90 p-3.5 shadow-sm">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={nhapKhoNgay}
+              onChange={(e) => setNhapKhoNgay(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500"
+            />
+            <div>
+              <div className="text-xs font-black text-emerald-950 flex flex-wrap items-center gap-2">
+                <span className="inline-block px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider">
+                  Giai đoạn 1
+                </span>
+                TỰ ĐỘNG NGHIỆM THU & CẬP NHẬT KHO THÀNH PHẨM NGAY
+              </div>
+              <p className="mt-1 text-[11px] text-emerald-800 leading-relaxed font-medium">
+                Khi kích hoạt, hệ thống sẽ tự động hoàn tất khâu Dệt, Mẻ Nhuộm, sinh mã lô mẻ (<code className="font-mono font-bold text-emerald-950">LTP_...</code>), đưa vào Khu {khu} và cộng tồn kho vải (số kg, số cây, khóa giá vốn) để <b>Tổ Cắt có thể lấy vải cắt ngay</b> mà không cần thao tác thủ công từng bước ở tab Quy trình.
+              </p>
+            </div>
+          </label>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-sm backdrop-blur-md">
@@ -582,6 +807,26 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           <div className="text-right">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Tổng chi phí dự toán</span>
             <span className="text-2xl font-black text-amber-600 drop-shadow-sm">{tongCong.toLocaleString("vi-VN")}đ</span>
+          </div>
+        </div>
+
+        {/* Thanh tóm tắt hao hụt Sợi ➔ Vải TP */}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-100/90 p-3 border border-slate-200/80">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-700">Hao hụt tổng (Sợi ➔ Vải TP):</span>
+            <span className="text-sm font-black text-slate-900">{haoHutTongKg.toLocaleString("vi-VN")} kg</span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black ${
+              haoHutTongPt >= 7 && haoHutTongPt <= 13
+                ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                : haoHutTongPt > 13
+                ? "bg-rose-100 text-rose-800 border border-rose-300"
+                : "bg-amber-100 text-amber-800 border border-amber-300"
+            }`}>
+              {haoHutTongPt.toFixed(1)}% {haoHutTongPt >= 7 && haoHutTongPt <= 13 ? "(Đạt chuẩn 7-13%)" : haoHutTongPt > 13 ? "(Cảnh báo hao hụt cao)" : ""}
+            </span>
+          </div>
+          <div className="text-xs font-semibold text-slate-600">
+            Tổng vải TP nhận: <b className="text-emerald-700 font-black">{tongKgVaiTP.toLocaleString("vi-VN")} kg</b> · <b className="text-emerald-700 font-black">{tongCayVaiTP} cây</b>
           </div>
         </div>
 
@@ -602,7 +847,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <div className="font-bold text-slate-900">{vai?.maMoi || item.maVai} - {item.mau}</div>
-                      <div className="text-[11px] text-slate-500">{vai?.tenChuan || vai?.tenVT || "Mã vải thành phẩm"} · {item.soKg.toLocaleString("vi-VN")} kg</div>
+                      <div className="text-[11px] text-slate-500">{vai?.tenChuan || vai?.tenVT || "Mã vải thành phẩm"} · {item.soKg.toLocaleString("vi-VN")} kg ({item.soCay || (item.soKg > 0 ? Math.max(1, Math.ceil(item.soKg / 20)) : 0)} cây)</div>
                     </div>
                     <div className="text-right">
                       <div className="text-base font-black text-amber-700">{lamTronTheo100Dong(item.tongGiaVon).toLocaleString("vi-VN")}đ</div>
@@ -733,9 +978,9 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             <h3 className="mt-4 rounded bg-[#EA990C] px-3 py-2 font-bold text-white">2. DANH SÁCH MÀU NHUỘM</h3>
             <div className="mt-2 overflow-x-auto">
               <table className="w-full border-collapse text-sm">
-                <thead><tr className="bg-slate-100"><th className="border p-2 text-left">Mã vải</th><th className="border p-2">Màu</th><th className="border p-2 text-right">Số kg</th><th className="border p-2 text-right">Đơn giá nhuộm</th><th className="border p-2 text-right">Hóa chất</th></tr></thead>
+                <thead><tr className="bg-slate-100"><th className="border p-2 text-left">Mã vải</th><th className="border p-2">Màu</th><th className="border p-2 text-right">Số kg</th><th className="border p-2 text-right">Số cây</th><th className="border p-2 text-right">Đơn giá nhuộm</th><th className="border p-2 text-right">Hóa chất</th></tr></thead>
                 <tbody>{phieuDaTao.danhSachMau.map((item, index) => (
-                  <tr key={`${item.maVai}-${index}`}><td className="border p-2">{item.maVai}</td><td className="border p-2 text-center">{item.mau}</td><td className="border p-2 text-right">{item.soKg.toLocaleString("vi-VN")}</td><td className="border p-2 text-right">{item.donGiaNhuom.toLocaleString("vi-VN")}đ</td><td className="border p-2 text-right">{item.chiPhiHoaChat.toLocaleString("vi-VN")}đ</td></tr>
+                  <tr key={`${item.maVai}-${index}`}><td className="border p-2">{item.maVai}</td><td className="border p-2 text-center">{item.mau}</td><td className="border p-2 text-right font-bold">{item.soKg.toLocaleString("vi-VN")}</td><td className="border p-2 text-right text-emerald-700 font-bold">{item.soCay || (item.soKg > 0 ? Math.max(1, Math.ceil(item.soKg / 20)) : 0)}</td><td className="border p-2 text-right">{item.donGiaNhuom.toLocaleString("vi-VN")}đ</td><td className="border p-2 text-right">{item.chiPhiHoaChat.toLocaleString("vi-VN")}đ</td></tr>
                 ))}</tbody>
               </table>
             </div>
