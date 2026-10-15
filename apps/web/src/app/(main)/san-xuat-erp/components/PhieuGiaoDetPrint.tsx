@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Printer } from "lucide-react";
+import { createPortal } from "react-dom";
+import { X, Printer, ArrowLeft } from "lucide-react";
 
 interface Props {
   xDet: any; // Thông tin xưởng dệt
@@ -11,8 +12,27 @@ interface Props {
   autoPrint?: boolean;
 }
 
-export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, chungTu, onClose, autoPrint = true }: Props) {
+export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, chungTu, onClose, autoPrint = false }: Props) {
   const [printing, setPrinting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     if (autoPrint) {
@@ -32,20 +52,22 @@ export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, chungTu, onClose,
   const fmtDate = (d: Date) => d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
   const fmtDateTime = (d: Date) => d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-  const tongKg = danhSachSoi.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
+  const tongKg = (danhSachSoi || []).reduce((sum, item) => sum + Math.max(item.soKg || 0, 0), 0);
 
-  return (
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
     <>
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #phieu-giao-det-print, #phieu-giao-det-print * { visibility: visible; }
+          body * { visibility: hidden !important; }
+          #phieu-giao-det-print, #phieu-giao-det-print * { visibility: visible !important; }
           #phieu-giao-det-print {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
             background: white !important;
             padding: 0 !important;
             margin: 0 !important;
@@ -55,28 +77,46 @@ export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, chungTu, onClose,
         }
       `}</style>
 
-      <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/80 backdrop-blur-sm">
-        <div className="flex flex-1 flex-col mx-auto w-full max-w-4xl bg-slate-100 shadow-2xl h-full overflow-hidden">
-          {/* Toolbar */}
-          <div className="no-print flex items-center justify-between bg-slate-800 text-white px-5 py-3 shadow-md z-10">
-            <div className="font-semibold flex items-center gap-2">
-              <Printer className="w-5 h-5 text-violet-400" />
-              IN PHIẾU GIAO DỆT GIA CÔNG
+      {/* Floating Close Button: Luôn luôn hiển thị ở góc trên cùng bên phải màn hình */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="no-print fixed top-4 right-4 z-[10002] flex items-center gap-1.5 px-3 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-2xl transition hover:scale-105 active:scale-95"
+        title="Đóng phiếu in (ESC)"
+      >
+        <X className="w-4 h-4" />
+        <span>Đóng (ESC)</span>
+      </button>
+
+      <div
+        className="fixed inset-0 z-[10000] flex flex-col bg-slate-900/85 backdrop-blur-md overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div className="flex flex-1 flex-col mx-auto w-full max-w-4xl bg-slate-100 shadow-2xl min-h-screen my-0 sm:my-4 sm:rounded-2xl overflow-hidden relative">
+          {/* Sticky Toolbar */}
+          <div className="no-print sticky top-0 flex items-center justify-between bg-slate-900 text-white px-5 py-3.5 shadow-md z-30 border-b border-slate-800">
+            <div className="font-bold flex items-center gap-2 text-sm text-violet-400">
+              <Printer className="w-5 h-5" />
+              <span>XEM TRƯỚC VÀ IN PHIẾU GIAO DỆT GIA CÔNG</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <button
+                type="button"
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 font-semibold transition"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold text-xs transition shadow-md active:scale-95"
               >
                 <Printer className="w-4 h-4" />
-                {printing ? "Đang in..." : "In ngay"}
+                {printing ? "Đang mở hộp thoại in..." : "In phiếu ngay"}
               </button>
               <button
+                type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-white/20"
-                title="Đóng"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition"
               >
-                <X className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4" />
+                Quay lại
               </button>
             </div>
           </div>
@@ -199,8 +239,33 @@ export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, chungTu, onClose,
               </div>
             </div>
           </div>
+
+          {/* Bottom Action Bar */}
+          <div className="no-print sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-3.5 flex items-center justify-between z-20 shadow-lg">
+            <span className="text-xs text-slate-500 font-semibold hidden sm:inline">
+              Mẹo: Bấm phím <b>ESC</b> hoặc nút "Quay lại" để trở về theo dõi quy trình
+            </span>
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs transition"
+              >
+                ← Quay lại (ESC)
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold text-xs text-white transition shadow-md active:scale-95"
+              >
+                <Printer className="w-4 h-4" />
+                In phiếu này
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
