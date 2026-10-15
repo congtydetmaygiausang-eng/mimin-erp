@@ -119,378 +119,222 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     }
   );
 
-  const themSP = useCallback(async (sp: SanPham) => {
-    setDsSanPham((prev) => [...prev, sp]);
+  const luuSanPhamInternal = useCallback(async (id: string, data: Partial<SanPham>) => {
+    const targetId = (data.id || id).trim().toUpperCase();
+    if (!targetId) return;
 
-    // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
+    const existing = dsSanPham?.find((p) => (p.id || "").trim().toUpperCase() === targetId);
+    const fullUpdatedSP: SanPham = {
+      ...(existing || {
+        id: targetId,
+        tenSP: data.tenSP || targetId,
+        loaiSP: data.loaiSP || "BoTru",
+        giaBanDuKien: 0,
+        giaVonDuKien: 0,
+        giaBanLe: 0,
+        giaBanSi: 0,
+        giaBanLo: 0,
+        giaTikTok: 0,
+        giaShopee: 0,
+        tiLeSize: "1:2:2:2:1",
+        bangSize: { sizes: ["S", "M", "L", "XL", "2XL"], ratios: [1, 2, 2, 2, 1], riSo: 8 },
+        dsMau: [],
+        trangThai: "con-hang",
+        ngayTao: new Date().toISOString().slice(0, 10),
+        hinhAnh: "",
+      }),
+      ...data,
+      id: targetId,
+      dbId: data.dbId || existing?.dbId,
+      ngayCapNhat: new Date().toISOString().slice(0, 10),
+    } as SanPham;
+
+    // 1. Cập nhật state dsSanPham (Đảm bảo chỉ có DUY NHẤT 1 item cho targetId)
+    setDsSanPham((prev) => {
+      const filtered = prev.filter((p) => (p.id || "").trim().toUpperCase() !== targetId);
+      return [fullUpdatedSP, ...filtered];
+    });
+
+    // 2. Đồng bộ localStorage của Kho Thành Phẩm (mimin_kho_thanh_pham_v2)
     try {
       const KHO_KEY = "mimin_kho_thanh_pham_v2";
       const raw = localStorage.getItem(KHO_KEY);
-      if (raw) {
-        let khoData = JSON.parse(raw);
-        let changed = false;
-        
-        if (sp.dsMau && Array.isArray(sp.dsMau)) {
-           for (let i = 0; i < sp.dsMau.length; i++) {
-              const m = sp.dsMau[i];
-              if (m.soLuongKho !== undefined) {
-                 changed = true;
-                 khoData.push({
-                   id: `TP${Date.now().toString().slice(-6)}${i}`,
-                   maSP: sp.id,
-                   tenSP: sp.tenSP || sp.id,
-                   mau: m.ten,
-                   soLuong: m.soLuongKho,
-                   trangThai: m.soLuongKho > 0 ? "con" : "het",
-                   ngayNhap: new Date().toISOString().slice(0, 10),
-                   phanLoai: sp.loaiSP || "BoTru",
-                   maSKU: m.maSKU,
-                   hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
-                   imgQuan: (m as any).imgQuan,
-                   video: m.video,
-                   viTri: "Khu A1",
-                   giaTri: m.soLuongKho * (sp.giaVonDuKien || 0),
-                   donGia: sp.giaVonDuKien || 0,
-                   giaBanLe: sp.giaBanLe || 0,
-                   giaBanSi: sp.giaBanSi || 0,
-                   chiTietSize: sp.bangSize?.sizes?.map((size: string, index: number) => {
-                       const tongRatio = sp.bangSize!.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
-                       const ratio = sp.bangSize!.ratios[index] || 0;
-                       return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
-                   }) || [],
-                 });
-              }
-           }
+      const khoData = raw ? JSON.parse(raw) : [];
+      // Lọc bỏ toàn bộ các dòng cũ của mã sản phẩm này (tránh tồn dư dòng rác/nhân đôi số lượng)
+      const otherProductsKho = khoData.filter((x: any) => {
+        const xMa = String(x.maSP || x.ma_sp || "").trim().toUpperCase();
+        return xMa !== targetId;
+      });
+
+      const newProductRows: any[] = [];
+      const dsMauList = data.dsMau && Array.isArray(data.dsMau) ? data.dsMau : (fullUpdatedSP?.dsMau || []);
+      const bs = data.bangSize || fullUpdatedSP?.bangSize;
+
+      for (let i = 0; i < dsMauList.length; i++) {
+        const m = dsMauList[i];
+        const soLuong = Math.max(0, Number(m.soLuongKho) || 0);
+
+        let chiTietSize: any[] = [];
+        if (bs && bs.sizes && bs.sizes.length > 0) {
+          const tongRatio = (bs.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+          let conLai = soLuong;
+          chiTietSize = bs.sizes.map((size: string, index: number) => {
+            if (index === bs.sizes.length - 1) return { size, sl: conLai };
+            const ratio = bs.ratios?.[index] || 0;
+            const chia = Math.round((ratio / tongRatio) * soLuong);
+            conLai -= chia;
+            return { size, sl: Math.max(0, chia) };
+          });
         }
-        
-        if (changed) {
-          localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
-          }
-        }
+
+        newProductRows.push({
+          id: `TP${Date.now().toString().slice(-6)}${i}${Math.random().toString(36).substring(2, 5)}`,
+          maSP: targetId,
+          tenSP: data.tenSP || fullUpdatedSP?.tenSP || targetId,
+          mau: m.ten,
+          soLuong: soLuong,
+          trangThai: soLuong > 0 ? "con" : "het",
+          ngayNhap: new Date().toISOString().slice(0, 10),
+          phanLoai: data.loaiSP || fullUpdatedSP?.loaiSP || "BoTru",
+          maSKU: m.maSKU || `${targetId}-${m.ten.toUpperCase()}`,
+          hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
+          imgQuan: (m as any).imgQuan,
+          video: m.video,
+          viTri: "Khu A1",
+          donGia: data.giaVonDuKien ?? fullUpdatedSP?.giaVonDuKien ?? 0,
+          giaTri: soLuong * (data.giaVonDuKien ?? fullUpdatedSP?.giaVonDuKien ?? 0),
+          giaBanLe: data.giaBanLe ?? fullUpdatedSP?.giaBanLe ?? 0,
+          giaBanSi: data.giaBanSi ?? fullUpdatedSP?.giaBanSi ?? 0,
+          giaBanLo: data.giaBanLo ?? fullUpdatedSP?.giaBanLo ?? 0,
+          giaTikTok: data.giaTikTok ?? fullUpdatedSP?.giaTikTok ?? 0,
+          giaShopee: data.giaShopee ?? fullUpdatedSP?.giaShopee ?? 0,
+          chiTietSize: chiTietSize,
+        });
+      }
+
+      localStorage.setItem(KHO_KEY, JSON.stringify([...otherProductsKho, ...newProductRows]));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
       }
     } catch (e) {
       console.error("Lỗi đồng bộ local kho_thanh_pham:", e);
     }
 
-    if (isSupabaseEnabled && sp.dsMau && Array.isArray(sp.dsMau)) {
+    // 3. Đồng bộ Supabase (Nếu kết nối online)
+    if (isSupabaseEnabled) {
       try {
         const { supabase } = await import("@/lib/supabase/client");
         if (supabase) {
-           for (const m of sp.dsMau) {
-              if (m.soLuongKho !== undefined) {
-                 const variantUpdates: any = {};
-                 if (m.img) {
-                    variantUpdates.hinh_anh = [m.img, ...(m.hinhAnhChiTiet || [])];
-                 }
-                 if ((m as any).imgQuan) {
-                   variantUpdates.img_quan = (m as any).imgQuan;
-                 }
-                 if (m.video !== undefined) {
-                   variantUpdates.video = m.video;
-                 }
-                 if (m.maSKU !== undefined) {
-                   variantUpdates.ma_sku = m.maSKU;
-                 }
-                 
-                 const newRow: any = {
-                    id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
-                    ma_sp: sp.id,
-                    ten_sp: sp.tenSP || sp.id,
-                    mau: m.ten,
-                    so_luong: m.soLuongKho,
-                    trang_thai: m.soLuongKho > 0 ? "con" : "het",
-                    ngay_nhap: new Date().toISOString(),
-                    phan_loai: sp.loaiSP || "AoPolo",
-                    ...variantUpdates
-                 };
-                 if (sp.bangSize && sp.bangSize.sizes) {
-                    const tongRatio = sp.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
-                    let conLai = m.soLuongKho;
-                    newRow.chi_tiet_size = sp.bangSize.sizes.map((size: string, index: number) => {
-                       if (index === sp.bangSize.sizes.length - 1) return { size, sl: conLai };
-                       const ratio = sp.bangSize.ratios[index] || 0;
-                       const chia = Math.round((ratio / tongRatio) * m.soLuongKho!);
-                       conLai -= chia;
-                       return { size, sl: Math.max(0, chia) };
-                    });
-                 }
-                 await supabase.from("kho_thanh_pham").insert([newRow]);
+          // 3A. BẢNG SAN_PHAM: Đảm bảo duy nhất 1 dòng cho targetId
+          const { data: existingSPs } = await supabase.from("san_pham").select("id").ilike("ma_sp", targetId);
+          const payload = buildDBPayload(fullUpdatedSP || ({ ...data, id: targetId } as SanPham));
+
+          if (existingSPs && existingSPs.length > 0) {
+            const primaryDbId = existingSPs[0].id;
+            payload.id = primaryDbId;
+            await supabase.from("san_pham").update(payload).eq("id", primaryDbId);
+
+            // Xóa các dòng trùng ma_sp nếu có
+            if (existingSPs.length > 1) {
+              const duplicateSpIds = existingSPs.slice(1).map(s => s.id);
+              await supabase.from("san_pham").delete().in("id", duplicateSpIds);
+            }
+          } else {
+            await supabase.from("san_pham").insert([payload]);
+          }
+
+          // 3B. BẢNG KHO_THANH_PHAM: Chính xác 1 dòng cho mỗi màu, triệt tiêu dòng trùng và xóa màu bị bỏ
+          const { data: currentKhoRows } = await supabase.from("kho_thanh_pham")
+            .select("id, mau, so_luong, trang_thai")
+            .ilike("ma_sp", targetId);
+
+          const dsMauList = data.dsMau && Array.isArray(data.dsMau) ? data.dsMau : (fullUpdatedSP?.dsMau || []);
+          const activeColorNames = dsMauList.map((m: any) => String(m.ten || "").trim().toLowerCase());
+          const bs = data.bangSize || fullUpdatedSP?.bangSize;
+
+          for (const m of dsMauList) {
+            const mTenNorm = String(m.ten || "").trim().toLowerCase();
+            const matchingRows = (currentKhoRows || []).filter(r => String(r.mau || "").trim().toLowerCase() === mTenNorm);
+
+            const targetQty = Math.max(0, Number(m.soLuongKho) || 0);
+            let calculatedSizes: any[] = [];
+            if (bs && bs.sizes && bs.sizes.length > 0) {
+              const tongRatio = (bs.ratios || []).reduce((s: number, r: number) => s + r, 0) || 1;
+              let conLai = targetQty;
+              calculatedSizes = bs.sizes.map((size: string, index: number) => {
+                if (index === bs.sizes.length - 1) return { size, sl: conLai };
+                const ratio = bs.ratios?.[index] || 0;
+                const chia = Math.round((ratio / tongRatio) * targetQty);
+                conLai -= chia;
+                return { size, sl: Math.max(0, chia) };
+              });
+            }
+
+            const rowData: any = {
+              ma_sp: targetId,
+              ten_sp: data.tenSP || fullUpdatedSP?.tenSP || targetId,
+              mau: m.ten,
+              so_luong: targetQty,
+              trang_thai: targetQty > 0 ? "con" : "het",
+              phan_loai: data.loaiSP || fullUpdatedSP?.loaiSP || "BoTru",
+              don_gia: data.giaVonDuKien ?? fullUpdatedSP?.giaVonDuKien ?? 0,
+              gia_tri: targetQty * (data.giaVonDuKien ?? fullUpdatedSP?.giaVonDuKien ?? 0),
+              gia_ban_le: data.giaBanLe ?? fullUpdatedSP?.giaBanLe ?? 0,
+              gia_ban_si: data.giaBanSi ?? fullUpdatedSP?.giaBanSi ?? 0,
+              chi_tiet_size: calculatedSizes,
+            };
+            if (m.img) rowData.hinh_anh = [m.img, ...(m.hinhAnhChiTiet || [])];
+            if ((m as any).imgQuan) rowData.img_quan = (m as any).imgQuan;
+            if (m.video !== undefined) rowData.video = m.video;
+            if (m.maSKU) rowData.ma_sku = m.maSKU;
+
+            if (matchingRows.length > 0) {
+              // Cập nhật dòng đầu tiên
+              const primaryRowId = matchingRows[0].id;
+              await supabase.from("kho_thanh_pham").update(rowData).eq("id", primaryRowId);
+
+              // Xóa toàn bộ dòng trùng khác của màu này
+              if (matchingRows.length > 1) {
+                const duplicateIds = matchingRows.slice(1).map((r: any) => r.id);
+                await supabase.from("kho_thanh_pham").delete().in("id", duplicateIds);
               }
-           }
+            } else {
+              // Thêm mới đúng 1 dòng
+              rowData.id = `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2, 5)}`;
+              rowData.ngay_nhap = new Date().toISOString();
+              rowData.lsx = `LTK-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Date.now().toString().slice(-6)}`;
+              rowData.vi_tri = "Khu A1";
+              await supabase.from("kho_thanh_pham").insert([rowData]);
+            }
+          }
+
+          // Xóa các màu đã bị gỡ bỏ khỏi sản phẩm
+          if (currentKhoRows && currentKhoRows.length > 0) {
+            const orphanIds = currentKhoRows
+              .filter(r => !activeColorNames.includes(String(r.mau || "").trim().toLowerCase()))
+              .map(r => r.id);
+            if (orphanIds.length > 0) {
+              await supabase.from("kho_thanh_pham").delete().in("id", orphanIds);
+            }
+          }
+
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
+          }
         }
       } catch (e) {
-        console.error("Lỗi đồng bộ kho_thanh_pham khi themSP:", e);
+        console.error("Lỗi đồng bộ kho_thanh_pham khi lưu sản phẩm:", e);
       }
     }
-  }, [setDsSanPham]);
+  }, [dsSanPham, setDsSanPham]);
+
+  const themSP = useCallback(async (sp: SanPham) => {
+    await luuSanPhamInternal(sp.id, sp);
+  }, [luuSanPhamInternal]);
 
   const suaSP = useCallback(async (id: string, data: Partial<SanPham>) => {
-    setDsSanPham((prev) => {
-      const exists = prev.some((p) => p.id === id);
-      if (exists) {
-        // Update record đã có
-        return prev.map((p) => p.id === id ? { ...p, ...data, ngayCapNhat: new Date().toISOString().slice(0, 10) } : p);
-      } else {
-        // SP từ kho chưa có trong danh mục → thêm mới
-        const newSP: SanPham = { id, tenSP: "", loaiSP: "BoTru", ...data, ngayCapNhat: new Date().toISOString().slice(0, 10) } as SanPham;
-        return [...prev, newSP];
-      }
-    });
-
-    // Đồng bộ lập tức vào localStorage của Kho Thành Phẩm
-    let localChanged = false;
-    let newKhoData: any = null;
-    if (data.loaiSP || data.tenSP || data.dsMau || data.hinhAnh) {
-      try {
-        const KHO_KEY = "mimin_kho_thanh_pham_v2";
-        const raw = localStorage.getItem(KHO_KEY);
-        if (raw) {
-          let khoData = JSON.parse(raw);
-          let changed = false;
-          khoData = khoData.map((item: any) => {
-              if (item.maSP === id) {
-                  let updated = { ...item };
-                  if (data.tenSP) updated.tenSP = data.tenSP;
-                  if (data.loaiSP) updated.phanLoai = data.loaiSP;
-                  if (data.giaVonDuKien !== undefined) {
-                      updated.donGia = data.giaVonDuKien;
-                      updated.giaTri = (updated.soLuong || 0) * data.giaVonDuKien;
-                  }
-                  if (data.giaBanLe !== undefined) updated.giaBanLe = data.giaBanLe;
-                  if (data.giaBanSi !== undefined) updated.giaBanSi = data.giaBanSi;
-                  if (data.dsMau && Array.isArray(data.dsMau)) {
-                     const matchedMau = data.dsMau.find((m: any) => m.ten === item.mau);
-                     if (matchedMau) {
-                        if (matchedMau.img) {
-                           updated.hinhAnh = [matchedMau.img, ...(matchedMau.hinhAnhChiTiet || [])];
-                        }
-                        if (matchedMau.maSKU) {
-                           updated.maSKU = matchedMau.maSKU;
-                        }
-                        if ((matchedMau as any).imgQuan) {
-                           updated.imgQuan = (matchedMau as any).imgQuan;
-                        }
-                        if (matchedMau.video !== undefined) {
-                           updated.video = matchedMau.video;
-                        }
-                        if (matchedMau.soLuongKho !== undefined) {
-                            let newSoLuong = 0;
-                            if (!(matchedMau as any)._localProcessed) {
-                                newSoLuong = matchedMau.soLuongKho;
-                                (matchedMau as any)._localProcessed = true;
-                            } else {
-                                newSoLuong = 0;
-                            }
-                            if (updated.soLuong !== newSoLuong) {
-                                updated.soLuong = newSoLuong;
-                                updated.trangThai = newSoLuong > 0 ? "con" : "het";
-                                if (data.giaVonDuKien !== undefined) {
-                                    updated.giaTri = newSoLuong * data.giaVonDuKien;
-                                }
-                                if (data.bangSize && data.bangSize.sizes) {
-                                    const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
-                                    let conLai = newSoLuong;
-                                    updated.chiTietSize = data.bangSize.sizes.map((size: string, index: number) => {
-                                        if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                                        const ratio = data.bangSize.ratios[index] || 0;
-                                        const chia = Math.round((ratio / tongRatio) * newSoLuong);
-                                        conLai -= chia;
-                                        return { size, sl: Math.max(0, chia) };
-                                    });
-                                }
-                            }
-                        }
-                     }
-                  }
-                  changed = true;
-                  return updated;
-              }
-              return item;
-          });
-
-          // Xử lý xóa biến thể
-          if (data.dsMau && Array.isArray(data.dsMau)) {
-             const keepColors = data.dsMau.map(m => m.ten);
-             const originalLength = khoData.length;
-             khoData = khoData.filter((x: any) => !(x.maSP === id && !keepColors.includes(x.mau)));
-             if (khoData.length !== originalLength) {
-                 changed = true;
-             }
-
-             for (let i = 0; i < data.dsMau.length; i++) {
-                const m = data.dsMau[i];
-                const existingColor = khoData.find((x: any) => x.maSP === id && x.mau === m.ten);
-                if (!existingColor && m.soLuongKho !== undefined) {
-                   changed = true;
-                   khoData.push({
-                      id: `TP${Date.now().toString().slice(-6)}${i}`,
-                      maSP: id,
-                      tenSP: data.tenSP || id,
-                      mau: m.ten,
-                      soLuong: m.soLuongKho,
-                      trangThai: m.soLuongKho > 0 ? "con" : "het",
-                      ngayNhap: new Date().toISOString().slice(0, 10),
-                      phanLoai: data.loaiSP || "BoTru",
-                      maSKU: m.maSKU,
-                      hinhAnh: m.img ? [m.img, ...(m.hinhAnhChiTiet || [])] : [],
-                      imgQuan: (m as any).imgQuan,
-                      video: m.video,
-                      viTri: "Khu A1",
-                      giaTri: m.soLuongKho * (data.giaVonDuKien || 0),
-                      donGia: data.giaVonDuKien || 0,
-                      giaBanLe: data.giaBanLe || 0,
-                      giaBanSi: data.giaBanSi || 0,
-                      chiTietSize: data.bangSize?.sizes?.map((size: string, index: number) => {
-                          const tongRatio = data.bangSize!.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
-                          const ratio = data.bangSize!.ratios[index] || 0;
-                          return { size, sl: Math.round((ratio / tongRatio) * m.soLuongKho!) };
-                      }) || [],
-                   });
-                }
-             }
-          }
-
-          if (changed) {
-            localChanged = true;
-            newKhoData = khoData;
-            localStorage.setItem(KHO_KEY, JSON.stringify(khoData));
-          }
-        }
-      } catch (e) {
-        console.error("Lỗi đồng bộ local kho_thanh_pham:", e);
-      }
-    }
-
-    if (isSupabaseEnabled && (data.loaiSP || data.tenSP || data.dsMau || data.hinhAnh)) {
-      try {
-        const { supabase } = await import("@/lib/supabase/client");
-        if (supabase) {
-          const updates: any = {};
-          if (data.tenSP) updates.ten_sp = data.tenSP;
-          if (data.loaiSP) updates.phan_loai = data.loaiSP;
-          if (data.giaVonDuKien !== undefined) {
-              updates.don_gia = data.giaVonDuKien;
-          }
-          if (data.giaBanLe !== undefined) updates.gia_ban_le = data.giaBanLe;
-          if (data.giaBanSi !== undefined) updates.gia_ban_si = data.giaBanSi;
-
-          if (Object.keys(updates).length > 0) {
-            await supabase.from("kho_thanh_pham").update(updates).eq("ma_sp", id);
-          }
-
-          // 2. Specific update for variant images
-          if (data.dsMau && Array.isArray(data.dsMau)) {
-             for (const m of data.dsMau) {
-               if (m.img || m.soLuongKho !== undefined) {
-                 const variantUpdates: any = {};
-                 if (m.img) {
-                    variantUpdates.hinh_anh = [m.img, ...(m.hinhAnhChiTiet || [])];
-                 }
-                 if ((m as any).imgQuan) {
-                   variantUpdates.img_quan = (m as any).imgQuan;
-                 }
-                 if (m.video !== undefined) {
-                   variantUpdates.video = m.video;
-                 }
-                 
-                 const { data: existingRows } = await supabase.from('kho_thanh_pham')
-                    .select('id, so_luong')
-                    .eq('ma_sp', id)
-                    .eq('mau', m.ten)
-                    .order('created_at', { ascending: false });
-
-                 if (existingRows && existingRows.length > 0) {
-                     const totalStock = existingRows.reduce((s: number, r: any) => s + (r.so_luong || 0), 0);
-                     const firstRowId = existingRows[0].id;
-
-                     if (m.soLuongKho !== undefined) {
-                        // Consolidate rows: put ALL stock into the first row
-                        if (m.soLuongKho !== existingRows[0].so_luong || existingRows.length > 1) {
-                           variantUpdates.so_luong = m.soLuongKho;
-                           if (data.bangSize && data.bangSize.sizes) {
-                              const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
-                              let conLai = variantUpdates.so_luong;
-                              variantUpdates.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
-                                 if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                                 const ratio = data.bangSize.ratios[index] || 0;
-                                 const chia = Math.round((ratio / tongRatio) * variantUpdates.so_luong);
-                                 conLai -= chia;
-                                 return { size, sl: Math.max(0, chia) };
-                              });
-                           }
-                           variantUpdates.trang_thai = variantUpdates.so_luong > 0 ? "con" : "het";
-                        }
-                     }
-                     if (Object.keys(variantUpdates).length > 0) {
-                        if (variantUpdates.so_luong !== undefined) {
-                            await supabase.from("kho_thanh_pham").update(variantUpdates).eq("id", firstRowId);
-                            const imageUpdates = { ...variantUpdates };
-                            delete imageUpdates.so_luong;
-                            delete imageUpdates.chi_tiet_size;
-                            delete imageUpdates.trang_thai;
-                            
-                            if (existingRows.length > 1) {
-                               await supabase.from("kho_thanh_pham").update({...imageUpdates, so_luong: 0, trang_thai: 'het'}).eq("ma_sp", id).eq("mau", m.ten).neq("id", firstRowId);
-                            }
-                        } else {
-                            await supabase.from("kho_thanh_pham").update(variantUpdates).eq("ma_sp", id).eq("mau", m.ten);
-                        }
-                     }
-                     } else if (m.soLuongKho !== undefined) {
-                        const newRow: any = {
-                           id: `TP${Date.now().toString().slice(-6)}${Math.random().toString(36).substring(2,5)}`,
-                           ma_sp: id,
-                           ten_sp: data.tenSP || id,
-                           mau: m.ten,
-                           so_luong: m.soLuongKho,
-                           trang_thai: m.soLuongKho > 0 ? "con" : "het",
-                           ngay_nhap: new Date().toISOString(),
-                           phan_loai: data.loaiSP || "AoPolo",
-                           lsx: `LTK-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Date.now().toString().slice(-6)}`,
-                           vi_tri: "Khu A1",
-                           don_gia: data.giaVonDuKien || 0,
-                           gia_tri: (m.soLuongKho || 0) * (data.giaVonDuKien || 0),
-                           gia_ban_le: data.giaBanLe || 0,
-                           gia_ban_si: data.giaBanSi || 0,
-                           ...variantUpdates
-                        };
-                        if (data.bangSize && data.bangSize.sizes) {
-                           const tongRatio = data.bangSize.ratios.reduce((s: number, r: number) => s + r, 0) || 1;
-                           let conLai = m.soLuongKho;
-                           newRow.chi_tiet_size = data.bangSize.sizes.map((size: string, index: number) => {
-                              if (index === data.bangSize.sizes.length - 1) return { size, sl: conLai };
-                              const ratio = data.bangSize.ratios[index] || 0;
-                              const chia = Math.round((ratio / tongRatio) * m.soLuongKho!);
-                              conLai -= chia;
-                              return { size, sl: Math.max(0, chia) };
-                           });
-                        }
-                        const { error } = await supabase.from("kho_thanh_pham").insert([newRow]);
-                        if (error) {
-                            console.error("Lỗi insert kho_thanh_pham:", error);
-                        }
-                     }
-                 }
-               }
-               
-               // 3. Xoá các variant đã bị xoá khỏi danh mục khỏi kho_thanh_pham Supabase
-               const { data: currentRows } = await supabase.from('kho_thanh_pham').select('id, mau').eq('ma_sp', id);
-               if (currentRows && currentRows.length > 0) {
-                   const existingColors = data.dsMau.map(m => m.ten);
-                   const idsToDelete = currentRows.filter(r => !existingColors.includes(r.mau)).map(r => r.id);
-                   if (idsToDelete.length > 0) {
-                       await supabase.from('kho_thanh_pham').delete().in('id', idsToDelete);
-                   }
-               }
-             }
-          }
-        } catch (e) {
-          console.error("Lỗi đồng bộ kho_thanh_pham khi suaSP:", e);
-        }
-    }
-  }, [setDsSanPham]);
+    await luuSanPhamInternal(id, data);
+  }, [luuSanPhamInternal]);
 
   const xoaSP = useCallback(async (id: string, u?: AppUser | null) => {
     setDsSanPham((prev) => {
@@ -498,7 +342,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       if (deletedItem) {
         // Need to import logCRUD at top of file, or just use it if available
         import("../audit-log").then(({ logCRUD }) => {
-          logCRUD(u || null, "danh-muc-sp" as any, "delete", deletedItem.ten, id, { oldValue: deletedItem });
+          logCRUD(u || null, "danh-muc-sp" as any, "delete", deletedItem.tenSP || id, id, { oldValue: deletedItem });
         }).catch(() => {});
       }
       return prev.filter((p) => p.id !== id);
@@ -532,11 +376,29 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     }
   }, [setDsSanPham]);
 
+  // Đảm bảo dsSanPham luôn duy nhất theo ma_sp (id), ưu tiên bản ghi có dbId
+  const uniqueDsSanPham = useMemo(() => {
+    const map = new Map<string, SanPham>();
+    for (const sp of dsSanPham || []) {
+      const key = (sp.id || "").trim().toUpperCase();
+      if (!key) continue;
+      if (!map.has(key)) {
+        map.set(key, sp);
+      } else {
+        const existing = map.get(key)!;
+        if (!existing.dbId && sp.dbId) {
+          map.set(key, { ...existing, dbId: sp.dbId });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [dsSanPham]);
+
   // Hook này tự động sync, hàm refresh giữ lại để tương thích API cũ nhưng ko cần làm gì
   const refresh = useCallback(() => {}, []);
 
   return (
-    <DanhMucSPContext.Provider value={{ dsSanPham, themSP, suaSP, xoaSP, loading, refresh }}>
+    <DanhMucSPContext.Provider value={{ dsSanPham: uniqueDsSanPham, themSP, suaSP, xoaSP, loading, refresh }}>
       {children}
     </DanhMucSPContext.Provider>
   );

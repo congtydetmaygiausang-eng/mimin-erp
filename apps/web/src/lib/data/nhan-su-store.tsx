@@ -278,7 +278,16 @@ export function NhanSuProvider({ children }: { children: ReactNode }) {
     if (isSupabaseEnabled) {
       try {
         const record = toSupabaseEmployeeRecord(nv);
-        await supabaseUpsert("nhan_su", record, "ma_nv");
+        if (nv.oldMaNV && nv.oldMaNV !== record.ma_nv) {
+          // Update existing record if ma_nv changed
+          const { error: updateError } = await supabase!.from("nhan_su").update(record).eq("ma_nv", nv.oldMaNV);
+          if (updateError) {
+             console.error("Supabase update error (oldMaNV):", updateError);
+             return false;
+          }
+        } else {
+          await supabaseUpsert("nhan_su", record, "ma_nv");
+        }
         return true;
       } catch (err) {
         console.error("Supabase update error:", err);

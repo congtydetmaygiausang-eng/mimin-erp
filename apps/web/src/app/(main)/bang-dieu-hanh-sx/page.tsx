@@ -9,7 +9,7 @@
 // 3. Phiếu Công Đoạn - bảng giao việc chi tiết từng khâu
 // 4. Đối Soát LSX (Lark) - dữ liệu đối soát lịch sử
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, Suspense, useTransition } from "react";
 import Link from "next/link";
 import {
   Factory, TrendingUp, CheckCircle2, AlertTriangle, Package,
@@ -47,6 +47,7 @@ function BangDieuHanhContent() {
   const { dsLenhCat, suaLenhCat, capNhatCongDoan } = useLenhCat();
 
   const [view, setView] = useState<ViewMode>("lenh-cat-flow");
+  const [isPending, startTransition] = useTransition();
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
@@ -353,12 +354,12 @@ function BangDieuHanhContent() {
             <button
               key={v.k}
               type="button"
-              onClick={() => setView(v.k)}
+              onClick={() => startTransition(() => setView(v.k))}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                 view === v.k
                   ? "bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              }`}
+              } ${isPending ? "opacity-70 cursor-wait" : ""}`}
             >
               {v.l}
             </button>

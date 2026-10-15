@@ -380,12 +380,16 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
           }
           return { ok: true };
         }
-        // Trước đây "Invalid login" return sớm ở đây, khiến các tài khoản chỉ
-        // tồn tại ở fallback demo (không có trong Supabase Auth) KHÔNG BAO GIỜ
-        // thử được bước fallback bên dưới - vì Supabase trả cùng 1 thông điệp
-        // "Invalid login credentials" cho mọi trường hợp sai (kể cả email không
-        // tồn tại, theo thiết kế bảo mật của Supabase). Bỏ early-return, để mọi
-        // lỗi từ Supabase đều rơi xuống thử tiếp fallback demo bên dưới.
+        if (error) {
+          const errMsg = error.message?.toLowerCase() || "";
+          if (errMsg.includes("email not confirmed") || errMsg.includes("email_not_confirmed")) {
+            return { ok: false, error: "Tài khoản chưa được kích hoạt email. Vui lòng liên hệ Admin để duyệt tài khoản." };
+          }
+          if (errMsg.includes("user is banned") || errMsg.includes("user_banned")) {
+            return { ok: false, error: "Tài khoản đã bị tạm khóa. Vui lòng liên hệ Admin." };
+          }
+        }
+        // Để các lỗi khác (ví dụ tài khoản không có trong Supabase Auth) rơi xuống thử tiếp fallback demo bên dưới.
       } catch {
         // network fail, fall through to demo
       }

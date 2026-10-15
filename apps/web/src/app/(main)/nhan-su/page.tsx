@@ -21,7 +21,7 @@ import { NhanSuTabs } from "@/components/nhan-su-tabs";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 
 export default function NhanSuPage() {
-  const { list, capNhatDaLuu, xoaNhanSu, loading } = useNhanSu();
+  const { list, capNhatDaLuu, xoaNhanSu, themNhanSu, suaNhanSu, loading } = useNhanSu();
   const [search, setSearch] = useState("");
   const [filterBP, setFilterBP] = useState<string>("all");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; nv?: NhanSuExt } | null>(null);
@@ -86,8 +86,12 @@ export default function NhanSuPage() {
   }, [dedupedList, search, filterBP]);
 
   const handleSave = useCallback(async (nv: NhanSuExt) => {
-    await capNhatDaLuu(nv);
-  }, [capNhatDaLuu]);
+    if (showForm?.mode === "add") {
+      await themNhanSu(nv);
+    } else {
+      await suaNhanSu(nv);
+    }
+  }, [themNhanSu, suaNhanSu, showForm?.mode]);
 
   const handleDelete = useCallback(async (nv: NhanSuExt) => {
     if (!confirm(`Xoá NV "${nv.hoTen}"?`)) return;

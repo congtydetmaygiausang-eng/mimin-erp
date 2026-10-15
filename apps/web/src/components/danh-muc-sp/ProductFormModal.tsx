@@ -9,13 +9,14 @@ import { uploadProductFile } from "@/lib/product-upload";
 
 interface ProductFormModalProps {
   onClose: () => void;
-  onSave: (sp: Partial<SanPham>) => void;
+  onSave: (sp: Partial<SanPham>) => void | Promise<void>;
   initialData?: SanPham;
 }
 
 export default function ProductFormModal({ onClose, onSave, initialData }: ProductFormModalProps) {
   const { dsSanPham } = useDanhMucSP();
   const [mounted, setMounted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [isCreatingRatio, setIsCreatingRatio] = useState(false);
   const [customSizes, setCustomSizes] = useState("S:M:L:XL");
@@ -100,7 +101,34 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
   const [giaTikTok, setGiaTikTok] = useState(initialData?.giaTikTok || 0);
   const [giaShopee, setGiaShopee] = useState(initialData?.giaShopee || 0);
 
-  const handleSave = () => {
+  const handlePhanBoTongTonKho = (newTotal: number) => {
+    if (dsMau.length === 0) return;
+    if (dsMau.length === 1) {
+      setDsMau([{ ...dsMau[0], soLuongKho: newTotal }]);
+      return;
+    }
+    const currentSum = dsMau.reduce((s, m) => s + (Number(m.soLuongKho) || 0), 0);
+    let conLai = newTotal;
+    const newDsMau = dsMau.map((m, index) => {
+      if (index === dsMau.length - 1) {
+        return { ...m, soLuongKho: Math.max(0, conLai) };
+      }
+      let sl = 0;
+      if (currentSum > 0) {
+        const ratio = (Number(m.soLuongKho) || 0) / currentSum;
+        sl = Math.round(ratio * newTotal);
+      } else {
+        sl = Math.floor(newTotal / dsMau.length);
+      }
+      conLai -= sl;
+      return { ...m, soLuongKho: Math.max(0, sl) };
+    });
+    setDsMau(newDsMau);
+  };
+
+  const handleSave = async () => {
+    if (isSubmitting) return;
+
     if (!maSP || !tenSP) {
       toast.error("Vui lòng nhập Mã SP và Tên SP!");
       return;
@@ -172,7 +200,14 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       hinhAnh: dsMau.find(m => m.img)?.img || initialData?.hinhAnh || "",
     };
 
-    onSave(newProduct);
+    setIsSubmitting(true);
+    try {
+      await onSave(newProduct);
+    } catch (err: any) {
+      console.error("Lỗi khi lưu sản phẩm:", err);
+      toast.error(`Lỗi khi lưu: ${err?.message || "Vui lòng thử lại"}`);
+      setIsSubmitting(false);
+    }
   };
 
   if (!mounted) return null;
@@ -370,17 +405,53 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full bg-fuchsia-500"></div>
             
-            <div className="flex justify-between items-center mb-5">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-xs">4</span>
-                Quản Lý Biến Thể Màu
+                Quản Lý Biến Thể Màu & Tồn Kho
               </h3>
               <button 
-                onClick={() => setDsMau([...dsMau, { ten: "", maSKU: "", dinhMuc: 0.25, img: "", video: "", hinhAnhChiTiet: [] }])}
+                onClick={() => setDsMau([...dsMau, { ten: "", maSKU: "", dinhMuc: 0.25, img: "", video: "", hinhAnhChiTiet: [], soLuongKho: 0 }])}
                 className="text-sm bg-fuchsia-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-fuchsia-700 transition-colors flex items-center gap-1 shadow-sm"
               >
                 <Plus className="w-4 h-4"/> Thêm màu mới
               </button>
+            </div>
+
+            {/* THANH ĐIỀU CHỈNH TỔNG TỒN KHO */}
+            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-200/80 rounded-2xl p-4 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-2">
+                    Tổng Tồn Kho Sản Phẩm
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300">
+                      {dsMau.reduce((s, m) => s + (Number(m.soLuongKho) || 0), 0)} SP
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-emerald-600 font-medium mt-0.5">
+                    Nhập tổng số lượng để tự động phân bổ cho các màu, hoặc điều chỉnh chi tiết từng màu bên dưới
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={dsMau.reduce((s, m) => s + (Number(m.soLuongKho) || 0), 0) || ""}
+                    onChange={(e) => {
+                      const newTotal = Math.max(0, parseInt(e.target.value) || 0);
+                      handlePhanBoTongTonKho(newTotal);
+                    }}
+                    className="w-36 pl-3 pr-9 py-2 text-right font-mono font-extrabold text-lg text-emerald-700 bg-white border-2 border-emerald-400 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none shadow-sm"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-xs font-bold text-emerald-600">SP</span>
+                </div>
+              </div>
             </div>
             
             <div className="flex flex-col gap-4">
@@ -473,7 +544,13 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                         <input 
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none font-mono text-emerald-700 bg-emerald-50/30" 
                           placeholder="0" type="number" min="0"
-                          value={m.soLuongKho === undefined ? "" : m.soLuongKho} onChange={e => { const n = [...dsMau]; n[i].soLuongKho = parseInt(e.target.value) || 0; setDsMau(n); }}
+                          value={m.soLuongKho === undefined ? "" : m.soLuongKho} 
+                          onChange={e => { 
+                            const val = e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value) || 0); 
+                            const n = [...dsMau]; 
+                            n[i].soLuongKho = val; 
+                            setDsMau(n); 
+                          }}
                         />
                       </div>
                     </div>
@@ -544,9 +621,30 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
 
         {/* STICKY FOOTER */}
         <div className="p-4 sm:px-6 sm:py-4 border-t border-slate-200 bg-white flex justify-end gap-3 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <button onClick={onClose} className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Đóng</button>
-          <button onClick={handleSave} className="px-8 py-2.5 font-bold text-white bg-[#2B4C3E] hover:bg-[#1f382d] rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02]">
-            <Save className="w-5 h-5" /> LƯU SẢN PHẨM
+          <button 
+            type="button"
+            disabled={isSubmitting} 
+            onClick={onClose} 
+            className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 rounded-xl transition-colors cursor-pointer"
+          >
+            Đóng
+          </button>
+          <button 
+            type="button"
+            disabled={isSubmitting} 
+            onClick={handleSave} 
+            className="px-8 py-2.5 font-bold text-white bg-[#2B4C3E] hover:bg-[#1f382d] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02] cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ĐANG LƯU...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5" /> LƯU SẢN PHẨM
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -5,7 +5,7 @@
 // Redesign 2026-08-07: thu vien the card (grid 4 cols)
 // ============================================
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store } from "lucide-react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
@@ -517,26 +517,43 @@ export default function DanhMucSanPhamPage() {
     }
   };
 
+  const isSavingRef = useRef(false);
+
   const handleSaveProduct = async (sp: Partial<SanPham>) => {
-    if (productToEdit) {
-      // Luôn dùng suaSP khi đang sửa — kể cả SP từ kho chưa có trong dsSanPham
-      if (suaSP) {
-        await suaSP(productToEdit.id, sp);
-        toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP}`);
-        if (selectedProduct && selectedProduct.id === productToEdit.id) {
-          setSelectedProduct({ ...selectedProduct, ...sp } as SanPham);
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+    try {
+      const targetId = (productToEdit?.id || sp.id || "").trim().toUpperCase();
+      const isExisting = Boolean(productToEdit || (dsSanPham && dsSanPham.some(p => (p.id || "").trim().toUpperCase() === targetId)));
+
+      if (isExisting) {
+        if (suaSP) {
+          await suaSP(targetId, sp);
+          toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP || targetId}`);
+          if (selectedProduct && (selectedProduct.id || "").trim().toUpperCase() === targetId) {
+            setSelectedProduct({ ...selectedProduct, ...sp } as SanPham);
+          }
         }
       } else if (themSP) {
-        // Fallback: lưu mới nếu không có suaSP
-        await themSP({ ...productToEdit, ...sp } as SanPham);
-        toast.success(`Đã lưu sản phẩm: ${sp.tenSP}`);
+        await themSP(sp as SanPham);
+        toast.success(`Đã tạo sản phẩm mới: ${sp.tenSP || targetId}`);
       }
-    } else if (themSP) {
-      await themSP(sp as SanPham);
-      toast.success(`Đã tạo sản phẩm mới: ${sp.tenSP}`);
+
+      // Cập nhật ngay dữ liệu kho vào state để hiển thị chính xác số tồn vừa chỉnh sửa
+      try {
+        const [stock, catalog] = await Promise.all([layTonKhoTheoSanPham(), layDanhMucKhoThanhPham()]);
+        setTonKho(stock);
+        setDanhMucKho(catalog);
+      } catch {}
+
+      setShowProductForm(false);
+      setProductToEdit(null);
+    } catch (err: any) {
+      console.error("Lỗi khi lưu sản phẩm:", err);
+      toast.error(`Lỗi khi lưu: ${err?.message || "Vui lòng thử lại"}`);
+    } finally {
+      isSavingRef.current = false;
     }
-    setShowProductForm(false);
-    setProductToEdit(null);
   };
 
   if (!mounted) return null;

@@ -36,17 +36,26 @@ function congDonSize(vao: TonKhoTheoSize, them: TonKhoTheoSize): TonKhoTheoSize 
 }
 
 export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
-  if (!checkSupabase()) return {};
+  if (!checkSupabase()) return layTonKhoTheoSanPhamSync();
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
   
-  // Create a map to deduplicate by maSP and mau.
-  // Supabase has snake_case, localStorage has camelCase. We'll handle both.
-  // We append `rows` (Supabase) AFTER `localKho` so that fresh DB data overwrites stale local cache when online.
-  const allRows = [...localKho, ...rows];
-  
-  // Deduplicate by row ID (UUID) to prevent doubling stock from localKho vs Supabase rows
-  const uniqueRowsById = Array.from(new Map(allRows.map(r => [r.id, r])).values());
+  // Khi online, Supabase là nguồn sự thật chính thức.
+  // Chỉ bổ sung từ localKho nếu sản phẩm đó hoàn toàn chưa có trong Supabase (tránh cộng dồn 2 nguồn làm x2 số lượng tồn).
+  let effectiveRows: any[] = [];
+  if (rows && rows.length > 0) {
+    effectiveRows = [...rows];
+    const dbMaSPs = new Set(rows.map((r: any) => String(r.ma_sp || r.maSP || "").trim().toUpperCase()).filter(Boolean));
+    const localOnly = localKho.filter((r: any) => {
+      const ma = String(r.maSP || r.ma_sp || "").trim().toUpperCase();
+      return ma && !dbMaSPs.has(ma);
+    });
+    effectiveRows.push(...localOnly);
+  } else {
+    effectiveRows = localKho;
+  }
+
+  const uniqueRowsById = Array.from(new Map(effectiveRows.map(r => [r.id, r])).values());
 
   const result: TonKhoTheoSanPham = {};
   for (const r of uniqueRowsById) {
@@ -64,13 +73,14 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
     const ctSize = r.chi_tiet_size || r.chiTietSize;
     const size = r.size;
     const soLuong = r.so_luong || r.soLuong;
+    const soLuongThat = Number(soLuong) || 0;
+    if (soLuongThat <= 0) continue;
     
     let chiTiet: TonKhoTheoSize = Array.isArray(ctSize) && ctSize.length > 0
       ? ctSize.map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
-      : (size ? [{ size: size, sl: Number(soLuong) || 0 }] : []);
+      : (size ? [{ size: size, sl: soLuongThat }] : []);
       
     const tongChiTiet = chiTiet.reduce((sum, x) => sum + x.sl, 0);
-    const soLuongThat = Number(soLuong) || 0;
     if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
       let conLai = soLuongThat;
       chiTiet = chiTiet.map((x, i) => {
@@ -106,13 +116,14 @@ export function layTonKhoTheoSanPhamSync(): TonKhoTheoSanPham {
     const ctSize = r.chi_tiet_size || r.chiTietSize;
     const size = r.size;
     const soLuong = r.so_luong || r.soLuong;
+    const soLuongThat = Number(soLuong) || 0;
+    if (soLuongThat <= 0) continue;
     
     let chiTiet: TonKhoTheoSize = Array.isArray(ctSize) && ctSize.length > 0
       ? ctSize.map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
-      : (size ? [{ size: size, sl: Number(soLuong) || 0 }] : []);
+      : (size ? [{ size: size, sl: soLuongThat }] : []);
       
     const tongChiTiet = chiTiet.reduce((sum, x) => sum + x.sl, 0);
-    const soLuongThat = Number(soLuong) || 0;
     if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
       let conLai = soLuongThat;
       chiTiet = chiTiet.map((x, i) => {
@@ -132,13 +143,26 @@ export function layTonKhoTheoSanPhamSync(): TonKhoTheoSanPham {
 
 /** Nguồn phân phối dùng chung cho Danh mục SP: mẫu, màu, giá và kênh bán từ Kho thành phẩm. */
 export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
-  if (!checkSupabase()) return {};
+  if (!checkSupabase()) return layDanhMucKhoThanhPhamSync();
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
   
-  // Deduplicate by row ID (UUID) to prevent doubling stock from localKho vs Supabase rows
-  const allRows = [...localKho, ...rows];
-  const uniqueRows = Array.from(new Map(allRows.map(r => [r.id, r])).values());
+  // Khi online, Supabase là nguồn sự thật chính thức.
+  // Chỉ bổ sung từ localKho nếu sản phẩm đó hoàn toàn chưa có trong Supabase (tránh cộng dồn 2 nguồn làm x2 số lượng tồn).
+  let effectiveRows: any[] = [];
+  if (rows && rows.length > 0) {
+    effectiveRows = [...rows];
+    const dbMaSPs = new Set(rows.map((r: any) => String(r.ma_sp || r.maSP || "").trim().toUpperCase()).filter(Boolean));
+    const localOnly = localKho.filter((r: any) => {
+      const ma = String(r.maSP || r.ma_sp || "").trim().toUpperCase();
+      return ma && !dbMaSPs.has(ma);
+    });
+    effectiveRows.push(...localOnly);
+  } else {
+    effectiveRows = localKho;
+  }
+
+  const uniqueRows = Array.from(new Map(effectiveRows.map(r => [r.id, r])).values());
 
   const result: DanhMucKhoThanhPham = {};
   for (const r of uniqueRows) {
@@ -146,21 +170,28 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
     if (!maSP) continue;
     
     const soLuongThat = Number(r.so_luong || r.soLuong) || 0;
-    let sizes: TonKhoTheoSize = Array.isArray(r.chi_tiet_size || r.chiTietSize) && (r.chi_tiet_size || r.chiTietSize).length > 0
-      ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
-      : (r.size ? [{ size: r.size, sl: soLuongThat }] : []);
-      
-    const tongChiTiet = sizes.reduce((sum, x) => sum + x.sl, 0);
-    if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
-      let conLai = soLuongThat;
-      sizes = sizes.map((x, i) => {
-        if (i === sizes.length - 1) return { size: x.size, sl: conLai };
-        const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
-        conLai -= slMoi;
-        return { size: x.size, sl: Math.max(0, slMoi) };
-      });
-    } else if (tongChiTiet === 0 && soLuongThat > 0) {
-      sizes = r.size ? [{ size: r.size, sl: soLuongThat }] : [];
+    const isCon = r.trang_thai === "con" || r.trangThai === "con";
+    let sizes: TonKhoTheoSize = [];
+    if (isCon && soLuongThat > 0) {
+      sizes = Array.isArray(r.chi_tiet_size || r.chiTietSize) && (r.chi_tiet_size || r.chiTietSize).length > 0
+        ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
+        : (r.size ? [{ size: r.size, sl: soLuongThat }] : []);
+        
+      const tongChiTiet = sizes.reduce((sum, x) => sum + x.sl, 0);
+      if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
+        let conLai = soLuongThat;
+        sizes = sizes.map((x, i) => {
+          if (i === sizes.length - 1) return { size: x.size, sl: conLai };
+          const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
+          conLai -= slMoi;
+          return { size: x.size, sl: Math.max(0, slMoi) };
+        });
+      } else if (tongChiTiet === 0 && soLuongThat > 0) {
+        sizes = r.size ? [{ size: r.size, sl: soLuongThat }] : [];
+      }
+    } else {
+      const rawSizes = Array.isArray(r.chi_tiet_size || r.chiTietSize) ? (r.chi_tiet_size || r.chiTietSize) : [];
+      sizes = rawSizes.map((x: any) => ({ size: x.size, sl: 0 }));
     }
     const kenhBanRaw = r.kenh_ban || r.kenhBan;
     const channels = (Array.isArray(kenhBanRaw) && kenhBanRaw.length ? kenhBanRaw : ["ban-le"]) as KenhBanKho[];
@@ -211,7 +242,9 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
     else imgToUse = r.img_quan || r.imgQuan || "";
 
     if (existing) {
-      existing.sizes = congDonSize(existing.sizes, sizes);
+      if (soLuongThat > 0 && isCon) {
+        existing.sizes = congDonSize(existing.sizes, sizes);
+      }
       if (imgToUse) existing.img = imgToUse; // Ưu tiên ảnh mới từ kho
     } else {
       item.mau.push({ ten: color, img: imgToUse, sizes });
@@ -230,21 +263,28 @@ export function layDanhMucKhoThanhPhamSync(): DanhMucKhoThanhPham {
     if (!maSP) continue;
     
     const soLuongThat = Number(r.so_luong || r.soLuong) || 0;
-    let sizes: TonKhoTheoSize = Array.isArray(r.chi_tiet_size || r.chiTietSize) && (r.chi_tiet_size || r.chiTietSize).length > 0
-      ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
-      : (r.size ? [{ size: r.size, sl: soLuongThat }] : []);
-      
-    const tongChiTiet = sizes.reduce((sum, x) => sum + x.sl, 0);
-    if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
-      let conLai = soLuongThat;
-      sizes = sizes.map((x, i) => {
-        if (i === sizes.length - 1) return { size: x.size, sl: conLai };
-        const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
-        conLai -= slMoi;
-        return { size: x.size, sl: Math.max(0, slMoi) };
-      });
-    } else if (tongChiTiet === 0 && soLuongThat > 0) {
-      sizes = r.size ? [{ size: r.size, sl: soLuongThat }] : [];
+    const isCon = r.trang_thai === "con" || r.trangThai === "con";
+    let sizes: TonKhoTheoSize = [];
+    if (isCon && soLuongThat > 0) {
+      sizes = Array.isArray(r.chi_tiet_size || r.chiTietSize) && (r.chi_tiet_size || r.chiTietSize).length > 0
+        ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
+        : (r.size ? [{ size: r.size, sl: soLuongThat }] : []);
+        
+      const tongChiTiet = sizes.reduce((sum, x) => sum + x.sl, 0);
+      if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
+        let conLai = soLuongThat;
+        sizes = sizes.map((x, i) => {
+          if (i === sizes.length - 1) return { size: x.size, sl: conLai };
+          const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
+          conLai -= slMoi;
+          return { size: x.size, sl: Math.max(0, slMoi) };
+        });
+      } else if (tongChiTiet === 0 && soLuongThat > 0) {
+        sizes = r.size ? [{ size: r.size, sl: soLuongThat }] : [];
+      }
+    } else {
+      const rawSizes = Array.isArray(r.chi_tiet_size || r.chiTietSize) ? (r.chi_tiet_size || r.chiTietSize) : [];
+      sizes = rawSizes.map((x: any) => ({ size: x.size, sl: 0 }));
     }
     const kenhBanRaw = r.kenh_ban || r.kenhBan;
     const channels = (Array.isArray(kenhBanRaw) && kenhBanRaw.length ? kenhBanRaw : ["ban-le"]) as KenhBanKho[];
@@ -294,7 +334,9 @@ export function layDanhMucKhoThanhPhamSync(): DanhMucKhoThanhPham {
     else imgToUse = r.img_quan || r.imgQuan || "";
 
     if (existing) {
-      existing.sizes = congDonSize(existing.sizes, sizes);
+      if (soLuongThat > 0 && isCon) {
+        existing.sizes = congDonSize(existing.sizes, sizes);
+      }
       if (imgToUse) existing.img = imgToUse; // Ưu tiên ảnh mới từ kho
     } else {
       item.mau.push({ ten: color, img: imgToUse, sizes });

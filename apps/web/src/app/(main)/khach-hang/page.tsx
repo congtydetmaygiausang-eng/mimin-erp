@@ -25,6 +25,7 @@ import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityCard";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { useKhachHang, type KhachHangUI } from "@/lib/data/khach-hang-store";
+import { scoreCustomer } from "@/components/ui/SearchableCustomerSelect";
 import { useEffect } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 
@@ -52,19 +53,28 @@ export default function KhachHangPage() {
   const [activeTab, setActiveTab] = useState<"Tất cả" | "Sỉ" | "Xưởng">("Tất cả");
 
   const filtered = useMemo(() => {
-    return list.filter((k: KhachHangUI) => {
-      const isXuong = k.loai === "Xưởng" || k.loai === "Khách hàng xưởng";
-      if (activeTab === "Xưởng" && !isXuong) return false;
-      if (activeTab === "Sỉ" && isXuong) return false;
+    const q = (search || "").trim();
 
-      if (showGhiNhoOnly && !k.ghiNho) return false;
-      const s = search.toLowerCase();
-      return (
-        k.ten.toLowerCase().includes(s) ||
-        (k.sdt || "").includes(s) ||
-        (k.maKH || "").toLowerCase().includes(s)
-      );
-    });
+    return (list || [])
+      .filter((k: KhachHangUI) => {
+        if (!k) return false;
+        const isXuong = k.loai === "Xưởng" || k.loai === "Khách hàng xưởng";
+        if (activeTab === "Xưởng" && !isXuong) return false;
+        if (activeTab === "Sỉ" && isXuong) return false;
+
+        if (showGhiNhoOnly && !k.ghiNho) return false;
+        return true;
+      })
+      .map((k: KhachHangUI) => ({
+        customer: k,
+        score: q ? scoreCustomer(k, q) : 0,
+      }))
+      .filter((item) => !q || item.score > 0)
+      .sort((a, b) => {
+        if (q) return b.score - a.score;
+        return 0; // Giữ nguyên thứ tự ban đầu khi không tìm kiếm
+      })
+      .map((item) => item.customer);
   }, [list, search, showGhiNhoOnly, activeTab]);
 
   const tongKH = filtered.length;
@@ -216,7 +226,7 @@ export default function KhachHangPage() {
                 {i + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm truncate">{k.ten}</div>
+                <div className="font-semibold text-sm truncate">{k.ten || k.maKH || "Khách hàng"}</div>
                 <div className="text-[10px] opacity-70">{formatVNDShort(getDoanhThu(k))} · {getSoDon(k)} đơn</div>
               </div>
               <div className="flex items-center gap-0.5">
@@ -231,14 +241,34 @@ export default function KhachHangPage() {
 
       {/* Search + Toggle */}
       <div className="card p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
-            <input className="input pl-9" placeholder="Tìm tên, SĐT, email, địa chỉ…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="relative max-w-xl flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              className="input pl-10 pr-9 w-full font-medium"
+              placeholder="Tìm tên khách hàng, số điện thoại, mã KH, địa chỉ... (VD: Hòa, 094..., KH-905)"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                title="Xóa tìm kiếm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
+          {search.trim() && (
+            <span className="text-xs font-semibold px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+              Tìm thấy {filtered.length} KH · Ưu tiên đúng tên & SĐT
+            </span>
+          )}
           <button
             onClick={() => setShowGhiNhoOnly(!showGhiNhoOnly)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold border transition ${
               showGhiNhoOnly
                 ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-500"
                 : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -278,10 +308,10 @@ export default function KhachHangPage() {
                       <td className="p-3 font-mono text-xs opacity-70">{k.maKH}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
-                          <Avatar name={k.ten} src={k.avatar} size="sm" />
+                          <Avatar name={k.ten || k.maKH || "KH"} src={k.avatar} size="sm" />
                           <div>
                             <div className="font-medium flex items-center gap-1.5">
-                              {k.ten}
+                              {k.ten || k.maKH || "Chưa đặt tên"}
                               <button onClick={(e) => toggleGhiNho(k, e)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition" title="Ghi nhớ khách hàng">
                                 <Bookmark className={`w-3.5 h-3.5 ${k.ghiNho ? "fill-amber-500 text-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
                               </button>
@@ -351,7 +381,7 @@ export default function KhachHangPage() {
               <EntityCard
                 key={k.maKH}
                 onClick={() => setShowForm({ mode: "edit", kh: k })}
-                name={k.ten}
+                name={k.ten || k.maKH || "Khách hàng"}
                 avatarUrl={k.avatar}
                 titleAccessory={
                   <button onClick={(e) => toggleGhiNho(k, e)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition" title="Ghi nhớ khách hàng">
@@ -386,10 +416,10 @@ export default function KhachHangPage() {
             const soDon = getSoDon(k);
             return (
               <div key={k.maKH} className="card p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition" onClick={() => setShowForm({ mode: "edit", kh: k })}>
-                <Avatar name={k.ten} src={k.avatar} size="md" />
+                <Avatar name={k.ten || k.maKH || "KH"} src={k.avatar} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate flex items-center gap-1.5">
-                    {k.ten}
+                    {k.ten || k.maKH || "Chưa đặt tên"}
                     <button onClick={(e) => toggleGhiNho(k, e)} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition" title="Ghi nhớ khách hàng">
                       <Bookmark className={`w-4 h-4 ${k.ghiNho ? "fill-amber-500 text-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
                     </button>
@@ -463,8 +493,16 @@ function KHForm({ mode, kh, dsMaDaCo, onClose, onSave, initialLoai }: { mode: "a
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.ten || !form.sdt) return toast.error("Vui lòng nhập tên Khách hàng và SĐT");
-    onSave(form);
+    const tenTrim = (form.ten || "").trim();
+    const sdtTrim = (form.sdt || "").trim();
+    const maKHTrim = (form.maKH || "").trim();
+    if (!tenTrim || !sdtTrim) return toast.error("Vui lòng nhập tên Khách hàng và SĐT");
+    onSave({
+      ...form,
+      ten: tenTrim,
+      sdt: sdtTrim,
+      maKH: maKHTrim,
+    });
   };
 
   return (
