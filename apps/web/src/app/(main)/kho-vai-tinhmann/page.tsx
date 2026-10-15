@@ -86,7 +86,17 @@ export default function KhoVaiPage() {
     }
     return [];
   });
-  const [tab, setTab] = useState<"thanhpham" | "menhuom" | "moc" | "tinhman" | "baocao" | "danhmuc" | "lichsu">("thanhpham");
+  const [tab, setTab] = useState<"thanhpham" | "menhuom" | "moc" | "tinhman" | "baocao" | "danhmuc" | "lichsu">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const p = new URLSearchParams(window.location.search).get("tab");
+        if (p === "menhuom" || p === "thanhpham" || p === "moc" || p === "tinhman" || p === "baocao" || p === "danhmuc" || p === "lichsu") {
+          return p as any;
+        }
+      } catch {}
+    }
+    return "thanhpham";
+  });
   const [searchVai, setSearchVai] = useState("");
   const [thuongHieuFilter, setThuongHieuFilter] = useState<"ALL" | "manpj" | "polomimin">("ALL");
   const [filterLoaiGD, setFilterLoaiGD] = useState<"TAT_CA" | "NHAP" | "XUAT">("TAT_CA");

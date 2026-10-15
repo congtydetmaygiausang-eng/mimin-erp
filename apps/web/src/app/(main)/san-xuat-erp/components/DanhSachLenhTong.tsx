@@ -14,6 +14,12 @@ import { Modal } from "./ui-blocks";
 import PhieuNhapSoiPrint from "./PhieuNhapSoiPrint";
 import PhieuGiaoDetPrint from "./PhieuGiaoDetPrint";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
+import {
+  FABRIC_DYE_LOTS_CHANGED_EVENT,
+  type FabricDyeLot,
+  type KhuMeNhuom,
+  type TrangThaiMeNhuom,
+} from "@/lib/data/fabric-dye-lots";
 
 // Ảnh mẫu Biên bản bàn giao sợi cho xưởng dệt
 const ANH_CHUNG_TU_MAU_GIAO_DET = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
@@ -92,6 +98,107 @@ const ANH_CHUNG_TU_MAU_GIAO_KHO_TP = `data:image/svg+xml;utf8,<svg xmlns="http:/
 
 function lamTronTheo100Dong(so: number) {
   return Math.round(so / 100) * 100;
+}
+
+/**
+ * Đồng bộ dữ liệu BƯỚC 6 (Nhập kho vải TP) sang module Vải thành phẩm khu mẻ nhuộm (/kho-vai-tinhmann)
+ */
+export function dongBoLenhVaoKhoMeNhuom(lenh: LenhSXRecord): { count: number; tongKg: number; khu: string; ke: string } {
+  if (typeof window === "undefined") return { count: 0, tongKg: 0, khu: "A", ke: "K02" };
+  try {
+    const rawLots = localStorage.getItem("mimin_kho_vai_me_nhuom");
+    let currentLots: FabricDyeLot[] = rawLots ? JSON.parse(rawLots) : [];
+    if (!Array.isArray(currentLots)) currentLots = [];
+
+    const khu = (lenh.khu || "A") as KhuMeNhuom;
+    const ke = lenh.ke || (khu === "A" ? "K02" : "C01");
+    const trangThaiTheoKhuMap: Record<string, TrangThaiMeNhuom> = {
+      A: "DANG_SU_DUNG",
+      B: "ME_KE_TIEP",
+      C: "CHO_KIEM",
+      D: "GIU_RIENG",
+      E: "CHO_TRA",
+    };
+    const trangThai: TrangThaiMeNhuom = trangThaiTheoKhuMap[khu] || (khu === "A" ? "DANG_SU_DUNG" : "CHO_KIEM");
+    const now = new Date().toISOString();
+    let daCapNhat = false;
+    let tongKg = 0;
+    let count = 0;
+
+    const danhSachMau = lenh.danhSachMau || [];
+    for (let idx = 0; idx < danhSachMau.length; idx++) {
+      const m = danhSachMau[idx];
+      const soKg = Number(m.soKg) || 0;
+      if (soKg <= 0) continue;
+      const soCay = Number(m.soCay) || Math.max(1, Math.ceil(soKg / 20));
+      const giaVon = Math.round(
+        Number(m.giaVonDuKien) ||
+        Number(lenh.giaVonTheoMau?.[idx]?.giaVonMoiKgCoVAT) ||
+        Number(lenh.giaVonTheoMau?.[idx]?.giaVonMoiKg) ||
+        Number(m.donGiaNhuom) ||
+        140000
+      );
+      const maMe = `${lenh.maMeNhuom || lenh.id}-${m.maVai || idx + 1}`;
+      const sku = m.maVai || `VAI-TP-${idx + 1}`;
+
+      const existingIndex = currentLots.findIndex(
+        (lot) => lot.maMe === maMe || (lot.sku === sku && lot.mauSac === m.mau && lot.ghiChu?.includes(lenh.id))
+      );
+
+      if (existingIndex >= 0) {
+        currentLots[existingIndex] = {
+          ...currentLots[existingIndex],
+          soKgNhap: soKg,
+          tonKg: soKg,
+          soCay,
+          khu,
+          ke,
+          trangThai,
+          donGia: giaVon,
+          mauSac: m.mau,
+          sku,
+          xuongNhuom: lenh.tenXuongNhuom || currentLots[existingIndex].xuongNhuom || "Xưởng nhuộm Á Châu",
+          ghiChu: `Đồng bộ từ Lệnh SX ${lenh.id} - Kệ ${ke} (Bước 6: Nhập kho vải TP)`,
+          updatedAt: now,
+        };
+        daCapNhat = true;
+      } else {
+        const newLot: FabricDyeLot = {
+          id: `lot-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+          maMe,
+          sku,
+          mauSac: m.mau,
+          ngayNhap: lenh.ngayTao ? new Date(lenh.ngayTao).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          xuongNhuom: lenh.tenXuongNhuom || "Xưởng nhuộm Á Châu",
+          donGia: giaVon,
+          soKgNhap: soKg,
+          tonKg: soKg,
+          soCay,
+          khu,
+          ke,
+          tang: "",
+          o: "",
+          trangThai,
+          ghiChu: `Đồng bộ từ Lệnh SX ${lenh.id} - Kệ ${ke} (Bước 6: Nhập kho vải TP)`,
+          createdAt: now,
+          updatedAt: now,
+        };
+        currentLots.unshift(newLot);
+        daCapNhat = true;
+      }
+      tongKg += soKg;
+      count++;
+    }
+
+    if (daCapNhat) {
+      localStorage.setItem("mimin_kho_vai_me_nhuom", JSON.stringify(currentLots));
+      window.dispatchEvent(new CustomEvent(FABRIC_DYE_LOTS_CHANGED_EVENT));
+    }
+    return { count, tongKg, khu, ke };
+  } catch (err) {
+    console.error("Lỗi đồng bộ mẻ nhuộm:", err);
+    return { count: 0, tongKg: 0, khu: "A", ke: "K02" };
+  }
 }
 
 export interface LenhSXRecord {
@@ -205,6 +312,31 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
           parsed = parsed.map((item: LenhSXRecord) => {
             if (item.id === "LSX-20261015-001") {
               const capNhat = { ...item };
+              if (!capNhat.khu) {
+                capNhat.khu = "A";
+                coThayDoi = true;
+              }
+              if (!capNhat.ke) {
+                capNhat.ke = "K02";
+                coThayDoi = true;
+              }
+              if (!capNhat.tongKgVaiTP) {
+                capNhat.tongKgVaiTP = 970;
+                coThayDoi = true;
+              }
+              if (!capNhat.tongCayVaiTP) {
+                capNhat.tongCayVaiTP = 49;
+                coThayDoi = true;
+              }
+              // Chuẩn hóa chiSoiPhanBo & chiDetPhanBo để triệt tiêu lỗi NaNđ
+              if (capNhat.giaVonTheoMau && capNhat.giaVonTheoMau.length > 0) {
+                capNhat.giaVonTheoMau = capNhat.giaVonTheoMau.map((g: any, gIdx: number) => ({
+                  ...g,
+                  chiSoiPhanBo: g.chiSoiPhanBo ?? g.tienSoiPhanBo ?? (gIdx === 0 ? 43814433 : 41185567),
+                  chiDetPhanBo: g.chiDetPhanBo ?? g.tienDetPhanBo ?? (gIdx === 0 ? 7216495 : 6783505),
+                }));
+                coThayDoi = true;
+              }
               if (!capNhat.anhChungTuGiaoDet || capNhat.anhChungTuGiaoDet.length === 0) {
                 capNhat.anhChungTuGiaoDet = [
                   {
@@ -235,7 +367,11 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
                 ];
                 coThayDoi = true;
               }
+              // Tự động đồng bộ mẻ nhuộm của lệnh này sang Kho vải mẻ nhuộm
+              dongBoLenhVaoKhoMeNhuom(capNhat);
               return capNhat;
+            } else if (item.danhSachMau && item.danhSachMau.length > 0) {
+              dongBoLenhVaoKhoMeNhuom(item);
             }
             return item;
           });
@@ -358,7 +494,9 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
             chiPhiHoaChat: 1500000,
             tienNhuom: 13000000,
             tienSoiPhanBo: 43814433,
+            chiSoiPhanBo: 43814433,
             tienDetPhanBo: 7216495,
+            chiDetPhanBo: 7216495,
             vatSoiPhanBo: 3505155,
             vatDetPhanBo: 577320,
             vatNhuomPhanBo: 1160000,
@@ -376,7 +514,9 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
             chiPhiHoaChat: 1000000,
             tienNhuom: 11280000,
             tienSoiPhanBo: 41185567,
+            chiSoiPhanBo: 41185567,
             tienDetPhanBo: 6783505,
+            chiDetPhanBo: 6783505,
             vatSoiPhanBo: 3294845,
             vatDetPhanBo: 542680,
             vatNhuomPhanBo: 982400,
@@ -392,6 +532,7 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
 
       setDanhSach([mauMauRecord]);
       localStorage.setItem("mimin_lenh_tong_list", JSON.stringify([mauMauRecord]));
+      dongBoLenhVaoKhoMeNhuom(mauMauRecord);
       if (selectedLenhId === mauMauRecord.id) {
         setSelectedLenh(mauMauRecord);
       }
@@ -1106,6 +1247,48 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
                 </div>
               </div>
 
+              {/* Thông tin chuyển sang module Vải thành phẩm khu mẻ nhuộm */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-white p-3 shadow-2xs mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold shrink-0">
+                    <Boxes className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-emerald-950 flex flex-wrap items-center gap-1.5">
+                      <span>✓ Đã chuyển sang module Vải thành phẩm khu mẻ nhuộm</span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">
+                        Khu {selectedLenh.khu || "A"} · Kệ {selectedLenh.ke || "K02"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      Tổng số kg: <b className="text-emerald-700 font-bold">{(selectedLenh.tongKgVaiTP || selectedLenh.tongKgMau)?.toLocaleString()} kg</b> · <b className="text-emerald-700 font-bold">{selectedLenh.tongCayVaiTP || selectedLenh.danhSachMau?.reduce((s, m) => s + (m.soCay || Math.ceil(m.soKg / 20)), 0)} cây</b> ({selectedLenh.danhSachMau?.length || 0} màu mẻ) · Trạng thái: {selectedLenh.khu === "A" ? "Mẻ đang sử dụng (Tổ Cắt lấy ngay)" : "Chờ kiểm"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const res = dongBoLenhVaoKhoMeNhuom(selectedLenh);
+                      toast.success(`Đã đồng bộ lại ${res.count} mẻ (${res.tongKg}kg) sang Khu ${res.khu} - Kệ ${res.ke} tại Kho vải mẻ nhuộm!`);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition shadow-2xs"
+                    title="Bấm để cập nhật lại dữ liệu sang Kho vải mẻ nhuộm"
+                  >
+                    <span>↻ Đồng bộ lại</span>
+                  </button>
+                  <a
+                    href="/kho-vai-tinhmann?tab=menhuom"
+                    className="inline-flex items-center gap-1 rounded-lg bg-teal-600 hover:bg-teal-700 px-3 py-1.5 text-xs font-bold text-white transition shadow-xs"
+                    title="Mở module Vải thành phẩm khu mẻ nhuộm"
+                  >
+                    <span>Xem tại Kho Mẻ Nhuộm</span>
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
+
               {/* Ảnh chứng từ giao kho vải TP */}
               <div className="mt-3 pt-2.5 border-t border-emerald-200">
                 <div className="flex items-center justify-between mb-1.5">
@@ -1189,18 +1372,36 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-amber-50 font-medium">
-                      {selectedLenh.giaVonTheoMau.map((g, idx) => (
-                        <tr key={idx}>
-                          <td className="p-2.5 font-bold text-slate-900">{g.mau}</td>
-                          <td className="p-2.5 text-right">{g.soKg?.toLocaleString()} kg</td>
-                          <td className="p-2.5 text-right">{lamTronTheo100Dong(g.chiSoiPhanBo / (g.soKg || 1)).toLocaleString()}đ</td>
-                          <td className="p-2.5 text-right">{lamTronTheo100Dong(g.chiDetPhanBo / (g.soKg || 1)).toLocaleString()}đ</td>
-                          <td className="p-2.5 text-right">{lamTronTheo100Dong((g.tienNhuom + (g.chiPhiHoaChat || 0)) / (g.soKg || 1)).toLocaleString()}đ</td>
-                          <td className="p-2.5 text-right font-black text-amber-700 text-sm">
-                            {lamTronTheo100Dong(g.giaVonMoiKgCoVAT || g.giaVonMoiKg).toLocaleString()}đ/kg
-                          </td>
-                        </tr>
-                      ))}
+                      {selectedLenh.giaVonTheoMau.map((g, idx) => {
+                        const soKg = Number(g.soKg) || 1;
+                        const tienSoi = Number(g.chiSoiPhanBo ?? g.tienSoiPhanBo ?? 0);
+                        const tienDet = Number(g.chiDetPhanBo ?? g.tienDetPhanBo ?? 0);
+                        const tienNhuomVaHC = Number(g.tienNhuom ?? (soKg * (g.donGiaNhuom || 0))) + Number(g.chiPhiHoaChat || 0);
+
+                        const donGiaSoi = Math.round(tienSoi / soKg);
+                        const donGiaDet = Math.round(tienDet / soKg);
+                        const donGiaNhuom = Math.round(tienNhuomVaHC / soKg);
+                        const donGiaTP = Math.round(g.giaVonMoiKgCoVAT || g.giaVonMoiKg || (donGiaSoi + donGiaDet + donGiaNhuom));
+
+                        return (
+                          <tr key={idx}>
+                            <td className="p-2.5 font-bold text-slate-900">{g.mau}</td>
+                            <td className="p-2.5 text-right font-bold text-slate-800">{g.soKg?.toLocaleString()} kg</td>
+                            <td className="p-2.5 text-right font-medium text-blue-700">
+                              {donGiaSoi > 0 ? `${donGiaSoi.toLocaleString()}đ` : "—"}
+                            </td>
+                            <td className="p-2.5 text-right font-medium text-violet-700">
+                              {donGiaDet > 0 ? `${donGiaDet.toLocaleString()}đ` : "—"}
+                            </td>
+                            <td className="p-2.5 text-right font-medium text-rose-700">
+                              {donGiaNhuom > 0 ? `${donGiaNhuom.toLocaleString()}đ` : "—"}
+                            </td>
+                            <td className="p-2.5 text-right font-black text-amber-700 text-sm">
+                              {donGiaTP.toLocaleString()}đ/kg
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
