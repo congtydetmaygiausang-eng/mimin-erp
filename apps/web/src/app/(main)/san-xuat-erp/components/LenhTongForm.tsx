@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.4)
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Plus, Printer, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, Plus, Printer, Sparkles, Trash2, Eye, History, FileText, Image as ImageIcon, Calendar, Factory, Layers } from "lucide-react";
 import { toast } from "sonner";
 import {
   nhapKhoSoi_V2,
@@ -12,6 +12,11 @@ import {
   nghiemThuMau_V2,
   nhapKhoVaiTP,
   type LoVaiTP,
+  getAllPhieuSanXuatVai,
+  savePhieuSanXuatVai,
+  deletePhieuSanXuatVai,
+  saveCollection,
+  YARN_PRODUCTION_SYNCED_EVENT,
 } from "@/lib/yarn-production-chain";
 import { themCongNo } from "@/lib/master-data";
 import { thuocNhomSanXuatVai, useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
@@ -56,6 +61,7 @@ type SoiInput = {
 };
 
 type PhieuSanXuatVai = {
+  id?: string;
   maLenhDet: string;
   maMeNhuom: string;
   ngayTao: string;
@@ -126,6 +132,17 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [anhChungTuGiaoKhoTP, setAnhChungTuGiaoKhoTP] = useState<UploadedFile[]>([]);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Lịch sử Lệnh Sản Xuất Vải đã lưu (lưu vĩnh viễn cả LocalStorage + Supabase)
+  const [danhSachLichSu, setDanhSachLichSu] = useState<PhieuSanXuatVai[]>(() => getAllPhieuSanXuatVai());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setDanhSachLichSu(getAllPhieuSanXuatVai());
+    };
+    window.addEventListener(YARN_PRODUCTION_SYNCED_EVENT, handleSync);
+    return () => window.removeEventListener(YARN_PRODUCTION_SYNCED_EVENT, handleSync);
+  }, []);
 
   const tongKgSoi = danhSachSoi.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
 
@@ -542,7 +559,8 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         }
       }
 
-      setPhieuDaTao({
+      const phieuMoi: PhieuSanXuatVai = {
+        id: `PSX-${r2.lenh?.id || Date.now()}`,
         maLenhDet: r2.lenh?.id || "",
         maMeNhuom: r3.me?.id || "",
         ngayTao: new Date().toISOString().slice(0, 10),
@@ -559,7 +577,11 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         anhChungTuGiaoDet,
         anhChungTuGiaoNhuom,
         anhChungTuGiaoKhoTP,
-      });
+      };
+
+      savePhieuSanXuatVai(phieuMoi);
+      setPhieuDaTao(phieuMoi);
+      setDanhSachLichSu(getAllPhieuSanXuatVai());
     }
 
     setDaTaoLenh(true);
@@ -1307,9 +1329,232 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
       </div>
       {daTaoLenh && (
         <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-center text-sm font-bold text-emerald-700 print:hidden">
-          Lệnh đã được lưu. Anh có thể in phiếu hoặc chuyển sang tab Quy trình.
+          Lệnh đã được lưu thành công. Anh có thể in phiếu hoặc chuyển sang tab Quy trình.
         </div>
       )}
+
+      {/* ================= KHỐI LỊCH SỬ LỆNH SẢN XUẤT VẢI ĐÃ TẠO ================= */}
+      <div className="mt-8 border-t border-slate-200 pt-6 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-xl bg-teal-100 p-2 text-teal-700">
+              <History className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800">
+                Lịch sử Lệnh Sản Xuất Vải đã lưu ({danhSachLichSu.length})
+              </h3>
+              <p className="text-xs text-slate-500">
+                Lưu trữ bền vững trên LocalStorage & Supabase kèm chứng từ 3 khâu (Sợi - Dệt - Nhuộm)
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            Đồng bộ đám mây Supabase
+          </div>
+        </div>
+
+        {danhSachLichSu.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-slate-400">
+            <FileText className="mx-auto h-10 w-10 text-slate-300 mb-2" />
+            <p className="text-sm font-medium">Chưa có lệnh sản xuất vải nào được lưu</p>
+            <p className="text-xs text-slate-400 mt-1">Khi anh tạo lệnh ở trên, hệ thống sẽ tự động lưu lại vào đây và đồng bộ lên Supabase.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {danhSachLichSu.map((item, idx) => {
+              const tongKgTP = item.danhSachMau?.reduce((s, m) => s + (m.soKg || 0), 0) || 0;
+              const haoHutKg = (item.tongKgSoi || 0) - tongKgTP;
+              const haoHutPt = item.tongKgSoi > 0 ? (haoHutKg / item.tongKgSoi) * 100 : 0;
+              const giaVonKg = tongKgTP > 0 ? (item.tongCong || 0) / tongKgTP : 0;
+              
+              const cntAnhGiaoDet = item.anhChungTuGiaoDet?.length || 0;
+              const cntAnhGiaoNhuom = item.anhChungTuGiaoNhuom?.length || 0;
+              const cntAnhGiaoKhoTP = item.anhChungTuGiaoKhoTP?.length || 0;
+              const tongSoAnh = cntAnhGiaoDet + cntAnhGiaoNhuom + cntAnhGiaoKhoTP;
+
+              return (
+                <div
+                  key={item.id || item.maLenhDet || idx}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-all"
+                >
+                  {/* Top Bar của Card */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-lg bg-teal-50 border border-teal-200 px-2.5 py-1 text-xs font-black text-teal-800">
+                        Lệnh dệt: {item.maLenhDet || "Chưa có"}
+                      </span>
+                      <span className="rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1 text-xs font-black text-rose-800">
+                        Mẻ nhuộm: {item.maMeNhuom || "Chưa có"}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-slate-500 font-medium ml-1">
+                        <Calendar className="h-3.5 w-3.5" /> {item.ngayTao || "Hôm nay"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhieuDaTao(item);
+                          setHienPhieu(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
+                      >
+                        <Printer className="h-3.5 w-3.5" /> Xem & In phiếu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const maHienThi = item.maLenhDet || item.id || "này";
+                          if (confirm(`Anh có chắc muốn xóa lệnh ${maHienThi} khỏi lịch sử không?`)) {
+                            deletePhieuSanXuatVai(item.id || item.maLenhDet);
+                            setDanhSachLichSu(getAllPhieuSanXuatVai());
+                            toast.success("Đã xóa lệnh khỏi lịch sử");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition"
+                        title="Xóa lệnh này"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Body Thông tin sản xuất */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-3 text-xs">
+                    <div className="rounded-xl bg-slate-50 p-2.5 space-y-1">
+                      <div className="font-bold text-slate-700 flex items-center gap-1">
+                        <Factory className="h-3.5 w-3.5 text-teal-600" /> Đối tác chuỗi sản xuất
+                      </div>
+                      <div className="text-slate-600">NCC Sợi: <span className="font-bold text-slate-800">{item.tenNccSoi || "Chưa chọn"}</span></div>
+                      <div className="text-slate-600">Xưởng dệt: <span className="font-bold text-slate-800">{item.tenXuongDet || "Chưa chọn"}</span></div>
+                      <div className="text-slate-600">Xưởng nhuộm: <span className="font-bold text-slate-800">{item.tenXuongNhuom || "Chưa chọn"}</span></div>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 p-2.5 space-y-1">
+                      <div className="font-bold text-slate-700 flex items-center gap-1">
+                        <Layers className="h-3.5 w-3.5 text-indigo-600" /> Khối lượng & Hao hụt
+                      </div>
+                      <div className="text-slate-600">Đầu vào sợi: <span className="font-bold text-teal-700">{(item.tongKgSoi || 0).toLocaleString("vi-VN")} kg</span></div>
+                      <div className="text-slate-600">Vải thành phẩm: <span className="font-bold text-indigo-700">{tongKgTP.toLocaleString("vi-VN")} kg</span></div>
+                      <div className="text-slate-600">
+                        Hao hụt: <span className={`font-bold ${haoHutPt > 10 ? "text-rose-600" : "text-amber-600"}`}>
+                          {haoHutKg.toLocaleString("vi-VN")} kg ({haoHutPt.toFixed(1)}%)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl bg-amber-50/70 border border-amber-100 p-2.5 space-y-1">
+                      <div className="font-bold text-amber-900">Chi phí & Giá vốn vải TP</div>
+                      <div className="text-slate-600">Tổng chi phí: <span className="font-black text-rose-600">{(item.tongCong || 0).toLocaleString("vi-VN")}đ</span></div>
+                      <div className="text-slate-600">Giá vốn 1kg TP: <span className="font-black text-emerald-700">{Math.round(giaVonKg).toLocaleString("vi-VN")}đ/kg</span></div>
+                      <div className="text-[11px] text-slate-500">Màu: {item.danhSachMau?.map(m => `${m.mau} (${m.soKg}kg)`).join(", ") || "—"}</div>
+                    </div>
+                  </div>
+
+                  {/* Khu vực Ảnh Chứng Từ 3 Khâu */}
+                  <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <ImageIcon className="h-3.5 w-3.5 text-slate-500" /> Ảnh chứng từ đính kèm ({tongSoAnh} ảnh)
+                      </span>
+                      <span className="text-[11px] text-slate-400">Nhấp vào ảnh để phóng to xem chi tiết</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+                      {/* Khâu 1: Sợi giao dệt */}
+                      <div className="rounded-lg bg-white border border-slate-200/80 p-2">
+                        <div className="text-[11px] font-bold text-teal-800 mb-1 flex items-center justify-between">
+                          <span>1. Sợi giao dệt</span>
+                          <span className="text-[10px] text-slate-400">({cntAnhGiaoDet} ảnh)</span>
+                        </div>
+                        {cntAnhGiaoDet === 0 ? (
+                          <div className="text-[11px] text-slate-400 italic py-1">Chưa có ảnh chứng từ</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.anhChungTuGiaoDet?.map((img, i) => (
+                              <button
+                                key={img.id || i}
+                                type="button"
+                                onClick={() => {
+                                  const urls = item.anhChungTuGiaoDet?.map((x) => x.dataUrl).filter(Boolean) || [];
+                                  setLightboxImages(urls);
+                                  setLightboxIndex(i);
+                                }}
+                                className="group relative h-12 w-12 overflow-hidden rounded-md border border-slate-200 hover:ring-2 hover:ring-teal-400 transition"
+                              >
+                                <img src={img.dataUrl} alt={img.name} className="h-full w-full object-cover group-hover:scale-105 transition" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Khâu 2: Dệt giao nhuộm */}
+                      <div className="rounded-lg bg-white border border-slate-200/80 p-2">
+                        <div className="text-[11px] font-bold text-indigo-800 mb-1 flex items-center justify-between">
+                          <span>2. Dệt giao nhuộm</span>
+                          <span className="text-[10px] text-slate-400">({cntAnhGiaoNhuom} ảnh)</span>
+                        </div>
+                        {cntAnhGiaoNhuom === 0 ? (
+                          <div className="text-[11px] text-slate-400 italic py-1">Chưa có ảnh chứng từ</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.anhChungTuGiaoNhuom?.map((img, i) => (
+                              <button
+                                key={img.id || i}
+                                type="button"
+                                onClick={() => {
+                                  const urls = item.anhChungTuGiaoNhuom?.map((x) => x.dataUrl).filter(Boolean) || [];
+                                  setLightboxImages(urls);
+                                  setLightboxIndex(i);
+                                }}
+                                className="group relative h-12 w-12 overflow-hidden rounded-md border border-slate-200 hover:ring-2 hover:ring-indigo-400 transition"
+                              >
+                                <img src={img.dataUrl} alt={img.name} className="h-full w-full object-cover group-hover:scale-105 transition" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Khâu 3: Nhuộm giao kho TP */}
+                      <div className="rounded-lg bg-white border border-slate-200/80 p-2">
+                        <div className="text-[11px] font-bold text-rose-800 mb-1 flex items-center justify-between">
+                          <span>3. Nhuộm giao kho TP</span>
+                          <span className="text-[10px] text-slate-400">({cntAnhGiaoKhoTP} ảnh)</span>
+                        </div>
+                        {cntAnhGiaoKhoTP === 0 ? (
+                          <div className="text-[11px] text-slate-400 italic py-1">Chưa có ảnh chứng từ</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.anhChungTuGiaoKhoTP?.map((img, i) => (
+                              <button
+                                key={img.id || i}
+                                type="button"
+                                onClick={() => {
+                                  const urls = item.anhChungTuGiaoKhoTP?.map((x) => x.dataUrl).filter(Boolean) || [];
+                                  setLightboxImages(urls);
+                                  setLightboxIndex(i);
+                                }}
+                                className="group relative h-12 w-12 overflow-hidden rounded-md border border-slate-200 hover:ring-2 hover:ring-rose-400 transition"
+                              >
+                                <img src={img.dataUrl} alt={img.name} className="h-full w-full object-cover group-hover:scale-105 transition" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {dongDangChonVai !== null && (
         <Modal onClose={() => setDongDangChonVai(null)}>

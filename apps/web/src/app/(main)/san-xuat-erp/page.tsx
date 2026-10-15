@@ -10,6 +10,10 @@ import { MasterData } from "./components/MasterData";
 import { LenhTongForm } from "./components/LenhTongForm";
 import { FlowQuick } from "./components/FlowQuick";
 import { CongNoView, BaoCaoView } from "./components/Views";
+import {
+  syncYarnProductionFromSupabase,
+  subscribeYarnProductionChanges,
+} from "@/lib/yarn-production-chain";
 
 function SanXuatERPContent() {
   const { user } = useSession();
@@ -21,6 +25,15 @@ function SanXuatERPContent() {
   const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : "dashboard";
 
   const [tab, setTab] = useState<Tab>(initialTab);
+
+  useEffect(() => {
+    // Tự động kéo dữ liệu Sợi - Dệt - Nhuộm và ảnh chứng từ từ Supabase về
+    void syncYarnProductionFromSupabase();
+    const unsubscribe = subscribeYarnProductionChanges(() => {
+      // Callback khi có thay đổi realtime
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (tabParam && validTabs.includes(tabParam)) {
