@@ -4,14 +4,91 @@ import { useEffect, useState, useMemo } from "react";
 import {
   Eye, Printer, Trash2, LayoutList, Package, Truck, Palette, Boxes,
   CheckCircle2, Clock, ChevronRight, FileText, Sparkles, Building2,
-  Calendar, Search, X, Image as ImageIcon, Layers, DollarSign, ArrowUpRight
+  Calendar, Search, X, Image as ImageIcon, Layers, DollarSign, ArrowUpRight,
+  Upload, Camera, Plus, ZoomIn
 } from "lucide-react";
+import { toast } from "sonner";
 import { DateDisplay } from "@/components/ui/DateDisplay";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { Modal } from "./ui-blocks";
 import PhieuNhapSoiPrint from "./PhieuNhapSoiPrint";
 import PhieuGiaoDetPrint from "./PhieuGiaoDetPrint";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
+
+// Ảnh mẫu Biên bản bàn giao sợi cho xưởng dệt
+const ANH_CHUNG_TU_MAU_GIAO_DET = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="%23ffffff" stroke="%23cbd5e1" stroke-width="2"/>
+  <rect x="30" y="30" width="740" height="940" fill="%23ffffff" stroke="%2394a3b8" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="60" y="75" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="%230f766e">POLOMIMIN - CÔNG TY TNHH DỆT MAY GIÀU SANG</text>
+  <text x="60" y="100" font-family="Arial, sans-serif" font-size="12" fill="%2364748b">MST: 0318507560 · Hotline: 0774480916 · 12/39 Xuân Thới Thượng 58C, Bà Điểm, Hóc Môn</text>
+  <line x1="60" y1="115" x2="740" y2="115" stroke="%230f766e" stroke-width="2"/>
+  <text x="400" y="160" font-family="Arial, sans-serif" font-size="22" font-weight="900" fill="%231e293b" text-anchor="middle">BIÊN BẢN BÀN GIAO SỢI CHO XƯỞNG DỆT</text>
+  <text x="400" y="185" font-family="Arial, sans-serif" font-size="13" font-style="italic" fill="%2364748b" text-anchor="middle">Số: BB-GIAO-DET-2026/01 · Ngày: 15/10/2026</text>
+  <rect x="60" y="210" width="680" height="95" rx="8" fill="%23f8fafc" stroke="%23cbd5e1"/>
+  <text x="80" y="235" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%230f172a">BÊN GIAO (KHO SỢI): Công ty Sợi Phú Bài</text>
+  <text x="80" y="255" font-family="Arial, sans-serif" font-size="12" fill="%23475569">Đại diện: Hồ Minh Sang · Điện thoại: 0774480916</text>
+  <text x="80" y="280" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%236d28d9">BÊN NHẬN (XƯỞNG DỆT): Xưởng dệt Hưng Phát</text>
+  <text x="80" y="295" font-family="Arial, sans-serif" font-size="12" fill="%23475569">Đại diện: Nguyễn Văn Hưng · Mã lệnh dệt: LD-20261015-01</text>
+  <rect x="60" y="325" width="680" height="35" fill="%23ede9fe"/>
+  <text x="75" y="348" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="%235b21b6">STT</text>
+  <text x="120" y="348" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="%235b21b6">Loại Sợi</text>
+  <text x="350" y="348" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="%235b21b6">Mã Lô</text>
+  <text x="490" y="348" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="%235b21b6">Quy Cách</text>
+  <text x="630" y="348" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="%235b21b6">Khối Lượng</text>
+  <line x1="60" y1="395" x2="740" y2="395" stroke="%23e2e8f0"/>
+  <text x="82" y="385" font-family="Arial, sans-serif" font-size="12" fill="%23334155">1</text>
+  <text x="120" y="385" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%230f172a">Cotton 100% 30s/1 Compact</text>
+  <text x="350" y="385" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%236d28d9">LSOI-PB-882</text>
+  <text x="490" y="385" font-family="Arial, sans-serif" font-size="12" fill="%23334155">40 thùng (25kg/thùng)</text>
+  <text x="630" y="385" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="%232563eb">1.000 kg</text>
+  <rect x="60" y="415" width="680" height="35" fill="%23f1f5f9"/>
+  <text x="470" y="438" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%230f172a">TỔNG KHỐI LƯỢNG GIAO:</text>
+  <text x="630" y="438" font-family="Arial, sans-serif" font-size="15" font-weight="black" fill="%23dc2626">1.000 KG</text>
+  <text x="60" y="490" font-family="Arial, sans-serif" font-size="12" font-style="italic" fill="%23475569">Ghi chú bàn giao: Sợi chuẩn chất lượng, nguyên seal đai kiện. Xưởng dệt tiến hành lên dàn dệt theo đơn hàng.</text>
+  <text x="180" y="580" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%230f172a" text-anchor="middle">ĐẠI DIỆN BÊN GIAO</text>
+  <text x="180" y="600" font-family="Arial, sans-serif" font-size="11" font-style="italic" fill="%2364748b" text-anchor="middle">(Ký, ghi rõ họ tên)</text>
+  <text x="180" y="700" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="%230284c7" text-anchor="middle">Hồ Minh Sang</text>
+  <text x="580" y="580" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%230f172a" text-anchor="middle">ĐẠI DIỆN BÊN NHẬN (XƯỞNG DỆT)</text>
+  <text x="580" y="600" font-family="Arial, sans-serif" font-size="11" font-style="italic" fill="%2364748b" text-anchor="middle">(Ký nhận, đóng dấu)</text>
+  <text x="580" y="700" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="%237c3aed" text-anchor="middle">Nguyễn Văn Hưng</text>
+  <circle cx="580" cy="675" r="50" fill="none" stroke="%23dc2626" stroke-width="2.5" stroke-dasharray="4 2" opacity="0.85"/>
+  <circle cx="580" cy="675" r="44" fill="none" stroke="%23dc2626" stroke-width="1.2" opacity="0.85"/>
+  <text x="580" y="663" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="%23dc2626" text-anchor="middle">XƯỞNG DỆT HƯNG PHÁT</text>
+  <text x="580" y="680" font-family="Arial, sans-serif" font-size="11" font-weight="black" fill="%23dc2626" text-anchor="middle">★ ĐÃ NHẬN ĐỦ ★</text>
+  <text x="580" y="694" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="%23dc2626" text-anchor="middle">1.000 KG SỢI</text>
+</svg>`;
+
+// Ảnh mẫu Biên bản giao mộc xưởng nhuộm
+const ANH_CHUNG_TU_MAU_GIAO_NHUOM = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="900" viewBox="0 0 800 900">
+  <rect width="800" height="900" fill="%23ffffff" stroke="%23cbd5e1" stroke-width="2"/>
+  <text x="60" y="70" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="%237c2d12">POLOMIMIN - BIÊN BẢN GIAO MỘC CHO XƯỞNG NHUỘM</text>
+  <line x1="60" y1="85" x2="740" y2="85" stroke="%23ea580c" stroke-width="2"/>
+  <text x="80" y="125" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%230f172a">Giao từ: Xưởng dệt Hưng Phát ➔ Nhận: Xưởng nhuộm Á Châu</text>
+  <text x="80" y="150" font-family="Arial, sans-serif" font-size="12" fill="%23334155">Mã mộc: LM-LD-20261015-01 · Khối lượng mộc: 970 kg · Số cây: 49 cây</text>
+  <rect x="60" y="180" width="680" height="150" fill="%23fff7ed" stroke="%23fed7aa" rx="8"/>
+  <text x="80" y="215" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%23c2410c">Xác nhận nghiệm thu mộc đạt tiêu chuẩn dệt:</text>
+  <text x="80" y="245" font-family="Arial, sans-serif" font-size="12" fill="%23475569">✓ Vải mộc Single Jersey 4C không lỗi đường dệt, không đốm dầu</text>
+  <text x="80" y="275" font-family="Arial, sans-serif" font-size="12" fill="%23475569">✓ Đủ 49 cây, tổng cân 970 kg, hao hụt dệt thực tế 3%</text>
+  <circle cx="580" cy="400" r="45" fill="none" stroke="%23dc2626" stroke-width="2" opacity="0.85"/>
+  <text x="580" y="395" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="%23dc2626" text-anchor="middle">XƯỞNG NHUỘM Á CHÂU</text>
+  <text x="580" y="412" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="%23dc2626" text-anchor="middle">ĐÃ NHẬN 970KG</text>
+</svg>`;
+
+// Ảnh mẫu Biên bản giao kho vải TP
+const ANH_CHUNG_TU_MAU_GIAO_KHO_TP = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="900" viewBox="0 0 800 900">
+  <rect width="800" height="900" fill="%23ffffff" stroke="%23cbd5e1" stroke-width="2"/>
+  <text x="60" y="70" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="%23065f46">POLOMIMIN - BIÊN BẢN BÀN GIAO VẢI THÀNH PHẨM NHẬP KHO</text>
+  <line x1="60" y1="85" x2="740" y2="85" stroke="%23059669" stroke-width="2"/>
+  <text x="80" y="125" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%230f172a">Xưởng nhuộm Á Châu ➔ Kho Vải Thành Phẩm (Khu A - Kệ K02)</text>
+  <text x="80" y="150" font-family="Arial, sans-serif" font-size="12" fill="%23334155">Đen Tiêu Chuẩn: 500 kg (25 cây) · Trắng Sữa: 470 kg (24 cây) · Tổng: 970 kg (49 cây)</text>
+  <rect x="60" y="180" width="680" height="150" fill="%23ecfdf5" stroke="%23a7f3d0" rx="8"/>
+  <text x="80" y="215" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="%23047857">Đạt kiểm định chất lượng vải thành phẩm:</text>
+  <text x="80" y="245" font-family="Arial, sans-serif" font-size="12" fill="%23475569">✓ Độ bền màu cấp 4-5, độ co giãn hồi phục tốt, không loang màu</text>
+  <text x="80" y="275" font-family="Arial, sans-serif" font-size="12" fill="%23475569">✓ Đã dán tem mã vạch QR từng cây, xếp vào Khu A - Kệ K02</text>
+  <circle cx="580" cy="400" r="45" fill="none" stroke="%23dc2626" stroke-width="2" opacity="0.85"/>
+  <text x="580" y="395" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="%23dc2626" text-anchor="middle">KHO THÀNH PHẨM</text>
+  <text x="580" y="412" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="%23dc2626" text-anchor="middle">ĐÃ NHẬP KHO</text>
+</svg>`;
 
 function lamTronTheo100Dong(so: number) {
   return Math.round(so / 100) * 100;
@@ -121,8 +198,52 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
     try {
       const data = localStorage.getItem("mimin_lenh_tong_list");
       if (data) {
-        const parsed = JSON.parse(data);
+        let parsed = JSON.parse(data);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Tự động kiểm tra và bổ sung ảnh chứng từ mẫu cho lệnh LSX-20261015-001 nếu đang bị rỗng
+          let coThayDoi = false;
+          parsed = parsed.map((item: LenhSXRecord) => {
+            if (item.id === "LSX-20261015-001") {
+              const capNhat = { ...item };
+              if (!capNhat.anhChungTuGiaoDet || capNhat.anhChungTuGiaoDet.length === 0) {
+                capNhat.anhChungTuGiaoDet = [
+                  {
+                    id: "img-mau-det-1",
+                    name: "Bien_Ban_Giao_Soi_XDet_HungPhat.svg",
+                    dataUrl: ANH_CHUNG_TU_MAU_GIAO_DET,
+                  },
+                ];
+                coThayDoi = true;
+              }
+              if (!capNhat.anhChungTuGiaoNhuom || capNhat.anhChungTuGiaoNhuom.length === 0) {
+                capNhat.anhChungTuGiaoNhuom = [
+                  {
+                    id: "img-mau-nhuom-1",
+                    name: "Bien_Ban_Giao_Moc_XNhuom_AChau.svg",
+                    dataUrl: ANH_CHUNG_TU_MAU_GIAO_NHUOM,
+                  },
+                ];
+                coThayDoi = true;
+              }
+              if (!capNhat.anhChungTuGiaoKhoTP || capNhat.anhChungTuGiaoKhoTP.length === 0) {
+                capNhat.anhChungTuGiaoKhoTP = [
+                  {
+                    id: "img-mau-tp-1",
+                    name: "Bien_Ban_Giao_Kho_TP_KhuA.svg",
+                    dataUrl: ANH_CHUNG_TU_MAU_GIAO_KHO_TP,
+                  },
+                ];
+                coThayDoi = true;
+              }
+              return capNhat;
+            }
+            return item;
+          });
+
+          if (coThayDoi) {
+            localStorage.setItem("mimin_lenh_tong_list", JSON.stringify(parsed));
+          }
+
           setDanhSach(parsed);
           if (selectedLenhId) {
             const found = parsed.find((x: LenhSXRecord) => x.id === selectedLenhId);
@@ -132,7 +253,7 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
         }
       }
 
-      // Khởi tạo 1 lệnh sản xuất mẫu hoàn chỉnh để anh Cường xem ngay quy trình
+      // Khởi tạo 1 lệnh sản xuất mẫu hoàn chỉnh kèm ảnh chứng từ sắc nét để anh Cường xem ngay
       const mauMauRecord: LenhSXRecord = {
         id: "LSX-20261015-001",
         ngayTao: new Date().toISOString(),
@@ -169,14 +290,26 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
         vatDet: 8,
         chiDet: 14000000,
         chiDetCoVAT: 15120000,
-        anhChungTuGiaoDet: [],
+        anhChungTuGiaoDet: [
+          {
+            id: "img-mau-det-1",
+            name: "Bien_Ban_Giao_Soi_XDet_HungPhat.svg",
+            dataUrl: ANH_CHUNG_TU_MAU_GIAO_DET,
+          },
+        ],
         // 3. Mộc
         tongKgMoc: 970,
         soCayMoc: 49,
         haoHutDetThucTe: 3,
         // 4. Nhuộm
         tenXuongNhuom: "Xưởng nhuộm Á Châu",
-        anhChungTuGiaoNhuom: [],
+        anhChungTuGiaoNhuom: [
+          {
+            id: "img-mau-nhuom-1",
+            name: "Bien_Ban_Giao_Moc_XNhuom_AChau.svg",
+            dataUrl: ANH_CHUNG_TU_MAU_GIAO_NHUOM,
+          },
+        ],
         chiNhuom: 24250000,
         vatNhuom: 8,
         chiNhuomCoVAT: 26190000,
@@ -208,7 +341,13 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
         ke: "K02",
         tongKgVaiTP: 970,
         tongCayVaiTP: 49,
-        anhChungTuGiaoKhoTP: [],
+        anhChungTuGiaoKhoTP: [
+          {
+            id: "img-mau-tp-1",
+            name: "Bien_Ban_Giao_Kho_TP_KhuA.svg",
+            dataUrl: ANH_CHUNG_TU_MAU_GIAO_KHO_TP,
+          },
+        ],
         // 7. Giá vốn & Tổng chi phí
         giaVonTheoMau: [
           {
@@ -259,6 +398,92 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
     } catch (e) {
       console.error("Lỗi đọc mimin_lenh_tong_list:", e);
     }
+  };
+
+  // Thêm ảnh chứng từ trực tiếp vào lệnh
+  const handleThemAnhChungTu = (
+    lenhId: string,
+    khau: "giaoDet" | "giaoNhuom" | "giaoKhoTP",
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const propName =
+      khau === "giaoDet"
+        ? "anhChungTuGiaoDet"
+        : khau === "giaoNhuom"
+        ? "anhChungTuGiaoNhuom"
+        : "anhChungTuGiaoKhoTP";
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        if (!dataUrl) return;
+        const newImg = {
+          id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: file.name,
+          dataUrl,
+          type: file.type,
+          size: file.size,
+        };
+        setDanhSach((prev) => {
+          const next = prev.map((item) => {
+            if (item.id === lenhId) {
+              const cur = (item as any)[propName] || [];
+              return { ...item, [propName]: [...cur, newImg] };
+            }
+            return item;
+          });
+          localStorage.setItem("mimin_lenh_tong_list", JSON.stringify(next));
+          return next;
+        });
+        setSelectedLenh((prev) => {
+          if (!prev || prev.id !== lenhId) return prev;
+          const cur = (prev as any)[propName] || [];
+          return { ...prev, [propName]: [...cur, newImg] };
+        });
+        toast.success(`Đã thêm ảnh chứng từ "${file.name}"`);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Xóa ảnh chứng từ khỏi lệnh
+  const handleXoaAnhChungTu = (
+    lenhId: string,
+    khau: "giaoDet" | "giaoNhuom" | "giaoKhoTP",
+    index: number,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    const propName =
+      khau === "giaoDet"
+        ? "anhChungTuGiaoDet"
+        : khau === "giaoNhuom"
+        ? "anhChungTuGiaoNhuom"
+        : "anhChungTuGiaoKhoTP";
+
+    setDanhSach((prev) => {
+      const next = prev.map((item) => {
+        if (item.id === lenhId) {
+          const cur = [...((item as any)[propName] || [])];
+          cur.splice(index, 1);
+          return { ...item, [propName]: cur };
+        }
+        return item;
+      });
+      localStorage.setItem("mimin_lenh_tong_list", JSON.stringify(next));
+      return next;
+    });
+
+    setSelectedLenh((prev) => {
+      if (!prev || prev.id !== lenhId) return prev;
+      const cur = [...((prev as any)[propName] || [])];
+      cur.splice(index, 1);
+      return { ...prev, [propName]: cur };
+    });
+    toast.success("Đã xóa ảnh chứng từ");
   };
 
   useEffect(() => {
@@ -641,24 +866,71 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
               )}
 
               {/* Ảnh chứng từ giao dệt */}
-              {selectedLenh.anhChungTuGiaoDet && selectedLenh.anhChungTuGiaoDet.length > 0 && (
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-violet-800 mb-1.5 flex items-center gap-1">
-                    <ImageIcon className="h-3.5 w-3.5" /> Ảnh biên bản / chứng từ bàn giao sợi cho xưởng dệt ({selectedLenh.anhChungTuGiaoDet.length} ảnh):
+              <div className="mt-3 pt-3 border-t border-violet-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-bold text-violet-900 flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-violet-700" />
+                    <span>Ảnh biên bản / Chứng từ giao sợi cho xưởng dệt</span>
+                    <span className="bg-violet-200/90 text-violet-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {selectedLenh.anhChungTuGiaoDet?.length || 0} ảnh
+                    </span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold transition shadow-xs">
+                    <Plus className="h-3 w-3" /> Tải thêm ảnh
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleThemAnhChungTu(selectedLenh.id, "giaoDet", e)}
+                    />
+                  </label>
+                </div>
+
+                {selectedLenh.anhChungTuGiaoDet && selectedLenh.anhChungTuGiaoDet.length > 0 ? (
+                  <div className="flex flex-wrap gap-2.5">
                     {selectedLenh.anhChungTuGiaoDet.map((img, i) => (
-                      <img
-                        key={i}
-                        src={img.dataUrl || img.url || img}
-                        alt="Chứng từ giao dệt"
+                      <div
+                        key={img.id || i}
+                        className="group/img relative h-24 w-24 sm:h-28 sm:w-28 rounded-xl border-2 border-violet-300 overflow-hidden bg-white shadow-xs cursor-pointer hover:border-violet-600 transition"
                         onClick={() => handleOpenLightbox(selectedLenh.anhChungTuGiaoDet!, i)}
-                        className="h-16 w-16 object-cover rounded-lg border border-violet-200 cursor-pointer hover:opacity-80 transition shadow-2xs"
-                      />
+                        title="Bấm để xem phóng to chi tiết biên bản"
+                      >
+                        <img
+                          src={img.dataUrl || img.url || img}
+                          alt={img.name || "Chứng từ giao dệt"}
+                          className="h-full w-full object-cover transition group-hover/img:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition flex flex-col items-center justify-center gap-1 text-white">
+                          <ZoomIn className="h-5 w-5 text-white" />
+                          <span className="text-[10px] font-bold">Phóng to</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleXoaAnhChungTu(selectedLenh.id, "giaoDet", i, e)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white opacity-0 group-hover/img:opacity-100 transition hover:bg-rose-700 shadow-md z-10"
+                          title="Xóa ảnh này"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <label className="cursor-pointer flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-violet-300 hover:border-violet-500 bg-white/60 hover:bg-violet-50/50 transition text-center">
+                    <Camera className="h-6 w-6 text-violet-500 mb-1" />
+                    <span className="text-xs font-bold text-violet-900">Chưa có ảnh chứng từ giao sợi cho xưởng dệt</span>
+                    <span className="text-[11px] text-violet-600 mt-0.5">Bấm vào đây để tải ảnh chụp biên bản hoặc phiếu giao nhận</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleThemAnhChungTu(selectedLenh.id, "giaoDet", e)}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             {/* BƯỚC 3 & 4: MỘC & XƯỞNG NHUỘM */}
@@ -707,24 +979,65 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
                 </div>
 
                 {/* Ảnh chứng từ giao nhuộm */}
-                {selectedLenh.anhChungTuGiaoNhuom && selectedLenh.anhChungTuGiaoNhuom.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-rose-100">
-                    <div className="text-[11px] font-bold text-rose-800 mb-1 flex items-center gap-1">
-                      <ImageIcon className="h-3 w-3" /> Chứng từ dệt giao mộc sang nhuộm ({selectedLenh.anhChungTuGiaoNhuom.length} ảnh):
+                <div className="mt-3 pt-2.5 border-t border-rose-200">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-xs font-bold text-rose-900 flex items-center gap-1">
+                      <ImageIcon className="h-3.5 w-3.5 text-rose-600" />
+                      <span>Chứng từ giao mộc sang nhuộm ({selectedLenh.anhChungTuGiaoNhuom?.length || 0} ảnh)</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <label className="cursor-pointer inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold transition shadow-2xs">
+                      <Plus className="h-2.5 w-2.5" /> Thêm ảnh
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleThemAnhChungTu(selectedLenh.id, "giaoNhuom", e)}
+                      />
+                    </label>
+                  </div>
+
+                  {selectedLenh.anhChungTuGiaoNhuom && selectedLenh.anhChungTuGiaoNhuom.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
                       {selectedLenh.anhChungTuGiaoNhuom.map((img, i) => (
-                        <img
-                          key={i}
-                          src={img.dataUrl || img.url || img}
-                          alt="Chứng từ giao nhuộm"
+                        <div
+                          key={img.id || i}
+                          className="group/img relative h-16 w-16 sm:h-20 sm:w-20 rounded-lg border border-rose-300 overflow-hidden bg-white shadow-2xs cursor-pointer hover:border-rose-600 transition"
                           onClick={() => handleOpenLightbox(selectedLenh.anhChungTuGiaoNhuom!, i)}
-                          className="h-12 w-12 object-cover rounded-md border border-rose-200 cursor-pointer hover:opacity-80 transition"
-                        />
+                          title="Bấm để xem phóng to biên bản giao mộc"
+                        >
+                          <img
+                            src={img.dataUrl || img.url || img}
+                            alt="Chứng từ giao nhuộm"
+                            className="h-full w-full object-cover transition group-hover/img:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center text-white">
+                            <ZoomIn className="h-4 w-4" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleXoaAnhChungTu(selectedLenh.id, "giaoNhuom", i, e)}
+                            className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-rose-600 text-white opacity-0 group-hover/img:opacity-100 transition hover:bg-rose-700 shadow"
+                            title="Xóa ảnh"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <label className="cursor-pointer flex flex-col items-center justify-center p-2.5 rounded-lg border border-dashed border-rose-300 hover:border-rose-500 bg-white/70 text-center text-[11px] text-rose-700 font-medium">
+                      <span>Bấm để tải ảnh biên bản bàn giao mộc</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleThemAnhChungTu(selectedLenh.id, "giaoNhuom", e)}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -794,24 +1107,65 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
               </div>
 
               {/* Ảnh chứng từ giao kho vải TP */}
-              {selectedLenh.anhChungTuGiaoKhoTP && selectedLenh.anhChungTuGiaoKhoTP.length > 0 && (
-                <div className="mt-2">
-                  <div className="text-xs font-bold text-emerald-800 mb-1.5 flex items-center gap-1">
-                    <ImageIcon className="h-3.5 w-3.5" /> Biên bản / chứng từ nhuộm giao kho vải TP ({selectedLenh.anhChungTuGiaoKhoTP.length} ảnh):
+              <div className="mt-3 pt-2.5 border-t border-emerald-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="text-xs font-bold text-emerald-900 flex items-center gap-1">
+                    <ImageIcon className="h-3.5 w-3.5 text-emerald-700" />
+                    <span>Biên bản / Chứng từ nhuộm giao kho vải TP ({selectedLenh.anhChungTuGiaoKhoTP?.length || 0} ảnh)</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-xs">
+                    <Plus className="h-3 w-3" /> Tải thêm ảnh
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleThemAnhChungTu(selectedLenh.id, "giaoKhoTP", e)}
+                    />
+                  </label>
+                </div>
+
+                {selectedLenh.anhChungTuGiaoKhoTP && selectedLenh.anhChungTuGiaoKhoTP.length > 0 ? (
+                  <div className="flex flex-wrap gap-2.5">
                     {selectedLenh.anhChungTuGiaoKhoTP.map((img, i) => (
-                      <img
-                        key={i}
-                        src={img.dataUrl || img.url || img}
-                        alt="Chứng từ giao kho TP"
+                      <div
+                        key={img.id || i}
+                        className="group/img relative h-20 w-20 sm:h-24 sm:w-24 rounded-xl border-2 border-emerald-300 overflow-hidden bg-white shadow-xs cursor-pointer hover:border-emerald-600 transition"
                         onClick={() => handleOpenLightbox(selectedLenh.anhChungTuGiaoKhoTP!, i)}
-                        className="h-16 w-16 object-cover rounded-lg border border-emerald-200 cursor-pointer hover:opacity-80 transition shadow-2xs"
-                      />
+                        title="Bấm để xem phóng to biên bản nhập kho TP"
+                      >
+                        <img
+                          src={img.dataUrl || img.url || img}
+                          alt="Chứng từ giao kho TP"
+                          className="h-full w-full object-cover transition group-hover/img:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center text-white">
+                          <ZoomIn className="h-4 w-4" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleXoaAnhChungTu(selectedLenh.id, "giaoKhoTP", i, e)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white opacity-0 group-hover/img:opacity-100 transition hover:bg-rose-700 shadow"
+                          title="Xóa ảnh"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <label className="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-white/70 text-center text-xs text-emerald-800 font-semibold">
+                    <span>Chưa có ảnh chứng từ nhập kho vải thành phẩm. Bấm vào đây để tải ảnh</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleThemAnhChungTu(selectedLenh.id, "giaoKhoTP", e)}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             {/* BƯỚC 7: GIÁ VỐN & CÔNG NỢ TỔNG HỢP */}
