@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import type { UploadedFile } from "@/components/ui/ImageUploader";
 
+import { uploadChungTuSanXuat } from "@/lib/yarn-chung-tu-upload";
+import { Loader2, Cloud } from "lucide-react";
+
 type Props = {
   files: UploadedFile[];
   onChange: (files: UploadedFile[]) => void;
@@ -14,57 +17,6 @@ type Props = {
   themeColor?: "blue" | "violet" | "rose" | "emerald";
   compact?: boolean;
 };
-
-/** Nén ảnh client-side tự động trước khi lưu base64 (tiết kiệm 90% dung lượng, tránh tràn localStorage) */
-function compressImage(file: File, maxWidth = 1280, maxHeight = 1280, quality = 0.75): Promise<{ dataUrl: string; size: number }> {
-  if (!file.type.startsWith("image/") || file.type.includes("svg")) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ dataUrl: reader.result as string, size: file.size });
-      reader.onerror = () => resolve({ dataUrl: "", size: 0 });
-      reader.readAsDataURL(file);
-    });
-  }
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      if (width > maxWidth || height > maxHeight) {
-        if (width / height > maxWidth / maxHeight) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        } else {
-          width = Math.round((width * maxHeight) / height);
-          height = maxHeight;
-        }
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(width, 1);
-      canvas.height = Math.max(height, 1);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        const reader = new FileReader();
-        reader.onload = () => resolve({ dataUrl: reader.result as string, size: file.size });
-        reader.readAsDataURL(file);
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
-      const compressedSize = Math.round((compressedDataUrl.length * 3) / 4);
-      resolve({ dataUrl: compressedDataUrl, size: compressedSize });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      const reader = new FileReader();
-      reader.onload = () => resolve({ dataUrl: reader.result as string, size: file.size });
-      reader.readAsDataURL(file);
-    };
-    img.src = url;
-  });
-}
 
 export function ChungTuUploaderCompact({
   files,
@@ -76,6 +28,7 @@ export function ChungTuUploaderCompact({
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const colorStyles = {
     blue: {
@@ -114,35 +67,36 @@ export function ChungTuUploaderCompact({
 
   const handleSelectFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
+    setIsUploading(true);
+    const toastId = toast.loading(`Đang tải ảnh ${title} lên đám mây...`);
     const newFiles: UploadedFile[] = [];
 
-    for (const file of Array.from(fileList)) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`Ảnh ${file.name} vượt quá 10MB`);
-        continue;
+    try {
+      for (const file of Array.from(fileList)) {
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error(`Ảnh ${file.name} vượt quá 20MB`);
+          continue;
+        }
+        try {
+          const uploaded = await uploadChungTuSanXuat(file, "chung-tu", title);
+          if (uploaded && uploaded.dataUrl) {
+            newFiles.push(uploaded);
+          }
+        } catch (err) {
+          console.error("Lỗi upload ảnh chứng từ:", err);
+        }
       }
-      try {
-        const { dataUrl, size } = await compressImage(file);
-        if (!dataUrl) continue;
-        newFiles.push({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          name: file.name || "chung-tu.jpg",
-          type: file.type || "image/jpeg",
-          size,
-          dataUrl,
-          category: title,
-          uploadedAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.error("Lỗi nén ảnh chứng từ:", err);
-      }
-    }
 
-    if (newFiles.length > 0) {
-      onChange([...files, ...newFiles]);
-      toast.success(`Đã đính kèm ${newFiles.length} ảnh chứng từ (${title})`);
+      if (newFiles.length > 0) {
+        onChange([...files, ...newFiles]);
+        toast.success(`Đã lưu ${newFiles.length} ảnh chứng từ (${title})`, { id: toastId });
+      } else {
+        toast.dismiss(toastId);
+      }
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeFile = (id: string, e: React.MouseEvent) => {
@@ -198,11 +152,21 @@ export function ChungTuUploaderCompact({
 
         <button
           type="button"
+          disabled={isUploading}
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center gap-1 rounded-xl bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 border border-slate-200 shadow-xs hover:bg-slate-50 hover:border-slate-300 transition-all"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 border border-slate-200 shadow-xs hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-all"
         >
-          <Upload className="h-3.5 w-3.5 text-slate-500" />
-          <span>Úp ảnh</span>
+          {isUploading ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-600" />
+              <span>Đang lưu...</span>
+            </>
+          ) : (
+            <>
+              <Upload className="h-3.5 w-3.5 text-slate-500" />
+              <span>Úp ảnh</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -220,6 +184,11 @@ export function ChungTuUploaderCompact({
                 className="h-full w-full object-cover cursor-pointer hover:scale-110 transition-transform"
                 onClick={() => setZoomIndex(idx)}
               />
+              {file.dataUrl.startsWith("http") && (
+                <div className="absolute bottom-0.5 left-0.5 rounded bg-teal-700/90 text-[8px] font-black text-white px-1 py-0.2 flex items-center gap-0.5 shadow-xs pointer-events-none">
+                  <Cloud className="h-2 w-2" /> Cloud
+                </div>
+              )}
               <button
                 type="button"
                 onClick={(e) => removeFile(file.id, e)}

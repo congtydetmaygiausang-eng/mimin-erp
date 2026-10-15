@@ -127,9 +127,57 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [phieuDaTao, setPhieuDaTao] = useState<PhieuSanXuatVai | null>(null);
 
   // Ảnh chứng từ 3 khâu (Sợi giao dệt, Dệt giao nhuộm, Nhuộm giao kho vải TP)
-  const [anhChungTuGiaoDet, setAnhChungTuGiaoDet] = useState<UploadedFile[]>([]);
-  const [anhChungTuGiaoNhuom, setAnhChungTuGiaoNhuom] = useState<UploadedFile[]>([]);
-  const [anhChungTuGiaoKhoTP, setAnhChungTuGiaoKhoTP] = useState<UploadedFile[]>([]);
+  // Khởi tạo từ draft localStorage để khi F5 không bao giờ bị mất ảnh!
+  const [anhChungTuGiaoDet, setAnhChungTuGiaoDet] = useState<UploadedFile[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("mimin_draft_anh_giao_det") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [anhChungTuGiaoNhuom, setAnhChungTuGiaoNhuom] = useState<UploadedFile[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("mimin_draft_anh_giao_nhuom") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [anhChungTuGiaoKhoTP, setAnhChungTuGiaoKhoTP] = useState<UploadedFile[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("mimin_draft_anh_giao_khotp") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  // Tự động lưu draft ảnh mỗi khi có thay đổi (chống mất khi F5)
+  useEffect(() => {
+    try {
+      localStorage.setItem("mimin_draft_anh_giao_det", JSON.stringify(anhChungTuGiaoDet));
+    } catch (e) {
+      console.warn("Lỗi lưu draft ảnh giao dệt:", e);
+    }
+  }, [anhChungTuGiaoDet]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("mimin_draft_anh_giao_nhuom", JSON.stringify(anhChungTuGiaoNhuom));
+    } catch (e) {
+      console.warn("Lỗi lưu draft ảnh giao nhuộm:", e);
+    }
+  }, [anhChungTuGiaoNhuom]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("mimin_draft_anh_giao_khotp", JSON.stringify(anhChungTuGiaoKhoTP));
+    } catch (e) {
+      console.warn("Lỗi lưu draft ảnh giao kho TP:", e);
+    }
+  }, [anhChungTuGiaoKhoTP]);
+
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
