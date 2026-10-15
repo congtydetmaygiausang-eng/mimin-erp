@@ -38,6 +38,7 @@ type MauNhuomInput = {
   soCay?: number;
   donGiaNhuom: number;
   chiPhiHoaChat: number;
+  vat?: number;
 };
 
 type SoiInput = {
@@ -46,6 +47,7 @@ type SoiInput = {
   maLoSoi: string;
   soKg: number;
   donGia: number;
+  vat?: number;
   soThung?: number;
   kgMoiThung?: number;
 };
@@ -88,13 +90,15 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
 
   const [nccId, setNccId] = useState("");
   const [danhSachSoi, setDanhSachSoi] = useState<SoiInput[]>([
-    { id: "soi-1", loaiSoi: "Cotton 32s", maLoSoi: "LSOI-001", soKg: 1000, donGia: 130000 },
+    { id: "soi-1", loaiSoi: "Cotton 32s", maLoSoi: "LSOI-001", soKg: 1000, donGia: 130000, vat: 8 },
   ]);
 
   const [xuongDetId, setXuongDetId] = useState("");
   const [donGiaDet, setDonGiaDet] = useState(8000);
+  const [vatDet, setVatDet] = useState(8); // % VAT dệt
 
   const [xuongNhuomId, setXuongNhuomId] = useState("");
+  const [vatNhuomChung, setVatNhuomChung] = useState(8); // % VAT nhuộm mặc định
   const [danhSachVaiKho, setDanhSachVaiKho] = useState<KhoVai[]>(() => getAllInventory());
   const [anhVaiCu, setAnhVaiCu] = useState<Record<string, string>>(() => getVaiImages());
   const [danhSachMau, setDanhSachMau] = useState<MauNhuomInput[]>([]);
@@ -103,7 +107,6 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [khu, setKhu] = useState<KhuMeNhuom>("C");
   const [ke, setKe] = useState("C01");
   const [nhapKhoNgay, setNhapKhoNgay] = useState(true);
-  const [vatRate, setVatRate] = useState(8); // % VAT đầu vào, mặc định 8%
   const [daTaoLenh, setDaTaoLenh] = useState(false);
   const [hienPhieu, setHienPhieu] = useState(false);
   const [hienPhieuNhapSoi, setHienPhieuNhapSoi] = useState(false);
@@ -112,21 +115,42 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [phieuDaTao, setPhieuDaTao] = useState<PhieuSanXuatVai | null>(null);
 
   const tongKgSoi = danhSachSoi.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
+
+  // 1. Khâu SỢI
   const chiSoi = danhSachSoi.reduce((sum, item) => sum + Math.max(item.soKg, 0) * Math.max(item.donGia, 0), 0);
+  const vatSoi = danhSachSoi.reduce(
+    (sum, item) => sum + (Math.max(item.soKg, 0) * Math.max(item.donGia, 0) * (item.vat ?? 8)) / 100,
+    0
+  );
+  const chiSoiCoVAT = chiSoi + vatSoi;
+
+  // 2. Khâu DỆT
   const chiDet = tongKgSoi * donGiaDet;
+  const vatDetTien = (chiDet * vatDet) / 100;
+  const chiDetCoVAT = chiDet + vatDetTien;
+  const donGiaDetCoVAT = donGiaDet * (1 + vatDet / 100);
+
+  // 3. Khâu NHUỘM & HÓA CHẤT
   const chiNhuom = danhSachMau.reduce((sum, item) => sum + Math.max(item.soKg, 0) * Math.max(item.donGiaNhuom, 0), 0);
   const chiHoaChat = danhSachMau.reduce((sum, item) => sum + Math.max(item.chiPhiHoaChat, 0), 0);
-  const tongCong = chiSoi + chiDet + chiNhuom + chiHoaChat;
+  const vatNhuomTien = danhSachMau.reduce((sum, item) => {
+    const tongTienMau = Math.max(item.soKg, 0) * Math.max(item.donGiaNhuom, 0) + Math.max(item.chiPhiHoaChat, 0);
+    return sum + (tongTienMau * (item.vat ?? vatNhuomChung)) / 100;
+  }, 0);
+  const chiNhuomCoVAT = chiNhuom + chiHoaChat + vatNhuomTien;
+
+  // TỔNG HỢP CHI PHÍ & VAT 3 KHÂU
+  const tongCong = chiSoi + chiDet + chiNhuom + chiHoaChat; // Chưa VAT
+  const tongVAT = vatSoi + vatDetTien + vatNhuomTien; // Tổng tiền VAT từng khâu
+  const tongChiPhiCoVAT = tongCong + tongVAT; // Có VAT
+  const vatBinhQuanPt = tongCong > 0 ? (tongVAT / tongCong) * 100 : 0; // % VAT bình quân
 
   const tongKgVaiTP = danhSachMau.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
   const tongCayVaiTP = danhSachMau.reduce((sum, item) => sum + (item.soCay || (item.soKg > 0 ? Math.max(1, Math.ceil(item.soKg / 20)) : 0)), 0);
   const haoHutTongKg = tongKgSoi - tongKgVaiTP;
   const haoHutTongPt = tongKgSoi > 0 ? (haoHutTongKg / tongKgSoi) * 100 : 0;
 
-  // ===== TÍNH GIÁ VỐN 1 KG VẢI THÀNH PHẨM (có trừ hao hụt + VAT) =====
-  // Chi phí không VAT (đã tính theo vải TP nhận về, hao hụt đã ngầm định)
-  const chiVAT = tongCong * vatRate / 100;
-  const tongChiPhiCoVAT = tongCong + chiVAT;
+  // ===== TÍNH GIÁ VỐN 1 KG VẢI THÀNH PHẨM (có trừ hao hụt + VAT từng khâu) =====
   // Giá vốn 1 kg vải TP = Tổng chi phí / số kg TP thực nhận (hao hụt đã hấp thụ)
   const giaVon1KgTP_chuaVAT = tongKgVaiTP > 0 ? tongCong / tongKgVaiTP : 0;
   const giaVon1KgTP_coVAT = tongKgVaiTP > 0 ? tongChiPhiCoVAT / tongKgVaiTP : 0;
@@ -138,41 +162,52 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const giaVonTheoMau = useMemo(() => {
     const tongKg = danhSachMau.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
     let chiSoiDaPhanBo = 0;
+    let vatSoiDaPhanBo = 0;
     let chiDetDaPhanBo = 0;
+    let vatDetDaPhanBo = 0;
 
     return danhSachMau.map((item, index) => {
       const laMauCuoi = index === danhSachMau.length - 1;
       const tyTrong = tongKg > 0 ? Math.max(item.soKg, 0) / tongKg : 0;
-      const chiSoiPhanBo = tongKg <= 0
-        ? 0
-        : laMauCuoi
-        ? chiSoi - chiSoiDaPhanBo
-        : Math.round(chiSoi * tyTrong);
-      const chiDetPhanBo = tongKg <= 0
-        ? 0
-        : laMauCuoi
-        ? chiDet - chiDetDaPhanBo
-        : Math.round(chiDet * tyTrong);
+
+      const chiSoiPhanBo = tongKg <= 0 ? 0 : laMauCuoi ? chiSoi - chiSoiDaPhanBo : Math.round(chiSoi * tyTrong);
+      const vatSoiPhanBo = tongKg <= 0 ? 0 : laMauCuoi ? vatSoi - vatSoiDaPhanBo : Math.round(vatSoi * tyTrong);
+
+      const chiDetPhanBo = tongKg <= 0 ? 0 : laMauCuoi ? chiDet - chiDetDaPhanBo : Math.round(chiDet * tyTrong);
+      const vatDetPhanBo = tongKg <= 0 ? 0 : laMauCuoi ? vatDetTien - vatDetDaPhanBo : Math.round(vatDetTien * tyTrong);
+
       chiSoiDaPhanBo += chiSoiPhanBo;
+      vatSoiDaPhanBo += vatSoiPhanBo;
       chiDetDaPhanBo += chiDetPhanBo;
+      vatDetDaPhanBo += vatDetPhanBo;
 
       const tienNhuom = item.soKg * item.donGiaNhuom;
+      const vatMauRate = item.vat ?? vatNhuomChung;
+      const vatNhuomPhanBo = ((tienNhuom + item.chiPhiHoaChat) * vatMauRate) / 100;
+
       const tongGiaVon = chiSoiPhanBo + chiDetPhanBo + tienNhuom + item.chiPhiHoaChat;
-      const tongGiaVonCoVAT = tongGiaVon * (1 + vatRate / 100);
+      const tongVATMau = vatSoiPhanBo + vatDetPhanBo + vatNhuomPhanBo;
+      const tongGiaVonCoVAT = tongGiaVon + tongVATMau;
+
       const giaVonMoiKg = item.soKg > 0 ? tongGiaVon / item.soKg : 0;
       const giaVonMoiKgCoVAT = item.soKg > 0 ? tongGiaVonCoVAT / item.soKg : 0;
+
       return {
         ...item,
         chiSoiPhanBo,
+        vatSoiPhanBo,
         chiDetPhanBo,
+        vatDetPhanBo,
         tienNhuom,
+        vatNhuomPhanBo,
         tongGiaVon,
+        tongVATMau,
         tongGiaVonCoVAT,
         giaVonMoiKg,
         giaVonMoiKgCoVAT,
       };
     });
-  }, [chiDet, chiSoi, danhSachMau, vatRate]);
+  }, [chiDet, chiSoi, danhSachMau, vatSoi, vatDetTien, vatNhuomChung]);
 
   useEffect(() => {
     if (!nccId && nccs[0]) setNccId(nccs[0].id);
@@ -221,6 +256,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         maLoSoi: `LSOI-${String(prev.length + 1).padStart(3, "0")}`,
         soKg: 0,
         donGia: 0,
+        vat: 8,
         soThung: 0,
         kgMoiThung: 0,
       },
@@ -270,14 +306,15 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
       } as any, user);
 
       if (ketQua.ok) {
+        const tienSoiCoVAT = Math.round(soi.soKg * soi.donGia * (1 + (soi.vat ?? 8) / 100));
         themCongNo({
           ngayPhatSinh: new Date().toISOString().slice(0, 10),
           doiTuongId: ncc.id,
           tenDoiTuong: ncc.ten_ncc,
           loai: "NCC sợi",
           maPhieuGoc: ketQua.phieu?.id || "",
-          moTa: `Nhập ${soi.soKg}kg ${soi.loaiSoi} - lô ${soi.maLoSoi} từ ${ncc.ten_ncc}`,
-          phatSinh: soi.soKg * soi.donGia,
+          moTa: `Nhập ${soi.soKg}kg ${soi.loaiSoi} - lô ${soi.maLoSoi} từ ${ncc.ten_ncc}${soi.vat ? ` (VAT ${soi.vat}%)` : ""}`,
+          phatSinh: tienSoiCoVAT,
           thanhToan: 0,
         });
       }
@@ -316,8 +353,8 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
       tenDoiTuong: xDet.ten_ncc,
       loai: "Xưởng dệt",
       maPhieuGoc: r2.lenh?.id || "",
-      moTa: `Dệt ${tongKgSoi}kg từ ${danhSachSoi.length} loại sợi → ${xDet.ten_ncc}`,
-      phatSinh: chiDet,
+      moTa: `Dệt ${tongKgSoi}kg từ ${danhSachSoi.length} loại sợi → ${xDet.ten_ncc}${vatDet ? ` (VAT ${vatDet}%)` : ""}`,
+      phatSinh: Math.round(chiDetCoVAT),
       thanhToan: 0,
     });
 
@@ -335,7 +372,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           soKg: m.soKg,
           soCay: m.soCay || (m.soKg > 0 ? Math.max(1, Math.ceil(m.soKg / 20)) : 1),
           donGiaNhuom: m.donGiaNhuom,
-          giaVonDuKien: giaVonTheoMau[index]?.giaVonMoiKg || 0,
+          giaVonDuKien: giaVonTheoMau[index]?.giaVonMoiKgCoVAT || giaVonTheoMau[index]?.giaVonMoiKg || 0,
         })),
         nguoiPhuTrach: user?.name || "Admin",
         ghiChu: [
@@ -357,8 +394,8 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         tenDoiTuong: xNhuom.ten_ncc,
         loai: "Xưởng nhuộm",
         maPhieuGoc: r3.me?.id || "",
-        moTa: `Nhuộm ${danhSachMau.length} màu → ${xNhuom.ten_ncc}`,
-        phatSinh: chiNhuom + chiHoaChat,
+        moTa: `Nhuộm ${danhSachMau.length} màu → ${xNhuom.ten_ncc} (gồm VAT)`,
+        phatSinh: Math.round(chiNhuomCoVAT),
         thanhToan: 0,
       });
 
@@ -415,7 +452,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
 
           const soCay = m.soCay || (m.soKg > 0 ? Math.max(1, Math.ceil(m.soKg / 20)) : 1);
           const kgMoiCay = Number((m.soKg / soCay).toFixed(2));
-          const giaVon = Math.round(giaVonTheoMau[idx]?.giaVonMoiKg || m.donGiaNhuom);
+          const giaVon = Math.round(giaVonTheoMau[idx]?.giaVonMoiKgCoVAT || giaVonTheoMau[idx]?.giaVonMoiKg || m.donGiaNhuom);
 
           // Tạo Dye Lot chờ kiểm hoặc lưu trữ ở Khu C / khu được chọn
           try {
@@ -567,38 +604,99 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-                  <F label="Loại sợi" v={soi.loaiSoi} on={(value) => capNhatSoi(soi.id, { loaiSoi: value })} />
-                  <F label="Mã lô" v={soi.maLoSoi} on={(value) => capNhatSoi(soi.id, { maLoSoi: value })} />
-                  <F label="Số thùng" v={soi.soThung || 0} on={(value) => {
-                    const newSoThung = Number(value);
-                    const newKgMoiThung = soi.kgMoiThung || 0;
-                    capNhatSoi(soi.id, { soThung: newSoThung, soKg: newSoThung > 0 && newKgMoiThung > 0 ? newSoThung * newKgMoiThung : soi.soKg });
-                  }} type="number" />
-                  <F label="Kg/thùng" v={soi.kgMoiThung || 0} on={(value) => {
-                    const newKgMoiThung = Number(value);
-                    const newSoThung = soi.soThung || 0;
-                    capNhatSoi(soi.id, { kgMoiThung: newKgMoiThung, soKg: newSoThung > 0 && newKgMoiThung > 0 ? newSoThung * newKgMoiThung : soi.soKg });
-                  }} type="number" />
-                  <F label="Số kg" v={soi.soKg} on={(value) => capNhatSoi(soi.id, { soKg: value })} type="number" />
-                  <F label="Đơn giá (đ/kg)" v={soi.donGia} on={(value) => capNhatSoi(soi.id, { donGia: value })} type="number" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-12 gap-2 items-start">
+                  <div className="col-span-2 md:col-span-2">
+                    <F label="Loại sợi" v={soi.loaiSoi} on={(value) => capNhatSoi(soi.id, { loaiSoi: value })} />
+                  </div>
+                  <div className="col-span-2 md:col-span-2">
+                    <F label="Mã lô" v={soi.maLoSoi} on={(value) => capNhatSoi(soi.id, { maLoSoi: value })} />
+                  </div>
+                  <div className="col-span-1 md:col-span-1">
+                    <F label="Số thùng" v={soi.soThung || 0} on={(value) => {
+                      const newSoThung = Number(value);
+                      const newKgMoiThung = soi.kgMoiThung || 0;
+                      capNhatSoi(soi.id, { soThung: newSoThung, soKg: newSoThung > 0 && newKgMoiThung > 0 ? newSoThung * newKgMoiThung : soi.soKg });
+                    }} type="number" />
+                  </div>
+                  <div className="col-span-1 md:col-span-1">
+                    <F label="Kg/thùng" v={soi.kgMoiThung || 0} on={(value) => {
+                      const newKgMoiThung = Number(value);
+                      const newSoThung = soi.soThung || 0;
+                      capNhatSoi(soi.id, { kgMoiThung: newKgMoiThung, soKg: newSoThung > 0 && newKgMoiThung > 0 ? newSoThung * newKgMoiThung : soi.soKg });
+                    }} type="number" />
+                  </div>
+                  <div className="col-span-2 md:col-span-2">
+                    <F label="Số kg" v={soi.soKg} on={(value) => capNhatSoi(soi.id, { soKg: value })} type="number" />
+                  </div>
+                  <div className="col-span-2 md:col-span-2">
+                    <F label="Đơn giá (đ/kg)" v={soi.donGia} on={(value) => capNhatSoi(soi.id, { donGia: value })} type="number" />
+                  </div>
+                  <div className="col-span-2 md:col-span-2">
+                    <label className="text-[11px] font-bold text-blue-900 block mb-1">
+                      % VAT Sợi
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={soi.vat ?? 8}
+                        onChange={(e) => capNhatSoi(soi.id, { vat: Math.max(0, Number(e.target.value) || 0) })}
+                        className="w-full px-2 py-2 rounded-lg border-2 border-blue-400 bg-blue-50/40 text-center text-sm font-black text-blue-950 focus:ring-2 focus:ring-blue-500 shadow-inner"
+                        placeholder="% VAT"
+                        title="Thuế suất % VAT sợi"
+                      />
+                      <span className="text-xs font-bold text-blue-800">%</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-1 text-right text-xs font-semibold text-blue-700">
-                  Thành tiền: {(soi.soKg * soi.donGia).toLocaleString("vi-VN")}đ
-                </div>
+
+                {(() => {
+                  const vatRateSoi = soi.vat ?? 8;
+                  const thanhTienChuaVat = soi.soKg * soi.donGia;
+                  const vatTienSoi = (thanhTienChuaVat * vatRateSoi) / 100;
+                  const thanhTienCoVat = thanhTienChuaVat + vatTienSoi;
+                  const donGiaCoVat = soi.donGia * (1 + vatRateSoi / 100);
+                  return (
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-blue-50/80 border border-blue-200 px-3 py-1.5 text-xs text-blue-950">
+                      <div>
+                        Đơn giá sợi có VAT: <b className="text-blue-900">{Math.round(donGiaCoVat).toLocaleString("vi-VN")} đ/kg</b>
+                        {vatRateSoi > 0 && <span className="text-[10px] text-blue-700 font-semibold ml-1.5">(Đã gồm {vatRateSoi}% VAT)</span>}
+                      </div>
+                      <div className="text-right">
+                        <span>Tiền sợi: <b>{thanhTienChuaVat.toLocaleString("vi-VN")}đ</b></span>
+                        {vatRateSoi > 0 && (
+                          <>
+                            <span className="mx-1.5 text-blue-300">|</span>
+                            <span>VAT {vatRateSoi}%: <b className="text-amber-700">+{Math.round(vatTienSoi).toLocaleString("vi-VN")}đ</b></span>
+                            <span className="mx-1.5 text-blue-300">|</span>
+                            <span>Tổng có VAT: <b className="text-blue-950 font-black">{Math.round(thanhTienCoVat).toLocaleString("vi-VN")}đ</b></span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={themDongSoi}
-                className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-700 shadow-sm"
+                className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50"
               >
                 <Plus className="mr-1 inline h-4 w-4" /> Thêm sợi mới
               </button>
-              <div className="rounded-lg bg-blue-600 px-3 py-2 text-right text-white">
-                <div className="text-[10px] font-medium text-white/80">Tổng sợi chuyển dệt gia công</div>
-                <div className="text-lg font-black">{tongKgSoi.toLocaleString("vi-VN")} kg</div>
+              <div className="rounded-xl bg-blue-600 px-3.5 py-2 text-right text-white shadow-sm">
+                <div className="text-[10px] font-medium text-white/80">Tổng {tongKgSoi.toLocaleString("vi-VN")} kg sợi chuyển dệt</div>
+                <div className="text-sm font-black">
+                  Tiền sợi: {chiSoi.toLocaleString("vi-VN")}đ
+                  {vatSoi > 0 && (
+                    <span className="text-blue-100 text-xs font-semibold block">
+                      VAT sợi: +{Math.round(vatSoi).toLocaleString("vi-VN")}đ | Tổng có VAT: {Math.round(chiSoiCoVAT).toLocaleString("vi-VN")}đ
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -626,17 +724,108 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             {dsXuongDet.map((x) => <option key={x.id} value={x.id}>{x.ten_ncc} ({x.ma_ncc})</option>)}
           </select>
         </div>
-        <F label="Đơn giá dệt (đ/kg)" v={donGiaDet} on={setDonGiaDet} type="number" />
-        <div className="mt-2 rounded-xl bg-violet-600 px-3.5 py-2.5 text-white shadow-sm">
-          <div className="text-[10px] font-medium text-white/80 uppercase tracking-wider">Tổng giao xưởng dệt</div>
-          <div className="text-xl font-black">{tongKgSoi.toLocaleString("vi-VN")} kg · {danhSachSoi.length} loại sợi</div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+          <F label="Đơn giá dệt (đ/kg) - Chưa VAT" v={donGiaDet} on={setDonGiaDet} type="number" />
+          <div>
+            <label className="text-xs font-semibold opacity-70 block mb-1">% VAT dệt gia công</label>
+            <div className="flex items-center gap-1.5 bg-violet-50 rounded-xl p-1 border border-violet-200">
+              {[0, 5, 8, 10].map((rate) => (
+                <button
+                  key={rate}
+                  type="button"
+                  onClick={() => setVatDet(rate)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    vatDet === rate ? "bg-violet-600 text-white shadow-xs" : "bg-white text-violet-900 hover:bg-violet-100"
+                  }`}
+                >
+                  {rate}%
+                </button>
+              ))}
+              <div className="flex items-center ml-auto">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={vatDet}
+                  onChange={(e) => setVatDet(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-14 rounded-lg border border-violet-300 bg-white px-1.5 py-1 text-center text-xs font-black text-violet-900 focus:ring-2 focus:ring-violet-400"
+                  title="Nhập % VAT dệt"
+                />
+                <span className="text-xs font-bold text-violet-700 ml-1 mr-1">%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-violet-50 border border-violet-200 px-3 py-2 text-xs text-violet-950">
+          <div>
+            Đơn giá dệt có VAT: <b className="text-violet-800">{Math.round(donGiaDetCoVAT).toLocaleString("vi-VN")} đ/kg</b>
+            <span className="text-[10px] text-violet-600 ml-1.5">(Chưa VAT: {donGiaDet.toLocaleString("vi-VN")}đ/kg)</span>
+          </div>
+          <div>
+            Tiền dệt chưa VAT: <b>{chiDet.toLocaleString("vi-VN")}đ</b>
+            {vatDet > 0 && (
+              <>
+                <span className="mx-1.5 text-violet-300">|</span>
+                <span>VAT {vatDet}%: <b className="text-amber-700">+{Math.round(vatDetTien).toLocaleString("vi-VN")}đ</b></span>
+                <span className="mx-1.5 text-violet-300">|</span>
+                <span>Tổng có VAT: <b className="text-violet-950 font-black">{Math.round(chiDetCoVAT).toLocaleString("vi-VN")}đ</b></span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-2 rounded-xl bg-violet-600 px-3.5 py-2.5 text-white shadow-sm flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] font-medium text-white/80 uppercase tracking-wider">Tổng giao xưởng dệt</div>
+            <div className="text-xl font-black">{tongKgSoi.toLocaleString("vi-VN")} kg · {danhSachSoi.length} loại sợi</div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] text-white/80">Tổng chi dệt dự kiến</div>
+            <div className="text-base font-black">{Math.round(chiDetCoVAT).toLocaleString("vi-VN")}đ {vatDet > 0 && <span className="text-xs font-normal text-violet-200">(gồm VAT)</span>}</div>
+          </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 md:p-5 shadow-sm backdrop-blur-md">
-        <div className="mb-3 flex items-center gap-2.5 border-b border-slate-100 pb-3">
-          <span className="flex h-6 w-6 items-center justify-center rounded-xl bg-rose-600 text-xs font-bold text-white shadow-sm">3</span>
-          <h3 className="font-bold text-slate-800 text-sm">NHUỘM MÀU HOÀN TẤT</h3>
+        <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-xl bg-rose-600 text-xs font-bold text-white shadow-sm">3</span>
+            <h3 className="font-bold text-slate-800 text-sm">NHUỘM MÀU HOÀN TẤT</h3>
+          </div>
+          <div className="flex items-center gap-1.5 bg-rose-50 rounded-xl px-2 py-1 border border-rose-200">
+            <span className="text-xs font-bold text-rose-900">% VAT Nhuộm mặc định:</span>
+            {[0, 5, 8, 10].map((rate) => (
+              <button
+                key={rate}
+                type="button"
+                onClick={() => {
+                  setVatNhuomChung(rate);
+                  setDanhSachMau((prev) => prev.map((m) => ({ ...m, vat: rate })));
+                }}
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
+                  vatNhuomChung === rate ? "bg-rose-600 text-white shadow-xs" : "bg-white text-rose-900 hover:bg-rose-100"
+                }`}
+              >
+                {rate}%
+              </button>
+            ))}
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={vatNhuomChung}
+              onChange={(e) => {
+                const val = Math.max(0, Number(e.target.value) || 0);
+                setVatNhuomChung(val);
+                setDanhSachMau((prev) => prev.map((m) => ({ ...m, vat: val })));
+              }}
+              className="w-12 rounded-lg border border-rose-300 bg-white px-1 py-0.5 text-center text-xs font-black text-rose-900 focus:ring-2 focus:ring-rose-400"
+              title="Đổi % VAT cho tất cả các màu nhuộm"
+            />
+            <span className="text-xs font-bold text-rose-700">%</span>
+          </div>
         </div>
         <div>
           <label className="text-xs font-semibold opacity-70">Xưởng nhuộm</label>
@@ -646,13 +835,14 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           </select>
         </div>
 
-        <div className="grid grid-cols-12 gap-1 text-[10px] font-semibold opacity-70 mt-2 mb-1">
+        <div className="grid grid-cols-12 gap-1 text-[10px] font-semibold opacity-70 mt-3 mb-1">
           <div className="col-span-3">Mã màu kho TP</div>
           <div className="col-span-2">Màu</div>
-          <div className="col-span-2 text-right">Số kg TP</div>
+          <div className="col-span-1 text-right">Số kg TP</div>
           <div className="col-span-1 text-right">Số cây</div>
           <div className="col-span-2 text-right">Đơn giá nhuộm</div>
           <div className="col-span-1 text-right">Hóa chất</div>
+          <div className="col-span-1 text-center">% VAT</div>
           <div className="col-span-1 text-center">Xóa</div>
         </div>
         {danhSachMau.map((m, i) => (
@@ -683,7 +873,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                     soCay: m.soCay && m.soCay > 0 ? m.soCay : (newKg > 0 ? Math.max(1, Math.ceil(newKg / 20)) : 0),
                   });
                 }}
-                className="col-span-2 px-2 py-1 rounded border text-right font-bold text-slate-800"
+                className="col-span-1 px-1.5 py-1 rounded border text-right font-bold text-slate-800"
                 placeholder="Số kg"
               />
               <input
@@ -706,6 +896,16 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                 onChange={(e) => capNhatMau(i, { chiPhiHoaChat: Number(e.target.value) })}
                 className="col-span-1 px-1 py-1 rounded border text-right text-[11px]"
               />
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={m.vat ?? vatNhuomChung}
+                onChange={(e) => capNhatMau(i, { vat: Math.max(0, Number(e.target.value) || 0) })}
+                className="col-span-1 px-1 py-1 rounded border text-center font-bold text-rose-900 bg-rose-50/50 text-xs"
+                placeholder="% VAT"
+                title="% VAT riêng của màu này"
+              />
               <button
                 type="button"
                 onClick={() => setDanhSachMau(danhSachMau.filter((_, idx) => idx !== i))}
@@ -715,6 +915,34 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {(() => {
+              const vatMau = m.vat ?? vatNhuomChung;
+              const tienNhuomChuaVat = m.soKg * m.donGiaNhuom + m.chiPhiHoaChat;
+              const vatTienMau = (tienNhuomChuaVat * vatMau) / 100;
+              const tienNhuomCoVat = tienNhuomChuaVat + vatTienMau;
+              const donGiaNhuomCoVat = m.donGiaNhuom * (1 + vatMau / 100);
+              return (
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-1 text-[11px] text-rose-900 bg-rose-50/60 rounded px-2 py-0.5">
+                  <div>
+                    Đơn giá nhuộm có VAT: <b>{Math.round(donGiaNhuomCoVat).toLocaleString("vi-VN")} đ/kg</b>
+                    {vatMau > 0 && <span className="text-[10px] text-rose-600 ml-1">(gồm {vatMau}% VAT)</span>}
+                  </div>
+                  <div>
+                    Tiền nhuộm+HC: <b>{tienNhuomChuaVat.toLocaleString("vi-VN")}đ</b>
+                    {vatMau > 0 && (
+                      <>
+                        <span className="mx-1 text-rose-300">|</span>
+                        <span>VAT {vatMau}%: <b>+{Math.round(vatTienMau).toLocaleString("vi-VN")}đ</b></span>
+                        <span className="mx-1 text-rose-300">|</span>
+                        <span>Tổng có VAT: <b className="text-rose-950 font-bold">{Math.round(tienNhuomCoVat).toLocaleString("vi-VN")}đ</b></span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {(() => {
               const vai = danhSachVaiKho.find((item) => item.maVT === m.maVai) as KhoVaiWithImage | undefined;
               const src = vai?.imageUrl || vai?.hinhAnh || anhVaiCu[m.maVai];
@@ -856,37 +1084,10 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="font-black text-amber-900 text-sm uppercase tracking-wide flex items-center gap-1.5">
               <span>🧮</span>
-              <span>Giá Vốn 1 kg Vải Thành Phẩm (Đã trừ hao hụt & VAT)</span>
+              <span>Giá Vốn 1 kg Vải Thành Phẩm (Đã trừ hao hụt & VAT từng khâu)</span>
             </div>
-            {/* Nhập % VAT đầu vào */}
-            <div className="flex items-center gap-1.5 bg-amber-100/70 rounded-xl p-1 border border-amber-300">
-              <span className="text-xs font-bold text-amber-900 px-1.5">% VAT:</span>
-              {[0, 5, 8, 10].map((rate) => (
-                <button
-                  key={rate}
-                  type="button"
-                  onClick={() => setVatRate(rate)}
-                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all ${
-                    vatRate === rate
-                      ? "bg-amber-600 text-white shadow-sm"
-                      : "bg-white text-amber-900 hover:bg-amber-200"
-                  }`}
-                >
-                  {rate}%
-                </button>
-              ))}
-              <div className="flex items-center ml-1">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={vatRate}
-                  onChange={(e) => setVatRate(Math.max(0, Number(e.target.value) || 0))}
-                  className="w-12 rounded-lg border border-amber-300 bg-white px-1 py-0.5 text-center text-xs font-black text-amber-900 focus:ring-2 focus:ring-amber-400"
-                  title="Nhập % VAT tùy chỉnh"
-                />
-                <span className="text-xs font-bold text-amber-800 ml-1 mr-1">%</span>
-              </div>
+            <div className="text-xs font-bold text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-300">
+              Tổng VAT 3 khâu: <b className="text-amber-950">+{Math.round(tongVAT).toLocaleString("vi-VN")}đ</b> (Bình quân {vatBinhQuanPt.toFixed(1)}%)
             </div>
           </div>
 
@@ -925,21 +1126,23 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
               </div>
             </div>
 
-            {/* Thuế VAT */}
-            {vatRate > 0 && (
-              <div className="rounded-lg bg-emerald-50/60 p-2 border border-emerald-100 font-mono">
-                <div className="font-sans font-bold text-emerald-900 text-[11px] mb-0.5">
-                  Cộng thêm Thuế VAT {vatRate}%:
-                </div>
-                <div>Tiền thuế VAT {vatRate}% = <b className="text-emerald-800">{Math.round(chiVAT).toLocaleString("vi-VN")}đ</b> → Tổng chi phí có VAT = <b className="text-emerald-800">{Math.round(tongChiPhiCoVAT).toLocaleString("vi-VN")}đ</b></div>
-                <div className="mt-0.5 font-bold text-emerald-950">
-                  Giá vốn 1 kg vải TP (Có VAT {vatRate}%) = {Math.round(giaVon1KgTP_chuaVAT).toLocaleString("vi-VN")}đ × (1 + {vatRate}%) = <span className="text-orange-700 font-black text-xs">{Math.round(giaVon1KgTP_coVAT).toLocaleString("vi-VN")} đ/kg</span>
-                </div>
+            {/* Chi tiết VAT từng khâu */}
+            <div className="rounded-lg bg-emerald-50/60 p-2 border border-emerald-100 font-mono">
+              <div className="font-sans font-bold text-emerald-900 text-[11px] mb-0.5">
+                Cộng dồn Thuế VAT từ từng khâu (Sợi + Dệt + Nhuộm):
               </div>
-            )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 my-1 text-[11px]">
+                <div className="rounded bg-white/80 px-2 py-0.5 border border-blue-200 text-blue-900">VAT Sợi: <b>+{Math.round(vatSoi).toLocaleString("vi-VN")}đ</b></div>
+                <div className="rounded bg-white/80 px-2 py-0.5 border border-violet-200 text-violet-900">VAT Dệt: <b>+{Math.round(vatDetTien).toLocaleString("vi-VN")}đ</b></div>
+                <div className="rounded bg-white/80 px-2 py-0.5 border border-rose-200 text-rose-900">VAT Nhuộm+HC: <b>+{Math.round(vatNhuomTien).toLocaleString("vi-VN")}đ</b></div>
+              </div>
+              <div className="mt-0.5 font-bold text-emerald-950">
+                Giá vốn 1 kg vải TP (Có VAT từng khâu) = {Math.round(tongChiPhiCoVAT).toLocaleString("vi-VN")}đ ÷ {tongKgVaiTP.toLocaleString("vi-VN")} kg = <span className="text-orange-700 font-black text-xs">{Math.round(giaVon1KgTP_coVAT).toLocaleString("vi-VN")} đ/kg</span>
+              </div>
+            </div>
 
             <div className="mt-2 text-[10px] text-slate-500 font-sans italic">
-              ℹ️ Ghi chú: Xuất {tongKgSoi.toLocaleString("vi-VN")} kg sợi, thu về {tongKgVaiTP.toLocaleString("vi-VN")} kg vải TP (hao hụt {haoHutTongPt.toFixed(1)}% = {haoHutTongKg.toFixed(1)} kg). Toàn bộ hao hụt đã được tự động phân bổ vào từng kg vải thành phẩm.
+              ℹ️ Ghi chú: Xuất {tongKgSoi.toLocaleString("vi-VN")} kg sợi, thu về {tongKgVaiTP.toLocaleString("vi-VN")} kg vải TP (hao hụt {haoHutTongPt.toFixed(1)}% = {haoHutTongKg.toFixed(1)} kg). Toàn bộ hao hụt và VAT từng khâu đã được tự động phân bổ vào từng kg vải thành phẩm.
             </div>
           </div>
 
@@ -955,26 +1158,24 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                 Tổng chi phí: <b>{tongCong.toLocaleString("vi-VN")}đ</b> ÷ <b>{tongKgVaiTP.toLocaleString("vi-VN")} kg</b> vải TP
               </div>
             </div>
-            <div className={`rounded-xl border p-3 shadow-xs transition-all ${vatRate > 0 ? "bg-orange-100/90 border-orange-300" : "bg-slate-50 border-slate-200 opacity-60"}`}>
-              <div className="text-[10px] font-bold text-orange-800 uppercase tracking-wider">Giá vốn 1 kg vải TP (Có VAT {vatRate}%)</div>
+            <div className="rounded-xl border p-3 shadow-xs bg-orange-100/90 border-orange-300">
+              <div className="text-[10px] font-bold text-orange-800 uppercase tracking-wider">Giá vốn 1 kg vải TP (Có VAT từng khâu)</div>
               <div className="text-2xl font-black text-orange-900 mt-1">
-                {tongKgVaiTP > 0 && vatRate > 0 ? Math.round(giaVon1KgTP_coVAT).toLocaleString("vi-VN") : "—"}
+                {tongKgVaiTP > 0 ? Math.round(giaVon1KgTP_coVAT).toLocaleString("vi-VN") : "—"}
                 <span className="text-sm font-bold text-orange-700"> đ/kg</span>
               </div>
               <div className="text-[11px] text-orange-700 mt-0.5">
-                {vatRate > 0
-                  ? `+${vatRate}% VAT (+${Math.round(chiVAT).toLocaleString("vi-VN")}đ) | Tổng: ${Math.round(tongChiPhiCoVAT).toLocaleString("vi-VN")}đ`
-                  : "Chưa chọn VAT (0%)"}
+                Gồm VAT: <b>+{Math.round(tongVAT).toLocaleString("vi-VN")}đ</b> ({vatBinhQuanPt.toFixed(1)}%) | Tổng có VAT: <b>{Math.round(tongChiPhiCoVAT).toLocaleString("vi-VN")}đ</b>
               </div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
-          <Card label="Chi sợi" v={chiSoi} c="blue" sub={ncc?.ten_ncc} />
-          <Card label="Chi dệt" v={chiDet} c="violet" sub={xDet?.ten_ncc} />
-          <Card label="Chi nhuộm+HC" v={chiNhuom + chiHoaChat} c="rose" sub={xNhuom?.ten_ncc} />
-          <Card label="VAT đầu vào" v={chiVAT} c="amber" sub={`${vatRate}%`} />
+          <Card label="Chi sợi" v={chiSoi} c="blue" sub={`VAT: +${Math.round(vatSoi).toLocaleString("vi-VN")}đ`} />
+          <Card label="Chi dệt" v={chiDet} c="violet" sub={`VAT: +${Math.round(vatDetTien).toLocaleString("vi-VN")}đ`} />
+          <Card label="Chi nhuộm+HC" v={chiNhuom + chiHoaChat} c="rose" sub={`VAT: +${Math.round(vatNhuomTien).toLocaleString("vi-VN")}đ`} />
+          <Card label="Tổng VAT 3 khâu" v={tongVAT} c="amber" sub={`Bình quân ${vatBinhQuanPt.toFixed(1)}%`} />
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-3">
@@ -994,18 +1195,30 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                       <div className="text-xs font-bold text-emerald-700">
                         {lamTronTheo100Dong(item.giaVonMoiKg).toLocaleString("vi-VN")}đ/kg
                       </div>
-                      {vatRate > 0 && (
+                      {item.tongVATMau > 0 && (
                         <div className="text-[10px] font-semibold text-orange-600">
-                          (Có VAT {vatRate}%: {lamTronTheo100Dong(item.giaVonMoiKgCoVAT).toLocaleString("vi-VN")}đ/kg)
+                          (Có VAT: {lamTronTheo100Dong(item.giaVonMoiKgCoVAT).toLocaleString("vi-VN")}đ/kg)
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-slate-600 md:grid-cols-4">
-                    <div className="rounded-lg bg-blue-50/80 border border-blue-100 px-2.5 py-1">Sợi: <b>{lamTronTheo100Dong(item.chiSoiPhanBo).toLocaleString("vi-VN")}đ</b></div>
-                    <div className="rounded-lg bg-violet-50/80 border border-violet-100 px-2.5 py-1">Dệt: <b>{lamTronTheo100Dong(item.chiDetPhanBo).toLocaleString("vi-VN")}đ</b></div>
-                    <div className="rounded-lg bg-rose-50/80 border border-rose-100 px-2.5 py-1">Nhuộm: <b>{lamTronTheo100Dong(item.tienNhuom).toLocaleString("vi-VN")}đ</b></div>
-                    <div className="rounded-lg bg-orange-50/80 border border-orange-100 px-2.5 py-1">Hóa chất: <b>{lamTronTheo100Dong(item.chiPhiHoaChat).toLocaleString("vi-VN")}đ</b></div>
+                    <div className="rounded-lg bg-blue-50/80 border border-blue-100 px-2.5 py-1">
+                      Sợi: <b>{lamTronTheo100Dong(item.chiSoiPhanBo).toLocaleString("vi-VN")}đ</b>
+                      {item.vatSoiPhanBo > 0 && <span className="text-[10px] text-blue-600 block">(VAT: +{lamTronTheo100Dong(item.vatSoiPhanBo).toLocaleString("vi-VN")}đ)</span>}
+                    </div>
+                    <div className="rounded-lg bg-violet-50/80 border border-violet-100 px-2.5 py-1">
+                      Dệt: <b>{lamTronTheo100Dong(item.chiDetPhanBo).toLocaleString("vi-VN")}đ</b>
+                      {item.vatDetPhanBo > 0 && <span className="text-[10px] text-violet-600 block">(VAT: +{lamTronTheo100Dong(item.vatDetPhanBo).toLocaleString("vi-VN")}đ)</span>}
+                    </div>
+                    <div className="rounded-lg bg-rose-50/80 border border-rose-100 px-2.5 py-1">
+                      Nhuộm+HC: <b>{lamTronTheo100Dong(item.tienNhuom + item.chiPhiHoaChat).toLocaleString("vi-VN")}đ</b>
+                      {item.vatNhuomPhanBo > 0 && <span className="text-[10px] text-rose-600 block">(VAT: +{lamTronTheo100Dong(item.vatNhuomPhanBo).toLocaleString("vi-VN")}đ)</span>}
+                    </div>
+                    <div className="rounded-lg bg-orange-50/80 border border-orange-100 px-2.5 py-1">
+                      Tổng VAT màu: <b>+{lamTronTheo100Dong(item.tongVATMau).toLocaleString("vi-VN")}đ</b>
+                      <span className="text-[10px] text-orange-600 block">Tổng có VAT: {lamTronTheo100Dong(item.tongGiaVonCoVAT).toLocaleString("vi-VN")}đ</span>
+                    </div>
                   </div>
                 </div>
               );
