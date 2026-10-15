@@ -30,6 +30,9 @@ import { KHU_ME_NHUOM, createFabricDyeLot, type KhuMeNhuom } from "@/lib/data/fa
 import { Card, F, Modal } from "./ui-blocks";
 import PhieuNhapSoiPrint from "./PhieuNhapSoiPrint";
 import PhieuGiaoDetPrint from "./PhieuGiaoDetPrint";
+import { ChungTuUploaderCompact } from "./ChungTuUploaderCompact";
+import type { UploadedFile } from "@/components/ui/ImageUploader";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 
 type MauNhuomInput = {
   maVai: string;
@@ -66,6 +69,9 @@ type PhieuSanXuatVai = {
   tongCong: number;
   khu: KhuMeNhuom;
   ke: string;
+  anhChungTuGiaoDet?: UploadedFile[];
+  anhChungTuGiaoNhuom?: UploadedFile[];
+  anhChungTuGiaoKhoTP?: UploadedFile[];
 };
 
 type KhoVaiWithImage = KhoVai & { imageUrl?: string };
@@ -113,6 +119,13 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [hienPhieuGiaoDet, setHienPhieuGiaoDet] = useState(false);
   const [dongDangChonVai, setDongDangChonVai] = useState<number | null>(null);
   const [phieuDaTao, setPhieuDaTao] = useState<PhieuSanXuatVai | null>(null);
+
+  // Ảnh chứng từ 3 khâu (Sợi giao dệt, Dệt giao nhuộm, Nhuộm giao kho vải TP)
+  const [anhChungTuGiaoDet, setAnhChungTuGiaoDet] = useState<UploadedFile[]>([]);
+  const [anhChungTuGiaoNhuom, setAnhChungTuGiaoNhuom] = useState<UploadedFile[]>([]);
+  const [anhChungTuGiaoKhoTP, setAnhChungTuGiaoKhoTP] = useState<UploadedFile[]>([]);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const tongKgSoi = danhSachSoi.reduce((sum, item) => sum + Math.max(item.soKg, 0), 0);
 
@@ -302,6 +315,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         khoNhap: "Kho Sợi",
         nguoiPhuTrach: user?.name || "Admin",
         ghiChu: `Chuyển dệt chung ${tongKgSoi.toLocaleString("vi-VN")}kg`,
+        chungTu: anhChungTuGiaoDet,
         khoa: false,
       } as any, user);
 
@@ -340,6 +354,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
       soMetDuKien: tongKgSoi * 4,
       nguoiPhuTrach: user?.name || "Admin",
       ghiChu: `${danhSachSoi.length} loại sợi: ${danhSachSoi.map((item) => `${item.loaiSoi} ${item.soKg}kg`).join(", ")}`,
+      chungTuXuatNhanSoi: anhChungTuGiaoDet,
     }, user);
 
     if (!r2.ok) {
@@ -375,6 +390,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           giaVonDuKien: giaVonTheoMau[index]?.giaVonMoiKgCoVAT || giaVonTheoMau[index]?.giaVonMoiKg || 0,
         })),
         nguoiPhuTrach: user?.name || "Admin",
+        chungTuNhanMoc: anhChungTuGiaoNhuom,
         ghiChu: [
           `Mã vải TP: ${danhSachMau.map((m) => `${m.maVai}-${m.mau}`).join(", ")}`,
           `Vị trí dự kiến: ${kho} · Khu ${khu} - ${KHU_ME_NHUOM[khu].ten} · Kệ ${ke || "chưa xếp"}`,
@@ -418,6 +434,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           daThanhToan: 0,
           khoMocNhap: "Kho Vải Mộc",
           ketQuaKiemTra: "Đạt chuẩn",
+          chungTuBanGiaoMoc: anhChungTuGiaoNhuom,
         }, user);
 
         // 2. Tự động nghiệm thu vải màu cho mẻ nhuộm
@@ -441,7 +458,8 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           r3.me.id,
           nghiemThuData,
           user?.name || "Admin",
-          user
+          user,
+          anhChungTuGiaoKhoTP
         );
 
         // 3. Tự động nhập kho thành phẩm chi tiết và đồng bộ tồn kho
@@ -499,6 +517,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             trangThaiChatLuong: "Chờ kiểm",
             nguoiPhuTrach: user?.name || "Admin",
             ghiChu: `Nhập từ Lệnh tổng SX (Sợi ➔ Dệt ➔ Nhuộm ${m.mau})`,
+            chungTuNhapKho: anhChungTuGiaoKhoTP,
           }, user);
 
           // Cập nhật tồn kho và số cây
@@ -537,6 +556,9 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         tongCong,
         khu,
         ke,
+        anhChungTuGiaoDet,
+        anhChungTuGiaoNhuom,
+        anhChungTuGiaoKhoTP,
       });
     }
 
@@ -679,15 +701,28 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
                 })()}
               </div>
             ))}
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <button
                 type="button"
                 onClick={themDongSoi}
-                className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50"
+                className="shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50"
               >
                 <Plus className="mr-1 inline h-4 w-4" /> Thêm sợi mới
               </button>
-              <div className="rounded-xl bg-blue-600 px-3.5 py-2 text-right text-white shadow-sm">
+
+              {/* Ô upload ảnh chứng từ giao dệt (đúng vị trí khung đỏ anh Cường yêu cầu) */}
+              <div className="flex-1 min-w-[260px] max-w-xl">
+                <ChungTuUploaderCompact
+                  files={anhChungTuGiaoDet}
+                  onChange={setAnhChungTuGiaoDet}
+                  title="Ảnh chứng từ giao sợi cho xưởng dệt"
+                  subTitle="Phiếu giao sợi, biên bản bàn giao xưởng dệt"
+                  themeColor="blue"
+                  compact
+                />
+              </div>
+
+              <div className="shrink-0 rounded-xl bg-blue-600 px-3.5 py-2 text-right text-white shadow-sm">
                 <div className="text-[10px] font-medium text-white/80">Tổng {tongKgSoi.toLocaleString("vi-VN")} kg sợi chuyển dệt</div>
                 <div className="text-sm font-black">
                   Tiền sợi: {chiSoi.toLocaleString("vi-VN")}đ
@@ -785,6 +820,17 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             <div className="text-[10px] text-white/80">Tổng chi dệt dự kiến</div>
             <div className="text-base font-black">{Math.round(chiDetCoVAT).toLocaleString("vi-VN")}đ {vatDet > 0 && <span className="text-xs font-normal text-violet-200">(gồm VAT)</span>}</div>
           </div>
+        </div>
+
+        {/* Ô upload ảnh chứng từ dệt giao nhuộm */}
+        <div className="mt-3 border-t border-violet-100 pt-3">
+          <ChungTuUploaderCompact
+            files={anhChungTuGiaoNhuom}
+            onChange={setAnhChungTuGiaoNhuom}
+            title="Ảnh chứng từ dệt giao xưởng nhuộm"
+            subTitle="Phiếu xuất vải mộc, biên bản bàn giao mộc cho xưởng nhuộm"
+            themeColor="violet"
+          />
         </div>
       </div>
 
@@ -985,6 +1031,17 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         >
           <Plus className="w-3.5 h-3.5 inline" /> Thêm mã màu nhuộm
         </button>
+
+        {/* Ô upload ảnh chứng từ nhuộm giao kho vải TP */}
+        <div className="mt-4 border-t border-rose-100 pt-3">
+          <ChungTuUploaderCompact
+            files={anhChungTuGiaoKhoTP}
+            onChange={setAnhChungTuGiaoKhoTP}
+            title="Ảnh chứng từ nhuộm giao kho vải thành phẩm"
+            subTitle="Phiếu xuất xưởng nhuộm, biên bản bàn giao kiểm phẩm nhập kho vải TP"
+            themeColor="rose"
+          />
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 md:p-5 shadow-sm backdrop-blur-md">
@@ -1345,6 +1402,90 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
               </table>
             </div>
 
+            {/* 3. CHỨNG TỪ & BIÊN BẢN BÀN GIAO ĐÍNH KÈM */}
+            {((phieuDaTao.anhChungTuGiaoDet && phieuDaTao.anhChungTuGiaoDet.length > 0) ||
+              (phieuDaTao.anhChungTuGiaoNhuom && phieuDaTao.anhChungTuGiaoNhuom.length > 0) ||
+              (phieuDaTao.anhChungTuGiaoKhoTP && phieuDaTao.anhChungTuGiaoKhoTP.length > 0)) && (
+              <div className="mt-4">
+                <h3 className="rounded bg-slate-700 px-3 py-2 font-bold text-white text-xs uppercase tracking-wider">
+                  3. CHỨNG TỪ & BIÊN BẢN BÀN GIAO ĐÍNH KÈM
+                </h3>
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {phieuDaTao.anhChungTuGiaoDet && phieuDaTao.anhChungTuGiaoDet.length > 0 && (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5">
+                      <div className="font-bold text-xs text-blue-900 mb-1.5 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-blue-600" />
+                        Giao sợi xưởng dệt ({phieuDaTao.anhChungTuGiaoDet.length} ảnh)
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {phieuDaTao.anhChungTuGiaoDet.map((f, i) => (
+                          <div
+                            key={f.id || i}
+                            onClick={() => {
+                              setLightboxImages(phieuDaTao.anhChungTuGiaoDet!.map((x) => x.dataUrl));
+                              setLightboxIndex(i);
+                            }}
+                            className="w-16 h-16 rounded-lg border border-blue-300 overflow-hidden cursor-pointer hover:opacity-80 transition bg-white"
+                            title="Bấm để xem phóng to"
+                          >
+                            <img src={f.dataUrl} alt={f.name} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {phieuDaTao.anhChungTuGiaoNhuom && phieuDaTao.anhChungTuGiaoNhuom.length > 0 && (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-2.5">
+                      <div className="font-bold text-xs text-violet-900 mb-1.5 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-violet-600" />
+                        Dệt giao xưởng nhuộm ({phieuDaTao.anhChungTuGiaoNhuom.length} ảnh)
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {phieuDaTao.anhChungTuGiaoNhuom.map((f, i) => (
+                          <div
+                            key={f.id || i}
+                            onClick={() => {
+                              setLightboxImages(phieuDaTao.anhChungTuGiaoNhuom!.map((x) => x.dataUrl));
+                              setLightboxIndex(i);
+                            }}
+                            className="w-16 h-16 rounded-lg border border-violet-300 overflow-hidden cursor-pointer hover:opacity-80 transition bg-white"
+                            title="Bấm để xem phóng to"
+                          >
+                            <img src={f.dataUrl} alt={f.name} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {phieuDaTao.anhChungTuGiaoKhoTP && phieuDaTao.anhChungTuGiaoKhoTP.length > 0 && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-2.5">
+                      <div className="font-bold text-xs text-rose-900 mb-1.5 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-rose-600" />
+                        Nhuộm giao kho vải TP ({phieuDaTao.anhChungTuGiaoKhoTP.length} ảnh)
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {phieuDaTao.anhChungTuGiaoKhoTP.map((f, i) => (
+                          <div
+                            key={f.id || i}
+                            onClick={() => {
+                              setLightboxImages(phieuDaTao.anhChungTuGiaoKhoTP!.map((x) => x.dataUrl));
+                              setLightboxIndex(i);
+                            }}
+                            className="w-16 h-16 rounded-lg border border-rose-300 overflow-hidden cursor-pointer hover:opacity-80 transition bg-white"
+                            title="Bấm để xem phóng to"
+                          >
+                            <img src={f.dataUrl} alt={f.name} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 flex justify-between rounded-xl border border-amber-300 bg-amber-50 p-3 text-lg font-black">
               <span>TỔNG CHI PHÍ</span><span>{phieuDaTao.tongCong.toLocaleString("vi-VN")}đ</span>
             </div>
@@ -1367,6 +1508,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         <PhieuNhapSoiPrint
           ncc={ncc}
           danhSachSoi={danhSachSoi}
+          chungTu={anhChungTuGiaoDet}
           onClose={() => setHienPhieuNhapSoi(false)}
         />
       )}
@@ -1375,7 +1517,17 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         <PhieuGiaoDetPrint
           xDet={xDet}
           danhSachSoi={danhSachSoi}
+          chungTu={anhChungTuGiaoDet}
           onClose={() => setHienPhieuGiaoDet(false)}
+        />
+      )}
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          src={lightboxImages[lightboxIndex] || null}
+          gallery={lightboxImages}
+          onChange={(_newSrc, newIdx) => setLightboxIndex(newIdx)}
+          onClose={() => setLightboxIndex(null)}
         />
       )}
     </div>
