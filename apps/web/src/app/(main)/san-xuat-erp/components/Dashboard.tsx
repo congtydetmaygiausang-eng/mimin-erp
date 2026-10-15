@@ -2,13 +2,18 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.4)
 
 import { useState } from "react";
-import { Package, Truck, Palette, Boxes, CreditCard, GitBranch } from "lucide-react";
+import { Package, Truck, Palette, Boxes, CreditCard, GitBranch, LayoutList, Plus } from "lucide-react";
 import { getAllPhieuNhapSoi, getAllLenhDet, getAllMeNhuom, getAllLoVaiTP } from "@/lib/yarn-production-chain";
 import { baoCaoCongNoByDoiTuong } from "@/lib/master-data";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { Stat } from "./ui-blocks";
+import { DanhSachLenhTong } from "./DanhSachLenhTong";
 
-export function Dashboard() {
+interface DashboardProps {
+  onChuyenSangLenhTong?: () => void;
+}
+
+export function Dashboard({ onChuyenSangLenhTong }: DashboardProps) {
   const [pnss, setPnss] = useState(getAllPhieuNhapSoi());
   const [lds, setLds] = useState(getAllLenhDet());
   const [mns, setMns] = useState(getAllMeNhuom());
@@ -19,7 +24,7 @@ export function Dashboard() {
   const tongCongNo = congNos.reduce((s, c) => s + c.tongConNo, 0);
 
   return (
-    <div className="space-y-3 p-3">
+    <div className="space-y-4 p-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Stat n={pnss.length} label="Phiếu nhập sợi" sub={formatVNDShort(tongNhapSoi)} color="petrol" icon={Package} />
         <Stat n={lds.length} label="Lệnh dệt" sub={`${lds.filter((l) => l.trangThai !== "Hoàn thành").length} đang chạy`} color="sage" icon={Truck} />
@@ -55,6 +60,31 @@ export function Dashboard() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Danh sách Lệnh SX vải & Theo dõi quy trình chi tiết các bước */}
+      <div className="space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-black text-slate-900">
+              <LayoutList className="h-5 w-5 text-orange-600" /> Danh Sách Lệnh SX & Quy Trình Các Bước
+            </h2>
+            <p className="text-xs text-slate-500">
+              Theo dõi chi tiết 7 bước sau khi bấm "Lưu & tạo lệnh": Kho Sợi ➔ Xưởng Dệt ➔ Nghiệm thu Mộc ➔ Xưởng Nhuộm ➔ Nghiệm thu Màu ➔ Kho Vải TP ➔ Giá Vốn & Công Nợ
+            </p>
+          </div>
+          {onChuyenSangLenhTong && (
+            <button
+              type="button"
+              onClick={onChuyenSangLenhTong}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-sm transition active:scale-95 shrink-0"
+            >
+              <Plus className="h-4 w-4" /> Tạo Lệnh SX Mới
+            </button>
+          )}
+        </div>
+
+        <DanhSachLenhTong onTaoLenhMoi={onChuyenSangLenhTong} />
       </div>
     </div>
   );

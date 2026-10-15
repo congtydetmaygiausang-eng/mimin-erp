@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.4)
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Plus, Printer, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, Plus, Printer, Sparkles, Trash2, LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import {
   nhapKhoSoi_V2,
@@ -33,6 +33,7 @@ import PhieuGiaoDetPrint from "./PhieuGiaoDetPrint";
 import { ChungTuUploaderCompact } from "./ChungTuUploaderCompact";
 import type { UploadedFile } from "@/components/ui/ImageUploader";
 import ImageLightbox from "@/components/ui/ImageLightbox";
+import { DanhSachLenhTong } from "./DanhSachLenhTong";
 
 type MauNhuomInput = {
   maVai: string;
@@ -119,6 +120,17 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
   const [hienPhieuGiaoDet, setHienPhieuGiaoDet] = useState(false);
   const [dongDangChonVai, setDongDangChonVai] = useState<number | null>(null);
   const [phieuDaTao, setPhieuDaTao] = useState<PhieuSanXuatVai | null>(null);
+  const [activeTab, setActiveTab] = useState<"form" | "danh-sach">("form");
+  const [soLuongLenh, setSoLuongLenh] = useState(0);
+  const [selectedLenhId, setSelectedLenhId] = useState<string | undefined>(undefined);
+
+  // Đọc số lượng lệnh từ localStorage để cập nhật huy hiệu
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("mimin_lenh_tong_list");
+      if (raw) setSoLuongLenh(JSON.parse(raw).length);
+    } catch {}
+  }, [daTaoLenh, activeTab]);
 
   // Ảnh chứng từ 3 khâu (Sợi giao dệt, Dệt giao nhuộm, Nhuộm giao kho vải TP)
   const [anhChungTuGiaoDet, setAnhChungTuGiaoDet] = useState<UploadedFile[]>([]);
@@ -560,6 +572,72 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         anhChungTuGiaoNhuom,
         anhChungTuGiaoKhoTP,
       });
+
+      // Lưu trữ đầy đủ vòng đời các bước vào danh sách Lệnh Tổng (mimin_lenh_tong_list)
+      const maLenhMoi = `LSX-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${String(Date.now()).slice(-3)}`;
+      const lenhMoiRecord = {
+        id: maLenhMoi,
+        ngayTao: new Date().toISOString(),
+        trangThai: (nhapKhoNgay ? "Hoàn thành" : "Đang sản xuất") as "Hoàn thành" | "Đang sản xuất",
+        nhapKhoNgay,
+        maLenhDet: r2.lenh?.id || "",
+        maMeNhuom: r3.me?.id || "",
+        // 1. Sợi
+        nccId: ncc.id,
+        tenNccSoi: ncc.ten_ncc,
+        danhSachSoi: danhSachSoi.map((s) => ({ ...s, thanhTien: s.soKg * s.donGia })),
+        tongKgSoi,
+        chiSoi,
+        vatSoi,
+        chiSoiCoVAT,
+        // 2. Dệt
+        xuongDetId: xDet.id,
+        tenXuongDet: xDet.ten_ncc,
+        thongSoDet: { ...thongSoDet },
+        donGiaDet,
+        vatDet,
+        chiDet,
+        chiDetCoVAT,
+        anhChungTuGiaoDet,
+        // 3. Mộc
+        tongKgMoc: tongKgSoi,
+        soCayMoc: Math.max(1, Math.ceil(tongKgSoi / 20)),
+        haoHutDetThucTe: thongSoDet.haoHutDet || 3,
+        // 4. Nhuộm
+        xuongNhuomId: xNhuom.id,
+        tenXuongNhuom: xNhuom.ten_ncc,
+        anhChungTuGiaoNhuom,
+        chiNhuom,
+        vatNhuom,
+        chiNhuomCoVAT,
+        // 5. Màu
+        danhSachMau: danhSachMau.map((m, idx) => ({
+          ...m,
+          giaVon: giaVonTheoMau[idx]?.giaVonMoiKgCoVAT || giaVonTheoMau[idx]?.giaVonMoiKg || 0,
+        })),
+        tongKgMau,
+        // 6. Kho TP
+        kho,
+        khu,
+        ke,
+        tongKgVaiTP,
+        tongCayVaiTP,
+        anhChungTuGiaoKhoTP,
+        // 7. Giá vốn
+        giaVonTheoMau: giaVonTheoMau.map((g) => ({ ...g })),
+        tongCong,
+      };
+
+      try {
+        const raw = localStorage.getItem("mimin_lenh_tong_list");
+        const prev = raw ? JSON.parse(raw) : [];
+        const next = [lenhMoiRecord, ...prev.filter((x: any) => x.id !== maLenhMoi)];
+        localStorage.setItem("mimin_lenh_tong_list", JSON.stringify(next));
+        setSoLuongLenh(next.length);
+        setSelectedLenhId(maLenhMoi);
+      } catch (err) {
+        console.error("Lỗi lưu mimin_lenh_tong_list:", err);
+      }
     }
 
     setDaTaoLenh(true);
@@ -574,11 +652,62 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
 
   return (
     <div className="space-y-3 p-3">
-      {thieuDanhBa && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-          Danh bạ chưa đủ NCC thuộc nhóm sợi, dệt, nhuộm. Anh cập nhật trong Danh bạ NCC rồi quay lại tạo lệnh SX vải.
+      {/* Segmented Controller: Tạo lệnh mới vs Danh sách quy trình các bước */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-sm backdrop-blur-md">
+        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setActiveTab("form")}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition ${
+              activeTab === "form"
+                ? "bg-white text-orange-600 shadow-sm ring-1 ring-black/5"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Plus className="h-4 w-4" /> Tạo Lệnh SX Mới
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("danh-sach")}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition ${
+              activeTab === "danh-sach"
+                ? "bg-white text-orange-600 shadow-sm ring-1 ring-black/5"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <LayoutList className="h-4 w-4" /> Danh Sách Lệnh & Quy Trình Các Bước
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+              activeTab === "danh-sach" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-700"
+            }`}>
+              {soLuongLenh}
+            </span>
+          </button>
         </div>
-      )}
+
+        {activeTab === "form" && daTaoLenh && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("danh-sach")}
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 px-3.5 py-2 rounded-xl border border-orange-200 transition shadow-xs"
+          >
+            <span>Xem quy trình lệnh vừa tạo</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {activeTab === "danh-sach" ? (
+        <DanhSachLenhTong
+          onTaoLenhMoi={() => setActiveTab("form")}
+          selectedLenhId={selectedLenhId}
+        />
+      ) : (
+        <>
+          {thieuDanhBa && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              Danh bạ chưa đủ NCC thuộc nhóm sợi, dệt, nhuộm. Anh cập nhật trong Danh bạ NCC rồi quay lại tạo lệnh SX vải.
+            </div>
+          )}
 
       <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 md:p-5 shadow-sm backdrop-blur-md">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
@@ -1306,8 +1435,23 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
         </button>
       </div>
       {daTaoLenh && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-center text-sm font-bold text-emerald-700 print:hidden">
-          Lệnh đã được lưu. Anh có thể in phiếu hoặc chuyển sang tab Quy trình.
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50/90 p-4 shadow-sm print:hidden flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-xs shadow-xs">✓</span>
+            <div>
+              <div className="text-sm font-black text-emerald-900">Lệnh sản xuất đã được lưu & phân bổ các bước thành công!</div>
+              <div className="text-xs text-emerald-700">Đã cập nhật công nợ, định mức & dữ liệu các bước. Anh có thể in phiếu hoặc xem chi tiết quy trình.</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("danh-sach")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition active:scale-95"
+            >
+              <LayoutList className="h-4 w-4" /> Xem Quy Trình Các Bước <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1356,6 +1500,8 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             </div>
           )}
         </Modal>
+      )}
+        </>
       )}
 
       {hienPhieu && phieuDaTao && (

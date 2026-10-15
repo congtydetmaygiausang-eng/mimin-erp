@@ -85,7 +85,7 @@ function SanXuatERPContent() {
 
         {/* Active Screen Content */}
         <div>
-          {tab === "dashboard" && <Dashboard />}
+          {tab === "dashboard" && <Dashboard onChuyenSangLenhTong={() => handleSelectTab("lenhtong")} />}
           {tab === "master" && <MasterData />}
           {tab === "lenhtong" && <LenhTongForm user={user} onChuyenTiep={() => handleSelectTab("flow")} />}
           {tab === "flow" && <FlowQuick user={user} />}
