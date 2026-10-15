@@ -14,7 +14,7 @@ import InvoicePrint from "@/components/order-detail/InvoicePrint";
 import QuickPaymentModal from "@/components/order-detail/QuickPaymentModal";
 import ShippingModal from "@/components/order-detail/ShippingModal";
 import MeInvoicePublishModal from "@/components/order-detail/MeInvoicePublishModal";
-import type { Order, OrderPayment, OrderShipping } from "@/components/order-detail/types";
+import { type Order, type OrderPayment, type OrderShipping, LOAI_DON_HANG_LABELS } from "@/components/order-detail/types";
 
 type TrangThaiDH = Order["trangThai"];
 
@@ -53,6 +53,50 @@ export default function DonHangPage() {
     const diff = (ngayGiao.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
     return d.trangThai !== "Đã giao" && d.trangThai !== "Hủy" && diff <= 7 && diff >= 0;
   });
+
+  const statsThoiGian = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const day = today.getDay() || 7; 
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - day + 1);
+    
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const stats = {
+      homNay: { soDon: 0, doanhThu: 0 },
+      tuanNay: { soDon: 0, doanhThu: 0 },
+      thangNay: { soDon: 0, doanhThu: 0 },
+      namNay: { soDon: 0, doanhThu: 0 },
+    };
+
+    dsOrder.forEach(d => {
+      if (d.trangThai === "Hủy") return;
+      const t = calcTongTien(d);
+      const ngay = new Date(d.ngayDat);
+      
+      if (ngay >= startOfYear) {
+        stats.namNay.soDon++;
+        stats.namNay.doanhThu += t;
+      }
+      if (ngay >= startOfMonth) {
+        stats.thangNay.soDon++;
+        stats.thangNay.doanhThu += t;
+      }
+      if (ngay >= startOfWeek) {
+        stats.tuanNay.soDon++;
+        stats.tuanNay.doanhThu += t;
+      }
+      if (ngay >= today) {
+        stats.homNay.soDon++;
+        stats.homNay.doanhThu += t;
+      }
+    });
+    
+    return stats;
+  }, [dsOrder]);
 
   // Filter
   const filtered = dsOrder.filter((d) => {
@@ -118,27 +162,78 @@ export default function DonHangPage() {
         </button>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs: Doanh thu theo thời gian */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-5">
-          <div className="text-xs opacity-70 flex items-center gap-1"><ShoppingCart className="w-3 h-3" /> Tổng đơn</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1">{tongDH}</div>
-          <div className="text-xs opacity-60 mt-1">đơn hàng</div>
+        {/* Hôm nay */}
+        <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/80 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-brand-500/10 rounded-full blur-2xl group-hover:bg-brand-500/20 transition-all duration-500"></div>
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Hôm nay</div>
+          <div className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white relative z-10">{formatVNDShort(statsThoiGian.homNay.doanhThu)}</div>
+          <div className="text-sm font-bold mt-1.5 text-brand-600 dark:text-brand-400 flex items-center gap-1.5 relative z-10"><Package className="w-4 h-4" /> {statsThoiGian.homNay.soDon} đơn hàng</div>
         </div>
-        <div className="card p-5">
-          <div className="text-xs opacity-70 flex items-center gap-1"><DollarSign className="w-3 h-3 text-emerald-600" /> Doanh thu</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-emerald-600">{formatVNDShort(tongDoanhThu)}</div>
-          <div className="text-xs opacity-60 mt-1">chưa tính đơn hủy</div>
+
+        {/* Tuần này */}
+        <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/80 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-sky-500/10 rounded-full blur-2xl group-hover:bg-sky-500/20 transition-all duration-500"></div>
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Tuần này</div>
+          <div className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white relative z-10">{formatVNDShort(statsThoiGian.tuanNay.doanhThu)}</div>
+          <div className="text-sm font-bold mt-1.5 text-sky-600 dark:text-sky-400 flex items-center gap-1.5 relative z-10"><Package className="w-4 h-4" /> {statsThoiGian.tuanNay.soDon} đơn hàng</div>
         </div>
-        <div className="card p-5">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Clock className="w-3 h-3 text-amber-600" /> Đang SX</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-amber-600">{dsDangSX.length}</div>
-          <div className="text-xs opacity-60 mt-1">đơn đang chạy</div>
+
+        {/* Tháng này */}
+        <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/80 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all duration-500"></div>
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Tháng này</div>
+          <div className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white relative z-10">{formatVNDShort(statsThoiGian.thangNay.doanhThu)}</div>
+          <div className="text-sm font-bold mt-1.5 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 relative z-10"><Package className="w-4 h-4" /> {statsThoiGian.thangNay.soDon} đơn hàng</div>
         </div>
-        <div className={`card p-5 ${dsSapGiao.length > 0 ? "bg-orange-500/10 border-orange-500/40" : ""}`}>
-          <div className="text-xs opacity-70 flex items-center gap-1"><AlertCircle className="w-3 h-3 text-orange-600" /> Sắp đến hạn</div>
-          <div className={`text-2xl md:text-3xl font-bold mt-1 ${dsSapGiao.length > 0 ? "text-orange-600" : "text-emerald-600"}`}>{dsSapGiao.length}</div>
-          <div className="text-xs opacity-60 mt-1">giao trong 7 ngày</div>
+
+        {/* Năm nay */}
+        <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/80 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-violet-500/10 rounded-full blur-2xl group-hover:bg-violet-500/20 transition-all duration-500"></div>
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Năm nay</div>
+          <div className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white relative z-10">{formatVNDShort(statsThoiGian.namNay.doanhThu)}</div>
+          <div className="text-sm font-bold mt-1.5 text-violet-600 dark:text-violet-400 flex items-center gap-1.5 relative z-10"><Package className="w-4 h-4" /> {statsThoiGian.namNay.soDon} đơn hàng</div>
+        </div>
+      </div>
+
+      {/* KPIs: Trạng thái */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 shadow-sm hover:border-slate-300 transition-colors">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0">
+            <ShoppingCart className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+          </div>
+          <div>
+            <div className="text-2xl font-black text-slate-800 dark:text-white">{tongDH}</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Tổng đơn</div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 shadow-sm hover:border-slate-300 transition-colors">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <DollarSign className="w-6 h-6 text-emerald-600" />
+          </div>
+          <div>
+            <div className="text-2xl font-black text-emerald-600">{formatVNDShort(tongDoanhThu)}</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Doanh thu tổng</div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 shadow-sm hover:border-slate-300 transition-colors">
+          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Clock className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <div className="text-2xl font-black text-amber-600">{dsDangSX.length}</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Đang sản xuất</div>
+          </div>
+        </div>
+        <div className={`bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 shadow-sm hover:border-slate-300 transition-colors ${dsSapGiao.length > 0 ? "!border-orange-500/40 bg-orange-50/50 dark:bg-orange-500/5" : ""}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${dsSapGiao.length > 0 ? "bg-orange-100 dark:bg-orange-500/20" : "bg-slate-100 dark:bg-slate-700"}`}>
+            <AlertCircle className={`w-6 h-6 ${dsSapGiao.length > 0 ? "text-orange-600" : "text-slate-400"}`} />
+          </div>
+          <div>
+            <div className={`text-2xl font-black ${dsSapGiao.length > 0 ? "text-orange-600" : "text-slate-800 dark:text-white"}`}>{dsSapGiao.length}</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Sắp đến hạn</div>
+          </div>
         </div>
       </div>
 
@@ -195,6 +290,11 @@ export default function DonHangPage() {
                     <button onClick={() => handleAdvanceStatus(d)} className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${s.bg} ${s.color} hover:brightness-95 transition-all shadow-sm shrink-0`} title="Click để chuyển trạng thái">
                       <Icon className="w-3 h-3" /> {d.trangThai}
                     </button>
+                    {(d.loaiDonHang || d.loaiDon) && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shrink-0">
+                        {LOAI_DON_HANG_LABELS[d.loaiDonHang || d.loaiDon as keyof typeof LOAI_DON_HANG_LABELS] || d.loaiDonHang || d.loaiDon}
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1 truncate">
                     {d.khachHang} <span className="text-slate-500 font-normal ml-1">({d.sdt})</span>
