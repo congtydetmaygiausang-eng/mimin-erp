@@ -26,7 +26,82 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
   const [open, setOpen] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const refresh = async () => setLots(await fetchFabricDyeLots());
+  const refresh = async () => {
+    let currentLots = await fetchFabricDyeLots();
+
+    // Tự động kiểm tra và đồng bộ mẻ nhuộm từ các Lệnh tổng sản xuất (mimin_lenh_tong_list) nếu chưa có
+    if (typeof window !== "undefined") {
+      try {
+        const rawLenh = localStorage.getItem("mimin_lenh_tong_list");
+        if (rawLenh) {
+          const listLenh = JSON.parse(rawLenh);
+          if (Array.isArray(listLenh)) {
+            let coThayDoi = false;
+            listLenh.forEach((lenh: any) => {
+              const khu = (lenh.khu || "A") as KhuMeNhuom;
+              const ke = lenh.ke || (khu === "A" ? "K02" : "C01");
+              const trangThaiTheoKhuMap: Record<string, TrangThaiMeNhuom> = {
+                A: "DANG_SU_DUNG",
+                B: "ME_KE_TIEP",
+                C: "CHO_KIEM",
+                D: "GIU_RIENG",
+                E: "CHO_TRA",
+              };
+              const trangThai = trangThaiTheoKhuMap[khu] || (khu === "A" ? "DANG_SU_DUNG" : "CHO_KIEM");
+
+              if (lenh.danhSachMau && Array.isArray(lenh.danhSachMau)) {
+                lenh.danhSachMau.forEach((m: any, idx: number) => {
+                  const maMe = `${lenh.maMeNhuom || lenh.id}-${m.maVai || idx + 1}`;
+                  const daCo = currentLots.some((l) => l.maMe === maMe);
+                  if (!daCo && Number(m.soKg) > 0) {
+                    const soCay = Number(m.soCay) || Math.max(1, Math.ceil(Number(m.soKg) / 20));
+                    const giaVon = Math.round(
+                      Number(m.giaVon) ||
+                      Number(lenh.giaVonTheoMau?.[idx]?.giaVonMoiKgCoVAT) ||
+                      Number(lenh.giaVonTheoMau?.[idx]?.giaVonMoiKg) ||
+                      Number(m.donGiaNhuom) ||
+                      140000
+                    );
+                    const now = new Date().toISOString();
+                    const newLot: FabricDyeLot = {
+                      id: `lot-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+                      maMe,
+                      sku: m.maVai || `VAI-TP-${idx + 1}`,
+                      mauSac: m.mau,
+                      ngayNhap: lenh.ngayTao ? new Date(lenh.ngayTao).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+                      xuongNhuom: lenh.tenXuongNhuom || "Xưởng nhuộm Á Châu",
+                      donGia: giaVon,
+                      soKgNhap: Number(m.soKg),
+                      tonKg: Number(m.soKg),
+                      soCay,
+                      khu,
+                      ke,
+                      tang: "",
+                      o: "",
+                      trangThai,
+                      ghiChu: `Đồng bộ từ Lệnh SX ${lenh.id} - Kệ ${ke} (Bước 6: Nhập kho vải TP)`,
+                      createdAt: now,
+                      updatedAt: now,
+                    };
+                    currentLots = [newLot, ...currentLots];
+                    coThayDoi = true;
+                  }
+                });
+              }
+            });
+            if (coThayDoi) {
+              localStorage.setItem("mimin_kho_vai_me_nhuom", JSON.stringify(currentLots));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi tự động sync mẻ nhuộm:", err);
+      }
+    }
+
+    setLots(currentLots);
+  };
+
   useEffect(() => {
     const handleChange = () => { void refresh(); };
     const handleStorage = (event: StorageEvent) => {
@@ -86,10 +161,29 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
                 {items.length === 0 && <div className="py-5 text-center text-xs text-slate-400">Chưa có mẻ trong khu này</div>}
                 {items.map((lot) => {
                   const vai = inventory.find((item) => item.maVT === lot.sku);
+                  const tenVaiHienThi = vai?.tenVT || (lot.sku.includes("COTTON") ? `Vải Cotton 100% (${lot.sku})` : lot.sku);
                   return (
                     <article key={lot.id} className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-                      <div className="flex justify-between gap-3"><div><div className="font-bold text-slate-800 dark:text-slate-100">{lot.mauSac} · {lot.maMe}</div><div className="text-xs text-slate-500">{vai?.tenVT || lot.sku}</div></div><div className="text-right"><div className="font-black text-emerald-700">{lot.tonKg.toLocaleString("vi-VN")} kg</div><div className="text-xs text-slate-500">{formatVND(lot.donGia)}/kg</div></div></div>
-                      <div className="mt-2 text-[11px] text-slate-500">Nhập {lot.ngayNhap} · {lot.soCay} cây · Kệ {lot.ke || "chưa xếp"} · {lot.xuongNhuom || "Chưa ghi xưởng"}</div>
+                      <div className="flex justify-between gap-3">
+                        <div>
+                          <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                            <span>{lot.mauSac} · {lot.maMe}</span>
+                            {lot.khu === "A" && (
+                              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                                Sẵn sàng cắt
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500">{tenVaiHienThi}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-black text-emerald-700">{lot.tonKg.toLocaleString("vi-VN")} kg</div>
+                          <div className="text-xs text-slate-500">{formatVND(lot.donGia)}/kg</div>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-[11px] text-slate-500">
+                        Nhập {lot.ngayNhap} · {lot.soCay} cây · Kệ <b className="text-slate-700 font-bold">{lot.ke || "chưa xếp"}</b> · {lot.xuongNhuom || "Chưa ghi xưởng"}
+                      </div>
                       {lot.khu === "C" && lot.trangThai === "CHO_KIEM" && (
                         <button
                           type="button"

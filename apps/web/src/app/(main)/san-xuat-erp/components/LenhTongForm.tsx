@@ -474,21 +474,31 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
           anhChungTuGiaoKhoTP
         );
 
-        // 3. Tự động nhập kho thành phẩm chi tiết và đồng bộ tồn kho
+        // 3. Tự động nhập kho thành phẩm chi tiết và đồng bộ tồn kho sang module Khu mẻ nhuộm
+        const trangThaiTheoKhuMap: Record<string, TrangThaiMeNhuom> = {
+          A: "DANG_SU_DUNG",
+          B: "ME_KE_TIEP",
+          C: "CHO_KIEM",
+          D: "GIU_RIENG",
+          E: "CHO_TRA",
+        };
+        const trangThaiKhu: TrangThaiMeNhuom = trangThaiTheoKhuMap[khu] || (khu === "A" ? "DANG_SU_DUNG" : "CHO_KIEM");
+        const viTriKe = ke || (khu === "A" ? "K02" : "C01");
+
         for (let idx = 0; idx < danhSachMau.length; idx++) {
           const m = danhSachMau[idx];
           const vaiKho = danhSachVaiKho.find((vai) => vai.maVT === m.maVai);
-          if (!vaiKho) continue;
 
           const soCay = m.soCay || (m.soKg > 0 ? Math.max(1, Math.ceil(m.soKg / 20)) : 1);
           const kgMoiCay = Number((m.soKg / soCay).toFixed(2));
-          const giaVon = Math.round(giaVonTheoMau[idx]?.giaVonMoiKgCoVAT || giaVonTheoMau[idx]?.giaVonMoiKg || m.donGiaNhuom);
+          const giaVon = Math.round(giaVonTheoMau[idx]?.giaVonMoiKgCoVAT || giaVonTheoMau[idx]?.giaVonMoiKg || m.donGiaNhuom || 140000);
+          const maVatTu = vaiKho?.maVT || m.maVai || `VAI-TP-${idx + 1}`;
 
-          // Tạo Dye Lot chờ kiểm hoặc lưu trữ ở Khu C / khu được chọn
+          // Tạo Dye Lot đồng bộ trực tiếp sang module Vải thành phẩm khu mẻ nhuộm (/kho-vai-tinhmann)
           try {
             await createFabricDyeLot({
               maMe: `${r3.me.id}-${m.maVai || idx + 1}`,
-              sku: vaiKho.maVT,
+              sku: maVatTu,
               mauSac: m.mau,
               ngayNhap: new Date().toISOString().slice(0, 10),
               xuongNhuom: xNhuom.ten_ncc,
@@ -497,11 +507,11 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
               tonKg: m.soKg,
               soCay,
               khu,
-              ke: ke || "C01",
+              ke: viTriKe,
               tang: "",
               o: "",
-              trangThai: "CHO_KIEM",
-              ghiChu: `Tự động nhập từ Lệnh tổng SX ${r2.lenh.id} / Mẻ ${r3.me.id}`,
+              trangThai: trangThaiKhu,
+              ghiChu: `Tự động nhập từ Lệnh tổng SX ${r2.lenh.id} / Mẻ ${r3.me.id} (Khu ${khu} - Kệ ${viTriKe})`,
             });
           } catch (err) {
             console.warn("[LenhTongForm] createFabricDyeLot skipped/fallback:", err);
@@ -514,7 +524,7 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             nghiemThuMauId: rNghiemThu.phieu?.id || `NTM_${r3.me.id}`,
             loaiVai: "Vải thành phẩm",
             mau: m.mau,
-            maMau: vaiKho.maMoi || m.maVai,
+            maMau: vaiKho?.maMoi || m.maVai,
             maLo: `${r3.me.id}-${idx + 1}`,
             danhSachCay: Array.from({ length: soCay }, (_, cIdx) => ({
               stt: cIdx + 1,
@@ -523,33 +533,35 @@ export function LenhTongForm({ user, onChuyenTiep }: { user: any; onChuyenTiep: 
             giaVonPerKg: giaVon,
             kho: "Kho Vải TP",
             khu: `Khu ${khu}`,
-            ke: ke || "Chưa xếp",
+            ke: viTriKe,
             tang: "",
-            viTri: `Khu ${khu} - Kệ ${ke || "C01"}`,
-            trangThaiChatLuong: "Chờ kiểm",
+            viTri: `Khu ${khu} - Kệ ${viTriKe}`,
+            trangThaiChatLuong: khu === "A" ? "Đạt chuẩn" : "Chờ kiểm",
             nguoiPhuTrach: user?.name || "Admin",
             ghiChu: `Nhập từ Lệnh tổng SX (Sợi ➔ Dệt ➔ Nhuộm ${m.mau})`,
             chungTuNhapKho: anhChungTuGiaoKhoTP,
           }, user);
 
           // Cập nhật tồn kho và số cây
-          nhapKho(vaiKho.maVT, m.soKg, user, `Nhập từ Lệnh tổng SX Vải (Mẻ ${r3.me.id})`, {
-            ngay: new Date().toISOString().slice(0, 10),
-            donGia: giaVon,
-            nguonNhap: xNhuom.ten_ncc,
-            nguoiThucHien: user?.name || "Admin",
-          });
+          if (vaiKho) {
+            nhapKho(vaiKho.maVT, m.soKg, user, `Nhập từ Lệnh tổng SX Vải (Mẻ ${r3.me.id})`, {
+              ngay: new Date().toISOString().slice(0, 10),
+              donGia: giaVon,
+              nguonNhap: xNhuom.ten_ncc,
+              nguoiThucHien: user?.name || "Admin",
+            });
 
-          const tonKhoHienTai = getInventoryByMaVT(vaiKho.maVT);
-          updateVaiInfo(vaiKho.maVT, {
-            tonCay: (tonKhoHienTai?.tonCay || 0) + soCay,
-            soCayNhap: (tonKhoHienTai?.soCayNhap || 0) + soCay,
-            donGia: giaVon,
-          });
+            const tonKhoHienTai = getInventoryByMaVT(vaiKho.maVT);
+            updateVaiInfo(vaiKho.maVT, {
+              tonCay: (tonKhoHienTai?.tonCay || 0) + soCay,
+              soCayNhap: (tonKhoHienTai?.soCayNhap || 0) + soCay,
+              donGia: giaVon,
+            });
 
-          const vaiDaCapNhat = getInventoryByMaVT(vaiKho.maVT);
-          if (vaiDaCapNhat) {
-            await upsertInventoryItem(vaiDaCapNhat);
+            const vaiDaCapNhat = getInventoryByMaVT(vaiKho.maVT);
+            if (vaiDaCapNhat) {
+              await upsertInventoryItem(vaiDaCapNhat);
+            }
           }
         }
       }
