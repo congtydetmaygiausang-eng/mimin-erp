@@ -6,11 +6,12 @@ import { X, Printer } from "lucide-react";
 interface Props {
   xDet: any; // Thông tin xưởng dệt
   danhSachSoi: any[]; // Danh sách các loại sợi giao đi dệt
+  chungTu?: any[]; // Ảnh chứng từ đính kèm
   onClose: () => void;
   autoPrint?: boolean;
 }
 
-export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, onClose, autoPrint = true }: Props) {
+export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, chungTu, onClose, autoPrint = true }: Props) {
   const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
@@ -162,6 +163,19 @@ export default function PhieuGiaoDetPrint({ xDet, danhSachSoi, onClose, autoPrin
                   </tfoot>
                 </table>
               </div>
+
+              {chungTu && chungTu.length > 0 && (
+                <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/40 p-3">
+                  <div className="text-xs font-bold text-violet-900 mb-2">Ảnh chứng từ / Biên bản giao nhận sợi đính kèm ({chungTu.length} ảnh):</div>
+                  <div className="flex flex-wrap gap-2">
+                    {chungTu.map((item, idx) => (
+                      <div key={item.id || idx} className="h-16 w-16 rounded-lg border border-violet-300 overflow-hidden bg-white">
+                        <img src={item.dataUrl} alt={item.name} className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-auto">
                 {/* CHU KY */}
