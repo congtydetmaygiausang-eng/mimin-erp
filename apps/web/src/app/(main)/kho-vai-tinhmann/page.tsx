@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Package, AlertCircle, TrendingUp,
   Scissors, Calculator, FileText, BarChart3, Plus, X,
@@ -15,7 +15,7 @@ import {
   tinhMan, parseSize, goiYVai, syncInventoryWithSupabase,
   baoCaoVaiTheoLSX, DINH_MUC_VAI, HAO_HUT_MAC_DINH,
   addNewVai, getVaiImages,
-  type BaoCaoVai
+  type BaoCaoVai, type ThuongHieuVai, detectThuongHieuVai
 } from "@/lib/inventory-engine";
 import { KHO_VAI, formatVND, type KhoVai } from "@/lib/data/real-data";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
@@ -41,6 +41,7 @@ type NewVaiForm = {
   donGia: number;
   ghiChu: string;
   previewImg: string;
+  thuongHieu: ThuongHieuVai;
 };
 
 type LoVaiMoc = {
@@ -87,6 +88,7 @@ export default function KhoVaiPage() {
   });
   const [tab, setTab] = useState<"thanhpham" | "menhuom" | "moc" | "tinhman" | "baocao" | "danhmuc" | "lichsu">("thanhpham");
   const [searchVai, setSearchVai] = useState("");
+  const [thuongHieuFilter, setThuongHieuFilter] = useState<"ALL" | "manpj" | "polomimin">("ALL");
   const [filterLoaiGD, setFilterLoaiGD] = useState<"TAT_CA" | "NHAP" | "XUAT">("TAT_CA");
   const [giaoDich, setGiaoDich] = useState<any[]>([]);
   const [selected, setSelected] = useState<string>("Áo thun cotton");
@@ -108,6 +110,7 @@ export default function KhoVaiPage() {
     donGia: 0,
     ghiChu: "",
     previewImg: "",
+    thuongHieu: "polomimin",
   });
   const newVaiImgRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -190,6 +193,57 @@ export default function KhoVaiPage() {
     const value = Number(item.maVT.match(/VAI-(\d+)/i)?.[1] || 0);
     return Math.max(max, value);
   }, 0) + 1;
+
+  // Thống kê số lượng theo 2 loại thương hiệu: Vải ManPJ & Vải Polomimin
+  const thuongHieuCounts = useMemo(() => {
+    let manpj = 0;
+    let polomimin = 0;
+    for (const v of inventory) {
+      const th = detectThuongHieuVai(v);
+      if (th === "manpj") manpj++;
+      else polomimin++;
+    }
+    return {
+      all: inventory.length,
+      manpj,
+      polomimin,
+    };
+  }, [inventory]);
+
+  // Lọc danh sách vải theo ô tìm kiếm và bộ lọc thương hiệu
+  const filteredInventory = useMemo(() => {
+    return inventory.filter((v) => {
+      const s = searchVai.toLowerCase().trim();
+      const matchSearch =
+        !s ||
+        v.tenVT.toLowerCase().includes(s) ||
+        (v.mauSac && v.mauSac.toLowerCase().includes(s)) ||
+        v.maVT.toLowerCase().includes(s);
+      const th = detectThuongHieuVai(v);
+      const matchTH = thuongHieuFilter === "ALL" || th === thuongHieuFilter;
+      return matchSearch && matchTH;
+    });
+  }, [inventory, searchVai, thuongHieuFilter]);
+
+  // Chuyển đổi nhanh thương hiệu trực tiếp trên thẻ vải
+  const handleToggleThuongHieu = async (v: KhoVai, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentTH = detectThuongHieuVai(v);
+    const nextTH: ThuongHieuVai = currentTH === "manpj" ? "polomimin" : "manpj";
+    const nextLabel = nextTH === "manpj" ? "Vải ManPJ" : "Vải Polomimin";
+
+    updateVaiInfo(v.maVT, { thuongHieu: nextTH });
+    const updated = getInventoryByMaVT(v.maVT);
+    if (updated) {
+      try {
+        await upsertInventoryItem(updated);
+      } catch (error) {
+        console.error("Lỗi sync supabase:", error);
+      }
+    }
+    refresh();
+    toast.success(`Đã chuyển ${v.maVT} sang "${nextLabel}"`);
+  };
 
   const handleTruKho = (phieuId: string) => {
     const p = ALL_REAL_PHIEU.find((x) => x.id === phieuId);
@@ -296,7 +350,82 @@ export default function KhoVaiPage() {
               <Scissors className="w-4 h-4" /> Trừ vải xuất cho Lệnh cắt
             </button>
           </div>
-          {/* Search bar Tồn kho */}
+          {/* BỘ LỌC PHÂN LOẠI THƯƠNG HIỆU VẢI */}
+          <div className="card p-3 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1 hidden sm:inline">Phân loại:</span>
+              
+              {/* Tất cả */}
+              <button
+                type="button"
+                onClick={() => setThuongHieuFilter("ALL")}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition border-2 ${
+                  thuongHieuFilter === "ALL"
+                    ? "bg-slate-800 text-white border-slate-800 shadow-md dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100"
+                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                }`}
+              >
+                <span>Tất cả</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  thuongHieuFilter === "ALL" ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                }`}>
+                  {thuongHieuCounts.all}
+                </span>
+              </button>
+
+              {/* Nút 1: Vải ManPJ */}
+              <button
+                type="button"
+                onClick={() => setThuongHieuFilter("manpj")}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition border-2 ${
+                  thuongHieuFilter === "manpj"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20"
+                    : "bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>👔</span>
+                  Vải ManPJ
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  thuongHieuFilter === "manpj" ? "bg-white/20 text-white" : "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                }`}>
+                  {thuongHieuCounts.manpj}
+                </span>
+              </button>
+
+              {/* Nút 2: Vải Polomimin */}
+              <button
+                type="button"
+                onClick={() => setThuongHieuFilter("polomimin")}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition border-2 ${
+                  thuongHieuFilter === "polomimin"
+                    ? "bg-teal-600 text-white border-teal-600 shadow-md shadow-teal-500/20"
+                    : "bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800/60 hover:bg-teal-50/60 dark:hover:bg-teal-950/30"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>👕</span>
+                  Vải Polomimin
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  thuongHieuFilter === "polomimin" ? "bg-white/20 text-white" : "bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300"
+                }`}>
+                  {thuongHieuCounts.polomimin}
+                </span>
+              </button>
+            </div>
+
+            {thuongHieuFilter !== "ALL" && (
+              <span className="text-xs text-slate-700 dark:text-slate-300 font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                <span>Đang lọc:</span>
+                <span className="font-bold text-slate-900 dark:text-white">
+                  {thuongHieuFilter === "manpj" ? "👔 Vải ManPJ" : "👕 Vải Polomimin"}
+                </span>
+                <span className="text-slate-500">({filteredInventory.length} loại)</span>
+              </span>
+            )}
+          </div>
           <div className="card p-3 flex items-center gap-2">
             <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <input
@@ -312,11 +441,11 @@ export default function KhoVaiPage() {
               </button>
             )}
             <span className="text-xs text-slate-400 ml-2">
-              {inventory.filter(v => !searchVai || v.tenVT.toLowerCase().includes(searchVai.toLowerCase()) || v.mauSac?.toLowerCase().includes(searchVai.toLowerCase())).length}/{inventory.length} loại
+              {filteredInventory.length}/{inventory.length} loại
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-4">
-            {inventory.filter(v => !searchVai || v.tenVT.toLowerCase().includes(searchVai.toLowerCase()) || v.mauSac?.toLowerCase().includes(searchVai.toLowerCase())).map((v, index) => {
+            {filteredInventory.map((v, index) => {
               const getTonKhoColor = (tonKho: number) => {
                 if (tonKho < 100) return "text-red-600 dark:text-red-500";
                 if (tonKho >= 300) return "text-emerald-600 dark:text-emerald-500";
@@ -328,10 +457,30 @@ export default function KhoVaiPage() {
               <div key={v.maVT} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all relative group hover:z-50">
                 
                 {/* Top row: ID and actions */}
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex justify-between items-center mb-3 gap-2">
                   <div className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-sm font-bold text-slate-700 dark:text-slate-300 tracking-wider">
                     {`VAI-${(index + 1).toString().padStart(2, "0")}`}
                   </div>
+                  {/* Badge Phân loại thương hiệu */}
+                  {(() => {
+                    const th = detectThuongHieuVai(v);
+                    const isManPJ = th === "manpj";
+                    return (
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleThuongHieu(v, e)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer hover:scale-105 active:scale-95 shadow-sm ${
+                          isManPJ
+                            ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 hover:bg-indigo-100"
+                            : "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800 hover:bg-teal-100"
+                        }`}
+                        title="Bấm để chuyển đổi phân loại giữa Vải ManPJ và Vải Polomimin"
+                      >
+                        <span>{isManPJ ? "👔" : "👕"}</span>
+                        <span>{isManPJ ? "Vải ManPJ" : "Vải Polomimin"}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 {/* Main content: Color image & Name */}
@@ -397,6 +546,33 @@ export default function KhoVaiPage() {
                             onChange={(e) => setEditForm({...editForm, tonKho: Number(e.target.value)})}
                           />
                         </div>
+                        <div className="pt-1">
+                          <label className="text-[10px] text-slate-500 font-semibold block mb-1">Phân loại thương hiệu:</label>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setEditForm(f => ({ ...f, thuongHieu: "polomimin" }))}
+                              className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition ${
+                                (editForm.thuongHieu ?? v.thuongHieu ?? detectThuongHieuVai(v)) === "polomimin"
+                                  ? "bg-teal-50 border-teal-500 text-teal-700 dark:bg-teal-950 dark:text-teal-300 shadow-sm"
+                                  : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50"
+                              }`}
+                            >
+                              👕 Polomimin
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditForm(f => ({ ...f, thuongHieu: "manpj" }))}
+                              className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition ${
+                                (editForm.thuongHieu ?? v.thuongHieu ?? detectThuongHieuVai(v)) === "manpj"
+                                  ? "bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 shadow-sm"
+                                  : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50"
+                              }`}
+                            >
+                              👔 ManPJ
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -451,6 +627,7 @@ export default function KhoVaiPage() {
                               mauSac: editForm.mauSac ?? v.mauSac,
                               donGia: editForm.donGia ?? v.donGia,
                               tonKho: editForm.tonKho ?? v.tonKho,
+                              thuongHieu: editForm.thuongHieu ?? v.thuongHieu ?? detectThuongHieuVai(v),
                             });
                             const updated = getInventoryByMaVT(v.maVT);
                             if (!updated) {
@@ -483,7 +660,7 @@ export default function KhoVaiPage() {
                       <>
                         <button 
                           onClick={() => {
-                            setEditForm(v);
+                            setEditForm({ ...v, thuongHieu: v.thuongHieu || detectThuongHieuVai(v) });
                             setEditingVT(v.maVT);
                           }} 
                           className="bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs py-1.5 px-3 shadow-sm font-bold rounded-lg"
@@ -823,6 +1000,7 @@ export default function KhoVaiPage() {
                     <th className="py-2 px-3 text-left">Màu</th>
                     <th className="py-2 px-3 text-right">Tồn (kg)</th>
                     <th className="py-2 px-3 text-right">Đơn giá</th>
+                    <th className="py-2 px-3 text-center">Phân loại</th>
                     <th className="py-2 px-3 text-center">Ảnh</th>
                   </tr>
                 </thead>
@@ -839,6 +1017,25 @@ export default function KhoVaiPage() {
                       </td>
                       <td className="py-2 px-3 text-right font-bold">{v.tonKho.toFixed(0)}</td>
                       <td className="py-2 px-3 text-right text-xs">{v.donGia.toLocaleString()}đ</td>
+                      <td className="py-2 px-3 text-center">
+                        {(() => {
+                          const isManPJ = detectThuongHieuVai(v) === "manpj";
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleThuongHieu(v, e)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition cursor-pointer hover:scale-105 active:scale-95 ${
+                                isManPJ
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300"
+                                  : "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/50 dark:text-teal-300"
+                              }`}
+                              title="Bấm để chuyển đổi phân loại"
+                            >
+                              {isManPJ ? "👔 ManPJ" : "👕 Polomimin"}
+                            </button>
+                          );
+                        })()}
+                      </td>
                       <td className="py-2 px-3 text-center">
                         {vaiImages[v.maVT] ? (
                           <img src={vaiImages[v.maVT]} className="w-8 h-8 rounded object-cover mx-auto" alt={v.tenVT} />
@@ -945,12 +1142,39 @@ export default function KhoVaiPage() {
                     onChange={(e) => setNewVaiForm(f => ({ ...f, ghiChu: e.target.value }))}
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Phân loại thương hiệu *</label>
+                  <div className="grid grid-cols-2 gap-2 h-11">
+                    <button
+                      type="button"
+                      onClick={() => setNewVaiForm(f => ({ ...f, thuongHieu: "polomimin" }))}
+                      className={`rounded-xl border-2 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
+                        newVaiForm.thuongHieu === "polomimin"
+                          ? "bg-teal-50 border-teal-500 text-teal-700 dark:bg-teal-950 dark:text-teal-300 shadow-sm"
+                          : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      👕 Vải Polomimin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewVaiForm(f => ({ ...f, thuongHieu: "manpj" }))}
+                      className={`rounded-xl border-2 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
+                        newVaiForm.thuongHieu === "manpj"
+                          ? "bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 shadow-sm"
+                          : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      👔 Vải ManPJ
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setNewVaiForm({ tenVT: LOAI_VAI_OPTIONS[0], mauSac: "", donGia: 0, ghiChu: "", previewImg: "" })}
+                  onClick={() => setNewVaiForm({ tenVT: LOAI_VAI_OPTIONS[0], mauSac: "", donGia: 0, ghiChu: "", previewImg: "", thuongHieu: "polomimin" })}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   Xóa form
@@ -973,6 +1197,7 @@ export default function KhoVaiPage() {
                       tonKho: 0,
                       ghiChu: newVaiForm.ghiChu.trim(),
                       imageUrl: newVaiForm.previewImg || "",
+                      thuongHieu: newVaiForm.thuongHieu,
                     };
 
                     try {
@@ -991,7 +1216,7 @@ export default function KhoVaiPage() {
                     }
                     toast.success(`✅ Đã lưu ${maVT} và đồng bộ cho toàn hệ thống`);
 
-                    setNewVaiForm({ tenVT: LOAI_VAI_OPTIONS[0], mauSac: "", donGia: 0, ghiChu: "", previewImg: "" });
+                    setNewVaiForm({ tenVT: LOAI_VAI_OPTIONS[0], mauSac: "", donGia: 0, ghiChu: "", previewImg: "", thuongHieu: "polomimin" });
                     refresh();
                   }}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"

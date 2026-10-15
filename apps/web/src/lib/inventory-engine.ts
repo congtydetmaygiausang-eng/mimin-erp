@@ -2,7 +2,7 @@
 // Phase 1: Hoàn tất logic cốt lõi
 
 import type { PhieuWorkflow } from "./workflow-data";
-import { KHO_VAI, KHO_VAT_TU, type KhoVai } from "./data/real-data";
+import { KHO_VAI, KHO_VAT_TU, formatVND, type KhoVai, type ThuongHieuVai } from "./data/real-data";
 import { logAudit } from "./audit-log";
 
 
@@ -147,33 +147,61 @@ type KhoSupabaseRow = {
   ghi_chu: string | null;
 };
 
+export { type ThuongHieuVai } from "./data/real-data";
+
+/**
+ * Nhận diện phân loại thương hiệu của vải:
+ * 1. "manpj": Vải ManPJ
+ * 2. "polomimin": Vải của Polomimin (mặc định)
+ */
+export function detectThuongHieuVai(vai: Partial<KhoVai>): ThuongHieuVai {
+  if (vai.thuongHieu === "manpj" || vai.thuongHieu === "polomimin") {
+    return vai.thuongHieu;
+  }
+  const text = `${vai.tenVT || ""} ${vai.ghiChu || ""} ${vai.mauSac || ""} ${vai.maVT || ""}`.toLowerCase();
+  if (text.includes("manpj") || text.includes("man pj") || text.includes("mpj")) {
+    return "manpj";
+  }
+  return "polomimin";
+}
+
 type KhoVaiWithImage = KhoVai & { imageUrl?: string };
 
-type KhoVaiMetadata = { note: string; imageUrl: string };
+type KhoVaiMetadata = { note: string; imageUrl: string; thuongHieu?: ThuongHieuVai };
 
 function parseKhoVaiMetadata(value: string | null): KhoVaiMetadata {
-  if (!value) return { note: "", imageUrl: "" };
+  if (!value) return { note: "", imageUrl: "", thuongHieu: undefined };
   try {
     const parsed = JSON.parse(value) as Partial<KhoVaiMetadata>;
-    if (typeof parsed === "object" && parsed !== null && ("note" in parsed || "imageUrl" in parsed)) {
+    if (typeof parsed === "object" && parsed !== null && ("note" in parsed || "imageUrl" in parsed || "thuongHieu" in parsed)) {
       return {
         note: typeof parsed.note === "string" ? parsed.note : "",
         imageUrl: typeof parsed.imageUrl === "string" ? parsed.imageUrl : "",
+        thuongHieu: parsed.thuongHieu === "manpj" || parsed.thuongHieu === "polomimin" ? parsed.thuongHieu : undefined,
       };
     }
   } catch {
     // Dữ liệu cũ là ghi chú thuần văn bản.
   }
-  return { note: value, imageUrl: "" };
+  return { note: value, imageUrl: "", thuongHieu: undefined };
 }
 
-function serializeKhoVaiMetadata(note: string | undefined, imageUrl: string | undefined): string | null {
-  if (!imageUrl) return note || null;
-  return JSON.stringify({ note: note || "", imageUrl } satisfies KhoVaiMetadata);
+function serializeKhoVaiMetadata(
+  note: string | undefined,
+  imageUrl: string | undefined,
+  thuongHieu?: ThuongHieuVai
+): string | null {
+  if (!imageUrl && !thuongHieu) return note || null;
+  return JSON.stringify({
+    note: note || "",
+    imageUrl: imageUrl || "",
+    thuongHieu: thuongHieu || "polomimin",
+  } satisfies KhoVaiMetadata);
 }
 
 function toSupabaseKhoRow(v: KhoVai) {
   const vaiWithImage = v as KhoVaiWithImage;
+  const thuongHieu = v.thuongHieu || detectThuongHieuVai(v);
   return {
     sku: v.maVT,
     ten_vt: v.tenVT,
@@ -188,13 +216,23 @@ function toSupabaseKhoRow(v: KhoVai) {
     ton_cay: v.tonCay || 0,
     ty_le_hao_hut: v.tyLeHaoHut || 0,
     kho: v.kho || "Kho vải",
-    ghi_chu: serializeKhoVaiMetadata(v.ghiChu, vaiWithImage.imageUrl),
+    ghi_chu: serializeKhoVaiMetadata(v.ghiChu, vaiWithImage.imageUrl, thuongHieu),
     updated_at: new Date().toISOString(),
   };
 }
 
 function fromSupabaseKhoRow(row: KhoSupabaseRow, current?: KhoVai): KhoVai {
   const metadata = parseKhoVaiMetadata(row.ghi_chu);
+  const thuongHieu =
+    metadata.thuongHieu ||
+    current?.thuongHieu ||
+    detectThuongHieuVai({
+      maVT: row.sku,
+      tenVT: row.ten_vt,
+      mauSac: row.mau_sac || "",
+      ghiChu: metadata.note,
+    });
+
   return {
     ...(current || {}),
     maVT: row.sku,
@@ -211,6 +249,7 @@ function fromSupabaseKhoRow(row: KhoSupabaseRow, current?: KhoVai): KhoVai {
     kho: row.kho || "Kho vải",
     ghiChu: metadata.note,
     imageUrl: metadata.imageUrl || (current as KhoVaiWithImage | undefined)?.imageUrl || "",
+    thuongHieu,
   } as KhoVaiWithImage;
 }
 

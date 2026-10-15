@@ -22,3 +22,11 @@ export { KhaiBaoSoLuongTheoMau, type ChiTietMauInput } from "./KhaiBaoSoLuongThe
 export { formatVND, formatVNDShort } from "@/lib/data/real-data";
 export * from "./MayCard";
 export * from "./StageWorkList";
+export {
+  SearchableCustomerSelect,
+  type SearchableCustomerSelectProps,
+  removeAccents,
+  cleanDigits,
+  parseCustomerName,
+  scoreCustomer,
+} from "./SearchableCustomerSelect";

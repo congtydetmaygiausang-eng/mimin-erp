@@ -67,54 +67,85 @@ function mapToDB(ui: KhachHangUI): any {
     ma_kh: ui.maKH,
     ten_kh: ui.ten,
     loai: ui.loai || "",
-    dia_chi: ui.diaChi,
-    sdt: ui.sdt,
-    email: ui.email,
+    dia_chi: ui.diaChi || "",
+    sdt: ui.sdt || "",
+    email: ui.email || "",
     mst: ui.mst || "",
-    cong_no: ui.congNo || 0,
-    han_muc_no: ui.hanMucNo || 0, // P1 - 2026-08-07
-    rating: ui.rating || 4,
+    cong_no: Number(ui.congNo) || 0,
+    han_muc_no: Number(ui.hanMucNo) || 0, // P1 - 2026-08-07
+    rating: Number(ui.rating) || 4,
     ghi_chu: ui.ghiChu || "",
     trang_thai: ui.trangThai || "Thường",
     facebook_url: ui.facebookUrl || "", // 2026-08-08
-    nhu_cau_chinh: ui.nhuCauChinh || [], // 2026-08-18
-    ghi_nho: ui.ghiNho || false,
+    nhu_cau_chinh: Array.isArray(ui.nhuCauChinh) ? ui.nhuCauChinh : [], // 2026-08-18
+    ghi_nho: Boolean(ui.ghiNho),
     avatar_url: ui.avatar || "", // 2026-09-21
   };
 }
 
 function mapToUI(db: any): KhachHangUI {
+  if (!db) {
+    return {
+      maKH: "",
+      ten: "",
+      sdt: "",
+      email: "",
+      diaChi: "",
+      loai: "",
+      congNo: 0,
+      hanMucNo: 0,
+      ghiChu: "",
+      trangThai: "",
+      rating: 4,
+      mst: "",
+      facebookUrl: "",
+      nhuCauChinh: [],
+      ghiNho: false,
+      avatar: "",
+    };
+  }
+
+  const rawGhiChu = db.ghi_chu || db.ghiChu || "";
   let r = db.rating || 4;
   if (!db.rating) {
-    const match = db.ghi_chu?.match(/Đánh giá:\s*(\d)/);
+    const match = rawGhiChu.match(/Đánh giá:\s*(\d)/);
     if (match) r = parseInt(match[1], 10);
   }
 
   let mst = db.mst || "";
-  const mstMatch = db.ghi_chu?.match(/MST:\s*([\d\-]+)/);
+  const mstMatch = rawGhiChu.match(/MST:\s*([\d\-]+)/);
   if (mstMatch && !mst) mst = mstMatch[1];
 
-  let ghiChu = db.ghi_chu || "";
-  ghiChu = ghiChu.replace(/Đánh giá:\s*\d\s*\|\s*/, "").replace(/MST:\s*[\d\-]+\s*\|\s*/, "");
+  let ghiChu = rawGhiChu
+    .replace(/Đánh giá:\s*\d\s*\|\s*/, "")
+    .replace(/MST:\s*[\d\-]+\s*\|\s*/, "");
+
+  // Hỗ trợ cả snake_case (ten_kh), camelCase từ sync-helper (tenKh), và UI (ten)
+  const ten = (db.ten_kh || db.tenKh || db.ten || db.name || "").trim();
+  const maKH = (db.ma_kh || db.maKh || db.maKH || db.code || "").trim();
 
   return {
     id: db.id,
-    maKH: db.ma_kh,
-    ten: db.ten_kh || db.ten, // Hỗ trợ cả ten_kh (cũ) và ten (mới trong bảng khach_hang)
-    sdt: db.sdt || "",
-    email: db.email || "",
-    diaChi: db.dia_chi || "",
-    loai: db.loai || "",
-    congNo: db.cong_no || db.cong_no_hien_tai || 0,
-    hanMucNo: db.han_muc_no || 0, // P1 - 2026-08-07
-    ghiChu: ghiChu,
-    trangThai: db.trang_thai || "",
-    rating: r,
-    mst: mst,
-    facebookUrl: db.facebook_url || "", // 2026-08-08
-    nhuCauChinh: Array.isArray(db.nhu_cau_chinh) ? db.nhu_cau_chinh : [], // 2026-08-18
-    ghiNho: db.ghi_nho || false,
-    avatar: db.avatar_url || "", // 2026-09-21
+    maKH,
+    ten,
+    sdt: (db.sdt || db.phone || "").trim(),
+    email: (db.email || "").trim(),
+    diaChi: (db.dia_chi || db.diaChi || db.address || "").trim(),
+    loai: db.loai || db.loaiKH || "",
+    congNo: Number(db.cong_no ?? db.congNo ?? db.cong_no_hien_tai ?? db.congNoHienTai ?? 0) || 0,
+    hanMucNo: Number(db.han_muc_no ?? db.hanMucNo ?? 0) || 0,
+    ghiChu,
+    trangThai: db.trang_thai || db.trangThai || "",
+    rating: Number(r) || 4,
+    mst,
+    facebookUrl: db.facebook_url || db.facebookUrl || "",
+    nhuCauChinh: Array.isArray(db.nhu_cau_chinh)
+      ? db.nhu_cau_chinh
+      : Array.isArray(db.nhuCauChinh)
+      ? db.nhuCauChinh
+      : [],
+    ghiNho: Boolean(db.ghi_nho ?? db.ghiNho ?? false),
+    avatar: db.avatar_url || db.avatarUrl || db.avatar || "",
   };
 }
 
@@ -140,7 +171,12 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Lọc sạch cache cũ, loại bỏ các item lỗi không có tên hoặc mã
+          return parsed
+            .filter((item: any) => item && (item.maKH || item.ten || item.ma_kh || item.ten_kh))
+            .map((item: any) => mapToUI(item));
+        }
       }
     } catch {}
     return [];
@@ -199,10 +235,16 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   });
 
   const themKhachHang = useCallback(async (kh: KhachHangUI) => {
-    setList(prev => [kh, ...prev]);
+    const safeKH: KhachHangUI = {
+      ...kh,
+      ten: (kh.ten || "").trim(),
+      maKH: (kh.maKH || "").trim(),
+      sdt: (kh.sdt || "").trim(),
+    };
+    setList(prev => [safeKH, ...prev]);
     if (isSupabaseEnabled) {
       try {
-        const payload = mapToDB(kh);
+        const payload = mapToDB(safeKH);
         if (!payload.id) payload.id = crypto.randomUUID(); // Tự sinh UUID nếu thiếu
         let { error } = await supabase!.from("khach_hang").insert(payload);
         if (error?.code === "42703" || error?.code === "PGRST204") {
@@ -230,12 +272,18 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const suaKhachHang = useCallback(async (kh: KhachHangUI) => {
-    setList(prev => prev.map(x => x.maKH === kh.maKH ? kh : x));
+    const safeKH: KhachHangUI = {
+      ...kh,
+      ten: (kh.ten || "").trim(),
+      maKH: (kh.maKH || "").trim(),
+      sdt: (kh.sdt || "").trim(),
+    };
+    setList(prev => prev.map(x => x.maKH === safeKH.maKH ? safeKH : x));
     if (isSupabaseEnabled) {
       try {
-        const payload = mapToDB(kh);
+        const payload = mapToDB(safeKH);
         if (!payload.id) payload.id = crypto.randomUUID();
-        let { error } = await supabase!.from("khach_hang").update(payload).eq("ma_kh", kh.maKH);
+        let { error } = await supabase!.from("khach_hang").update(payload).eq("ma_kh", safeKH.maKH);
         if (error?.code === "42703" || error?.code === "PGRST204") {
           const safePayload = { ...payload };
           delete safePayload.han_muc_no;
@@ -244,7 +292,7 @@ export function KhachHangProvider({ children }: { children: ReactNode }) {
           delete safePayload.rating;
           delete safePayload.ghi_nho;
           delete safePayload.avatar_url;
-          ({ error } = await supabase!.from("khach_hang").update(safePayload).eq("ma_kh", kh.maKH));
+          ({ error } = await supabase!.from("khach_hang").update(safePayload).eq("ma_kh", safeKH.maKH));
         }
 
         if (error) {

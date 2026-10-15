@@ -148,6 +148,7 @@ const DonHangContext = createContext<DonHangContextType | undefined>(undefined);
 // ─── Provider ──────────────────────────────────────────────────────────────────
 import { useSupabaseSync, camelToSnake } from "@/lib/supabase/client";
 import { useKhachHang } from "./khach-hang-store";
+import { generateMaDH, extractOrderSeq, commitOrderSeq } from "@/components/order-detail/helpers";
 import { toast } from "sonner";
 
 // ... [The context and interfaces remain unchanged above this block]
@@ -161,14 +162,17 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
         try { shipping = JSON.parse(shipping); } catch(e) {}
       }
       let diaChi = row.diaChi;
-      let thueVAT = row.thueVAT;
+      let thueVAT = row.thueVAT ?? row.thue_vat;
+      let tepKhachHang = row.tepKhachHang || row.tep_khach_hang;
       
       if (shipping && typeof shipping === 'object') {
         if (shipping.xdiachi !== undefined) diaChi = shipping.xdiachi;
-        if (shipping.xthuevat !== undefined) thueVAT = shipping.xthuevat;
+        if (shipping.xthuevat !== undefined && thueVAT === undefined) thueVAT = shipping.xthuevat;
+        if (shipping.xtepkhachhang !== undefined && !tepKhachHang) tepKhachHang = shipping.xtepkhachhang;
         
         delete shipping.xdiachi;
         delete shipping.xthuevat;
+        delete shipping.xtepkhachhang;
         if (Object.keys(shipping).length === 0) shipping = undefined;
       }
       
@@ -176,7 +180,8 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
         ...row,
         shipping,
         diaChi,
-        thueVAT,
+        thueVAT: thueVAT !== undefined ? Number(thueVAT) : undefined,
+        tepKhachHang,
         items: row.items ? (typeof row.items === 'string' ? JSON.parse(row.items) : row.items) : [],
         payments: row.payments ? (typeof row.payments === 'string' ? JSON.parse(row.payments) : row.payments) : []
       };
@@ -190,11 +195,13 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
       return mapped;
     },
     mapOut: (row) => {
-      // Lọc bỏ các trường chưa có cột trên Supabase (vd: dia_chi, thue_vat)
-      // Nhét tạm vào cột shipping (cột JSON) để lưu trữ trên db.
-      // Dùng tên biến toàn chữ thường (xdiachi, xthuevat) để tránh bị hàm camelToSnake làm hỏng format
-      const { diaChi, thueVAT, shipping, ...rest } = row;
-      const modifiedShipping = shipping ? { ...shipping, xdiachi: diaChi, xthuevat: thueVAT } : { xdiachi: diaChi, xthuevat: thueVAT };
+      // Lọc bỏ các trường chưa có cột trên Supabase (vd: dia_chi, thue_vat, tep_khach_hang)
+      // Nhét tạm vào cột shipping (cột JSON) để lưu trữ trên db an toàn.
+      // Dùng tên biến toàn chữ thường (xdiachi, xthuevat, xtepkhachhang) để tránh bị hàm camelToSnake làm hỏng format
+      const { diaChi, thueVAT, tepKhachHang, shipping, ...rest } = row;
+      const modifiedShipping = shipping 
+        ? { ...shipping, xdiachi: diaChi, xthuevat: thueVAT, xtepkhachhang: tepKhachHang } 
+        : { xdiachi: diaChi, xthuevat: thueVAT, xtepkhachhang: tepKhachHang };
       return camelToSnake({ ...rest, shipping: modifiedShipping });
     }
   });
@@ -256,9 +263,27 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
   }, [setDsOrder]);
 
   const themOrder = useCallback((order: Order) => {
-    setDsOrder(prev => [order, ...prev]);
-    const conNo = calcConLai(order);
-    syncCongNoKhachHang(order.khachHang, conNo);
+    let orderToSave = order;
+    setDsOrder(prev => {
+      const dsMaHienCo = prev.map(o => o.maDH).filter(Boolean);
+      if (!orderToSave.maDH || dsMaHienCo.includes(orderToSave.maDH)) {
+        orderToSave = { ...orderToSave, maDH: generateMaDH(dsMaHienCo) };
+      }
+      const seq = extractOrderSeq(orderToSave.maDH);
+      if (seq > 0) {
+        commitOrderSeq(seq);
+      }
+      const orderTotal = calcTongTien(orderToSave);
+      const conNo = calcConLai(orderToSave);
+      orderToSave = {
+        ...orderToSave,
+        tongTien: orderTotal,
+        tienCuoiKy: conNo,
+      };
+      return [orderToSave, ...prev];
+    });
+    const conNo = calcConLai(orderToSave);
+    syncCongNoKhachHang(orderToSave.khachHang, conNo);
   }, [setDsOrder, syncCongNoKhachHang]);
 
   const suaOrder = useCallback((id: string, data: Partial<Order>) => {
@@ -267,7 +292,14 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
       const oldOrder = prev.find(o => o.id === id);
       if (!oldOrder) return prev;
 
-      const newOrder = { ...oldOrder, ...data };
+      const merged = { ...oldOrder, ...data };
+      const orderTotal = calcTongTien(merged);
+      const conNo = calcConLai(merged);
+      const newOrder: Order = {
+        ...merged,
+        tongTien: orderTotal,
+        tienCuoiKy: conNo,
+      };
       const diff = calcConLai(newOrder) - calcConLai(oldOrder);
 
       syncCongNoKhachHang(newOrder.khachHang, diff);
@@ -294,15 +326,24 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
       const newList = prev.map(o => {
         if (o.id !== orderId) return o;
         const payments = [...(o.payments || []), payment];
-        const totalPaid = payments.reduce((s, p) => s + p.soTien, 0);
-        const tongTien = (o.tongTien || 0);
+        const totalPaid = payments.reduce((s, p) => s + (Number(p.soTien) || 0), 0);
+        const orderTotal = calcTongTien(o);
+        const isPaidFull = orderTotal > 0 && totalPaid >= orderTotal;
+        const remain = Math.max(0, orderTotal - totalPaid);
         const newTrangThai: Order["trangThai"] =
-          totalPaid >= tongTien ? "Hoàn thành" :
+          isPaidFull ? "Hoàn thành" :
           totalPaid > 0 ? o.trangThai :
           o.trangThai;
         
         updatedKhachHang = o.khachHang;
-        return { ...o, payments, tienCuoiKy: tongTien - totalPaid, trangThai: newTrangThai };
+        return {
+          ...o,
+          payments,
+          tongTien: orderTotal,
+          tienCuoiKy: remain,
+          trangThai: newTrangThai,
+          trangThaiThanhToan: isPaidFull ? "thanh-toan-du" : totalPaid > 0 ? "thanh-toan-mot-phan" : "chua-thanh-toan",
+        };
       });
       
       // Giảm công nợ của khách hàng bằng số tiền vừa thanh toán
@@ -375,18 +416,51 @@ export function useDonHang() {
 
 // ─── Helpers xuất ra ngoài ──────────────────────────────────────────────────────
 export function calcTongTien(order: Order): number {
-  const subtotal = (order.items || []).reduce((s, i) => s + i.thanhTien, 0);
-  const ship = order.shipping?.phiVanChuyen || 0;
-  const giam = order.giamGia || 0;
-  return subtotal + ship - giam;
+  if (!order) return 0;
+  // 1. Tiền hàng từ items[] hoặc fallback thanhTien
+  let subtotal = 0;
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    subtotal = order.items.reduce((s, i) => s + (Number(i.thanhTien) || 0), 0);
+  } else if (order.thanhTien && typeof order.thanhTien === "number") {
+    subtotal = order.thanhTien;
+  }
+
+  // 2. Thuế VAT (%)
+  const vatPercent = Number(order.thueVAT) || Number((order.shipping as any)?.xthuevat) || 0;
+  const tienVAT = vatPercent > 0 ? Math.round((subtotal * vatPercent) / 100) : 0;
+
+  // 3. Phí vận chuyển & Giảm giá
+  const ship = Number(order.shipping?.phiVanChuyen) || 0;
+  const giam = Number(order.giamGia) || 0;
+  const computed = Math.max(0, subtotal + tienVAT + ship - giam);
+
+  // 4. Nếu đơn hàng đã lưu sẵn tongTien hợp lệ (> 0)
+  if (order.tongTien && typeof order.tongTien === "number" && order.tongTien > 0) {
+    if (Math.abs(order.tongTien - computed) <= 1000) {
+      return order.tongTien;
+    }
+    // Nếu computed không có VAT nhưng order.tongTien lại lớn hơn subtotal (đã có thuế)
+    if (computed === subtotal && order.tongTien > subtotal) {
+      return order.tongTien;
+    }
+  }
+
+  return computed;
 }
 
 export function calcDaThanhToan(order: Order): number {
-  return (order.payments || []).reduce((s, p) => s + p.soTien, 0);
+  if (!order) return 0;
+  if (Array.isArray(order.payments) && order.payments.length > 0) {
+    return order.payments.reduce((s, p) => s + (Number(p.soTien) || 0), 0);
+  }
+  return Number(order.tienCoc) || 0;
 }
 
 export function calcConLai(order: Order): number {
-  return calcTongTien(order) - calcDaThanhToan(order);
+  if (!order) return 0;
+  const tong = calcTongTien(order);
+  const daTra = calcDaThanhToan(order);
+  return Math.max(0, tong - daTra);
 }
 
 export function genOrderId(dsOrder: Order[]): string {

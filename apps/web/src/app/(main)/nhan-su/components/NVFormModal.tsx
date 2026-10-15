@@ -10,7 +10,7 @@ import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader"
 import { normalizeEmployeeRecord } from "@/lib/employee-records";
 import type { NhanSuExt } from "../data";
 import { ImagePreviewModal } from "./ImagePreviewModal";
-import { authFetch } from "@/lib/auth-fetch";
+import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export function NVFormModal({ mode, nv, existingCount, existingCodes, onClose, onSave }: { mode: "add" | "edit"; nv?: NhanSuExt; existingCount: number; existingCodes: string[]; onClose: () => void; onSave: (n: NhanSuExt) => Promise<void> }) {
   const [form, setForm] = useState<NhanSuExt>(nv || {
@@ -63,16 +63,14 @@ export function NVFormModal({ mode, nv, existingCount, existingCodes, onClose, o
 
   const uploadImage = async (field: string, file: UploadedFile): Promise<string> => {
     const blob = await (await fetch(file.dataUrl)).blob();
-    const body = new FormData();
-    body.append("file", blob, file.name);
     const safeCode = form.maNV.trim().replace(/[^a-zA-Z0-9-]/g, "-");
-    body.append("path", `nhan-su/${safeCode}/${field}-${crypto.randomUUID()}`);
-    const response = await authFetch("/api/employee-uploads", { method: "POST", body });
-    const result: { path?: string; error?: string } = await response.json();
-    if (!response.ok || !result.path?.startsWith("nhan-su/")) {
-      throw new Error(result.error || "Không tải được ảnh, vui lòng thử lại");
+    const path = `nhan-su/${safeCode}/${field}-${crypto.randomUUID()}`;
+    if (isSupabaseEnabled && supabase) {
+      const { error } = await supabase.storage.from("employee-documents").upload(path, blob, { upsert: true });
+      if (error) throw new Error(error.message || "Không tải được ảnh, vui lòng thử lại");
+      return path;
     }
-    return result.path;
+    return file.dataUrl;
   };
 
   const handleSubmit = async () => {
@@ -94,12 +92,8 @@ export function NVFormModal({ mode, nv, existingCount, existingCodes, onClose, o
         uploadFiles.cccdBackImage ? uploadImage("cccdBackImage", uploadFiles.cccdBackImage) : nv?.cccdBackPath ?? form.cccdBackImage ?? "",
       ]);
       const saved = { ...form, maNV: code, hoTen: form.hoTen.trim(), sdt: form.sdt.trim(), avatar, cccdFrontImage: front, cccdBackImage: back, oldMaNV: mode === "edit" ? nv?.maNV : undefined };
-      const response = await authFetch("/api/employee-records", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saved),
-      });
-      const result: { record?: Record<string, unknown>; error?: string } = await response.json();
-      if (!response.ok || !result.record) throw new Error(result.error || "Không thể lưu hồ sơ nhân sự");
-      await onSave({ ...saved, ...normalizeEmployeeRecord(result.record), oldMaNV: saved.oldMaNV } as NhanSuExt);
+      
+      await onSave(saved as NhanSuExt);
     } finally {
       setIsUploading(false);
     }

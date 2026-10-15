@@ -3,6 +3,9 @@ export type OrderStatus = "Mới" | "Đã duyệt" | "Đang SX" | "Hoàn thành"
 /** Loại đơn hàng - quyết định form render */
 export type LoaiDonHang = "ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee" | "ban-san" | "dat-may";
 
+/** Phân loại tệp khách hàng */
+export type TepKhachHang = "don-hang-dat" | "don-ban-khach" | "don-san-xuat";
+
 /** Phương thức thanh toán */
 export type PhuongThucThanhToan = "ngan-hang" | "tien-mat" | "cong-no";
 
@@ -87,6 +90,8 @@ export type Order = import("@/lib/data/account-access").RecordAssignment & {
   /** Loại đơn hàng - quyết định UI bán lẻ/sỉ/sàn */
   loaiDonHang?: LoaiDonHang;
   loaiDon?: LoaiDonHang; // alias for compatibility
+  /** Phân loại tệp khách hàng: Đơn hàng đặt / Đơn bán khách / Đơn sản xuất cho khách */
+  tepKhachHang?: TepKhachHang;
   /** Kênh bán (nếu là bán sàn) - VD: "Shopee", "TikTok Shop", "Lazada" */
   kenhBan?: string;
   /** DEPRECATED: dùng items[] thay thế. Giữ để backward compat. */
@@ -138,6 +143,12 @@ export const LOAI_DON_HANG_LABELS: Record<LoaiDonHang, string> = {
   shopee: "Shopee",
   "ban-san": "Bán sàn (cũ)",
   "dat-may": "Đặt may / Đồng phục",
+};
+
+export const TEP_KHACH_HANG_LABELS: Record<TepKhachHang, string> = {
+  "don-hang-dat": "Đơn hàng đặt",
+  "don-ban-khach": "Đơn bán khách",
+  "don-san-xuat": "Đơn sản xuất cho khách",
 };
 
 export const PHUONG_THUC_THANH_TOAN_LABELS: Record<PhuongThucThanhToan, string> = {

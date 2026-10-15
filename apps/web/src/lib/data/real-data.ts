@@ -273,6 +273,8 @@ export const formatVNDShort = (n: number) => {
   return safe.toLocaleString("vi-VN") + " đ";
 };
 // ========== 7. KHO VẢI (29 loại vải) ==========
+export type ThuongHieuVai = "manpj" | "polomimin";
+
 export type KhoVai = {
   maVT: string; tenVT: string; loai: string; dvt: string;
   donGia: number; tonKho: number; tonToiThieu: number;
@@ -288,6 +290,8 @@ export type KhoVai = {
   tenChuan?: string;   // Tên vải chuẩn, VD: "XÁM CHÌ 035"
   mauChuan?: string;   // Màu chuẩn dùng cho SKU/màu phối, VD: "Xám chì"
   metTrenKg?: number;  // Định lượng vải (Ví dụ: 1kg = 4m)
+  /** Phân loại thương hiệu/chủ sở hữu: Vải ManPJ hoặc Vải của Polomimin */
+  thuongHieu?: ThuongHieuVai;
 };
 export const KHO_VAI: KhoVai[] = [
   { maVT: "V-XAMCHI035", tenVT: "XÁM CHÌ 035", loai: "Vải", dvt: "kg", donGia: 74000.0, tonKho: 0.0, tonToiThieu: 0.0, kho: "Kho vải", mauSac: "Xám chì", ghiChu: "Vải chính", soCayNhap: 0.0, tonCay: 0.0, maMoi: "VAI09", tenChuan: "XÁM CHÌ 035", mauChuan: "Xám chì" },

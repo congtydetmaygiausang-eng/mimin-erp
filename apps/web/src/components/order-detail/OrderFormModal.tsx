@@ -14,16 +14,18 @@ import {
 import { toast } from "sonner";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { useKhachHang } from "@/lib/data/khach-hang-store";
+import { SearchableCustomerSelect } from "@/components/ui/SearchableCustomerSelect";
 import {
   type Order, type OrderItem, type OrderPayment, type OrderShipping,
-  type LoaiDonHang, type PhuongThucThanhToan, type PhuongThucVanChuyen, type TrangThaiVanChuyen,
-  LOAI_DON_HANG_LABELS, PHUONG_THUC_THANH_TOAN_LABELS, PHUONG_THUC_VAN_CHUYEN_LABELS,
+  type LoaiDonHang, type TepKhachHang, type PhuongThucThanhToan, type PhuongThucVanChuyen, type TrangThaiVanChuyen,
+  LOAI_DON_HANG_LABELS, TEP_KHACH_HANG_LABELS, PHUONG_THUC_THANH_TOAN_LABELS, PHUONG_THUC_VAN_CHUYEN_LABELS,
   KENH_BAN_SAN_OPTIONS, NGAN_HANG_OPTIONS,
 } from "./types";
 import { useDonHang } from "@/lib/data/don-hang-store";
 import {
   createEmptyOrder, createOrderItemFromVariant, createEmptyPayment, generateMaDH,
-  calcOrderTotal, calcPaidTotal, calcOrderRemain, calcOrderQty, recalcItem,
+  calcOrderTotal, calcPaidTotal, calcOrderRemain, calcOrderQty, recalcItem, detectTepKhachHang,
+  extractOrderSeq, commitOrderSeq,
 } from "./helpers";
 import { generateVariants, mauToCode, type ProductVariant } from "@/lib/data/product-variants";
 import { formatVND, formatVNDShort } from "@/lib/data/real-data";
@@ -47,34 +49,35 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
   const { list: dsKhachHang } = useKhachHang();
   const { dsOrder } = useDonHang();
   // Mã đơn đang có - để sinh mã mới chạy tuần tự, không đụng mã cũ
-  const dsMaDaCo = useMemo(() => dsOrder.map((o) => o.maDH), [dsOrder]);
-  const [order, setOrder] = useState<Order>(() => createEmptyOrder());
+  const dsMaDaCo = useMemo(() => dsOrder.map((o) => o.maDH).filter(Boolean), [dsOrder]);
+  const [order, setOrder] = useState<Order>(() => createEmptyOrder(dsMaDaCo));
   const [activeTab, setActiveTab] = useState<"info" | "items" | "payment" | "shipping">("info");
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Track last initialId da init để tránh init lặp
-  const lastInitialIdRef = useRef<string | null>(null);
+  // Track session init để khi mở modal tạo mới luôn sinh mã tự tăng mới nhất
+  const isOpenRef = useRef(false);
 
-  // Init khi mo modal HOẶC khi initial.id đổi (sang đơn khác)
+  // Init khi mo modal
   useEffect(() => {
     if (!open) {
-      lastInitialIdRef.current = null;
+      isOpenRef.current = false;
       setShowConfirm(false);
       return;
     }
-    const newId = initial?.id || null;
-    if (lastInitialIdRef.current !== newId) {
-      // Đơn seed sẵn từ giỏ hàng/mua nhanh vẫn là đơn MỚI -> cấp lại mã chạy
-      // tuần tự để không trùng mã đơn đã lưu.
-      const base = initial
-        ? (isNewOrder ? { ...initial, maDH: generateMaDH(dsMaDaCo) } : initial)
+
+    if (!isOpenRef.current) {
+      isOpenRef.current = true;
+      const isEdit = Boolean(initial && !isNewOrder);
+      const base = isEdit
+        ? initial!
+        : initial && isNewOrder
+        ? { ...initial, maDH: generateMaDH(dsMaDaCo) }
         : createEmptyOrder(dsMaDaCo);
       setOrder(base);
       setActiveTab("info");
       setShowConfirm(false);
-      lastInitialIdRef.current = newId;
     }
-  }, [open, initial?.id, isNewOrder, dsMaDaCo]);
+  }, [open, initial, isNewOrder, dsMaDaCo]);
 
   const tongTien = calcOrderTotal(order.items);
   const tongSL = calcOrderQty(order.items);
@@ -240,15 +243,32 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
   };
 
   const confirmSave = () => {
+    // Đảm bảo nếu tạo mới và mã đơn bị trùng hoặc trống thì tự sinh mã mới tăng dần
+    let maDH = order.maDH;
+    if (!initial || isNewOrder) {
+      if (!maDH || dsMaDaCo.includes(maDH)) {
+        maDH = generateMaDH(dsMaDaCo);
+      }
+    }
+
+    const seq = extractOrderSeq(maDH);
+    if (seq > 0) {
+      commitOrderSeq(seq);
+    }
+
     const finalOrder: Order = {
       ...order,
+      maDH,
+      tepKhachHang: order.tepKhachHang || detectTepKhachHang(order, dsKhachHang),
       thanhTien: tongTien,
+      tongTien: tongThanhToan,
+      thueVAT,
       soLuong: tongSL,
       trangThaiThanhToan: conLai <= 0 ? "thanh-toan-du" : daThanhToan > 0 ? "thanh-toan-mot-phan" : "chua-thanh-toan",
       tienCoc: daThanhToan, // backward compat
+      tienCuoiKy: Math.max(0, conLai),
     };
     onSave(finalOrder);
-    toast.success(`Đã lưu đơn hàng: ${finalOrder.maDH}`);
     setShowConfirm(false);
     onClose();
   };
@@ -309,7 +329,7 @@ export default function OrderFormModal({ open, onClose, initial, isNewOrder, onS
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
-              {initial && !isNewOrder ? `Sửa đơn hàng: ${initial.maDH}` : "Tạo đơn hàng mới"}
+              {initial && !isNewOrder ? `Sửa đơn hàng: ${initial.maDH}` : `Tạo đơn hàng mới · ${order.maDH}`}
             </h2>
             <p className="text-xs text-cyan-50 mt-0.5">
               {tongSL} sản phẩm · Tổng {formatVNDShort(tongThanhToan)} · Còn lại {formatVNDShort(conLai)}
@@ -436,6 +456,67 @@ function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p:
   const orderTypes: LoaiDonHang[] = ["ban-le", "ban-si", "ban-lo", "tiktok", "shopee", "dat-may"];
   return (
     <div className="space-y-4 max-w-2xl">
+      {/* Ma don hang & Ngay dat */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div>
+          <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400">
+            Mã đơn hàng
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="font-mono font-bold text-sm text-cyan-700 dark:text-cyan-300 bg-cyan-100/70 dark:bg-cyan-950/60 px-3 py-1.5 rounded-lg border border-cyan-300 dark:border-cyan-800 shadow-sm">
+              {order.maDH || "Đang tạo mã..."}
+            </span>
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+              ✨ Tự động tăng (Đơn #{extractOrderSeq(order.maDH) || 1})
+            </span>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400">
+            Ngày đặt hàng
+          </label>
+          <input
+            type="date"
+            value={order.ngayDat || new Date().toISOString().slice(0, 10)}
+            onChange={(e) => onChange({ ngayDat: e.target.value })}
+            className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Phân loại tệp khách hàng */}
+      <div>
+        <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-200 flex items-center justify-between">
+          <span>Phân loại tệp khách hàng <span className="text-rose-500">*</span></span>
+          <span className="text-[11px] font-normal text-slate-400">Dùng lọc nhanh 3 tệp ở danh sách đơn hàng</span>
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {([
+            { id: "don-hang-dat" as const, label: "📋 Đơn hàng đặt", sub: "Khách đặt may, cty, hợp đồng", activeClass: "border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300" },
+            { id: "don-ban-khach" as const, label: "🛍️ Đơn bán khách", sub: "Bán sỉ, bán lẻ, sàn TMĐT", activeClass: "border-sky-500 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300" },
+            { id: "don-san-xuat" as const, label: "🏭 Đơn sản xuất cho khách", sub: "Xưởng may, gia công theo đơn", activeClass: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300" },
+          ]).map((t) => {
+            const currentTep = order.tepKhachHang || detectTepKhachHang(order, dsKhachHang);
+            const active = currentTep === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onChange({ tepKhachHang: t.id })}
+                className={`p-3 rounded-xl border-2 text-left transition ${
+                  active
+                    ? `${t.activeClass} shadow-sm`
+                    : "border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800"
+                }`}
+              >
+                <div className="font-bold text-xs">{t.label}</div>
+                <div className="text-[10px] opacity-75 mt-0.5">{t.sub}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Loai don hang */}
       <div>
         <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-200">
@@ -448,7 +529,17 @@ function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p:
               <button
                 key={k}
                 type="button"
-                onClick={() => onChange({ loaiDonHang: k, kenhBan: k === "tiktok" ? "TikTok Shop" : k === "shopee" ? "Shopee" : undefined })}
+                onClick={() => {
+                  const patch: Partial<Order> = {
+                    loaiDonHang: k,
+                    kenhBan: k === "tiktok" ? "TikTok Shop" : k === "shopee" ? "Shopee" : undefined,
+                  };
+                  if (!order.tepKhachHang) {
+                    if (k === "dat-may") patch.tepKhachHang = "don-hang-dat";
+                    else patch.tepKhachHang = "don-ban-khach";
+                  }
+                  onChange(patch);
+                }}
                 className={`px-3 py-3 rounded-xl border-2 font-semibold text-xs text-center transition ${
                   active
                     ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300"
@@ -486,26 +577,26 @@ function InfoTab({ order, onChange, dsKhachHang }: { order: Order; onChange: (p:
             <User className="inline w-3.5 h-3.5 mr-1" />
             Khách hàng <span className="text-rose-500">*</span>
           </label>
-          <select
+          <SearchableCustomerSelect
             value={order.khachHang || ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              const kh = dsKhachHang.find((k: any) => k.ten === val);
-              onChange({ 
+            valueType="ten"
+            onChange={(val, kh) => {
+              const patch: Partial<Order> = { 
                 khachHang: val, 
-                ...(kh && kh.sdt ? { sdt: kh.sdt } : {}),
-                ...(kh && kh.diaChi ? { diaChi: kh.diaChi } : {})
-              });
+                ...(kh?.sdt ? { sdt: kh.sdt } : {}),
+                ...(kh?.diaChi ? { diaChi: kh.diaChi } : {})
+              };
+              if (!order.tepKhachHang && kh) {
+                const loai = (kh.loai || "").toLowerCase();
+                if (loai.includes("xưởng")) patch.tepKhachHang = "don-san-xuat";
+                else if (loai.includes("công ty")) patch.tepKhachHang = "don-hang-dat";
+              }
+              onChange(patch);
             }}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-          >
-            <option value="">-- Chọn khách hàng --</option>
-            {dsKhachHang.map((kh: any) => (
-              <option key={kh.id} value={kh.ten}>
-                {kh.ten} {kh.sdt ? `(${kh.sdt})` : ""}
-              </option>
-            ))}
-          </select>
+            customers={dsKhachHang}
+            placeholder="-- Tìm tên khách hàng, số điện thoại hoặc mã KH --"
+            allowCustom={true}
+          />
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1.5 text-slate-700 dark:text-slate-200">

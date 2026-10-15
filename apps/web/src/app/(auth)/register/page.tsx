@@ -8,6 +8,8 @@ import { Sun, Moon, Shirt, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
 
+import { useSession } from "@/components/session-provider";
+
 const BACKGROUNDS = [
   { id: "teal", src: "/bg/login-teal.jpg", label: "Teal" },
   { id: "galaxy", src: "/bg/galaxy-dark.jpg", label: "Galaxy" },
@@ -18,6 +20,7 @@ const BACKGROUNDS = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { signIn } = useSession();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
@@ -31,31 +34,73 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+
     if (password !== confirmPassword) {
       toast.error("Mật khẩu xác nhận không khớp");
       return;
     }
-    if (!supabase) {
-      toast.error("Hệ thống chưa kết nối cơ sở dữ liệu");
+    if (password.length < 6) {
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
-    setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          has_set_password: true,
-        },
-      },
-    });
-    setLoading(false);
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực.");
-      router.push("/login");
+    setLoading(true);
+
+    try {
+      // 1. Thử đăng ký qua server-side API để tự động kích hoạt email_confirm: true
+      const res = await fetch("/api/auth/register/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+
+      if (!res.ok || !resData.ok) {
+        // Nếu lỗi cụ thể từ API (ví dụ email đã tồn tại)
+        if (resData.error) {
+          toast.error(resData.error);
+          setLoading(false);
+          return;
+        }
+
+        // Nếu API server không phản hồi, fallback qua client-side Supabase
+        if (supabase) {
+          const { error: signUpErr } = await supabase.auth.signUp({
+            email: cleanEmail,
+            password,
+            options: {
+              data: { has_set_password: true },
+            },
+          });
+          if (signUpErr) {
+            toast.error(signUpErr.message);
+            setLoading(false);
+            return;
+          }
+        } else {
+          toast.error(resData.error || "Đăng ký thất bại. Vui lòng thử lại.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      toast.success("Đăng ký thành công! Đang tự động đăng nhập...");
+
+      // 2. Tự động đăng nhập ngay sau khi đăng ký thành công
+      const loginRes = await signIn(cleanEmail, password);
+      setLoading(false);
+
+      if (loginRes.ok) {
+        router.replace("/dashboard");
+      } else {
+        router.push(`/login?email=${encodeURIComponent(cleanEmail)}`);
+      }
+    } catch (err) {
+      console.error("[register] Lỗi:", err);
+      toast.error("Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.");
+      setLoading(false);
     }
   };
 
