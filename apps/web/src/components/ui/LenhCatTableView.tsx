@@ -1,26 +1,27 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
-  Scissors, Package, Calendar, CheckCircle2, Clock, 
-  AlertTriangle, Eye, Users, ChevronDown, ChevronUp, 
+import {
+  Scissors, Package, Calendar, CheckCircle2, Clock,
+  AlertTriangle, Eye, Users, ChevronDown, ChevronUp,
   Sparkles, ShieldCheck, Shirt, Palette, Wind, ClipboardList,
-  ExternalLink, Layers
+  ExternalLink, Layers, Printer
 } from "lucide-react";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { LOAI_SP_LABELS, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE } from "@/lib/data/lenh-cat-store";
 import { DateDisplay } from "./DateDisplay";
+import { inPhieuLenhCatA4 } from "@/lib/phieu-lenh-cat-print";
 
-export type StageKey = 
+export type StageKey =
   | "lenh-cat"
-  | "cat" 
-  | "in-theu" 
-  | "may" 
-  | "qc" 
-  | "khuy-nut" 
-  | "ui" 
-  | "dong-goi" 
+  | "cat"
+  | "in-theu"
+  | "may"
+  | "qc"
+  | "khuy-nut"
+  | "ui"
+  | "dong-goi"
   | "hoan-thien";
 
 interface Props {
@@ -88,9 +89,190 @@ export function LenhCatTableView({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse text-xs md:text-sm">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden w-full max-w-full">
+      {/* ===== MOBILE CARDS VIEW (< md) ===== */}
+      <div className="block md:hidden divide-y divide-slate-100">
+        {list.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 p-4">
+            <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+            <div className="font-bold text-sm">Không có lệnh sản xuất nào ở khâu này</div>
+          </div>
+        ) : (
+          list.map((lc, index) => {
+            const mainImg = lc.dsMau?.[0]?.img || "";
+            const metrics = getStageMetrics(lc);
+            const style = TRANG_THAI_CD_STYLE[metrics.tt] || TRANG_THAI_CD_STYLE["cho_giao"];
+            const isExpanded = expandedRowId === lc.id;
+            const currentDone = stage === "cat" ? metrics.slCatThucTe : metrics.slHoanThanh;
+
+            return (
+              <div key={lc.id} className="p-3.5 space-y-3 bg-white">
+                {/* Row 1: Index + LC ID + Product Code + Status */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
+                    <span className="font-mono font-black text-teal-700 bg-teal-50 px-2 py-0.5 rounded text-xs border border-teal-100">
+                      {lc.id}
+                    </span>
+                    {lc.maSP && (
+                      <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded truncate max-w-[100px]">
+                        {lc.maSP}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-black rounded-md shrink-0 border ${style.bg} ${style.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                    {TRANG_THAI_CD_LABELS[metrics.tt] || metrics.tt}
+                  </span>
+                </div>
+
+                {/* Row 2: Thumbnail + Name + Type + Deadline + Assignee */}
+                <div className="flex items-start gap-3">
+                  <div
+                    onClick={() => mainImg && setZoomImg(mainImg)}
+                    className="w-14 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 cursor-pointer shadow-xs relative"
+                    title="Nhấp để xem ảnh to"
+                  >
+                    {mainImg ? (
+                      <img src={mainImg} alt={lc.tenSP} className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-slate-300">NO IMG</div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-slate-800 text-sm leading-tight line-clamp-2" title={lc.tenSP}>
+                      {lc.tenSP}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1 flex items-center gap-2 flex-wrap">
+                      <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">{LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP || "Bộ/Áo"}</span>
+                      <span className="flex items-center gap-1 text-slate-600">
+                        <Calendar className="w-3 h-3 text-rose-500 shrink-0" />
+                        <DateDisplay value={lc.hanHoanThanh} format="dd/MM/yyyy" />
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-1">
+                      Phụ trách: <b className="text-slate-700">{metrics.nguoiTen}</b>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 3: Metrics Grid (3 cols) */}
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl text-center text-xs">
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Kế hoạch</div>
+                    <div className="font-black text-slate-800 text-sm mt-0.5">{lc.tongSL.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
+                      {stage === "cat" ? "Cắt TT" : "SL Đạt"}
+                    </div>
+                    <div className="font-black text-emerald-700 text-sm mt-0.5">
+                      {currentDone.toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Lỗi / Hụt</div>
+                    <div className={`font-black text-sm mt-0.5 ${metrics.slLoi > 0 ? "text-rose-600" : "text-slate-400"}`}>
+                      {metrics.slLoi > 0 ? `-${metrics.slLoi}` : "0"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 4: Swatches + Action Button + Chevron */}
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar tab-scroll-mobile py-0.5">
+                    {lc.dsMau?.slice(0, 4).map((mau, mi) => (
+                      <button
+                        key={mi}
+                        onClick={() => onColorClick?.(lc, mau)}
+                        className="w-7 h-8 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-2xs"
+                        title={mau.ten}
+                      >
+                        {mau.img ? (
+                          <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="w-full h-full flex items-center justify-center bg-slate-100 text-[9px] font-bold text-slate-500">
+                            {mau.ten?.slice(0, 1)}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    {(lc.dsMau?.length || 0) > 4 && (
+                      <span
+                        onClick={() => setExpandedRowId(isExpanded ? null : lc.id)}
+                        className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-1 rounded-md shrink-0 cursor-pointer"
+                      >
+                        +{lc.dsMau!.length - 4}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => inPhieuLenhCatA4(lc)}
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                      title="In phiếu A4"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (onTyLeClick) onTyLeClick(lc);
+                        else if (lc.dsMau?.[0] && onColorClick) onColorClick(lc, lc.dsMau[0]);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs shadow-xs"
+                    >
+                      Nhập SL
+                    </button>
+                    <button
+                      onClick={() => setExpandedRowId(isExpanded ? null : lc.id)}
+                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600"
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded Details on Mobile */}
+                {isExpanded && (
+                  <div className="pt-2 border-t border-slate-100 space-y-3">
+                    <div className="text-[11px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5 text-teal-600" /> Chi tiết các màu ({lc.dsMau?.length || 0} màu)
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {lc.dsMau?.map((mau, mi) => (
+                        <div
+                          key={mi}
+                          onClick={() => onColorClick?.(lc, mau)}
+                          className="bg-slate-50 p-2 rounded-xl border border-slate-200 cursor-pointer flex items-center gap-2"
+                        >
+                          <div className="w-10 h-12 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                            {mau.img ? (
+                              <img src={mau.img} alt={mau.ten} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-slate-100 text-[9px] text-slate-400 font-bold">NO</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-xs text-slate-800 truncate block">{mau.ten}</span>
+                            <span className="text-[10px] text-sky-600 font-semibold mt-0.5 block">Nhập SL →</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {renderExpandedRow && renderExpandedRow(lc)}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ===== DESKTOP TABLE VIEW (>= md) ===== */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-left border-collapse text-xs md:text-sm min-w-[950px]">
           <thead>
             <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-500 tracking-wider">
               <th className="py-3 px-3 w-10 text-center">#</th>
@@ -134,7 +316,7 @@ export function LenhCatTableView({
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-3">
                           {/* Thumbnail */}
-                          <div 
+                          <div
                             onClick={() => mainImg && setZoomImg(mainImg)}
                             className="w-12 h-14 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 cursor-pointer hover:border-sky-400 transition-all relative group shadow-sm"
                             title="Nhấp để xem ảnh to"
@@ -184,8 +366,8 @@ export function LenhCatTableView({
                       {/* SL Đạt */}
                       <td className="py-3 px-3 text-right">
                         <span className="font-black text-emerald-700 text-sm bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
-                          {stage === "cat" 
-                            ? metrics.slCatThucTe?.toLocaleString() 
+                          {stage === "cat"
+                            ? metrics.slCatThucTe?.toLocaleString()
                             : (metrics.slHoanThanh > 0 ? metrics.slHoanThanh?.toLocaleString() : "-")
                           }
                         </span>
@@ -245,7 +427,7 @@ export function LenhCatTableView({
                             </button>
                           ))}
                           {(lc.dsMau?.length || 0) > 4 && (
-                            <span 
+                            <span
                               onClick={() => setExpandedRowId(isExpanded ? null : lc.id)}
                               className="text-[10px] font-bold text-slate-500 cursor-pointer bg-slate-100 px-1 py-0.5 rounded hover:bg-slate-200"
                             >
@@ -258,6 +440,15 @@ export function LenhCatTableView({
                       {/* Thao tác */}
                       <td className="py-3 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Nút In phiếu A4 */}
+                          <button
+                            onClick={() => inPhieuLenhCatA4(lc)}
+                            className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+                            title="In phiếu A4"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+
                           {/* Nút Nhập SL / Tỷ lệ */}
                           <button
                             onClick={() => {
@@ -293,7 +484,7 @@ export function LenhCatTableView({
                               </div>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                                 {lc.dsMau?.map((mau, mi) => (
-                                  <div 
+                                  <div
                                     key={mi}
                                     onClick={() => onColorClick?.(lc, mau)}
                                     className="bg-white p-2.5 rounded-xl border border-slate-200 hover:border-sky-400 hover:shadow-sm transition-all cursor-pointer flex flex-col items-center group"

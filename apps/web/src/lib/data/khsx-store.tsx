@@ -7,6 +7,8 @@ import { logWorkflow } from "../audit-log";
 import { isSupabaseEnabled, supabaseDelete, supabaseFetchAllRaw, supabaseUpsertRaw } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
+import defaultOrdersData from "./cutting-orders-m01-m15.json";
+
 export type TrangThaiKHSX = "Lên kế hoạch" | "Đang SX" | "Hoàn thành" | "Trễ hạn";
 
 export type KHSX = {
@@ -46,6 +48,34 @@ function getCorrectLoaiSP(val: string, tenSP: string): any {
 }
 
 const STORAGE_KEY = "mimin_khsx_v2";
+
+const DEFAULT_KHSX: KHSX[] = (defaultOrdersData as any[]).map((o: any) => {
+  const mayAo = (o.phanCong || []).find((p: any) => p.id === "may_ao");
+  const mayQuan = (o.phanCong || []).find((p: any) => p.id === "may_quan");
+  const xuongPhuTrach = mayAo && mayQuan ? `${mayAo.nguoiTen} / ${mayQuan.nguoiTen}` : "Tổ cắt";
+  return {
+    id: `KHSX-2026-${o.maSP}`,
+    maKHSX: `KHSX-2026-${o.maSP}`,
+    maSP: o.maSP,
+    tenSP: o.tenSP,
+    loaiSP: o.loaiSP,
+    tiLeSize: o.tiLeSize,
+    dsMau: o.dsMau,
+    tuan: "Tuần 42",
+    tuNgay: o.ngayTao,
+    denNgay: o.hanHoanThanh,
+    sanPham: o.tenSP,
+    loai: "Bộ",
+    soLuong: o.tongSL,
+    daHoanThanh: 0,
+    xuongPhuTrach,
+    trangThai: "Đang SX" as TrangThaiKHSX,
+    ghiChu: `KHSX theo phiếu cắt mới ${o.maSP} - POLOMIMIN`,
+    ngayTao: o.ngayTao,
+    lenhCatId: o.id,
+  };
+});
+
 const Ctx = createContext<StoreContext | null>(null);
 type RemoteKHSX = KHSX & { maKhsx?: string; maSp?: string; tenSp?: string; loaiSp?: LoaiSP };
 
@@ -61,11 +91,15 @@ type StoreContext = {
 };
 
 function loadData(): KHSX[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return DEFAULT_KHSX;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as KHSX[]) : [];
-  } catch { return []; }
+    if (raw) {
+      const parsed = JSON.parse(raw) as KHSX[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    return DEFAULT_KHSX;
+  } catch { return DEFAULT_KHSX; }
 }
 
 function saveData(items: KHSX[]) {
@@ -123,8 +157,12 @@ export function KHSXProvider({ children }: { children: ReactNode }) {
           lenhCatId: item.lenh_cat_id || item.lenhCatId || item.lenhcatid,
         }));
         
-        // Remote là nguồn chân lý tuyệt đối khi fetch thành công.
-        const merged = normalized;
+        // Remote là nguồn chân lý tuyệt đối khi fetch thành công, bổ sung default nếu thiếu
+        const remoteCodes = new Set(normalized.map((r: any) => r.maSP || r.id));
+        const merged = [
+          ...normalized,
+          ...DEFAULT_KHSX.filter(d => !remoteCodes.has(d.maSP) && !remoteCodes.has(d.id))
+        ];
         
         saveData(merged as KHSX[]);
         setKHSX(merged as KHSX[]);

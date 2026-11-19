@@ -41,6 +41,7 @@ import { MAU_VAI, NHOM_MAU } from "@/lib/color-palette";
 import { uploadProductFile } from "@/lib/product-upload";
 import { getAllInventory, syncInventoryWithSupabase } from "@/lib/inventory-engine";
 import { loadSharedSizeRatioPresets, type SizeRatioPreset } from "@/lib/size-ratio-presets";
+import { inPhieuLenhCatA4 } from "@/lib/phieu-lenh-cat-print";
 
 type NhanVienOption = { ma: string; ten: string; boPhan?: string; ghiChu?: string; sdt?: string };
 
@@ -127,6 +128,16 @@ const formatTonKhoVai = (tonKho: number) =>
 const getVaiOptionLabel = (vai: KhoVai) =>
   `${vai.maMoi || vai.maVT} - ${vai.mauSac || vai.tenChuan || vai.tenVT} — Tồn: ${formatTonKhoVai(vai.tonKho || 0)} kg`;
 
+const INTERNAL_NAMES: Record<string, string> = {
+  "XUONG_NHA": "Xưởng nhà",
+  "TO_CAT": "Tổ cắt",
+  "TO_QC": "Tổ QC",
+  "TO_KHUY_NUT": "Tổ Khuy Nút",
+  "TO_UI": "Tổ Ủi",
+  "TO_DONG_GOI": "Tổ Đóng Gói",
+  "KHO_THANH_PHAM": "Kho thành phẩm",
+};
+
 const getAllOutsourceOptions = (suffix = "Gia công ngoài", excludePrefix?: string) => DOI_TAC_GIA_CONG
   .filter(dt => !excludePrefix || !dt.ma.startsWith(excludePrefix))
   .map(dt => ({
@@ -140,8 +151,8 @@ const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions
   // 1. Cắt
   if (cd.includes("cắt") || cd.includes("cat")) {
     return [
-      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("cắt") || (nv.ghiChu || "").toLowerCase().includes("cắt"))
-        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Cắt)` })),
+      { ma: "XUONG_NHA", ten: "Xưởng nhà (Tổ cắt nội bộ)" },
+      ...nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Cắt)` })),
       ...getAllOutsourceOptions("Gia công ngoài - Cắt"),
     ];
   }
@@ -149,8 +160,8 @@ const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions
   // 2. Khuy nút
   if (cd.includes("khuy") || cd.includes("nút") || cd.includes("cúc")) {
     return [
-      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("khuy") || (nv.ghiChu || "").toLowerCase().includes("khuy"))
-        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Khuy nút)` })),
+      { ma: "TO_KHUY_NUT", ten: "Tổ Khuy Nút (Nội bộ)" },
+      ...nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Khuy nút)` })),
       ...getAllOutsourceOptions("Gia công ngoài - Khuy nút"),
     ];
   }
@@ -158,25 +169,34 @@ const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions
   // 3. Ủi
   if (cd.includes("ủi") || cd.includes("ui")) {
     return [
-      ...nhanVienOptions.filter(nv => (nv.boPhan || "").toLowerCase().includes("ủi") || (nv.ghiChu || "").toLowerCase().includes("ủi"))
-        .map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Ủi)` })),
+      { ma: "TO_UI", ten: "Tổ Ủi (Nội bộ)" },
+      ...nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Ủi)` })),
       ...getAllOutsourceOptions("Gia công ngoài - Ủi"),
     ];
   }
   
   // 4. Đóng Gói
   if (cd.includes("đóng gói") || cd.includes("gấp xếp") || cd.includes("gấp") || cd.includes("xếp") || cd.includes("bao bì") || cd.includes("hoàn thiện")) {
-    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` }));
+    return [
+      { ma: "TO_DONG_GOI", ten: "Tổ Đóng Gói (Nội bộ)" },
+      ...nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Đóng gói)` })),
+    ];
   }
 
   // QC (Kiểm hàng)
   if (cd.includes("qc") || cd.includes("kiểm") || cd.includes("kiem")) {
-    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (QC)` }));
+    return [
+      { ma: "TO_QC", ten: "Tổ QC (Nội bộ)" },
+      ...nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (QC)` })),
+    ];
   }
 
   // Nhập kho
   if (cd.includes("nhập kho") || cd.includes("nhap kho")) {
-    return nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Kho)` }));
+    return [
+      { ma: "KHO_THANH_PHAM", ten: "Kho thành phẩm (Nội bộ)" },
+      ...nhanVienOptions.map(nv => ({ ma: nv.ma, ten: `${nv.ma} - ${nv.ten} (Kho)` })),
+    ];
   }
 
   // 5. May Áo / In / Thêu / Dập / Gia công khác -> Lọc đối tác gia công ngoại
@@ -211,7 +231,7 @@ const getDoiTuongOptions = (tenCongDoan: string, loaiSP: string, nhanVienOptions
 
   if (cd.includes("may") || cd.includes("gia công") || cd.includes("outsource")) {
     // Chỉ hiển thị các xưởng may nếu không phải in/thêu
-    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU") || dt.ma.startsWith("GC-TRON") || dt.ma.startsWith("GC-QUAN"))
+    return DOI_TAC_GIA_CONG.filter(dt => dt.ma.startsWith("GC-TRU") || dt.ma.startsWith("GC-TRON") || dt.ma.startsWith("GC-QUAN") || dt.ma.startsWith("GC-ALL"))
       .map(dt => ({ ma: dt.ma, ten: `${dt.ma} - ${dt.tenDonVi} (Gia công)` }));
   }
 
@@ -1401,66 +1421,38 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
   let tongTienVai = 0;
   const isBo = loaiSP?.toLowerCase().includes("bo");
 
-  // ============ IN PHIẾU GIA CÔNG (không hiển thị giá) ============
+  // ============ IN PHIẾU LỆNH CẮT & SẢN XUẤT CHUẨN A4 ============
   const handleInPhieuGiaCong = () => {
     if (!maSP || !tenSP) {
       toast.error("Vui lòng nhập Mã SP / Tên SP trước khi in phiếu");
       return;
     }
-    const maLenh = editing?.id || "(Chưa lưu lệnh)";
-    const rows = dsMau.map((m, i) => {
-      const sizeAo = (m.phanBoSize || []).map(pb => `<div class="sz"><b>${pb.size}</b><span>${pb.sl}</span></div>`).join("");
-      const mauPhoiText = (m.mauPhoi || []).join(", ");
-      return `
-        <div class="mau-block">
-          <div class="mau-title">${m.img ? `<img src="${m.img}" class="mau-img" title="Áo" />` : ""}${isBo && m.imgQuan ? `<img src="${m.imgQuan}" class="mau-img" title="Quần" />` : ""}Màu ${i + 1}${m.ten ? `: ${m.ten}` : ""}${m.maSKU ? ` <span class="sku">(${m.maSKU})</span>` : ""}</div>
-          <div class="sz-row"><span class="sz-label">${isBo ? "Áo" : "SP"} theo size:</span>${sizeAo || "<i>Chưa chia size</i>"}</div>
-          <div class="meta">SL màu này: <b>${m.slDuKien || 0}</b> &middot; Màu phối: <b>${mauPhoiText || "—"}</b>${m.ghiChu ? ` &middot; Ghi chú: ${m.ghiChu}` : ""}</div>
-        </div>`;
-    }).join("");
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Phiếu gia công ${maSP}</title>
-      <style>
-        body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#1e293b;}
-        h1{font-size:20px;margin:0 0 4px;} .sub{color:#64748b;font-size:13px;margin-bottom:16px;}
-        table.info{width:100%;border-collapse:collapse;margin-bottom:16px;}
-        table.info td{border:1px solid #cbd5e1;padding:6px 10px;font-size:13px;}
-        table.info td.label{background:#f1f5f9;font-weight:bold;width:160px;}
-        .mau-block{border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px;margin-bottom:10px;}
-        .mau-title{font-weight:bold;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
-        .mau-img{width:36px;height:36px;object-fit:cover;border-radius:4px;}
-        .sku{color:#64748b;font-weight:normal;}
-        .sz-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;}
-        .sz-label{font-weight:bold;color:#334155;margin-right:4px;}
-        .sz{border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;display:flex;flex-direction:column;align-items:center;min-width:36px;}
-        .sz b{font-size:11px;color:#64748b;} .sz span{font-weight:bold;}
-        .meta{font-size:12px;color:#475569;margin-top:6px;}
-        table.sign{width:100%;border-collapse:collapse;margin-top:28px;}
-        table.sign td{border:1px solid #94a3b8;text-align:center;padding:36px 8px 8px;font-size:12px;font-weight:bold;vertical-align:bottom;}
-        @media print{ button{display:none;} }
-      </style></head><body>
-      <h1>PHIẾU GIA CÔNG</h1>
-      <div class="sub">Mã lệnh: ${maLenh} &middot; Ngày in: ${new Date().toLocaleDateString("vi-VN")}</div>
-      <table class="info">
-        <tr><td class="label">Mã SP / Tên SP</td><td>${maSP} — ${tenSP}</td><td class="label">Tổng SL</td><td>${tongSL || 0}</td></tr>
-        <tr><td class="label">Tỉ lệ size</td><td>${tiLeSize}</td><td class="label">Hạn hoàn thành</td><td>${hanHoanThanh}</td></tr>
-        <tr><td class="label">Người phụ trách SX</td><td>${nhanVienOptions.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX || "—"}</td><td class="label">Yêu cầu kỹ thuật</td><td>${ghiChuKyThuat || "—"}</td></tr>
-        ${ghiChuInTheu ? `<tr><td class="label">Ghi chú In/Thêu</td><td colspan="3">${ghiChuInTheu}</td></tr>` : ""}
-      </table>
-      ${rows}
-      <table class="sign">
-        <tr><td>Người giao</td><td>Người nhận GC</td><td>Phụ trách SX</td><td>QC/Kho</td></tr>
-      </table>
-      <script>window.onload = () => { window.print(); };</script>
-      </body></html>`;
-
-    const win = window.open("", "_blank", "width=900,height=1000");
-    if (!win) {
+    const ok = inPhieuLenhCatA4({
+      id: editing?.id || `LC-${new Date().getFullYear()}-0001`,
+      maSP,
+      tenSP,
+      loaiSP,
+      loaiLenh,
+      khachHang,
+      tongSL: Number(tongSL || 0),
+      tongSLThucTe: tongSLThucTe !== "" ? Number(tongSLThucTe) : undefined,
+      tiLeSize,
+      hanHoanThanh,
+      ngayTao: ngayBatDau || editing?.ngayTao || new Date().toISOString(),
+      phuTrachCat: nguoiPhuTrachCat || editing?.phuTrachCat,
+      phuTrachSX: nhanVienOptions.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX,
+      ghiChuKyThuat,
+      ghiChu,
+      dsMau,
+      phanCong: visiblePhanCong || phanCong,
+      daiSoDoChinh,
+      khoSoDoChinh,
+      daiSoDoPhoi,
+      khoSoDoPhoi,
+    });
+    if (!ok) {
       toast.error("Trình duyệt chặn cửa sổ in, vui lòng cho phép popup");
-      return;
     }
-    win.document.write(html);
-    win.document.close();
   };
 
   // ============ CHIA SẺ ZALO (mỗi người chỉ thấy đơn giá của chính họ) ============
@@ -3146,31 +3138,52 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                       <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
                         <div className="col-span-3 font-semibold text-slate-700 text-sm truncate" title={kh.tenCongDoan}>{kh.tenCongDoan}</div>
                         <div className="col-span-6 flex items-center gap-2 min-w-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold overflow-hidden border flex-shrink-0 text-[10px] ${isOutsourceStage(kh.tenCongDoan) ? "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
-                            {kh.nguoiMa ? (nhanVienOptions.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || "GC") : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold overflow-hidden border flex-shrink-0 text-[10px] ${kh.loaiNguoi === "xuong_ngoai" || isOutsourceStage(kh.tenCongDoan) ? "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
+                            {kh.nguoiMa ? (
+                              INTERNAL_NAMES[kh.nguoiMa] ? INTERNAL_NAMES[kh.nguoiMa].substring(0, 2) :
+                              (nhanVienOptions.find(x => x.ma === kh.nguoiMa)?.ten?.substring(0, 2) || 
+                               DOI_TAC_GIA_CONG.find(x => x.ma === kh.nguoiMa)?.tenDonVi?.replace("Xưởng ", "")?.substring(0, 2) || 
+                               (kh.nguoiTen ? kh.nguoiTen.replace("Xưởng ", "").substring(0, 2) : "GC"))
+                            ) : (isOutsourceStage(kh.tenCongDoan) ? "GC" : "NV")}
                           </div>
-                          <select 
-                          className={`flex-1 min-w-0 px-2 py-1.5 border rounded text-sm focus:outline-none ${kh.nguoiMa ? "border-slate-200" : "border-rose-300 bg-rose-50/50"}`}
-                          value={kh.nguoiMa}
-                          onChange={(e) => {
-                            const nv = nhanVienOptions.find(n => n.ma === e.target.value);
-                            const dt = DOI_TAC_GIA_CONG.find(d => d.ma === e.target.value);
-                            const selectedName = nv?.ten || dt?.tenDonVi || e.target.value;
-                            setPhanCong(p => {
-                              const next = [...(p as any[])];
-                              const actualIdx = next.findIndex(x => x.tenCongDoan === kh.tenCongDoan);
-                              if (actualIdx !== -1) {
-                                next[actualIdx] = { ...next[actualIdx], nguoiMa: e.target.value, nguoiTen: selectedName };
-                              }
-                              return next as any;
-                            });
-                          }}
-                        >
-                          <option value="">-- Chọn NV/Xưởng --</option>
-                          {getDoiTuongOptions(kh.tenCongDoan, loaiSP, nhanVienOptions).map(opt => (
-                            <option key={opt.ma} value={opt.ma}>{opt.ten}</option>
-                          ))}
-                        </select>
+                          {(() => {
+                            const stageOpts = getDoiTuongOptions(kh.tenCongDoan, loaiSP, nhanVienOptions);
+                            const hasSelected = stageOpts.some(opt => opt.ma === kh.nguoiMa);
+                            return (
+                              <select 
+                                className={`flex-1 min-w-0 px-2 py-1.5 border rounded text-sm focus:outline-none ${kh.nguoiMa ? "border-slate-200 font-medium text-slate-800" : "border-rose-300 bg-rose-50/50"}`}
+                                value={kh.nguoiMa || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const nv = nhanVienOptions.find(n => n.ma === val);
+                                  const dt = DOI_TAC_GIA_CONG.find(d => d.ma === val);
+                                  const selectedName = INTERNAL_NAMES[val] || nv?.ten || dt?.tenDonVi || val;
+                                  const isOutsource = val.startsWith("GC-");
+                                  setPhanCong(p => {
+                                    const next = [...(p as any[])];
+                                    const actualIdx = next.findIndex(x => x.tenCongDoan === kh.tenCongDoan);
+                                    if (actualIdx !== -1) {
+                                      next[actualIdx] = { 
+                                        ...next[actualIdx], 
+                                        nguoiMa: val, 
+                                        nguoiTen: selectedName,
+                                        loaiNguoi: isOutsource ? "xuong_ngoai" : "noi_bo"
+                                      };
+                                    }
+                                    return next as any;
+                                  });
+                                }}
+                              >
+                                <option value="">-- Chọn NV/Xưởng --</option>
+                                {kh.nguoiMa && !hasSelected && (
+                                  <option value={kh.nguoiMa}>{kh.nguoiTen || INTERNAL_NAMES[kh.nguoiMa] || kh.nguoiMa}</option>
+                                )}
+                                {stageOpts.map(opt => (
+                                  <option key={opt.ma} value={opt.ma}>{opt.ten}</option>
+                                ))}
+                              </select>
+                            );
+                          })()}
                         </div>
                         <div className="col-span-3 relative">
                           <input 

@@ -99,6 +99,9 @@ const _raw: Omit<DoiTacGiaCong, "loaiDoiTuong" | "boPhan" | "chucVu" | "chuyenMo
   { stt: 31, ma: "GC-TRU-006", tenDonVi: "Xưởng may trụ cô Cúc", nguoiLienHe: "Huỳnh Thị Cúc Em", sdt: "0907869422", email: "huynhthicucem1210@gmail.com", diaChi: "1/5B KP49 Nguyễn Văn Quá, P. Đông Hưng Thuận", soTaiKhoan: "9907869422", nganHang: "Techcombank", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
   { stt: 32, ma: "GC-TRU-007", tenDonVi: "Xưởng may trụ anh Sản", nguoiLienHe: "Nguyễn Gia Sản", sdt: "0906042853", email: "Giasan20015@gmail.com", diaChi: "Tổ 16 Đường Lê Văn Chi, Linh Xuân", soTaiKhoan: "8888906042853", nganHang: "Agribank", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: 030080000661 | Cấp: 19/09/2024 | MST: ---" },
 
+  // ===== XƯỞNG BỔ SUNG THEO EXCEL POLOMIMIN =====
+  { stt: 33, ma: "GC-IN-007", tenDonVi: "Xưởng in anh Trung Nha Trang", nguoiLienHe: "Trung", sdt: "", email: "", diaChi: "Nha Trang", soTaiKhoan: "", nganHang: "", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
+  { stt: 34, ma: "GC-ALL-01", tenDonVi: "Xưởng may anh Long", nguoiLienHe: "Long", sdt: "0906970535", email: "", diaChi: "Chợ đầu mối hóc môn", soTaiKhoan: "", nganHang: "", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
 ];
 
 // ============ SUY RA CHUYÊN MÔN TỪ MÃ ============
@@ -107,6 +110,7 @@ function inferChuyenMon(ma: string): DoiTacGiaCong["chuyenMon"] {
   if (ma.startsWith("GC-QUAN-")) return "May quần";
   if (ma.startsWith("GC-TRON-")) return "May áo tròn";
   if (ma.startsWith("GC-TRU-")) return "May áo trụ";
+  if (ma.startsWith("GC-ALL-")) return "May";
   return "In – Dập";
 }
 

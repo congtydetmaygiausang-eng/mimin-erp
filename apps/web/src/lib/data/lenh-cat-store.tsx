@@ -378,11 +378,11 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     giaCong: [
       { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
       { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_ao", loaiNguoi: "xuong_ngoai", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_quan", loaiNguoi: "xuong_ngoai", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
       { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
@@ -443,9 +443,11 @@ interface LenhCatStore {
   loading: boolean;
 }
 
+import defaultOrdersData from "./cutting-orders-m01-m15.json";
+
 const LenhCatContext = createContext<LenhCatStore | null>(null);
 
-const DUMMY_DATA: LenhCat[] = [];
+const DUMMY_DATA: LenhCat[] = defaultOrdersData as unknown as LenhCat[];
 
 const mapLenhCatFromDB = (item: any): LenhCat => ({
   id: item.id,
@@ -490,7 +492,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
         }
       } catch {}
     }
-    return [];
+    return DUMMY_DATA;
   });
   const [dsMauCongDoan, setDsMauCongDoan] = useState<MauCongDoanItem[]>([]);
   const [dsMauChiPhi, setDsMauChiPhi] = useState<MauChiPhiItem[]>([]);
