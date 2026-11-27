@@ -1,16 +1,16 @@
 "use client";
 
-// ============ ĐỐI SOÁT TIỀN CÔNG (Đợt 5 - Dashboard tổng hợp) ============
+// ============ ĐỐI SOÁT TIỀN CÔNG (Dashboard tổng hợp) ============
 // Dashboard cho Kế toán & Giám đốc theo dõi toàn bộ tiền công:
-// - 6 KPI tổng quan (tổng tiền, đã TT, còn nợ, khiếu nại, khóa, NV có tiền)
-// - Biểu đồ 7 trạng thái (CSS bar chart không cần thư viện)
-// - Tiến độ thanh toán (progress bar)
+// - 6 KPI tổng quan (tổng tiền, đã TT, còn nợ, khiếu nại, khóa, nhân sự có công)
+// - Biểu đồ 7 trạng thái (CSS bar chart)
+// - Tiến độ thanh toán (progress bar với số tiền VNĐ đầy đủ)
 // - Bảng tổng hợp theo 7 trạng thái (số lượng + tổng tiền + sản lượng)
 // - Top 10 người có tiền công cao nhất
 // - Bảng tổng hợp theo công đoạn
-// - Filter theo thời gian (hôm nay/tuần/tháng/tất cả)
+// - Filter theo thời gian (hôm nay / 7 ngày / 30 ngày / tất cả)
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import {
   Wallet2, TrendingUp, TrendingDown, AlertTriangle, Lock, Users,
   CheckCircle2, Clock, DollarSign, BarChart3, Package, Calendar,
@@ -19,7 +19,7 @@ import {
 import Link from "next/link";
 import { useDoiSoat, TRANG_THAI_DOI_SOAT, TRANG_THAI_STYLE } from "@/lib/data/doi-soat-store";
 import { getDoiSoatKPI, topNguoiTienCong } from "@/lib/doi-soat-helper";
-import { formatVNDShort } from "@/components/ui";
+import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 
 type TimeFilter = "all" | "today" | "week" | "month";
 
@@ -32,8 +32,15 @@ export default function DoiSoatTienCongPage() {
 }
 
 function DoiSoatTienCongContent() {
-  const { doiSoat } = useDoiSoat();
+  const { doiSoat, reset } = useDoiSoat();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
+
+  // Tự động nạp dữ liệu ban đầu nếu mảng đối soát rỗng
+  useEffect(() => {
+    if (doiSoat.length === 0) {
+      reset();
+    }
+  }, [doiSoat.length, reset]);
 
   // Lọc theo thời gian (dựa trên ngayGiao)
   const filtered = useMemo(() => {
@@ -82,152 +89,197 @@ function DoiSoatTienCongContent() {
   );
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Wallet2 className="w-7 h-7 text-emerald-500" />
-            Đối soát tiền công
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold">
-              Tổng hợp
+    <div className="space-y-4 animate-fade-in w-full">
+      {/* Header (Teal Emerald Executive Theme - chuẩn Bảng Lương) */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-teal-950 via-teal-900 to-slate-900 text-white p-5 sm:p-6 shadow-sm border border-teal-800/60 flex flex-wrap items-center justify-between gap-4">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30 mb-2">
+            <Wallet2 className="w-3.5 h-3.5 text-teal-400" />
+            <span>MIMIN ERP · KẾ TOÁN TIỀN CÔNG</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2.5 text-white">
+            <span>Đối Soát Tiền Công</span>
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-teal-400/20 text-teal-200 border border-teal-400/30 font-bold">
+              Tổng hợp 7 trạng thái
             </span>
           </h1>
-          <p className="opacity-70 mt-1 text-sm">
-            Dashboard tiền công theo 7 trạng thái · {filtered.length} bản ghi · {soNguoiCoTienCong} người thực hiện
+          <p className="text-slate-300 mt-1.5 text-xs sm:text-sm">
+            Theo dõi tiến độ thanh toán & đối chiếu tiền công theo 7 trạng thái · <b className="text-white">{filtered.length}</b> bản ghi · <b className="text-white">{soNguoiCoTienCong}</b> người thực hiện
           </p>
         </div>
-        <Link
-          href="/doi-soat"
-          className="text-xs px-3 py-1.5 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/60 flex items-center gap-1"
-        >
-          <FileText className="w-3.5 h-3.5" /> Mở bảng đối soát <ChevronRight className="w-3 h-3" />
-        </Link>
+        <div className="relative z-10 flex items-center gap-2">
+          <Link
+            href="/doi-soat"
+            className="text-xs px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center gap-2 transition font-semibold backdrop-blur-md shadow-xs"
+          >
+            <FileText className="w-4 h-4 text-teal-300" />
+            <span>Mở bảng đối soát chi tiết</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+          </Link>
+        </div>
       </div>
 
-      {/* Time filter */}
-      <div className="flex flex-wrap gap-1.5">
-        {([
-          { v: "all", label: "Tất cả", icon: <Activity className="w-3 h-3" /> },
-          { v: "today", label: "Hôm nay", icon: <Calendar className="w-3 h-3" /> },
-          { v: "week", label: "7 ngày qua", icon: <Clock className="w-3 h-3" /> },
-          { v: "month", label: "30 ngày qua", icon: <Calendar className="w-3 h-3" /> },
-        ] as { v: TimeFilter; label: string; icon: any }[]).map((t) => (
-          <button
-            key={t.v}
-            onClick={() => setTimeFilter(t.v)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 ${
-              timeFilter === t.v ? "bg-brand-500 text-white" : "bg-white/40 dark:bg-white/5 hover:bg-white/60"
-            }`}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
+      {/* Time filter toolbar */}
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold border border-teal-200/60 dark:border-teal-800/60 shrink-0">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <span>Kỳ đối soát dữ liệu</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-semibold border border-teal-200/60 dark:border-teal-800/60">
+                Thời gian
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+              Lọc theo ngày giao nhận công đoạn & đối chiếu công nợ
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+          {([
+            { v: "all", label: "Tất cả thời gian", icon: <Activity className="w-3.5 h-3.5" /> },
+            { v: "today", label: "Hôm nay", icon: <Calendar className="w-3.5 h-3.5" /> },
+            { v: "week", label: "7 ngày gần nhất", icon: <Clock className="w-3.5 h-3.5" /> },
+            { v: "month", label: "30 ngày gần nhất", icon: <Calendar className="w-3.5 h-3.5" /> },
+          ] as { v: TimeFilter; label: string; icon: any }[]).map((t) => {
+            const isActive = timeFilter === t.v;
+            return (
+              <button
+                key={t.v}
+                onClick={() => setTimeFilter(t.v)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${isActive
+                  ? "bg-teal-700 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-700"
+                  }`}
+              >
+                {t.icon}
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 6 KPI chính */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KPICard
-          label="Tổng thực nhận"
-          value={formatVNDShort(kpi.tongThucNhan)}
-          icon={<Wallet className="w-4 h-4" />}
-          color="emerald"
-          sub={`${filtered.length} bản ghi`}
+          label="Tổng tiền công"
+          value={formatVND(kpi.tongThucNhan)}
+          icon={<Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+          iconBg="bg-emerald-50 dark:bg-emerald-950/40"
+          valueClass="text-emerald-600 dark:text-emerald-400"
+          sub={`${filtered.length} phiếu công đoạn`}
         />
         <KPICard
           label="Đã thanh toán"
-          value={formatVNDShort(kpi.tongDaThanhToan)}
-          icon={<CheckCircle2 className="w-4 h-4" />}
-          color="sky"
-          sub={`${tyLeThanhToan}% tổng`}
+          value={formatVND(kpi.tongDaThanhToan)}
+          icon={<CheckCircle2 className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
+          iconBg="bg-sky-50 dark:bg-sky-950/40"
+          valueClass="text-sky-600 dark:text-sky-400"
+          sub={`${tyLeThanhToan}% tiến độ chi trả`}
         />
         <KPICard
-          label="Còn nợ"
-          value={formatVNDShort(kpi.tongConNo)}
-          icon={<TrendingDown className="w-4 h-4" />}
-          color="amber"
-          highlight={kpi.tongConNo > 0}
-          sub={kpi.tongConNo > 0 ? "Cần thanh toán" : "OK"}
+          label="Tiền công còn nợ"
+          value={formatVND(kpi.tongConNo)}
+          icon={<TrendingDown className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+          iconBg="bg-amber-50 dark:bg-amber-950/40"
+          valueClass={kpi.tongConNo > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-900 dark:text-white"}
+          sub={kpi.tongConNo > 0 ? "Cần thanh toán tiếp" : "Đã thanh toán đủ"}
         />
         <KPICard
-          label="Khiếu nại"
-          value={kpi.tongKhiieuNai}
-          icon={<AlertTriangle className="w-4 h-4" />}
-          color="rose"
-          highlight={kpi.tongKhiieuNai > 0}
-          sub="Chưa giải quyết"
+          label="Khiếu nại công"
+          value={`${kpi.tongKhiieuNai} vụ`}
+          icon={<AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
+          iconBg="bg-rose-50 dark:bg-rose-950/40"
+          valueClass={kpi.tongKhiieuNai > 0 ? "text-rose-600 dark:text-rose-400 font-black" : "text-slate-900 dark:text-white"}
+          sub={kpi.tongKhiieuNai > 0 ? "Chờ xử lý giải quyết" : "Không có khiếu nại"}
         />
         <KPICard
-          label="NV có tiền"
-          value={soNguoiCoTienCong}
-          icon={<Users className="w-4 h-4" />}
-          color="violet"
-          sub="Unique"
+          label="Nhân sự nhận công"
+          value={`${soNguoiCoTienCong} người`}
+          icon={<Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+          iconBg="bg-indigo-50 dark:bg-indigo-950/40"
+          valueClass="text-slate-900 dark:text-white"
+          sub="Nhân viên & đối tác"
         />
         <KPICard
-          label="Đã khóa"
-          value={kpi.tongLocked}
-          icon={<Lock className="w-4 h-4" />}
-          color="slate"
-          sub="Bản ghi chốt"
+          label="Đã khóa sổ"
+          value={`${kpi.tongLocked} phiếu`}
+          icon={<Lock className="w-4 h-4 text-slate-500" />}
+          iconBg="bg-slate-100 dark:bg-slate-800"
+          valueClass="text-slate-900 dark:text-white"
+          sub="Đã chốt an toàn"
         />
       </div>
 
       {/* Tiến độ thanh toán */}
-      <div className="card p-4 bg-gradient-to-br from-emerald-500/5 to-sky-500/5">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-xs font-bold opacity-70 flex items-center gap-1.5">
-            <BarChart3 className="w-3.5 h-3.5" />
-            Tiến độ thanh toán tổng thể
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 uppercase tracking-wide">
+            <BarChart3 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>Tiến độ thanh toán tiền công</span>
           </div>
-          <div className="text-sm font-bold">
-            <span className="text-emerald-600">{tyLeThanhToan}%</span>
-            <span className="opacity-50 mx-1">·</span>
-            <span className="font-mono">{formatVNDShort(kpi.tongDaThanhToan)} / {formatVNDShort(kpi.tongThucNhan)}</span>
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className="text-emerald-600 dark:text-emerald-400 font-mono text-sm font-black">
+              {tyLeThanhToan}%
+            </span>
+            <span className="text-slate-400 mx-1">·</span>
+            <span className="font-mono text-emerald-700 dark:text-emerald-400 font-bold">
+              {formatVND(kpi.tongDaThanhToan)}
+            </span>
+            <span className="text-slate-400 font-normal">/</span>
+            <span className="font-mono text-slate-600 dark:text-slate-300 font-bold">
+              {formatVND(kpi.tongThucNhan)}
+            </span>
           </div>
         </div>
-        <div className="h-3 bg-white/30 rounded-full overflow-hidden">
+        <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
           <div
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
+            className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500 rounded-full shadow-2xs"
             style={{ width: `${tyLeThanhToan}%` }}
           />
         </div>
-        <div className="flex justify-between text-[10px] opacity-60 mt-1.5">
-          <span>0%</span>
+        <div className="flex justify-between text-[11px] text-slate-400 font-mono mt-2 font-semibold">
+          <span>0% Bắt đầu</span>
           <span>25%</span>
-          <span>50%</span>
+          <span>50% Nửa kỳ</span>
           <span>75%</span>
-          <span>100%</span>
+          <span>100% Hoàn tất</span>
         </div>
       </div>
 
       {/* Bảng 7 trạng thái */}
-      <div className="card p-4">
-        <div className="text-sm font-bold mb-3 flex items-center gap-1.5">
-          <Activity className="w-4 h-4 text-brand-500" />
-          Phân bổ theo 7 trạng thái
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-wide">
+          <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <span>Phân bổ theo 7 trạng thái đối soát</span>
         </div>
-        <div className="space-y-2.5">
+        <div className="space-y-3.5">
           {TRANG_THAI_DOI_SOAT.map((t) => {
             const data = kpi.theoTrangThai[t];
             const s = TRANG_THAI_STYLE[t];
             const pct = maxTien > 0 ? (data.tien / maxTien) * 100 : 0;
             return (
               <div key={t} className="group">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${s.bg} ${s.color}`}>
+                <div className="flex items-center justify-between text-xs mb-1.5 gap-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold shrink-0 ${s.bg} ${s.color}`}>
                       {t}
                     </span>
-                    <span className="opacity-60">· {data.count} bản ghi · {data.soLuong.toLocaleString()} sp</span>
+                    <span className="text-slate-400 font-medium text-[11px] truncate">
+                      · <b className="text-slate-600 dark:text-slate-300 font-semibold">{data.count}</b> bản ghi · <b className="text-slate-600 dark:text-slate-300 font-semibold">{data.soLuong.toLocaleString()}</b> sp
+                    </span>
                   </div>
-                  <div className="font-mono font-bold text-sm">
-                    {formatVNDShort(data.tien)}
+                  <div className="font-mono font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 shrink-0 text-right">
+                    {formatVND(data.tien)}
                   </div>
                 </div>
-                <div className="h-2 bg-white/30 dark:bg-white/5 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div
-                    className={`h-full ${s.bg.replace("/15", "")} transition-all duration-500`}
+                    className={`h-full ${s.bg.replace("/15", "")} transition-all duration-500 rounded-full`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -238,42 +290,41 @@ function DoiSoatTienCongContent() {
       </div>
 
       {/* Grid 2 cột: Top 10 + Theo công đoạn */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top 10 người có tiền công cao nhất */}
-        <div className="card p-4">
-          <div className="text-sm font-bold mb-3 flex items-center gap-1.5">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-3.5 flex items-center gap-2 uppercase tracking-wide">
             <TrendingUp className="w-4 h-4 text-amber-500" />
-            Top 10 người có tiền công cao nhất
+            <span>Top 10 nhân sự có tiền công cao nhất</span>
           </div>
           {top10.length === 0 ? (
-            <div className="text-xs opacity-50 text-center py-8">Chưa có dữ liệu</div>
+            <div className="text-xs text-slate-400 text-center py-8">Chưa có dữ liệu</div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-3">
               {top10.map((p, i) => {
                 const maxTopTien = top10[0]?.tongTien || 1;
                 const pct = (p.tongTien / maxTopTien) * 100;
                 return (
                   <div key={p.ma} className="group">
-                    <div className="flex items-center gap-2 text-xs mb-0.5">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                        i === 0 ? "bg-amber-500 text-white"
-                          : i === 1 ? "bg-slate-400 text-white"
-                          : i === 2 ? "bg-orange-500 text-white"
-                          : "bg-white/30 text-current"
-                      }`}>{i + 1}</span>
+                    <div className="flex items-center gap-2.5 text-xs mb-1.5">
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${i === 0 ? "bg-amber-500 text-white shadow-2xs"
+                        : i === 1 ? "bg-slate-400 text-white"
+                          : i === 2 ? "bg-amber-700 text-white"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                        }`}>{i + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold truncate">{p.ten}</div>
-                        <div className="text-[10px] opacity-60 font-mono">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{p.ten}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">
                           {p.ma} · {p.tongSL.toLocaleString()} sp · {p.soBanGhi} phiếu
                         </div>
                       </div>
-                      <div className="font-mono font-bold text-emerald-600 shrink-0 text-xs">
-                        {formatVNDShort(p.tongTien)}
+                      <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 shrink-0 text-xs sm:text-sm text-right">
+                        {formatVND(p.tongTien)}
                       </div>
                     </div>
-                    <div className="h-1.5 bg-white/30 dark:bg-white/5 rounded-full overflow-hidden ml-7">
+                    <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ml-7.5">
                       <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
+                        className="h-full bg-emerald-500 transition-all duration-500 rounded-full"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -285,33 +336,33 @@ function DoiSoatTienCongContent() {
         </div>
 
         {/* Theo công đoạn */}
-        <div className="card p-4">
-          <div className="text-sm font-bold mb-3 flex items-center gap-1.5">
-            <Package className="w-4 h-4 text-violet-500" />
-            Phân bổ theo công đoạn
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-3.5 flex items-center gap-2 uppercase tracking-wide">
+            <Package className="w-4 h-4 text-indigo-500" />
+            <span>Phân bổ tiền công theo công đoạn</span>
           </div>
           {Object.keys(kpi.theoCongDoan).length === 0 ? (
-            <div className="text-xs opacity-50 text-center py-8">Chưa có dữ liệu</div>
+            <div className="text-xs text-slate-400 text-center py-8">Chưa có dữ liệu</div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {Object.entries(kpi.theoCongDoan)
                 .sort((a, b) => b[1].tien - a[1].tien)
                 .map(([cd, data]) => {
                   const pct = maxCongDoan > 0 ? (data.tien / maxCongDoan) * 100 : 0;
                   return (
                     <div key={cd}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{cd}</span>
-                          <span className="opacity-60 text-[10px]">· {data.count} phiếu · {data.soLuong.toLocaleString()} sp</span>
+                      <div className="flex items-center justify-between text-xs mb-1.5 gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{cd}</span>
+                          <span className="text-slate-400 text-[10px] truncate">· {data.count} phiếu · {data.soLuong.toLocaleString()} sp</span>
                         </div>
-                        <div className="font-mono font-bold text-violet-600">
-                          {formatVNDShort(data.tien)}
+                        <div className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm shrink-0 text-right">
+                          {formatVND(data.tien)}
                         </div>
                       </div>
-                      <div className="h-2 bg-white/30 dark:bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-500"
+                          className="h-full bg-indigo-500 transition-all duration-500 rounded-full"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -324,16 +375,18 @@ function DoiSoatTienCongContent() {
       </div>
 
       {/* Bảng tóm tắt 7 trạng thái (data table) */}
-      <div className="card overflow-hidden">
-        <div className="p-3 border-b flex items-center gap-2" style={{ borderColor: "var(--border)" }}>
-          <DollarSign className="w-4 h-4 text-emerald-500" />
-          <span className="text-sm font-bold">Bảng tổng hợp 7 trạng thái</span>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-800/40">
+          <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+            Bảng tổng hợp số liệu 7 trạng thái
+          </span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto p-1 sm:p-2">
+          <table className="w-full min-w-[700px] text-xs sm:text-sm">
             <thead>
-              <tr className="text-left border-b bg-slate-50/50 dark:bg-white/5" style={{ borderColor: "var(--border)" }}>
-                <th className="p-3">#</th>
+              <tr className="text-left border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <th className="p-3 w-10 text-center">#</th>
                 <th className="p-3">Trạng thái</th>
                 <th className="p-3 text-right">Số bản ghi</th>
                 <th className="p-3 text-right">Sản lượng (sp)</th>
@@ -341,7 +394,7 @@ function DoiSoatTienCongContent() {
                 <th className="p-3 text-right">% Tổng</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {TRANG_THAI_DOI_SOAT.map((t, i) => {
                 const data = kpi.theoTrangThai[t];
                 const s = TRANG_THAI_STYLE[t];
@@ -349,29 +402,29 @@ function DoiSoatTienCongContent() {
                   ? ((data.tien / kpi.tongThucNhan) * 100).toFixed(1)
                   : "0";
                 return (
-                  <tr key={t} className="border-b hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
-                    <td className="p-3 text-xs opacity-50">{i + 1}</td>
+                  <tr key={t} className="border-b hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="p-3 text-xs opacity-50 text-center">{i + 1}</td>
                     <td className="p-3">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${s.bg} ${s.color}`}>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold ${s.bg} ${s.color}`}>
                         {t}
                       </span>
                     </td>
-                    <td className="p-3 text-right font-mono">{data.count}</td>
+                    <td className="p-3 text-right font-mono font-semibold">{data.count}</td>
                     <td className="p-3 text-right font-mono">{data.soLuong.toLocaleString()}</td>
-                    <td className="p-3 text-right font-mono font-semibold">{formatVNDShort(data.tien)}</td>
+                    <td className="p-3 text-right font-mono font-bold text-slate-800 dark:text-slate-200">{formatVND(data.tien)}</td>
                     <td className="p-3 text-right font-mono text-xs opacity-70">{pct}%</td>
                   </tr>
                 );
               })}
               {/* Tổng */}
-              <tr className="bg-slate-50/70 dark:bg-white/5 font-bold border-t-2" style={{ borderColor: "var(--border)" }}>
-                <td className="p-3" colSpan={2}>Tổng cộng</td>
-                <td className="p-3 text-right font-mono">{filtered.length}</td>
-                <td className="p-3 text-right font-mono">
+              <tr className="bg-slate-50/80 dark:bg-slate-800/60 font-bold border-t-2 border-slate-200 dark:border-slate-700">
+                <td className="p-3 font-bold" colSpan={2}>Tổng cộng</td>
+                <td className="p-3 text-right font-mono font-black">{filtered.length}</td>
+                <td className="p-3 text-right font-mono font-black">
                   {TRANG_THAI_DOI_SOAT.reduce((sum, t) => sum + kpi.theoTrangThai[t].soLuong, 0).toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-emerald-600">{formatVNDShort(kpi.tongThucNhan)}</td>
-                <td className="p-3 text-right font-mono">100%</td>
+                <td className="p-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">{formatVND(kpi.tongThucNhan)}</td>
+                <td className="p-3 text-right font-mono font-black">100%</td>
               </tr>
             </tbody>
           </table>
@@ -379,9 +432,8 @@ function DoiSoatTienCongContent() {
       </div>
 
       {/* Footer note */}
-      <div className="text-[10px] opacity-50 text-center pb-4">
-        💡 Dashboard tổng hợp từ <Link href="/doi-soat" className="underline">bảng đối soát</Link> ·
-        dùng data thật từ <code>ALL_REAL_PHIEU</code> + localStorage <code>mimin_doi_soat_v1</code>
+      <div className="text-[11px] opacity-60 text-center pb-4 text-slate-500">
+        💡 Dashboard tổng hợp số liệu tiền công · <Link href="/doi-soat" className="underline hover:text-teal-600">Mở bảng đối soát chi tiết</Link> để thực hiện xác nhận, thanh toán và xử lý khiếu nại.
       </div>
     </div>
   );
@@ -389,23 +441,31 @@ function DoiSoatTienCongContent() {
 
 // ============ Sub Components ============
 
-function KPICard({ label, value, icon, color, highlight = false, sub }: any) {
-  const colorMap: Record<string, string> = {
-    slate: "from-slate-500/10 to-slate-500/5 text-slate-700",
-    emerald: "from-emerald-500/10 to-emerald-500/5 text-emerald-700",
-    sky: "from-sky-500/10 to-sky-500/5 text-sky-700",
-    amber: "from-amber-500/10 to-amber-500/5 text-amber-700",
-    rose: "from-rose-500/10 to-rose-500/5 text-rose-700",
-    violet: "from-violet-500/10 to-violet-500/5 text-violet-700",
-  };
+function KPICard({
+  label,
+  value,
+  icon,
+  iconBg = "bg-slate-100 dark:bg-slate-800",
+  valueClass = "text-slate-900 dark:text-white",
+  sub,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ReactNode;
+  iconBg?: string;
+  valueClass?: string;
+  sub?: string;
+}) {
   return (
-    <div className={`card p-3 bg-gradient-to-br ${colorMap[color]} ${highlight ? "ring-2 ring-amber-500/40" : ""}`}>
-      <div className="flex items-center gap-1.5 text-xs opacity-80 mb-1">
-        {icon}
-        <span className="truncate">{label}</span>
+    <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">{label}</span>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+          {icon}
+        </div>
       </div>
-      <div className="text-lg md:text-2xl font-bold tabular-nums truncate">{value}</div>
-      {sub && <div className="text-[10px] opacity-60 mt-0.5 truncate">{sub}</div>}
+      <div className={`text-base sm:text-lg xl:text-xl font-black font-mono tracking-tight my-1.5 truncate ${valueClass}`}>{value}</div>
+      {sub && <div className="text-[11px] font-medium text-slate-400 truncate">{sub}</div>}
     </div>
   );
 }

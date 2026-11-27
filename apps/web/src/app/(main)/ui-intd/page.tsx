@@ -12,7 +12,7 @@ import { can } from "@/lib/permissions";
 
 import { useStageColorInput } from "@/lib/use-stage-color-input";
 import React, { useState } from "react";
-import { Palette, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
+import { Palette, CheckCircle2, Clock, AlertTriangle, Package, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
@@ -20,6 +20,7 @@ import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList } from "@/componen
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
+import { SanLuongGiaCongTab } from "../to-may-work/components/SanLuongGiaCongTab";
 
 const INTD_KEYS = ["in", "theu", "dap", "inAo", "theuAo", "in_theu", "in_theu_ao", "in_theu_quan"];
 
@@ -134,6 +135,14 @@ export default function UiInTheuPage() {
         getStagePC={(lc) => getIntdPC(lc)?.[0]}
         onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
         emptyMessage="Tuyệt vời! Bạn đã hoàn thành tất cả công việc In / Thêu"
+        extraTabs={[
+          {
+            key: "san_luong_gia_cong",
+            label: "Sản lượng gia công",
+            icon: <BarChart3 className="w-4 h-4" />,
+            content: <SanLuongGiaCongTab dsLenhCat={dsLenhCat} scope="IN_THEU_ONLY" defaultGroup="ALL_IN_THEU" />,
+          },
+        ]}
         renderCard={(lc) => {
 
             const intdPCs = getIntdPC(lc);

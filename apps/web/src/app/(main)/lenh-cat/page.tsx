@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Scissors } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { PremiumHeader } from "./components/Header";
 import { FilterBar, MauSection } from "./components/FilterBar";
 import { LenhCatCard } from "./components/LCard";
 import { MauCDModal, MauCPModal } from "./components/MauModals";
+import { useNhanSu, resolveTenNhanSu } from "@/lib/data/nhan-su-store";
 
 const DEFAULT_GIA_CONG = [
   { id: "cat", tenCongDoan: "Cắt", nguoiMa: "", nguoiTen: "", donGia: 0 },
@@ -31,6 +32,7 @@ export default function LenhCatPage() {
   // is not defined" ngay tại chỗ.
   const { dsLenhCat, xoaLenhCat, suaLenhCat, capNhatTrangThai, reset, themMauCongDoan, themMauChiPhi, dsMauCongDoan, dsMauChiPhi, xoaMauCongDoan, xoaMauChiPhi, loading } = useLenhCat();
   const { user } = useSession();
+  const { list: dsNhanSu } = useNhanSu();
 
   const [showTaoMauCD, setShowTaoMauCD] = useState(false);
   const [showTaoMauCP, setShowTaoMauCP] = useState(false);
@@ -43,10 +45,17 @@ export default function LenhCatPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [draftData, setDraftData] = useState<any>(null);
   const [filterTrangThai, setFilterTrangThai] = useState<"ALL" | TrangThaiLenhCat>("ALL");
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  // Mặc định luôn là Dạng Danh Sách theo yêu cầu của anh Cường
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [expandedMauCD, setExpandedMauCD] = useState<string | null>(null);
   const [expandedMauCP, setExpandedMauCP] = useState<string | null>(null);
   const [showDanhSachMau, setShowDanhSachMau] = useState(false);
+
+  // Bộ lọc tìm kiếm & phân loại chuẩn ERP cho Lệnh Cắt
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLoaiSP, setSelectedLoaiSP] = useState("ALL");
+  const [selectedGiaCong, setSelectedGiaCong] = useState("ALL");
+  const [sortBy, setSortBy] = useState<"id_desc" | "id_asc" | "deadline_asc" | "deadline_desc" | "sl_desc" | "sl_asc">("id_desc");
 
   useEffect(() => {
     const editIdToOpen = localStorage.getItem("mimin_edit_lenh_cat_id");
@@ -97,7 +106,104 @@ export default function LenhCatPage() {
     HoanThanh: stats.hoanThanh, ChuyenTiep: stats.chuyenTiep,
   };
 
-  const filteredLC = dsLenhCat.filter((l) => filterTrangThai === "ALL" || l.trangThai === filterTrangThai);
+  // Thu thập danh sách Loại SP
+  const danhSachLoaiSP = useMemo(() => {
+    const set = new Set<string>();
+    dsLenhCat.forEach(lc => { if (lc.loaiSP) set.add(lc.loaiSP); });
+    return Array.from(set);
+  }, [dsLenhCat]);
+
+  // Thu thập danh sách Người phụ trách / Gia công
+  const danhSachGiaCong = useMemo(() => {
+    const set = new Set<string>();
+    dsLenhCat.forEach(lc => {
+      const ptSX = (lc as any).phuTrachSX?.trim();
+      if (ptSX) set.add(resolveTenNhanSu(ptSX, dsNhanSu));
+      const ptCat = (lc as any).phuTrachCat?.trim();
+      if (ptCat) set.add(resolveTenNhanSu(ptCat, dsNhanSu));
+      (lc.phanCong || []).forEach((pc: any) => {
+        if (pc?.nguoiTen && pc.nguoiTen.trim()) {
+          set.add(resolveTenNhanSu(pc.nguoiTen.trim(), dsNhanSu));
+        }
+      });
+    });
+    return Array.from(set).filter(Boolean).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [dsLenhCat, dsNhanSu]);
+
+  const filteredLC = useMemo(() => {
+    let result = dsLenhCat.filter((l) => {
+      // 1. Filter Trạng thái
+      if (filterTrangThai !== "ALL" && l.trangThai !== filterTrangThai) return false;
+
+      // 2. Filter Từ khóa (Mã LC, Mã SP, Tên SP, Tên gia công, Tên màu)
+      if (searchTerm.trim()) {
+        const q = searchTerm.trim().toLowerCase();
+        const matchId = (l.id || "").toLowerCase().includes(q);
+        const matchMaSP = (l.maSP || "").toLowerCase().includes(q);
+        const matchTenSP = (l.tenSP || "").toLowerCase().includes(q);
+        const ptSX = (l as any).phuTrachSX || "";
+        const ptCat = (l as any).phuTrachCat || "";
+        const resolvedSX = resolveTenNhanSu(ptSX, dsNhanSu);
+        const resolvedCat = resolveTenNhanSu(ptCat, dsNhanSu);
+        const pcStr = (
+          (l.phanCong || []).map((p: any) => `${p?.nguoiTen || ""} ${resolveTenNhanSu(p?.nguoiTen, dsNhanSu)}`).join(" ") +
+          ` ${ptSX} ${resolvedSX} ${ptCat} ${resolvedCat}`
+        ).toLowerCase();
+        const matchGiaCong = pcStr.includes(q);
+        const matchMau = (l.dsMau || []).some(m => (m.ten || "").toLowerCase().includes(q) || (m.maSKU || "").toLowerCase().includes(q));
+        if (!matchId && !matchMaSP && !matchTenSP && !matchGiaCong && !matchMau) return false;
+      }
+
+      // 3. Filter Loại SP
+      if (selectedLoaiSP !== "ALL" && l.loaiSP !== selectedLoaiSP) return false;
+
+      // 4. Filter Người phụ trách
+      if (selectedGiaCong !== "ALL") {
+        const ptSX = ((l as any).phuTrachSX || "").trim();
+        const ptCat = ((l as any).phuTrachCat || "").trim();
+        const resolvedSX = resolveTenNhanSu(ptSX, dsNhanSu);
+        const resolvedCat = resolveTenNhanSu(ptCat, dsNhanSu);
+        const pcNames = (l.phanCong || []).map((p: any) => (p?.nguoiTen || "").trim());
+        const resolvedPCNames = pcNames.map((n: string) => resolveTenNhanSu(n, dsNhanSu));
+
+        const candidates = [ptSX, ptCat, resolvedSX, resolvedCat, ...pcNames, ...resolvedPCNames].filter(Boolean);
+        const match = candidates.some(c => c === selectedGiaCong || c.toLowerCase() === selectedGiaCong.toLowerCase());
+        if (!match) return false;
+      }
+
+      return true;
+    });
+
+    // 5. Sắp xếp
+    result = [...result].sort((a, b) => {
+      if (sortBy === "id_desc") return b.id.localeCompare(a.id, undefined, { numeric: true });
+      if (sortBy === "id_asc") return a.id.localeCompare(b.id, undefined, { numeric: true });
+      if (sortBy === "deadline_asc") {
+        const timeA = a.hanHoanThanh ? new Date(a.hanHoanThanh).getTime() : Infinity;
+        const timeB = b.hanHoanThanh ? new Date(b.hanHoanThanh).getTime() : Infinity;
+        return timeA - timeB;
+      }
+      if (sortBy === "deadline_desc") {
+        const timeA = a.hanHoanThanh ? new Date(a.hanHoanThanh).getTime() : 0;
+        const timeB = b.hanHoanThanh ? new Date(b.hanHoanThanh).getTime() : 0;
+        return timeB - timeA;
+      }
+      if (sortBy === "sl_desc") return (b.tongSL || 0) - (a.tongSL || 0);
+      if (sortBy === "sl_asc") return (a.tongSL || 0) - (b.tongSL || 0);
+      return 0;
+    });
+
+    return result;
+  }, [dsLenhCat, filterTrangThai, searchTerm, selectedLoaiSP, selectedGiaCong, sortBy]);
+
+  const hasActiveFilters = searchTerm !== "" || selectedLoaiSP !== "ALL" || selectedGiaCong !== "ALL" || sortBy !== "id_desc";
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setSelectedLoaiSP("ALL");
+    setSelectedGiaCong("ALL");
+    setSortBy("id_desc");
+  };
 
   // Handlers
   const handleEdit = (lc: (typeof dsLenhCat)[number]) => {
@@ -131,7 +237,7 @@ export default function LenhCatPage() {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-4 animate-fade-in w-full max-w-full overflow-x-hidden">
       <PremiumHeader stats={stats} onReset={handleReset} onCreate={handleCreate} />
 
       <FilterBar
@@ -141,6 +247,18 @@ export default function LenhCatPage() {
         counts={filterCounts}
         onCreateCD={handleCreateCD}
         onCreateCP={handleCreateCP}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedLoaiSP={selectedLoaiSP}
+        setSelectedLoaiSP={setSelectedLoaiSP}
+        danhSachLoaiSP={danhSachLoaiSP}
+        selectedGiaCong={selectedGiaCong}
+        setSelectedGiaCong={setSelectedGiaCong}
+        danhSachGiaCong={danhSachGiaCong}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        hasActiveFilters={hasActiveFilters}
+        onResetFilters={handleResetFilters}
       />
 
       <MauSection
@@ -158,8 +276,11 @@ export default function LenhCatPage() {
         onDeleteCP={(id) => { xoaMauChiPhi(id); toast.success("Đã xoá bảng giá"); }}
       />
 
-      <div className="flex justify-end items-center mb-2">
-        <DataViewToggle onChange={setViewMode} />
+      <div className="flex justify-between items-center mb-2 px-1">
+        <span className="text-xs font-bold text-slate-500">
+          Hiển thị: <b className="text-teal-700">{filteredLC.length}</b> / {stats.tongLC} lệnh cắt
+        </span>
+        <DataViewToggle value={viewMode} onChange={setViewMode} />
       </div>
 
       {loading ? (

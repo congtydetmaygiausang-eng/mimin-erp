@@ -60,11 +60,13 @@ const mapIn = (row: Record<string, unknown>): PhieuDatNccPhuLieu => {
   } as PhieuDatNccPhuLieu;
 };
 
+const EMPTY_INITIAL_ORDERS: PhieuDatNccPhuLieu[] = [];
+
 export function PhieuDatNccProvider({ children }: { children: ReactNode }) {
   const { data, setData, loading } = useSupabaseSync<PhieuDatNccPhuLieu>(
     STORAGE_KEY,
     "phieu_dat_ncc_san_xuat",
-    [],
+    EMPTY_INITIAL_ORDERS,
     { mapOut, mapIn, onConflict: "id" },
   );
 

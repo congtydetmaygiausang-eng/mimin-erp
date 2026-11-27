@@ -7,7 +7,7 @@ import { is2FAEnabled, generate2FACode, verify2FACode } from "@/lib/two-factor";
 import { migrateLegacyKeys } from "@/lib/migrate-legacy-keys";
 import { migrateLarkConfig } from "@/lib/lark-config";
 import { toast } from "sonner";
-import { loadSharedPermissionMatrix, subscribeSharedPermissionMatrix } from "@/lib/permissions";
+import { getDefaultLandingRoute, loadSharedPermissionMatrix, subscribeSharedPermissionMatrix } from "@/lib/permissions";
 import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
 import { localActiveAccount, readLocalAccounts, selectLocalAccount, useLocalAccountRevision } from "@/lib/local-account-store";
 import { LocalAccountBar } from "@/components/local-account-bar";
@@ -36,7 +36,7 @@ export type AppUser = {
 type SessionContextValue = {
   user: AppUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: AppUser }>;
   signOut: () => Promise<void>;
   authSource: "supabase" | "demo" | "none";
 };
@@ -91,6 +91,81 @@ function LocalSessionProvider({ children }: { children: React.ReactNode }) {
     signIn: async () => ({ ok: false, error: "Chọn tài khoản trên thanh Test local" }),
     signOut: async () => { const admin = readLocalAccounts().find(item => item.active && item.roles.includes("admin")); if (admin) selectLocalAccount(admin.id); },
   }}>{children}</SessionContext.Provider>;
+}
+
+const ROLE_TITLES: Record<string, string> = {
+  admin: "Quản trị viên",
+  planner: "Chuyên viên kế hoạch",
+  warehouse: "Quản lý kho",
+  sewing: "Tổ trưởng may",
+  qc: "Kiểm tra chất lượng",
+  finishing: "Tổ trưởng hoàn thiện",
+  accountant: "Kế toán",
+  attendance: "Nhân viên Chấm công",
+};
+
+async function buildAppUserFromSupabase(
+  client: NonNullable<typeof supabase>,
+  authUser: {
+    id: string;
+    email?: string;
+    app_metadata?: unknown;
+    user_metadata?: unknown;
+  },
+  fallbackEmail = "",
+): Promise<AppUser> {
+  const appMeta = (authUser.app_metadata as Record<string, unknown>) || {};
+  const userMeta = (authUser.user_metadata as Record<string, unknown>) || {};
+  let role = String(appMeta.role || userMeta.role || "");
+  let name = String(userMeta.full_name || authUser.email?.split("@")[0] || "User");
+  let maNV = userMeta.maNV as string | undefined;
+  let phongBan = userMeta.phongBan as string | undefined;
+  let donGia = userMeta.donGia as number | undefined;
+  let laCongNhan = userMeta.laCongNhan as boolean | undefined;
+  let title = "";
+
+  // Tự động đồng bộ quyền và hồ sơ từ bảng public.users để mọi máy luôn có đúng quyền và mã NV
+  try {
+    const cleanEmail = (authUser.email || fallbackEmail).trim().toLowerCase();
+    if (cleanEmail) {
+      const { data: dbUser } = await client
+        .from("users")
+        .select('name, role, "chucVu", "phongBan", "maNV", "donGia", "laCongNhan"')
+        .eq("email", cleanEmail)
+        .maybeSingle();
+      if (dbUser) {
+        if (dbUser.role) role = dbUser.role;
+        if (dbUser.name) name = dbUser.name;
+        if (dbUser.chucVu) title = dbUser.chucVu;
+        if (dbUser.phongBan) phongBan = dbUser.phongBan;
+        if (dbUser.maNV) maNV = dbUser.maNV;
+        if (typeof dbUser.donGia === "number") donGia = dbUser.donGia;
+        if (typeof dbUser.laCongNhan === "boolean") laCongNhan = dbUser.laCongNhan;
+      }
+    }
+  } catch {
+    // ignore network error
+  }
+
+  if (!role) role = "user";
+
+  return {
+    id: authUser.id,
+    email: authUser.email || fallbackEmail,
+    name,
+    role,
+    title: title || ROLE_TITLES[role] || role,
+    source: "supabase",
+    maNV,
+    phongBan,
+    donGia,
+    laCongNhan,
+    organizationId: userMeta.organization_id as string | undefined,
+    organizationCode: userMeta.organization_code as string | undefined,
+    organizationName: userMeta.organization_name as string | undefined,
+    workspaceRole: userMeta.workspace_role as string | undefined,
+    dataScope: userMeta.data_scope as string | undefined,
+  };
 }
 
 function LiveSessionProvider({ children }: { children: React.ReactNode }) {
@@ -161,107 +236,60 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseEnabled && supabase) {
       const client = supabase;
       // Verify session hiện tại với Supabase — auto-refresh nếu token gần hết hạn
+      // BẢO VỆ PHIÊN ĐĂNG NHẬP: Tuyệt đối không xóa session offline của user nếu Supabase Unhealthy/lỗi mạng
       client.auth.getSession().then(async ({ data, error }) => {
-        if (error || !data.session) {
-          // Thử refresh trước khi kết luận hết hạn
-          const { data: refreshed, error: refreshErr } = await client.auth.refreshSession();
-          if (refreshErr || !refreshed.session) {
-            // Token thực sự đã hết hạn và không thể refresh — xóa cache stale
-            console.warn("[session] Token expired và không refresh được — xóa localStorage cache");
-            localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem("mimin_erp_session_ttl");
-            // Không redirect tự động — chỉ xóa cache, để UI hiển thị đang xuất
-            setUser(null);
-            setAuthSource("none");
-          } else {
-            console.log("[session] Token được refresh thành công tự động");
+        if (error) {
+          console.warn("[session] Lỗi đọc session Supabase (do server Unhealthy/mạng chậm):", error.message);
+          return; // Giữ nguyên phiên local, không xóa!
+        }
+        if (!data.session) {
+          // Chỉ thử refresh nếu session là từ Supabase Auth GoTrue
+          if (currentUserSource === "supabase") {
+            try {
+              const { data: refreshed, error: refreshErr } = await client.auth.refreshSession();
+              if (refreshErr || !refreshed.session) {
+                console.warn("[session] Token Supabase hết hạn hoặc không kết nối được");
+              } else {
+                console.log("[session] Token được refresh thành công tự động");
+              }
+            } catch (err) {
+              console.warn("[session] Không refresh được session Supabase, giữ phiên local:", err);
+            }
           }
         }
+      }).catch((err) => {
+        console.warn("[session] Kết nối Supabase Auth thất bại, tiếp tục dùng local cache:", err);
       });
 
       const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          const appMeta = (session.user.app_metadata as Record<string, unknown>) || {};
-          const userMeta = (session.user.user_metadata as Record<string, unknown>) || {};
-          let role = String(appMeta.role || userMeta.role || "");
-          let name = String(userMeta.full_name || session.user.email?.split("@")[0] || "User");
-          let maNV = userMeta.maNV as string | undefined;
-          let phongBan = userMeta.phongBan as string | undefined;
-          let title = "";
-
-          // Tự động đồng bộ quyền và hồ sơ từ bảng public.users để mọi máy luôn có đúng quyền admin
-          try {
-            const cleanEmail = (session.user.email || "").trim().toLowerCase();
-            if (cleanEmail) {
-              const { data: dbUser } = await client
-                .from("users")
-                .select('name, role, "chucVu", "phongBan", "maNV"')
-                .eq("email", cleanEmail)
-                .maybeSingle();
-              if (dbUser) {
-                if (dbUser.role) role = dbUser.role;
-                if (dbUser.name) name = dbUser.name;
-                if (dbUser.chucVu) title = dbUser.chucVu;
-                if (dbUser.phongBan) phongBan = dbUser.phongBan;
-                if (dbUser.maNV) maNV = dbUser.maNV;
-              }
-            }
-          } catch {
-            // ignore network error
-          }
-
-          if (!role) role = "user";
-
-          const titles: Record<string, string> = {
-            admin: "Quản trị viên",
-            planner: "Chuyên viên kế hoạch",
-            warehouse: "Quản lý kho",
-            sewing: "Tổ trưởng may",
-            qc: "Kiểm tra chất lượng",
-            finishing: "Tổ trưởng hoàn thiện",
-            accountant: "Kế toán",
-          };
-          const u: AppUser = {
-            id: session.user.id,
-            email: session.user.email || "",
-            name,
-            role,
-            title: title || titles[role] || role,
-            source: "supabase",
-            maNV,
-            phongBan,
-            donGia: userMeta.donGia as number | undefined,
-            laCongNhan: userMeta.laCongNhan as boolean | undefined,
-            organizationId: userMeta.organization_id as string | undefined,
-            organizationCode: userMeta.organization_code as string | undefined,
-            organizationName: userMeta.organization_name as string | undefined,
-            workspaceRole: userMeta.workspace_role as string | undefined,
-            dataScope: userMeta.data_scope as string | undefined,
-          };
-          
+        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") && session?.user) {
+          const u = await buildAppUserFromSupabase(client, session.user);
           setUser(u);
           setAuthSource("supabase");
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-          
-          // Kiểm tra xem đã thiết lập mật khẩu chưa (hoặc có cờ báo hiệu, hoặc đã có provider email)
-          const providers = (session.user.app_metadata.providers as string[]) || [];
-          const hasSetPassword = userMeta.has_set_password === true || providers.includes('email');
+          createSessionWithTTL(u);
 
-          // Điều hướng dựa trên trạng thái (áp dụng cho mọi trang ngoại trừ chính trang setup-password)
-          if (typeof window !== 'undefined') {
-            const path = window.location.pathname;
-            if (!hasSetPassword && !path.includes('/setup-password')) {
-              window.location.href = "/setup-password";
-            } else if (hasSetPassword && path.includes('/login')) {
-              const target = u.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
-              window.location.href = target;
+          if (event === "SIGNED_IN") {
+            const appMeta = (session.user.app_metadata as Record<string, unknown>) || {};
+            const userMeta = (session.user.user_metadata as Record<string, unknown>) || {};
+            const providers = (appMeta.providers as string[]) || [];
+            const hasSetPassword = userMeta.has_set_password === true || providers.includes("email");
+
+            if (typeof window !== "undefined") {
+              const path = window.location.pathname;
+              if (!hasSetPassword && !path.includes("/setup-password")) {
+                window.location.href = "/setup-password";
+              } else if (hasSetPassword && path.includes("/login")) {
+                await loadSharedPermissionMatrix().catch(() => {});
+                const target = getDefaultLandingRoute(u.role);
+                window.location.href = target;
+              }
             }
           }
         } else if (event === "SIGNED_OUT") {
           setUser((prev) => {
             if (prev && prev.source === "supabase") {
               setAuthSource("none");
-              localStorage.removeItem(STORAGE_KEY);
+              clearSession();
               return null;
             }
             return prev;
@@ -300,58 +328,13 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (!error && data.user) {
-          const appMeta = (data.user.app_metadata as Record<string, unknown>) || {};
-          const userMeta = (data.user.user_metadata as Record<string, unknown>) || {};
-          let role = String(appMeta.role || userMeta.role || "");
-          let name = String(userMeta.full_name || data.user.email?.split("@")[0] || "User");
-          let maNV = userMeta.maNV as string | undefined;
-          let phongBan = userMeta.phongBan as string | undefined;
-          let title = "";
-
-          try {
-            const cleanEmail = (data.user.email || email).trim().toLowerCase();
-            const { data: dbUser } = await supabase
-              .from("users")
-              .select('name, role, "chucVu", "phongBan", "maNV"')
-              .eq("email", cleanEmail)
-              .maybeSingle();
-            if (dbUser) {
-              if (dbUser.role) role = dbUser.role;
-              if (dbUser.name) name = dbUser.name;
-              if (dbUser.chucVu) title = dbUser.chucVu;
-              if (dbUser.phongBan) phongBan = dbUser.phongBan;
-              if (dbUser.maNV) maNV = dbUser.maNV;
-            }
-          } catch {
-            // ignore network error
-          }
-
-          if (!role) role = "user";
-
-          const titles: Record<string, string> = {
-            admin: "Quản trị viên",
-            planner: "Chuyên viên kế hoạch",
-            warehouse: "Quản lý kho",
-            sewing: "Tổ trưởng may",
-            qc: "Kiểm tra chất lượng",
-            finishing: "Tổ trưởng hoàn thiện",
-            accountant: "Kế toán",
-          };
-          const u: AppUser = {
-            id: data.user.id,
-            email: data.user.email || email,
-            name,
-            role,
-            title: title || titles[role] || role,
-            source: "supabase",
-            maNV,
-            phongBan,
-            donGia: userMeta.donGia as number | undefined,
-            laCongNhan: userMeta.laCongNhan as boolean | undefined,
-          };
+          const [u] = await Promise.all([
+            buildAppUserFromSupabase(supabase, data.user, email),
+            loadSharedPermissionMatrix().catch(() => {}),
+          ]);
           setUser(u);
           setAuthSource("supabase");
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+          createSessionWithTTL(u);
           clearLoginFailures(email);
 
           // Auto-sync profile vao bang users trong Supabase (neu chua co)
@@ -378,7 +361,7 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
               console.warn("[session] Failed to sync user profile to Supabase:", syncErr);
             }
           }
-          return { ok: true };
+          return { ok: true, user: u };
         }
         if (error) {
           const errMsg = error.message?.toLowerCase() || "";
@@ -414,13 +397,17 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
           role: userRecord.role,
           title: userRecord.chucVu || userRecord.role,
           source: "demo",
+          maNV: userRecord.maNV,
+          phongBan: userRecord.phongBan,
+          donGia: userRecord.donGia,
+          laCongNhan: userRecord.laCongNhan,
         };
         setUser(u);
         setAuthSource("demo");
         createSessionWithTTL(u);
         clearLoginFailures(email);
         updateUserActivity(email, true);
-        return { ok: true };
+        return { ok: true, user: u };
       }
     } catch {
       // network fail, fall through to legacy
@@ -440,7 +427,7 @@ function LiveSessionProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       setAuthSource("demo");
       localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-      return { ok: true };
+      return { ok: true, user: u };
     }
 
     const fail = recordLoginFailure(email);

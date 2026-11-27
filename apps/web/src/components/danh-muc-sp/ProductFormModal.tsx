@@ -86,14 +86,16 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       img: m.img || "",
       video: m.video || "",
       hinhAnhChiTiet: m.hinhAnhChiTiet || [],
-      soLuongKho: m.soLuongKho || 0
+      soLuongKho: m.soLuongKho !== undefined ? Math.max(0, Number(m.soLuongKho) || 0) : 0
     })) || [
       { ten: "Đen", maSKU: "", dinhMuc: 0.25, img: "", video: "", hinhAnhChiTiet: [], soLuongKho: 0 },
     ]
   );
   
   const [chatLieu, setChatLieu] = useState(initialData?.chatLieu || "");
-  const [ncc, setNcc] = useState(initialData?.ncc || "");
+  const initialBrand = initialData?.thuongHieu || (initialData?.ncc === "Man PJ" || initialData?.ncc === "Polomimin" ? initialData.ncc : (initialData?.id?.toUpperCase().includes("BPJ") || initialData?.tenSP?.toUpperCase().includes("MANPJ") ? "Man PJ" : "Polomimin"));
+  const [thuongHieu, setThuongHieu] = useState<"Man PJ" | "Polomimin">(initialBrand as "Man PJ" | "Polomimin");
+  const [ncc, setNcc] = useState(initialData?.ncc || initialBrand);
   const [ghiChu, setGhiChu] = useState(initialData?.ghiChu || "");
   const [giaBanLe, setGiaBanLe] = useState(initialData?.giaBanLe || 0);
   const [giaBanSi, setGiaBanSi] = useState(initialData?.giaBanSi || 0);
@@ -134,14 +136,13 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       return;
     }
 
-    // Chặn trùng mã SP khi TẠO MỚI. Bảng san_pham dùng id (UUID) làm khoá chính
-    // còn ma_sp chỉ là cột text không ràng buộc duy nhất, nên gõ trùng mã cũ sẽ
-    // tạo ra 2 sản phẩm cùng mã trong danh mục, làm chia đôi số liệu bán hàng.
-    if (!initialData) {
-      const maMoi = maSP.trim().toUpperCase();
-      const trung = dsSanPham.find((sp) => (sp.id || "").toUpperCase() === maMoi);
+    // Kiểm tra trùng mã SP. Cho phép giữ nguyên mã cũ khi sửa, nhưng nếu đổi sang mã mới thì không được trùng với SP khác
+    const maMoi = maSP.trim().toUpperCase();
+    const oldId = (initialData?.id || "").trim().toUpperCase();
+    if (!initialData || maMoi !== oldId) {
+      const trung = dsSanPham.find((sp) => (sp.id || "").toUpperCase() === maMoi && (sp.id || "").toUpperCase() !== oldId);
       if (trung) {
-        toast.error(`Mã SP "${maMoi}" đã tồn tại: ${trung.tenSP}. Vui lòng dùng mã khác hoặc sửa sản phẩm đang có.`);
+        toast.error(`Mã SP "${maMoi}" đã tồn tại: ${trung.tenSP}. Vui lòng dùng mã khác.`);
         return;
       }
     }
@@ -181,7 +182,7 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
           img: m.img || "",
           video: m.video || "",
           hinhAnhChiTiet: m.hinhAnhChiTiet || [],
-          soLuongKho: m.soLuongKho || 0
+          soLuongKho: Math.max(0, Number(m.soLuongKho) || 0)
         };
       }),
       bangSize,
@@ -193,7 +194,8 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
       giaBanDuKien: giaBanLe || giaBanSi || giaBanLo || giaTikTok || giaShopee || 0,
       giaVonDuKien: initialData?.giaVonDuKien || 0,
       chatLieu,
-      ncc,
+      ncc: thuongHieu || ncc,
+      thuongHieu,
       ghiChu: ghiChu || (initialData ? initialData.ghiChu : ""),
       trangThai: initialData?.trangThai || "con-hang",
       ngayTao: initialData?.ngayTao || new Date().toISOString().substring(0, 10),
@@ -249,12 +251,19 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">Mã Sản Phẩm <span className="text-rose-500">*</span></label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-bold text-slate-700">Mã Sản Phẩm <span className="text-rose-500">*</span></label>
+                  {initialData && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      Được phép sửa mã
+                    </span>
+                  )}
+                </div>
                 <input 
-                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 uppercase font-mono font-bold text-slate-800 bg-slate-50 transition-all hover:bg-white" 
+                  className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 uppercase font-mono font-bold text-slate-800 bg-white transition-all shadow-xs" 
                   placeholder="VD: M024"
-                  value={maSP} onChange={e => setMaSP(e.target.value)}
-                  disabled={!!initialData}
+                  value={maSP} 
+                  onChange={e => setMaSP(e.target.value)}
                 />
               </div>
               <div>
@@ -284,6 +293,36 @@ export default function ProductFormModal({ onClose, onSave, initialData }: Produ
                   placeholder="VD: Hàng xuất dư, Form rộng..."
                   value={ghiChu} onChange={e => setGhiChu(e.target.value)}
                 />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Thương hiệu *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setThuongHieu("Man PJ"); setNcc("Man PJ"); }}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                    thuongHieu === "Man PJ"
+                      ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                  Man PJ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setThuongHieu("Polomimin"); setNcc("Polomimin"); }}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                    thuongHieu === "Polomimin"
+                      ? "border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  Polomimin
+                </button>
               </div>
             </div>
           </div>

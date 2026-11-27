@@ -44,5 +44,6 @@ export interface SanPham {
   giaTikTok?: number;
   giaShopee?: number;
   kenhBan?: ("ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee")[];
+  thuongHieu?: "Man PJ" | "Polomimin" | string; // Thuong hieu: Man PJ hoac Polomimin
   ngayCapNhat?: string; // ISO date khi cập nhật gần nhất
 }

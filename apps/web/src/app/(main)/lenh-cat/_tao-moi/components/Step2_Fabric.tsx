@@ -115,18 +115,31 @@ export function Step2Fabric() {
                 }
              }} />
              <div 
-               className="w-full h-32 bg-amber-50/50 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer overflow-hidden group hover:border-amber-500 transition-colors flex items-center justify-center"
+               className="w-full min-h-[220px] p-3.5 bg-amber-50/50 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer group hover:border-amber-500 transition-colors flex flex-col items-center justify-center"
                onClick={() => !imgInTheu && imgInTheuRef.current?.click()}
              >
                {imgInTheu ? (
-                 <div className="relative w-full h-full">
-                    <img src={imgInTheu} className="w-full h-full object-contain" />
-                    <button onClick={(e) => { e.stopPropagation(); setImgInTheu(""); imgInTheuRef.current && (imgInTheuRef.current.value = ""); }} className="absolute top-2 right-2 bg-red-100 text-red-600 p-1 rounded hover:bg-red-200"><X size={14}/></button>
+                 <div className="flex flex-col items-center justify-center gap-2.5 w-full">
+                    <img src={imgInTheu} className="h-28 sm:h-32 max-h-36 max-w-full object-contain rounded-md border border-amber-200 bg-white p-1.5 shadow-sm" alt="Hình mẫu In/Thêu" />
+                    <div className="flex items-center gap-2 flex-wrap justify-center mt-1">
+                      <a href={imgInTheu} download="hinh-mau-in-theu.png" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1.5 rounded-md shadow-xs transition-colors">
+                        <Download size={14} /> Tải
+                      </a>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); imgInTheuRef.current?.click(); }} className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-2.5 py-1.5 rounded-md shadow-xs transition-colors">
+                        <UploadCloud size={14} /> Đổi ảnh
+                      </button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setImgInTheu(""); if (imgInTheuRef.current) imgInTheuRef.current.value = ""; }} className="flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-100 hover:bg-red-200 px-2.5 py-1.5 rounded-md shadow-xs transition-colors">
+                        <Trash2 size={14} /> Xóa
+                      </button>
+                    </div>
                  </div>
                ) : (
-                 <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-amber-700">
-                   <UploadCloud className="w-8 h-8 mb-1" />
-                   <span className="text-xs font-medium text-center">Tải lên ảnh<br/>(.jpg, .png)</span>
+                 <div className="flex flex-col items-center justify-center py-6 text-amber-700 group-hover:text-amber-800 transition-colors">
+                   <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                     <UploadCloud className="w-6 h-6 text-amber-700" />
+                   </div>
+                   <span className="text-sm font-bold text-slate-700">Tải lên ảnh mẫu</span>
+                   <span className="text-xs text-slate-500 mt-1">Hỗ trợ JPG, PNG (nhấp để chọn file)</span>
                  </div>
                )}
              </div>
@@ -138,21 +151,31 @@ export function Step2Fabric() {
                 if (file) setFileInTheu(file.name);
              }} />
              <div 
-               className="w-full h-32 bg-amber-50/50 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer overflow-hidden group hover:border-amber-500 transition-colors flex items-center justify-center"
+               className="w-full min-h-[220px] p-3.5 bg-amber-50/50 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer group hover:border-amber-500 transition-colors flex flex-col items-center justify-center"
                onClick={() => !fileInTheu && fileInTheuRef.current?.click()}
              >
                {fileInTheu ? (
-                 <div className="flex flex-col items-center gap-2">
-                   <div className="flex items-center gap-2">
-                     <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                     <span className="text-sm font-medium text-slate-700 truncate max-w-[150px]">{fileInTheu}</span>
+                 <div className="flex flex-col items-center justify-center gap-2.5 w-full">
+                   <div className="w-16 h-16 rounded-xl bg-amber-100/80 border border-amber-200 flex items-center justify-center shadow-xs">
+                     <CheckCircle2 className="w-8 h-8 text-emerald-600" />
                    </div>
-                   <button onClick={(e) => { e.stopPropagation(); setFileInTheu(""); fileInTheuRef.current && (fileInTheuRef.current.value = ""); }} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 px-2 py-1 rounded"><X size={14} /> Xóa</button>
+                   <span className="text-sm font-medium text-slate-700 truncate max-w-[200px]">{fileInTheu}</span>
+                   <div className="flex items-center gap-2 mt-1">
+                     <button type="button" onClick={(e) => { e.stopPropagation(); fileInTheuRef.current?.click(); }} className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-2.5 py-1.5 rounded-md shadow-xs transition-colors">
+                       <UploadCloud size={14} /> Đổi file
+                     </button>
+                     <button type="button" onClick={(e) => { e.stopPropagation(); setFileInTheu(""); if (fileInTheuRef.current) fileInTheuRef.current.value = ""; }} className="flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-100 hover:bg-red-200 px-2.5 py-1.5 rounded-md shadow-xs transition-colors">
+                       <Trash2 size={14} /> Xóa
+                     </button>
+                   </div>
                  </div>
                ) : (
-                 <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity text-amber-700">
-                   <UploadCloud className="w-8 h-8 mb-1" />
-                   <span className="text-xs font-medium text-center">Tải lên file<br/>(.pdf, .ai)</span>
+                 <div className="flex flex-col items-center justify-center py-6 text-amber-700 group-hover:text-amber-800 transition-colors">
+                   <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                     <UploadCloud className="w-6 h-6 text-amber-700" />
+                   </div>
+                   <span className="text-sm font-bold text-slate-700">Tải lên file gốc</span>
+                   <span className="text-xs text-slate-500 mt-1">Hỗ trợ PDF, AI (nhấp để chọn file)</span>
                  </div>
                )}
              </div>

@@ -127,8 +127,8 @@ export default function CanhBaoPage() {
   const safetyScore = useMemo(() => {
     const tong = canhBaos.length;
     if (tong === 0) return 100;
-    const penalty = thongKe.cao * 15 + thongKe.trungBinh * 8 + thongKe.thap * 3;
-    return Math.max(50, Math.min(100, 100 - penalty));
+    const penalty = thongKe.cao * 8 + thongKe.trungBinh * 4 + thongKe.thap * 2;
+    return Math.max(65, Math.min(100, 100 - penalty));
   }, [canhBaos, thongKe]);
 
   // Auto refresh mỗi 30s

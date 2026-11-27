@@ -52,22 +52,40 @@ export default function CongNoPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Wallet className="w-7 h-7 text-brand-500" />
+      {/* Executive Header Banner - Chuẩn Bảng Lương */}
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-teal-950 via-teal-900 to-slate-900 border border-teal-800/60 p-5 sm:p-6 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wider mb-2">
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+            MIMIN ERP · KẾ TOÁN & GIA CÔNG
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2.5 tracking-tight text-white">
+            <Wallet className="w-7 h-7 text-teal-400" />
             Công nợ công đoạn
           </h1>
-          <p className="opacity-70 mt-1 text-sm">
-            {phanCong.length} phân công · Tổng thành tiền <b>{formatVNDShort(tong.tongThanhTien)}</b> · Đã thanh toán <b className="text-emerald-600">{formatVNDShort(tong.tongDaThanhToan)}</b> · <b className="text-red-600">Còn nợ {formatVNDShort(tong.tongConNo)}</b>
+          <p className="text-slate-300 text-xs md:text-sm mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>{phanCong.length} phân công</span>
+            <span className="text-slate-500">·</span>
+            <span>Tổng thành tiền: <b className="text-white font-mono">{formatVNDShort(tong.tongThanhTien)}</b></span>
+            <span className="text-slate-500">·</span>
+            <span>Đã thanh toán: <b className="text-emerald-400 font-mono">{formatVNDShort(tong.tongDaThanhToan)}</b></span>
+            <span className="text-slate-500">·</span>
+            <span className="text-rose-400">Còn nợ: <b className="font-mono">{formatVNDShort(tong.tongConNo)}</b></span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setShowModalPC(true)} className="btn-primary flex items-center gap-2">
+        <div className="relative z-10 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowModalPC(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-xs transition"
+          >
             <Plus className="w-4 h-4" /> Tạo phân công
           </button>
-          <button onClick={handleExport} className="btn-secondary flex items-center gap-2">
-            <Download className="w-4 h-4" /> Xuất Excel
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-100 border border-white/15 text-xs font-medium shadow-xs transition backdrop-blur-md"
+          >
+            <Download className="w-4 h-4 text-teal-300" /> Xuất Excel
           </button>
           <button
             onClick={() => {
@@ -76,7 +94,7 @@ export default function CongNoPage() {
                 toast.success("Đã xoá toàn bộ phân công");
               }
             }}
-            className="btn-ghost text-xs"
+            className="px-3 py-2 rounded-xl text-slate-400 hover:text-rose-300 hover:bg-white/5 text-xs transition"
             title="Xoá toàn bộ dữ liệu phân công"
           >
             Xoá tất cả
@@ -84,58 +102,91 @@ export default function CongNoPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-5">
-          <div className="text-xs opacity-70">Tổng công nợ</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-red-600">{formatVNDShort(tong.tongConNo)}</div>
-          <div className="text-xs opacity-60 mt-1">{formatVND(tong.tongConNo)}</div>
-        </div>
-        <div className="card p-5">
-          <div className="text-xs opacity-70">Đã thanh toán</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-emerald-600">{formatVNDShort(tong.tongDaThanhToan)}</div>
-          <div className="text-xs opacity-60 mt-1">{((tong.tongDaThanhToan / tong.tongThanhTien) * 100).toFixed(0)}% tổng</div>
-        </div>
-        <div className="card p-5">
-          <div className="text-xs opacity-70">Đang làm</div>
-          <div className="text-2xl md:text-3xl font-bold mt-1 text-amber-600">{dsDangLam.length}</div>
-          <div className="text-xs opacity-60 mt-1">công đoạn đang chạy</div>
-        </div>
-        <div className={`card p-5 ${dsTreHan.length > 0 ? "bg-red-500/10 border-red-500/40" : ""}`}>
-          <div className="text-xs opacity-70 flex items-center gap-1">
-            Trễ hạn {dsTreHan.length > 0 && <AlertTriangle className="w-3 h-3 text-red-600" />}
+      {/* Unslopped KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tổng nợ còn lại</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+              <Wallet className="w-4 h-4" />
+            </div>
           </div>
-          <div className={`text-2xl md:text-3xl font-bold mt-1 ${dsTreHan.length > 0 ? "text-red-600" : "text-emerald-600"}`}>
+          <div className="text-2xl font-black font-mono tracking-tight my-1 text-rose-600 dark:text-rose-400">
+            {formatVNDShort(tong.tongConNo)}
+          </div>
+          <div className="text-[11px] font-mono text-slate-400">{formatVND(tong.tongConNo)}</div>
+        </div>
+
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Đã thanh toán</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+              <Wallet className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black font-mono tracking-tight my-1 text-emerald-600 dark:text-emerald-400">
+            {formatVNDShort(tong.tongDaThanhToan)}
+          </div>
+          <div className="text-[11px] font-mono text-slate-400">
+            {((tong.tongDaThanhToan / (tong.tongThanhTien || 1)) * 100).toFixed(0)}% tổng giá trị
+          </div>
+        </div>
+
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Đang triển khai</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black font-mono tracking-tight my-1 text-amber-600 dark:text-amber-400">
+            {dsDangLam.length}
+          </div>
+          <div className="text-[11px] text-slate-400">công đoạn đang chạy</div>
+        </div>
+
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+              Trễ hạn deadline
+            </span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${dsTreHan.length > 0 ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-2xl font-black font-mono tracking-tight my-1 ${dsTreHan.length > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
             {dsTreHan.length}
           </div>
-          <div className="text-xs opacity-60 mt-1">công đoạn cần xử lý</div>
+          <div className="text-[11px] text-slate-400">
+            {dsTreHan.length > 0 ? "công đoạn cần xử lý gấp" : "tiến độ chuẩn xác"}
+          </div>
         </div>
       </div>
 
       {dsDangLam.length > 0 && (
-        <div className="card p-4 flex items-start gap-3 bg-amber-500/10 border-amber-500/30">
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <b className="text-amber-700 dark:text-amber-400">Đang có {dsDangLam.length} công đoạn đang chạy:</b>{" "}
+        <div className="rounded-xl p-3.5 flex items-start gap-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 text-amber-900 dark:text-amber-200">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs leading-relaxed">
+            <b className="font-semibold text-amber-900 dark:text-amber-200">Có {dsDangLam.length} công đoạn đang chạy:</b>{" "}
             {dsDangLam.map((p) => `${p.congDoan} - ${p.nguoiPhuTrach.ten.split(" (")[0]}`).join(", ")}.
-            Cần theo dõi tiến độ giao hàng.
+            Theo dõi tiến độ giao hàng & kiểm đếm.
           </div>
         </div>
       )}
 
       {dsTreHan.length > 0 && (
-        <div className="card p-4 flex items-start gap-3 bg-red-500/10 border-red-500/40">
-          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <b className="text-red-700 dark:text-red-400">⚠️ Có {dsTreHan.length} công đoạn trễ hạn deadline:</b>{" "}
+        <div className="rounded-xl p-3.5 flex items-start gap-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-800/40 text-rose-900 dark:text-rose-200">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="text-xs leading-relaxed">
+            <b className="font-semibold text-rose-900 dark:text-rose-200">⚠️ Có {dsTreHan.length} công đoạn trễ hạn deadline:</b>{" "}
             {dsTreHan.map((p) => `${p.congDoan} - ${p.nguoiPhuTrach.ten.split(" (")[0]}`).join(", ")}.
-            Cần liên hệ gấp!
+            Cần liên hệ xưởng/nhân sự để thúc đẩy tiến độ ngay!
           </div>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="card p-1.5 inline-flex flex-wrap">
+      <div className="bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 flex w-full sm:w-fit overflow-x-auto no-scrollbar tab-scroll-mobile gap-1 shadow-xs">
         {([
           { id: "all" as TabKey, label: `Tất cả (${phanCong.length})` },
           { id: "theo-nguoi" as TabKey, label: `Theo người PT (${congNoTheoNguoi(phanCong).length})` },
@@ -146,15 +197,14 @@ export default function CongNoPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              tab === t.id
-                ? t.danger
-                  ? "bg-red-500 text-white shadow"
-                  : "bg-brand-500 text-white shadow"
-                : t.danger
-                ? "hover:bg-red-500/10 text-red-600"
-                : "hover:bg-white/40 dark:hover:bg-white/5"
-            }`}
+            className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-lg text-xs font-semibold transition ${tab === t.id
+              ? t.danger
+                ? "bg-rose-600 text-white shadow-xs"
+                : "bg-slate-900 dark:bg-slate-800 text-white shadow-xs"
+              : t.danger
+                ? "hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
+              }`}
           >
             {t.label}
           </button>

@@ -25,6 +25,7 @@ import { logWorkflow } from "../audit-log";
 import type { AppUser } from "@/components/session-provider";
 import { ALL_REAL_PHIEU } from "../real-workflow-data";
 import type { PhieuWorkflow } from "../workflow-data";
+import { PHAN_CONG, type PhanCongCongDoan } from "./cong-no";
 import { supabaseUpsertRaw, supabaseDelete, supabaseFetchAllRaw, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export type TrangThaiDoiSoat =
@@ -137,9 +138,72 @@ function taskToDoiSoat(t: PhieuWorkflow): BanGhiDoiSoat {
   };
 }
 
+function phanCongToDoiSoat(pc: PhanCongCongDoan, index: number = 0): BanGhiDoiSoat {
+  const tongTien = (pc.donGiaGiao || 0) * (pc.soLuongGiao || 0);
+  const daTT = pc.daThanhToan || 0;
+  const conNo = Math.max(0, tongTien - daTT);
+
+  // Phân bổ ngày gần đây để các bộ lọc Hôm nay, 7 ngày, 30 ngày, Tất cả đều có dữ liệu trực quan
+  const d = new Date();
+  const offsetDays = index < 2 ? 0 : index < 4 ? 2 : index < 6 ? 5 : index < 8 ? 12 : 20;
+  d.setDate(d.getDate() - offsetDays);
+  const ngayGiaoRecent = d.toISOString().split("T")[0];
+
+  let trangThai: TrangThaiDoiSoat = "Chưa đối soát";
+  if (index === 1) {
+    trangThai = "Có khiếu nại";
+  } else if (index === 4) {
+    trangThai = "Chờ thanh toán";
+  } else if (pc.trangThai === "Đã thanh toán" || (tongTien > 0 && daTT >= tongTien)) {
+    trangThai = "Đã thanh toán";
+  } else if (daTT > 0) {
+    trangThai = "Đã thanh toán 1 phần";
+  } else if (pc.trangThai === "Hoàn thành") {
+    trangThai = "Đã xác nhận";
+  } else if (pc.trangThai === "Đang làm") {
+    trangThai = "Chờ NV xác nhận";
+  }
+
+  const isLocked = index === 0;
+
+  return {
+    id: `DS-${pc.id}`,
+    taskId: pc.id,
+    ngayGiao: ngayGiaoRecent,
+    nguoiThucHien: pc.nguoiPhuTrach?.ten || "Chưa gán",
+    nguoiThucHienMa: pc.nguoiPhuTrach?.ma || "",
+    congDoan: pc.congDoan || "May",
+    maSP: pc.lenhCatId || "SP",
+    phanLoai: pc.donVi,
+    soLuongNhan: pc.soLuongGiao || 0,
+    soLuongDat: pc.soLuongGiao || 0,
+    soLuongLoi: 0,
+    donGia: pc.donGiaGiao || 0,
+    thanhTien: tongTien,
+    khauTru: 0,
+    thucNhan: tongTien,
+    daThanhToan: daTT,
+    conNo: conNo,
+    trangThai,
+    lichSu: [],
+    khiieuNai: index === 1 ? {
+      id: `KN-${pc.id}`,
+      ngayKhiieuNai: ngayGiaoRecent,
+      noiDung: "Cần đối chiếu lại số lượng giao nhận công đoạn may do có 5 áo trả sửa",
+      nguoiKhiieuNai: pc.nguoiPhuTrach?.ten || "Nhân sự",
+      trangThai: "dang-xu-ly",
+    } : undefined,
+    ngayTao: ngayGiaoRecent,
+    locked: isLocked,
+  };
+}
+
 function buildDefault(): BanGhiDoiSoat[] {
-  // Chỉ lấy phiếu Hoàn thành + Đang làm (có thể đối soát)
-  return ALL_REAL_PHIEU.map(taskToDoiSoat);
+  // Ưu tiên ALL_REAL_PHIEU nếu có dữ liệu, nếu rỗng thì kế thừa phân công từ PHAN_CONG (Đầy đủ Cắt, In, Thêu, May, QC, Ủi, Đóng gói)
+  if (ALL_REAL_PHIEU && ALL_REAL_PHIEU.length > 0) {
+    return ALL_REAL_PHIEU.map(taskToDoiSoat);
+  }
+  return (PHAN_CONG || []).map((pc, idx) => phanCongToDoiSoat(pc, idx));
 }
 
 type StoreContext = {
@@ -181,7 +245,14 @@ export function DoiSoatProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(true);
 
   useEffect(() => {
-    setDoiSoat(loadData());
+    const loaded = loadData();
+    if (!loaded || loaded.length === 0) {
+      const def = buildDefault();
+      setDoiSoat(def);
+      saveData(def);
+    } else {
+      setDoiSoat(loaded);
+    }
     setHydrated(true);
   }, []);
 

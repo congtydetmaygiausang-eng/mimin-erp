@@ -41,73 +41,78 @@ export function DanhSachDonHang({ user, onEdit }: { user: AppUser | null, onEdit
     }
   };
 
-  if (loading) return <div className="card p-8 text-center text-sm text-slate-500">Đang tải danh sách đơn hàng...</div>;
+  if (loading) return <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-8 text-center text-xs text-slate-500">Đang tải danh sách đơn hàng...</div>;
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="card p-4">
-        <label className="relative block">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-          <input className="input pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, NCC, khách hàng hoặc vật tư..." />
-        </label>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Tìm mã phiếu, NCC, khách hàng hoặc vật tư..."
+          />
+        </div>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-white/5">
+          <table className="w-full min-w-[900px] text-xs md:text-sm">
+            <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               <tr>
-                <th className="p-4 border-b border-slate-200 dark:border-white/10">Mã phiếu / Ngày đặt</th>
-                <th className="p-4 border-b border-slate-200 dark:border-white/10">Nhà cung cấp dệt</th>
-                <th className="p-4 border-b border-slate-200 dark:border-white/10">Khách hàng / Xưởng</th>
-                <th className="p-4 text-center border-b border-slate-200 dark:border-white/10">Số lượng</th>
-                <th className="p-4 text-center border-b border-slate-200 dark:border-white/10">Trạng thái</th>
-                <th className="p-4 text-center border-b border-slate-200 dark:border-white/10">Hành động</th>
+                <th className="p-3.5 border-b border-slate-200 dark:border-slate-800">Mã phiếu / Ngày đặt</th>
+                <th className="p-3.5 border-b border-slate-200 dark:border-slate-800">Nhà cung cấp dệt</th>
+                <th className="p-3.5 border-b border-slate-200 dark:border-slate-800">Khách hàng / Xưởng</th>
+                <th className="p-3.5 text-center border-b border-slate-200 dark:border-slate-800">Số lượng</th>
+                <th className="p-3.5 text-center border-b border-slate-200 dark:border-slate-800">Trạng thái</th>
+                <th className="p-3.5 text-center border-b border-slate-200 dark:border-slate-800">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {visibleOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
-                    Chưa có đơn hàng nào.
+                  <td colSpan={6} className="p-8 text-center text-xs text-slate-400">
+                    Chưa có đơn hàng nào phù hợp với tìm kiếm.
                   </td>
                 </tr>
               ) : (
                 visibleOrders.map((order) => {
                   const totalQty = order.items?.reduce((sum, item) => sum + item.soLuong, 0) || order.soLuong;
                   return (
-                    <tr key={order.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 dark:border-white/5 dark:hover:bg-white/5 transition">
-                      <td className="p-4">
-                        <div className="font-bold text-emerald-600">{order.maPhieu}</div>
-                        <div className="text-xs text-slate-500 mt-1">{order.ngayDat}</div>
+                    <tr key={order.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                      <td className="p-3.5">
+                        <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{order.maPhieu}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">{order.ngayDat}</div>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3.5">
                         {(() => {
                           const ncc = nccList.find((n) => n.ma_ncc === order.maNcc);
                           const tooltip = ncc ? `${ncc.ten_ncc}\nSĐT: ${ncc.sdt || "Trống"}\nĐịa chỉ: ${ncc.dia_chi || "Trống"}` : order.maNcc;
-                          return <div className="font-semibold cursor-help" title={tooltip}>{order.maNcc}</div>;
+                          return <div className="font-semibold text-slate-900 dark:text-white cursor-help" title={tooltip}>{order.maNcc}</div>;
                         })()}
                       </td>
-                      <td className="p-4">
+                      <td className="p-3.5">
                         {(() => {
-                          if (!order.maKhachHang) return <div className="font-semibold">MIMIN (Nội bộ)</div>;
+                          if (!order.maKhachHang) return <div className="font-semibold text-slate-600 dark:text-slate-300">MIMIN (Nội bộ)</div>;
                           const kh = khachHangList.find((k) => k.maKH === order.maKhachHang);
                           const tooltip = kh ? `${kh.ten}\nSĐT: ${kh.sdt || "Trống"}\nĐịa chỉ: ${kh.diaChi || "Trống"}` : order.maKhachHang;
-                          return <div className="font-semibold cursor-help" title={tooltip}>{order.maKhachHang}</div>;
+                          return <div className="font-semibold text-slate-900 dark:text-white cursor-help" title={tooltip}>{order.maKhachHang}</div>;
                         })()}
                       </td>
-                      <td className="p-4 text-center font-bold">
+                      <td className="p-3.5 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
                         {(totalQty || 0).toLocaleString("vi-VN")}
                       </td>
-                      <td className="p-4 text-center">
-                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      <td className="p-3.5 text-center">
+                        <span className="inline-flex rounded-md bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
                           {order.trangThai}
                         </span>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3.5 text-center">
                         <button 
                           onClick={() => setSelectedOrder(order)}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 transition"
                         >
                           <Eye className="h-3.5 w-3.5" /> Chi tiết
                         </button>

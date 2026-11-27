@@ -293,6 +293,12 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
       if (!oldOrder) return prev;
 
       const merged = { ...oldOrder, ...data };
+      if (data.trangThai === "Đã giao" && (!merged.shipping || merged.shipping.trangThai !== "da-giao")) {
+        merged.shipping = {
+          ...(merged.shipping || { phuongThuc: "tu-giao", phiVanChuyen: 0, diaChiGiao: merged.diaChi || "" }),
+          trangThai: "da-giao" as TrangThaiVanChuyen,
+        };
+      }
       const orderTotal = calcTongTien(merged);
       const conNo = calcConLai(merged);
       const newOrder: Order = {
@@ -374,7 +380,19 @@ export function DonHangProvider({ children }: { children: ReactNode }) {
     let danGiao: Order | undefined;
     setDsOrder(prev => prev.map(o => {
       if (o.id !== orderId) return o;
-      const next = { ...o, trangThai };
+      let newShipping = o.shipping;
+      if (trangThai === "Đã giao") {
+        newShipping = {
+          ...(o.shipping || { phuongThuc: "tu-giao", phiVanChuyen: 0, diaChiGiao: o.diaChi || "" }),
+          trangThai: "da-giao" as TrangThaiVanChuyen,
+        };
+      } else if (o.trangThai === "Đã giao" && trangThai !== "Đã giao" && o.shipping?.trangThai === "da-giao") {
+        newShipping = {
+          ...o.shipping,
+          trangThai: "cho-xu-ly" as TrangThaiVanChuyen,
+        };
+      }
+      const next = { ...o, trangThai, shipping: newShipping };
       if (trangThai === "Đã giao" && !o.daTruKho) danGiao = next;
       return next;
     }));

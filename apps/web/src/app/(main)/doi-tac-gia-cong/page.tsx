@@ -63,98 +63,153 @@ export default function DoiTacGiaCongPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Hero Header Banner */}
-      <div className="relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #5eead4 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
-        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #67e8f9 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-5">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5 text-white drop-shadow">
-              <Users className="w-7 h-7 text-white/90" />
-              Đối tác Gia công Outside
+      {/* Executive Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-cyan-500/10 border border-teal-500/20 backdrop-blur-sm shadow-sm">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Mạng Lưới Sản Xuất Outside
+              </span>
+              <span className="text-xs text-slate-500 font-medium">35 Xưởng & Vệ tinh</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2.5">
+              <Users className="w-7 h-7 text-teal-600 dark:text-teal-400" />
+              Đối Tác Gia Công Outside
             </h1>
-            <p className="text-white/80 mt-1 text-sm font-medium">
-              {stats.tong} đối tác · <b className="text-emerald-300">{stats.dangHopTac} đang hợp tác</b> · {stats.ngungHopTac} ngừng
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Quản lý {stats.tong} đối tác · <b className="text-emerald-600 font-bold">{stats.dangHopTac} đang hợp tác</b> · {stats.ngungHopTac} ngừng hoạt động
             </p>
           </div>
           <button
             onClick={() => setShowForm({ mode: "add" })}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-md shadow-teal-500/20 transition hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
           >
-            <Plus className="w-4 h-4" /> Thêm đối tác mới
+            <Plus className="w-4 h-4" /> Thêm Đối Tác Mới
           </button>
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="card p-4">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Users className="w-3 h-3" /> Tổng</div>
-          <div className="text-2xl font-bold mt-1">{stats.tong}</div>
+      {/* 5 KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">Tổng đối tác</span>
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-slate-800">{stats.tong}</div>
+          <div className="mt-1 text-xs text-emerald-600 font-semibold">{stats.dangHopTac} đang hợp tác</div>
         </div>
-        <div className="card p-4 border-violet-200">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Scissors className="w-3 h-3 text-violet-600" /> In/Thêu/Dập</div>
-          <div className="text-2xl font-bold mt-1 text-violet-600">{stats.inTheuDap}</div>
+
+        <div className="rounded-xl border border-violet-200/80 bg-violet-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-violet-700">In / Thêu / Dập</span>
+            <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600">
+              <Scissors className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-violet-700">{stats.inTheuDap}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Xưởng in & thêu</div>
         </div>
-        <div className="card p-4 border-blue-200">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Shirt className="w-3 h-3 text-blue-600" /> May quần</div>
-          <div className="text-2xl font-bold mt-1 text-blue-600">{stats.mayQuan}</div>
+
+        <div className="rounded-xl border border-blue-200/80 bg-blue-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-blue-700">May quần</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+              <Shirt className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-blue-700">{stats.mayQuan}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Xưởng ráp quần</div>
         </div>
-        <div className="card p-4 border-emerald-200">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Shirt className="w-3 h-3 text-emerald-600" /> May áo tròn</div>
-          <div className="text-2xl font-bold mt-1 text-emerald-600">{stats.mayTron}</div>
+
+        <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-emerald-700">May áo cổ tròn</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <Shirt className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-emerald-700">{stats.mayTron}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Áo phông / T-shirt</div>
         </div>
-        <div className="card p-4 border-amber-200">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Shirt className="w-3 h-3 text-amber-600" /> May áo trụ</div>
-          <div className="text-2xl font-bold mt-1 text-amber-600">{stats.mayTru}</div>
+
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-amber-700">May áo cổ trụ</span>
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+              <Shirt className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-amber-700">{stats.mayTru}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Polo / Áo có cổ</div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="card p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-2 flex-1">
+      {/* Filters & Search */}
+      <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 flex-1">
             {LOAI_TABS.map((tab) => {
               const Icon = tab.icon;
               const count = tab.key === "ALL" ? stats.tong :
                 tab.key === "GC-IN" ? stats.inTheuDap :
                 tab.key === "GC-QUAN" ? stats.mayQuan :
                 tab.key === "GC-TRON" ? stats.mayTron : stats.mayTru;
+              const active = loaiFilter === tab.key;
               return (
                 <button
                   key={tab.key}
                   onClick={() => setLoaiFilter(tab.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${
-                    loaiFilter === tab.key ? "bg-brand-500 text-white" : "bg-white/40 dark:bg-white/5 hover:bg-white/60"
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    active
+                      ? "bg-teal-600 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
-                  <Icon className="w-3 h-3" />
-                  {tab.label} ({count})
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"}`}>
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex items-center gap-2">
             <select
               value={trangThaiFilter}
               onChange={(e) => setTrangThaiFilter(e.target.value as any)}
-              className="px-3 py-1.5 rounded-lg text-xs border border-slate-200 bg-white"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               <option value="ALL">Tất cả trạng thái</option>
-              <option value="dang_hop_tac">Đang hợp tác</option>
-              <option value="ngung_hop_tac">Ngừng hợp tác</option>
+              <option value="dang_hop_tac">🟢 Đang hợp tác</option>
+              <option value="ngung_hop_tac">🔴 Ngừng hợp tác</option>
             </select>
             <DataViewToggle onChange={setViewMode} />
           </div>
         </div>
+
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
-            className="input pl-9"
-            placeholder="Tìm tên, mã, SĐT, địa chỉ, MST..."
+            className="w-full pl-9 pr-8 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Tìm tên xưởng, mã đối tác, người liên hệ, SĐT, địa chỉ, MST..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

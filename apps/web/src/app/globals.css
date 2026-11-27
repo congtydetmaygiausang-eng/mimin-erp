@@ -44,18 +44,14 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* Mobile: font to hơn 2px cho dễ đọc trên app */
-  @media (max-width: 767px) {
-    html {
-      font-size: 17px;
-    }
-  }
-
   body {
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: var(--text-primary);
     background: var(--bg-primary);
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
   }
 }
 
@@ -271,6 +267,33 @@
   .safe-margin-bottom {
     margin-bottom: env(safe-area-inset-bottom, 20px);
   }
+
+  /* Ẩn scrollbar nhưng vẫn lướt mượt mà */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Thanh tab lướt ngang mượt mà trên mobile */
+  .tab-scroll-mobile {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    touch-action: pan-x;
+  }
+  .tab-scroll-mobile::-webkit-scrollbar {
+    display: none;
+  }
+  .tab-scroll-mobile > * {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 
 /* Prevent text size adjustment on orientation change on iOS */
@@ -281,4 +304,66 @@ html {
 /* Optimize touch interactions */
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================================
+   TỐI ƯU GIAO DIỆN CHUẨN MOBILE (ANDROID CHROME & IOS SAFARI)
+   ============================================================ */
+
+/* 1. Cuộn bảng mượt mà và hỗ trợ cử chỉ vuốt tự nhiên */
+.overflow-x-auto,
+[class*="overflow-x-"] {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 768px) {
+  /* 2. CHỐNG TỰ ĐỘNG PHÓNG TO TRÊN IOS SAFARI & CHROME KHI NHẬP LIỆU:
+     Khi font-size < 16px, iOS tự zoom màn hình làm lệch toàn bộ bảng và giao diện.
+     Đặt font-size tối thiểu 16px trên mobile giúp giữ khung hình luôn cố định. */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* 3. Tối ưu ô và dòng bảng trên thiết bị di động:
+     - Header không bị ngắt chữ thành từng ký tự đơn
+     - Dòng có chiều cao chạm ngón tay chuẩn
+     - Cột sticky (cố định) được tăng tốc phần cứng, không bị bóng mờ hay xuyên thấu */
+  table th {
+    white-space: nowrap;
+    font-size: 11px;
+    letter-spacing: -0.01em;
+  }
+
+  table td {
+    vertical-align: middle;
+  }
+
+  /* Sticky headers & columns on iOS Safari / Chrome Android */
+  table th.sticky,
+  table td.sticky,
+  table th[class*="sticky"],
+  table td[class*="sticky"],
+  div[class*="sticky"] {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+  }
+
+  /* 4. Thanh cuộn ngang thanh mảnh, tinh tế cho bảng trên mobile để người dùng biết có thể cuộn */
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 3px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 3px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: rgba(14, 165, 233, 0.35);
+    border-radius: 3px;
+  }
 }

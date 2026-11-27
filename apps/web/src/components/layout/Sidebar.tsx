@@ -61,7 +61,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
-import { canView, type Module } from "@/lib/permissions";
+import { canView, getDefaultLandingRoute, type Module } from "@/lib/permissions";
 import { usePermissionRevision } from "@/lib/use-permission-revision";
 
 type SubItem = {
@@ -316,18 +316,22 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
   const visibleNav = useMemo(() => {
     if (user?.laCongNhan) {
       const boPhan = user.phongBan?.toLowerCase() || "";
+      const workerNav: NavItem[] = [];
       if (boPhan.includes("cắt") && canView(role, "to-cat")) {
-        return [{ href: "/to-cat-work", label: "✂️ Việc của tôi (Cắt)", icon: Scissors }];
+        workerNav.push({ href: "/to-cat-work", label: "✂️ Việc của tôi (Cắt)", icon: Scissors });
       } else if (boPhan.includes("may") && canView(role, "to-may")) {
-        return [{ href: "/to-may-work", label: "👕 Việc của tôi (May)", icon: Shirt }];
+        workerNav.push({ href: "/to-may-work", label: "👕 Việc của tôi (May)", icon: Shirt });
       } else if ((boPhan.includes("ủi") || boPhan.includes("gấp xếp") || boPhan.includes("hoàn thiện") || boPhan.includes("đóng gói")) && canView(role, "hoan-thien")) {
-        return [{ href: "/to-ht-work", label: "🦺 Việc của tôi (Hoàn thiện)", icon: ClipboardList }];
+        workerNav.push({ href: "/to-ht-work", label: "🦺 Việc của tôi (Hoàn thiện)", icon: ClipboardList });
       } else if (boPhan.includes("khuy nút") && canView(role, "to-khuy-nut")) {
-        return [{ href: "/ui-khuy-nut", label: "🔘 Việc của tôi (Khuy nút)", icon: CheckCircle2 }]; 
+        workerNav.push({ href: "/ui-khuy-nut", label: "🔘 Việc của tôi (Khuy nút)", icon: CheckCircle2 });
       } else if ((boPhan.includes("in") || boPhan.includes("thêu")) && canView(role, "to-in-theu")) {
-        return [{ href: "/ui-intd", label: "🎨 Việc của tôi (In/Thêu)", icon: Palette }];
+        workerNav.push({ href: "/ui-intd", label: "🎨 Việc của tôi (In/Thêu)", icon: Palette });
       }
-      return [];
+      if (canView(role, "cham-cong")) {
+        workerNav.push({ href: "/cham-cong", label: "⏰ Chấm công", icon: Calendar });
+      }
+      return workerNav;
     }
 
     const filtered: NavItem[] = [];
@@ -366,7 +370,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
       <div className={clsx("p-3 border-b border-white/10 flex items-center transition-all duration-200", isCollapsed ? "justify-center" : "justify-between")}>
         {!isCollapsed ? (
           <>
-            <Link href="/dashboard" className="flex items-center gap-3 min-w-0 flex-1 group" onClick={onItemClick}>
+            <Link href={getDefaultLandingRoute(role)} className="flex items-center gap-3 min-w-0 flex-1 group" onClick={onItemClick}>
               <div className="w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20 shadow-lg shadow-black/20 group-hover:scale-105 transition-transform">
                 <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
               </div>
@@ -389,9 +393,9 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         ) : (
           <div className="relative group">
             <Link 
-              href="/dashboard" 
+              href={getDefaultLandingRoute(role)} 
               className="w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden bg-white/15 border border-white/25 shadow-md hover:scale-105 transition-transform"
-              title="Về Bàn làm việc"
+              title="Về Trang chính"
             >
               <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
             </Link>
@@ -750,7 +754,7 @@ export function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   return (
     <div className="fixed inset-0 z-50 md:hidden animate-fade-in">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute top-0 left-0 bottom-0 w-[280px] bg-[#0B4D5D] text-white shadow-2xl flex flex-col animate-slide-in-right">
+      <div className="absolute top-0 left-0 bottom-0 w-[280px] bg-[#0B4D5D] text-white shadow-2xl flex flex-col animate-slide-in-right pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
         <NavContent pathname={pathname || ""} onItemClick={onClose} />
       </div>
     </div>

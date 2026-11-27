@@ -2,7 +2,7 @@
 // 2026-08-07 - redesign theo sep Sang: layout "thu vien the card"
 // 2026-08-07 - them thong tin: trang thai, da ban, NCC, chat lieu, rating
 import { useState, useMemo } from "react";
-import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye, ChevronDown } from "lucide-react";
+import { Shirt, ShoppingCart, FileText, Truck, Star, Heart, Package, TrendingUp, Tag, Building2, Sparkles, Flame, Eye, ChevronDown, Trash2 } from "lucide-react";
 import type { SanPham } from "@/lib/data/danh-muc-sp-store";
 import { formatVNDShort } from "@/lib/data/real-data";
 import type { TonKhoTheoSize } from "@/lib/data/ton-kho-theo-mau";
@@ -16,6 +16,7 @@ interface ProductLibraryCardProps {
   onCreateOrder?: (sp: SanPham) => void;
   onProduceOrder?: (sp: SanPham) => void;
   onFavorite?: (sp: SanPham) => void;
+  onDelete?: (sp: SanPham) => void;
   isFavorite?: boolean;
   onClick?: (sp: SanPham) => void;
   activeFilter?: string;
@@ -46,6 +47,7 @@ export default function ProductLibraryCard({
   onCreateOrder,
   onProduceOrder,
   onFavorite,
+  onDelete,
   isFavorite = false,
   onClick,
   activeFilter = "all",
@@ -54,12 +56,24 @@ export default function ProductLibraryCard({
   const topColors = (sp.dsMau || []).slice(0, 3);
   const soSize = (sp.bangSize?.sizes || []).length;
   const soMau = (sp.dsMau || []).length;
-  // Tổng số lượng thật toàn sản phẩm (cộng tất cả màu, tất cả size) - 0 nếu
-  // chưa có dữ liệu kho_thanh_pham cho mã SP này (chưa nhập kho, không phải lỗi).
+  // Tổng số lượng thật toàn sản phẩm (tổng cộng của tất cả màu)
   const tongTonKho = useMemo(() => {
-    if (!tonKhoTheoMau) return 0;
-    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + (tonMau || []).reduce((s, row) => s + (row.sl || 0), 0), 0);
-  }, [tonKhoTheoMau]);
+    let total = 0;
+    for (const mau of sp.dsMau || []) {
+      const mauNorm = (mau.ten || "").trim().toLowerCase();
+      let tonMau = tonKhoTheoMau?.[mau.ten];
+      if (!tonMau && tonKhoTheoMau) {
+        const entry = Object.entries(tonKhoTheoMau).find(([k]) => k.trim().toLowerCase() === mauNorm);
+        if (entry) tonMau = entry[1];
+      }
+      let tongMau = (tonMau || []).reduce((s, x) => s + (x.sl || 0), 0);
+      if (tongMau === 0 && mau.soLuongKho !== undefined && Number(mau.soLuongKho) > 0) {
+        tongMau = Number(mau.soLuongKho);
+      }
+      total += tongMau;
+    }
+    return total;
+  }, [tonKhoTheoMau, sp.dsMau]);
 
   const displayPrice = useMemo(() => {
     switch (activeFilter) {
@@ -86,13 +100,21 @@ export default function ProductLibraryCard({
   const hasPrice = displayPrice > 0;
 
   const trangThai = useMemo(() => {
-    // Nếu có dữ liệu kho (tonKhoTheoMau !== undefined) và tổng = 0 -> Hết hàng
-    if (tonKhoTheoMau && tongTonKho <= 0) return "het-hang";
+    if (tongTonKho <= 0 && ((tonKhoTheoMau && Object.keys(tonKhoTheoMau).length > 0) || (sp.dsMau && sp.dsMau.length > 0))) {
+      return "het-hang";
+    }
     return sp.trangThai || "con-hang";
-  }, [tonKhoTheoMau, tongTonKho, sp.trangThai]);
+  }, [tonKhoTheoMau, tongTonKho, sp.trangThai, sp.dsMau]);
   
   const trangThaiInfo = TRANG_THAI_LABELS[trangThai];
   const loaiInfo = LOAI_SP_LABELS[sp.loaiSP] || { label: sp.loaiSP, icon: "📦", color: "bg-slate-500/15 text-slate-700" };
+  const brand = useMemo(() => {
+    if (sp.thuongHieu === "Man PJ" || sp.thuongHieu === "Polomimin") return sp.thuongHieu;
+    if (sp.ncc === "Man PJ" || sp.ncc === "Polomimin") return sp.ncc;
+    const text = `${sp.id || ""} ${sp.tenSP || ""} ${sp.ncc || ""}`.toUpperCase();
+    if (text.includes("MANPJ") || text.includes("MAN PJ") || text.includes("BPJ")) return "Man PJ";
+    return "Polomimin";
+  }, [sp.thuongHieu, sp.ncc, sp.id, sp.tenSP]);
   const rating = sp.rating || 0;
   const daBan = sp.daBan || 0;
   const luotXem = sp.luotXem || 0;
@@ -105,10 +127,14 @@ export default function ProductLibraryCard({
     return String(n);
   };
 
+  const realVariantImg = sp.dsMau?.find((m) => m.img && !m.img.startsWith("/product-models/"))?.img;
+  const hasRealMainImg = sp.hinhAnh && !sp.hinhAnh.startsWith("/product-models/");
+  const displayImage = (hasRealMainImg ? sp.hinhAnh : (realVariantImg || sp.hinhAnh)) || sp.dsMau?.find((m) => m.img)?.img || sp.dsMau?.[0]?.img || "";
+
   return (
     <div 
       onClick={() => onClick && onClick(sp)}
-      className={`group relative bg-white rounded-2xl shadow-md hover:shadow-2xl hover:z-50 transition-all duration-300 hover:-translate-y-1 flex flex-col ${onClick ? "cursor-pointer" : ""}`}
+      className={`group relative bg-white rounded-2xl shadow-md hover:shadow-2xl hover:z-50 transition-all duration-300 hover:-translate-y-1 flex flex-col w-full max-w-full overflow-hidden ${onClick ? "cursor-pointer" : ""}`}
     >
       {/* === ANH SAN PHAM === */}
       <div className="relative aspect-[3/4] bg-gradient-to-br from-cyan-50 via-cyan-100 to-teal-50 overflow-hidden rounded-t-2xl">
@@ -117,9 +143,9 @@ export default function ProductLibraryCard({
           <Shirt className="w-20 h-20 md:w-24 md:h-24 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-500" />
         </div>
         {/* Hình ảnh thật */}
-        {sp.dsMau?.[0]?.img || sp.hinhAnh ? (
+        {displayImage ? (
           <img
-            src={sp.dsMau?.[0]?.img || sp.hinhAnh}
+            src={displayImage}
             alt={sp.tenSP}
             loading="lazy"
             decoding="async"
@@ -169,23 +195,41 @@ export default function ProductLibraryCard({
 
       {/* === INFO === */}
       <div className="p-3 md:p-4 flex flex-col flex-1">
-        {/* Row 1: Ma SP + Loai SP chip */}
-        <div className="relative flex items-center justify-between gap-2 mb-1.5 pr-11">
+        {/* Row 1: Ma SP + Brand + Loai SP chip */}
+        <div className="relative flex items-center justify-between gap-1.5 mb-1.5 pr-20 flex-wrap">
           <span className="text-[10px] font-mono font-bold text-cyan-600 uppercase tracking-wider">
             {sp.id}
           </span>
-          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${loaiInfo.color}`}>
-            {loaiInfo.icon} {loaiInfo.label}
-          </span>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onFavorite?.(sp); }}
-            className={`absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border-2 bg-white shadow-md transition-all ${isFavorite ? "border-rose-400 text-rose-500" : "border-rose-200 text-rose-400 hover:border-rose-400 hover:text-rose-500"}`}
-            aria-label={isFavorite ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
-            title={isFavorite ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
-          >
-            <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
-          </button>
+          <div className="flex items-center gap-1">
+            <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${brand === "Man PJ" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-emerald-100 text-emerald-700 border border-emerald-200"}`}>
+              {brand}
+            </span>
+            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${loaiInfo.color}`}>
+              {loaiInfo.icon} {loaiInfo.label}
+            </span>
+          </div>
+          <div className="absolute right-0 top-1/2 flex items-center gap-1 -translate-y-1/2">
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onDelete(sp); }}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+                aria-label="Xóa sản phẩm"
+                title="Xóa sản phẩm khỏi Danh mục & Kho"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onFavorite?.(sp); }}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white shadow-md transition-all ${isFavorite ? "border-rose-400 text-rose-500" : "border-rose-200 text-rose-400 hover:border-rose-400 hover:text-rose-500"}`}
+              aria-label={isFavorite ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
+              title={isFavorite ? "Bỏ thích" : "Thêm vào mẫu đã thích"}
+            >
+              <Heart className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+            </button>
+          </div>
         </div>
 
         {/* Ten SP - 2 dong max */}
@@ -211,8 +255,16 @@ export default function ProductLibraryCard({
             <div className="flex flex-wrap gap-1.5">
               {sp.dsMau.map((mau, idx) => {
                 const dangMo = mauMoRong === mau.ten;
-                const tonMau = tonKhoTheoMau?.[mau.ten];
-                const tongMau = (tonMau || []).reduce((s, x) => s + (x.sl || 0), 0);
+                const mauNorm = (mau.ten || "").trim().toLowerCase();
+                let tonMau = tonKhoTheoMau?.[mau.ten];
+                if (!tonMau && tonKhoTheoMau) {
+                  const entry = Object.entries(tonKhoTheoMau).find(([k]) => k.trim().toLowerCase() === mauNorm);
+                  if (entry) tonMau = entry[1];
+                }
+                let tongMau = (tonMau || []).reduce((s, x) => s + (x.sl || 0), 0);
+                if (tongMau === 0 && mau.soLuongKho !== undefined && Number(mau.soLuongKho) > 0) {
+                  tongMau = Number(mau.soLuongKho);
+                }
                 return (
                   <button
                     key={idx}
@@ -248,8 +300,14 @@ export default function ProductLibraryCard({
             {mauMoRong && (() => {
               const mau = sp.dsMau!.find((m) => m.ten === mauMoRong);
               if (!mau) return null;
+              const mauNorm = (mau.ten || "").trim().toLowerCase();
+              let tonMau = tonKhoTheoMau?.[mau.ten];
+              if (!tonMau && tonKhoTheoMau) {
+                const entry = Object.entries(tonKhoTheoMau).find(([k]) => k.trim().toLowerCase() === mauNorm);
+                if (entry) tonMau = entry[1];
+              }
               const sizes = sp.bangSize?.sizes || [];
-              const tonMau = tonKhoTheoMau?.[mau.ten] || [];
+              const tonList = tonMau || [];
               return (
                 <div className="mt-2 p-2 rounded-lg border border-cyan-200 bg-cyan-50/50">
                   <div className="flex items-center justify-between mb-1.5">
@@ -258,7 +316,7 @@ export default function ProductLibraryCard({
                   <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
                     {sizes.map((s, i) => {
                       const ratio = sp.bangSize?.ratios[i] || parseInt(sp.tiLeSize?.split(":")?.[i] || "0") || 0;
-                      const sl = tonMau.find((x) => x.size === s)?.sl ?? 0;
+                      const sl = tonList.find((x) => x.size === s)?.sl ?? 0;
                       return (
                         <div key={s} className="flex flex-col items-center shrink-0 min-w-[36px]" onClick={(e) => e.stopPropagation()}>
                           <span className="w-full px-1 py-1 text-xs font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">{s}</span>

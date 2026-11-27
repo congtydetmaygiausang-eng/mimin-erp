@@ -10,7 +10,7 @@ interface ResponsiveModalProps {
   onClose: () => void;
   title?: string | ReactNode;
   children: ReactNode;
-  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "full";
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl" | "full";
   className?: string; // Custom modal background/text classes
   overlayClassName?: string;
   fullScreenMobile?: boolean; // If true, render as full screen fixed div instead of bottom sheet on mobile
@@ -48,6 +48,8 @@ export function ResponsiveModal({
       "3xl": "max-w-3xl",
       "4xl": "max-w-4xl",
       "5xl": "max-w-5xl",
+      "6xl": "max-w-6xl",
+      "7xl": "max-w-7xl",
       full: "max-w-full m-4",
     }[maxWidth];
 

@@ -1,15 +1,29 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Users, Plus, Edit, Trash2, Lock, Unlock, Search, X,
   Shield, Key, Mail, Phone, Building2, UserCheck, UserX,
-  Eye, EyeOff, RefreshCw, AlertCircle, Building, Hammer, Filter,
+  Eye, EyeOff, RefreshCw, AlertCircle, Building, Filter,
   Briefcase, KeyRound, Copy, Check, Sparkles, UserPlus,
+  Link2, ShieldAlert, ShieldCheck, CheckCircle2, AlertTriangle,
+  ArrowRight, CheckCircle, HelpCircle, Layers, FileText,
+  Calendar, Clock, UserCog, ExternalLink, ShieldOff
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/components/session-provider";
-import { ROLE_LABELS, ROLE_COLORS, ALL_ROLES } from "@/lib/permissions";
+import {
+  ROLE_LABELS,
+  ROLE_COLORS,
+  ALL_ROLES,
+  ALL_MODULES,
+  MODULE_LABELS,
+  getFullMatrix,
+  loadSharedPermissionMatrix,
+  subscribeSharedPermissionMatrix,
+  type Role,
+  type Module
+} from "@/lib/permissions";
 import { authFetch } from "@/lib/auth-fetch";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 import type { NhanSuExt } from "@/app/(main)/nhan-su/data";
@@ -17,10 +31,11 @@ import { LOCAL_ACCOUNT_MODE } from "@/lib/local-account-mode";
 import { LocalAccountManager } from "@/components/local-account-manager";
 import { AccountLinkReview } from "@/components/account-link-review";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
+import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 
 export const dynamic = "force-dynamic";
 
-// 9 role (them content, partner)
+// 18 roles
 const ROLE_OPTIONS = ALL_ROLES;
 
 // Phong ban
@@ -31,19 +46,19 @@ const PHONG_BAN_OPTIONS = [
 ] as const;
 
 const PHONG_BAN_LABELS: Record<string, string> = {
-  "ban-giam-doc": "Ban giám đốc",
-  "ban-dieu-hanh": "Điều hành SX",
-  "ke-toan": "Kế toán",
+  "ban-giam-doc": "Ban Giám Đốc",
+  "ban-dieu-hanh": "Điều Hành SX",
+  "ke-toan": "Kế Toán",
   "ban-content": "Content / Media",
-  "ban-kho": "Kho",
-  "to-cat": "Tổ cắt",
-  "to-may": "Tổ may",
-  "to-khuy-nut": "Khuy nút",
-  "to-ui": "Ủi",
-  "to-dong-goi": "Gấp xếp / Đóng gói",
-  "ban-qc": "QC",
-  "doi-tac": "Đối tác gia công",
-  "khac": "Khác",
+  "ban-kho": "Kho Vải & Phụ Liệu",
+  "to-cat": "Tổ Cắt",
+  "to-may": "Tổ May",
+  "to-khuy-nut": "Khuy Nút",
+  "to-ui": "Tổ Ủi",
+  "to-dong-goi": "Đóng Gói / Nhập Kho",
+  "ban-qc": "Kiểm Tra QC",
+  "doi-tac": "Đối Tác Gia Công",
+  "khac": "Khác / Hành Chính",
 };
 
 const PHONG_BAN_COLORS: Record<string, string> = {
@@ -62,9 +77,6 @@ const PHONG_BAN_COLORS: Record<string, string> = {
   "khac": "bg-slate-500",
 };
 
-// Trang Nhân sự dùng bộ "Bộ phận" khác (tiếng Việt tự do, không phải kebab-case
-// như phòng ban ở đây) - quy đổi khi tạo tài khoản kèm hồ sơ nhân sự, để hồ sơ
-// mới không rơi vào 1 "Bộ phận" trống hoặc sai lệch với trang Nhân sự.
 const PHONG_BAN_TO_BO_PHAN: Record<string, string> = {
   "ban-giam-doc": "Quản lý",
   "ban-dieu-hanh": "Quản lý",
@@ -81,7 +93,6 @@ const PHONG_BAN_TO_BO_PHAN: Record<string, string> = {
   "khac": "Hành chính",
 };
 
-// Quy đổi ngược từ Bộ phận (Nhân sự) sang Phòng ban (Tài khoản)
 const BO_PHAN_TO_PHONG_BAN: Record<string, string> = {
   "Quản lý": "ban-dieu-hanh",
   "Kế toán": "ke-toan",
@@ -92,7 +103,7 @@ const BO_PHAN_TO_PHONG_BAN: Record<string, string> = {
   "Hành chính": "khac",
 };
 
-type UserRow = {
+export type UserRow = {
   id: string;
   email: string;
   name: string;
@@ -105,7 +116,8 @@ type UserRow = {
   updated_at: string;
 };
 
-type UserType = "all" | "noi-bo" | "ncc";
+type UserType = "all" | "noi-bo" | "ncc" | "can-kiem-tra";
+type TabKey = "accounts" | "linking" | "roles" | "security-audit";
 
 export default function QuanLyTaiKhoanPage() {
   return LOCAL_ACCOUNT_MODE ? <LocalAccountManager /> : <LiveAccountManager />;
@@ -113,6 +125,7 @@ export default function QuanLyTaiKhoanPage() {
 
 function LiveAccountManager() {
   const { user, authSource } = useSession();
+  const [activeTab, setActiveTab] = useState<TabKey>("accounts");
   const [list, setList] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -120,11 +133,33 @@ function LiveAccountManager() {
   const [filterPhongBan, setFilterPhongBan] = useState<string>("Tất cả");
   const [filterType, setFilterType] = useState<UserType>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "disabled">("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+
+  // Modals
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [resettingPw, setResettingPw] = useState<UserRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const [prefilledEmployee, setPrefilledEmployee] = useState<string | null>(null);
 
-  const fetchUsers = async () => {
+  // Permission Matrix for Tab 3
+  const [selectedRole, setSelectedRole] = useState<Role>("admin");
+  const [matrix, setMatrix] = useState(getFullMatrix);
+
+  useEffect(() => {
+    let active = true;
+    void loadSharedPermissionMatrix().then((val) => {
+      if (active) setMatrix(val);
+    }).catch(() => {});
+    const unsub = subscribeSharedPermissionMatrix((val) => {
+      if (active) setMatrix(val);
+    });
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await authFetch("/api/admin/users", { cache: "no-store" });
@@ -134,7 +169,6 @@ function LiveAccountManager() {
       }
       setList(json.users || []);
     } catch (e) {
-      // Fallback: nếu gọi API admin thất bại (ví dụ token chập chờn), truy vấn trực tiếp Supabase users table
       if (isSupabaseEnabled && supabase) {
         try {
           const { data: directData, error: directErr } = await supabase
@@ -148,7 +182,7 @@ function LiveAccountManager() {
             return;
           }
         } catch {
-          // Bỏ qua lỗi fallback
+          // Ignore fallback error
         }
       }
       toast.error("Không tải được danh sách tài khoản: " + (e as Error).message);
@@ -156,13 +190,58 @@ function LiveAccountManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
-  // Filter
+  // Phân tích bảo mật & rà soát
+  const auditAnalysis = useMemo(() => {
+    const issues: Array<{ user: UserRow; reason: string; severity: "high" | "medium" | "low" }> = [];
+    list.forEach((u) => {
+      const email = u.email.toLowerCase();
+      const name = u.name.toLowerCase();
+
+      // Kiểm tra tài khoản test / probe
+      if (
+        email.includes("test") ||
+        email.includes("probe") ||
+        email.includes("codex") ||
+        name.includes("test") ||
+        name.includes("probe")
+      ) {
+        issues.push({
+          user: u,
+          reason: "Tài khoản kiểm thử tự động (Test / Probe / RLS)",
+          severity: "high"
+        });
+        return;
+      }
+
+      // Email không thuộc tên miền mimin.vn
+      if (!email.endsWith("@mimin.vn")) {
+        issues.push({
+          user: u,
+          reason: `Email sử dụng tên miền ngoài (${email.split("@")[1] || "ngoại lai"}), không theo chuẩn @mimin.vn`,
+          severity: "medium"
+        });
+      }
+
+      // Thiếu mã nhân viên liên kết
+      if (!u.maNV && u.role !== "partner") {
+        issues.push({
+          user: u,
+          reason: "Chưa liên kết với hồ sơ nhân sự (thiếu mã NV)",
+          severity: "low"
+        });
+      }
+    });
+
+    return issues;
+  }, [list]);
+
+  // Bộ lọc danh sách
   const filtered = useMemo(() => {
     let f = list;
     if (search) {
@@ -177,23 +256,36 @@ function LiveAccountManager() {
     }
     if (filterRole !== "Tất cả") f = f.filter((u) => u.role === filterRole);
     if (filterPhongBan !== "Tất cả") f = f.filter((u) => u.phongBan === filterPhongBan);
-    if (filterType === "noi-bo") f = f.filter((u) => u.role !== "partner");
+    if (filterType === "noi-bo") f = f.filter((u) => u.role !== "partner" && u.email.endsWith("@mimin.vn"));
     if (filterType === "ncc") f = f.filter((u) => u.role === "partner");
+    if (filterType === "can-kiem-tra") f = f.filter((u) => !u.maNV || !u.email.endsWith("@mimin.vn"));
     if (filterStatus === "active") f = f.filter((u) => u.isActive);
     if (filterStatus === "disabled") f = f.filter((u) => !u.isActive);
     return f;
   }, [list, search, filterRole, filterPhongBan, filterType, filterStatus]);
 
-  // Stats
+  // Thống kê nhanh
   const stats = useMemo(() => {
     const tong = list.length;
     const active = list.filter((u) => u.isActive).length;
+    const disabled = tong - active;
     const partner = list.filter((u) => u.role === "partner").length;
+    const linked = list.filter((u) => Boolean(u.maNV)).length;
+    const unlinked = tong - linked;
     const pbSet = new Set(list.map((u) => u.phongBan).filter(Boolean));
-    return { tong, active, partner, phongBan: pbSet.size };
+    return {
+      tong,
+      active,
+      disabled,
+      partner,
+      linked,
+      unlinked,
+      phongBan: pbSet.size,
+      percentLinked: tong > 0 ? Math.round((linked / tong) * 100) : 0
+    };
   }, [list]);
 
-  // Phan bo theo phong ban
+  // Phân bố theo phòng ban
   const byPhongBan = useMemo(() => {
     const map = new Map<string, number>();
     for (const u of list) {
@@ -202,141 +294,701 @@ function LiveAccountManager() {
     }
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
-      .map(([pb, count]) => ({ pb, count, label: PHONG_BAN_LABELS[pb] || pb, color: PHONG_BAN_COLORS[pb] || "bg-slate-500" }));
+      .map(([pb, count]) => ({
+        pb,
+        count,
+        label: PHONG_BAN_LABELS[pb] || pb,
+        color: PHONG_BAN_COLORS[pb] || "bg-slate-500",
+      }));
   }, [list]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-3 p-3 animate-fade-in">
-      <AccountLinkReview onSaved={fetchUsers} />
-      {/* Header */}
-      <div className="card p-4 bg-gradient-to-r from-blue-500/10 via-violet-500/10 to-rose-500/10">
-        <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto space-y-4 p-3 md:p-5 animate-fade-in">
+      {/* Header Banner Cao Cấp */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-900 via-slate-900 to-indigo-950 text-white p-5 md:p-6 shadow-xl border border-teal-800/40">
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <Users className="w-7 h-7 text-blue-500" /> Quản lý tài khoản
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                MIMIN SECURITY & IAM
+              </span>
+              <span className="text-xs text-slate-400">· Hệ thống Quản trị & Xác thực Nhân sự</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2.5">
+              <ShieldCheck className="w-8 h-8 text-teal-400" /> Quản Lý Tài Khoản & Phân Quyền
             </h1>
-            <p className="opacity-70 text-sm">
-              Phân quyền theo Role + Phòng ban · Đổi mật khẩu · Tạo tài khoản từ hồ sơ nhân sự
+            <p className="text-slate-300 text-xs md:text-sm mt-1 max-w-2xl leading-relaxed">
+              Kiểm soát tài khoản người dùng, liên kết định danh mã nhân sự, giám sát phân quyền 18 vai trò và tự động rà soát an toàn.
             </p>
           </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={fetchUsers}
+              disabled={loading}
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-100 text-xs font-semibold flex items-center gap-1.5 transition border border-white/10 backdrop-blur-xs shadow-xs"
+              title="Làm mới danh sách"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+              <span>Làm mới</span>
+            </button>
+            <button
+              onClick={() => {
+                setPrefilledEmployee(null);
+                setCreating(true);
+              }}
+              className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 active:scale-95 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-lg shadow-teal-500/20"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Tạo Tài Khoản Mới</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation Menu */}
+        <div className="flex items-center gap-1.5 mt-6 border-t border-slate-700/60 pt-3 overflow-x-auto">
           <button
-            onClick={fetchUsers}
-            className="text-xs px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 flex items-center gap-1"
-            title="Tải lại"
+            onClick={() => setActiveTab("accounts")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+              activeTab === "accounts"
+                ? "bg-teal-500 text-slate-950 shadow-md"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Làm mới
+            <Users className="w-4 h-4" />
+            <span>Danh Sách Tài Khoản</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              activeTab === "accounts" ? "bg-slate-950 text-teal-300" : "bg-slate-800 text-slate-300"
+            }`}>
+              {stats.tong}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("linking")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+              activeTab === "linking"
+                ? "bg-teal-500 text-slate-950 shadow-md"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Link2 className="w-4 h-4" />
+            <span>Liên Kết Hồ Sơ Nhân Sự</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              stats.percentLinked >= 90
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+            }`}>
+              {stats.percentLinked}%
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("roles")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+              activeTab === "roles"
+                ? "bg-teal-500 text-slate-950 shadow-md"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            <span>Phân Quyền & Vai Trò</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("security-audit")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+              activeTab === "security-audit"
+                ? "bg-teal-500 text-slate-950 shadow-md"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" />
+            <span>Rà Soát & Bảo Mật</span>
+            {auditAnalysis.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-rose-500 text-white animate-pulse">
+                {auditAnalysis.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Cảnh báo phiên đăng nhập không phải Supabase Auth thật - mọi thao tác
-          tạo/sửa/khoá/xoá tài khoản (API /api/admin/users) sẽ bị từ chối vì
-          không có access token thật để gửi lên server. */}
+      {/* Cảnh báo chế độ demo nếu có */}
       {authSource === "demo" && (
-        <div className="card p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            Phiên đăng nhập hiện tại đang ở chế độ dự phòng (không phải Supabase Auth thật) - có thể do sai mật khẩu Supabase.
-            Các thao tác <b>Tạo / Sửa / Khoá / Xoá tài khoản</b> ở trang này sẽ báo lỗi &quot;Thiếu access token&quot;.
-            Vui lòng đăng xuất và đăng nhập lại đúng mật khẩu.
-          </span>
+        <div className="card p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5 rounded-xl shadow-xs">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+          <div>
+            <b>Lưu ý chế độ phiên:</b> Bạn đang đăng nhập bằng phiên dự phòng (chưa phải Supabase Auth trực tiếp).
+            Một số chức năng tạo/xóa tài khoản nâng cao trên cloud có thể yêu cầu bạn đăng nhập lại bằng mật khẩu Supabase.
+          </div>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Stat n={stats.tong} label="Tổng TK" sub="Tất cả" color="blue" icon={Users} />
-        <Stat n={stats.active} label="Đang hoạt động" sub="active" color="emerald" icon={UserCheck} />
-        <Stat n={stats.tong - stats.active} label="Bị khóa" sub="disabled" color="rose" icon={UserX} />
-        <Stat n={stats.phongBan} label="Phòng ban" sub="đang hoạt động" color="violet" icon={Building2} />
-      </div>
-
-      {/* Phan bo theo phong ban */}
-      <div className="card p-3">
-        <h3 className="font-semibold text-sm mb-2 flex items-center gap-1">
-          <Building className="w-4 h-4" /> Phân bố theo phòng ban
-        </h3>
-        <div className="space-y-1.5">
-          {byPhongBan.map((p) => (
-            <div key={p.pb} className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${p.color}`} />
-              <span className="text-xs flex-1">{p.label}</span>
-              <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                <div className={`h-full ${p.color}`} style={{ width: `${(p.count / Math.max(stats.tong, 1)) * 100}%` }} />
+      {/* ========================================================
+          TAB 1: DANH SÁCH TÀI KHOẢN (ACTIVE TAB)
+         ======================================================== */}
+      {activeTab === "accounts" && (
+        <div className="space-y-4">
+          {/* Thẻ Thống Kê KPI */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="card p-4 rounded-2xl bg-gradient-to-br from-blue-50/70 to-indigo-50/40 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-200/60 dark:border-blue-900/40 shadow-xs">
+              <div className="flex items-center justify-between text-blue-700 dark:text-blue-300">
+                <span className="text-xs font-bold">Tổng Tài Khoản</span>
+                <Users className="w-4 h-4 opacity-70" />
               </div>
-              <span className="text-xs font-bold w-8 text-right">{p.count}</span>
+              <div className="text-2xl md:text-3xl font-extrabold text-blue-950 dark:text-blue-100 mt-1.5">
+                {stats.tong}
+              </div>
+              <div className="text-[11px] text-blue-600/80 dark:text-blue-400 mt-0.5 flex items-center justify-between">
+                <span>{stats.phongBan} phòng ban</span>
+                <span>{stats.partner} đối tác</span>
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Toolbar */}
-      <div className="card p-2 flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 opacity-50" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm tên, email, mã NV, chức vụ..."
-            className="w-full pl-7 pr-2 py-1.5 rounded border text-xs"
-          />
-        </div>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="text-xs px-2 py-1.5 rounded border" title="Trạng thái">
-          <option value="all">Tất cả trạng thái</option>
-          <option value="active">🟢 Đang hoạt động</option>
-          <option value="disabled">🔒 Bị khóa</option>
-        </select>
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value as UserType)} className="text-xs px-2 py-1.5 rounded border" title="Loại user">
-          <option value="all">Tất cả loại</option>
-          <option value="noi-bo">👔 Nội bộ</option>
-          <option value="ncc">🤝 NCC gia công</option>
-        </select>
-        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="text-xs px-2 py-1.5 rounded border" title="Lọc theo role">
-          <option>Tất cả vai trò</option>
-          {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-        </select>
-        <select value={filterPhongBan} onChange={(e) => setFilterPhongBan(e.target.value)} className="text-xs px-2 py-1.5 rounded border" title="Lọc theo phòng ban">
-          <option>Tất cả phòng ban</option>
-          {PHONG_BAN_OPTIONS.map((p) => <option key={p} value={p}>{PHONG_BAN_LABELS[p]}</option>)}
-        </select>
-        <button
-          onClick={() => setCreating(true)}
-          className="text-xs px-3 py-1.5 rounded bg-blue-500 hover:bg-blue-600 text-white font-bold flex items-center gap-1 shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5" /> Tạo TK
-        </button>
-      </div>
+            <div className="card p-4 rounded-2xl bg-gradient-to-br from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xs">
+              <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-300">
+                <span className="text-xs font-bold">Đang Hoạt Động</span>
+                <UserCheck className="w-4 h-4 opacity-70" />
+              </div>
+              <div className="text-2xl md:text-3xl font-extrabold text-emerald-950 dark:text-emerald-100 mt-1.5">
+                {stats.active}
+              </div>
+              <div className="text-[11px] text-emerald-600/80 dark:text-emerald-400 mt-0.5">
+                100% bảo mật an toàn
+              </div>
+            </div>
 
-      {/* Account list */}
-      <div className="space-y-2">
-        {loading ? (
-          <div className="card p-6 text-center text-sm opacity-60">
-            <RefreshCw className="w-5 h-5 inline animate-spin mr-2" /> Đang tải...
+            <div className="card p-4 rounded-2xl bg-gradient-to-br from-teal-50/70 to-cyan-50/40 dark:from-teal-950/30 dark:to-cyan-950/20 border border-teal-200/60 dark:border-teal-900/40 shadow-xs">
+              <div className="flex items-center justify-between text-teal-700 dark:text-teal-300">
+                <span className="text-xs font-bold">Đã Liên Kết Mã NV</span>
+                <Link2 className="w-4 h-4 opacity-70" />
+              </div>
+              <div className="text-2xl md:text-3xl font-extrabold text-teal-950 dark:text-teal-100 mt-1.5">
+                {stats.linked} <span className="text-sm font-semibold opacity-70">/ {stats.tong}</span>
+              </div>
+              <div className="text-[11px] text-teal-600/80 dark:text-teal-400 mt-0.5">
+                Tỷ lệ chuẩn hóa: {stats.percentLinked}%
+              </div>
+            </div>
+
+            <div className="card p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/60 dark:from-slate-900/40 dark:to-slate-800/30 border border-slate-200 dark:border-slate-800 shadow-xs">
+              <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-bold">Khóa / Cần Kiểm Tra</span>
+                <UserX className="w-4 h-4 opacity-70" />
+              </div>
+              <div className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100 mt-1.5">
+                {stats.disabled > 0 ? (
+                  <span className="text-rose-600">{stats.disabled}</span>
+                ) : (
+                  <span className="text-emerald-600 font-bold">0</span>
+                )}
+                {stats.unlinked > 0 && (
+                  <span className="text-xs font-normal text-amber-600 ml-2">({stats.unlinked} chưa có mã)</span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {stats.disabled === 0 ? "Không có tài khoản bị khóa" : "Cần rà soát"}
+              </div>
+            </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="card p-6 text-center text-sm opacity-60">
-            Không có tài khoản nào khớp bộ lọc
-          </div>
-        ) : (
-          filtered.map((u) => (
-            <UserCard
-              key={u.id}
-              u={u}
-              onEdit={() => setEditing(u)}
-              onResetPassword={() => setResettingPw(u)}
-              onDeleted={fetchUsers}
-              onToggled={fetchUsers}
-            />
-          ))
-        )}
-      </div>
 
+          {/* Phân bố phòng ban trực quan */}
+          <div className="card p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Building className="w-4 h-4 text-teal-600" />
+                Phân bố nhân sự theo phòng ban
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Hiển thị số lượng tài khoản theo từng ban
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {byPhongBan.map((p) => (
+                <div
+                  key={p.pb}
+                  onClick={() => setFilterPhongBan(filterPhongBan === p.pb ? "Tất cả" : p.pb)}
+                  className={`cursor-pointer px-2.5 py-1.5 rounded-xl border text-xs flex items-center gap-2 transition ${
+                    filterPhongBan === p.pb
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold border-transparent shadow-xs"
+                      : "bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-slate-700"
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${p.color}`} />
+                  <span>{p.label}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 font-bold">
+                    {p.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Thanh Công Cụ & Bộ Lọc Nâng Cao */}
+          <div className="card p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Tìm theo họ tên, email (@mimin.vn), mã NV, chức vụ..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-xs text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Lọc Trạng Thái */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
+                className="text-xs px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">🟢 Đang hoạt động</option>
+                <option value="disabled">🔒 Bị khóa</option>
+              </select>
+
+              {/* Lọc Loại User */}
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as UserType)}
+                className="text-xs px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="all">Tất cả loại tài khoản</option>
+                <option value="noi-bo">👔 Nội bộ (@mimin.vn)</option>
+                <option value="ncc">🤝 Đối tác gia công</option>
+                <option value="can-kiem-tra">⚠️ Cần kiểm tra mã NV</option>
+              </select>
+
+              {/* Lọc Vai trò */}
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="text-xs px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="Tất cả">Tất cả vai trò ({ROLE_OPTIONS.length})</option>
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+
+              {/* Chuyển đổi View Mode */}
+              <DataViewToggle value={viewMode} onChange={setViewMode} modes={["list", "card"]} />
+            </div>
+          </div>
+
+          {/* User List Render */}
+          {loading ? (
+            <div className="card p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <RefreshCw className="w-8 h-8 mx-auto text-teal-600 animate-spin mb-3" />
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Đang tải danh sách tài khoản hệ thống...
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="card p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <Users className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 mb-3" />
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Không tìm thấy tài khoản nào khớp bộ lọc
+              </p>
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setFilterRole("Tất cả");
+                  setFilterPhongBan("Tất cả");
+                  setFilterType("all");
+                  setFilterStatus("all");
+                }}
+                className="mt-3 px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
+              >
+                Xóa toàn bộ bộ lọc
+              </button>
+            </div>
+          ) : viewMode === "list" ? (
+            /* Table View */
+            <div className="card rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="p-3 w-10 text-center">#</th>
+                      <th className="p-3 min-w-[200px]">Họ tên & Email</th>
+                      <th className="p-3 min-w-[110px]">Mã Nhân Viên</th>
+                      <th className="p-3 min-w-[140px]">Vai trò</th>
+                      <th className="p-3 min-w-[150px]">Phòng ban</th>
+                      <th className="p-3 min-w-[120px]">Trạng thái</th>
+                      <th className="p-3 text-right min-w-[170px]">Thao tác bảo mật</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {filtered.map((u, idx) => (
+                      <tr key={u.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition">
+                        <td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-8 h-8 rounded-full ${PHONG_BAN_COLORS[u.phongBan || "khac"] || "bg-slate-500"} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs`}>
+                              {u.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-800 dark:text-slate-100 block truncate">
+                                {u.name}
+                              </span>
+                              <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
+                                <span>{u.email}</span>
+                                <CopyEmailBtn email={u.email} />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          {u.maNV ? (
+                            <span className="px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-mono font-bold">
+                              {u.maNV}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-400 text-[11px] font-semibold flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Chưa gắn mã
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-lg text-white font-medium text-[11px] ${ROLE_COLORS[u.role as keyof typeof ROLE_COLORS] || "bg-slate-500"}`}>
+                            {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] || u.role}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">
+                            {PHONG_BAN_LABELS[u.phongBan || "khac"] || u.phongBan || "—"}
+                          </span>
+                          <span className="block text-[11px] text-slate-400 mt-0.5">
+                            {u.chucVu || "—"}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          {u.isActive ? (
+                            <span className="inline-flex items-center gap-1.5 text-emerald-600 font-bold text-[11px]">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Hoạt động
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-rose-600 font-bold text-[11px]">
+                              <Lock className="w-3 h-3" /> Đã khóa
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setResettingPw(u)}
+                              className="px-2.5 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 text-[11px] font-bold flex items-center gap-1 transition"
+                              title="Đặt lại mật khẩu"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                              <span>Đổi MK</span>
+                            </button>
+                            <button
+                              onClick={() => setEditing(u)}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 transition"
+                              title="Sửa thông tin"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <ToggleUserBtn u={u} onToggled={fetchUsers} />
+                            <DeleteUserBtn u={u} onDeleted={fetchUsers} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Card Grid View */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filtered.map((u) => (
+                <UserCard
+                  key={u.id}
+                  u={u}
+                  onEdit={() => setEditing(u)}
+                  onResetPassword={() => setResettingPw(u)}
+                  onDeleted={fetchUsers}
+                  onToggled={fetchUsers}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 2: LIÊN KẾT HỒ SƠ NHÂN SỰ
+         ======================================================== */}
+      {activeTab === "linking" && (
+        <div className="space-y-4">
+          <div className="card p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Link2 className="w-5 h-5 text-teal-600" />
+                  Đối Soát & Đồng Bộ Định Danh (Single Source of Truth)
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
+                  Mỗi tài khoản đăng nhập cần được liên kết với đúng 1 mã nhân sự (ví dụ: <code>NV01</code>, <code>NV02</code>...) trong cơ sở dữ liệu Nhân sự để tính lương khoán, ghi nhận công đoạn sản xuất và phân công việc chính xác.
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-xs font-bold text-teal-600 bg-teal-50 dark:bg-teal-950/40 px-3 py-1 rounded-xl border border-teal-200 dark:border-teal-800">
+                  Hoàn tất: {stats.linked}/{stats.tong} ({stats.percentLinked}%)
+                </span>
+              </div>
+            </div>
+
+            {/* Thanh tiến độ */}
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden mb-4">
+              <div
+                className="bg-gradient-to-r from-teal-500 to-emerald-500 h-full transition-all duration-500 rounded-full"
+                style={{ width: `${stats.percentLinked}%` }}
+              />
+            </div>
+
+            {/* Tích hợp component AccountLinkReview */}
+            <AccountLinkReview onSaved={fetchUsers} />
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 3: PHÂN QUYỀN & VAI TRÒ (PERMISSION MATRIX)
+         ======================================================== */}
+      {activeTab === "roles" && (
+        <div className="space-y-4">
+          <div className="card p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-teal-600" />
+                  Ma Trận Phân Quyền Theo Vai Trò (18 Roles × 40 Modules)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Xem chi tiết các quyền Xem, Tạo, Sửa, Xóa tương ứng từng phân hệ sản xuất trong MIMIN ERP.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Chọn vai trò:</span>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as Role)}
+                  className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABELS[r]} ({r})
+                    </option>
+                  ))}
+                </select>
+
+                <a
+                  href="/phan-quyen-tuy-chinh/"
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Chỉnh Quyền Tùy Chỉnh</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Bảng quyền chi tiết */}
+            <div className="overflow-x-auto max-h-[520px] rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px]">
+                  <tr>
+                    <th className="p-3">Phân Hệ (Module Sản Xuất & Vận Hành)</th>
+                    <th className="p-3 text-center w-24">Xem (View)</th>
+                    <th className="p-3 text-center w-24">Tạo (Create)</th>
+                    <th className="p-3 text-center w-24">Sửa (Edit)</th>
+                    <th className="p-3 text-center w-24">Xóa (Delete)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {ALL_MODULES.map((m) => {
+                    const perm = matrix[selectedRole]?.[m] || [];
+                    const canView = perm.includes("r") || perm.includes("v");
+                    const canCreate = perm.includes("c");
+                    const canEdit = perm.includes("u") || perm.includes("e");
+                    const canDelete = perm.includes("d");
+
+                    return (
+                      <tr key={m} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
+                          {MODULE_LABELS[m] || m}
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            /{m}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-center">
+                          {canView ? (
+                            <span className="text-emerald-600 font-bold">✔ Có</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600">—</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-center">
+                          {canCreate ? (
+                            <span className="text-blue-600 font-bold">✔ Có</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600">—</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-center">
+                          {canEdit ? (
+                            <span className="text-amber-600 font-bold">✔ Có</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600">—</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-center">
+                          {canDelete ? (
+                            <span className="text-rose-600 font-bold">✔ Có</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 4: RÀ SOÁT & BẢO MẬT (SECURITY AUDIT)
+         ======================================================== */}
+      {activeTab === "security-audit" && (
+        <div className="space-y-4">
+          <div className="card p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  Trung Tâm Rà Soát Bảo Mật & An Toàn Tài Khoản
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tự động quét các tài khoản rác, tài khoản thử nghiệm, tài khoản ngoài tên miền công ty và tài khoản chưa gắn mã nhân viên.
+                </p>
+              </div>
+
+              <button
+                onClick={fetchUsers}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Quét Lại
+              </button>
+            </div>
+
+            {auditAnalysis.length === 0 ? (
+              <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-center">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+                <h4 className="font-bold text-emerald-800 dark:text-emerald-200 text-sm">
+                  Hệ thống 100% An Toàn & Chuẩn Xác!
+                </h4>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1 max-w-md mx-auto">
+                  Toàn bộ tài khoản hiện tại đều thuộc nhân sự chính thức của MIMIN, không có tài khoản rác hay tài khoản kiểm thử probe nào tồn tại.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                  <span>
+                    Phát hiện <b>{auditAnalysis.length} tài khoản</b> cần chú ý rà soát hoặc dọn dẹp.
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border rounded-xl overflow-hidden">
+                  {auditAnalysis.map(({ user: u, reason, severity }) => (
+                    <div key={u.id} className="p-3.5 flex items-center justify-between gap-3 bg-white dark:bg-slate-900">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-xl ${
+                          severity === "high"
+                            ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40"
+                            : severity === "medium"
+                            ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40"
+                            : "bg-blue-50 text-blue-600 dark:bg-blue-950/40"
+                        }`}>
+                          <AlertTriangle className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                              {u.name}
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-500">
+                              ({u.email})
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                              severity === "high"
+                                ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40"
+                                : severity === "medium"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40"
+                                : "bg-blue-100 text-blue-700 dark:bg-blue-900/40"
+                            }`}>
+                              {severity === "high" ? "Cần Xóa / Dọn Dẹp" : severity === "medium" ? "Cần Rà Soát" : "Nhắc Nhở"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Lý do: <span className="font-medium text-slate-700 dark:text-slate-300">{reason}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => setEditing(u)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
+                        >
+                          Sửa
+                        </button>
+                        <DeleteUserBtn u={u} onDeleted={fetchUsers} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODALS
+         ======================================================== */}
       {/* Reset Password Modal */}
       {resettingPw && (
         <ResetPasswordModal
           user={resettingPw}
           onClose={() => setResettingPw(null)}
-          onSuccess={() => { setResettingPw(null); fetchUsers(); }}
+          onSuccess={() => {
+            setResettingPw(null);
+            fetchUsers();
+          }}
         />
       )}
 
@@ -345,7 +997,10 @@ function LiveAccountManager() {
         <EditUserModal
           user={editing}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); fetchUsers(); }}
+          onSaved={() => {
+            setEditing(null);
+            fetchUsers();
+          }}
         />
       )}
 
@@ -353,32 +1008,150 @@ function LiveAccountManager() {
       {creating && (
         <CreateUserModal
           existingAccounts={list}
+          prefilledMaNV={prefilledEmployee}
           onClose={() => setCreating(false)}
-          onCreated={() => { setCreating(false); fetchUsers(); }}
+          onCreated={() => {
+            setCreating(false);
+            fetchUsers();
+          }}
         />
       )}
     </div>
   );
 }
 
-// =================== USER CARD ===================
-function UserCard({ u, onEdit, onResetPassword, onDeleted, onToggled }: {
+// =================== USER CARD (GRID VIEW) ===================
+function UserCard({
+  u,
+  onEdit,
+  onResetPassword,
+  onDeleted,
+  onToggled,
+}: {
   u: UserRow;
   onEdit: () => void;
   onResetPassword: () => void;
   onDeleted: () => void;
   onToggled: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [copiedEmail, setCopiedEmail] = useState(false);
+  return (
+    <div className="card p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-teal-500/50 dark:hover:border-teal-500/50 transition-all shadow-xs flex flex-col justify-between">
+      <div>
+        <div className="flex items-start justify-between gap-3 mb-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={`w-10 h-10 rounded-2xl ${PHONG_BAN_COLORS[u.phongBan || "khac"] || "bg-slate-500"} text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs`}>
+              {u.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <span className="font-bold text-sm text-slate-900 dark:text-slate-100 block truncate">
+                {u.name}
+              </span>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono mt-0.5">
+                <span className="truncate">{u.email}</span>
+                <CopyEmailBtn email={u.email} />
+              </div>
+            </div>
+          </div>
 
-  const handleCopyEmail = () => {
-    navigator.clipboard.writeText(u.email);
-    setCopiedEmail(true);
-    toast.success(`Đã sao chép email: ${u.email}`);
-    setTimeout(() => setCopiedEmail(false), 2000);
+          <div>
+            {u.isActive ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                🟢 Hoạt động
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                🔒 Đã khóa
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Badges */}
+        <div className="flex items-center gap-1.5 flex-wrap my-2.5">
+          {u.maNV ? (
+            <span className="text-[11px] px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-mono font-bold border border-teal-200 dark:border-teal-800">
+              Mã: {u.maNV}
+            </span>
+          ) : (
+            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
+              Chưa gán mã NV
+            </span>
+          )}
+
+          <span className={`text-[10px] px-2 py-0.5 rounded-lg text-white font-medium ${ROLE_COLORS[u.role as keyof typeof ROLE_COLORS] || "bg-slate-500"}`}>
+            {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] || u.role}
+          </span>
+
+          {u.phongBan && (
+            <span className={`text-[10px] px-2 py-0.5 rounded-lg text-white font-medium ${PHONG_BAN_COLORS[u.phongBan] || "bg-slate-500"}`}>
+              {PHONG_BAN_LABELS[u.phongBan] || u.phongBan}
+            </span>
+          )}
+        </div>
+
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-0.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-between">
+            <span>Chức vụ:</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{u.chucVu || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Ngày tạo:</span>
+            <span>{new Date(u.created_at).toLocaleDateString("vi-VN")}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center justify-between gap-1.5 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+        <button
+          onClick={onResetPassword}
+          className="px-2.5 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 text-xs font-bold flex items-center gap-1 transition"
+          title="Đặt lại mật khẩu"
+        >
+          <KeyRound className="w-3.5 h-3.5" />
+          <span>Đổi MK</span>
+        </button>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 transition"
+            title="Sửa thông tin"
+          >
+            <Edit className="w-3.5 h-3.5" />
+          </button>
+          <ToggleUserBtn u={u} onToggled={onToggled} />
+          <DeleteUserBtn u={u} onDeleted={onDeleted} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Button Copy Email
+function CopyEmailBtn({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(email);
+    setCopied(true);
+    toast.success(`Đã sao chép email: ${email}`);
+    setTimeout(() => setCopied(false), 2000);
   };
+  return (
+    <button
+      onClick={handleCopy}
+      type="button"
+      className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+      title="Sao chép email"
+    >
+      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+    </button>
+  );
+}
 
+// Button Toggle Lock/Unlock
+function ToggleUserBtn({ u, onToggled }: { u: UserRow; onToggled: () => void }) {
+  const [busy, setBusy] = useState(false);
   const handleToggle = async () => {
     setBusy(true);
     try {
@@ -388,23 +1161,12 @@ function UserCard({ u, onEdit, onResetPassword, onDeleted, onToggled }: {
         body: JSON.stringify({ isActive: !u.isActive }),
       });
       const json = await res.json();
-      if (json.error) toast.error("Lỗi: " + json.error);
-      else { toast.success(u.isActive ? "Đã khóa TK" : "Đã mở khóa"); onToggled(); }
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm(`Xóa tài khoản ${u.email}?\n\nLưu ý: Xóa trong CẢ auth.users và bảng users. Không thể hoàn tác.`)) return;
-    setBusy(true);
-    try {
-      const res = await authFetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
-      const json = await res.json();
-      if (json.error) toast.error("Lỗi: " + json.error);
-      else { toast.success("Đã xóa TK"); onDeleted(); }
+      if (json.error) {
+        toast.error("Lỗi: " + json.error);
+      } else {
+        toast.success(u.isActive ? `Đã khóa tài khoản ${u.email}` : `Đã mở khóa tài khoản ${u.email}`);
+        onToggled();
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -413,93 +1175,63 @@ function UserCard({ u, onEdit, onResetPassword, onDeleted, onToggled }: {
   };
 
   return (
-    <div className="card p-3 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-      <div className="flex items-start gap-3">
-        <div className={`w-10 h-10 rounded-full ${PHONG_BAN_COLORS[u.phongBan || "khac"] || "bg-slate-500"} text-white flex items-center justify-center font-bold shrink-0 shadow-sm`}>
-          {u.name.charAt(0).toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-sm">{u.name}</span>
-            {u.maNV && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono font-semibold border">
-                {u.maNV}
-              </span>
-            )}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded text-white font-medium ${ROLE_COLORS[u.role as keyof typeof ROLE_COLORS] || "bg-slate-500"}`}>
-              {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] || u.role}
-            </span>
-            {u.phongBan && (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded text-white font-medium ${PHONG_BAN_COLORS[u.phongBan] || "bg-slate-500"}`}>
-                {PHONG_BAN_LABELS[u.phongBan] || u.phongBan}
-              </span>
-            )}
-            {!u.isActive && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded text-white bg-rose-500 font-medium">
-                🔒 BỊ KHÓA
-              </span>
-            )}
-          </div>
-          <div className="text-xs opacity-75 mt-1 flex items-center gap-2 flex-wrap">
-            <span className="flex items-center gap-1 font-mono">
-              <Mail className="w-3 h-3 opacity-60" /> {u.email}
-            </span>
-            <button
-              onClick={handleCopyEmail}
-              className="text-[10px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              title="Sao chép email"
-            >
-              {copiedEmail ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-            </button>
-          </div>
-          <div className="text-[10px] opacity-60 mt-1 flex items-center gap-2">
-            <span>Chức vụ: <b>{u.chucVu || "—"}</b></span>
-            <span>·</span>
-            <span>Tạo ngày: {new Date(u.created_at).toLocaleDateString("vi-VN")}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={onResetPassword}
-            disabled={busy}
-            className="text-xs px-2.5 py-1.5 rounded bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1 font-medium disabled:opacity-50 shadow-sm"
-            title="Đổi / Đặt lại mật khẩu"
-          >
-            <KeyRound className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Đổi MK</span>
-          </button>
-          <button
-            onClick={onEdit}
-            disabled={busy}
-            className="text-xs p-1.5 rounded bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50"
-            title="Sửa thông tin"
-          >
-            <Edit className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleToggle}
-            disabled={busy}
-            className={`text-xs p-1.5 rounded text-white ${u.isActive ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-500 hover:bg-emerald-600"} disabled:opacity-50`}
-            title={u.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
-          >
-            {u.isActive ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={busy}
-            className="text-xs p-1.5 rounded bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50"
-            title="Xóa tài khoản"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-    </div>
+    <button
+      onClick={handleToggle}
+      disabled={busy}
+      className={`p-1.5 rounded-xl text-white transition disabled:opacity-50 ${
+        u.isActive
+          ? "bg-amber-500 hover:bg-amber-600"
+          : "bg-emerald-600 hover:bg-emerald-700"
+      }`}
+      title={u.isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+    >
+      {u.isActive ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
+
+// Button Delete User
+function DeleteUserBtn({ u, onDeleted }: { u: UserRow; onDeleted: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const handleDelete = async () => {
+    if (!confirm(`Xác nhận xóa vĩnh viễn tài khoản ${u.name} (${u.email})?\n\nHành động này không thể hoàn tác.`)) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await authFetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.error) {
+        toast.error("Lỗi: " + json.error);
+      } else {
+        toast.success(`Đã xóa tài khoản ${u.email}`);
+        onDeleted();
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleDelete}
+      disabled={busy}
+      className="p-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white transition disabled:opacity-50"
+      title="Xóa tài khoản"
+    >
+      <Trash2 className="w-3.5 h-3.5" />
+    </button>
   );
 }
 
 // =================== RESET PASSWORD MODAL ===================
-function ResetPasswordModal({ user, onClose, onSuccess }: {
+function ResetPasswordModal({
+  user,
+  onClose,
+  onSuccess,
+}: {
   user: UserRow;
   onClose: () => void;
   onSuccess: () => void;
@@ -514,7 +1246,7 @@ function ResetPasswordModal({ user, onClose, onSuccess }: {
     const newPass = `Mimin@${randomCode}`;
     setPassword(newPass);
     setCopied(false);
-    toast.info("Đã tạo mật khẩu ngẫu nhiên mới: " + newPass);
+    toast.info("Đã tạo mật khẩu ngẫu nhiên: " + newPass);
   };
 
   const handleCopy = () => {
@@ -542,7 +1274,7 @@ function ResetPasswordModal({ user, onClose, onSuccess }: {
         return;
       }
       navigator.clipboard.writeText(password);
-      toast.success(`Đã đổi mật khẩu cho ${user.email} thành công! Mật khẩu đã được tự động copy.`);
+      toast.success(`Đã đổi mật khẩu cho ${user.email} thành công! Mật khẩu đã được copy.`);
       onSuccess();
     } catch (e) {
       toast.error((e as Error).message);
@@ -553,18 +1285,20 @@ function ResetPasswordModal({ user, onClose, onSuccess }: {
 
   return (
     <Modal onClose={onClose} title={`Đặt lại mật khẩu: ${user.name}`}>
-      <div className="space-y-3">
-        <div className="p-2.5 rounded bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 text-xs text-violet-800 dark:text-violet-300">
-          <p className="font-semibold flex items-center gap-1 mb-1">
-            <KeyRound className="w-3.5 h-3.5" /> Tài khoản: {user.email}
+      <div className="space-y-4">
+        <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 text-xs text-violet-800 dark:text-violet-300">
+          <p className="font-bold flex items-center gap-1.5 mb-1">
+            <KeyRound className="w-4 h-4" /> Tài khoản: {user.email}
           </p>
           <p className="opacity-80">
-            Mật khẩu mới sẽ được cập nhật trực tiếp vào Supabase Auth. Bạn có thể copy để gửi ngay cho nhân viên.
+            Mật khẩu mới sẽ được cập nhật trực tiếp vào hệ thống Supabase Auth. Bạn có thể copy mật khẩu này để gửi cho nhân viên đăng nhập.
           </p>
         </div>
 
         <div>
-          <label className="text-xs font-semibold opacity-70 block mb-1">Mật khẩu mới *</label>
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+            Mật khẩu mới *
+          </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <input
@@ -572,7 +1306,7 @@ function ResetPasswordModal({ user, onClose, onSuccess }: {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Nhập mật khẩu mới..."
-                className="w-full px-3 py-2 pr-9 rounded border font-mono text-sm"
+                className="w-full px-3 py-2 pr-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-sm font-semibold"
               />
               <button
                 type="button"
@@ -585,7 +1319,7 @@ function ResetPasswordModal({ user, onClose, onSuccess }: {
             <button
               type="button"
               onClick={handleGenerateRandom}
-              className="px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium flex items-center gap-1 border shrink-0"
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 border shrink-0 transition"
               title="Sinh mật khẩu ngẫu nhiên"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Ngẫu nhiên
@@ -593,24 +1327,28 @@ function ResetPasswordModal({ user, onClose, onSuccess }: {
             <button
               type="button"
               onClick={handleCopy}
-              className="px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium flex items-center gap-1 border shrink-0"
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 border shrink-0 transition"
               title="Sao chép mật khẩu"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? "Đã chép" : "Chép"}
             </button>
           </div>
-          <span className="text-[11px] opacity-60 mt-1 block">Tối thiểu 6 ký tự. Gợi ý: Chữ hoa, thường và số.</span>
+          <span className="text-[11px] text-slate-400 mt-1.5 block">
+            Tối thiểu 6 ký tự. Khuyến nghị bao gồm chữ hoa, chữ thường và chữ số.
+          </span>
         </div>
 
-        <div className="flex gap-2 pt-3 border-t">
-          <button onClick={onClose} className="btn-secondary flex-1">Hủy</button>
+        <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold flex-1 hover:bg-slate-200 transition">
+            Hủy
+          </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="btn-primary flex-1 bg-violet-600 hover:bg-violet-700 text-white font-medium disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex-1 transition disabled:opacity-50"
           >
-            {saving ? "Đang cập nhật..." : "💾 Lưu mật khẩu mới"}
+            {saving ? "Đang cập nhật..." : "💾 Lưu Mật Khẩu Mới"}
           </button>
         </div>
       </div>
@@ -619,7 +1357,11 @@ function ResetPasswordModal({ user, onClose, onSuccess }: {
 }
 
 // =================== EDIT MODAL ===================
-function EditUserModal({ user, onClose, onSaved }: {
+function EditUserModal({
+  user,
+  onClose,
+  onSaved,
+}: {
   user: UserRow;
   onClose: () => void;
   onSaved: () => void;
@@ -652,8 +1394,9 @@ function EditUserModal({ user, onClose, onSaved }: {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (json.error) toast.error("Lỗi: " + json.error);
-      else {
+      if (json.error) {
+        toast.error("Lỗi: " + json.error);
+      } else {
         toast.success("Đã cập nhật thông tin tài khoản" + (newPassword ? " và mật khẩu mới" : ""));
         onSaved();
       }
@@ -666,32 +1409,42 @@ function EditUserModal({ user, onClose, onSaved }: {
 
   return (
     <Modal onClose={onClose} title={`Sửa tài khoản: ${user.email}`}>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} />
-        <div className="text-sm">
-          <label className="text-xs font-semibold opacity-70 block">Mã NV</label>
-          <div className="font-mono text-xs px-2 py-1.5 rounded border bg-slate-50 dark:bg-slate-800">
+        <div>
+          <label className="text-xs font-semibold text-slate-500 block mb-1">Mã NV Liên Kết</label>
+          <div className="font-mono text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 font-bold text-teal-700 dark:text-teal-300">
             {data.maNV || "Chưa liên kết"}
           </div>
-          <p className="text-[10px] opacity-60 mt-0.5">Sửa mã tại bảng liên kết hồ sơ phía trên.</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Quản lý mã tại Tab &quot;Liên kết hồ sơ&quot;.</p>
         </div>
         <Field label="Chức vụ" value={data.chucVu || ""} onChange={(v) => setData({ ...data, chucVu: v })} />
-        <SelectField label="Role *" value={data.role} options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => setData({ ...data, role: v })} />
-        <SelectField label="Phòng ban" value={data.phongBan || "khac"} options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))} onChange={(v) => setData({ ...data, phongBan: v })} />
+        <SelectField
+          label="Vai trò (Role) *"
+          value={data.role}
+          options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+          onChange={(v) => setData({ ...data, role: v })}
+        />
+        <SelectField
+          label="Phòng ban"
+          value={data.phongBan || "khac"}
+          options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))}
+          onChange={(v) => setData({ ...data, phongBan: v })}
+        />
         <SelectField
           label="Trạng thái"
           value={data.isActive ? "active" : "disabled"}
           options={[
-            { value: "active", label: "🟢 Hoạt động" },
-            { value: "disabled", label: "🔒 Bị khóa" },
+            { value: "active", label: "🟢 Đang hoạt động" },
+            { value: "disabled", label: "🔒 Khóa tài khoản" },
           ]}
           onChange={(v) => setData({ ...data, isActive: v === "active" })}
         />
       </div>
 
-      <div className="mt-3 p-2.5 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-        <label className="text-xs font-semibold opacity-70 block mb-1">
-          Đổi mật khẩu mới (bỏ trống nếu không thay đổi)
+      <div className="mt-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+          Đổi mật khẩu mới (để trống nếu giữ nguyên)
         </label>
         <div className="relative">
           <input
@@ -699,35 +1452,50 @@ function EditUserModal({ user, onClose, onSaved }: {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="Để trống nếu giữ mật khẩu cũ"
-            className="w-full px-2 py-1.5 pr-8 rounded border text-sm"
+            className="w-full px-3 py-2 pr-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
           />
           <button
             type="button"
             onClick={() => setShowPw(!showPw)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
           >
             {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
-      <div className="p-2 rounded bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-700 dark:text-amber-300 mt-2">
-        <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
-        Thay đổi Role sẽ đồng bộ sang <code>auth.users.app_metadata</code>. User cần <b>đăng xuất + đăng nhập lại</b> để áp dụng.
+      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-200 mt-3 flex items-start gap-2">
+        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <span>
+          Thay đổi Role sẽ đồng bộ tự động sang <code>auth.users.app_metadata</code>. Nhân sự cần đăng xuất và đăng nhập lại để quyền mới có hiệu lực tức thì.
+        </span>
       </div>
-      <div className="flex gap-2 pt-3">
-        <button onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-        <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 bg-blue-500 disabled:opacity-50">
-          {saving ? "Đang lưu..." : "💾 Cập nhật"}
+
+      <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+        <button onClick={onClose} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold flex-1 hover:bg-slate-200 transition">
+          Hủy
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex-1 transition disabled:opacity-50"
+        >
+          {saving ? "Đang lưu..." : "💾 Cập Nhật Tài Khoản"}
         </button>
       </div>
     </Modal>
   );
 }
 
-// =================== CREATE MODAL ===================
-function CreateUserModal({ existingAccounts, onClose, onCreated }: {
+// =================== CREATE USER MODAL ===================
+function CreateUserModal({
+  existingAccounts,
+  prefilledMaNV,
+  onClose,
+  onCreated,
+}: {
   existingAccounts: UserRow[];
+  prefilledMaNV?: string | null;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -736,19 +1504,19 @@ function CreateUserModal({ existingAccounts, onClose, onCreated }: {
     email: "",
     password: "Mimin@" + Math.floor(1000 + Math.random() * 9000),
     name: "",
-    role: "planner" as string,
+    role: "attendance" as string,
     chucVu: "",
-    phongBan: "khac" as string,
-    maNV: "",
+    phongBan: "to-may" as string,
+    maNV: prefilledMaNV || "",
     sdt: "",
   });
-  const [selectedNvMa, setSelectedNvMa] = useState("");
-  const [taoHoSoNhanSu, setTaoHoSoNhanSu] = useState(true);
+  const [selectedNvMa, setSelectedNvMa] = useState(prefilledMaNV || "");
+  const [taoHoSoNhanSu, setTaoHoSoNhanSu] = useState(false);
   const [ngayVaoLam, setNgayVaoLam] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
-  // Danh sách nhân sự chưa có tài khoản (đối chiếu theo maNV và email)
+  // Danh sách nhân sự chưa có tài khoản
   const unregisteredEmployees = useMemo(() => {
     return nhanSuList.filter((nv) => {
       const matchMa = nv.maNV && existingAccounts.some(
@@ -761,7 +1529,6 @@ function CreateUserModal({ existingAccounts, onClose, onCreated }: {
     });
   }, [nhanSuList, existingAccounts]);
 
-  // Khi chọn một nhân viên từ danh sách nhân sự có sẵn
   const handleSelectEmployee = (maNV: string) => {
     setSelectedNvMa(maNV);
     if (!maNV) return;
@@ -774,23 +1541,22 @@ function CreateUserModal({ existingAccounts, onClose, onCreated }: {
       ...prev,
       name: nv.hoTen || prev.name,
       maNV: nv.maNV,
-      email: nv.email || (nv.maNV ? `${nv.maNV.toLowerCase()}@mimin.vn` : prev.email),
+      email: nv.email || `${nv.maNV.toLowerCase()}@mimin.vn`,
       sdt: nv.sdt || prev.sdt,
       chucVu: nv.chucVu || nv.viTri || prev.chucVu,
       phongBan: mappedPhongBan,
     }));
-    // Đã có sẵn hồ sơ nhân sự nên không cần tạo mới hồ sơ
     setTaoHoSoNhanSu(false);
-    toast.info(`Đã tự động điền thông tin nhân viên ${nv.hoTen} (${nv.maNV})`);
+    toast.info(`Đã điền tự động thông tin nhân viên ${nv.hoTen} (${nv.maNV})`);
   };
 
   const handleCreate = async () => {
     if (!data.email || !data.password || !data.name) {
-      toast.error("Vui lòng điền email, mật khẩu, họ tên");
+      toast.error("Vui lòng điền họ tên, email và mật khẩu");
       return;
     }
     if (data.password.length < 6) {
-      toast.error("Mật khẩu phải >= 6 ký tự");
+      toast.error("Mật khẩu phải từ 6 ký tự trở lên");
       return;
     }
     setSaving(true);
@@ -801,10 +1567,13 @@ function CreateUserModal({ existingAccounts, onClose, onCreated }: {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (json.error) { toast.error("Lỗi: " + json.error); return; }
-      toast.success("Đã tạo tài khoản: " + data.email);
+      if (json.error) {
+        toast.error("Lỗi: " + json.error);
+        return;
+      }
+      toast.success("Đã tạo tài khoản thành công: " + data.email);
 
-      // Tạo kèm hồ sơ Nhân sự (nếu được chọn)
+      // Tạo kèm hồ sơ Nhân sự nếu được chọn
       if (taoHoSoNhanSu) {
         const maNV = data.maNV.trim() || `NV${(nhanSuList.length + 19).toString().padStart(3, "0")}`;
         const nv: NhanSuExt = {
@@ -838,9 +1607,7 @@ function CreateUserModal({ existingAccounts, onClose, onCreated }: {
           rating: 4,
           taiKhoan: data.email,
         };
-        const okNv = await themNhanSu(nv);
-        if (okNv) toast.success(`Đã tạo hồ sơ Nhân sự cho ${data.name} (${maNV})`);
-        else toast.error("Tạo tài khoản thành công nhưng lỗi khi tạo hồ sơ Nhân sự");
+        await themNhanSu(nv);
       }
       onCreated();
     } catch (e) {
@@ -851,102 +1618,116 @@ function CreateUserModal({ existingAccounts, onClose, onCreated }: {
   };
 
   return (
-    <Modal onClose={onClose} title="Tạo tài khoản mới">
-      <div className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/20 p-2 rounded mb-2 flex items-center justify-between">
-        <span>Tạo user thật trong <code>auth.users</code> + bảng <code>users</code> (Supabase). Có thể login ngay.</span>
-      </div>
-
-      {/* Gợi ý chọn nhân viên có sẵn */}
-      {unregisteredEmployees.length > 0 && (
-        <div className="mb-3 p-2.5 rounded border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
-          <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1.5 mb-1">
-            <UserPlus className="w-3.5 h-3.5" /> Chọn nhanh nhân viên chưa có tài khoản ({unregisteredEmployees.length})
-          </label>
-          <select
-            value={selectedNvMa}
-            onChange={(e) => handleSelectEmployee(e.target.value)}
-            className="w-full text-xs px-2 py-1.5 rounded border bg-white dark:bg-slate-900"
-          >
-            <option value="">-- Chọn nhân sự để tự động điền form --</option>
-            {unregisteredEmployees.map((nv) => (
-              <option key={nv.maNV} value={nv.maNV}>
-                {nv.maNV} - {nv.hoTen} ({nv.boPhan || "Chưa rõ phòng ban"})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} placeholder="Nguyễn Văn A" />
-        <Field label="Mã NV" value={data.maNV} onChange={(v) => setData({ ...data, maNV: v })} placeholder="NV001 (để trống sẽ tự sinh)" />
-        <Field label="Email *" value={data.email} onChange={(v) => setData({ ...data, email: v })} placeholder="a@mimin.vn" type="email" />
-        <div>
-          <label className="text-xs font-semibold opacity-70">Mật khẩu *</label>
-          <div className="relative">
-            <input
-              type={showPw ? "text" : "password"}
-              value={data.password}
-              onChange={(e) => setData({ ...data, password: e.target.value })}
-              placeholder="Mimin@123 (mặc định)"
-              className="w-full mt-0.5 px-2 py-1.5 pr-8 rounded border text-sm font-mono"
-            />
-            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">
-              {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
-        <Field label="Chức vụ" value={data.chucVu} onChange={(v) => setData({ ...data, chucVu: v })} placeholder="Nhân viên kho" />
-        <SelectField label="Role *" value={data.role} options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => setData({ ...data, role: v })} />
-        <SelectField label="Phòng ban" value={data.phongBan} options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))} onChange={(v) => setData({ ...data, phongBan: v })} />
-        <Field label="SĐT" value={data.sdt} onChange={(v) => setData({ ...data, sdt: v })} placeholder="0901234567" />
-      </div>
-
-      <div className="mt-3 p-2.5 rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
-        <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
-          <input type="checkbox" checked={taoHoSoNhanSu} onChange={(e) => setTaoHoSoNhanSu(e.target.checked)} className="w-4 h-4" />
-          Đồng thời tạo mới hồ sơ Nhân sự (trang Nhân sự)
-        </label>
-        {taoHoSoNhanSu && (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-[11px] opacity-70 shrink-0">Ngày vào làm</span>
-            <input type="date" value={ngayVaoLam} onChange={(e) => setNgayVaoLam(e.target.value)} className="px-2 py-1 rounded border text-xs" />
-            <span className="text-[10px] opacity-60">CCCD, lương, ngân hàng... bổ sung sau ở trang Nhân sự</span>
+    <Modal onClose={onClose} title="Tạo tài khoản đăng nhập mới">
+      <div className="space-y-3">
+        {/* Chọn nhanh nhân viên chưa có tài khoản */}
+        {unregisteredEmployees.length > 0 && (
+          <div className="p-3 rounded-xl border border-teal-200 dark:border-teal-900 bg-teal-50/50 dark:bg-teal-950/20">
+            <label className="text-xs font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1.5 mb-1.5">
+              <UserPlus className="w-3.5 h-3.5" />
+              Chọn nhanh nhân sự chưa có tài khoản ({unregisteredEmployees.length})
+            </label>
+            <select
+              value={selectedNvMa}
+              onChange={(e) => handleSelectEmployee(e.target.value)}
+              className="w-full text-xs px-2.5 py-1.5 rounded-xl border border-teal-300 dark:border-teal-800 bg-white dark:bg-slate-900"
+            >
+              <option value="">-- Chọn nhân sự để tự động điền form --</option>
+              {unregisteredEmployees.map((nv) => (
+                <option key={nv.maNV} value={nv.maNV}>
+                  {nv.maNV} - {nv.hoTen} ({nv.boPhan || "Chưa rõ phòng ban"})
+                </option>
+              ))}
+            </select>
           </div>
         )}
-      </div>
 
-      <div className="flex gap-2 pt-3">
-        <button onClick={onClose} className="btn-secondary flex-1">Huỷ</button>
-        <button onClick={handleCreate} disabled={saving} className="btn-primary flex-1 bg-blue-500 disabled:opacity-50">
-          {saving ? "Đang tạo..." : "🚀 Tạo tài khoản"}
-        </button>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Họ tên *" value={data.name} onChange={(v) => setData({ ...data, name: v })} placeholder="Nguyễn Văn A" />
+          <Field label="Mã Nhân Viên" value={data.maNV} onChange={(v) => setData({ ...data, maNV: v })} placeholder="NV01 (ví dụ)" />
+          <Field label="Email đăng nhập *" value={data.email} onChange={(v) => setData({ ...data, email: v })} placeholder="ten@mimin.vn" type="email" />
+          <div>
+            <label className="text-xs font-semibold text-slate-500 block mb-1">Mật khẩu ban đầu *</label>
+            <div className="relative">
+              <input
+                type={showPw ? "text" : "password"}
+                value={data.password}
+                onChange={(e) => setData({ ...data, password: e.target.value })}
+                className="w-full px-2.5 py-1.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-bold"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+              >
+                {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+          <Field label="Chức vụ" value={data.chucVu} onChange={(v) => setData({ ...data, chucVu: v })} placeholder="Tổ trưởng may" />
+          <SelectField
+            label="Vai trò (Role) *"
+            value={data.role}
+            options={ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+            onChange={(v) => setData({ ...data, role: v })}
+          />
+          <SelectField
+            label="Phòng ban"
+            value={data.phongBan}
+            options={PHONG_BAN_OPTIONS.map((p) => ({ value: p, label: PHONG_BAN_LABELS[p] }))}
+            onChange={(v) => setData({ ...data, phongBan: v })}
+          />
+          <Field label="Số điện thoại" value={data.sdt} onChange={(v) => setData({ ...data, sdt: v })} placeholder="0901234567" />
+        </div>
+
+        <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20">
+          <label className="flex items-center gap-2 text-xs font-bold text-emerald-900 dark:text-emerald-200 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={taoHoSoNhanSu}
+              onChange={(e) => setTaoHoSoNhanSu(e.target.checked)}
+              className="w-4 h-4 rounded text-teal-600"
+            />
+            Đồng thời tạo mới hồ sơ Nhân sự (nếu nhân viên này chưa có trong danh sách)
+          </label>
+          {taoHoSoNhanSu && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-[11px] text-slate-500 shrink-0">Ngày vào làm:</span>
+              <input
+                type="date"
+                value={ngayVaoLam}
+                onChange={(e) => setNgayVaoLam(e.target.value)}
+                className="px-2 py-1 rounded-lg border text-xs"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold flex-1 hover:bg-slate-200 transition">
+            Hủy
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={saving}
+            className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex-1 transition disabled:opacity-50"
+          >
+            {saving ? "Đang tạo..." : "🚀 Tạo Tài Khoản"}
+          </button>
+        </div>
       </div>
     </Modal>
   );
 }
 
-// =================== HELPER COMPONENTS ===================
-function Stat({ n, label, sub, color, icon: Icon }: any) {
-  const colors: Record<string, string> = {
-    blue: "from-blue-500/10 to-cyan-500/10 text-blue-700 dark:text-blue-300",
-    emerald: "from-emerald-500/10 to-green-500/10 text-emerald-700 dark:text-emerald-300",
-    rose: "from-rose-500/10 to-red-500/10 text-rose-700 dark:text-rose-300",
-    violet: "from-violet-500/10 to-purple-500/10 text-violet-700 dark:text-violet-300",
-  };
-  return (
-    <div className={`card p-2 bg-gradient-to-br ${colors[color]}`}>
-      <div className="flex items-center justify-between">
-        <Icon className="w-4 h-4 opacity-60" />
-        <span className="text-[10px] opacity-70">{label}</span>
-      </div>
-      <div className="text-2xl font-bold mt-1">{n}</div>
-      <div className="text-[10px] opacity-60">{sub}</div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, placeholder, type = "text" }: {
+// =================== FIELD HELPERS ===================
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -955,19 +1736,24 @@ function Field({ label, value, onChange, placeholder, type = "text" }: {
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold opacity-70">{label}</label>
+      <label className="text-xs font-semibold text-slate-500 block mb-1">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
+        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium"
       />
     </div>
   );
 }
 
-function SelectField({ label, value, options, onChange }: {
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
   label: string;
   value: string;
   options: Array<{ value: string; label: string }>;
@@ -975,14 +1761,16 @@ function SelectField({ label, value, options, onChange }: {
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold opacity-70">{label}</label>
+      <label className="text-xs font-semibold text-slate-500 block mb-1">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full mt-0.5 px-2 py-1.5 rounded border text-sm"
+        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium"
       >
         {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
         ))}
       </select>
     </div>
@@ -991,13 +1779,15 @@ function SelectField({ label, value, options, onChange }: {
 
 function Modal({ children, onClose, title }: any) {
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4 shadow-2xl">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-lg flex items-center gap-2">
-            <Shield className="w-5 h-5 text-blue-500" /> {title}
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-5 shadow-2xl border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-teal-600" /> {title}
           </h2>
-          <button onClick={onClose} className="p-1"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+            <X className="w-5 h-5" />
+          </button>
         </div>
         {children}
       </div>

@@ -5,7 +5,7 @@ import { Calendar, Package, Shirt, Hash, Users, WalletCards, Maximize2 } from "l
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
-import { useNhanSu } from "@/lib/data/nhan-su-store";
+import { useNhanSu, resolveTenNhanSu } from "@/lib/data/nhan-su-store";
 import { DateDisplay } from "./DateDisplay";
 import { useKho } from "@/lib/data/kho-store";
 import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
@@ -31,30 +31,30 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
   // Find Nguoi Phu Trach SX
   const ptCode = lc.phuTrachSX || "";
   const ptInfo = dsNhanSu.find(nv => nv.maNV === ptCode || nv.hoTen === ptCode);
-  const ptDisplayName = ptInfo?.hoTen || ptCode || "Chưa phân công";
+  const ptDisplayName = resolveTenNhanSu(ptCode, dsNhanSu);
   const tongNguoiPhuTrach = new Set((lc.phanCong || []).filter((pc) => pc.nguoiMa || pc.nguoiTen).map((pc) => pc.nguoiMa || pc.nguoiTen)).size;
   const ptPhone = ptInfo?.sdt;
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
-      
+
       {/* PHẦN ĐẦU CARD: BỐ CỤC HIỂN THỊ RÕ ẢNH BÌA SẢN PHẨM & THÔNG TIN CHUNG */}
-      <div className="p-5 md:p-6 bg-white border-b border-slate-100 flex flex-col md:flex-row gap-6 items-start">
-        
-        {/* ẢNH BÌA SẢN PHẨM (Khung ảnh tỷ lệ chuẩn 3:4, nhìn rõ toàn bộ sản phẩm) */}
-        <div 
+      <div className="p-4 sm:p-5 bg-white border-b border-slate-100 flex flex-col md:flex-row gap-4 sm:gap-5 items-start">
+
+        {/* ẢNH BÌA SẢN PHẨM (Khung chữ nhật đứng 3:4 vừa vặn, không chiếm hết trang) */}
+        <div
           onClick={() => mainImg && setZoomLogo(mainImg)}
-          className="w-full md:w-[280px] lg:w-[320px] aspect-[3/4] shrink-0 bg-slate-100 rounded-2xl border border-slate-200 relative overflow-hidden group cursor-pointer shadow-sm hover:shadow-md transition-all self-center md:self-start"
+          className="w-36 sm:w-44 md:w-48 aspect-[3/4] max-h-[250px] shrink-0 bg-slate-100 rounded-xl border border-slate-200/90 relative overflow-hidden group cursor-pointer shadow-2xs hover:shadow-md transition-all self-center md:self-start"
           title="Nhấp để xem ảnh bìa phóng to"
         >
           {mainImg ? (
             <>
-              <img 
-                loading="lazy" 
-                decoding="async" 
-                src={mainImg} 
-                alt={lc.tenSP} 
-                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105" 
+              <img
+                loading="lazy"
+                decoding="async"
+                src={mainImg}
+                alt={lc.tenSP}
+                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-3.5 text-white">
                 <span className="text-xs font-bold flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
@@ -77,25 +77,25 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
 
         {/* THÔNG TIN CHI TIẾT & CHỈ SỐ CỦA ĐƠN HÀNG */}
         <div className="flex-1 flex flex-col justify-between gap-5 min-w-0 w-full">
-          
+
           {/* Hàng 1: Mã lệnh cắt, Trạng thái & Phụ trách SX */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center flex-wrap gap-2">
-              <span className="font-black text-teal-700 font-mono text-sm bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100 shadow-sm tracking-wide">
+              <span className="font-black text-teal-800 font-mono text-sm bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-200/80 shadow-2xs tracking-wide">
                 {lc.id}
               </span>
               {renderStatus}
             </div>
-            
+
             <button
               onClick={() => setSummaryView("owners")}
-              className="flex items-center gap-2.5 py-1.5 px-3.5 bg-slate-50 border border-slate-200/80 rounded-full shadow-sm hover:shadow hover:bg-white hover:border-indigo-200 transition-all cursor-pointer group"
+              className="flex items-center gap-2.5 py-1.5 px-3.5 bg-slate-50 border border-slate-200/80 rounded-full shadow-2xs hover:shadow hover:bg-white hover:border-slate-300 transition-all cursor-pointer group"
             >
-              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden shrink-0 border border-indigo-200/50 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+              <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 group-hover:bg-teal-600 group-hover:text-white transition-colors">
                 <Users className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-indigo-500 transition-colors">Phụ trách:</span>
-              <span className="font-black text-slate-800 text-xs group-hover:text-indigo-700 transition-colors">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-teal-700 transition-colors">Phụ trách:</span>
+              <span className="font-black text-slate-800 text-xs group-hover:text-teal-800 transition-colors">
                 {tongNguoiPhuTrach > 0 ? `${tongNguoiPhuTrach} người` : "Chưa phân công"}
               </span>
             </button>
@@ -103,16 +103,16 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
 
           {/* Hàng 2: Tên sản phẩm & Mã/Loại */}
           <div>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight mb-2.5 group-hover:text-sky-600 transition-colors drop-shadow-sm">
+            <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 leading-tight mb-2 group-hover:text-teal-700 transition-colors drop-shadow-2xs">
               {lc.tenSP}
             </h2>
-            <div className="flex items-center flex-wrap gap-2.5 text-xs font-bold">
-              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                <span className="uppercase text-[9px] text-slate-400 tracking-widest">Mã SP:</span>
-                <span className="text-slate-800 font-mono">{lc.maSP || "---"}</span>
+            <div className="flex items-center flex-wrap gap-2.5 text-xs font-semibold">
+              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs">
+                <span className="uppercase text-[9px] text-slate-400 tracking-wider">Mã SP:</span>
+                <span className="text-slate-800 font-mono font-bold">{lc.maSP || "---"}</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                <span className="uppercase text-[9px] text-slate-400 tracking-widest">Loại:</span>
+              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs">
+                <span className="uppercase text-[9px] text-slate-400 tracking-wider">Loại:</span>
                 <span className="text-slate-800">{LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP || "---"}</span>
               </div>
             </div>
@@ -120,11 +120,11 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
 
           {/* Hàng 3: Khối 4 chỉ số KPI chính */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-            <div className="flex flex-col items-center justify-center bg-sky-50/80 border border-sky-100 rounded-xl py-3 px-3 shadow-sm hover:shadow hover:bg-sky-50 transition-all">
-              <span className="text-sky-600/80 flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest mb-1.5">
+            <div className="flex flex-col items-center justify-center bg-teal-50/70 border border-teal-100 rounded-xl py-3 px-3 shadow-2xs hover:shadow hover:bg-teal-50 transition-all">
+              <span className="text-teal-700 flex items-center gap-1 text-[9px] uppercase font-bold tracking-wider mb-1.5">
                 <Hash className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Tổng SL</span>
               </span>
-              <span className="font-black text-2xl md:text-3xl text-sky-900 leading-none truncate">
+              <span className="font-black text-2xl md:text-3xl text-teal-900 leading-none truncate font-mono">
                 {lc.tongSL?.toLocaleString() || "0"}
               </span>
             </div>
@@ -156,29 +156,38 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
           </div>
 
           {/* Logo In/Thêu (nếu có) */}
-          {lc.hinhMauInTheu && (
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logo In/Thêu:</span>
-              <div 
-                className="w-11 h-11 rounded-lg border-2 border-slate-200 bg-slate-50 cursor-pointer overflow-hidden shadow-sm hover:border-sky-400 transition-colors shrink-0"
-                onClick={() => {
-                  try {
-                    const fileData = JSON.parse(lc.hinhMauInTheu!);
-                    if (fileData.url) {
-                      setZoomLogo(fileData.url);
-                    }
-                  } catch (e) {}
-                }}
-              >
-                <img src={JSON.parse(lc.hinhMauInTheu).url} className="w-full h-full object-cover" alt="Hình in thêu" />
+          {lc.hinhMauInTheu && (() => {
+            let logoUrl = "";
+            const raw = (lc.hinhMauInTheu || "").trim();
+            if (raw.startsWith("/") || raw.startsWith("http") || raw.startsWith("data:")) {
+              logoUrl = raw;
+            } else {
+              try {
+                const fileData = JSON.parse(raw);
+                logoUrl = fileData?.url || (typeof fileData === "string" ? fileData : "");
+              } catch (e) {
+                logoUrl = raw;
+              }
+            }
+            if (!logoUrl) return null;
+
+            return (
+              <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logo In/Thêu:</span>
+                <div
+                  className="w-11 h-11 rounded-lg border-2 border-slate-200 bg-slate-50 cursor-pointer overflow-hidden shadow-sm hover:border-sky-400 transition-colors shrink-0"
+                  onClick={() => setZoomLogo(logoUrl)}
+                >
+                  <img src={logoUrl} className="w-full h-full object-cover" alt="Hình in thêu" />
+                </div>
+                {lc.ghiChuInTheu && (
+                  <span className="text-[11px] text-slate-600 max-w-sm leading-tight">
+                    <strong className="font-bold">Ghi chú in/thêu:</strong> {lc.ghiChuInTheu}
+                  </span>
+                )}
               </div>
-              {lc.ghiChuInTheu && (
-                <span className="text-[11px] text-slate-600 max-w-sm leading-tight">
-                  <strong className="font-bold">Ghi chú in/thêu:</strong> {lc.ghiChuInTheu}
-                </span>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       </div>
@@ -202,11 +211,11 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                 const isCompleted = tt === "hoan_thanh" || tt === "cho_qc";
                 const isWorking = tt === "dang_lam";
                 const isError = tt === "co_loi";
-                
+
                 let dotColor = "bg-slate-200 border-white";
                 let textColor = "text-slate-400";
                 let lineColor = "bg-slate-100";
-                
+
                 if (isCompleted) { dotColor = "bg-emerald-500 border-emerald-100 text-white"; textColor = "text-emerald-700 font-bold"; lineColor = "bg-emerald-500"; }
                 else if (isWorking) { dotColor = "bg-teal-500 border-teal-100 text-white shadow-[0_0_12px_rgba(20,184,166,0.4)]"; textColor = "text-teal-700 font-black"; lineColor = "bg-slate-200 bg-gradient-to-r from-teal-500 to-slate-200"; }
                 else if (isError) { dotColor = "bg-rose-500 border-rose-100 text-white"; textColor = "text-rose-600 font-bold"; }
@@ -217,14 +226,14 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                     {i < arr.length - 1 && (
                       <div className={`absolute top-[11px] left-[50%] w-full h-[4px] rounded-full z-0 ${lineColor} transition-colors duration-500`} />
                     )}
-                    
+
                     <div className="relative flex items-center justify-center mb-2.5 h-[26px]">
                       {isWorking && <div className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-30" style={{ transform: 'scale(2.2)' }} />}
                       <div className={`w-[22px] h-[22px] rounded-full border-[3px] box-content z-10 transition-all duration-300 flex items-center justify-center ${dotColor}`}>
                         {isCompleted && <svg className="w-3.5 h-3.5 stroke-current stroke-[3]" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>}
                       </div>
                     </div>
-                    
+
                     <div className={`text-center leading-tight text-[9px] sm:text-[10px] max-w-[60px] sm:max-w-none transition-all duration-300 ${textColor} ${isWorking ? 'scale-110 -translate-y-0.5' : ''} flex flex-col items-center gap-1`}>
                       <span>{pc.tenCongDoan}</span>
                     </div>
@@ -285,16 +294,16 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                       )}
                     </div>
                   )}
-                  
+
                   {/* Floating badge for Color Name */}
                   <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-3.5 py-1 rounded-full shadow-sm font-black text-slate-800 text-xs border border-white whitespace-nowrap z-20 transition-all group-hover:-translate-y-1 group-hover:shadow-md">
                     {mau.ten}
                   </div>
                 </div>
-                
+
                 {/* Button Nhập số lượng */}
                 <div className="mt-3 w-full text-center">
-                  <button 
+                  <button
                     onClick={() => onColorClick?.(mau)}
                     className="inline-block text-[10px] text-sky-600 font-bold bg-white px-3 py-1.5 rounded-lg group-hover:bg-sky-500 group-hover:text-white transition-colors w-full border border-sky-200 group-hover:border-sky-500 shadow-sm"
                   >
@@ -305,7 +314,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
             );
           })}
         </div>
-        
+
         {bangChungSlot && (
           <div className="mt-8 border-t border-slate-200/60 pt-6">
             {bangChungSlot}

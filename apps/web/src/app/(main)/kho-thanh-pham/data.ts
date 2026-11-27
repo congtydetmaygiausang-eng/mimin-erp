@@ -5,6 +5,7 @@ import { ALL_REAL_PHIEU } from "@/lib/real-workflow-data";
 import type { PhieuWorkflow } from "@/lib/workflow-data";
 import { MORE_LSX } from "@/lib/more-workflow-data";
 import { SIZE_RATIO_PRESETS } from "@/lib/size-ratio-presets";
+import type { KenhBan as KenhBanBangGia } from "@/lib/data/bang-gia-store";
 
 // Combine tất cả phiếu workflow
 export const ALL_PHIEU: PhieuWorkflow[] = [...ALL_REAL_PHIEU, ...(MORE_LSX as any)];
@@ -22,7 +23,7 @@ export const DS_KHU_KE_HANG = [
 ];
 
 
-export type KenhBan = "ban-le" | "ban-si" | "ban-lo" | "tiktok" | "shopee";
+export type KenhBan = KenhBanBangGia;
 
 export const DS_KENH_BAN: { value: KenhBan; label: string }[] = [
   { value: "ban-le", label: "Bán lẻ" },
@@ -69,6 +70,7 @@ export interface SanPhamTP {
   video?: string;
   chiTietSize?: { size: string; sl: number }[];
   maSKU?: string; // Mã SKU phân loại (từ Danh Mục SP)
+  thuongHieu?: "Man PJ" | "Polomimin" | string; // Thuong hieu
 }
 
 export const STORAGE_KEY = "mimin_kho_thanh_pham_v2";
@@ -99,6 +101,10 @@ export function hienThiDanhSachSize(
 ): string {
   const danhSach = (chiTietSize || []).filter((item) => item.sl > 0).map((item) => item.size).join(", ");
   if (danhSach) return danhSach;
+  if (chiTietSize && chiTietSize.length > 0) {
+    const tatCaSizes = chiTietSize.map((item) => item.size).filter(Boolean).join(", ");
+    if (tatCaSizes) return tatCaSizes;
+  }
   return size.trim().toLocaleLowerCase("vi") === "nhiều size" ? "Chưa có chi tiết size" : size;
 }
 
@@ -152,6 +158,7 @@ export function fromSupabaseRow(r: any): SanPhamTP {
     video: r.video ?? undefined,
     chiTietSize,
     maSKU: r.ma_sku ?? r.maSKU ?? undefined,
+    thuongHieu: r.thuong_hieu || r.thuongHieu || (r.ncc === "Man PJ" || r.ncc === "Polomimin" ? r.ncc : undefined) || ((r.ma_sp || "").toUpperCase().includes("BPJ") || (r.ten_sp || "").toUpperCase().includes("MANPJ") ? "Man PJ" : "Polomimin"),
   };
 }
 
@@ -164,7 +171,6 @@ export function toSupabaseRow(sp: SanPhamTP) {
     mau: sp.mau,
     size: sp.size,
     lsx: sp.lsx,
-    ma_lenh_cat: sp.maLenhCat ?? null,
     ngay_nhap: sp.ngayNhap,
     so_luong: sp.soLuong,
     don_gia: sp.donGia,
@@ -301,6 +307,115 @@ export function fromStorage<T>(key: string, defaultValue: T): T {
 export function saveStorage<T>(key: string, v: T) {
   if (typeof window === "undefined") return;
   try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
+}
+
+/**
+ * Sinh danh sách sản phẩm kho thành phẩm chuẩn xác từ 1 Lệnh Cắt (Single Source of Truth).
+ * Tự động trích xuất các biến thể màu, size, số lượng, hình ảnh, đơn giá vốn, giá bán.
+ */
+export function taoSanPhamKhoTuLenhCat(
+  lc: any,
+  options?: {
+    kenhBan?: KenhBan[];
+    viTri?: string;
+    ngayNhap?: string;
+    giaVon1SP?: number;
+    layGiaFn?: (kenh: KenhBan, maSP: string, sku?: string, sl?: number) => number | undefined;
+  }
+): SanPhamTP[] {
+  if (!lc) return [];
+  const dongGoiPCs = lc.phanCong?.filter(
+    (pc: any) =>
+      pc.id === "dongGoi" ||
+      pc.id === "dong_goi" ||
+      pc.tenCongDoan?.toLowerCase().includes("đóng gói")
+  ) || [];
+  const chiTietMauAll: any[] = dongGoiPCs.flatMap((pc: any) => pc.chiTietMau || []);
+  const dsMauLC = lc.dsMau && lc.dsMau.length > 0 ? lc.dsMau : [{ ten: "Mặc định", img: "" }];
+  const maSPChuan = lc.maSP || lc.id;
+  const phanLoaiChuan =
+    lc.loaiSP === "BoTru"
+      ? "Bộ Trụ"
+      : lc.loaiSP === "AoTru"
+      ? "Áo Trụ"
+      : lc.loaiSP === "AoCoTron"
+      ? "Áo Cổ Tròn"
+      : lc.loaiSP === "BoCoTron"
+      ? "Bộ Cổ Tròn"
+      : lc.loaiSP === "AoPolo"
+      ? "Áo Polo"
+      : lc.loaiSP === "PhuKien"
+      ? "Phụ Kiện"
+      : lc.loaiSP || "Bộ Trụ";
+
+  const anhDaiDien =
+    lc.hinhAnh ||
+    (maSPChuan && /^M\d{2}$/i.test(maSPChuan) ? `/product-models/${maSPChuan}.png` : "") ||
+    lc.hinhMauInTheu ||
+    "";
+
+  const ngayNhap = options?.ngayNhap || lc.hanHoanThanh || new Date().toISOString().slice(0, 10);
+  const giaVon1SP =
+    options?.giaVon1SP ||
+    Math.round(
+      lc.bangCOGS?.giaVonBinhQuan ||
+        lc.bangCOGS?.giaVon1SP ||
+        (lc as any).giaVonDuKien ||
+        (lc as any).donGia ||
+        32250
+    );
+  const kenhBan = options?.kenhBan || ["ban-le", "ban-si"];
+  const viTri = options?.viTri || "Khu A1";
+
+  return dsMauLC.map((m: any, idx: number) => {
+    const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
+    const sl = ct?.soLuongDat ?? m.slThucTe ?? m.slDuKien ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+    const chiTietSize = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
+    const strTiLeSize = chiTietSize
+      .filter((item) => item.sl > 0)
+      .map((item) => `${item.size}:${item.sl}`)
+      .join(", ");
+    const variantKey = String(m.maSKU || m.ten || idx)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]/g, "-")
+      .toUpperCase();
+    const anhMau = m.img || anhDaiDien;
+
+    const giaBanSi = options?.layGiaFn?.("ban-si", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.5);
+    const giaBanLe = options?.layGiaFn?.("ban-le", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 2);
+    const giaBanLo = options?.layGiaFn?.("ban-lo", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.3);
+    const giaTikTok = options?.layGiaFn?.("tiktok", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.8);
+    const giaShopee = options?.layGiaFn?.("shopee", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.8);
+
+    return {
+      id: `TP-${lc.id}-${variantKey}`,
+      maSP: maSPChuan,
+      tenSP: lc.tenSP || `Sản phẩm từ ${lc.id}`,
+      phanLoai: phanLoaiChuan,
+      mau: m.ten,
+      size: chiTietSize.filter((item) => item.sl > 0).map((item) => item.size).join(", ") || "Chưa có size",
+      lsx: taoMaLoTonKhoTheoDong(`TP-${lc.id}-${variantKey}`, ngayNhap),
+      maLenhCat: lc.id,
+      ngayNhap,
+      soLuong: sl,
+      donGia: giaVon1SP,
+      giaTri: sl * giaVon1SP,
+      giaVon: giaVon1SP,
+      giaBanSi: kenhBan.includes("ban-si") ? giaBanSi : 0,
+      giaBanLe: kenhBan.includes("ban-le") ? giaBanLe : 0,
+      giaBanLo: kenhBan.includes("ban-lo") ? giaBanLo : 0,
+      giaTikTok: kenhBan.includes("tiktok") ? giaTikTok : 0,
+      giaShopee: kenhBan.includes("shopee") ? giaShopee : 0,
+      kenhBan,
+      viTri,
+      trangThai: "con",
+      hinhAnh: anhMau ? [anhMau] : [],
+      imgQuan: m.imgQuan || undefined,
+      chiTietSize,
+      tiLeSize: strTiLeSize,
+    } as SanPhamTP;
+  }).filter((sp: SanPhamTP) => sp.soLuong > 0);
 }
 
 // Tự động generate danh sách SP thành phẩm từ các phiếu DG_ (Đóng gói) hoàn thành

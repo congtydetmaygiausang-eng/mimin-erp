@@ -36,7 +36,7 @@ export default function UiDongGoiPage() {
   const { upsertTuLenhCat } = usePhanCong();
   const { giaoDich } = useKho();
 
-  const { dsSanPham: dsDanhMuc, suaSP } = useDanhMucSP();
+  const { dsSanPham: dsDanhMuc, suaSP, themSP } = useDanhMucSP();
   const [khuVuc, setKhuVuc] = useState<Record<string, string>>({});
 
   const { user } = useSession();
@@ -371,6 +371,16 @@ export default function UiDongGoiPage() {
                                   }))
                                 };
                               }
+                              if (pc.id === "nhap_kho" || pc.id === "nhapKho" || pc.tenCongDoan?.toLowerCase().includes("nhập kho")) {
+                                const tongNhap = chiTietMauAll.reduce((s, c) => s + (c.soLuongDat || 0), 0);
+                                return {
+                                  ...pc,
+                                  trangThaiCD: "hoan_thanh",
+                                  soLuongHoanThanh: tongNhap,
+                                  soLuongDatCuoi: tongNhap,
+                                  ngayHoanThanh: new Date().toISOString().split("T")[0]
+                                };
+                              }
                               return pc;
                             });
                             suaLenhCat(lc.id, { dsMau: newDsMau, phanCong: newPhanCong }, user as any);
@@ -387,15 +397,17 @@ export default function UiDongGoiPage() {
                             return;
                           }
 
+                          const maSPChuan = lc.maSP || lc.id;
                           const newSPs: SanPhamTP[] = dsMauLC.map((m: any, idx: number) => {
                             const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
                             const sl = ct?.soLuongDat ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
                             const chiTietSz = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
                             const strTiLeSize = chiTietSz.filter((x: any) => x.sl > 0).map((x: any) => `${x.size}:${x.sl}`).join(", ");
                             const variantKey = String(m.maSKU || m.ten || idx).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]/g, "-").toUpperCase();
+                            const anhMau = m.img || (lc.hinhMauInTheu ? lc.hinhMauInTheu : "") || (lc.hinhAnh ? lc.hinhAnh : "") || (maSPChuan && /^M\d{2}$/i.test(maSPChuan) ? `/product-models/${maSPChuan}.png` : "");
                             return {
                               id: `TP-${lc.id}-${variantKey}`,
-                              maSP: lc.maSP || lc.id,
+                              maSP: maSPChuan,
                               tenSP: lc.tenSP,
                               phanLoai: lc.loaiSP === "BoTru" ? "Bộ Trụ" : lc.loaiSP === "AoTru" ? "Áo Trụ" : lc.loaiSP === "AoCoTron" ? "Áo Cổ Tròn" : lc.loaiSP === "BoCoTron" ? "Bộ Cổ Tròn" : lc.loaiSP === "AoPolo" ? "Áo Polo" : lc.loaiSP === "PhuKien" ? "Phụ Kiện" : "Áo",
                               mau: m.ten,
@@ -408,7 +420,7 @@ export default function UiDongGoiPage() {
                               giaTri: sl * giaVon1SP,
                               viTri: khuVuc[lc.id],
                               trangThai: "con",
-                              hinhAnh: m.img ? [m.img] : [],
+                              hinhAnh: anhMau ? [anhMau] : [],
                               imgQuan: m.imgQuan || undefined,
                               chiTietSize: chiTietSz,
                               tiLeSize: strTiLeSize,
@@ -449,7 +461,9 @@ export default function UiDongGoiPage() {
                           capNhatTrangThai(lc.id, "HoanThanh", null);
 
                           // Cập nhật lại màu và size chuẩn vào Danh mục sản phẩm
-                          const existingDM = dsDanhMuc.find(d => d.id === lc.maSP || d.maSP === lc.maSP);
+                          const existingDM = dsDanhMuc.find(d => d.id === maSPChuan || d.maSP === maSPChuan);
+                          const anhDaiDien = newSPs.find(sp => sp.hinhAnh?.[0])?.hinhAnh?.[0] || (maSPChuan && /^M\d{2}$/i.test(maSPChuan) ? `/product-models/${maSPChuan}.png` : "");
+
                           if (existingDM) {
                             const newDM = { ...existingDM };
                             let changed = false;
@@ -471,18 +485,61 @@ export default function UiDongGoiPage() {
                             newSPs.forEach(sp => {
                               const mIdx = newDsMau.findIndex(m => m.ten === sp.mau);
                               if (mIdx >= 0) {
-                                // Đã có màu này trong danh mục -> giữ nguyên
+                                if (sp.hinhAnh?.[0] && !newDsMau[mIdx].img) {
+                                  newDsMau[mIdx].img = sp.hinhAnh[0];
+                                  changed = true;
+                                }
+                                newDsMau[mIdx].soLuongKho = sp.soLuong;
                               } else {
-                                // Thêm màu mới bị phát sinh
-                                newDsMau.push({ ten: sp.mau, maSKU: `${newDM.id}-${sp.mau}`, dinhMuc: 0, img: sp.hinhAnh?.[0] || "" });
+                                newDsMau.push({ ten: sp.mau, maSKU: `${newDM.id}-${sp.mau}`, dinhMuc: 0.26, img: sp.hinhAnh?.[0] || "", soLuongKho: sp.soLuong });
                                 changed = true;
                               }
                             });
 
-                            if (changed) {
+                            if (changed || !newDM.hinhAnh) {
                               newDM.dsMau = newDsMau;
+                              if (!newDM.hinhAnh && anhDaiDien) newDM.hinhAnh = anhDaiDien;
+                              newDM.trangThai = "con-hang";
                               suaSP(newDM.id, newDM);
                             }
+                          } else {
+                            // Tự động thêm mới vào Danh Mục Sản Phẩm nếu chưa có
+                            const dsMauChoDM = newSPs.map((sp, idx) => ({
+                              ten: sp.mau,
+                              maSKU: `${maSPChuan}-${sp.mau}`,
+                              dinhMuc: lc.dsMau?.[idx]?.dinhMuc || 0.26,
+                              img: sp.hinhAnh?.[0] || "",
+                              soLuongKho: sp.soLuong,
+                            }));
+                            themSP({
+                              id: maSPChuan,
+                              maSP: maSPChuan,
+                              tenSP: lc.tenSP || maSPChuan,
+                              loaiSP: lc.loaiSP || "BoTru",
+                              giaBanDuKien: 199000,
+                              giaVonDuKien: giaVon1SP,
+                              giaBanLe: 199000,
+                              giaBanSi: 155000,
+                              tiLeSize: lc.tiLeSize || "1:1:1:1",
+                              bangSize: {
+                                sizes: lc.dsMau?.[0]?.phanBoSize?.map((s: any) => s.size) || ["L", "XL", "XXL", "3XL"],
+                                ratios: (lc.tiLeSize || "").split(":").map((n: string) => parseInt(n) || 1),
+                                riSo: 4,
+                              },
+                              dsMau: dsMauChoDM,
+                              ghiChu: `Từ lệnh cắt ${lc.id}`,
+                              ngayTao: new Date().toISOString().split("T")[0],
+                              trangThai: "con-hang",
+                              hinhAnh: anhDaiDien,
+                              ncc: lc.khachHang || "MANPJ / POLOMIMIN",
+                              thuongHieu: "Polomimin",
+                              chatLieu: "Cotton CVC",
+                            });
+                          }
+
+                          if (typeof window !== "undefined") {
+                            window.dispatchEvent(new CustomEvent("mimin:kho-thanh-pham-changed"));
+                            window.dispatchEvent(new CustomEvent("mimin:danh-muc-sp-changed"));
                           }
 
                           toast.success(`📦 Đã nhập kho ${lc.id} (${newSPs.length} màu) và chốt ${congNoCongDoan.length} khoản công đoạn`);

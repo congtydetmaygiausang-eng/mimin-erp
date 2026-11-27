@@ -1,12 +1,28 @@
 // ============ TABLE VIEW ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.3)
 
-import { Phone, Calendar, Mail, Star, Edit2, Trash2, Wallet } from "lucide-react";
+import { Phone, Calendar, Mail, Star, Edit2, Trash2, Wallet, UserCheck, UserX } from "lucide-react";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { Avatar } from "@/components/Avatar";
 import type { NhanSuExt } from "../data";
 
-export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, onEdit, onDelete }: { filtered: NhanSuExt[]; luongSPTheoNV: Record<string, number>; onShowDetail: (n: NhanSuExt) => void; onShowLuong: (n: NhanSuExt) => void; onEdit: (n: NhanSuExt) => void; onDelete: (n: NhanSuExt) => void }) {
+export function TableView({
+  filtered,
+  luongSPTheoNV,
+  onShowDetail,
+  onShowLuong,
+  onEdit,
+  onDelete,
+  onToggleTrangThai,
+}: {
+  filtered: NhanSuExt[];
+  luongSPTheoNV: Record<string, number>;
+  onShowDetail: (n: NhanSuExt) => void;
+  onShowLuong: (n: NhanSuExt) => void;
+  onEdit: (n: NhanSuExt) => void;
+  onDelete: (n: NhanSuExt) => void;
+  onToggleTrangThai?: (n: NhanSuExt) => void;
+}) {
   return (
     <div className="card overflow-hidden">
       {/* Desktop Table */}
@@ -29,15 +45,35 @@ export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, 
           <tbody>
             {filtered.map((n) => {
               const luongSP = luongSPTheoNV[n.maNV] || 0;
+              const isNghiViec = n.trangThai === "nghi_viec";
               return (
-                <tr key={n.maNV} className="border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
+                <tr
+                  key={n.maNV}
+                  className={`border-b last:border-0 ${
+                    isNghiViec
+                      ? "bg-rose-50/25 dark:bg-rose-950/10 hover:bg-rose-50/40 opacity-85"
+                      : "hover:bg-white/30 dark:hover:bg-white/5"
+                  }`}
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <td className="p-3 font-mono text-xs opacity-70">{n.maNV}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => onShowDetail(n)}>
                       <Avatar name={n.hoTen} src={n.avatar} size="sm" />
                       <div>
-                        <div className="font-medium text-teal-600 dark:text-teal-400 hover:underline">{n.hoTen}</div>
-                        <div className="text-[10px] opacity-60 flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-teal-600 dark:text-teal-400 hover:underline">{n.hoTen}</span>
+                          {isNghiViec ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300">
+                              Đã nghỉ việc
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              Đang làm
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] opacity-60 flex items-center gap-1 mt-0.5">
                           <Mail className="w-3 h-3" /> {n.email?.slice(0, 18)}
                         </div>
                       </div>
@@ -89,10 +125,23 @@ export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, 
                       <button onClick={() => onShowLuong(n)} className="text-[10px] px-1.5 py-1 rounded bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25" title="Bảng lương">
                         <Wallet className="w-3 h-3" />
                       </button>
-                      <button onClick={() => onEdit(n)} className="text-[10px] px-1.5 py-1 rounded bg-sky-500/15 text-sky-700 hover:bg-sky-500/25">
+                      {onToggleTrangThai && (
+                        <button
+                          onClick={() => onToggleTrangThai(n)}
+                          className={`text-[10px] px-1.5 py-1 rounded border ${
+                            isNghiViec
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                              : "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100"
+                          }`}
+                          title={isNghiViec ? "Kích hoạt đi làm lại" : "Đánh dấu đã nghỉ việc"}
+                        >
+                          {isNghiViec ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
+                        </button>
+                      )}
+                      <button onClick={() => onEdit(n)} className="text-[10px] px-1.5 py-1 rounded bg-sky-500/15 text-sky-700 hover:bg-sky-500/25" title="Sửa">
                         <Edit2 className="w-3 h-3" />
                       </button>
-                      <button onClick={() => onDelete(n)} className="text-[10px] px-1.5 py-1 rounded bg-red-500/15 text-red-700 hover:bg-red-500/25">
+                      <button onClick={() => onDelete(n)} className="text-[10px] px-1.5 py-1 rounded bg-red-500/15 text-red-700 hover:bg-red-500/25" title="Xóa">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -108,13 +157,21 @@ export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, 
       <div className="md:hidden flex flex-col gap-2 p-2 bg-slate-50">
         {filtered.map((n) => {
           const luongSP = luongSPTheoNV[n.maNV] || 0;
+          const isNghiViec = n.trangThai === "nghi_viec";
           return (
-            <div key={n.maNV} className="bg-white border rounded-xl p-3 shadow-sm flex flex-col gap-2 relative">
+            <div key={n.maNV} className={`bg-white border rounded-xl p-3 shadow-sm flex flex-col gap-2 relative ${isNghiViec ? "border-rose-200 bg-rose-50/20 opacity-85" : ""}`}>
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => onShowDetail(n)}>
                   <Avatar name={n.hoTen} src={n.avatar} size="md" />
                   <div>
-                    <div className="font-semibold text-teal-700">{n.hoTen}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-teal-700">{n.hoTen}</span>
+                      {isNghiViec && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                          Đã nghỉ việc
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
                       <span className="font-mono">{n.maNV}</span> • <span className="px-1.5 py-0.5 rounded bg-brand-500/15 text-brand-700 font-medium">{n.boPhan}</span>
                     </div>
@@ -155,6 +212,19 @@ export function TableView({ filtered, luongSPTheoNV, onShowDetail, onShowLuong, 
                   <button onClick={() => onShowLuong(n)} className="text-[10px] px-2 py-1 rounded bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 font-semibold flex items-center gap-1">
                     <Wallet className="w-3 h-3" /> Lương
                   </button>
+                  {onToggleTrangThai && (
+                    <button
+                      onClick={() => onToggleTrangThai(n)}
+                      className={`p-1.5 rounded border ${
+                        isNghiViec
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                          : "bg-rose-50 text-rose-700 border-rose-300"
+                      }`}
+                      title={isNghiViec ? "Kích hoạt đi làm lại" : "Đánh dấu đã nghỉ việc"}
+                    >
+                      {isNghiViec ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
                   <button onClick={() => onEdit(n)} className="p-1.5 rounded bg-sky-500/15 text-sky-700 hover:bg-sky-500/25">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>

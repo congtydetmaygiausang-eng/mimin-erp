@@ -1,20 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LayoutGrid, Table2, List } from "lucide-react";
+import { LayoutGrid, List } from "lucide-react";
 
 export type ViewMode = "table" | "card" | "list";
 
 const STORAGE_KEY = "mimin_view_mode";
 
-export function DataViewToggle({ onChange }: { onChange: (mode: ViewMode) => void }) {
-  const [mode, setMode] = useState<ViewMode>("table");
+interface DataViewToggleProps {
+  value?: ViewMode;
+  onChange: (mode: ViewMode) => void;
+  modes?: ViewMode[];
+}
+
+export function DataViewToggle({ value, onChange, modes = ["list", "card"] }: DataViewToggleProps) {
+  // Mặc định luôn là Dạng Danh Sách (list) theo yêu cầu của anh Cường
+  const [mode, setMode] = useState<ViewMode>("list");
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as ViewMode | null;
-    if (saved) {
+    if (saved === "list" || saved === "card") {
       setMode(saved);
       onChange(saved);
+    } else {
+      setMode("list");
+      localStorage.setItem(STORAGE_KEY, "list");
+      onChange("list");
     }
   }, [onChange]);
 
@@ -24,23 +35,29 @@ export function DataViewToggle({ onChange }: { onChange: (mode: ViewMode) => voi
     onChange(m);
   };
 
+  const currentMode = value !== undefined ? (value === "table" ? "list" : value) : mode;
+
+  const viewOptions = [
+    { id: "list" as ViewMode, icon: List, label: "Danh Sách" },
+    { id: "card" as ViewMode, icon: LayoutGrid, label: "Dạng Thẻ" },
+  ].filter((opt) => modes.includes(opt.id));
+
   return (
-    <div className="card p-1 inline-flex">
-      {([
-        { id: "table", icon: Table2, label: "Bảng" },
-        { id: "card", icon: LayoutGrid, label: "Card" },
-        { id: "list", icon: List, label: "Danh sách" },
-      ] as { id: ViewMode; icon: any; label: string }[]).map((v) => (
+    <div className="p-1 inline-flex bg-slate-100 rounded-xl border border-slate-200 shadow-2xs">
+      {viewOptions.map((v) => (
         <button
           key={v.id}
+          type="button"
           onClick={() => set(v.id)}
-          className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition ${
-            mode === v.id ? "bg-brand-500 text-white shadow" : "hover:bg-white/40 dark:hover:bg-white/5"
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+            currentMode === v.id
+              ? "bg-teal-700 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
           }`}
-          title={v.label}
+          title={v.id === "list" ? "Dạng danh sách theo từng dòng (Tối ưu xem nhiều SP)" : "Dạng thẻ hình ảnh lớn"}
         >
           <v.icon className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{v.label}</span>
+          <span>{v.label}</span>
         </button>
       ))}
     </div>

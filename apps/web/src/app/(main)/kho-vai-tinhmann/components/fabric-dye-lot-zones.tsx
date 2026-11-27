@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Boxes, CheckCircle2, Plus } from "lucide-react";
+import { Boxes, CheckCircle2, Plus, QrCode, X } from "lucide-react";
 import { toast } from "sonner";
+import QRCode from "qrcode";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
+import { Portal } from "@/components/ui/Portal";
 import { formatVND, type KhoVai } from "@/lib/data/real-data";
 import {
   approveFabricDyeLot,
@@ -25,6 +27,7 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
   const [lots, setLots] = useState<FabricDyeLot[]>([]);
   const [open, setOpen] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [detailLot, setDetailLot] = useState<FabricDyeLot | null>(null);
 
   const refresh = async () => {
     let currentLots = await fetchFabricDyeLots();
@@ -69,6 +72,7 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
                       sku: m.maVai || `VAI-TP-${idx + 1}`,
                       mauSac: m.mau,
                       ngayNhap: lenh.ngayTao ? new Date(lenh.ngayTao).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+                      ngayNhuom: lenh.ngayNhuom ? new Date(lenh.ngayNhuom).toISOString().slice(0, 10) : "",
                       xuongNhuom: lenh.tenXuongNhuom || "Xưởng nhuộm Á Châu",
                       donGia: giaVon,
                       soKgNhap: Number(m.soKg),
@@ -119,8 +123,9 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
   const fields = useMemo<FieldDef[]>(() => [
     { name: "maMe", label: "Mã mẻ nhuộm", type: "text", required: true, placeholder: "MN-20260829-01" },
     { name: "sku", label: "Mã vải trong kho", type: "select", required: true, options: inventory.map((vai) => ({ value: vai.maVT, label: `${vai.maVT} - ${vai.tenVT}` })) },
-    { name: "ngayNhap", label: "Ngày nhập", type: "date", required: true },
-    { name: "xuongNhuom", label: "Xưởng nhuộm", type: "text" },
+    { name: "ngayNhuom", label: "Ngày nhuộm", type: "date" },
+    { name: "ngayNhap", label: "Ngày nhập kho", type: "date", required: true },
+    { name: "xuongNhuom", label: "Xưởng / Nhà nhuộm", type: "text" },
     { name: "donGia", label: "Giá vốn mỗi kg", type: "number", required: true, min: 0 },
     { name: "soKgNhap", label: "Số kg nhập", type: "number", required: true, min: 0, step: "any" },
     { name: "soCay", label: "Số cây", type: "number", min: 0 },
@@ -163,7 +168,12 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
                   const vai = inventory.find((item) => item.maVT === lot.sku);
                   const tenVaiHienThi = vai?.tenVT || (lot.sku.includes("COTTON") ? `Vải Cotton 100% (${lot.sku})` : lot.sku);
                   return (
-                    <article key={lot.id} className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
+                    <article
+                      key={lot.id}
+                      onClick={() => setDetailLot(lot)}
+                      className="cursor-pointer rounded-xl border border-slate-100 p-3 transition hover:border-teal-300 hover:shadow-sm dark:border-slate-800 dark:hover:border-teal-700"
+                      title="Bấm để xem chi tiết vải"
+                    >
                       <div className="flex justify-between gap-3">
                         <div>
                           <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
@@ -188,7 +198,8 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
                         <button
                           type="button"
                           disabled={approvingId === lot.id}
-                          onClick={async () => {
+                          onClick={async (event) => {
+                            event.stopPropagation();
                             setApprovingId(lot.id);
                             try {
                               await approveFabricDyeLot(lot);
@@ -219,7 +230,7 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
         onClose={() => setOpen(false)}
         title="Thêm mẻ nhuộm vào khu vải"
         fields={fields}
-        initial={{ ngayNhap: new Date().toISOString().slice(0, 10), khu: "C" }}
+        initial={{ ngayNhap: new Date().toISOString().slice(0, 10), ngayNhuom: new Date().toISOString().slice(0, 10), khu: "C" }}
         onSubmit={async (values) => {
           const vai = inventory.find((item) => item.maVT === values.sku);
           if (!vai) throw new Error("Mã vải không còn trong Kho vải hiện tại");
@@ -227,7 +238,8 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
           const soKgNhap = Number(values.soKgNhap);
           await createFabricDyeLot({
             maMe: values.maMe.trim(), sku: vai.maVT, mauSac: vai.mauChuan || vai.mauSac,
-            ngayNhap: values.ngayNhap, xuongNhuom: values.xuongNhuom || "", donGia: Number(values.donGia),
+            ngayNhap: values.ngayNhap, ngayNhuom: values.ngayNhuom || values.ngayNhap,
+            xuongNhuom: values.xuongNhuom || "", donGia: Number(values.donGia),
             soKgNhap, tonKg: soKgNhap, soCay: Number(values.soCay || 0), khu, ke: values.ke || "",
             tang: "", o: "", trangThai: TRANG_THAI_THEO_KHU[khu], ghiChu: values.ghiChu || "",
           });
@@ -235,6 +247,102 @@ export function FabricDyeLotZones({ inventory }: { inventory: KhoVai[] }) {
         }}
         submitLabel="Lưu mẻ nhuộm"
       />
+
+      {detailLot && (
+        <FabricDyeLotDetailModal
+          lot={detailLot}
+          tenVai={inventory.find((item) => item.maVT === detailLot.sku)?.tenVT}
+          onClose={() => setDetailLot(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FabricDyeLotDetailModal({
+  lot,
+  tenVai,
+  onClose,
+}: {
+  lot: FabricDyeLot;
+  tenVai?: string;
+  onClose: () => void;
+}) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    const qrText = [
+      `Mã mẻ: ${lot.maMe}`,
+      `Mã vải: ${lot.sku}`,
+      `Màu: ${lot.mauSac}`,
+      `Nhà nhuộm: ${lot.xuongNhuom || "—"}`,
+      `Ngày nhuộm: ${lot.ngayNhuom || "—"}`,
+      `Ngày nhập kho: ${lot.ngayNhap}`,
+    ].join("\n");
+    let cancelled = false;
+    QRCode.toDataURL(qrText, { width: 220, margin: 1 })
+      .then((url) => { if (!cancelled) setQrDataUrl(url); })
+      .catch(() => { if (!cancelled) setQrDataUrl(""); });
+    return () => { cancelled = true; };
+  }, [lot]);
+
+  return (
+    <Portal>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+        onClick={onClose}
+      >
+        <div
+          className="card max-w-md w-full p-6 animate-slide-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <QrCode className="w-5 h-5 text-teal-600" />
+              Chi tiết mẻ nhuộm {lot.maMe}
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center gap-2 mb-4">
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt={`QR mẻ nhuộm ${lot.maMe}`} className="w-40 h-40 rounded-lg border border-slate-200 dark:border-slate-700" />
+            ) : (
+              <div className="w-40 h-40 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xs text-slate-400">
+                Đang tạo QR...
+              </div>
+            )}
+            <span className="text-[11px] text-slate-400">Quét để xem thông tin mẻ nhuộm</span>
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <Row label="Mã vải" value={`${lot.sku}${tenVai ? ` — ${tenVai}` : ""}`} />
+            <Row label="Màu" value={lot.mauSac} />
+            <Row label="Nhà nhuộm / Xưởng" value={lot.xuongNhuom || "Chưa ghi"} />
+            <Row label="Ngày nhuộm" value={lot.ngayNhuom || "Chưa ghi"} />
+            <Row label="Ngày nhập kho" value={lot.ngayNhap} />
+            <Row label="Tồn / Đã nhập" value={`${lot.tonKg.toLocaleString("vi-VN")} / ${lot.soKgNhap.toLocaleString("vi-VN")} kg · ${lot.soCay} cây`} />
+            <Row label="Giá vốn" value={`${formatVND(lot.donGia)}/kg`} />
+            <Row label="Vị trí" value={`Khu ${lot.khu} · Kệ ${lot.ke || "chưa xếp"}`} />
+            {lot.ghiChu && <Row label="Ghi chú" value={lot.ghiChu} />}
+          </div>
+        </div>
+      </div>
+    </Portal>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-slate-100 dark:border-slate-800 py-1.5 last:border-0">
+      <span className="text-slate-500 flex-shrink-0">{label}</span>
+      <span className="font-semibold text-slate-800 dark:text-slate-100 text-right">{value}</span>
     </div>
   );
 }

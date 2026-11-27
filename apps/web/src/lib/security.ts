@@ -7,8 +7,8 @@ const SESSION_TTL_KEY = "mimin_session_ttl_v1";
 const MAX_FAILED_LOGIN = 5;
 const LOCKOUT_DURATION = 5 * 60 * 1000;  // 5 phút
 
-// Session TTL: 8 giờ
-const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+// Session TTL: 24 giờ (bao trọn cả ca làm việc ngày và tăng ca, tránh hết phiên giữa chiều)
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 function fromStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === "undefined") return defaultValue;

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "@/components/session-provider";
-import { canView, type Module } from "@/lib/permissions";
+import { canView, getAccessibleModules, getDefaultLandingRoute, type Module } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit-log";
 import { Lock, ShieldCheck, Loader2 } from "lucide-react";
 import { getModuleForPath } from "@/lib/route-permissions";
@@ -109,13 +109,29 @@ function findRouteModule(pathname: string) {
 }
 
 export default function PageGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useSession();
+  const { user, loading, signOut } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   usePermissionRevision();
 
   useEffect(() => { setMounted(true); }, []);
+
+  const userRoles = user ? (user.roles || [user.role]).filter(Boolean) : [];
+  const hasAnyAccessibleModule = userRoles.some((r) => getAccessibleModules(r).length > 0);
+  const landingRoute = getDefaultLandingRoute(user?.role);
+  const normalizedPath = pathname?.replace(/\/+$/, "") || "/";
+  const isDashboardEntry = normalizedPath === "/dashboard";
+  const canAccessDashboard = userRoles.some((r) => canView(r, "dashboard"));
+  const shouldAutoRedirectFromDashboard = Boolean(
+    mounted && !loading && user && isDashboardEntry && !canAccessDashboard && hasAnyAccessibleModule && landingRoute !== "/dashboard"
+  );
+
+  useEffect(() => {
+    if (shouldAutoRedirectFromDashboard) {
+      router.replace(landingRoute);
+    }
+  }, [shouldAutoRedirectFromDashboard, landingRoute, router]);
 
   useEffect(() => {
     if (!mounted || loading) return;
@@ -135,11 +151,11 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, pathname, mounted]);
 
-  if (loading || !mounted) {
+  if (loading || !mounted || shouldAutoRedirectFromDashboard) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-        <span className="ml-2 text-sm text-slate-500">Đang tải…</span>
+        <span className="ml-2 text-sm text-slate-500">{shouldAutoRedirectFromDashboard ? "Đang chuyển trang…" : "Đang tải…"}</span>
       </div>
     );
   }
@@ -162,6 +178,32 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  const landingLabel =
+    landingRoute === "/cham-cong"
+      ? "Về Chấm công"
+      : landingRoute === "/trang-chu-gia-cong"
+        ? "Về Trang gia công"
+        : "Về Dashboard";
+
+  const handleSwitchAccount = async () => {
+    await signOut();
+    router.replace("/login");
+  };
+
+  const renderFallbackActions = () => (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {hasAnyAccessibleModule ? (
+        <button onClick={() => router.replace(landingRoute)} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white">
+          {landingLabel}
+        </button>
+      ) : (
+        <button onClick={() => void handleSwitchAccount()} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white">
+          Đăng xuất / Đổi tài khoản
+        </button>
+      )}
+    </div>
+  );
+
   const route = findRouteModule(pathname);
   if (!route) {
     return (
@@ -170,13 +212,13 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
           <ShieldCheck className="mx-auto mb-3 h-12 w-12 text-amber-500" />
           <h2 className="mb-1 text-lg font-bold">Trang chưa được khai báo quyền</h2>
           <p className="mb-3 text-sm text-slate-500">Quản trị viên cần gán module cho đường dẫn <b>{pathname}</b>.</p>
-          <button onClick={() => router.replace("/dashboard")} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white">Về Dashboard</button>
+          {renderFallbackActions()}
         </div>
       </div>
     );
   }
 
-  if (!(user.roles || [user.role]).some(role => canView(role, route.module))) {
+  if (!userRoles.some(role => canView(role, route.module))) {
     logAudit({ user, action: "permission_denied", module: route.module as any, description: `Denied ${pathname}`, }).catch(() => {});
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">
@@ -184,8 +226,13 @@ export default function PageGuard({ children }: { children: React.ReactNode }) {
           <ShieldCheck className="w-12 h-12 mx-auto text-rose-500 mb-3" />
           <h2 className="text-lg font-bold mb-1">Không có quyền truy cập</h2>
           <p className="text-sm text-slate-500 mb-1">Module: <b>{route.module}</b></p>
-          <p className="text-xs text-slate-400 mb-3">Role hiện tại: {user.role}</p>
-          <button onClick={() => router.replace("/dashboard")} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold">Về Dashboard</button>
+          <p className="text-xs text-slate-400 mb-2">Tài khoản: {user.email || "—"} · Role: {user.role}</p>
+          {!hasAnyAccessibleModule && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mb-3">
+              Tài khoản này chưa được cấp quyền chấm công/nội bộ. Vui lòng đăng xuất và đăng nhập đúng email @mimin.vn được cấp.
+            </p>
+          )}
+          {renderFallbackActions()}
         </div>
       </div>
     );

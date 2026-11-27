@@ -102,12 +102,47 @@ export const SIZE_RATIO_4SIZE: SizeRatioPreset[] = [
 ];
 
 /**
- * Tổng hợp cả 2 bảng (giữ tương thích với code cũ)
+ * BẢNG 3: BỎ M (4 size lớn: L, XL, 2XL, 3XL)
+ * Rất phổ biến cho form áo nam / hàng đặt theo yêu cầu
+ */
+export const SIZE_RATIO_4SIZE_L3XL: SizeRatioPreset[] = [
+  {
+    id: "4s-l3xl-2-2-2-2",
+    label: "L:XL:2XL:3XL = 2:2:2:2 (Ri8)",
+    value: "2:2:2:2",
+    sizes: ["L", "XL", "2XL", "3XL"],
+    ratios: [2, 2, 2, 2],
+    riSo: 8,
+    ghiChu: "Phân bổ đều 4 size lớn L-3XL (Ri8)",
+  },
+  {
+    id: "4s-l3xl-1-1-1-1",
+    label: "L:XL:2XL:3XL = 1:1:1:1 (Ri4)",
+    value: "1:1:1:1",
+    sizes: ["L", "XL", "2XL", "3XL"],
+    ratios: [1, 1, 1, 1],
+    riSo: 4,
+    ghiChu: "Phân bổ đều 4 size lớn L-3XL (Ri4)",
+  },
+  {
+    id: "4s-l3xl-1-2-2-1",
+    label: "L:XL:2XL:3XL = 1:2:2:1 (Ri6)",
+    value: "1:2:2:1",
+    sizes: ["L", "XL", "2XL", "3XL"],
+    ratios: [1, 2, 2, 1],
+    riSo: 6,
+    ghiChu: "Tập trung size XL/2XL (Ri6)",
+  },
+];
+
+/**
+ * Tổng hợp các bảng chuẩn (giữ tương thích với code cũ)
  * Dùng khi cần list tất cả size ratio
  */
 export const SIZE_RATIO_PRESETS: SizeRatioPreset[] = [
   ...SIZE_RATIO_5SIZE,
   ...SIZE_RATIO_4SIZE,
+  ...SIZE_RATIO_4SIZE_L3XL,
 ];
 
 /**
@@ -219,4 +254,24 @@ export async function saveSharedSizeRatioPreset(preset: SizeRatioPreset): Promis
   const res = saveCustomSizeRatioPreset(preset);
   notifySizeRatioChanged();
   return res;
+}
+
+/** Xóa bảng size tự tạo khỏi Supabase và local cache */
+export async function deleteSharedSizeRatioPreset(id: string): Promise<SizeRatioPreset[]> {
+  if (supabase) {
+    try {
+      await supabase.from("bang_size").delete().eq("id", id);
+    } catch (e) {
+      console.error("Lỗi xóa bang_size trên Supabase:", e);
+    }
+  }
+  const current = loadCustomSizeRatioPresets();
+  const next = current.filter((item) => item.id !== id);
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(next));
+    } catch {}
+  }
+  notifySizeRatioChanged();
+  return next;
 }

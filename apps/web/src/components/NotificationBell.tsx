@@ -174,17 +174,17 @@ export function NotificationBell() {
       nguon: "engine",
     }));
 
-    // 3. Quét Thu Chi Nội Bộ (các khoản chi lớn phát sinh)
+    // 3. Quét Thu Chi Nội Bộ (chỉ cảnh báo khoản chi lớn từ 15 triệu)
     const thuChiNotis: UnifiedNotification[] = [];
     try {
       const dsThuChi = getDanhSachThuChi();
       for (const tc of dsThuChi.slice(0, 10)) {
-        if (tc.loai === "chi" && tc.soTien >= 2000000) {
+        if (tc.loai === "chi" && tc.soTien >= 15000000 && thuChiNotis.length < 1) {
           const id = `tc-lon-${tc.id}`;
           thuChiNotis.push({
             id,
             loai: "thu-chi",
-            mucDo: tc.soTien >= 5000000 ? "cao" : "trung-binh",
+            mucDo: "trung-binh",
             tieuDe: `Khoản chi lớn: ${formatVNDShort(tc.soTien)}`,
             noiDung: `${tc.noiDung} · Người chi: ${tc.nguoiThucHien} (${tc.ngay})`,
             doiTuong: tc.nguoiThucHien,

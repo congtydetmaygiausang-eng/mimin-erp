@@ -24,6 +24,7 @@ export default function NhanSuPage() {
   const { list, capNhatDaLuu, xoaNhanSu, themNhanSu, suaNhanSu, loading } = useNhanSu();
   const [search, setSearch] = useState("");
   const [filterBP, setFilterBP] = useState<string>("all");
+  const [filterTrangThai, setFilterTrangThai] = useState<"all" | "dang_lam" | "nghi_viec">("all");
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; nv?: NhanSuExt } | null>(null);
   const [showLuong, setShowLuong] = useState<NhanSuExt | null>(null);
   const [showDetail, setShowDetail] = useState<NhanSuExt | null>(null);
@@ -50,14 +51,29 @@ export default function NhanSuPage() {
     const bp = new Set<string>();
     let tongLuongCung = 0;
     let dsSanXuat = 0, dsKho = 0, dsQC = 0;
+    let dangLamCount = 0, nghiViecCount = 0;
     for (const n of dedupedList) {
       bp.add(n.boPhan);
-      tongLuongCung += n.luongCung || 0;
+      if (n.trangThai === "nghi_viec") {
+        nghiViecCount++;
+      } else {
+        dangLamCount++;
+        tongLuongCung += n.luongCung || 0;
+      }
       if (n.boPhan === "Sản xuất") dsSanXuat++;
       if (n.boPhan === "Kho vận") dsKho++;
       if (n.boPhan === "QC") dsQC++;
     }
-    return { tongNV: dedupedList.length, dsBP: Array.from(bp), tongLuongCung, dsSanXuat, dsKho, dsQC };
+    return {
+      tongNV: dedupedList.length,
+      dangLamCount,
+      nghiViecCount,
+      dsBP: Array.from(bp),
+      tongLuongCung,
+      dsSanXuat,
+      dsKho,
+      dsQC,
+    };
   }, [dedupedList]);
 
   // Lương sản phẩm từ PHAN_CONG (memoize)
@@ -81,9 +97,11 @@ export default function NhanSuPage() {
         (y) => (y || "").toLowerCase().includes(q)
       );
       const matchBP = filterBP === "all" || n.boPhan === filterBP;
-      return matchSearch && matchBP;
+      const status = n.trangThai === "nghi_viec" ? "nghi_viec" : "dang_lam";
+      const matchTrangThai = filterTrangThai === "all" || status === filterTrangThai;
+      return matchSearch && matchBP && matchTrangThai;
     });
-  }, [dedupedList, search, filterBP]);
+  }, [dedupedList, search, filterBP, filterTrangThai]);
 
   const handleSave = useCallback(async (nv: NhanSuExt) => {
     if (showForm?.mode === "add") {
@@ -92,6 +110,24 @@ export default function NhanSuPage() {
       await suaNhanSu(nv);
     }
   }, [themNhanSu, suaNhanSu, showForm?.mode]);
+
+  const handleToggleTrangThai = useCallback(async (nv: NhanSuExt) => {
+    const isNghi = nv.trangThai === "nghi_viec";
+    const nextStatus = isNghi ? "dang_lam" : "nghi_viec";
+    const confirmMsg = isNghi
+      ? `Kích hoạt cho nhân viên "${nv.hoTen}" (${nv.maNV}) đi làm lại?`
+      : `Đánh dấu nhân viên "${nv.hoTen}" (${nv.maNV}) đã nghỉ việc?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    const updated = { ...nv, trangThai: nextStatus };
+    const ok = await suaNhanSu(updated);
+    if (ok) {
+      toast.success(isNghi ? `Đã kích hoạt lại: ${nv.hoTen}` : `Đã chuyển sang đã nghỉ việc: ${nv.hoTen}`);
+    } else {
+      toast.error("Không thể cập nhật trạng thái nhân viên");
+    }
+  }, [suaNhanSu]);
 
   const handleDelete = useCallback(async (nv: NhanSuExt) => {
     if (!confirm(`Xoá NV "${nv.hoTen}"?`)) return;
@@ -105,15 +141,56 @@ export default function NhanSuPage() {
   }, [xoaNhanSu]);
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-5 animate-fade-in w-full max-w-full overflow-x-hidden">
       <NhanSuTabs />
       <HeaderBanner tongNV={kpis.tongNV} tongLuongCung={kpis.tongLuongCung} onAdd={() => setShowForm({ mode: "add" })} />
       <KpiCards kpis={kpis} />
-      <Filters list={list} dsBP={kpis.dsBP} filterBP={filterBP} setFilterBP={setFilterBP} search={search} setSearch={setSearch} viewMode={viewMode} setViewMode={setViewMode} />
+      <Filters
+        list={list}
+        dsBP={kpis.dsBP}
+        filterBP={filterBP}
+        setFilterBP={setFilterBP}
+        filterTrangThai={filterTrangThai}
+        setFilterTrangThai={setFilterTrangThai}
+        search={search}
+        setSearch={setSearch}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+      />
 
-      {viewMode === "table" && <TableView filtered={filtered} luongSPTheoNV={luongSPTheoNV} onShowDetail={setShowDetail} onShowLuong={setShowLuong} onEdit={(n) => setShowForm({ mode: "edit", nv: n })} onDelete={handleDelete} />}
-      {viewMode === "card" && <CardView filtered={filtered} luongSPTheoNV={luongSPTheoNV} onShowDetail={setShowDetail} onShowLuong={setShowLuong} onEdit={(n) => setShowForm({ mode: "edit", nv: n })} onDelete={handleDelete} />}
-      {viewMode === "list" && <ListView filtered={filtered} luongSPTheoNV={luongSPTheoNV} onShowDetail={setShowDetail} onShowLuong={setShowLuong} onEdit={(n) => setShowForm({ mode: "edit", nv: n })} onDelete={handleDelete} />}
+      {viewMode === "table" && (
+        <TableView
+          filtered={filtered}
+          luongSPTheoNV={luongSPTheoNV}
+          onShowDetail={setShowDetail}
+          onShowLuong={setShowLuong}
+          onEdit={(n) => setShowForm({ mode: "edit", nv: n })}
+          onDelete={handleDelete}
+          onToggleTrangThai={handleToggleTrangThai}
+        />
+      )}
+      {viewMode === "card" && (
+        <CardView
+          filtered={filtered}
+          luongSPTheoNV={luongSPTheoNV}
+          onShowDetail={setShowDetail}
+          onShowLuong={setShowLuong}
+          onEdit={(n) => setShowForm({ mode: "edit", nv: n })}
+          onDelete={handleDelete}
+          onToggleTrangThai={handleToggleTrangThai}
+        />
+      )}
+      {viewMode === "list" && (
+        <ListView
+          filtered={filtered}
+          luongSPTheoNV={luongSPTheoNV}
+          onShowDetail={setShowDetail}
+          onShowLuong={setShowLuong}
+          onEdit={(n) => setShowForm({ mode: "edit", nv: n })}
+          onDelete={handleDelete}
+          onToggleTrangThai={handleToggleTrangThai}
+        />
+      )}
 
       {showForm && <NVFormModal mode={showForm.mode} nv={showForm.nv} existingCount={list.length} existingCodes={list.map((nv) => nv.maNV)} onClose={() => setShowForm(null)} onSave={handleSave} />}
       {showDetail && <ChiTietNhanSuModal nv={showDetail} luongSP={luongSPTheoNV[showDetail.maNV] || 0} onClose={() => setShowDetail(null)} onEdit={() => { const target = showDetail; setShowDetail(null); setShowForm({ mode: "edit", nv: target }); }} onLuong={() => { const target = showDetail; setShowDetail(null); setShowLuong(target); }} />}
