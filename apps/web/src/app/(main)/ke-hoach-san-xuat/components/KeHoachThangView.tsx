@@ -20,6 +20,7 @@ import {
 } from "@/lib/data/monthly-production-planner";
 import { KHO_VAI, KHO_VAT_TU, formatVND } from "@/lib/data/real-data";
 import { useRouter } from "next/navigation";
+import { fetchKeHoach30Ngay, gomNhomTheoLoaiSP } from "@/lib/data/ke-hoach-30-ngay-store";
 
 const STORAGE_KEY = "mimin_ke_hoach_thang_v2";
 
@@ -54,8 +55,9 @@ export function KeHoachThangView() {
     return KHO_VAI.filter((v) => v.donGia > 0);
   }, []);
 
-  // Load từ localStorage nếu có
+  // Load từ localStorage nếu có; nếu chưa từng lưu kế hoạch nào thì tự lấy số liệu từ Kế hoạch 30 ngày
   useEffect(() => {
+    let daCoKeHoachLuu = false;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -68,9 +70,30 @@ export function KeHoachThangView() {
         if (parsed.donGiaVai) setDonGiaVai(parsed.donGiaVai);
         if (parsed.donGiaBo) setDonGiaBo(parsed.donGiaBo);
         if (parsed.donGiaMay) setDonGiaMay(parsed.donGiaMay);
+        daCoKeHoachLuu = true;
       }
     } catch {}
+    if (!daCoKeHoachLuu) {
+      void handleLayTuKeHoach30Ngay(false);
+    }
   }, []);
+
+  // Lấy số lượng từ bảng "Kế hoạch sản xuất 30 ngày" (gộp theo 4 nhóm Áo tròn/Áo trụ/Bộ tròn/Bộ trụ)
+  const handleLayTuKeHoach30Ngay = async (thongBao = true) => {
+    const items = await fetchKeHoach30Ngay();
+    if (items.length === 0) {
+      if (thongBao) toast.info("Chưa có dòng nào trong Kế hoạch sản xuất 30 ngày");
+      return;
+    }
+    const nhom = gomNhomTheoLoaiSP(items);
+    if (nhom.tong === 0) {
+      if (thongBao) toast.info("Kế hoạch 30 ngày chưa có dòng nào khớp 4 nhóm Áo tròn/Áo trụ/Bộ tròn/Bộ trụ");
+      return;
+    }
+    setQuantities({ aoTron: nhom.aoTron, aoTru: nhom.aoTru, boTron: nhom.boTron, boTru: nhom.boTru });
+    setTargetTotal(nhom.tong);
+    if (thongBao) toast.success(`Đã lấy ${nhom.tong.toLocaleString("vi-VN")} SP từ Kế hoạch 30 ngày`);
+  };
 
   // Khi chọn vải cụ thể trong kho, cập nhật đơn giá vải theo kho
   const handleSelectVaiKho = (maVT: string) => {
@@ -248,6 +271,15 @@ export function KeHoachThangView() {
 
           {/* Cụm nút thao tác */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleLayTuKeHoach30Ngay(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+              title="Lấy số lượng từ bảng Kế hoạch sản xuất 30 ngày"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Lấy Từ KH 30 Ngày</span>
+            </button>
             <button
               type="button"
               onClick={() => setShowHaoHutConfig(!showHaoHutConfig)}

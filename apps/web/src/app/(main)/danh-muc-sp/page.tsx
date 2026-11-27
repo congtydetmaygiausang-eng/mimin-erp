@@ -6,8 +6,8 @@
 // ============================================
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store, RotateCcw } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store, RotateCcw, Send } from "lucide-react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { useGioHang } from "@/lib/data/gio-hang-store";
@@ -57,7 +57,19 @@ const getStrictPhanLoaiKey = (phanLoai: string): SanPham["loaiSP"] => {
 
 export default function DanhMucSanPhamPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useSession();
+
+  useEffect(() => {
+    const zaloStatus = searchParams.get("zalo");
+    if (zaloStatus === "success") {
+      toast.success("Đã kết nối Zalo OA thành công!");
+      router.replace("/danh-muc-sp");
+    } else if (zaloStatus === "error") {
+      toast.error(`Kết nối Zalo OA thất bại: ${searchParams.get("msg") || "Lỗi không xác định"}`);
+      router.replace("/danh-muc-sp");
+    }
+  }, [searchParams, router]);
   const { themKHSX } = useKHSX();
   const { dsSanPham, loading, themSP, suaSP, xoaSP, refresh } = useDanhMucSP();
   const { items: gioHangItems, themVaoGio, themNhieuVaoGio, capNhatSoLuong, xoaKhoiGio, xoaGio, tongSoLuong: soLuongTrongGio } = useGioHang();
@@ -686,6 +698,12 @@ export default function DanhMucSanPhamPage() {
                 >
                   <Plus className="w-4 h-4 md:w-5 md:h-5"/> Tạo Mới
                 </button>
+                <a
+                  href="/api/zalo/connect"
+                  className="col-span-2 flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 bg-sky-600 text-white font-extrabold rounded-xl md:rounded-2xl shadow-lg hover:bg-sky-500 transition-colors whitespace-nowrap text-sm"
+                >
+                  <Send className="w-4 h-4 md:w-5 md:h-5" /> Kết Nối Zalo OA
+                </a>
               </div>
             </div>
             

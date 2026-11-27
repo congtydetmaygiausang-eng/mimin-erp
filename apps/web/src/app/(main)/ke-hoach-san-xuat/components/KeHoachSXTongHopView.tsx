@@ -12,6 +12,7 @@ import type { LenhCat } from "@/lib/data/lenh-cat-store";
 import { useDieuPhoiKHSX, type ThongTinDieuPhoi, type TrangThaiBo, type TrangThaiVatTu } from "@/lib/data/dieu-phoi-khsx-store";
 import { DieuPhoiLenhCatModal } from "./DieuPhoiLenhCatModal";
 import { KeHoachThangView } from "./KeHoachThangView";
+import { KeHoach30NgayView } from "./KeHoach30NgayView";
 
 interface KeHoachSXTongHopViewProps {
   dsLenhCat: LenhCat[];
@@ -26,8 +27,8 @@ export function KeHoachSXTongHopView({
 }: KeHoachSXTongHopViewProps) {
   const { dieuPhoiMap, getDieuPhoi, capNhatDieuPhoi, toggleDuBo, toggleDuVai } = useDieuPhoiKHSX();
 
-  // Mode chính trong Tổng hợp: Kế hoạch 1 tháng (MRP) HOẶC Điều phối lệnh cắt
-  const [tongHopMode, setTongHopMode] = useState<"ke_hoach_thang" | "dieu_phoi_lenh">("ke_hoach_thang");
+  // Mode chính trong Tổng hợp: Kế hoạch 1 tháng (MRP) HOẶC Kế hoạch 30 ngày HOẶC Điều phối lệnh cắt
+  const [tongHopMode, setTongHopMode] = useState<"ke_hoach_thang" | "ke_hoach_30_ngay" | "dieu_phoi_lenh">("ke_hoach_30_ngay");
 
   // Tab phân chia 2 mục trong Điều phối lệnh:
   // 1: "chua_lam" -> Đang chuẩn bị triển khai & chưa hoàn thành
@@ -121,7 +122,20 @@ export function KeHoachSXTongHopView({
     <div className="space-y-4 animate-fade-in w-full">
       {/* THANH CHUYỂN ĐỔI CHẾ ĐỘ: KẾ HOẠCH THÁNG (MRP 40.000 SP) & ĐIỀU PHỐI TRIỂN KHAI LỆNH CẮT */}
       <div className="bg-slate-100/90 dark:bg-slate-800/80 p-1.5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border border-slate-200/80 dark:border-slate-700/60 shadow-2xs">
-        <div className="grid grid-cols-2 gap-1.5 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 flex-1">
+          <button
+            type="button"
+            onClick={() => setTongHopMode("ke_hoach_30_ngay")}
+            className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              tongHopMode === "ke_hoach_30_ngay"
+                ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-200 dark:border-emerald-800"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-white/50 dark:hover:bg-slate-700/50"
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-emerald-600" />
+            <span>Kế Hoạch Sản Xuất 30 Ngày</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setTongHopMode("ke_hoach_thang")}
@@ -132,7 +146,7 @@ export function KeHoachSXTongHopView({
             }`}
           >
             <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-            <span>Kế Hoạch Tháng & Dự Trù Vật Tư (40.000 SP)</span>
+            <span>Kế Hoạch Tháng & Dự Trù Vật Tư</span>
             <span className="hidden md:inline-flex text-[10px] px-2 py-0.5 rounded-full font-black bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
               MRP Tự Động
             </span>
@@ -149,16 +163,15 @@ export function KeHoachSXTongHopView({
           >
             <Scissors className="w-4 h-4 text-teal-600" />
             <span>Điều Phối Triển Khai Lệnh Cắt ({dsLenhCat.length})</span>
-            <span className="hidden md:inline-flex text-[10px] px-2 py-0.5 rounded-full font-black bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-              10 Lệnh
-            </span>
           </button>
         </div>
       </div>
 
-      {/* RENDER CHẾ ĐỘ 1: KẾ HOẠCH THÁNG & BÓC TÁCH VẬT TƯ (MRP 40.000 SP) */}
+      {/* RENDER CHẾ ĐỘ 1: KẾ HOẠCH THÁNG & BÓC TÁCH VẬT TƯ (MRP) */}
       {tongHopMode === "ke_hoach_thang" ? (
         <KeHoachThangView />
+      ) : tongHopMode === "ke_hoach_30_ngay" ? (
+        <KeHoach30NgayView />
       ) : (
         /* RENDER CHẾ ĐỘ 2: ĐIỀU PHỐI TRIỂN KHAI 10 LỆNH CẮT THỰC TẾ */
         <div className="space-y-4">
