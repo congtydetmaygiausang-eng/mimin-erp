@@ -454,12 +454,12 @@ export default function ChamCongPage() {
       }
 
       if (targetHours > 0) {
-        toast.success(`🎉 Đã ghi nhận tăng ca thành công: +${targetHours}h`, {
-          description: `Ngày ${date} cho ${employee.hoTen} (${employee.maNV})`,
-          duration: 6000,
+        toast.success(`Đã ghi nhận tăng ca: +${targetHours}h (${employee.hoTen})`, {
+          description: `Ngày ${date}`,
+          duration: 3500,
         });
       } else {
-        toast.info(`Đã xóa giờ tăng ca ngày ${date} của ${employee.hoTen}.`, { duration: 4000 });
+        toast.info(`Đã xóa giờ tăng ca ngày ${date} của ${employee.hoTen}.`, { duration: 3000 });
       }
       return true;
     } catch (err) {
@@ -666,11 +666,11 @@ export default function ChamCongPage() {
               {TRANG_THAI_CHAM_CONG.map((status) => <span key={status.value} className={`rounded-md px-2 py-1 font-semibold ${status.className}`}>{status.shortLabel} · {status.label}</span>)}
             </div>
           </div>
-          <div className="overflow-x-auto tab-scroll-mobile no-scrollbar">
-            <table className="min-w-max text-xs">
-              <thead className="bg-white/70 dark:bg-slate-900/80">
+          <div className="overflow-x-auto no-scrollbar">
+            <table className="min-w-max text-xs border-collapse">
+              <thead className="bg-slate-50 dark:bg-slate-850">
                 <tr className="border-b" style={{ borderColor: "var(--border)" }}>
-                  <th className="sticky left-0 z-20 min-w-44 sm:min-w-52 bg-white dark:bg-slate-900 p-3 text-left shadow-[3px_0_6px_-5px_rgba(0,0,0,.5)]">Nhân viên</th>
+                  <th className="sticky left-0 z-30 min-w-44 sm:min-w-52 bg-slate-50 dark:bg-slate-900 p-3 text-left border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)]">Nhân viên</th>
                   {days.map((day) => {
                     const ngay = toIsoDate(day);
                     const isToday = ngay === today;
@@ -713,10 +713,7 @@ export default function ChamCongPage() {
                       style={{ borderColor: "var(--border)" }}
                     >
                       <td
-                        className={`sticky left-0 z-10 p-3 shadow-[3px_0_6px_-5px_rgba(0,0,0,.5)] ${isNghiViec
-                            ? "bg-rose-50/95 dark:bg-slate-900 border-r border-rose-200/60"
-                            : "bg-white dark:bg-slate-900"
-                          }`}
+                        className={`sticky left-0 z-20 p-2.5 sm:p-3 border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)] ${isNghiViec ? "bg-rose-50 dark:bg-slate-900" : "bg-white dark:bg-slate-900"}`}
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="block font-semibold">{employee.hoTen}</span>
@@ -766,7 +763,7 @@ export default function ChamCongPage() {
                                     e.stopPropagation();
                                     handleOpenTangCaModal(employee, ngay);
                                   }}
-                                  className="absolute -top-1.5 -right-1.5 px-1 py-0.2 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-black shadow-xs cursor-pointer active:scale-90 transition z-10"
+                                  className="absolute -top-1 -right-1 px-1 py-0.2 rounded bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold leading-tight shadow-2xs cursor-pointer active:scale-90 transition z-[1]"
                                   title={`Tăng ca ${record.soGioTangCa}h. Bấm để sửa.`}
                                 >
                                   +{record.soGioTangCa}h
@@ -778,7 +775,7 @@ export default function ChamCongPage() {
                                     e.stopPropagation();
                                     handleOpenTangCaModal(employee, ngay);
                                   }}
-                                  className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-500 text-amber-700 hover:text-white transition z-10 cursor-pointer shadow-2xs"
+                                  className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-amber-500 text-slate-600 hover:text-white transition z-[1] cursor-pointer shadow-2xs"
                                   title={`Chấm tăng ca ngày ${day.getDate()}/${day.getMonth() + 1}`}
                                 >
                                   <Flame className="w-2.5 h-2.5" />
@@ -806,7 +803,7 @@ export default function ChamCongPage() {
           <div className="border-b px-4 py-2.5 text-xs opacity-75" style={{ borderColor: "var(--border)" }}>
             Chuẩn ngày công tháng: <strong>{CHUAN_NGAY_CONG_THANG} ngày</strong> (không giới hạn trần — tháng có 29–31 ngày sẽ tính đúng theo số ngày công thực tế) · Nghỉ phép tính <strong>0 công</strong> · Ca chuẩn {GIO_VAO_CA_CHUAN.slice(0, 5)} – {GIO_KET_THUC_CA_CHUAN.slice(0, 5)}.
           </div>
-          <div className="overflow-x-auto tab-scroll-mobile no-scrollbar">
+          <div className="overflow-x-auto no-scrollbar">
             <table className="w-full min-w-[840px] text-sm">
               <thead><tr className="border-b text-left" style={{ borderColor: "var(--border)" }}><th className="p-3">Mã NV</th><th className="p-3">Họ tên</th><th className="p-3">Bộ phận</th><th className="p-3 text-center">Ngày công / {CHUAN_NGAY_CONG_THANG}</th><th className="p-3 text-center">Tỷ lệ</th><th className="p-3 text-center">Nghỉ phép (0 công)</th><th className="p-3 text-center">Không phép</th><th className="p-3 text-center">Đi trễ</th><th className="p-3 text-center">Tăng ca</th></tr></thead>
               <tbody>
@@ -920,7 +917,7 @@ function SelfAttendanceCard({ employee, record, submitting, onCheckIn, onCheckOu
             type="button"
             disabled={submitting}
             onClick={onOvertime}
-            className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 py-3 font-bold text-white shadow-md transition active:scale-95 cursor-pointer relative"
+            className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-3 py-3 font-bold text-white shadow-xs transition active:scale-95 cursor-pointer relative"
             title="Bấm để ghi nhận hoặc điều chỉnh giờ làm tăng ca hôm nay"
           >
             <Flame className="h-5 w-5 text-amber-100 animate-pulse shrink-0" />
